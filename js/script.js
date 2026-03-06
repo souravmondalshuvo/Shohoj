@@ -866,6 +866,52 @@
         creditsBox.style.display = 'none';
       }
 
+      // ── ACADEMIC STANDING ─────────────────────────────
+      const standingBox = document.getElementById('standingBox');
+      const cgpaNum = totalAttempted > 0 ? totalPts / totalAttempted : null;
+      const semCount = semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
+
+      if (cgpaNum !== null) {
+        standingBox.style.display = '';
+        const title  = document.getElementById('standingTitle');
+        const desc   = document.getElementById('standingDesc');
+        const badge  = document.getElementById('standingBadge');
+        // remove old standing classes
+        standingBox.classList.remove('standing-excellent','standing-good','standing-warning','standing-danger');
+
+        let standing, cls, emoji, description;
+
+        if (cgpaNum >= 3.97) {
+          standing = 'Perfect Standing'; cls = 'standing-excellent'; emoji = '🏆';
+          description = 'Exceptional academic performance. You are at the top of your class.';
+        } else if (cgpaNum >= 3.65) {
+          standing = 'Higher Distinction'; cls = 'standing-excellent'; emoji = '🌟';
+          description = 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).';
+        } else if (cgpaNum >= 3.50) {
+          standing = 'Distinction'; cls = 'standing-excellent'; emoji = '⭐';
+          description = 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).';
+        } else if (cgpaNum >= 3.00) {
+          standing = 'Good Standing'; cls = 'standing-good'; emoji = '✅';
+          description = 'You are in good academic standing. Keep it up!';
+        } else if (cgpaNum >= 2.50) {
+          standing = 'Satisfactory'; cls = 'standing-good'; emoji = '👍';
+          description = 'Acceptable academic performance. There is room to improve.';
+        } else if (cgpaNum >= 2.00) {
+          standing = 'Needs Improvement'; cls = 'standing-warning'; emoji = '⚠️';
+          description = 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.';
+        } else {
+          standing = 'Academic Probation'; cls = 'standing-danger'; emoji = '❌';
+          description = 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.';
+        }
+
+        standingBox.classList.add(cls);
+        title.textContent  = standing;
+        desc.textContent   = description;
+        badge.textContent  = emoji;
+      } else {
+        standingBox.style.display = 'none';
+      }
+
       const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
       document.getElementById('meterFill').style.width = pct + '%';
       document.getElementById('meterPct').textContent = cgpa !== null ? pct.toFixed(1) + '%' : '0%';
