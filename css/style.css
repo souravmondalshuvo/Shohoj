@@ -601,3 +601,47 @@
     }
     .pf-select option { background: #0d1a10; }
     [data-theme="light"] .pf-select option { background: #fff; }
+    /* ── CREDITS PROGRESS BAR ───────────────────────────── */
+    .credits-progress {
+      margin: 0 2rem 1.5rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      position: relative;
+    }
+    .credits-progress-track {
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      overflow: hidden;
+      margin: 0.6rem 0 0.4rem;
+    }
+    [data-theme="light"] .credits-progress-track { background: rgba(0,0,0,0.08); }
+    .credits-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1a7a44, #2ECC71, #a8ffcb);
+      border-radius: 100px;
+      width: 0%;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 0 12px rgba(46,204,113,0.5);
+    }
+    .credits-progress-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 0.2rem;
+    }
+    .credits-progress-footer #creditsEarnedLabel {
+      color: var(--green);
+      font-weight: 600;
+    }
+    @media (max-width: 480px) {
+      .credits-progress { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+    }
+    @media (min-width: 1440px) {
+      .credits-progress { margin: 0 2.5rem 1.8rem; }
+    }
