@@ -533,21 +533,25 @@
       if (!sem) return;
       sem.courses[cIdx].name    = fullName;
       sem.courses[cIdx].credits = credits;
+      sem.courses[cIdx].grade      = '';
+      sem.courses[cIdx].gradePoint = '';
 
-      const block = document.getElementById(`sem-${semId}`);
-      if (block) {
+      // Full re-render so P/F dropdown appears immediately for 0-credit courses
+      renderSemesters();
+      recalc();
+
+      // Restore focus to the grade input of the picked row
+      setTimeout(() => {
+        const block = document.getElementById(`sem-${semId}`);
+        if (!block) return;
         const rows = block.querySelectorAll('.course-row:not(.course-header)');
         const row  = rows[cIdx];
-        if (row) {
-          const nameInput  = row.querySelector('.course-input-wrap input');
-          const creditSpan = row.querySelector('.credits-static');
-          if (nameInput)  nameInput.value = fullName;
-          if (creditSpan) creditSpan.textContent = credits;
-          const gp = row.querySelector('input[inputmode="decimal"]');
-          if (gp) setTimeout(() => gp.focus(), 30);
-        }
-      }
-      recalc();
+        if (!row) return;
+        const gpInput = row.querySelector('input[inputmode="decimal"]');
+        const pfSelect = row.querySelector('.pf-select');
+        if (pfSelect) pfSelect.focus();
+        else if (gpInput) gpInput.focus();
+      }, 30);
     }
 
     // Step 1: dept chosen → show semester picker
@@ -640,12 +644,70 @@
     }
 
 
+    // ── RETAKE DETECTION ─────────────────────────────────
+    // Returns a Set of "semId-courseIdx" keys that are superseded retakes
+    // Match by course code OR full name. Latest occurrence wins.
+    // ── RETAKE POLICY ────────────────────────────────────
+    // Admitted up to Fall 2024  → best grade counts
+    // Admitted Spring 2025+     → latest grade counts
+    function usesBestGradePolicy() {
+      const season = getStartSeason();
+      const year   = parseInt(getStartYear());
+      if (!season || !year) return false;
+      const idx = SEASON_ORDER.indexOf(season);
+      // Before Spring 2025: Fall 2024, Summer 2024, Spring 2024 etc.
+      if (year < 2025) return true;
+      if (year === 2025 && idx === 0) return false; // Spring 2025 → latest policy
+      if (year === 2025 && idx > 0)  return false;  // Summer/Fall 2025 → latest policy
+      return false; // 2026+ → latest policy
+    }
+
+    function getRetakenKeys() {
+      const bestGrade = usesBestGradePolicy();
+
+      // Flatten all courses with position info, in semester order
+      const all = [];
+      semesters.forEach(sem => {
+        sem.courses.forEach((c, i) => {
+          if (!c.name.trim()) return;
+          const codeMatch = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
+          const code = codeMatch ? codeMatch[1] : null;
+          const baseName = c.name.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
+          const gp = c.grade ? (GRADES[c.grade] ?? -1) : -1;
+          all.push({ semId: sem.id, idx: i, code, baseName, key: `${sem.id}-${i}`, gp });
+        });
+      });
+
+      // Group by code or name
+      const groups = {};
+      all.forEach(entry => {
+        const groupKey = entry.code || entry.baseName;
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push(entry);
+      });
+
+      const retakenKeys = new Set();
+      Object.values(groups).forEach(group => {
+        if (group.length < 2) return;
+        if (bestGrade) {
+          // Best grade policy: find the entry with highest gp, mark all others retaken
+          const best = group.reduce((a, b) => a.gp >= b.gp ? a : b);
+          group.forEach(e => { if (e.key !== best.key) retakenKeys.add(e.key); });
+        } else {
+          // Latest grade policy: last in semester order wins, all earlier are retaken
+          group.slice(0, -1).forEach(e => retakenKeys.add(e.key));
+        }
+      });
+      return retakenKeys;
+    }
+
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
       document.getElementById('semesterCount').textContent = semesters.length;
+      const retakenKeys = getRetakenKeys();
 
       container.innerHTML = semesters.map(sem => {
-        const gpa = calcSemGPA(sem);
+        const gpa = calcSemGPA(sem, retakenKeys);
         return `
         <div class="semester-block lg-surface" id="sem-${sem.id}"><div class="lg-shine"></div>
           <div class="semester-head">
@@ -664,24 +726,35 @@
               <span>Grade Point</span>
               <span>Grade</span>
             </div>
-            ${sem.courses.map((c, i) => `
-            <div class="course-row">
-              <div class="course-input-wrap">
+            ${sem.courses.map((c, i) => {
+              const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
+              return `
+            <div class="course-row${isRetaken ? ' retaken' : ''}">
+              <div class="course-input-wrap" style="position:relative;">
                 <input type="text" placeholder="Type course code / title"
                   value="${c.name}"
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
                   onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
+                ${isRetaken ? `<span class="retaken-badge">Retaken</span>` : ''}
               </div>
               <span class="credits-static">${c.credits}</span>
-              <input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
-                value="${c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')}"
-                oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
-                style="text-align:center;" />
+              ${c.credits === 0 && c.name.trim() !== ''
+                ? `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
+                    <option value="" disabled ${!c.grade ? 'selected' : ''}>P / F</option>
+                    <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P — Pass</option>
+                    <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F — Fail</option>
+                  </select>`
+                : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
+                    value="${c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')}"
+                    oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
+                    style="text-align:center;" />`
+              }
               <span class="grade-letter" id="gl-${sem.id}-${i}"
                 style="color:${
                   c.grade === 'F' ? '#e74c3c' :
+                  c.grade === 'P' ? '#2ECC71' :
                   c.grade && c.grade.startsWith('A') ? '#2ECC71' :
                   c.grade && c.grade.startsWith('B') ? '#27ae60' :
                   c.grade && c.grade.startsWith('C') ? '#F0A500' :
@@ -689,7 +762,8 @@
                   'var(--text3)'
                 }">${c.grade || '—'}</span>
               <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
-            </div>`).join('')}
+            </div>`;
+            }).join('')}
           </div>
           <div class="add-course-row">
             <button class="btn-add-course" onclick="addCourse(${sem.id})">+ Add course</button>
@@ -698,62 +772,73 @@
       }).join('');
     }
 
+    function onPFChange(semId, cIdx, val) {
+      const sem = semesters.find(s => s.id === semId);
+      if (!sem) return;
+      sem.courses[cIdx].grade = val;
+      sem.courses[cIdx].gradePoint = val;
+      renderSemesters();
+      recalc();
+    }
+
     function autoDetectGrade(semId, cIdx, val, inputEl) {
       const letter = detectGrade(val);
       const sem = semesters.find(s => s.id === semId);
-      if (sem) {
-        sem.courses[cIdx].grade = letter;
-        sem.courses[cIdx].gradePoint = val;
-        const badge = document.getElementById(`gl-${semId}-${cIdx}`);
-        if (badge) {
-          badge.textContent = letter || '—';
-          badge.style.color = letter === 'F' ? '#e74c3c' :
-                              letter.startsWith('A') ? '#2ECC71' :
-                              letter.startsWith('B') ? '#27ae60' :
-                              letter.startsWith('C') ? '#F0A500' :
-                              letter.startsWith('D') ? '#e67e22' : 'var(--text3)';
-        }
-        if (letter) {
-          inputEl.style.borderColor = 'rgba(46,204,113,0.6)';
-          setTimeout(() => inputEl.style.borderColor = '', 600);
-        }
-        recalc();
-        const gpa = calcSemGPA(sem);
-        const block = document.getElementById(`sem-${semId}`);
-        if (block) {
-          const badge2 = block.querySelector('.semester-gpa-badge');
-          if (badge2 && gpa !== null) badge2.textContent = `GPA ${gpa.toFixed(2)}`;
-          else if (!badge2 && gpa !== null) {
-            block.querySelector('.semester-head-left')
-              .insertAdjacentHTML('beforeend', `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>`);
-          }
+      if (!sem) return;
+      sem.courses[cIdx].grade = letter;
+      sem.courses[cIdx].gradePoint = val;
+
+      // Flash border green on valid grade
+      if (letter) {
+        inputEl.style.borderColor = 'rgba(46,204,113,0.6)';
+        setTimeout(() => inputEl.style.borderColor = '', 600);
+      }
+
+      // Full re-render so retaken state, GPA badges all stay in sync
+      renderSemesters();
+      recalc();
+
+      // Restore focus to the grade point input that was being typed in
+      const block = document.getElementById(`sem-${semId}`);
+      if (block) {
+        const rows = block.querySelectorAll('.course-row:not(.course-header)');
+        const gpInput = rows[cIdx]?.querySelector('input[inputmode="decimal"]');
+        if (gpInput) {
+          gpInput.focus();
+          // Move cursor to end
+          const len = gpInput.value.length;
+          gpInput.setSelectionRange(len, len);
         }
       }
     }
 
-    function calcSemGPA(sem) {
+    function calcSemGPA(sem, retakenKeys) {
+      const rk = retakenKeys || getRetakenKeys();
       let pts = 0, creds = 0;
-      for (const c of sem.courses) {
+      sem.courses.forEach((c, i) => {
+        if (rk.has(`${sem.id}-${i}`)) return;
         const gp = GRADES[c.grade];
-        if (gp === null || gp === undefined || !c.credits) continue;
-        if (c.grade === 'P') continue;
+        if (gp === null || gp === undefined || !c.credits) return;
+        if (c.grade === 'P') return;
         pts += gp * c.credits;
         creds += c.credits;
-      }
+      });
       return creds > 0 ? pts / creds : null;
     }
 
     function recalc() {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0;
+      const retakenKeys = getRetakenKeys();
       for (const sem of semesters) {
-        for (const c of sem.courses) {
+        sem.courses.forEach((c, i) => {
+          if (retakenKeys.has(`${sem.id}-${i}`)) return; // skip superseded attempts
           const gp = GRADES[c.grade];
-          if (gp === undefined || !c.credits) continue;
-          if (c.grade === 'P' || c.grade === 'I') continue;
+          if (gp === undefined || !c.credits) return;
+          if (c.grade === 'P' || c.grade === 'I') return;
           totalAttempted += c.credits;
           totalPts += gp * c.credits;
           if (gp > 0) totalEarned += c.credits;
-        }
+        });
       }
 
       const cgpa = totalAttempted > 0 ? totalPts / totalAttempted : null;
@@ -860,6 +945,13 @@
     document.querySelectorAll('select, textarea').forEach(el => {
       el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
       el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
+    });
+    // P/F dropdown is dynamically rendered — use event delegation
+    document.addEventListener('mouseover', e => {
+      if (e.target.matches('.pf-select')) body.classList.add('cursor-text');
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.matches('.pf-select')) body.classList.remove('cursor-text');
     });
     document.addEventListener('mouseover', e => {
       if (e.target.matches('input, textarea')) body.classList.add('cursor-text');
