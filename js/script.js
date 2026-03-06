@@ -851,6 +851,21 @@
       document.getElementById('totalAttempted').textContent = totalAttempted.toFixed(1);
       document.getElementById('totalEarned').textContent = totalEarned.toFixed(1);
 
+      // ── CREDITS PROGRESS BAR ──────────────────────────
+      const dept = currentDept ? DEPARTMENTS[currentDept] : null;
+      const totalRequired = dept ? dept.totalCredits : 0;
+      const creditsBox = document.getElementById('creditsProgressBox');
+      if (dept && totalRequired > 0) {
+        creditsBox.style.display = '';
+        const creditsPct = Math.min((totalEarned / totalRequired) * 100, 100);
+        document.getElementById('creditsFill').style.width = creditsPct.toFixed(1) + '%';
+        document.getElementById('creditsPct').textContent = creditsPct.toFixed(1) + '%';
+        document.getElementById('creditsEarnedLabel').textContent = totalEarned.toFixed(0) + ' credits completed';
+        document.getElementById('creditsTotalLabel').textContent = 'of ' + totalRequired;
+      } else {
+        creditsBox.style.display = 'none';
+      }
+
       const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
       document.getElementById('meterFill').style.width = pct + '%';
       document.getElementById('meterPct').textContent = cgpa !== null ? pct.toFixed(1) + '%' : '0%';
