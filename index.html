@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Shohoj — সহজ | University Life, Made Simple</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --green:       #2ECC71;
+      --green-dim:   #1a7a44;
+      --green-glow:  rgba(46,204,113,0.15);
+      --gold:        #F0A500;
+      --radius:      16px;
+      --transition:  0.35s cubic-bezier(.4,0,.2,1);
+    }
+    [data-theme="dark"] {
+      --bg:          #060d09;
+      --glass:       rgba(255,255,255,0.04);
+      --glass2:      rgba(255,255,255,0.07);
+      --glass3:      rgba(46,204,113,0.06);
+      --glass-hover: rgba(255,255,255,0.09);
+      --border:      rgba(46,204,113,0.18);
+      --border2:     rgba(255,255,255,0.08);
+      --text:        #e8f0ea;
+      --text2:       #8aab90;
+      --text3:       #4d6b52;
+      --input-bg:    rgba(0,0,0,0.25);
+      --shadow:      0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(46,204,113,0.08);
+      --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    [data-theme="light"] {
+      --bg:          #d4edde;
+      --glass:       rgba(255,255,255,0.55);
+      --glass2:      rgba(255,255,255,0.70);
+      --glass3:      rgba(46,204,113,0.10);
+      --glass-hover: rgba(255,255,255,0.80);
+      --border:      rgba(46,204,113,0.25);
+      --border2:     rgba(255,255,255,0.6);
+      --text:        #0d2914;
+      --text2:       #3a6b47;
+      --text3:       #8ab898;
+      --input-bg:    rgba(255,255,255,0.5);
+      --shadow:      0 8px 32px rgba(46,204,113,0.12), 0 0 0 1px rgba(255,255,255,0.5);
+      --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
+      overflow-x: hidden;
+    }
+
+    /* ── FLOATING ORBS ──────────────────────────────────── */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 18s ease-in-out infinite alternate;
+    }
+    .orb-1 {
+      width: 520px; height: 520px;
+      background: radial-gradient(circle, rgba(46,204,113,0.22) 0%, transparent 70%);
+      top: -120px; left: -100px;
+      animation-duration: 20s;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(16,120,60,0.18) 0%, transparent 70%);
+      bottom: 10%; right: -80px;
+      animation-duration: 25s; animation-delay: -8s;
+    }
+    .orb-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(46,204,113,0.10) 0%, transparent 70%);
+      top: 45%; left: 40%;
+      animation-duration: 30s; animation-delay: -14s;
+    }
+    [data-theme="light"] .orb-1 { background: radial-gradient(circle, rgba(46,204,113,0.30) 0%, transparent 70%); }
+    [data-theme="light"] .orb-2 { background: radial-gradient(circle, rgba(100,200,140,0.25) 0%, transparent 70%); }
+    [data-theme="light"] .orb-3 { background: radial-gradient(circle, rgba(180,240,200,0.35) 0%, transparent 70%); }
+    @keyframes drift {
+      0%   { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(40px,-30px) scale(1.05); }
+      66%  { transform: translate(-20px,50px) scale(0.97); }
+      100% { transform: translate(30px,20px) scale(1.03); }
+    }
+
+    /* ── NAV ─────────────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      height: 64px;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
+      transition: background var(--transition), backdrop-filter var(--transition);
+      -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+      mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+    }
+    nav.scrolled {
+      background: rgba(6,13,9,0.55);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+    [data-theme="light"] nav.scrolled {
+      background: rgba(255,255,255,0.50);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-mark {
+      width: 34px; height: 34px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800; font-size: 14px;
+      color: #0b0f0d;
+      letter-spacing: -0.5px;
+    }
+    .nav-logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 18px;
+      color: var(--text);
+    }
+    .nav-logo-text span { color: var(--green); }
+
+    .nav-right { display: flex; align-items: center; gap: 1rem; }
+
+    .nav-link {
+      font-size: 14px; font-weight: 500;
+      color: var(--text2); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-link:hover { color: var(--green); }
+
+    .theme-toggle {
+      width: 56px; height: 28px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      cursor: pointer;
+      position: relative;
+      transition: background var(--transition);
+      flex-shrink: 0;
+    }
+    .toggle-pill {
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 2px 6px rgba(46,204,113,0.4);
+      transition: transform var(--transition);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; line-height: 1;
+      pointer-events: none; user-select: none;
+    }
+    [data-theme="dark"]  .toggle-pill { transform: translateX(28px); }
+    [data-theme="light"] .toggle-pill { transform: translateX(0px); }
+
+    /* ── HERO ─────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 8rem 2rem 4rem;
+      position: relative;
+    }
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(46,204,113,0.08) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%, -60%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(46,204,113,0.10);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px; font-weight: 500;
+      color: var(--green);
+      margin-bottom: 2rem;
+      animation: fadeUp 0.6s ease both;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(3rem, 8vw, 6.5rem);
+      font-weight: 800;
+      line-height: 1.0;
+      letter-spacing: -2px;
+      margin-bottom: 0.4rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+    .hero h1 .bengali {
+      display: block;
+      color: var(--green);
+      font-size: clamp(2rem, 5vw, 4rem);
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--text2);
+      font-weight: 300;
+      max-width: 480px;
+      margin: 1.2rem auto 2.4rem;
+      line-height: 1.6;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .hero-cta {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: #0b0f0d;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600; font-size: 15px;
+      padding: 13px 28px;
+      border-radius: var(--radius);
+      border: none; cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 0 0 0 rgba(46,204,113,0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(46,204,113,0.35);
+    }
+    .btn-secondary {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500; font-size: 15px;
+      padding: 13px 28px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s, transform 0.2s, background 0.2s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--green);
+      color: var(--green);
+      background: var(--glass2);
+      transform: translateY(-2px);
+    }
+
+    .hero-stats {
+      display: flex; gap: 3rem; justify-content: center;
+      margin-top: 4rem;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+    .stat { text-align: center; }
+    .stat-num {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem; font-weight: 800;
+      color: var(--green);
+    }
+    .stat-label { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── SECTION ─────────────────────────────────────────── */
+    section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+      position: relative; z-index: 1;
+    }
+    .section-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 0.8rem;
+    }
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 1rem;
+    }
+    .section-desc {
+      color: var(--text2);
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 560px;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── FEATURES GRID ───────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .feature-card {
+      background: var(--glass);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      padding: 1.8rem;
+      transition: background var(--transition);
+      cursor: default;
+    }
+    .feature-card:hover {
+      background: var(--glass-hover);
+    }
+    .feature-icon {
+      font-size: 1.6rem;
+      margin-bottom: 0.8rem;
+    }
+    .feature-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 1rem;
+      margin-bottom: 0.4rem;
+    }
+    .feature-desc {
+      font-size: 0.875rem;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    .feature-phase {
+      display: inline-block;
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--green);
+      background: var(--green-glow);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-bottom: 0.6rem;
+    }
+    .feature-phase.soon { color: var(--text3); background: transparent; }
+
+    /* ── GPA CALCULATOR ──────────────────────────────────── */
+    .calc-wrapper {
+      background: var(--glass);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+    .calc-header {
+      background: var(--glass2);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .calc-header-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .calc-header-left h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 700;
+    }
+    .calc-header-left p { font-size: 0.85rem; color: var(--text2); margin-top: 2px; }
+
+    .cgpa-display { text-align: right; flex-shrink: 0; }
+    .cgpa-display .cgpa-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.8rem; font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+      transition: color 0.3s;
+      text-shadow: 0 0 30px rgba(46,204,113,0.4);
+      letter-spacing: -1px;
+    }
+    .cgpa-display .cgpa-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 4px;
+    }
+
+    .calc-body { padding: 1.5rem 2rem; }
+
+    .semesters-container { display: flex; flex-direction: column; gap: 1.2rem; }
+
+    .semester-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: visible; /* allow suggestions to escape */
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: var(--glass);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      isolation: isolate;
+    }
+    .semester-block:focus-within {
+      border-color: rgba(46,204,113,0.45);
+      box-shadow: 0 0 0 3px rgba(46,204,113,0.08);
+    }
+    /* ensure head clips to rounded corners */
+    .semester-head {
+      border-top-left-radius: calc(var(--radius) - 1px);
+      border-top-right-radius: calc(var(--radius) - 1px);
+    }
+
+    .semester-head {
+      background: var(--glass2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 0.8rem 1.2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      border-top-left-radius: calc(var(--radius) - 1px);
+      border-top-right-radius: calc(var(--radius) - 1px);
+    }
+    .semester-head-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .semester-label {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700; font-size: 0.9rem;
+    }
+    .semester-gpa-badge {
+      font-size: 12px; font-weight: 600;
+      background: var(--green-glow);
+      color: var(--green);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+    .semester-actions { display: flex; gap: 6px; }
+    .btn-icon {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      font-size: 13px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-icon:hover { border-color: var(--green); color: var(--green); }
+    .btn-icon.danger:hover { border-color: #e74c3c; color: #e74c3c; }
+
+    .courses-table { width: 100%; }
+    .course-row {
+      display: grid;
+      grid-template-columns: 1fr 54px 96px 36px 24px;
+      gap: 8px;
+      padding: 8px 1.2rem;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .course-row:last-child { border-bottom: none; }
+    .course-row:hover { background: var(--glass2); }
+
+    .course-row input, .course-row select {
+      background: var(--input-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 7px 10px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .course-row input:focus, .course-row select:focus {
+      border-color: rgba(46,204,113,0.55);
+      background: rgba(46,204,113,0.05);
+    }
+    .course-row input::placeholder { color: var(--text3); }
+    .course-row select option { background: #0d1a10; }
+
+    .btn-remove-course {
+      background: transparent; border: none;
+      color: var(--text3); font-size: 16px;
+      cursor: pointer; border-radius: 6px;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.2s, background 0.2s;
+    }
+    .btn-remove-course:hover { color: #e74c3c; background: rgba(231,76,60,0.1); }
+
+    .add-course-row {
+      padding: 8px 1.2rem;
+    }
+    .btn-add-course {
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--text3);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+    .btn-add-course:hover { border-color: var(--green); color: var(--green); }
+
+    .calc-footer {
+      padding: 1.2rem 2rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+      background: var(--glass2);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .calc-footer-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .footer-stat { font-size: 13px; color: var(--text2); }
+    .footer-stat strong { color: var(--text); font-weight: 600; }
+
+    .btn-add-semester {
+      background: var(--green);
+      color: #0b0f0d;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600; font-size: 13px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: none; cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-add-semester:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(46,204,113,0.4);
+    }
+
+    /* ── CGPA METER ──────────────────────────────────────── */
+    .cgpa-meter {
+      margin: 1.2rem 2rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+    }
+    .meter-header {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: var(--text3);
+      margin-bottom: 0.6rem;
+    }
+    .meter-bar-bg {
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    [data-theme="light"] .meter-bar-bg { background: rgba(0,0,0,0.08); }
+    .meter-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green-dim), var(--green));
+      border-radius: 100px;
+      transition: width 0.5s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+      box-shadow: 0 0 12px rgba(46,204,113,0.5);
+    }
+    .meter-labels {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text3);
+      margin-top: 0.4rem;
+    }
+    .meter-status {
+      margin-top: 0.6rem;
+      font-size: 13px; color: var(--text2);
+      text-align: center;
+    }
+    .meter-status strong { color: var(--green); }
+
+    /* ── SIMULATOR ───────────────────────────────────────── */
+    .simulator-box {
+      margin: 0 2rem 1.5rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+    }
+    .simulator-box h4 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem; font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .simulator-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .simulator-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
+    .simulator-row input {
+      background: var(--input-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600;
+      padding: 8px 12px;
+      width: 90px; outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .simulator-row input:focus {
+      border-color: rgba(46,204,113,0.55);
+      background: rgba(46,204,113,0.05);
+    }
+    .simulator-result {
+      margin-top: 0.8rem;
+      font-size: 13px; color: var(--text2);
+      line-height: 1.6; min-height: 20px;
+    }
+    .simulator-result .highlight { color: var(--green); font-weight: 600; }
+    .simulator-result .warn { color: var(--gold); font-weight: 600; }
+    .simulator-result .danger { color: #e74c3c; font-weight: 600; }
+
+    /* ── FOOTER ──────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 2.5rem;
+      position: relative; z-index: 1;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .footer-logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.2rem; font-weight: 800;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    .footer-logo span { color: var(--green); }
+    footer p { font-size: 13px; color: var(--text3); }
+    footer a { color: var(--green); text-decoration: none; }
+
+    /* ── SCROLL PROGRESS BAR ─────────────────────────────── */
+    #scroll-progress {
+      position: fixed; top: 0; left: 0; z-index: 200;
+      height: 2px; width: 0%;
+      background: linear-gradient(90deg, var(--green-dim), var(--green), #a8ffcb);
+      box-shadow: 0 0 10px rgba(46,204,113,0.7);
+      pointer-events: none;
+      transition: width 0.08s linear;
+    }
+
+    /* ── SCROLL REVEAL ────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transition: opacity 0.75s cubic-bezier(.4,0,.2,1),
+                  transform 0.75s cubic-bezier(.4,0,.2,1),
+                  filter 0.75s ease;
+      filter: blur(5px);
+      will-change: transform, opacity;
+    }
+    .reveal.from-bottom { transform: translateY(44px); }
+    .reveal.from-left   { transform: translateX(-44px); }
+    .reveal.from-right  { transform: translateX(44px); }
+    .reveal.from-scale  { transform: scale(0.93); }
+    .reveal.visible {
+      opacity: 1;
+      transform: translate(0,0) scale(1);
+      filter: blur(0px);
+    }
+    .stagger > * {
+      opacity: 0; transform: translateY(32px); filter: blur(3px);
+      transition: opacity 0.6s cubic-bezier(.4,0,.2,1),
+                  transform 0.6s cubic-bezier(.4,0,.2,1),
+                  filter 0.6s ease;
+    }
+    .stagger.visible > *:nth-child(1) { transition-delay: 0.05s; }
+    .stagger.visible > *:nth-child(2) { transition-delay: 0.13s; }
+    .stagger.visible > *:nth-child(3) { transition-delay: 0.21s; }
+    .stagger.visible > *:nth-child(4) { transition-delay: 0.29s; }
+    .stagger.visible > *:nth-child(5) { transition-delay: 0.37s; }
+    .stagger.visible > *:nth-child(6) { transition-delay: 0.45s; }
+    .stagger.visible > * { opacity: 1; transform: translateY(0); filter: blur(0px); }
+    .nav-link.active { color: var(--green); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(46,204,113,0.25); border-radius: 100px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(46,204,113,0.55); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────── */
+
+    /* ════════════════════════════════════════════════════
+       RESPONSIVE — all breakpoints
+       320  small phones    (iPhone SE, Galaxy A)
+       480  large phones    (iPhone Pro Max, Pixel 9)
+       768  tablets         (iPad Mini, Galaxy Tab)
+       1024 laptops         (MacBook Air 13", Surface)
+       1280 large laptops   (MacBook Pro 14", Dell XPS)
+       1440 desktops        (MacBook Pro 16", iMac)
+       1920 wide monitors
+    ════════════════════════════════════════════════════ */
+
+    /* ── touch devices: disable custom cursor ─────────── */
+    @media (hover: none) and (pointer: coarse) {
+      * { cursor: auto !important; }
+      #cursor-dot, #cursor-ring { display: none !important; }
+      #dot-matrix { opacity: 0.5; }
+    }
+
+    /* ── 320px – 480px  (small phones) ───────────────── */
+    @media (max-width: 480px) {
+      nav { padding: 0 1rem; height: 56px; }
+      .nav-logo-text { font-size: 15px; }
+      .nav-logo-mark { width: 28px; height: 28px; font-size: 12px; }
+      .nav-link { font-size: 12px; }
+      .theme-toggle { width: 46px; height: 24px; }
+      .toggle-pill { width: 18px; height: 18px; font-size: 11px; }
+      [data-theme="dark"] .toggle-pill { transform: translateX(22px); }
+
+      .hero { padding: 5rem 1.2rem 3rem; min-height: 100svh; }
+      .hero h1 { font-size: clamp(2.2rem, 11vw, 3.2rem); letter-spacing: -1px; }
+      .hero h1 .bengali { font-size: clamp(1.5rem, 7vw, 2.2rem); }
+      .hero-sub { font-size: 0.92rem; max-width: 100%; margin: 1rem auto 1.8rem; }
+      .hero-badge { font-size: 11px; padding: 5px 11px; }
+      .hero-cta { flex-direction: column; align-items: center; gap: 10px; }
+      .btn-primary, .btn-secondary { width: 100%; max-width: 280px; text-align: center; padding: 13px 20px; }
+      .hero-stats { gap: 1.5rem; margin-top: 2.5rem; }
+      .stat-num { font-size: 1.5rem; }
+
+      section { padding: 3rem 1.2rem; }
+      .section-title { font-size: 1.6rem; letter-spacing: -0.5px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .feature-card { padding: 1.4rem; }
+
+      .calc-wrapper { border-radius: 14px; }
+      .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+      .cgpa-display { align-self: flex-end; }
+      .cgpa-display .cgpa-val { font-size: 2rem; }
+      .calc-body { padding: 0.8rem; }
+      .calc-footer { padding: 0.8rem 1rem; flex-direction: column; gap: 0.8rem; }
+      .calc-footer-stats { gap: 0.8rem; }
+      .cgpa-meter, .simulator-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .simulator-row { flex-direction: column; align-items: flex-start; }
+
+      .course-row { grid-template-columns: 1fr 40px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
+      .course-header span { font-size: 9px; }
+      .credits-static { font-size: 12px; }
+      .btn-add-semester { width: 100%; text-align: center; }
+      .semester-head { padding: 0.7rem 1rem; }
+
+      footer { padding: 2rem 1.2rem; }
+      .orb-1 { width: 280px; height: 280px; }
+      .orb-2 { width: 220px; height: 220px; }
+      .orb-3 { width: 180px; height: 180px; }
+    }
+
+    /* ── 481px – 767px  (large phones) ───────────────── */
+    @media (min-width: 481px) and (max-width: 767px) {
+      nav { padding: 0 1.4rem; height: 60px; }
+
+      .hero { padding: 6rem 1.5rem 3.5rem; }
+      .hero h1 { font-size: clamp(2.8rem, 9vw, 4rem); }
+      .hero-sub { font-size: 1rem; max-width: 420px; }
+      .hero-cta { gap: 10px; }
+      .btn-primary, .btn-secondary { padding: 12px 24px; font-size: 14px; }
+      .hero-stats { gap: 2rem; margin-top: 3rem; }
+
+      section { padding: 3.5rem 1.5rem; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .calc-header { padding: 1.2rem 1.5rem; flex-wrap: wrap; }
+      .calc-body { padding: 1rem 1.2rem; }
+      .calc-footer { padding: 1rem 1.2rem; }
+      .cgpa-meter, .simulator-box { margin: 0 1.2rem 1rem; }
+      .course-row { grid-template-columns: 1fr 44px 84px 30px 20px; gap: 5px; padding: 7px 1rem; }
+    }
+
+    /* ── 768px – 1023px  (tablets) ───────────────────── */
+    @media (min-width: 768px) and (max-width: 1023px) {
+      nav { padding: 0 1.8rem; }
+
+      .hero { padding: 7rem 2.5rem 4rem; }
+      .hero h1 { font-size: clamp(3.5rem, 7vw, 5rem); }
+      .hero-sub { max-width: 520px; }
+      .hero-stats { gap: 3rem; }
+
+      section { padding: 4rem 2rem; max-width: 100%; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+
+      .calc-header { padding: 1.3rem 1.8rem; }
+      .calc-body { padding: 1.2rem 1.5rem; }
+      .calc-footer { padding: 1.2rem 1.8rem; }
+      .cgpa-meter, .simulator-box { margin: 0 1.5rem 1.2rem; }
+      .course-row { grid-template-columns: 1fr 50px 90px 32px 22px; gap: 6px; }
+    }
+
+    /* ── 1024px – 1279px  (laptops) ─────────────────── */
+    @media (min-width: 1024px) and (max-width: 1279px) {
+      section { max-width: 860px; }
+      .hero h1 { font-size: clamp(4rem, 6vw, 5.5rem); }
+      .features-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* ── 1280px – 1439px  (large laptops) ───────────── */
+    @media (min-width: 1280px) and (max-width: 1439px) {
+      section { max-width: 920px; }
+      .features-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* ── 1440px+  (desktops & wide monitors) ─────────── */
+    @media (min-width: 1440px) {
+      nav { padding: 0 3rem; }
+      section { max-width: 1000px; }
+      .hero h1 { font-size: clamp(5rem, 6vw, 7.5rem); }
+      .hero-sub { font-size: 1.25rem; max-width: 560px; }
+      .features-grid { grid-template-columns: repeat(3, 1fr); }
+      .calc-header { padding: 1.8rem 2.5rem; }
+      .calc-body { padding: 1.8rem 2.5rem; }
+      .calc-footer { padding: 1.5rem 2.5rem; }
+      .cgpa-meter, .simulator-box { margin: 0 2.5rem 1.8rem; }
+    }
+
+    /* ── 1920px+  (ultra-wide) ───────────────────────── */
+    @media (min-width: 1920px) {
+      section { max-width: 1100px; }
+      .hero h1 { font-size: 8rem; }
+      .hero-sub { font-size: 1.35rem; }
+    }
+
+    /* ── landscape phones ────────────────────────────── */
+    @media (max-width: 767px) and (orientation: landscape) {
+      .hero { min-height: auto; padding: 5rem 2rem 3rem; }
+      .hero h1 { font-size: clamp(2rem, 6vw, 3rem); }
+      .hero-stats { margin-top: 2rem; }
+    }
+
+    /* ── reduced motion ──────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      .orb { animation: none; }
+    }
+
+    /* ── CURSOR GLOW ─────────────────────────────────────── */
+    #cursor-glow {
+      position: fixed;
+      top: 0; left: 0;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle,
+        rgba(46,204,113,0.13) 0%,
+        rgba(46,204,113,0.05) 35%,
+        transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.4s ease;
+      will-change: transform;
+    }
+    [data-theme="light"] #cursor-glow {
+      background: radial-gradient(circle,
+        rgba(46,204,113,0.18) 0%,
+        rgba(46,204,113,0.07) 35%,
+        transparent 70%);
+    }
+    body:not(:hover) #cursor-glow { opacity: 0; }
+
+    /* ── CUSTOM CURSOR ───────────────────────────────────── */
+    * { cursor: none !important; }
+
+    #cursor-dot {
+      position: fixed;
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width 0.15s ease, height 0.15s ease, background 0.15s ease, opacity 0.2s ease;
+      will-change: left, top;
+    }
+    #cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(46,204,113,0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width 0.2s ease, height 0.2s ease,
+                  border-color 0.2s ease, opacity 0.3s ease,
+                  background 0.2s ease;
+      will-change: left, top;
+      backdrop-filter: blur(1px);
+    }
+
+    /* cursor states */
+    body.cursor-hover #cursor-dot {
+      width: 8px; height: 8px;
+      background: #fff;
+    }
+    body.cursor-hover #cursor-ring {
+      width: 52px; height: 52px;
+      border-color: var(--green);
+      background: rgba(46,204,113,0.07);
+      box-shadow: 0 0 18px rgba(46,204,113,0.25);
+    }
+    body.cursor-click #cursor-ring {
+      width: 28px; height: 28px;
+      background: rgba(46,204,113,0.18);
+      border-color: var(--green);
+    }
+    body.cursor-text #cursor-dot {
+      width: 3px; height: 22px;
+      border-radius: 2px;
+      background: var(--green);
+    }
+    body.cursor-text #cursor-ring {
+      opacity: 0;
+    }
+
+    /* ── MAGNETIC ────────────────────────────────────────── */
+    .magnetic {
+      display: inline-block;
+      transition: transform 0.4s cubic-bezier(.23,1,.32,1);
+      will-change: transform;
+    }
+
+    /* ── LIQUID GLASS SYSTEM ─────────────────────────────── */
+
+    /* SVG filter for refractive distortion */
+    .liquid-glass {
+      position: relative;
+      isolation: isolate;
+    }
+    .liquid-glass::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background: inherit;
+      filter: url(#liquid-distort);
+      z-index: -1;
+      opacity: 0.6;
+    }
+
+    /* The core glass surface */
+    .lg-surface {
+      position: relative;
+      background: transparent !important;
+      isolation: isolate;
+      overflow: visible !important;
+    }
+    .lg-surface::before {
+      /* refractive body */
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.07) 0%,
+        rgba(255,255,255,0.03) 40%,
+        rgba(46,204,113,0.04) 70%,
+        rgba(255,255,255,0.06) 100%
+      );
+      backdrop-filter: blur(22px) saturate(180%) brightness(1.05);
+      -webkit-backdrop-filter: blur(22px) saturate(180%) brightness(1.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      z-index: -2;
+      pointer-events: none;
+    }
+    .lg-surface::after {
+      /* specular rim — the liquid glass edge highlight */
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: inherit;
+      background: transparent;
+      border-top: 1px solid rgba(255,255,255,0.32);
+      border-left: 1px solid rgba(255,255,255,0.18);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* light mode adjustments */
+    [data-theme="light"] .lg-surface::before {
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.72) 0%,
+        rgba(255,255,255,0.45) 40%,
+        rgba(46,204,113,0.08) 70%,
+        rgba(255,255,255,0.60) 100%
+      );
+      backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
+      -webkit-backdrop-filter: blur(24px) saturate(200%) brightness(1.08);
+      border: 1px solid rgba(255,255,255,0.55);
+    }
+    [data-theme="light"] .lg-surface::after {
+      border-top: 1px solid rgba(255,255,255,0.95);
+      border-left: 1px solid rgba(255,255,255,0.70);
+      border-right: 1px solid rgba(255,255,255,0.30);
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* inner shine streak — like light refracting through curved glass */
+    .lg-shine {
+      position: absolute;
+      top: 0; left: 10%; right: 10%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,0.0) 15%,
+        rgba(255,255,255,0.55) 40%,
+        rgba(255,255,255,0.65) 50%,
+        rgba(255,255,255,0.55) 60%,
+        rgba(255,255,255,0.0) 85%,
+        transparent 100%
+      );
+      border-radius: 100px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    [data-theme="light"] .lg-shine {
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,0.0) 10%,
+        rgba(255,255,255,0.9) 40%,
+        rgba(255,255,255,1.0) 50%,
+        rgba(255,255,255,0.9) 60%,
+        rgba(255,255,255,0.0) 90%,
+        transparent 100%
+      );
+    }
+
+    /* bottom depth edge */
+    .lg-depth {
+      position: absolute;
+      bottom: 0; left: 8%; right: 8%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(46,204,113,0.20) 30%,
+        rgba(46,204,113,0.35) 50%,
+        rgba(46,204,113,0.20) 70%,
+        transparent
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* tinted glow bloom behind glass */
+    .lg-bloom {
+      position: absolute;
+      inset: -20px;
+      border-radius: inherit;
+      background: radial-gradient(ellipse at 50% 0%,
+        rgba(46,204,113,0.10) 0%,
+        transparent 65%
+      );
+      filter: blur(16px);
+      pointer-events: none;
+      z-index: -3;
+    }
+
+    /* ── APPLY TO NAV ────────────────────────────────────── */
+    nav.lg-surface::before {
+      border-radius: 0;
+      inset: 0;
+    }
+    nav.lg-surface::after { border-radius: 0; }
+
+    /* ── APPLY TO FEATURE CARDS ──────────────────────────── */
+    .feature-card.lg-surface {
+      overflow: hidden !important;
+    }
+    .feature-card.lg-surface:hover::before {
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.11) 0%,
+        rgba(255,255,255,0.05) 40%,
+        rgba(46,204,113,0.07) 70%,
+        rgba(255,255,255,0.09) 100%
+      );
+    }
+    [data-theme="light"] .feature-card.lg-surface:hover::before {
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.85) 0%,
+        rgba(255,255,255,0.60) 40%,
+        rgba(46,204,113,0.10) 70%,
+        rgba(255,255,255,0.75) 100%
+      );
+    }
+
+    /* ── APPLY TO CALC WRAPPER ───────────────────────────── */
+    .calc-wrapper.lg-surface { overflow: hidden !important; }
+
+    /* ── APPLY TO INNER PANELS ───────────────────────────── */
+    .calc-header.lg-panel,
+    .calc-footer.lg-panel,
+    .cgpa-meter.lg-panel,
+    .simulator-box.lg-panel,
+    .semester-head.lg-panel {
+      position: relative;
+      background: transparent !important;
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+    }
+    .calc-header.lg-panel::before,
+    .calc-footer.lg-panel::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.06) 0%,
+        rgba(255,255,255,0.02) 100%
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+    [data-theme="light"] .calc-header.lg-panel::before,
+    [data-theme="light"] .calc-footer.lg-panel::before {
+      background: linear-gradient(
+        180deg,
+        rgba(255,255,255,0.75) 0%,
+        rgba(255,255,255,0.50) 100%
+      );
+    }
+    .calc-header.lg-panel > *,
+    .calc-footer.lg-panel > * { position: relative; z-index: 1; }
+
+    /* ── SEMESTER BLOCKS ─────────────────────────────────── */
+    .semester-block.lg-surface::before {
+      border-radius: var(--radius);
+    }
+    .semester-block.lg-surface::after {
+      border-radius: var(--radius);
+    }
+
+
+    /* ── COURSE COLUMN HEADERS ───────────────────────────── */
+    .course-header {
+      padding: 4px 1.2rem 4px !important;
+      border-bottom: 1px solid var(--border) !important;
+      background: transparent !important;
+    }
+    .course-header span {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text3);
+    }
+    .course-header:hover { background: transparent !important; }
+
+    /* ── STATIC CREDITS & GRADE LETTER ──────────────────── */
+    .credits-static {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600;
+      color: var(--text2);
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 4px;
+      text-align: center;
+      user-select: none;
+    }
+    .grade-letter {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.5px;
+      text-align: center;
+      min-width: 32px;
+    }
+
+    /* ── DOT MATRIX ──────────────────────────────────────── */
+    #dot-matrix {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 1;
+    }
+
+    /* ── COURSE AUTOCOMPLETE ─────────────────────────────── */
+    .course-input-wrap {
+      position: relative;
+      width: 100%;
+    }
+    .course-input-wrap input {
+      width: 100%;
+    }
+    .course-suggestions {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #0d1f12;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      z-index: 500;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    [data-theme="light"] .course-suggestions {
+      background: rgba(255,255,255,0.95);
+    }
+    .course-suggestions:empty { display: none; }
+    .suggestion-item {
+      padding: 9px 14px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover, .suggestion-item.active {
+      background: rgba(46,204,113,0.12);
+      color: var(--green);
+    }
+    .suggestion-code {
+      font-size: 11px; font-weight: 700;
+      color: var(--green);
+      background: rgba(46,204,113,0.10);
+      border-radius: 4px;
+      padding: 1px 6px;
+      flex-shrink: 0;
+    }
+    .suggestion-name { flex: 1; }
+    .suggestion-credits {
+      font-size: 11px;
+      color: var(--text3);
+      flex-shrink: 0;
+    }
+
+    /* ── SUGGESTIONS PORTAL ──────────────────────────────── */
+    #suggestions-portal {
+      position: fixed;
+      z-index: 9990;
+      pointer-events: none;
+    }
+    #suggestions-portal .course-suggestions {
+      position: absolute;
+      pointer-events: all;
+      min-width: 320px;
+      max-width: 520px;
+    }
+  </style>
+</head>
+<body>
+  <div id="scroll-progress"></div>
+  <!-- LIQUID GLASS SVG FILTER -->
+  <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <filter id="liquid-distort" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.025"
+          numOctaves="3" seed="5" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise"
+          scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
+  <!-- CUSTOM CURSOR -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+  <!-- DOT MATRIX CANVAS -->
+  <canvas id="dot-matrix"></canvas>
+  <div id="suggestions-portal"></div>
+  <!-- CURSOR GLOW -->
+  <div id="cursor-glow"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- NAV -->
+  <nav class="lg-surface">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-mark">স</div>
+      <span class="nav-logo-text">Shohoj <span>সহজ</span></span>
+    </a>
+    <div class="nav-right">
+      <a href="#features" class="nav-link magnetic">Features</a>
+      <a href="#calculator" class="nav-link magnetic">CGPA Calc</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <span class="toggle-pill" id="togglePill">☀️</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Built at BRAC University · Phase 1 in Development
+    </div>
+    <h1>
+      University Life,<br>Made Simple.
+      <span class="bengali">সহজ</span>
+    </h1>
+    <p class="hero-sub">
+      Login with your university email. Your courses, GPA, community, campus life, and career tools — all in one place.
+    </p>
+    <div class="hero-cta">
+      <a href="#calculator" class="btn-primary magnetic">Try CGPA Calculator</a>
+      <a href="https://github.com/souravmondalshuvo/Shohoj" target="_blank" class="btn-secondary magnetic">View on GitHub</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="stat-num">40+</div>
+        <div class="stat-label">Problems Solved</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">6</div>
+        <div class="stat-label">Feature Phases</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Universities</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="reveal from-bottom">
+      <div class="section-label">What We're Building</div>
+      <h2 class="section-title">Everything a student needs.<br>Nothing they don't.</h2>
+      <p class="section-desc">Starting with the academic tools every BRACU student needs right now — and growing into a full university life platform.</p>
+    </div>
+    <div class="features-grid reveal from-scale stagger">
+      <div class="feature-card lg-surface">
+        <div class="feature-phase">Phase 1 — Live</div>
+        <div class="feature-icon">🧮</div>
+        <div class="feature-title">Smart CGPA Calculator</div>
+        <div class="feature-desc">Calculate CGPA using BRACU's exact grading scale. Simulate targets and plan retakes.</div>
+      </div>
+      <div class="feature-card lg-surface">
+        <div class="feature-phase">Phase 1</div>
+        <div class="feature-icon">🎓</div>
+        <div class="feature-title">Degree Tracker</div>
+        <div class="feature-desc">Visual roadmap from Semester 1 to graduation with prerequisite warnings.</div>
+      </div>
+      <div class="feature-card lg-surface">
+        <div class="feature-phase">Phase 1</div>
+        <div class="feature-icon">📅</div>
+        <div class="feature-title">Semester Planner</div>
+        <div class="feature-desc">Build your course plan each semester and avoid scheduling conflicts.</div>
+      </div>
+      <div class="feature-card lg-surface">
+        <div class="feature-phase soon">Phase 2</div>
+        <div class="feature-icon">⭐</div>
+        <div class="feature-title">Course Reviews</div>
+        <div class="feature-desc">Honest, anonymous ratings on difficulty, workload, and faculty — from real students.</div>
+      </div>
+      <div class="feature-card lg-surface">
+        <div class="feature-phase soon">Phase 2</div>
+        <div class="feature-icon">📚</div>
+        <div class="feature-title">Resource Library</div>
+        <div class="feature-desc">Crowdsourced past papers, notes, and lab guides organized by course code.</div>
+      </div>
+      <div class="feature-card lg-surface">
+        <div class="feature-phase soon">Phase 4</div>
+        <div class="feature-icon">💼</div>
+        <div class="feature-title">Career Board</div>
+        <div class="feature-desc">Internships, alumni directory, and interview experiences shared by BRACU students.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GPA CALCULATOR -->
+  <section id="calculator">
+    <div class="reveal from-bottom">
+      <div class="section-label">Academic Tools</div>
+      <h2 class="section-title">Smart CGPA Calculator</h2>
+      <p class="section-desc">Built on BRACU's exact grading scale. Add your semesters, enter your grades, and see your live CGPA — plus a simulator to plan your path forward.</p>
+    </div>
+
+    <div class="calc-wrapper lg-surface reveal from-bottom"><div class="lg-shine"></div><div class="lg-bloom"></div>
+      <!-- Header -->
+      <div class="calc-header lg-panel"><div class="lg-shine"></div>
+        <div class="calc-header-left">
+          <h3>CGPA Calculator</h3>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+            <select id="deptSelect" onchange="onDeptChange()" style="
+              background:var(--input-bg);
+              backdrop-filter:blur(8px);
+              border:1px solid var(--border);
+              border-radius:8px;
+              color:var(--text);
+              font-family:'DM Sans',sans-serif;
+              font-size:13px;
+              font-weight:500;
+              padding:6px 10px;
+              outline:none;
+              cursor:pointer;
+              transition:border-color 0.2s;
+              max-width: 460px;
+            ">
+              <option value="" disabled selected>— Select your department —</option>
+              <option value="CSE">B.Sc. in Computer Science and Engineering (CSE)</option>
+              <option value="EEE">B.Sc. in Electrical and Electronic Engineering (EEE)</option>
+              <option value="BBA">Bachelor of Business Administration (BBA)</option>
+              <option value="ECO">B.S.S. in Economics (ECO)</option>
+              <option value="ENG">B.A. in English (ENG)</option>
+              <option value="ARC">B.Sc. in Architecture (ARC)</option>
+              <option value="PHR">B.Sc. in Pharmacy (PHR)</option>
+              <option value="LAW">Bachelor of Laws (LLB)</option>
+            </select>
+            <div id="deptCredits" style="
+              display: none;
+              align-items: center;
+              gap: 5px;
+              background: rgba(46,204,113,0.10);
+              border: 1px solid rgba(46,204,113,0.28);
+              border-radius: 8px;
+              padding: 5px 11px;
+            ">
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:0.85;">
+                <circle cx="6" cy="6" r="5" stroke="#2ECC71" stroke-width="1.5"/>
+                <path d="M6 3.5v3M6 8v.8" stroke="#2ECC71" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <span id="deptCreditsText" style="
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--green);
+                letter-spacing: 0.3px;
+                white-space: nowrap;
+              ">136 Total Credits</span>
+            </div>
+          </div>
+        </div>
+        <div class="cgpa-display">
+          <div class="cgpa-val" id="cgpaVal">—</div>
+          <div class="cgpa-label">Current CGPA</div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="calc-body">
+        <div class="semesters-container" id="semestersContainer"></div>
+      </div>
+
+      <!-- CGPA Meter -->
+      <div class="cgpa-meter lg-panel"><div class="lg-shine"></div><div class="lg-bloom"></div>
+        <div class="meter-header">
+          <span>CGPA Progress</span>
+          <span id="meterPct">0%</span>
+        </div>
+        <div class="meter-bar-bg">
+          <div class="meter-bar-fill" id="meterFill"></div>
+        </div>
+        <div class="meter-labels">
+          <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
+        </div>
+        <div class="meter-status" id="meterStatus">Add your courses to get started.</div>
+      </div>
+
+      <!-- Simulator -->
+      <div class="simulator-box lg-panel"><div class="lg-shine"></div>
+        <h4>🎯 CGPA Goal Simulator</h4>
+        <div class="simulator-row">
+          <label>Target CGPA:</label>
+          <input type="number" id="targetCgpa" min="0" max="4" step="0.01" placeholder="e.g. 3.50" />
+          <label>Credits remaining:</label>
+          <input type="number" id="creditsRemaining" min="1" max="150" placeholder="e.g. 97" />
+        </div>
+        <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
+      </div>
+
+      <!-- Footer -->
+      <div class="calc-footer lg-panel">
+        <div class="calc-footer-stats">
+          <div class="footer-stat">Credits Attempted: <strong id="totalAttempted">0</strong></div>
+          <div class="footer-stat">Credits Earned: <strong id="totalEarned">0</strong></div>
+          <div class="footer-stat">Semesters: <strong id="semesterCount">0</strong></div>
+        </div>
+        <button class="btn-add-semester magnetic" id="addSemesterBtn">+ Add Semester</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">Shohoj <span>সহজ</span></div>
+    <p>University life, made simple. · Built by <a href="https://github.com/souravmondalshuvo" target="_blank">Sourav Mondal Shuvo</a> · BRAC University · 2026</p>
+  </footer>
+
+  <script>
+    // ── THEME TOGGLE ─────────────────────────────────────
+    const html = document.documentElement;
+    const themeBtn = document.getElementById('themeToggle');
+    const pill = document.getElementById('togglePill');
+    // Start in dark mode — pill on right, moon icon
+    pill.textContent = '🌙';
+    themeBtn.addEventListener('click', () => {
+      const isDark = html.dataset.theme === 'dark';
+      html.dataset.theme = isDark ? 'light' : 'dark';
+      pill.textContent = isDark ? '☀️' : '🌙';
+    });
+
+    // ── SCROLL PROGRESS BAR ──────────────────────────────
+    const progressBar = document.getElementById('scroll-progress');
+    const navEl = document.querySelector('nav');
+    function updateProgress() {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      progressBar.style.width = (scrollTop / docHeight * 100) + '%';
+      // add glass to nav only after scrolling past hero badge area
+      navEl.classList.toggle('scrolled', scrollTop > 40);
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+
+    // ── SMOOTH ANCHOR SCROLL ──────────────────────────────
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (!target) return;
+        e.preventDefault();
+        const top = target.getBoundingClientRect().top + window.scrollY - 72;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    });
+
+    // ── ACTIVE NAV ON SCROLL ──────────────────────────────
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-link');
+    function updateNav() {
+      let current = '';
+      sections.forEach(sec => {
+        if (window.scrollY >= sec.offsetTop - 120) current = sec.id;
+      });
+      navLinks.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+      });
+    }
+    window.addEventListener('scroll', updateNav, { passive: true });
+
+    // ── SCROLL REVEAL ─────────────────────────────────────
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          revealObserver.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    // ── PARALLAX ORBS ────────────────────────────────────
+    const orbs = document.querySelectorAll('.orb');
+    const speeds = [0.04, 0.07, 0.05];
+    function parallaxOrbs() {
+      const y = window.scrollY;
+      orbs.forEach((orb, i) => {
+        orb.style.transform += '';
+        orb.style.translate = '0 ' + (y * speeds[i]) + 'px';
+      });
+    }
+    window.addEventListener('scroll', parallaxOrbs, { passive: true });
+
+    // ── GPA DATA ─────────────────────────────────────────
+    const GRADES = {
+      'A':  4.00, 'A-': 3.70,
+      'B+': 3.30, 'B':  3.00, 'B-': 2.70,
+      'C+': 2.30, 'C':  2.00, 'C-': 1.70,
+      'D+': 1.30, 'D':  1.00,
+      'F':  0.00, 'P':  null, 'I': null
+    };
+
+    // reverse map: grade point → letter grade
+    const POINTS_TO_GRADE = [
+      [4.00, 'A'],  [3.70, 'A-'],
+      [3.30, 'B+'], [3.00, 'B'],  [2.70, 'B-'],
+      [2.30, 'C+'], [2.00, 'C'],  [1.70, 'C-'],
+      [1.30, 'D+'], [1.00, 'D'],
+      [0.00, 'F'],
+    ];
+
+    function detectGrade(val) {
+      const n = parseFloat(val);
+      if (isNaN(n)) return '';
+      // exact match first
+      for (const [pt, letter] of POINTS_TO_GRADE) {
+        if (Math.abs(n - pt) < 0.01) return letter;
+      }
+      // closest match
+      let closest = null, minDiff = Infinity;
+      for (const [pt, letter] of POINTS_TO_GRADE) {
+        const diff = Math.abs(n - pt);
+        if (diff < minDiff) { minDiff = diff; closest = letter; }
+      }
+      return minDiff <= 0.20 ? closest : '';
+    }
+    const SEMESTER_NAMES = [
+      'Fall 2024','Spring 2025','Summer 2025','Fall 2025',
+      'Spring 2026','Summer 2026','Fall 2026','Spring 2027',
+      'Spring 2028','Summer 2028','Fall 2028','Spring 2029'
+    ];
+
+    // ── DEPARTMENT PRESETS ────────────────────────────────
+    const DEPARTMENTS = {
+      CSE: {
+        label: 'B.Sc. in Computer Science and Engineering (CSE) & Engineering',
+        totalCredits: 136,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Programming Language I (CSE110)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+            { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Programming Language II (CSE111)', credits: 3, grade: '' },
+            { name: 'Discrete Mathematics (CSE230)', credits: 3, grade: '' },
+            { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+            { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+            { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+            { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Data Structures (CSE220)', credits: 3, grade: '' },
+            { name: 'Electronic Devices & Circuits (CSE251)', credits: 3, grade: '' },
+            { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+            { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 5', courses: [
+            { name: 'Algorithms (CSE221)', credits: 3, grade: '' },
+            { name: 'Computer Architecture (CSE341)', credits: 3, grade: '' },
+            { name: 'Software Engineering (CSE361)', credits: 3, grade: '' },
+            { name: 'Linear Algebra (MAT215)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 6', courses: [
+            { name: 'Database Systems (CSE370)', credits: 3, grade: '' },
+            { name: 'Operating Systems (CSE421)', credits: 3, grade: '' },
+            { name: 'Computer Networks (CSE431)', credits: 3, grade: '' },
+            { name: 'Artificial Intelligence (CSE440)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      EEE: {
+        label: 'BSc EEE — Electrical & Electronic Engineering',
+        totalCredits: 136,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Introduction to EEE (EEE101)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+            { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Circuit Theory I (EEE201)', credits: 3, grade: '' },
+            { name: 'Electronics I (EEE203)', credits: 3, grade: '' },
+            { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+            { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Circuit Theory II (EEE202)', credits: 3, grade: '' },
+            { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+            { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Signals & Systems (EEE301)', credits: 3, grade: '' },
+            { name: 'Electronics II (EEE303)', credits: 3, grade: '' },
+            { name: 'Electromagnetic Fields (EEE311)', credits: 3, grade: '' },
+            { name: 'Linear Algebra (MAT215)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 5', courses: [
+            { name: 'Digital Electronics (EEE401)', credits: 3, grade: '' },
+            { name: 'Communication Theory (EEE403)', credits: 3, grade: '' },
+            { name: 'Control Systems (EEE411)', credits: 3, grade: '' },
+            { name: 'Power Systems I (EEE421)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      BBA: {
+        label: 'Bachelor of Business Administration (BBA)',
+        totalCredits: 130,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Introduction to Business (BUS101)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+            { name: 'Principles of Economics (ECO101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Financial Accounting (ACC101)', credits: 3, grade: '' },
+            { name: 'Business Communication (BUS201)', credits: 3, grade: '' },
+            { name: 'Business Mathematics (MAT110)', credits: 3, grade: '' },
+            { name: 'Principles of Management (MGT101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Business Statistics (BUS211)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+            { name: 'Principles of Marketing (MKT201)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Managerial Accounting (ACC201)', credits: 3, grade: '' },
+            { name: 'Organizational Behavior (BUS301)', credits: 3, grade: '' },
+            { name: 'Financial Management (FIN201)', credits: 3, grade: '' },
+            { name: 'Consumer Behavior (MKT301)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 5', courses: [
+            { name: 'Business Policy & Strategy (BUS401)', credits: 3, grade: '' },
+            { name: 'Investment Analysis (FIN301)', credits: 3, grade: '' },
+            { name: 'Human Resource Management (HRM301)', credits: 3, grade: '' },
+            { name: 'Marketing Management (MKT401)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      ECO: {
+        label: 'B.S.S. in Economics (ECO)',
+        totalCredits: 120,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Microeconomics I (ECO101)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+            { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Macroeconomics I (ECO102)', credits: 3, grade: '' },
+            { name: 'Mathematics for Economics (ECO201)', credits: 3, grade: '' },
+            { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+            { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Microeconomics II (ECO211)', credits: 3, grade: '' },
+            { name: 'Macroeconomics II (ECO212)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Econometrics (ECO301)', credits: 3, grade: '' },
+            { name: 'Development Economics (ECO311)', credits: 3, grade: '' },
+            { name: 'International Economics (ECO321)', credits: 3, grade: '' },
+            { name: 'Public Finance (ECO331)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      ENG: {
+        label: 'B.A. in English (ENG)',
+        totalCredits: 120,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Introduction to Literature (ENG111)', credits: 3, grade: '' },
+            { name: 'Grammar & Composition (ENG121)', credits: 3, grade: '' },
+            { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'British Literature I (ENG201)', credits: 3, grade: '' },
+            { name: 'Linguistics I (ENG211)', credits: 3, grade: '' },
+            { name: 'Creative Writing (ENG221)', credits: 3, grade: '' },
+            { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+            { name: 'American Literature (ENG301)', credits: 3, grade: '' },
+            { name: 'Linguistics II (ENG311)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Postcolonial Literature (ENG401)', credits: 3, grade: '' },
+            { name: 'Literary Theory & Criticism (ENG411)', credits: 3, grade: '' },
+            { name: 'Research Methods (ENG421)', credits: 3, grade: '' },
+            { name: 'World Literature (ENG431)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      ARC: {
+        label: 'B.Sc. in Architecture (ARC)',
+        totalCredits: 180,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Architectural Design I (ARC101)', credits: 6, grade: '' },
+            { name: 'Drawing & Graphics (ARC111)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Mathematics I (MAT110)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Architectural Design II (ARC102)', credits: 6, grade: '' },
+            { name: 'History of Architecture I (ARC112)', credits: 3, grade: '' },
+            { name: 'Building Materials (ARC122)', credits: 3, grade: '' },
+            { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Architectural Design III (ARC201)', credits: 6, grade: '' },
+            { name: 'History of Architecture II (ARC211)', credits: 3, grade: '' },
+            { name: 'Structural Systems I (ARC221)', credits: 3, grade: '' },
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Architectural Design IV (ARC301)', credits: 6, grade: '' },
+            { name: 'Environmental Control (ARC311)', credits: 3, grade: '' },
+            { name: 'Structural Systems II (ARC321)', credits: 3, grade: '' },
+            { name: 'Urban Design (ARC331)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      PHR: {
+        label: 'B.Sc. in Pharmacy (PHR)',
+        totalCredits: 160,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'General Chemistry (CHE101)', credits: 3, grade: '' },
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Mathematics I (MAT110)', credits: 3, grade: '' },
+            { name: 'Introduction to Pharmacy (PHR101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Biology I (BIO101)', credits: 3, grade: '' },
+            { name: 'Organic Chemistry I (CHE201)', credits: 3, grade: '' },
+            { name: 'Pharmaceutics I (PHR201)', credits: 3, grade: '' },
+            { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Biochemistry (BIO201)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+            { name: 'Pharmacology I (PHR301)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Pharmacology II (PHR302)', credits: 3, grade: '' },
+            { name: 'Pharmaceutical Analysis (PHR311)', credits: 3, grade: '' },
+            { name: 'Medicinal Chemistry (PHR321)', credits: 3, grade: '' },
+            { name: 'Pharmaceutics II (PHR331)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+      LAW: {
+        label: 'Bachelor of Laws (LLB)',
+        totalCredits: 130,
+        presets: [
+          { name: 'Fall — Semester 1', courses: [
+            { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+            { name: 'Legal System of Bangladesh (LAW101)', credits: 3, grade: '' },
+            { name: 'Introduction to Law (LAW111)', credits: 3, grade: '' },
+            { name: 'Political Science (POL101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Spring — Semester 2', courses: [
+            { name: 'Contract Law (LAW201)', credits: 3, grade: '' },
+            { name: 'Constitutional Law I (LAW211)', credits: 3, grade: '' },
+            { name: 'Criminal Law (LAW221)', credits: 3, grade: '' },
+            { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+          ]},
+          { name: 'Summer — Semester 3', courses: [
+            { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+            { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+            { name: 'Constitutional Law II (LAW301)', credits: 3, grade: '' },
+            { name: 'Property Law (LAW311)', credits: 3, grade: '' },
+          ]},
+          { name: 'Fall — Semester 4', courses: [
+            { name: 'Administrative Law (LAW401)', credits: 3, grade: '' },
+            { name: 'Company Law (LAW411)', credits: 3, grade: '' },
+            { name: 'International Law (LAW421)', credits: 3, grade: '' },
+            { name: 'Legal Research & Writing (LAW431)', credits: 3, grade: '' },
+          ]},
+        ]
+      },
+    };
+
+    // ── ALL COURSES MASTER LIST ──────────────────────────
+    // Flat list of every course across all depts for autocomplete
+    const ALL_COURSES = [];
+    Object.values(DEPARTMENTS).forEach(dept => {
+      dept.presets.forEach(sem => {
+        sem.courses.forEach(c => {
+          // extract code from "Name (CODE)" format
+          const match = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
+          const code  = match ? match[1] : '';
+          const name  = c.name.replace(/\s*\([^)]+\)$/, '').trim();
+          // avoid duplicates
+          if (!ALL_COURSES.find(x => x.code === code && code)) {
+            ALL_COURSES.push({ code, name, credits: c.credits, full: c.name });
+          }
+        });
+      });
+    });
+    // sort alphabetically by code
+    ALL_COURSES.sort((a,b) => a.code.localeCompare(b.code));
+
+    let currentDept = '';
+
+    // ── AUTOCOMPLETE LOGIC ────────────────────────────────
+    const portal = document.getElementById('suggestions-portal');
+    let activeInput = null;
+
+    function showPortalSuggestions(inputEl, semId, cIdx, matches) {
+      const rect = inputEl.getBoundingClientRect();
+      let html = `<div class="course-suggestions" id="sug-${semId}-${cIdx}"
+        style="top:${rect.bottom + window.scrollY + 4}px;left:${rect.left}px;width:${rect.width}px;">`;
+      html += matches.map((c, i) => `
+        <div class="suggestion-item" data-idx="${i}"
+          onmousedown="pickSuggestion(${semId},${cIdx},'${c.full.replace(/'/g,"\'")}',${c.credits})">
+          <span class="suggestion-code">${c.code}</span>
+          <span class="suggestion-name">${c.name}</span>
+          <span class="suggestion-credits">${c.credits} cr</span>
+        </div>`).join('');
+      html += '</div>';
+      portal.innerHTML = html;
+      portal.style.display = 'block';
+    }
+
+    function onCourseInput(e, semId, cIdx) {
+      const val = e.target.value.trim().toLowerCase();
+      activeInput = e.target;
+
+      if (!val) { portal.innerHTML = ''; return; }
+
+      const matches = ALL_COURSES.filter(c =>
+        c.code.toLowerCase().includes(val) ||
+        c.name.toLowerCase().includes(val)
+      ).slice(0, 8);
+
+      if (!matches.length) { portal.innerHTML = ''; return; }
+      showPortalSuggestions(e.target, semId, cIdx, matches);
+    }
+
+    function onCourseKey(e, semId, cIdx) {
+      const box = portal.querySelector('.course-suggestions');
+      if (!box) return;
+      const items = box.querySelectorAll('.suggestion-item');
+      let active = box.querySelector('.suggestion-item.active');
+      let idx = active ? parseInt(active.dataset.idx) : -1;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        idx = Math.min(idx + 1, items.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        idx = Math.max(idx - 1, 0);
+      } else if (e.key === 'Enter' && active) {
+        e.preventDefault();
+        active.dispatchEvent(new MouseEvent('mousedown'));
+        return;
+      } else if (e.key === 'Escape') {
+        portal.innerHTML = ''; return;
+      } else { return; }
+
+      items.forEach(el => el.classList.remove('active'));
+      if (items[idx]) items[idx].classList.add('active');
+    }
+
+    function closeSuggestions(id) {
+      portal.innerHTML = '';
+    }
+
+    // close on scroll/resize reposition
+    window.addEventListener('scroll', () => {
+      if (activeInput && portal.innerHTML) {
+        portal.innerHTML = '';
+      }
+    }, { passive: true });
+
+    function pickSuggestion(semId, cIdx, fullName, credits) {
+      portal.innerHTML = '';
+      const sem = semesters.find(s => s.id === semId);
+      if (!sem) return;
+      sem.courses[cIdx].name    = fullName;
+      sem.courses[cIdx].credits = credits;
+      renderSemesters();
+      recalc();
+    }
+
+    function onDeptChange() {
+      const sel = document.getElementById('deptSelect');
+      currentDept = sel.value;
+      if (!currentDept) return;
+      const dept = DEPARTMENTS[currentDept];
+      // show & update credits badge
+      const creditsEl = document.getElementById('deptCredits');
+      if (creditsEl) creditsEl.style.display = 'inline-flex';
+      document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
+      // reset calculator with blank courses (no grades pre-filled)
+      semesters = [];
+      semesterCounter = 0;
+      dept.presets.forEach(p => {
+        const id = semesterCounter++;
+        semesters.push({ id, name: p.name, courses: p.courses.map(c => ({...c, grade:'', gradePoint:''})) });
+      });
+      renderSemesters();
+      recalc();
+    }
+
+    let semesters = [];
+    let semesterCounter = 0;
+
+    function gradeSelect(selected = '') {
+      return `<select onchange="recalc()">
+        <option value="">Grade</option>
+        ${Object.keys(GRADES).map(g =>
+          `<option value="${g}" ${g === selected ? 'selected' : ''}>${g}</option>`
+        ).join('')}
+      </select>`;
+    }
+
+    function addSemester(prefill = null) {
+      const id = semesterCounter++;
+      const name = SEMESTER_NAMES[semesters.length] || `Semester ${semesters.length + 1}`;
+      const courses = prefill || [{ name: '', credits: 3, grade: '' }];
+      semesters.push({ id, name, courses });
+      renderSemesters();
+      recalc();
+    }
+
+    function removeSemester(id) {
+      semesters = semesters.filter(s => s.id !== id);
+      renderSemesters();
+      recalc();
+    }
+
+    function addCourse(semId) {
+      const sem = semesters.find(s => s.id === semId);
+      if (sem) { sem.courses.push({ name: '', credits: 3, grade: '' }); }
+      renderSemesters();
+      recalc();
+    }
+
+    function removeCourse(semId, cIdx) {
+      const sem = semesters.find(s => s.id === semId);
+      if (sem && sem.courses.length > 1) {
+        sem.courses.splice(cIdx, 1);
+        renderSemesters();
+        recalc();
+      }
+    }
+
+    function renderSemesters() {
+      const container = document.getElementById('semestersContainer');
+      document.getElementById('semesterCount').textContent = semesters.length;
+
+      container.innerHTML = semesters.map(sem => {
+        const gpa = calcSemGPA(sem);
+        return `
+        <div class="semester-block lg-surface" id="sem-${sem.id}"><div class="lg-shine"></div>
+          <div class="semester-head">
+            <div class="semester-head-left">
+              <span class="semester-label">${sem.name}</span>
+              ${gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : ''}
+            </div>
+            <div class="semester-actions">
+              <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+            </div>
+          </div>
+          <div class="courses-table">
+            <div class="course-row course-header">
+              <span>Course</span>
+              <span style="text-align:center;">Credits</span>
+              <span style="text-align:center;">Grade Point</span>
+              <span style="text-align:center;">Grade</span>
+              <span></span>
+            </div>
+            ${sem.courses.map((c, i) => `
+            <div class="course-row">
+              <div class="course-input-wrap">
+                <input type="text" placeholder="Search course name or code…"
+                  value="${c.name}"
+                  autocomplete="off"
+                  oninput="onCourseInput(event,${sem.id},${i})"
+                  onkeydown="onCourseKey(event,${sem.id},${i})"
+                  onfocus="onCourseInput(event,${sem.id},${i})"
+                  onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
+                <div class="course-suggestions" id="sug-${sem.id}-${i}"></div>
+              </div>
+              <span class="credits-static">${c.credits}</span>
+              <input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
+                value="${c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')}"
+                oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
+                style="text-align:center;" />
+              <span class="grade-letter" id="gl-${sem.id}-${i}"
+                style="color:${
+                  c.grade === 'F' ? '#e74c3c' :
+                  c.grade && c.grade.startsWith('A') ? '#2ECC71' :
+                  c.grade && c.grade.startsWith('B') ? '#27ae60' :
+                  c.grade && c.grade.startsWith('C') ? '#F0A500' :
+                  c.grade && c.grade.startsWith('D') ? '#e67e22' :
+                  'var(--text3)'
+                }">${c.grade || '—'}</span>
+              <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
+            </div>`).join('')}
+          </div>
+          <div class="add-course-row">
+            <button class="btn-add-course" onclick="addCourse(${sem.id})">+ Add course</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function updateCourse(semId, cIdx, field, value) {
+      const sem = semesters.find(s => s.id === semId);
+      if (sem) {
+        sem.courses[cIdx][field] = field === 'credits' ? parseFloat(value) || 0 : value;
+        recalc();
+        const gpa = calcSemGPA(sem);
+        const block = document.getElementById(`sem-${semId}`);
+        if (block) {
+          const badge = block.querySelector('.semester-gpa-badge');
+          if (badge && gpa !== null) badge.textContent = `GPA ${gpa.toFixed(2)}`;
+          else if (!badge && gpa !== null) {
+            block.querySelector('.semester-head-left')
+              .insertAdjacentHTML('beforeend', `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>`);
+          }
+        }
+      }
+    }
+
+    function autoDetectGrade(semId, cIdx, val, inputEl) {
+      const letter = detectGrade(val);
+      const sem = semesters.find(s => s.id === semId);
+      if (sem) {
+        sem.courses[cIdx].grade = letter;
+        sem.courses[cIdx].gradePoint = val;
+        // update the letter badge next to input
+        const badge = document.getElementById(`gl-${semId}-${cIdx}`);
+        if (badge) {
+          badge.textContent = letter;
+          badge.style.color = letter === 'F' ? '#e74c3c' :
+                              letter.startsWith('A') ? '#2ECC71' :
+                              letter.startsWith('B') ? '#27ae60' :
+                              letter.startsWith('C') ? '#F0A500' :
+                              letter.startsWith('D') ? '#e67e22' : 'var(--text3)';
+        }
+        // flash input border green if matched
+        if (letter) {
+          inputEl.style.borderColor = 'rgba(46,204,113,0.6)';
+          setTimeout(() => inputEl.style.borderColor = '', 600);
+        }
+        recalc();
+        const gpa = calcSemGPA(sem);
+        const block = document.getElementById(`sem-${semId}`);
+        if (block) {
+          const badge2 = block.querySelector('.semester-gpa-badge');
+          if (badge2 && gpa !== null) badge2.textContent = `GPA ${gpa.toFixed(2)}`;
+          else if (!badge2 && gpa !== null) {
+            block.querySelector('.semester-head-left')
+              .insertAdjacentHTML('beforeend', `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>`);
+          }
+        }
+      }
+    }
+
+    function calcSemGPA(sem) {
+      let pts = 0, creds = 0;
+      for (const c of sem.courses) {
+        const gp = GRADES[c.grade];
+        if (gp === null || gp === undefined || !c.credits) continue;
+        if (c.grade === 'P') continue;
+        pts += gp * c.credits;
+        creds += c.credits;
+      }
+      return creds > 0 ? pts / creds : null;
+    }
+
+    function recalc() {
+      let totalPts = 0, totalAttempted = 0, totalEarned = 0;
+
+      for (const sem of semesters) {
+        for (const c of sem.courses) {
+          const gp = GRADES[c.grade];
+          if (gp === undefined || !c.credits) continue;
+          if (c.grade === 'P' || c.grade === 'I') continue;
+          totalAttempted += c.credits;
+          totalPts += gp * c.credits;
+          if (gp > 0) totalEarned += c.credits;
+        }
+      }
+
+      const cgpa = totalAttempted > 0 ? totalPts / totalAttempted : null;
+
+      // Update display
+      const cgpaEl = document.getElementById('cgpaVal');
+      cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
+      cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
+        cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
+        cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
+
+      document.getElementById('totalAttempted').textContent = totalAttempted.toFixed(1);
+      document.getElementById('totalEarned').textContent = totalEarned.toFixed(1);
+
+      // Meter
+      const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
+      document.getElementById('meterFill').style.width = pct + '%';
+      document.getElementById('meterPct').textContent = cgpa !== null ? pct.toFixed(1) + '%' : '0%';
+
+      const statusEl = document.getElementById('meterStatus');
+      if (cgpa === null) {
+        statusEl.innerHTML = 'Add your courses to get started.';
+      } else if (cgpa >= 3.75) {
+        statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpa.toFixed(2)} — Dean's List territory. Keep it up.`;
+      } else if (cgpa >= 3.5) {
+        statusEl.innerHTML = `<strong>Excellent.</strong> CGPA ${cgpa.toFixed(2)} — You're on track for a strong degree.`;
+      } else if (cgpa >= 3.0) {
+        statusEl.innerHTML = `<strong>Good standing.</strong> CGPA ${cgpa.toFixed(2)} — Push for 3.5 and you'll stand out.`;
+      } else if (cgpa >= 2.5) {
+        statusEl.innerHTML = `<strong>Keep pushing.</strong> CGPA ${cgpa.toFixed(2)} — Consider retaking weak courses for a boost.`;
+      } else {
+        statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
+      }
+
+      // Simulator
+      runSimulator(cgpa, totalAttempted, totalPts);
+    }
+
+    function runSimulator(currentCgpa, currentCredits, currentPts) {
+      const target = parseFloat(document.getElementById('targetCgpa').value);
+      const remaining = parseFloat(document.getElementById('creditsRemaining').value);
+      const resultEl = document.getElementById('simulatorResult');
+
+      if (!target || !remaining || currentCgpa === null) {
+        resultEl.innerHTML = 'Enter your target CGPA and remaining credits to see what you need.';
+        return;
+      }
+      if (target > 4.0 || target < 0) {
+        resultEl.innerHTML = '<span class="warn">Target CGPA must be between 0.0 and 4.0.</span>';
+        return;
+      }
+
+      const totalCredits = currentCredits + remaining;
+      const neededPts = target * totalCredits - currentPts;
+      const neededGPA = neededPts / remaining;
+
+      let msg = '';
+      if (neededGPA <= 4.0 && neededGPA >= 0) {
+        const difficulty = neededGPA >= 3.8 ? 'danger' : neededGPA >= 3.5 ? 'warn' : 'highlight';
+        msg = `To reach CGPA <span class="highlight">${target.toFixed(2)}</span>, you need an average GPA of 
+               <span class="${difficulty}">${neededGPA.toFixed(2)}</span> across your remaining 
+               <span class="highlight">${remaining}</span> credits. `;
+        if (neededGPA >= 3.9) msg += `This requires near-perfect grades every semester — <span class="danger">extremely difficult</span> but not impossible.`;
+        else if (neededGPA >= 3.5) msg += `This is <span class="warn">challenging but achievable</span> with consistent effort and smart retakes.`;
+        else if (neededGPA >= 3.0) msg += `This is <span class="highlight">very realistic</span> — stay consistent and avoid any D or F grades.`;
+        else msg += `This is <span class="highlight">very achievable</span> — you're in a great position.`;
+      } else if (neededGPA > 4.0) {
+        msg = `<span class="danger">This target is mathematically out of reach</span> with ${remaining} credits remaining. ` +
+              `Consider setting a target of <span class="highlight">${((4.0 * remaining + currentPts) / totalCredits).toFixed(2)}</span> as your ceiling, ` +
+              `or increasing credits via retakes.`;
+      } else {
+        msg = `<span class="highlight">You've already achieved CGPA ${target.toFixed(2)}!</span> Set a higher goal.`;
+      }
+      resultEl.innerHTML = msg;
+    }
+
+    // Simulator live update
+    document.getElementById('targetCgpa').addEventListener('input', () => {
+      const cgpa = parseFloat(document.getElementById('cgpaVal').textContent);
+      const attempted = parseFloat(document.getElementById('totalAttempted').textContent);
+      // recalc handles it
+      recalc();
+    });
+    document.getElementById('creditsRemaining').addEventListener('input', recalc);
+
+    // Add semester button
+    document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
+
+    // ── INIT ──────────────────────────────────────────────
+    function initCalculator() {
+      // start blank — user selects dept first
+      document.getElementById('deptCreditsText').textContent = '';
+      document.getElementById('deptCredits').style.display = 'none';
+      renderSemesters();
+      recalc();
+    }
+
+    function initCalculatorFOUNDER() {
+      // load CSE presets with founder's actual grades filled in (kept for reference)
+      const founderData = [
+        { name: 'Fall 2024', courses: [
+          { name: 'Programming Language I (CSE110)', credits: 3, grade: 'C-' },
+          { name: 'Fundamentals of English (ENG101)', credits: 3, grade: 'B+' },
+          { name: 'Remedial Mathematics (MAT092)',   credits: 0, grade: 'P'  },
+          { name: 'Principles of Physics I (PHY111)', credits: 3, grade: 'B-' },
+        ]},
+        { name: 'Spring 2025', courses: [
+          { name: 'Programming Language II (CSE111)', credits: 3, grade: 'F'  },
+          { name: 'Discrete Mathematics (CSE230)',    credits: 3, grade: 'D+' },
+          { name: 'Differential Calculus (MAT110)',   credits: 3, grade: 'B'  },
+          { name: 'Principles of Physics II (PHY112)', credits: 3, grade: 'B-' },
+        ]},
+        { name: 'Summer 2025', courses: [
+          { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: 'A-' },
+          { name: 'Emergence of Bangladesh (EMB101)',      credits: 3, grade: 'B-' },
+          { name: 'English Composition I (ENG102)',        credits: 3, grade: 'B'  },
+          { name: 'Ethics and Culture (HUM103)',           credits: 3, grade: 'B'  },
+        ]},
+        { name: 'Fall 2025', courses: [
+          { name: 'Programming Language II (CSE111)', credits: 3, grade: 'C+' },
+          { name: 'Integral Calculus (MAT120)',        credits: 3, grade: 'B'  },
+          { name: 'Statistics & Probability (STA201)', credits: 3, grade: 'D'  },
+        ]},
+      ];
+      founderData.forEach(sem => {
+        const id = semesterCounter++;
+        semesters.push({ id, name: sem.name, courses: sem.courses });
+      });
+      document.getElementById('deptCreditsText').textContent = '136 Total Credits';
+      renderSemesters();
+      recalc();
+      document.getElementById('creditsRemaining').value = 97;
+      document.getElementById('targetCgpa').value = 3.50;
+      recalc();
+    }
+
+    initCalculator();
+  
+    // ── CURSOR SYSTEM ─────────────────────────────────────
+    const dot       = document.getElementById('cursor-dot');
+    const ring      = document.getElementById('cursor-ring');
+    const cursorGlow = document.getElementById('cursor-glow');
+    const body      = document.body;
+
+    let mX = window.innerWidth / 2,  mY = window.innerHeight / 2;
+    let dX = mX, dY = mY;
+    let rX = mX, rY = mY;
+    let gX = mX, gY = mY;
+
+    document.addEventListener('mousemove', e => {
+      mX = e.clientX; mY = e.clientY;
+    }, { passive: true });
+
+    // cursor states
+    document.querySelectorAll('a, button, .feature-card, .nav-logo').forEach(el => {
+      el.addEventListener('mouseenter', () => body.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', () => body.classList.remove('cursor-hover'));
+    });
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
+      el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
+    });
+    document.addEventListener('mousedown', () => body.classList.add('cursor-click'));
+    document.addEventListener('mouseup',   () => body.classList.remove('cursor-click'));
+
+    document.addEventListener('mouseleave', () => {
+      dot.style.opacity = '0'; ring.style.opacity = '0';
+      cursorGlow.style.opacity = '0';
+    });
+    document.addEventListener('mouseenter', () => {
+      dot.style.opacity = '1'; ring.style.opacity = '1';
+      cursorGlow.style.opacity = '1';
+    });
+
+    function animateCursor() {
+      dX += (mX - dX) * 0.85;
+      dY += (mY - dY) * 0.85;
+      rX += (mX - rX) * 0.14;
+      rY += (mY - rY) * 0.14;
+      gX += (mX - gX) * 0.07;
+      gY += (mY - gY) * 0.07;
+
+      dot.style.left  = dX + 'px';
+      dot.style.top   = dY + 'px';
+      ring.style.left = rX + 'px';
+      ring.style.top  = rY + 'px';
+      cursorGlow.style.left = gX + 'px';
+      cursorGlow.style.top  = gY + 'px';
+
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // ── MAGNETIC ELEMENTS ─────────────────────────────────
+    document.querySelectorAll('.magnetic').forEach(el => {
+      el.addEventListener('mousemove', e => {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width  / 2;
+        const cy = rect.top  + rect.height / 2;
+        const dx = (e.clientX - cx) * 0.35;
+        const dy = (e.clientY - cy) * 0.35;
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'translate(0,0)';
+      });
+    });
+
+
+    // ── DOT MATRIX ────────────────────────────────────────
+    (function() {
+      const canvas = document.getElementById('dot-matrix');
+      const ctx    = canvas.getContext('2d');
+
+      const SPACING   = 28;    // gap between dots
+      const BASE_R    = 1.1;   // resting dot radius
+      const MAX_R     = 3.2;   // max radius near cursor
+      const REACH     = 140;   // cursor influence radius (px)
+      const BASE_A    = 0.13;  // resting opacity
+      const MAX_A     = 0.72;  // max opacity near cursor
+
+      let W, H, cols, rows;
+      let cx = -999, cy = -999; // cursor position
+
+      function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        cols = Math.ceil(W / SPACING) + 1;
+        rows = Math.ceil(H / SPACING) + 1;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      // track cursor globally (already tracked by cursor system, but keep independent)
+      window.addEventListener('mousemove', e => {
+        cx = e.clientX; cy = e.clientY;
+      }, { passive: true });
+      window.addEventListener('mouseleave', () => { cx = -999; cy = -999; });
+
+      function isLight() {
+        return document.documentElement.dataset.theme === 'light';
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const light = isLight();
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const x = col * SPACING;
+            const y = row * SPACING;
+
+            const dx   = x - cx;
+            const dy   = y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // proximity factor 0→1
+            const prox = Math.max(0, 1 - dist / REACH);
+            // ease with power curve for smooth falloff
+            const ease = prox * prox;
+
+            const r = BASE_R + (MAX_R - BASE_R) * ease;
+            const a = BASE_A + (MAX_A - BASE_A) * ease;
+
+            // colour: green tint when lit, neutral when resting
+            let dotColor;
+            if (light) {
+              // light mode: dark green dots
+              const g = Math.round(120 + 80 * ease);
+              dotColor = `rgba(10, ${g}, 50, ${a})`;
+            } else {
+              // dark mode: green-tinted dots
+              const g = Math.round(180 + 60 * ease);
+              const b = Math.round(80  - 60 * ease);
+              dotColor = `rgba(46, ${g}, ${b}, ${a})`;
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = dotColor;
+            ctx.fill();
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+
+      // re-draw when theme toggles
+      themeBtn.addEventListener('click', () => { ctx.clearRect(0, 0, W, H); });
+    })();
+
+  </script>
+</body>
+</html>
