@@ -17,7 +17,6 @@
       const scrollTop = window.scrollY;
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       progressBar.style.width = (scrollTop / docHeight * 100) + '%';
-      // add glass to nav only after scrolling past hero badge area
       navEl.classList.toggle('scrolled', scrollTop > 40);
     }
     window.addEventListener('scroll', updateProgress, { passive: true });
@@ -64,7 +63,6 @@
     function parallaxOrbs() {
       const y = window.scrollY;
       orbs.forEach((orb, i) => {
-        orb.style.transform += '';
         orb.style.translate = '0 ' + (y * speeds[i]) + 'px';
       });
     }
@@ -79,7 +77,6 @@
       'F':  0.00, 'P':  null, 'I': null
     };
 
-    // reverse map: grade point → letter grade
     const POINTS_TO_GRADE = [
       [4.00, 'A'],  [3.70, 'A-'],
       [3.30, 'B+'], [3.00, 'B'],  [2.70, 'B-'],
@@ -91,11 +88,9 @@
     function detectGrade(val) {
       const n = parseFloat(val);
       if (isNaN(n)) return '';
-      // exact match first
       for (const [pt, letter] of POINTS_TO_GRADE) {
         if (Math.abs(n - pt) < 0.01) return letter;
       }
-      // closest match
       let closest = null, minDiff = Infinity;
       for (const [pt, letter] of POINTS_TO_GRADE) {
         const diff = Math.abs(n - pt);
@@ -103,11 +98,75 @@
       }
       return minDiff <= 0.20 ? closest : '';
     }
-    const SEMESTER_NAMES = [
-      'Fall 2024','Spring 2025','Summer 2025','Fall 2025',
-      'Spring 2026','Summer 2026','Fall 2026','Spring 2027',
-      'Spring 2028','Summer 2028','Fall 2028','Spring 2029'
-    ];
+
+    // ── SEMESTER NAME GENERATOR ──────────────────────────
+    // Format: "Spring 25", "Summer 25", "Fall 25", "Spring 26" ...
+    const SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
+    function ordinalSup(n) {
+      const s = ['th','st','nd','rd'];
+      const v = n % 100;
+      const suffix = s[(v - 20) % 10] || s[v] || s[0];
+      return `${n}<sup>${suffix}</sup>`;
+    }
+
+    // Returns which season is currently running based on today's date
+    // Spring: Jan–Apr, Summer: May–Aug, Fall: Sep–Dec
+    function getCurrentSeason() {
+      const m = new Date().getMonth() + 1; // 1-12
+      if (m <= 4) return 'Spring';
+      if (m <= 8) return 'Summer';
+      return 'Fall';
+    }
+
+    // Returns the last COMPLETED semester {season, year}
+    // i.e. the one before the currently running semester
+    function getLastCompletedSemester() {
+      const now = new Date();
+      const curSeason = getCurrentSeason();
+      const curYear   = now.getFullYear();
+      const idx = SEASON_ORDER.indexOf(curSeason);
+      if (idx === 0) {
+        // Spring running → last completed = Fall of previous year
+        return { season: SEASON_ORDER[SEASON_ORDER.length - 1], year: curYear - 1 };
+      }
+      return { season: SEASON_ORDER[idx - 1], year: curYear };
+    }
+
+    // Count semesters from start (inclusive) to end (inclusive)
+    function countSemesters(startSeason, startYear, endSeason, endYear) {
+      let si = SEASON_ORDER.indexOf(startSeason);
+      let yr = parseInt(startYear);
+      let count = 0;
+      while (true) {
+        count++;
+        if (SEASON_ORDER[si] === endSeason && yr === parseInt(endYear)) break;
+        si++;
+        if (si >= SEASON_ORDER.length) { si = 0; yr++; }
+        if (yr > parseInt(endYear) + 1) break; // safety valve
+      }
+      return count;
+    }
+
+    function generateSemesterNames(startSeason, startYear, count) {
+      const names = [];
+      let si = SEASON_ORDER.indexOf(startSeason);
+      if (si === -1) si = 0;
+      let yr = parseInt(startYear);
+      for (let i = 0; i < count; i++) {
+        names.push(`${SEASON_ORDER[si]} ${yr} (${ordinalSup(i + 1)} Semester)`);
+        si++;
+        if (si >= SEASON_ORDER.length) { si = 0; yr++; }
+      }
+      return names;
+    }
+    function getStartSeason() {
+      const el = document.getElementById('startSeason');
+      return el ? el.value : 'Fall';
+    }
+    function getStartYear() {
+      const el = document.getElementById('startYear');
+      return el ? el.value : '2024';
+    }
 
     // ── DEPARTMENT PRESETS ────────────────────────────────
     const DEPARTMENTS = {
@@ -378,8 +437,6 @@
     };
 
     // ── ALL COURSES MASTER LIST ──────────────────────────
-    // Flat list of every course across all depts for autocomplete
-    // Build course DB from all dept presets — stored separately so always available
     const COURSE_DB = {};
     Object.values(DEPARTMENTS).forEach(dept => {
       dept.presets.forEach(sem => {
@@ -410,7 +467,7 @@
         style="top:${top}px;left:${left}px;width:${w}px;">`;
       html += matches.map((c, i) => `
         <div class="suggestion-item" data-idx="${i}"
-          onmousedown="pickSuggestion(${semId},${cIdx},'${c.full.replace(/'/g,"\'")}',${c.credits})">
+          onmousedown="pickSuggestion(${semId},${cIdx},'${c.full.replace(/'/g,"\\'")}',${c.credits})">
           <span class="suggestion-code">${c.code}</span>
           <span class="suggestion-name">${c.name}</span>
           <span class="suggestion-credits">${c.credits} cr</span>
@@ -426,10 +483,6 @@
 
       if (!val) { portal.innerHTML = ''; return; }
 
-      // tier 1: exact code match first
-      // tier 2: code starts with val
-      // tier 3: code contains val
-      // tier 4: name contains val
       const exactMatch = COURSE_DB[raw.toUpperCase()];
       const t1 = exactMatch ? [exactMatch] : [];
       const t2 = ALL_COURSES.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
@@ -437,10 +490,7 @@
       const t4 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
 
       const matches = [...t1, ...t2, ...t3, ...t4].slice(0, 8);
-
       if (!matches.length) { portal.innerHTML = ''; return; }
-
-      // ALWAYS show dropdown — let user see and choose
       showPortalSuggestions(e.target, semId, cIdx, matches);
     }
 
@@ -473,11 +523,8 @@
       portal.innerHTML = '';
     }
 
-    // close on scroll/resize reposition
     window.addEventListener('scroll', () => {
-      if (activeInput && portal.innerHTML) {
-        portal.innerHTML = '';
-      }
+      if (activeInput && portal.innerHTML) portal.innerHTML = '';
     }, { passive: true });
 
     function pickSuggestion(semId, cIdx, fullName, credits) {
@@ -487,18 +534,15 @@
       sem.courses[cIdx].name    = fullName;
       sem.courses[cIdx].credits = credits;
 
-      // update DOM in-place — no re-render so input stays alive
       const block = document.getElementById(`sem-${semId}`);
       if (block) {
-        // +2 because first child is lg-shine, second is course-header row
         const rows = block.querySelectorAll('.course-row:not(.course-header)');
         const row  = rows[cIdx];
         if (row) {
-          const nameInput = row.querySelector('.course-input-wrap input');
+          const nameInput  = row.querySelector('.course-input-wrap input');
           const creditSpan = row.querySelector('.credits-static');
           if (nameInput)  nameInput.value = fullName;
           if (creditSpan) creditSpan.textContent = credits;
-          // focus grade point
           const gp = row.querySelector('input[inputmode="decimal"]');
           if (gp) setTimeout(() => gp.focus(), 30);
         }
@@ -506,44 +550,68 @@
       recalc();
     }
 
-    function onDeptChange() {
+    // Step 1: dept chosen → show semester picker
+    function onDeptSelect() {
       const sel = document.getElementById('deptSelect');
       currentDept = sel.value;
       if (!currentDept) return;
       const dept = DEPARTMENTS[currentDept];
-      // show & update credits badge
+      // show credits badge
       const creditsEl = document.getElementById('deptCredits');
       if (creditsEl) creditsEl.style.display = 'inline-flex';
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
-      // reset calculator with blank courses (no grades pre-filled)
+      // reveal step 2
+      const startRow = document.getElementById('startSemRow');
+      if (startRow) startRow.style.display = 'flex';
+      // clear semesters until user confirms
       semesters = [];
       semesterCounter = 0;
-      dept.presets.forEach(p => {
-        const id = semesterCounter++;
-        semesters.push({ id, name: p.name, courses: p.courses.map(c => ({
-          name: '', credits: c.credits, grade: '', gradePoint: ''
-        })) });
-      });
       renderSemesters();
       recalc();
     }
 
+    // Step 2: user clicks "Let's go" → build semesters
+    function onStartSemConfirm() {
+      if (!currentDept) return;
+      if (!getStartSeason() || !getStartYear()) return;
+      const dept = DEPARTMENTS[currentDept];
+      const startSeason = getStartSeason();
+      const startYear   = parseInt(getStartYear());
+      const last        = getLastCompletedSemester();
+
+      // Count semesters from start to last completed
+      const startIdx = SEASON_ORDER.indexOf(startSeason) + startYear * 3;
+      const lastIdx  = SEASON_ORDER.indexOf(last.season)  + last.year  * 3;
+      const semCount = startIdx > lastIdx ? 0 : countSemesters(startSeason, startYear, last.season, last.year);
+
+      const semNames = generateSemesterNames(startSeason, startYear, semCount);
+      semesters = [];
+      semesterCounter = 0;
+
+      for (let idx = 0; idx < semCount; idx++) {
+        const id = semesterCounter++;
+        const preset = dept.presets[idx];
+        const courses = preset
+          ? preset.courses.map(c => ({ name: '', credits: 0, grade: '', gradePoint: '' }))
+          : [{ name: '', credits: 0, grade: '', gradePoint: '' }];
+        semesters.push({ id, name: semNames[idx], courses });
+      }
+
+      renderSemesters();
+      recalc();
+    }
+
+    // kept for compatibility (addSemester still calls getStartSeason/Year)
+    function onDeptChange() { onStartSemConfirm(); }
+
     let semesters = [];
     let semesterCounter = 0;
 
-    function gradeSelect(selected = '') {
-      return `<select onchange="recalc()">
-        <option value="">Grade</option>
-        ${Object.keys(GRADES).map(g =>
-          `<option value="${g}" ${g === selected ? 'selected' : ''}>${g}</option>`
-        ).join('')}
-      </select>`;
-    }
-
     function addSemester(prefill = null) {
       const id = semesterCounter++;
-      const name = SEMESTER_NAMES[semesters.length] || `Semester ${semesters.length + 1}`;
-      const courses = prefill || [{ name: '', credits: 3, grade: '' }];
+      const allNames = generateSemesterNames(getStartSeason(), getStartYear(), semesters.length + 1);
+      const name = allNames[semesters.length] || `Semester ${semesters.length + 1}`;
+      const courses = prefill || [{ name: '', credits: 0, grade: '', gradePoint: '' }];
       semesters.push({ id, name, courses });
       renderSemesters();
       recalc();
@@ -557,7 +625,7 @@
 
     function addCourse(semId) {
       const sem = semesters.find(s => s.id === semId);
-      if (sem) { sem.courses.push({ name: '', credits: 3, grade: '' }); }
+      if (sem) { sem.courses.push({ name: '', credits: 0, grade: '' }); }
       renderSemesters();
       recalc();
     }
@@ -570,6 +638,7 @@
         recalc();
       }
     }
+
 
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
@@ -591,21 +660,19 @@
           <div class="courses-table">
             <div class="course-row course-header">
               <span>Course</span>
-              <span style="text-align:center;">Credits</span>
-              <span style="text-align:center;">Grade Point</span>
-              <span style="text-align:center;">Grade</span>
-              <span></span>
+              <span>Credits</span>
+              <span>Grade Point</span>
+              <span>Grade</span>
             </div>
             ${sem.courses.map((c, i) => `
             <div class="course-row">
               <div class="course-input-wrap">
-                <input type="text" placeholder="Type course code, e.g. CSE110"
+                <input type="text" placeholder="Type course code / title"
                   value="${c.name}"
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
                   onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
-                <div class="course-suggestions" id="sug-${sem.id}-${i}"></div>
               </div>
               <span class="credits-static">${c.credits}</span>
               <input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
@@ -631,41 +698,21 @@
       }).join('');
     }
 
-    function updateCourse(semId, cIdx, field, value) {
-      const sem = semesters.find(s => s.id === semId);
-      if (sem) {
-        sem.courses[cIdx][field] = field === 'credits' ? parseFloat(value) || 0 : value;
-        recalc();
-        const gpa = calcSemGPA(sem);
-        const block = document.getElementById(`sem-${semId}`);
-        if (block) {
-          const badge = block.querySelector('.semester-gpa-badge');
-          if (badge && gpa !== null) badge.textContent = `GPA ${gpa.toFixed(2)}`;
-          else if (!badge && gpa !== null) {
-            block.querySelector('.semester-head-left')
-              .insertAdjacentHTML('beforeend', `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>`);
-          }
-        }
-      }
-    }
-
     function autoDetectGrade(semId, cIdx, val, inputEl) {
       const letter = detectGrade(val);
       const sem = semesters.find(s => s.id === semId);
       if (sem) {
         sem.courses[cIdx].grade = letter;
         sem.courses[cIdx].gradePoint = val;
-        // update the letter badge next to input
         const badge = document.getElementById(`gl-${semId}-${cIdx}`);
         if (badge) {
-          badge.textContent = letter;
+          badge.textContent = letter || '—';
           badge.style.color = letter === 'F' ? '#e74c3c' :
                               letter.startsWith('A') ? '#2ECC71' :
                               letter.startsWith('B') ? '#27ae60' :
                               letter.startsWith('C') ? '#F0A500' :
                               letter.startsWith('D') ? '#e67e22' : 'var(--text3)';
         }
-        // flash input border green if matched
         if (letter) {
           inputEl.style.borderColor = 'rgba(46,204,113,0.6)';
           setTimeout(() => inputEl.style.borderColor = '', 600);
@@ -698,7 +745,6 @@
 
     function recalc() {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0;
-
       for (const sem of semesters) {
         for (const c of sem.courses) {
           const gp = GRADES[c.grade];
@@ -711,8 +757,6 @@
       }
 
       const cgpa = totalAttempted > 0 ? totalPts / totalAttempted : null;
-
-      // Update display
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
       cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
@@ -722,7 +766,6 @@
       document.getElementById('totalAttempted').textContent = totalAttempted.toFixed(1);
       document.getElementById('totalEarned').textContent = totalEarned.toFixed(1);
 
-      // Meter
       const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
       document.getElementById('meterFill').style.width = pct + '%';
       document.getElementById('meterPct').textContent = cgpa !== null ? pct.toFixed(1) + '%' : '0%';
@@ -742,7 +785,6 @@
         statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
       }
 
-      // Simulator
       runSimulator(cgpa, totalAttempted, totalPts);
     }
 
@@ -767,8 +809,8 @@
       let msg = '';
       if (neededGPA <= 4.0 && neededGPA >= 0) {
         const difficulty = neededGPA >= 3.8 ? 'danger' : neededGPA >= 3.5 ? 'warn' : 'highlight';
-        msg = `To reach CGPA <span class="highlight">${target.toFixed(2)}</span>, you need an average GPA of 
-               <span class="${difficulty}">${neededGPA.toFixed(2)}</span> across your remaining 
+        msg = `To reach CGPA <span class="highlight">${target.toFixed(2)}</span>, you need an average GPA of
+               <span class="${difficulty}">${neededGPA.toFixed(2)}</span> across your remaining
                <span class="highlight">${remaining}</span> credits. `;
         if (neededGPA >= 3.9) msg += `This requires near-perfect grades every semester — <span class="danger">extremely difficult</span> but not impossible.`;
         else if (neededGPA >= 3.5) msg += `This is <span class="warn">challenging but achievable</span> with consistent effort and smart retakes.`;
@@ -784,153 +826,79 @@
       resultEl.innerHTML = msg;
     }
 
-    // Simulator live update
-    document.getElementById('targetCgpa').addEventListener('input', () => {
-      const cgpa = parseFloat(document.getElementById('cgpaVal').textContent);
-      const attempted = parseFloat(document.getElementById('totalAttempted').textContent);
-      // recalc handles it
-      recalc();
-    });
+    document.getElementById('targetCgpa').addEventListener('input', recalc);
     document.getElementById('creditsRemaining').addEventListener('input', recalc);
-
-    // Add semester button
     document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
 
     // ── INIT ──────────────────────────────────────────────
     function initCalculator() {
-      // start blank — user selects dept first
       document.getElementById('deptCreditsText').textContent = '';
       document.getElementById('deptCredits').style.display = 'none';
       renderSemesters();
       recalc();
     }
 
-    function initCalculatorFOUNDER() {
-      // load CSE presets with founder's actual grades filled in (kept for reference)
-      const founderData = [
-        { name: 'Fall 2024', courses: [
-          { name: 'Programming Language I (CSE110)', credits: 3, grade: 'C-' },
-          { name: 'Fundamentals of English (ENG101)', credits: 3, grade: 'B+' },
-          { name: 'Remedial Mathematics (MAT092)',   credits: 0, grade: 'P'  },
-          { name: 'Principles of Physics I (PHY111)', credits: 3, grade: 'B-' },
-        ]},
-        { name: 'Spring 2025', courses: [
-          { name: 'Programming Language II (CSE111)', credits: 3, grade: 'F'  },
-          { name: 'Discrete Mathematics (CSE230)',    credits: 3, grade: 'D+' },
-          { name: 'Differential Calculus (MAT110)',   credits: 3, grade: 'B'  },
-          { name: 'Principles of Physics II (PHY112)', credits: 3, grade: 'B-' },
-        ]},
-        { name: 'Summer 2025', courses: [
-          { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: 'A-' },
-          { name: 'Emergence of Bangladesh (EMB101)',      credits: 3, grade: 'B-' },
-          { name: 'English Composition I (ENG102)',        credits: 3, grade: 'B'  },
-          { name: 'Ethics and Culture (HUM103)',           credits: 3, grade: 'B'  },
-        ]},
-        { name: 'Fall 2025', courses: [
-          { name: 'Programming Language II (CSE111)', credits: 3, grade: 'C+' },
-          { name: 'Integral Calculus (MAT120)',        credits: 3, grade: 'B'  },
-          { name: 'Statistics & Probability (STA201)', credits: 3, grade: 'D'  },
-        ]},
-      ];
-      founderData.forEach(sem => {
-        const id = semesterCounter++;
-        semesters.push({ id, name: sem.name, courses: sem.courses });
-      });
-      document.getElementById('deptCreditsText').textContent = '136 Total Credits';
-      renderSemesters();
-      recalc();
-      document.getElementById('creditsRemaining').value = 97;
-      document.getElementById('targetCgpa').value = 3.50;
-      recalc();
-    }
-
     initCalculator();
-  
+
     // ── CURSOR SYSTEM ─────────────────────────────────────
-    const dot       = document.getElementById('cursor-dot');
-    const ring      = document.getElementById('cursor-ring');
+    const dot        = document.getElementById('cursor-dot');
+    const ring       = document.getElementById('cursor-ring');
     const cursorGlow = document.getElementById('cursor-glow');
-    const body      = document.body;
+    const body       = document.body;
 
     let mX = window.innerWidth / 2,  mY = window.innerHeight / 2;
     let dX = mX, dY = mY;
     let rX = mX, rY = mY;
     let gX = mX, gY = mY;
 
-    document.addEventListener('mousemove', e => {
-      mX = e.clientX; mY = e.clientY;
-    }, { passive: true });
+    document.addEventListener('mousemove', e => { mX = e.clientX; mY = e.clientY; }, { passive: true });
 
-    // cursor states
     document.querySelectorAll('a, button, .feature-card, .nav-logo').forEach(el => {
       el.addEventListener('mouseenter', () => body.classList.add('cursor-hover'));
       el.addEventListener('mouseleave', () => body.classList.remove('cursor-hover'));
     });
-    document.querySelectorAll('input, select, textarea').forEach(el => {
+    document.querySelectorAll('select, textarea').forEach(el => {
       el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
       el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
     });
+    document.addEventListener('mouseover', e => {
+      if (e.target.matches('input, textarea')) body.classList.add('cursor-text');
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.matches('input, textarea')) body.classList.remove('cursor-text');
+    });
     document.addEventListener('mousedown', () => body.classList.add('cursor-click'));
     document.addEventListener('mouseup',   () => body.classList.remove('cursor-click'));
-
-    document.addEventListener('mouseleave', () => {
-      dot.style.opacity = '0'; ring.style.opacity = '0';
-      cursorGlow.style.opacity = '0';
-    });
-    document.addEventListener('mouseenter', () => {
-      dot.style.opacity = '1'; ring.style.opacity = '1';
-      cursorGlow.style.opacity = '1';
-    });
+    document.addEventListener('mouseleave', () => { dot.style.opacity = '0'; ring.style.opacity = '0'; cursorGlow.style.opacity = '0'; });
+    document.addEventListener('mouseenter', () => { dot.style.opacity = '1'; ring.style.opacity = '1'; cursorGlow.style.opacity = '1'; });
 
     function animateCursor() {
-      dX += (mX - dX) * 0.85;
-      dY += (mY - dY) * 0.85;
-      rX += (mX - rX) * 0.14;
-      rY += (mY - rY) * 0.14;
-      gX += (mX - gX) * 0.07;
-      gY += (mY - gY) * 0.07;
-
-      dot.style.left  = dX + 'px';
-      dot.style.top   = dY + 'px';
-      ring.style.left = rX + 'px';
-      ring.style.top  = rY + 'px';
-      cursorGlow.style.left = gX + 'px';
-      cursorGlow.style.top  = gY + 'px';
-
+      dX += (mX - dX) * 0.85; dY += (mY - dY) * 0.85;
+      rX += (mX - rX) * 0.14; rY += (mY - rY) * 0.14;
+      gX += (mX - gX) * 0.07; gY += (mY - gY) * 0.07;
+      dot.style.left  = dX + 'px'; dot.style.top   = dY + 'px';
+      ring.style.left = rX + 'px'; ring.style.top  = rY + 'px';
+      cursorGlow.style.left = gX + 'px'; cursorGlow.style.top = gY + 'px';
       requestAnimationFrame(animateCursor);
     }
     animateCursor();
 
-    // ── MAGNETIC ELEMENTS ─────────────────────────────────
     document.querySelectorAll('.magnetic').forEach(el => {
       el.addEventListener('mousemove', e => {
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width  / 2;
         const cy = rect.top  + rect.height / 2;
-        const dx = (e.clientX - cx) * 0.35;
-        const dy = (e.clientY - cy) * 0.35;
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        el.style.transform = `translate(${(e.clientX - cx) * 0.35}px, ${(e.clientY - cy) * 0.35}px)`;
       });
-      el.addEventListener('mouseleave', () => {
-        el.style.transform = 'translate(0,0)';
-      });
+      el.addEventListener('mouseleave', () => { el.style.transform = 'translate(0,0)'; });
     });
-
 
     // ── DOT MATRIX ────────────────────────────────────────
     (function() {
       const canvas = document.getElementById('dot-matrix');
       const ctx    = canvas.getContext('2d');
-
-      const SPACING   = 28;    // gap between dots
-      const BASE_R    = 1.1;   // resting dot radius
-      const MAX_R     = 3.2;   // max radius near cursor
-      const REACH     = 140;   // cursor influence radius (px)
-      const BASE_A    = 0.13;  // resting opacity
-      const MAX_A     = 0.72;  // max opacity near cursor
-
-      let W, H, cols, rows;
-      let cx = -999, cy = -999; // cursor position
+      const SPACING = 28, BASE_R = 1.1, MAX_R = 3.2, REACH = 140, BASE_A = 0.13, MAX_A = 0.72;
+      let W, H, cols, rows, cx = -999, cy = -999;
 
       function resize() {
         W = canvas.width  = window.innerWidth;
@@ -940,51 +908,24 @@
       }
       resize();
       window.addEventListener('resize', resize);
-
-      // track cursor globally (already tracked by cursor system, but keep independent)
-      window.addEventListener('mousemove', e => {
-        cx = e.clientX; cy = e.clientY;
-      }, { passive: true });
+      window.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; }, { passive: true });
       window.addEventListener('mouseleave', () => { cx = -999; cy = -999; });
 
-      function isLight() {
-        return document.documentElement.dataset.theme === 'light';
-      }
+      function isLight() { return document.documentElement.dataset.theme === 'light'; }
 
       function draw() {
         ctx.clearRect(0, 0, W, H);
         const light = isLight();
-
         for (let row = 0; row < rows; row++) {
           for (let col = 0; col < cols; col++) {
-            const x = col * SPACING;
-            const y = row * SPACING;
-
-            const dx   = x - cx;
-            const dy   = y - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // proximity factor 0→1
-            const prox = Math.max(0, 1 - dist / REACH);
-            // ease with power curve for smooth falloff
-            const ease = prox * prox;
-
+            const x = col * SPACING, y = row * SPACING;
+            const dist = Math.sqrt((x-cx)**2 + (y-cy)**2);
+            const ease = Math.max(0, 1 - dist / REACH) ** 2;
             const r = BASE_R + (MAX_R - BASE_R) * ease;
             const a = BASE_A + (MAX_A - BASE_A) * ease;
-
-            // colour: green tint when lit, neutral when resting
-            let dotColor;
-            if (light) {
-              // light mode: dark green dots
-              const g = Math.round(120 + 80 * ease);
-              dotColor = `rgba(10, ${g}, 50, ${a})`;
-            } else {
-              // dark mode: green-tinted dots
-              const g = Math.round(180 + 60 * ease);
-              const b = Math.round(80  - 60 * ease);
-              dotColor = `rgba(46, ${g}, ${b}, ${a})`;
-            }
-
+            const dotColor = light
+              ? `rgba(10, ${Math.round(120 + 80*ease)}, 50, ${a})`
+              : `rgba(46, ${Math.round(180 + 60*ease)}, ${Math.round(80 - 60*ease)}, ${a})`;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fillStyle = dotColor;
@@ -994,7 +935,5 @@
         requestAnimationFrame(draw);
       }
       draw();
-
-      // re-draw when theme toggles
       themeBtn.addEventListener('click', () => { ctx.clearRect(0, 0, W, H); });
     })();
