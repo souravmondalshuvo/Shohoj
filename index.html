@@ -142,53 +142,93 @@
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
           <h3>CGPA Calculator</h3>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-            <select id="deptSelect" onchange="onDeptChange()" style="
-              background:var(--input-bg);
-              backdrop-filter:blur(8px);
-              border:1px solid var(--border);
-              border-radius:8px;
-              color:var(--text);
-              font-family:'DM Sans',sans-serif;
-              font-size:13px;
-              font-weight:500;
-              padding:6px 10px;
-              outline:none;
-              cursor:pointer;
-              transition:border-color 0.2s;
-              max-width: 460px;
-            ">
-              <option value="" disabled selected>— Select your department —</option>
-              <option value="CSE">B.Sc. in Computer Science and Engineering (CSE)</option>
-              <option value="EEE">B.Sc. in Electrical and Electronic Engineering (EEE)</option>
-              <option value="BBA">Bachelor of Business Administration (BBA)</option>
-              <option value="ECO">B.S.S. in Economics (ECO)</option>
-              <option value="ENG">B.A. in English (ENG)</option>
-              <option value="ARC">B.Sc. in Architecture (ARC)</option>
-              <option value="PHR">B.Sc. in Pharmacy (PHR)</option>
-              <option value="LAW">Bachelor of Laws (LLB)</option>
-            </select>
-            <div id="deptCredits" style="
-              display: none;
-              align-items: center;
-              gap: 5px;
-              background: rgba(46,204,113,0.10);
-              border: 1px solid rgba(46,204,113,0.28);
-              border-radius: 8px;
-              padding: 5px 11px;
-            ">
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:0.85;">
-                <circle cx="6" cy="6" r="5" stroke="#2ECC71" stroke-width="1.5"/>
-                <path d="M6 3.5v3M6 8v.8" stroke="#2ECC71" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              <span id="deptCreditsText" style="
-                font-size: 12px;
-                font-weight: 600;
-                color: var(--green);
-                letter-spacing: 0.3px;
-                white-space: nowrap;
-              ">136 Total Credits</span>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+
+            <!-- Step 1: Department -->
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <select id="deptSelect" onchange="onDeptSelect()" style="
+                background:var(--input-bg);
+                backdrop-filter:blur(8px);
+                border:1px solid var(--border);
+                border-radius:8px;
+                color:var(--text);
+                font-family:'DM Sans',sans-serif;
+                font-size:13px;
+                font-weight:500;
+                padding:6px 10px;
+                outline:none;
+                cursor:pointer;
+                transition:border-color 0.2s;
+                max-width:420px;
+              ">
+                <option value="" disabled selected>— Select your department —</option>
+                <option value="CSE">B.Sc. in Computer Science and Engineering (CSE)</option>
+                <option value="EEE">B.Sc. in Electrical and Electronic Engineering (EEE)</option>
+                <option value="BBA">Bachelor of Business Administration (BBA)</option>
+                <option value="ECO">B.S.S. in Economics (ECO)</option>
+                <option value="ENG">B.A. in English (ENG)</option>
+                <option value="ARC">B.Sc. in Architecture (ARC)</option>
+                <option value="PHR">B.Sc. in Pharmacy (PHR)</option>
+                <option value="LAW">Bachelor of Laws (LLB)</option>
+              </select>
+              <div id="deptCredits" style="
+                display:none;align-items:center;gap:5px;
+                background:rgba(46,204,113,0.10);
+                border:1px solid rgba(46,204,113,0.28);
+                border-radius:8px;padding:5px 11px;
+              ">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:0.85;">
+                  <circle cx="6" cy="6" r="5" stroke="#2ECC71" stroke-width="1.5"/>
+                  <path d="M6 3.5v3M6 8v.8" stroke="#2ECC71" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span id="deptCreditsText" style="font-size:12px;font-weight:600;color:var(--green);letter-spacing:0.3px;white-space:nowrap;">136 Total Credits</span>
+              </div>
             </div>
+
+            <!-- Step 2: Starting semester (appears after dept chosen) -->
+            <div id="startSemRow" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+              <select id="startSeason" style="
+                background:var(--input-bg);
+                border:1px solid var(--border);
+                border-radius:8px;color:var(--text);
+                font-family:'DM Sans',sans-serif;
+                font-size:13px;font-weight:500;
+                padding:6px 10px;outline:none;cursor:pointer;
+                transition:border-color 0.2s;
+              ">
+                <option value="" disabled selected>— Season —</option>
+                <option value="Spring">Spring</option>
+                <option value="Summer">Summer</option>
+                <option value="Fall">Fall</option>
+              </select>
+              <select id="startYear" style="
+                background:var(--input-bg);
+                border:1px solid var(--border);
+                border-radius:8px;color:var(--text);
+                font-family:'DM Sans',sans-serif;
+                font-size:13px;font-weight:500;
+                padding:6px 10px;outline:none;cursor:pointer;
+                transition:border-color 0.2s;
+              ">
+                <option value="" disabled selected>— Year —</option>
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+              </select>
+              <button onclick="onStartSemConfirm()" style="
+                background:var(--green);color:#0b0f0d;
+                font-family:'DM Sans',sans-serif;
+                font-size:13px;font-weight:600;
+                padding:6px 14px;border:none;
+                border-radius:8px;cursor:pointer;
+                transition:opacity 0.2s;
+              ">Let's go →</button>
+            </div>
+
           </div>
         </div>
         <div class="cgpa-display">
