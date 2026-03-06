@@ -1287,14 +1287,16 @@
     /* ── SUGGESTIONS PORTAL ──────────────────────────────── */
     #suggestions-portal {
       position: fixed;
+      top: 0; left: 0;
+      width: 0; height: 0;
       z-index: 9990;
+      overflow: visible;
       pointer-events: none;
     }
     #suggestions-portal .course-suggestions {
-      position: absolute;
+      position: fixed;
       pointer-events: all;
-      min-width: 320px;
-      max-width: 520px;
+      min-width: 280px;
     }
   </style>
 </head>
@@ -1919,23 +1921,21 @@
 
     // ── ALL COURSES MASTER LIST ──────────────────────────
     // Flat list of every course across all depts for autocomplete
-    const ALL_COURSES = [];
+    // Build course DB from all dept presets — stored separately so always available
+    const COURSE_DB = {};
     Object.values(DEPARTMENTS).forEach(dept => {
       dept.presets.forEach(sem => {
         sem.courses.forEach(c => {
-          // extract code from "Name (CODE)" format
           const match = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
           const code  = match ? match[1] : '';
           const name  = c.name.replace(/\s*\([^)]+\)$/, '').trim();
-          // avoid duplicates
-          if (!ALL_COURSES.find(x => x.code === code && code)) {
-            ALL_COURSES.push({ code, name, credits: c.credits, full: c.name });
+          if (code && !COURSE_DB[code]) {
+            COURSE_DB[code] = { code, name, credits: c.credits, full: c.name };
           }
         });
       });
     });
-    // sort alphabetically by code
-    ALL_COURSES.sort((a,b) => a.code.localeCompare(b.code));
+    const ALL_COURSES = Object.values(COURSE_DB).sort((a,b) => a.code.localeCompare(b.code));
 
     let currentDept = '';
 
@@ -1945,8 +1945,11 @@
 
     function showPortalSuggestions(inputEl, semId, cIdx, matches) {
       const rect = inputEl.getBoundingClientRect();
+      const top  = rect.bottom + 4;
+      const left = rect.left;
+      const w    = rect.width;
       let html = `<div class="course-suggestions" id="sug-${semId}-${cIdx}"
-        style="top:${rect.bottom + window.scrollY + 4}px;left:${rect.left}px;width:${rect.width}px;">`;
+        style="top:${top}px;left:${left}px;width:${w}px;">`;
       html += matches.map((c, i) => `
         <div class="suggestion-item" data-idx="${i}"
           onmousedown="pickSuggestion(${semId},${cIdx},'${c.full.replace(/'/g,"\'")}',${c.credits})">
@@ -1956,21 +1959,30 @@
         </div>`).join('');
       html += '</div>';
       portal.innerHTML = html;
-      portal.style.display = 'block';
     }
 
     function onCourseInput(e, semId, cIdx) {
-      const val = e.target.value.trim().toLowerCase();
+      const raw = e.target.value.trim();
+      const val = raw.toLowerCase();
       activeInput = e.target;
 
       if (!val) { portal.innerHTML = ''; return; }
 
-      const matches = ALL_COURSES.filter(c =>
-        c.code.toLowerCase().includes(val) ||
-        c.name.toLowerCase().includes(val)
-      ).slice(0, 8);
+      // tier 1: exact code match first
+      // tier 2: code starts with val
+      // tier 3: code contains val
+      // tier 4: name contains val
+      const exactMatch = COURSE_DB[raw.toUpperCase()];
+      const t1 = exactMatch ? [exactMatch] : [];
+      const t2 = ALL_COURSES.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
+      const t3 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
+      const t4 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
+
+      const matches = [...t1, ...t2, ...t3, ...t4].slice(0, 8);
 
       if (!matches.length) { portal.innerHTML = ''; return; }
+
+      // ALWAYS show dropdown — let user see and choose
       showPortalSuggestions(e.target, semId, cIdx, matches);
     }
 
@@ -2016,7 +2028,23 @@
       if (!sem) return;
       sem.courses[cIdx].name    = fullName;
       sem.courses[cIdx].credits = credits;
-      renderSemesters();
+
+      // update DOM in-place — no re-render so input stays alive
+      const block = document.getElementById(`sem-${semId}`);
+      if (block) {
+        // +2 because first child is lg-shine, second is course-header row
+        const rows = block.querySelectorAll('.course-row:not(.course-header)');
+        const row  = rows[cIdx];
+        if (row) {
+          const nameInput = row.querySelector('.course-input-wrap input');
+          const creditSpan = row.querySelector('.credits-static');
+          if (nameInput)  nameInput.value = fullName;
+          if (creditSpan) creditSpan.textContent = credits;
+          // focus grade point
+          const gp = row.querySelector('input[inputmode="decimal"]');
+          if (gp) setTimeout(() => gp.focus(), 30);
+        }
+      }
       recalc();
     }
 
@@ -2034,7 +2062,9 @@
       semesterCounter = 0;
       dept.presets.forEach(p => {
         const id = semesterCounter++;
-        semesters.push({ id, name: p.name, courses: p.courses.map(c => ({...c, grade:'', gradePoint:''})) });
+        semesters.push({ id, name: p.name, courses: p.courses.map(c => ({
+          name: '', credits: c.credits, grade: '', gradePoint: ''
+        })) });
       });
       renderSemesters();
       recalc();
@@ -2111,12 +2141,11 @@
             ${sem.courses.map((c, i) => `
             <div class="course-row">
               <div class="course-input-wrap">
-                <input type="text" placeholder="Search course name or code…"
+                <input type="text" placeholder="Type course code, e.g. CSE110"
                   value="${c.name}"
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
-                  onfocus="onCourseInput(event,${sem.id},${i})"
                   onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
                 <div class="course-suggestions" id="sug-${sem.id}-${i}"></div>
               </div>
