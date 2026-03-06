@@ -111,7 +111,7 @@ to open an issue or reach out directly.
 
 ## 👤 Founder
 
-**Sourav Mondal Shuvo**
+**&copy; Sourav Mondal Shuvo**
 CSE Undergraduate, BRAC University
 [LinkedIn](https://www.linkedin.com/in/souravmondalshuvo/) • 
 [Portfolio](https://souravmondalshuvo.github.io/Portfolio)
