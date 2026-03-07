@@ -1458,17 +1458,50 @@
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-        const semNameClean = sem.name.replace(/<sup>[^<]*<\/sup>/g, '');
-        doc.text(semNameClean, margin + 3, y + 5.5);
+        // Strip HTML but reconstruct ordinal suffix as plain text
+        // e.g. "Fall 2025 (1<sup>st</sup> Semester)" → "Fall 2025 (1st Semester)"
+        // jsPDF can't do superscript, so we fake it: draw number, then tiny suffix higher up
+        const semNameRaw = sem.name;
+        const supMatch = semNameRaw.match(/^(.*?\()(\d+)<sup>(\w+)<\/sup>(.*)$/);
+        if (supMatch) {
+          // Split: prefix + number + suffix text
+          const prefix    = supMatch[1]; // e.g. "Fall 2025 ("
+          const num       = supMatch[2]; // e.g. "1"
+          const sup       = supMatch[3]; // e.g. "st"
+          const rest      = supMatch[4]; // e.g. " Semester)"
+          // Draw prefix+number at normal size
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
+          const prefixNumStr = prefix + num;
+          doc.text(prefixNumStr, margin + 3, y + 5.5);
+          const prefixNumW = doc.getTextWidth(prefixNumStr);
+          // Draw superscript suffix smaller and higher
+          doc.setFontSize(5.5);
+          doc.text(sup, margin + 3 + prefixNumW, y + 3.8);
+          const supW = doc.getTextWidth(sup); // measured at 5.5pt — accurate
+          // Draw rest at normal size
+          doc.setFontSize(9);
+          doc.text(rest, margin + 3 + prefixNumW + supW, y + 5.5);
+          var semNameClean = prefix + num + sup + rest; // for getTextWidth fallback
+        } else {
+          var semNameClean = semNameRaw.replace(/<sup>[^<]*<\/sup>/g, '');
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
+          doc.text(semNameClean, margin + 3, y + 5.5);
+        }
 
         if (semGPA !== null) {
           doc.setTextColor(...(sem.running ? RETAKE : GREEN));
           doc.text('GPA ' + semGPA.toFixed(2), W - margin - 3, y + 5.5, { align: 'right' });
         }
         if (sem.running) {
+          doc.setFontSize(9); // measure at 9pt — same size name was drawn at
+          const semNameW = doc.getTextWidth(semNameClean);
           doc.setFontSize(7);
           doc.setTextColor(...RETAKE);
-          doc.text('[Running]', margin + 3 + doc.getTextWidth(semNameClean) + 3, y + 5.5);
+          doc.text('[Running]', margin + 3 + semNameW + 3, y + 5.5);
         }
         y += 10;
 
@@ -1529,10 +1562,11 @@
           }
 
           // Grade with color
-          const gradeColor = isFNT || isF ? RED : isRetaken ? [160,120,0] : (gp >= 3.5 ? GREEN : gp >= 2.0 ? GRAY1 : RED);
+          const isPI = c.grade === 'P' || c.grade === 'I';
+          const gradeColor = isPI ? GRAY3 : isFNT || isF ? RED : isRetaken ? [160,120,0] : (gp >= 3.5 ? GREEN : gp >= 2.0 ? GRAY1 : RED);
           doc.setTextColor(...gradeColor);
           doc.setFont('helvetica', 'bold');
-          doc.text(c.grade || '—', margin + col * 0.94, y + 4.8, { align: 'center' });
+          doc.text(c.grade || '-', margin + col * 0.94, y + 4.8, { align: 'center' });
           doc.setFont('helvetica', 'normal');
 
           // Bottom divider
@@ -1553,7 +1587,7 @@
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...GRAY3);
-        doc.text('Shohoj — BRACU Smart CGPA Calculator', margin, 292);
+        doc.text('Shohoj - BRACU Smart CGPA Calculator', margin, 292);
         doc.text(`Page ${p} of ${totalPages}`, W - margin, 292, { align: 'right' });
       }
 
