@@ -713,3 +713,33 @@
     @media (min-width: 1440px) {
       .standing-box { margin: 0 2.5rem 1.8rem; }
     }
+    /* ── GPA TREND CHART ────────────────────────────────── */
+    .trend-chart-box {
+      margin: 0 2rem 1.5rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      position: relative;
+    }
+    .trend-canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      margin-top: 0.8rem;
+    }
+    #trendCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    @media (max-width: 480px) {
+      .trend-chart-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .trend-canvas-wrap { height: 130px; }
+    }
+    @media (min-width: 1440px) {
+      .trend-chart-box { margin: 0 2.5rem 1.8rem; }
+      .trend-canvas-wrap { height: 180px; }
+    }
