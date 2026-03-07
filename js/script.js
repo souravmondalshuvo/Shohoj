@@ -845,7 +845,7 @@
       const retakenKeys = getRetakenKeys();
 
       container.innerHTML = semesters.map(sem => {
-        const gpa = calcSemGPA(sem, retakenKeys);
+        const gpa = calcSemGPA(sem);
         const isRunning = !!sem.running;
         return `
         <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}"><div class="lg-shine"></div>
@@ -969,16 +969,16 @@
       }
     }
 
-    function calcSemGPA(sem, retakenKeys) {
-      const rk = retakenKeys || getRetakenKeys();
+    function calcSemGPA(sem) {
+      // Semester GPA includes ALL courses taken that semester — retaken or not.
+      // Only cumulative CGPA skips retaken rows.
       let pts = 0, creds = 0;
       sem.courses.forEach((c, i) => {
         const gp = GRADES[c.grade];
         if (gp === undefined || !c.credits) return;
         if (c.grade === 'P' || c.grade === 'I') return;
-        // F(NT): always counts toward semester GPA denominator as 0 pts (even if retaken)
+        // F(NT): counts toward sem GPA denominator as 0 pts
         if (c.grade === 'F(NT)') { creds += c.credits; return; }
-        if (rk.has(`${sem.id}-${i}`)) return;
         if (gp === null) return;
         pts += gp * c.credits;
         creds += c.credits;
@@ -1012,6 +1012,20 @@
       }
 
       const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
+
+      // CGPA for completed semesters only (for meter + status bar)
+      let completedPts = 0, completedEarned = 0;
+      semesters.filter(s => !s.running).forEach(sem => {
+        sem.courses.forEach((c, i) => {
+          const gp = GRADES[c.grade];
+          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
+          if (c.grade === 'F(NT)') return;
+          if (retakenKeys.has(`${sem.id}-${i}`)) return;
+          completedPts += gp * c.credits;
+          if (gp > 0) completedEarned += c.credits;
+        });
+      });
+      const cgpaCompleted = completedEarned > 0 ? completedPts / completedEarned : null;
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
       const hasRunning = semesters.some(s => s.running);
@@ -1058,7 +1072,7 @@
 
       // ── ACADEMIC STANDING ─────────────────────────────
       const standingBox = document.getElementById('standingBox');
-      const cgpaNum = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
+      const cgpaNum = cgpaCompleted; // standing based on completed sems only
       const semCount = semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
 
       if (cgpaNum !== null) {
@@ -1110,7 +1124,7 @@
       const semGPAs = [];
       semesters.forEach(sem => {
         if (sem.running) return; // exclude running semester from trend chart
-        const gpa = calcSemGPA(sem, retakenKeys);
+        const gpa = calcSemGPA(sem);
         if (gpa !== null) {
           // Get short label e.g. "Fall 25"
           const label = sem.name
@@ -1147,21 +1161,21 @@
         trendBox.style.display = 'none';
       }
 
-      const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
+      const pct = cgpaCompleted !== null ? Math.min((cgpaCompleted / 4) * 100, 100) : 0;
       document.getElementById('meterFill').style.width = pct + '%';
-      document.getElementById('meterPct').textContent = cgpa !== null ? pct.toFixed(1) + '%' : '0%';
+      document.getElementById('meterPct').textContent = cgpaCompleted !== null ? pct.toFixed(1) + '%' : '0%';
 
       const statusEl = document.getElementById('meterStatus');
       if (cgpa === null) {
         statusEl.innerHTML = 'Add your courses to get started.';
-      } else if (cgpa >= 3.75) {
-        statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpa.toFixed(2)} — Dean's List territory. Keep it up.`;
-      } else if (cgpa >= 3.5) {
-        statusEl.innerHTML = `<strong>Excellent.</strong> CGPA ${cgpa.toFixed(2)} — You're on track for a strong degree.`;
-      } else if (cgpa >= 3.0) {
-        statusEl.innerHTML = `<strong>Good standing.</strong> CGPA ${cgpa.toFixed(2)} — Push for 3.5 and you'll stand out.`;
-      } else if (cgpa >= 2.5) {
-        statusEl.innerHTML = `<strong>Keep pushing.</strong> CGPA ${cgpa.toFixed(2)} — Consider retaking weak courses for a boost.`;
+      } else if (cgpaCompleted >= 3.75) {
+        statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpaCompleted.toFixed(2)} — Dean's List territory. Keep it up.`;
+      } else if (cgpaCompleted >= 3.5) {
+        statusEl.innerHTML = `<strong>Excellent.</strong> CGPA ${cgpaCompleted.toFixed(2)} — You're on track for a strong degree.`;
+      } else if (cgpaCompleted >= 3.0) {
+        statusEl.innerHTML = `<strong>Good standing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Push for 3.5 and you'll stand out.`;
+      } else if (cgpaCompleted >= 2.5) {
+        statusEl.innerHTML = `<strong>Keep pushing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Consider retaking weak courses for a boost.`;
       } else {
         statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
       }
