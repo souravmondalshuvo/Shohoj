@@ -856,6 +856,10 @@
                 ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
                 : (gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : '')
               }
+              ${!isRunning && sem.courses.some(c => c.name.trim() && !c.grade)
+                ? `<span class="semester-incomplete-badge">⚠ Incomplete</span>`
+                : ''
+              }
             </div>
             <div class="semester-actions">
               <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
@@ -983,7 +987,7 @@
     }
 
     function recalc() {
-      let totalPts = 0, totalAttempted = 0, totalEarned = 0;
+      let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
       const retakenKeys = getRetakenKeys();
       // For progress bar: retake keys considering only completed semesters
       const completedOnly = semesters.filter(s => !s.running);
@@ -994,22 +998,42 @@
           if (gp === undefined || !c.credits) return;
           if (c.grade === 'P' || c.grade === 'I') return;
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-          // BRACU counts ALL attempts toward credits attempted (including retaken/failed)
+          // BRACU counts ALL attempts toward credits attempted (excluding running sem)
           if (!sem.running) totalAttempted += c.credits;
-          // Only the active (non-retaken) grade counts toward CGPA and credits earned
+          // Only the active (non-retaken) grade counts toward CGPA pts
           if (!isRetaken) {
             totalPts += gp * c.credits;
-            // Credits earned for progress bar: completed semesters only, ignoring running-sem retakes
-            if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
+            // CGPA denominator: earned across ALL sems (including running)
+            if (gp > 0) totalEarnedCGPA += c.credits;
           }
+          // Credits earned for progress bar: completed sems only, using completed-only retake keys
+          if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
         });
       }
 
-      const cgpa = totalEarned > 0 ? totalPts / totalEarned : null;
+      const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
       const hasRunning = semesters.some(s => s.running);
       document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
+
+      // Global incomplete warning
+      const hasIncomplete = semesters.some(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade));
+      let incWarn = document.getElementById('incompleteWarning');
+      if (!incWarn) {
+        incWarn = document.createElement('div');
+        incWarn.id = 'incompleteWarning';
+        incWarn.className = 'incomplete-warning';
+        const meter = document.querySelector('.cgpa-meter');
+        if (meter) meter.parentNode.insertBefore(incWarn, meter.nextSibling);
+      }
+      if (hasIncomplete) {
+        const count = semesters.filter(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade)).length;
+        incWarn.textContent = `⚠ ${count} semester${count > 1 ? 's have' : ' has'} missing grades — CGPA may be inaccurate`;
+        incWarn.style.display = '';
+      } else {
+        incWarn.style.display = 'none';
+      }
       cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
         cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
         cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
@@ -1034,7 +1058,7 @@
 
       // ── ACADEMIC STANDING ─────────────────────────────
       const standingBox = document.getElementById('standingBox');
-      const cgpaNum = totalEarned > 0 ? totalPts / totalEarned : null;
+      const cgpaNum = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
       const semCount = semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
 
       if (cgpaNum !== null) {
