@@ -797,12 +797,13 @@
       return false; // 2026+ → latest policy
     }
 
-    function getRetakenKeys() {
+    function getRetakenKeys(semList) {
+      const list = semList || semesters;
       const bestGrade = usesBestGradePolicy();
 
       // Flatten all courses with position info, in semester order
       const all = [];
-      semesters.forEach(sem => {
+      list.forEach(sem => {
         sem.courses.forEach((c, i) => {
           if (!c.name.trim()) return;
           const codeMatch = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
@@ -924,6 +925,16 @@
     }
 
     function autoDetectGrade(semId, cIdx, val, inputEl) {
+      // Special case: typing "NT" sets F(NT) grade
+      if (val.trim().toUpperCase() === 'NT') {
+        const sem = semesters.find(s => s.id === semId);
+        if (!sem) return;
+        sem.courses[cIdx].grade = 'F(NT)';
+        sem.courses[cIdx].gradePoint = 'NT';
+        renderSemesters();
+        recalc();
+        return;
+      }
       const letter = detectGrade(val);
       const sem = semesters.find(s => s.id === semId);
       if (!sem) return;
@@ -974,6 +985,9 @@
     function recalc() {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0;
       const retakenKeys = getRetakenKeys();
+      // For progress bar: retake keys considering only completed semesters
+      const completedOnly = semesters.filter(s => !s.running);
+      const retakenKeysCompleted = getRetakenKeys(completedOnly);
       for (const sem of semesters) {
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
@@ -981,11 +995,12 @@
           if (c.grade === 'P' || c.grade === 'I') return;
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
           // BRACU counts ALL attempts toward credits attempted (including retaken/failed)
-          totalAttempted += c.credits;
+          if (!sem.running) totalAttempted += c.credits;
           // Only the active (non-retaken) grade counts toward CGPA and credits earned
           if (!isRetaken) {
             totalPts += gp * c.credits;
-            if (gp > 0) totalEarned += c.credits;
+            // Credits earned for progress bar: completed semesters only, ignoring running-sem retakes
+            if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
           }
         });
       }
@@ -1070,6 +1085,7 @@
       // Gather per-semester GPAs (only semesters with at least one graded course)
       const semGPAs = [];
       semesters.forEach(sem => {
+        if (sem.running) return; // exclude running semester from trend chart
         const gpa = calcSemGPA(sem, retakenKeys);
         if (gpa !== null) {
           // Get short label e.g. "Fall 25"
