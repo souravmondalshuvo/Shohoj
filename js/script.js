@@ -837,6 +837,20 @@
       return retakenKeys;
     }
 
+    function getSemCreditWarning(sem) {
+      // Only count credit-bearing courses (exclude P/F and empty rows)
+      const total = sem.courses.reduce((sum, c) => {
+        if (!c.name.trim() || !c.credits) return sum;
+        if (c.grade === 'P' || c.grade === 'F(NT)') return sum; // non-credit courses
+        return sum + c.credits;
+      }, 0);
+      if (total === 0) return null;
+      if (total < 9)  return { type: 'error',   msg: `⚠ ${total} credits — below 9-credit minimum` };
+      if (total > 15) return { type: 'error',   msg: `⛔ ${total} credits — exceeds 15-credit maximum` };
+      if (total > 12) return { type: 'warn',    msg: `⚠ ${total} credits — requires chairman's permission` };
+      return null; // 9–12: normal
+    }
+
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
       document.getElementById('semesterCount').textContent = semesters.length;
@@ -860,6 +874,12 @@
                 ? `<span class="semester-incomplete-badge">⚠ Incomplete</span>`
                 : ''
               }
+              ${(() => {
+                const w = getSemCreditWarning(sem);
+                if (!w) return '';
+                const cls = w.type === 'error' ? 'semester-credit-error-badge' : 'semester-credit-warn-badge';
+                return `<span class="${cls}">${w.msg}</span>`;
+              })()}
             </div>
             <div class="semester-actions">
               <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
