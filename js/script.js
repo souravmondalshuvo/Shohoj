@@ -714,6 +714,36 @@
     let semesters = [];
     let semesterCounter = 0;
 
+    function addRunningSemester() {
+      // Only one running semester allowed
+      if (semesters.some(s => s.running)) return;
+      const nextName = generateNextSemesterName();
+      semesters.push({
+        id: Date.now(),
+        name: nextName + ' (Running)',
+        running: true,
+        courses: [{ name:'', credits:0, grade:'', gradePoint:'' }]
+      });
+      renderSemesters();
+      recalc();
+    }
+
+    function generateNextSemesterName() {
+      // Generate the name of the next semester after the last one
+      const SEASONS = ['Spring','Summer','Fall'];
+      if (!semesters.length) return 'Current Semester';
+      // Find last non-running semester
+      const last = [...semesters].reverse().find(s => !s.running);
+      if (!last || !last.name) return 'Current Semester';
+      const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
+      if (!match) return 'Current Semester';
+      let season = match[1], year = parseInt(match[2]);
+      const idx = SEASONS.indexOf(season);
+      if (idx === 2) { season = 'Spring'; year++; }
+      else { season = SEASONS[idx + 1]; }
+      return `${season} ${year}`;
+    }
+
     function addSemester(prefill = null) {
       const id = semesterCounter++;
       const allNames = generateSemesterNames(getStartSeason(), getStartYear(), semesters.length + 1);
@@ -809,16 +839,22 @@
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
       document.getElementById('semesterCount').textContent = semesters.length;
+      const runBtn = document.getElementById('addRunningSemBtn');
+      if (runBtn) runBtn.disabled = semesters.some(s => s.running);
       const retakenKeys = getRetakenKeys();
 
       container.innerHTML = semesters.map(sem => {
         const gpa = calcSemGPA(sem, retakenKeys);
+        const isRunning = !!sem.running;
         return `
-        <div class="semester-block lg-surface" id="sem-${sem.id}"><div class="lg-shine"></div>
+        <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}"><div class="lg-shine"></div>
           <div class="semester-head">
             <div class="semester-head-left">
               <span class="semester-label">${sem.name}</span>
-              ${gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : ''}
+              ${isRunning
+                ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
+                : (gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : '')
+              }
             </div>
             <div class="semester-actions">
               <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
@@ -957,6 +993,8 @@
       const cgpa = totalEarned > 0 ? totalPts / totalEarned : null;
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
+      const hasRunning = semesters.some(s => s.running);
+      document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
       cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
         cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
         cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
@@ -1132,6 +1170,7 @@
     document.getElementById('targetCgpa').addEventListener('input', recalc);
     document.getElementById('creditsRemaining').addEventListener('input', recalc);
     document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
+    document.getElementById('addRunningSemBtn').addEventListener('click', () => addRunningSemester());
 
     // ── INIT ──────────────────────────────────────────────
     function initCalculator() {
