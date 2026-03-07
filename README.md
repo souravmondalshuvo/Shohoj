@@ -4,6 +4,7 @@
 ![Status](https://img.shields.io/badge/Status-In%20Development-green)
 ![Built With](https://img.shields.io/badge/Built%20With-HTML%20CSS%20JS-blue)
 ![Started](https://img.shields.io/badge/Started-2026-orange)
+![MIT License](https://img.shields.io/badge/License-MIT-green.svg)
 
 ---
 
