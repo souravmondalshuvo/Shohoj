@@ -171,7 +171,7 @@
     // ── DEPARTMENT PRESETS ────────────────────────────────
     const DEPARTMENTS = {
       CSE: {
-        label: 'B.Sc. in Computer Science and Engineering (CSE) & Engineering',
+        label: 'B.Sc. in Computer Science and Engineering (CSE)',
         totalCredits: 136,
         presets: [
           { name: 'Fall — Semester 1', courses: [
@@ -1395,7 +1395,10 @@
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...GRAY3);
       doc.text(dept ? dept.label : '', margin, 21);
-      doc.text('Generated: ' + new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}), margin, 27);
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+      const timeStr = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+      doc.text('Generated: ' + dateStr + ' at ' + timeStr, margin, 27);
 
       // Big CGPA number
       const cgpaDisplay = cgpa !== null ? cgpa.toFixed(2) : '--';
@@ -1455,7 +1458,8 @@
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-        doc.text(sem.name, margin + 3, y + 5.5);
+        const semNameClean = sem.name.replace(/<sup>[^<]*<\/sup>/g, '');
+        doc.text(semNameClean, margin + 3, y + 5.5);
 
         if (semGPA !== null) {
           doc.setTextColor(...(sem.running ? RETAKE : GREEN));
@@ -1464,7 +1468,7 @@
         if (sem.running) {
           doc.setFontSize(7);
           doc.setTextColor(...RETAKE);
-          doc.text('[Running]', margin + 3 + doc.getTextWidth(sem.name) + 3, y + 5.5);
+          doc.text('[Running]', margin + 3 + doc.getTextWidth(semNameClean) + 3, y + 5.5);
         }
         y += 10;
 
