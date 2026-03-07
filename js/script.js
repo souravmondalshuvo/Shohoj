@@ -5,7 +5,7 @@
     // Start in dark mode — pill on right, moon icon
     pill.textContent = '🌙';
     themeBtn.addEventListener('click', () => {
-      const isDark = html.dataset.theme === 'dark';
+      setTimeout(recalc, 30);     const isDark = html.dataset.theme === 'dark';
       html.dataset.theme = isDark ? 'light' : 'dark';
       pill.textContent = isDark ? '☀️' : '🌙';
     });
@@ -74,7 +74,7 @@
       'B+': 3.30, 'B':  3.00, 'B-': 2.70,
       'C+': 2.30, 'C':  2.00, 'C-': 1.70,
       'D+': 1.30, 'D':  1.00,
-      'F':  0.00, 'P':  null, 'I': null
+      'F':  0.00, 'F(NT)': null, 'P':  null, 'I': null
     };
 
     const POINTS_TO_GRADE = [
@@ -554,6 +554,109 @@
       }, 30);
     }
 
+
+    function drawTrendChart(canvas, data) {
+      const dpr = window.devicePixelRatio || 1;
+      const wrap = canvas.parentElement;
+      const W = wrap.clientWidth;
+      const H = wrap.clientHeight;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, W, H);
+
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      const green     = '#2ECC71';
+      const greenDim  = 'rgba(46,204,113,0.15)';
+      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+      const labelColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+      const dotBg     = isDark ? '#060d09' : '#d4edde';
+
+      const PAD = { top: 12, right: 16, bottom: 36, left: 32 };
+      const cW = W - PAD.left - PAD.right;
+      const cH = H - PAD.top  - PAD.bottom;
+
+      const n = data.length;
+      const gpas = data.map(d => d.gpa);
+      const minG = Math.max(0, Math.min(...gpas) - 0.3);
+      const maxG = Math.min(4, Math.max(...gpas) + 0.3);
+      const range = maxG - minG || 1;
+
+      const xOf = i => PAD.left + (i / (n - 1)) * cW;
+      const yOf = g => PAD.top + cH - ((g - minG) / range) * cH;
+
+      // Grid lines at 1.0, 2.0, 3.0, 4.0
+      ctx.font = '10px DM Sans, sans-serif';
+      ctx.fillStyle = labelColor;
+      ctx.textAlign = 'right';
+      [1, 2, 3, 4].forEach(g => {
+        if (g < minG - 0.1 || g > maxG + 0.1) return;
+        const y = yOf(g);
+        ctx.beginPath();
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.moveTo(PAD.left, y);
+        ctx.lineTo(W - PAD.right, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillText(g.toFixed(1), PAD.left - 5, y + 3.5);
+      });
+
+      // Gradient fill under line
+      const grad = ctx.createLinearGradient(0, PAD.top, 0, H - PAD.bottom);
+      grad.addColorStop(0, 'rgba(46,204,113,0.22)');
+      grad.addColorStop(1, 'rgba(46,204,113,0.00)');
+      ctx.beginPath();
+      ctx.moveTo(xOf(0), yOf(data[0].gpa));
+      data.forEach((d, i) => { if (i > 0) ctx.lineTo(xOf(i), yOf(d.gpa)); });
+      ctx.lineTo(xOf(n - 1), H - PAD.bottom);
+      ctx.lineTo(xOf(0), H - PAD.bottom);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.strokeStyle = green;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap  = 'round';
+      data.forEach((d, i) => {
+        i === 0 ? ctx.moveTo(xOf(i), yOf(d.gpa)) : ctx.lineTo(xOf(i), yOf(d.gpa));
+      });
+      ctx.stroke();
+
+      // Dots + labels
+      data.forEach((d, i) => {
+        const x = xOf(i), y = yOf(d.gpa);
+
+        // Dot
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = dotBg;
+        ctx.fill();
+        ctx.strokeStyle = green;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // GPA value above dot
+        ctx.font = 'bold 10px DM Sans, sans-serif';
+        ctx.fillStyle = green;
+        ctx.textAlign = 'center';
+        ctx.fillText(d.gpa.toFixed(2), x, y - 9);
+
+        // Semester label below x-axis
+        ctx.font = '10px DM Sans, sans-serif';
+        ctx.fillStyle = labelColor;
+        ctx.fillText(d.label, x, H - PAD.bottom + 14);
+      });
+    }
+
     // Step 1: dept chosen → show semester picker
     function onDeptSelect() {
       const sel = document.getElementById('deptSelect');
@@ -655,10 +758,12 @@
       const year   = parseInt(getStartYear());
       if (!season || !year) return false;
       const idx = SEASON_ORDER.indexOf(season);
-      // Before Spring 2025: Fall 2024, Summer 2024, Spring 2024 etc.
-      if (year < 2025) return true;
-      if (year === 2025 && idx === 0) return false; // Spring 2025 → latest policy
-      if (year === 2025 && idx > 0)  return false;  // Summer/Fall 2025 → latest policy
+      // Based on transcript evidence: Fall 2024 uses LATEST grade policy
+      // Only Spring 2024 and earlier use best grade policy
+      if (year < 2024) return true;
+      if (year === 2024 && idx === 0) return true;  // Spring 2024 → best grade
+      if (year === 2024 && idx === 1) return true;  // Summer 2024 → best grade
+      if (year === 2024 && idx === 2) return false; // Fall 2024 → latest grade
       return false; // 2026+ → latest policy
     }
 
@@ -673,7 +778,7 @@
           const codeMatch = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
           const code = codeMatch ? codeMatch[1] : null;
           const baseName = c.name.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
-          const gp = c.grade ? (GRADES[c.grade] ?? -1) : -1;
+          const gp = (c.grade && c.grade !== 'F(NT)') ? (GRADES[c.grade] ?? -1) : -1;
           all.push({ semId: sem.id, idx: i, code, baseName, key: `${sem.id}-${i}`, gp });
         });
       });
@@ -747,13 +852,14 @@
                     <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F — Fail</option>
                   </select>`
                 : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
-                    value="${c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')}"
+                    value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
                     oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
                     style="text-align:center;" />`
               }
               <span class="grade-letter" id="gl-${sem.id}-${i}"
                 style="color:${
                   c.grade === 'F' ? '#e74c3c' :
+                  c.grade === 'F(NT)' ? '#e74c3c' :
                   c.grade === 'P' ? '#2ECC71' :
                   c.grade && c.grade.startsWith('A') ? '#2ECC71' :
                   c.grade && c.grade.startsWith('B') ? '#27ae60' :
@@ -816,10 +922,13 @@
       const rk = retakenKeys || getRetakenKeys();
       let pts = 0, creds = 0;
       sem.courses.forEach((c, i) => {
-        if (rk.has(`${sem.id}-${i}`)) return;
         const gp = GRADES[c.grade];
-        if (gp === null || gp === undefined || !c.credits) return;
-        if (c.grade === 'P') return;
+        if (gp === undefined || !c.credits) return;
+        if (c.grade === 'P' || c.grade === 'I') return;
+        // F(NT): always counts toward semester GPA denominator as 0 pts (even if retaken)
+        if (c.grade === 'F(NT)') { creds += c.credits; return; }
+        if (rk.has(`${sem.id}-${i}`)) return;
+        if (gp === null) return;
         pts += gp * c.credits;
         creds += c.credits;
       });
@@ -831,17 +940,21 @@
       const retakenKeys = getRetakenKeys();
       for (const sem of semesters) {
         sem.courses.forEach((c, i) => {
-          if (retakenKeys.has(`${sem.id}-${i}`)) return; // skip superseded attempts
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits) return;
           if (c.grade === 'P' || c.grade === 'I') return;
+          const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
+          // BRACU counts ALL attempts toward credits attempted (including retaken/failed)
           totalAttempted += c.credits;
-          totalPts += gp * c.credits;
-          if (gp > 0) totalEarned += c.credits;
+          // Only the active (non-retaken) grade counts toward CGPA and credits earned
+          if (!isRetaken) {
+            totalPts += gp * c.credits;
+            if (gp > 0) totalEarned += c.credits;
+          }
         });
       }
 
-      const cgpa = totalAttempted > 0 ? totalPts / totalAttempted : null;
+      const cgpa = totalEarned > 0 ? totalPts / totalEarned : null;
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
       cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
@@ -868,7 +981,7 @@
 
       // ── ACADEMIC STANDING ─────────────────────────────
       const standingBox = document.getElementById('standingBox');
-      const cgpaNum = totalAttempted > 0 ? totalPts / totalAttempted : null;
+      const cgpaNum = totalEarned > 0 ? totalPts / totalEarned : null;
       const semCount = semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
 
       if (cgpaNum !== null) {
@@ -910,6 +1023,50 @@
         badge.textContent  = emoji;
       } else {
         standingBox.style.display = 'none';
+      }
+
+      // ── GPA TREND CHART ───────────────────────────────
+      const trendBox = document.getElementById('trendChartBox');
+      const trendCanvas = document.getElementById('trendCanvas');
+
+      // Gather per-semester GPAs (only semesters with at least one graded course)
+      const semGPAs = [];
+      semesters.forEach(sem => {
+        const gpa = calcSemGPA(sem, retakenKeys);
+        if (gpa !== null) {
+          // Get short label e.g. "Fall 25"
+          const label = sem.name
+            ? sem.name.replace(/\s*\(.*\)$/, '').replace(/(\d{4})/, y => "'" + y.slice(2))
+            : `S${sem.id + 1}`;
+          semGPAs.push({ label, gpa });
+        }
+      });
+
+      if (semGPAs.length >= 2) {
+        trendBox.style.display = '';
+
+        // High / low range label
+        const gpas = semGPAs.map(d => d.gpa);
+        const first = gpas[0];
+        const last  = gpas[gpas.length - 1];
+        const diff  = last - first;
+        let trendLabel, trendColor;
+        if (Math.abs(diff) < 0.1) {
+          trendLabel = '→ Stable';    trendColor = 'var(--text3)';
+        } else if (diff > 0) {
+          trendLabel = '↑ Improving'; trendColor = '#2ECC71';
+        } else {
+          trendLabel = '↓ Declining'; trendColor = '#e74c3c';
+        }
+        const trendEl = document.getElementById('trendRange');
+        trendEl.textContent = trendLabel;
+        trendEl.style.color = trendColor;
+        trendEl.style.fontWeight = '600';
+
+        // Draw on next frame so canvas has layout dimensions
+        requestAnimationFrame(() => drawTrendChart(trendCanvas, semGPAs));
+      } else {
+        trendBox.style.display = 'none';
       }
 
       const pct = cgpa !== null ? Math.min((cgpa / 4) * 100, 100) : 0;
@@ -1090,3 +1247,8 @@
       draw();
       themeBtn.addEventListener('click', () => { ctx.clearRect(0, 0, W, H); });
     })();
+
+    window.addEventListener('resize', () => {
+      clearTimeout(window._resizeTimer);
+      window._resizeTimer = setTimeout(recalc, 150);
+    });
