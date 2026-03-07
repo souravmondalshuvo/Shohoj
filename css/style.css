@@ -785,3 +785,28 @@
       box-shadow: none;
     }
     [data-theme="light"] .semester-block.semester-running { border-color: rgba(240,165,0,0.5); }
+    /* ── INCOMPLETE SEMESTER WARNING ───────────────────── */
+    .semester-incomplete-badge {
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(231,76,60,0.10);
+      color: #e74c3c;
+      border: 1px solid rgba(231,76,60,0.28);
+      border-radius: 6px;
+      padding: 2px 8px;
+    }
+    .incomplete-warning {
+      margin: 10px auto 0;
+      max-width: 480px;
+      background: rgba(231,76,60,0.08);
+      border: 1px solid rgba(231,76,60,0.28);
+      border-radius: 10px;
+      color: #e74c3c;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      padding: 8px 16px;
+    }
+    [data-theme="light"] .incomplete-warning {
+      background: rgba(231,76,60,0.06);
+    }
