@@ -1319,6 +1319,245 @@
     document.getElementById('addRunningSemBtn').addEventListener('click', () => addRunningSemester());
 
     // ── INIT ──────────────────────────────────────────────
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      if (!jsPDF) { alert('PDF library not loaded. Please check your connection.'); return; }
+      if (!semesters.length) { alert('No data to export.'); return; }
+
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const W = 210, margin = 16;
+      const col = W - margin * 2;
+      let y = 0;
+
+      // ── helpers ──────────────────────────────────────────
+      const hex = c => { const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16); return [r,g,b]; };
+      const GREEN  = hex('#1DB954');
+      const GREEN2 = hex('#145E30');
+      const WHITE  = [255,255,255];
+      const GRAY1  = [20,40,20];
+      const GRAY2  = [60,90,60];
+      const GRAY3  = [120,150,120];
+      const LIGHT  = [235,245,235];
+      const RETAKE = hex('#F0A500');
+      const RED    = hex('#e74c3c');
+
+      function newPage() {
+        doc.addPage();
+        y = margin;
+      }
+
+      function checkY(needed = 10) {
+        if (y + needed > 282) newPage();
+      }
+
+      // ── recompute stats ───────────────────────────────────
+      const retakenKeys = getRetakenKeys();
+      const retakenKeysCompleted = getRetakenKeys(semesters.filter(s => !s.running));
+      let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
+      let completedPts = 0, completedEarned = 0;
+      semesters.forEach(sem => {
+        sem.courses.forEach((c, i) => {
+          const gp = GRADES[c.grade];
+          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
+          if (!sem.running) totalAttempted += c.credits;
+          if (c.grade === 'F(NT)') return;
+          const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
+          if (!isRetaken) { totalPts += gp * c.credits; if (gp > 0) totalEarnedCGPA += c.credits; }
+          if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
+        });
+      });
+      semesters.filter(s => !s.running).forEach(sem => {
+        sem.courses.forEach((c, i) => {
+          const gp = GRADES[c.grade];
+          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
+          if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
+          completedPts += gp * c.credits; if (gp > 0) completedEarned += c.credits;
+        });
+      });
+      const cgpa          = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
+      const cgpaCompleted = completedEarned  > 0 ? completedPts / completedEarned : null;
+      const hasRunning    = semesters.some(s => s.running);
+      const dept          = DEPARTMENTS[currentDept];
+
+      // ── HEADER ────────────────────────────────────────────
+      doc.setFillColor(...GREEN2);
+      doc.rect(0, 0, W, 42, 'F');
+
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...GREEN);
+      doc.text('Shohoj', margin, 14);
+      doc.setTextColor(...WHITE);
+      doc.text('CGPA Report', margin + 26, 14);
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY3);
+      doc.text(dept ? dept.label : '', margin, 21);
+      doc.text('Generated: ' + new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}), margin, 27);
+
+      // Big CGPA number
+      const cgpaDisplay = cgpa !== null ? cgpa.toFixed(2) : '--';
+      doc.setFontSize(28);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...GREEN);
+      doc.text(cgpaDisplay, W - margin, 20, { align: 'right' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY3);
+      doc.text(hasRunning ? 'PROJECTED CGPA' : 'CURRENT CGPA', W - margin, 27, { align: 'right' });
+
+      y = 50;
+
+      // ── SUMMARY STATS ROW ─────────────────────────────────
+      const stats = [
+        { label: 'Credits Attempted', value: totalAttempted.toFixed(0) },
+        { label: 'Credits Earned',    value: totalEarned.toFixed(0) },
+        { label: 'Semesters',         value: semesters.filter(s=>!s.running).length },
+        { label: hasRunning ? 'Projected CGPA' : 'Current CGPA', value: cgpaDisplay },
+      ];
+      if (hasRunning && cgpaCompleted !== null) {
+        stats.push({ label: 'Completed CGPA', value: cgpaCompleted.toFixed(2) });
+      }
+      const bw = col / stats.length;
+      stats.forEach((s, i) => {
+        const x = margin + i * bw;
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(x, y, bw - 2, 16, 2, 2, 'F');
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...GREEN2);
+        doc.text(String(s.value), x + bw/2 - 1, y + 8, { align: 'center' });
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...GRAY2);
+        doc.text(s.label, x + bw/2 - 1, y + 13, { align: 'center' });
+      });
+      y += 22;
+
+      // ── SEMESTER SECTIONS ─────────────────────────────────
+      const rk = retakenKeys; // reuse already-computed retakenKeys
+
+      semesters.forEach((sem, si) => {
+        const semGPA = calcSemGPA(sem);
+        const courses = sem.courses.filter(c => c.name.trim());
+        if (!courses.length) return;
+
+        // Estimate height needed: header(8) + col header(6) + courses(7 each) + gap(4)
+        const needed = 8 + 6 + courses.length * 7 + 4;
+        checkY(needed);
+
+        // Semester header bar
+        doc.setFillColor(...(sem.running ? hex('#2C2000') : GREEN2));
+        doc.roundedRect(margin, y, col, 8, 1.5, 1.5, 'F');
+
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...(sem.running ? RETAKE : GREEN));
+        doc.text(sem.name, margin + 3, y + 5.5);
+
+        if (semGPA !== null) {
+          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
+          doc.text('GPA ' + semGPA.toFixed(2), W - margin - 3, y + 5.5, { align: 'right' });
+        }
+        if (sem.running) {
+          doc.setFontSize(7);
+          doc.setTextColor(...RETAKE);
+          doc.text('[Running]', margin + 3 + doc.getTextWidth(sem.name) + 3, y + 5.5);
+        }
+        y += 10;
+
+        // Column headers
+        doc.setFillColor(245, 250, 245);
+        doc.rect(margin, y, col, 6, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...GRAY2);
+        doc.text('COURSE', margin + 2, y + 4);
+        doc.text('CREDITS', margin + col * 0.72, y + 4, { align: 'center' });
+        doc.text('GRADE PT', margin + col * 0.84, y + 4, { align: 'center' });
+        doc.text('GRADE', margin + col * 0.94, y + 4, { align: 'center' });
+        y += 6;
+
+        // Course rows
+        courses.forEach((c, ci) => {
+          const gp = GRADES[c.grade];
+          const isRetaken = rk.has(`${sem.id}-${sem.courses.indexOf(c)}`);
+          const isFNT     = c.grade === 'F(NT)';
+          const isF       = c.grade === 'F';
+
+          // Alternating row bg
+          if (ci % 2 === 0) {
+            doc.setFillColor(248, 253, 248);
+            doc.rect(margin, y, col, 7, 'F');
+          }
+
+          // Retaken badge background
+          if (isRetaken) {
+            doc.setFillColor(255, 248, 225);
+            doc.rect(margin, y, col, 7, 'F');
+          }
+
+          doc.setFontSize(7.5);
+          doc.setFont('helvetica', isRetaken ? 'italic' : 'normal');
+          doc.setTextColor(...(isRetaken ? [160,120,0] : GRAY1));
+          // Truncate long course names
+          let name = c.name;
+          while (doc.getTextWidth(name) > col * 0.65 && name.length > 5) name = name.slice(0, -1);
+          if (name !== c.name) name += '...';
+          doc.text(name, margin + 2, y + 4.8);
+
+          if (isRetaken) {
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...RETAKE);
+            doc.text('RT', margin + col * 0.67, y + 4.8, { align: 'center' });
+          }
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...GRAY1);
+          doc.text(String(c.credits), margin + col * 0.72, y + 4.8, { align: 'center' });
+
+          if (gp !== undefined && gp !== null && c.grade !== 'P' && c.grade !== 'I') {
+            doc.text(gp.toFixed(1), margin + col * 0.84, y + 4.8, { align: 'center' });
+          }
+
+          // Grade with color
+          const gradeColor = isFNT || isF ? RED : isRetaken ? [160,120,0] : (gp >= 3.5 ? GREEN : gp >= 2.0 ? GRAY1 : RED);
+          doc.setTextColor(...gradeColor);
+          doc.setFont('helvetica', 'bold');
+          doc.text(c.grade || '—', margin + col * 0.94, y + 4.8, { align: 'center' });
+          doc.setFont('helvetica', 'normal');
+
+          // Bottom divider
+          doc.setDrawColor(220, 235, 220);
+          doc.setLineWidth(0.1);
+          doc.line(margin, y + 7, margin + col, y + 7);
+
+          y += 7;
+        });
+
+        y += 5; // gap between semesters
+      });
+
+      // ── FOOTER ────────────────────────────────────────────
+      const totalPages = doc.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...GRAY3);
+        doc.text('Shohoj — BRACU Smart CGPA Calculator', margin, 292);
+        doc.text(`Page ${p} of ${totalPages}`, W - margin, 292, { align: 'right' });
+      }
+
+      // ── SAVE ─────────────────────────────────────────────
+      const fname = `CGPA_Report_${new Date().toISOString().slice(0,10)}.pdf`;
+      doc.save(fname);
+    }
+
     function initCalculator() {
       document.getElementById('deptCreditsText').textContent = '';
       document.getElementById('deptCredits').style.display = 'none';
