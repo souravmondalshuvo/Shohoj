@@ -784,6 +784,21 @@
       transform: none;
       box-shadow: none;
     }
+    .btn-clear-data {
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(231,76,60,0.35);
+      background: rgba(231,76,60,0.08);
+      color: #e74c3c;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-clear-data:hover {
+      background: rgba(231,76,60,0.18);
+      border-color: rgba(231,76,60,0.6);
+    }
     [data-theme="light"] .semester-block.semester-running { border-color: rgba(240,165,0,0.5); }
     /* ── INCOMPLETE SEMESTER WARNING ───────────────────── */
     .semester-incomplete-badge {
