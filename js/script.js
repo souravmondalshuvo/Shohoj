@@ -670,9 +670,13 @@
       // reveal step 2
       const startRow = document.getElementById('startSemRow');
       if (startRow) startRow.style.display = 'flex';
-      // clear semesters until user confirms
-      semesters = [];
-      semesterCounter = 0;
+      // clear semesters until user confirms (skip if just restored from storage)
+      if (_restoredFromStorage) {
+        _restoredFromStorage = false; // consume the flag — next dept change WILL wipe
+      } else {
+        semesters = [];
+        semesterCounter = 0;
+      }
       renderSemesters();
       recalc();
     }
@@ -692,8 +696,17 @@
       const semCount = startIdx > lastIdx ? 0 : countSemesters(startSeason, startYear, last.season, last.year);
 
       const semNames = generateSemesterNames(startSeason, startYear, semCount);
+      // Skip rebuild if data was just restored from storage
+      if (_restoredFromStorage) {
+        _restoredFromStorage = false;
+        renderSemesters();
+        recalc();
+        return;
+      }
+
       semesters = [];
       semesterCounter = 0;
+      clearState(); // wipe saved state when starting fresh
 
       for (let idx = 0; idx < semCount; idx++) {
         const id = semesterCounter++;
@@ -713,6 +726,7 @@
 
     let semesters = [];
     let semesterCounter = 0;
+    let _restoredFromStorage = false; // prevents Let's go / dept change from wiping restored data
 
     function addRunningSemester() {
       // Only one running semester allowed
@@ -1006,6 +1020,63 @@
       return creds > 0 ? pts / creds : null;
     }
 
+    const STORAGE_KEY = 'shohoj_cgpa_v1';
+
+    function saveState() {
+      try {
+        const state = {
+          currentDept,
+          semesterCounter,
+          semesters,
+          startSeason: document.getElementById('startSeason')?.value || '',
+          startYear:   document.getElementById('startYear')?.value   || '',
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch(e) { /* storage unavailable */ }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const state = JSON.parse(raw);
+        if (!state.currentDept || !state.semesters?.length) return false;
+
+        // Restore dept dropdown
+        const deptSel = document.getElementById('deptSelect');
+        if (deptSel) { deptSel.value = state.currentDept; }
+        currentDept = state.currentDept;
+
+        // Restore start season/year dropdowns
+        const seasonSel = document.getElementById('startSeason');
+        const yearSel   = document.getElementById('startYear');
+        if (seasonSel && state.startSeason) seasonSel.value = state.startSeason;
+        if (yearSel   && state.startYear)   yearSel.value   = state.startYear;
+
+        // Restore semesters & counter
+        semesters        = state.semesters;
+        semesterCounter  = state.semesterCounter || semesters.length;
+
+        // Show dept info + start row (so user can still change semester)
+        const dept = DEPARTMENTS[currentDept];
+        if (dept) {
+          document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
+          document.getElementById('deptCredits').style.display = '';
+        }
+        const startRow = document.getElementById('startSemRow');
+        if (startRow) startRow.style.display = 'flex';
+
+        _restoredFromStorage = true;
+        renderSemesters();
+        recalc();
+        return true;
+      } catch(e) { return false; }
+    }
+
+    function clearState() {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    }
+
     function recalc() {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
       const retakenKeys = getRetakenKeys();
@@ -1201,6 +1272,7 @@
       }
 
       runSimulator(cgpa, totalAttempted, totalPts);
+      saveState();
     }
 
     function runSimulator(currentCgpa, currentCredits, currentPts) {
@@ -1250,8 +1322,11 @@
     function initCalculator() {
       document.getElementById('deptCreditsText').textContent = '';
       document.getElementById('deptCredits').style.display = 'none';
-      renderSemesters();
-      recalc();
+      // Try to restore previous session first
+      if (!loadState()) {
+        renderSemesters();
+        recalc();
+      }
     }
 
     initCalculator();
