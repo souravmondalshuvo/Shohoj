@@ -2,12 +2,21 @@
     const html = document.documentElement;
     const themeBtn = document.getElementById('themeToggle');
     const pill = document.getElementById('togglePill');
-    // Start in dark mode — pill on right, moon icon
-    pill.textContent = '🌙';
+    // Restore saved theme or default to dark
+    let savedTheme = 'dark';
+    try {
+      const _raw = localStorage.getItem('shohoj_theme');
+      if (_raw === 'dark' || _raw === 'light') savedTheme = _raw;
+    } catch(e) {}
+    html.dataset.theme = savedTheme;
+    pill.textContent = savedTheme === 'dark' ? '🌙' : '☀️';
     themeBtn.addEventListener('click', () => {
-      setTimeout(recalc, 30);     const isDark = html.dataset.theme === 'dark';
-      html.dataset.theme = isDark ? 'light' : 'dark';
+      const isDark = html.dataset.theme === 'dark';
+      const newTheme = isDark ? 'light' : 'dark';
+      html.dataset.theme = newTheme;
       pill.textContent = isDark ? '☀️' : '🌙';
+      try { localStorage.setItem('shohoj_theme', newTheme); } catch(e) {}
+      setTimeout(recalc, 30);
     });
 
     // ── SCROLL PROGRESS BAR ──────────────────────────────
@@ -760,8 +769,9 @@
 
     function addSemester(prefill = null) {
       const id = semesterCounter++;
-      const allNames = generateSemesterNames(getStartSeason(), getStartYear(), semesters.length + 1);
-      const name = allNames[semesters.length] || `Semester ${semesters.length + 1}`;
+      const completedCount = semesters.filter(s => !s.running).length;
+      const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1);
+      const name = allNames[completedCount] || `Semester ${completedCount + 1}`;
       const courses = prefill || [{ name: '', credits: 0, grade: '', gradePoint: '' }];
       semesters.push({ id, name, courses });
       renderSemesters();
@@ -867,6 +877,7 @@
 
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
+      const esc = s => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       document.getElementById('semesterCount').textContent = semesters.length;
       const runBtn = document.getElementById('addRunningSemBtn');
       if (runBtn) runBtn.disabled = semesters.some(s => s.running);
@@ -912,7 +923,7 @@
             <div class="course-row${isRetaken ? ' retaken' : ''}">
               <div class="course-input-wrap" style="position:relative;">
                 <input type="text" placeholder="Type course code / title"
-                  value="${c.name}"
+                  value="${esc(c.name)}"
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
@@ -1111,7 +1122,7 @@
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
           if (c.grade === 'F(NT)') return;
-          if (retakenKeys.has(`${sem.id}-${i}`)) return;
+          if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
           completedPts += gp * c.credits;
           if (gp > 0) completedEarned += c.credits;
         });
@@ -1298,15 +1309,55 @@
         const difficulty = neededGPA >= 3.8 ? 'danger' : neededGPA >= 3.5 ? 'warn' : 'highlight';
         msg = `To reach CGPA <span class="highlight">${target.toFixed(2)}</span>, you need an average GPA of
                <span class="${difficulty}">${neededGPA.toFixed(2)}</span> across your remaining
-               <span class="highlight">${remaining}</span> credits. `;
-        if (neededGPA >= 3.9) msg += `This requires near-perfect grades every semester — <span class="danger">extremely difficult</span> but not impossible.`;
-        else if (neededGPA >= 3.5) msg += `This is <span class="warn">challenging but achievable</span> with consistent effort and smart retakes.`;
-        else if (neededGPA >= 3.0) msg += `This is <span class="highlight">very realistic</span> — stay consistent and avoid any D or F grades.`;
-        else msg += `This is <span class="highlight">very achievable</span> — you're in a great position.`;
+               <span class="highlight">${remaining}</span> credits.`;
+        if (neededGPA >= 3.9) msg += ` This requires near-perfect grades — <span class="danger">extremely difficult</span> but not impossible.`;
+        else if (neededGPA >= 3.5) msg += ` This is <span class="warn">challenging but achievable</span> with consistent effort and smart retakes.`;
+        else if (neededGPA >= 3.0) msg += ` This is <span class="highlight">very realistic</span> — stay consistent and avoid D or F grades.`;
+        else msg += ` This is <span class="highlight">very achievable</span> — you're in a great position.`;
+
+        // ── Semester breakdown ──────────────────────────────
+        // Show how many semesters at standard credit loads (9/12/15 cr/sem)
+        // and the approximate letter grade needed
+        const gpToLetter = gp => {
+          if (gp >= 3.85) return 'All A';
+          if (gp >= 3.50) return 'A / A-';
+          if (gp >= 3.15) return 'B+ / A-';
+          if (gp >= 2.85) return 'B / B+';
+          if (gp >= 2.50) return 'B- / B';
+          if (gp >= 2.15) return 'C+ / B-';
+          if (gp >= 1.85) return 'C / C+';
+          return 'C- or below';
+        };
+        const crLoads = [9, 12, 15];
+        const gpColor = neededGPA >= 3.8 ? '#e74c3c' : neededGPA >= 3.5 ? '#F0A500' : '#2ECC71';
+        const rows = crLoads.map(cr => {
+          const semsNeeded = Math.ceil(remaining / cr);
+          const label = semsNeeded === 1 ? '1 semester' : `${semsNeeded} semesters`;
+          return `<tr>
+            <td style="padding:4px 10px;color:var(--text2);text-align:center">${cr} cr/sem</td>
+            <td style="padding:4px 10px;color:var(--text3);text-align:center">${label}</td>
+            <td style="padding:4px 10px;text-align:center;font-weight:700;color:${gpColor}">${neededGPA.toFixed(2)}</td>
+            <td style="padding:4px 10px;text-align:center;color:var(--text2)">${gpToLetter(neededGPA)}</td>
+          </tr>`;
+        }).join('');
+
+        msg += `<div style="margin-top:10px;overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">Credits/sem</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">Semesters left</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">GPA needed</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">~Grades</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+
       } else if (neededGPA > 4.0) {
+        const ceiling = ((4.0 * remaining + currentPts) / totalCredits).toFixed(2);
         msg = `<span class="danger">This target is mathematically out of reach</span> with ${remaining} credits remaining. ` +
-              `Consider setting a target of <span class="highlight">${((4.0 * remaining + currentPts) / totalCredits).toFixed(2)}</span> as your ceiling, ` +
-              `or increasing credits via retakes.`;
+              `Your ceiling with perfect grades is <span class="highlight">${ceiling}</span>. ` +
+              `Consider lowering your target or adding credits via retakes.`;
       } else {
         msg = `<span class="highlight">You've already achieved CGPA ${target.toFixed(2)}!</span> Set a higher goal.`;
       }
