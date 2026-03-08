@@ -396,7 +396,7 @@
     .simulator-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
     .simulator-row input { background: var(--input-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; padding: 8px 12px; width: 90px; outline: none; transition: border-color 0.2s, background 0.2s; }
     .simulator-row input:focus { border-color: rgba(46,204,113,0.55); background: rgba(46,204,113,0.05); }
-    .simulator-result { margin-top: 0.8rem; font-size: 13px; color: var(--text2); line-height: 1.6; min-height: 20px; }
+    .simulator-result { margin-top: 0.8rem; font-size: 13px; color: var(--text2); line-height: 1.6; min-height: 20px; overflow-x: auto; }
     .simulator-result .highlight { color: var(--green); font-weight: 600; }
     .simulator-result .warn { color: var(--gold); font-weight: 600; }
     .simulator-result .danger { color: #e74c3c; font-weight: 600; }
@@ -434,7 +434,7 @@
       html, body { overflow-x: hidden; max-width: 100%; }
       nav { padding: 0 1rem; height: 56px; }
       .nav-logo-text { font-size: 15px; } .nav-logo-mark { width: 28px; height: 28px; font-size: 12px; }
-      .nav-link { font-size: 12px; } .theme-toggle { width: 46px; height: 24px; }
+      .nav-link { display: none; } .theme-toggle { width: 46px; height: 24px; }
       .toggle-pill { width: 18px; height: 18px; font-size: 11px; }
       [data-theme="dark"] .toggle-pill { transform: translateX(22px); }
       .hero { padding: 5rem 1.2rem 3rem; min-height: 100svh; }
@@ -450,11 +450,11 @@
       .calc-wrapper { border-radius: 14px; }
       .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
       .cgpa-display { align-self: flex-end; } .cgpa-display .cgpa-val { font-size: 2rem; }
-      .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; gap: 0.8rem; }
+      .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; align-items: stretch; gap: 0.8rem; }
       .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .course-row { grid-template-columns: 1fr 40px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
-      .credits-static { font-size: 12px; } .btn-add-semester { width: 100%; text-align: center; }
+      .credits-static { font-size: 12px; } .btn-add-semester, .btn-running-sem, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
       .semester-head { padding: 0.7rem 1rem; }
       footer { padding: 2rem 1.2rem; }
       .orb-1 { width: 280px; height: 280px; } .orb-2 { width: 220px; height: 220px; } .orb-3 { width: 180px; height: 180px; }
@@ -783,6 +783,13 @@
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
+    }
+
+    .footer-btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
     }
     .btn-clear-data {
       padding: 10px 18px;
