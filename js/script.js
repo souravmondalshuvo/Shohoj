@@ -1105,8 +1105,10 @@
           // Only the active (non-retaken) grade counts toward CGPA pts
           if (!isRetaken) {
             totalPts += gp * c.credits;
-            // CGPA denominator: earned across ALL sems (including running)
-            if (gp > 0) totalEarnedCGPA += c.credits;
+            // CGPA denominator: ATTEMPTED credits of active courses (includes F and F(NT))
+            // BRACU formula: CGPA = totalPts / totalAttempted (not earned)
+            // F(NT) = gp 0, null check excludes only P(null) and I(null)
+            if (gp !== null) totalEarnedCGPA += c.credits;
           }
           // Credits earned for progress bar: completed sems only, using completed-only retake keys
           if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
@@ -1121,10 +1123,10 @@
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
-          if (c.grade === 'F(NT)') return;
           if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
           completedPts += gp * c.credits;
-          if (gp > 0) completedEarned += c.credits;
+          // BRACU denominator = attempted credits (includes F and F(NT) with 0 pts)
+          if (gp !== null) completedEarned += c.credits;
         });
       });
       const cgpaCompleted = completedEarned > 0 ? completedPts / completedEarned : null;
@@ -1412,18 +1414,17 @@
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
           if (!sem.running) totalAttempted += c.credits;
-          if (c.grade === 'F(NT)') return;
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-          if (!isRetaken) { totalPts += gp * c.credits; if (gp > 0) totalEarnedCGPA += c.credits; }
+          if (!isRetaken) { totalPts += gp * c.credits; if (gp !== null) totalEarnedCGPA += c.credits; }
           if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
         });
       });
       semesters.filter(s => !s.running).forEach(sem => {
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
-          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
+          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
           if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
-          completedPts += gp * c.credits; if (gp > 0) completedEarned += c.credits;
+          completedPts += gp * c.credits; if (gp !== null) completedEarned += c.credits;
         });
       });
       const cgpa          = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
