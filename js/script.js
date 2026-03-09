@@ -2074,8 +2074,68 @@
     }
 
     // ── PDF TRANSCRIPT IMPORT ─────────────────────────────
+    // Returns theme-matched colors for the import modal
+    function getModalTheme() {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      if (isDark) {
+        return {
+          isDark,
+          // Card background is set in index.html as #0f1f14
+          text:              '#e8f0ea',
+          text2:             '#8aab90',
+          text3:             '#6a9b72',
+          tableHeadBg:       'rgba(46,204,113,0.06)',
+          tableRowBorder:    'rgba(46,204,113,0.10)',
+          warnBg:            'rgba(240,165,0,0.10)',
+          warnBorder:        'rgba(240,165,0,0.25)',
+          warnText:          '#F0A500',
+          cancelColor:       'rgba(255,255,255,0.65)',
+          cancelBorder:      'rgba(255,255,255,0.18)',
+          cancelHoverBg:     'rgba(255,255,255,0.08)',
+          cancelHoverBorder: 'rgba(255,255,255,0.35)',
+          cancelHoverColor:  '#ffffff',
+          tableBorder:       'rgba(46,204,113,0.18)',
+        };
+      } else {
+        return {
+          isDark,
+          // Card background set to white in index.html for light theme
+          text:              '#0d2914',
+          text2:             '#3a6b47',
+          text3:             '#5a8f65',
+          tableHeadBg:       'rgba(46,204,113,0.08)',
+          tableRowBorder:    'rgba(46,204,113,0.12)',
+          warnBg:            'rgba(240,165,0,0.08)',
+          warnBorder:        'rgba(240,165,0,0.30)',
+          warnText:          '#b07800',
+          cancelColor:       '#3a6b47',
+          cancelBorder:      'rgba(46,204,113,0.35)',
+          cancelHoverBg:     'rgba(46,204,113,0.08)',
+          cancelHoverBorder: 'rgba(46,204,113,0.5)',
+          cancelHoverColor:  '#0d2914',
+          tableBorder:       'rgba(46,204,113,0.22)',
+        };
+      }
+    }
+
     function showImportModal(html) {
       const modal = document.getElementById('importModal');
+      const card  = document.getElementById('importModalCard');
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      // Backdrop: dark overlay in dark mode, soft green-tinted in light mode
+      modal.style.background = isDark
+        ? 'rgba(0,0,0,0.75)'
+        : 'rgba(13,41,20,0.45)';
+      // Apply theme-matched card styling
+      if (isDark) {
+        card.style.background   = '#0f1f14';
+        card.style.border       = '1px solid rgba(46,204,113,0.22)';
+        card.style.boxShadow    = '0 24px 80px rgba(0,0,0,0.6)';
+      } else {
+        card.style.background   = '#ffffff';
+        card.style.border       = '1px solid rgba(46,204,113,0.30)';
+        card.style.boxShadow    = '0 24px 80px rgba(46,204,113,0.15), 0 0 0 1px rgba(255,255,255,0.9)';
+      }
       document.getElementById('importModalContent').innerHTML = html;
       modal.style.display = 'flex';
     }
@@ -2097,11 +2157,12 @@
       if (!file) return;
 
       // Loading state
+      const t = getModalTheme();
       showImportModal(`
         <div style="text-align:center;padding:20px 0">
           <div style="font-size:28px;margin-bottom:12px">⏳</div>
-          <div style="font-size:15px;font-weight:600;color:var(--text)">Reading transcript…</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:6px">Parsing your grade sheet</div>
+          <div style="font-size:15px;font-weight:600;color:${t.text}">Reading transcript…</div>
+          <div style="font-size:12px;color:${t.text3};margin-top:6px">Parsing your grade sheet</div>
         </div>`);
 
       try {
@@ -2141,54 +2202,67 @@
         }
 
         // ── CONFIRM MODAL ──────────────────────────────
+        const _mt = getModalTheme();
         const semRows = parsed.semesters.map(s =>
           `<tr>
-            <td style="padding:4px 8px;color:var(--text);font-size:13px">${s.name}</td>
-            <td style="padding:4px 8px;text-align:center;color:var(--text3);font-size:13px">${s.courses.length} courses</td>
+            <td style="padding:4px 8px;color:${_mt.text};font-size:13px">${s.name}</td>
+            <td style="padding:4px 8px;text-align:center;color:${_mt.text3};font-size:13px">${s.courses.length} courses</td>
             <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P').length} graded</td>
           </tr>`
         ).join('');
 
         const totalCourses = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
 
+        const t2 = getModalTheme();
         showImportModal(`
           <div style="margin-bottom:16px">
-            <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">📄 Transcript Parsed</div>
-            <div style="font-size:12px;color:var(--text3)">Found <strong style="color:#1DB954">${parsed.semesters.length} semesters</strong> and <strong style="color:#1DB954">${totalCourses} courses</strong></div>
+            <div style="font-size:18px;font-weight:700;color:${t2.text};margin-bottom:4px">📄 Transcript Parsed</div>
+            <div style="font-size:12px;color:${t2.text3}">Found <strong style="color:#1DB954">${parsed.semesters.length} semesters</strong> and <strong style="color:#1DB954">${totalCourses} courses</strong></div>
           </div>
-          <div style="overflow-x:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:8px">
+          <div style="overflow-x:auto;margin-bottom:16px;border:1px solid ${t2.tableBorder};border-radius:8px">
             <table style="width:100%;border-collapse:collapse">
-              <thead><tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,0.03)">
-                <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Semester</th>
-                <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Courses</th>
-                <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Graded</th>
+              <thead><tr style="border-bottom:1px solid ${t2.tableRowBorder};background:${t2.tableHeadBg}">
+                <th style="padding:6px 8px;text-align:left;font-size:10px;color:${t2.text3};text-transform:uppercase;letter-spacing:1px">Semester</th>
+                <th style="padding:6px 8px;text-align:center;font-size:10px;color:${t2.text3};text-transform:uppercase;letter-spacing:1px">Courses</th>
+                <th style="padding:6px 8px;text-align:center;font-size:10px;color:${t2.text3};text-transform:uppercase;letter-spacing:1px">Graded</th>
               </tr></thead>
               <tbody>${semRows}</tbody>
             </table>
           </div>
-          ${parsed.detectedDept ? `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">🎓 Detected department: <strong style="color:var(--text)">${parsed.detectedDept}</strong></div>` : ''}
-          <div style="font-size:12px;color:#F0A500;margin-bottom:16px;padding:8px 10px;background:rgba(240,165,0,0.08);border-radius:6px;border:1px solid rgba(240,165,0,0.2)">
+          ${parsed.detectedDept ? `<div style="font-size:12px;color:${t2.text3};margin-bottom:12px">🎓 Detected department: <strong style="color:${t2.text}">${parsed.detectedDept}</strong></div>` : ''}
+          <div style="font-size:12px;color:${t2.warnText};margin-bottom:16px;padding:8px 10px;background:${t2.warnBg};border-radius:6px;border:1px solid ${t2.warnBorder}">
             ⚠ This will <strong>replace</strong> your current data. Any unsaved changes will be lost.
           </div>
           <div style="display:flex;gap:10px">
             <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;')})"
-              style="flex:1;padding:10px;border-radius:8px;border:none;background:#1DB954;color:#000;font-weight:700;font-size:14px;cursor:pointer">
+              onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(29,185,84,0.4)'"
+              onmouseleave="this.style.background='#1DB954';this.style.transform='translateY(0)';this.style.boxShadow='none'"
+              onmousedown="this.style.transform='translateY(1px)';this.style.boxShadow='none'"
+              onmouseup="this.style.transform='translateY(-1px)'"
+              style="flex:1;padding:10px;border-radius:8px;border:none;background:#1DB954;color:#000;font-weight:700;font-size:14px;cursor:pointer;transition:background 0.15s,transform 0.1s,box-shadow 0.15s">
               ✅ Import Now
             </button>
             <button onclick="hideImportModal()"
-              style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer">
+              onmouseenter="this.style.background='${t2.cancelHoverBg}';this.style.borderColor='${t2.cancelHoverBorder}';this.style.color='${t2.cancelHoverColor}';this.style.transform='translateY(-1px)'"
+              onmouseleave="this.style.background='transparent';this.style.borderColor='${t2.cancelBorder}';this.style.color='${t2.cancelColor}';this.style.transform='translateY(0)'"
+              onmousedown="this.style.transform='translateY(1px)'"
+              onmouseup="this.style.transform='translateY(-1px)'"
+              style="padding:10px 16px;border-radius:8px;border:1px solid ${t2.cancelBorder};background:transparent;color:${t2.cancelColor};font-size:14px;cursor:pointer;transition:background 0.15s,border-color 0.15s,color 0.15s,transform 0.1s">
               Cancel
             </button>
           </div>`);
 
       } catch (err) {
+        const te = getModalTheme();
         showImportModal(`
           <div style="text-align:center;padding:8px 0">
             <div style="font-size:28px;margin-bottom:12px">❌</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">Import Failed</div>
-            <div style="font-size:12px;color:var(--text3);margin-bottom:20px;line-height:1.6">${err.message}</div>
+            <div style="font-size:15px;font-weight:600;color:${te.text};margin-bottom:8px">Import Failed</div>
+            <div style="font-size:12px;color:${te.text3};margin-bottom:20px;line-height:1.6">${err.message}</div>
             <button onclick="hideImportModal()"
-              style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">
+              onmouseenter="this.style.background='${te.cancelHoverBg}';this.style.borderColor='${te.cancelHoverBorder}';this.style.color='${te.cancelHoverColor}'"
+              onmouseleave="this.style.background='transparent';this.style.borderColor='${te.cancelBorder}';this.style.color='${te.cancelColor}'"
+              style="padding:8px 20px;border-radius:8px;border:1px solid ${te.cancelBorder};background:transparent;color:${te.cancelColor};cursor:pointer;transition:background 0.15s,border-color 0.15s,color 0.15s">
               Close
             </button>
           </div>`);
