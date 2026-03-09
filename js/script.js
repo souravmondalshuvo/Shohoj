@@ -1359,12 +1359,163 @@
         const ceiling = ((4.0 * remaining + currentPts) / totalCredits).toFixed(2);
         msg = `<span class="danger">This target is mathematically out of reach</span> with ${remaining} credits remaining. ` +
               `Your ceiling with perfect grades is <span class="highlight">${ceiling}</span>. ` +
-              `Consider lowering your target or adding credits via retakes.`;
+              `Consider lowering your target or boosting via strategic retakes below.`;
       } else {
         msg = `<span class="highlight">You've already achieved CGPA ${target.toFixed(2)}!</span> Set a higher goal.`;
       }
+
+      // ── RETAKE SUGGESTIONS ──────────────────────────────
+      msg += buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target);
+
       resultEl.innerHTML = msg;
     }
+
+    // ── RETAKE SUGGESTION STATE ───────────────────────────
+    // Tracks which candidate courses the user has checked in the retake table
+    const _retakeChecked = new Set(); // keys: "courseName||semName"
+
+    function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target) {
+      if (currentCgpa === null || !semesters.length) return '';
+
+      const retakenKeys = getRetakenKeys();
+      const candidates = [];
+
+      semesters.forEach(sem => {
+        if (sem.running) return;
+        sem.courses.forEach((c, i) => {
+          if (!c.name.trim() || !c.credits) return;
+          const gp = GRADES[c.grade];
+          if (gp === undefined || gp === null) return;
+          if (retakenKeys.has(`${sem.id}-${i}`)) return;
+          if (gp >= 3.0) return; // B or above — not worth retaking for CGPA
+
+          const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
+          const key = `${c.name}||${semLabel}`;
+
+          // CGPA delta formula: (gpNew - gpOld) * credits / totalAttempted
+          // currentCredits = totalAttempted (denominator)
+          const boostToB  = c.credits * (3.0 - gp) / currentCredits;
+          const boostToA  = c.credits * (4.0 - gp) / currentCredits;
+
+          candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
+                            sem: semLabel, key, boostToB, boostToA });
+        });
+      });
+
+      if (!candidates.length) return '';
+
+      // Sort: biggest boost to B first (highest impact)
+      candidates.sort((a, b) => b.boostToB - a.boostToB);
+      const top = candidates.slice(0, 6);
+
+      // Clean up stale checked keys
+      for (const k of [..._retakeChecked]) {
+        if (!top.find(c => c.key === k)) _retakeChecked.delete(k);
+      }
+
+      // ── Grade colour helper ─────────────────────────────
+      const gradeCol = g =>
+        (g === 'F' || g === 'F(NT)') ? '#e74c3c' :
+        (g === 'D' || g === 'D-' || g === 'D+') ? '#e67e22' : '#F0A500';
+
+      // ── Build table rows ────────────────────────────────
+      let cumBoost = 0;
+      let ptsAfter  = currentPts;
+      let credAfter = currentCredits; // denom stays same (retake doesn't add to attempted)
+
+      const rows = top.map((c, idx) => {
+        const checked = _retakeChecked.has(c.key);
+        if (checked) { cumBoost += c.boostToB; ptsAfter += c.credits * (3.0 - c.gp); }
+        const cgpaIfB = Math.min(4.0, currentCgpa + c.boostToB).toFixed(2);
+        const cgpaIfA = Math.min(4.0, currentCgpa + c.boostToA).toFixed(2);
+        const chk = checked
+          ? `<span style="color:#2ECC71;font-size:14px">☑</span>`
+          : `<span style="color:var(--text3);font-size:14px">☐</span>`;
+        const rowBg = checked ? 'background:rgba(29,185,84,0.07);' : '';
+        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
+                    onclick="window._toggleRetake('${c.key.replace(/'/g,"\\'")}')">
+          <td style="padding:6px 8px;font-size:12px">${chk}</td>
+          <td style="padding:6px 8px;color:var(--text1);font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${c.sem}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:12px">
+            <span style="font-weight:700;color:${gradeCol(c.grade)}">${c.grade}</span>
+            <span style="color:var(--text3)"> → </span>
+            <span style="font-weight:700;color:#2ECC71">B</span>
+          </td>
+          <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
+        </tr>`;
+      }).join('');
+
+      // ── Cumulative impact panel ─────────────────────────
+      const cgpaAfterRetakes = Math.min(4.0, currentCgpa + cumBoost);
+      const checkedCount = _retakeChecked.size;
+
+      let retakeImpactHtml = '';
+      if (checkedCount > 0 && target) {
+        const remaining = parseFloat(document.getElementById('creditsRemaining').value) || 0;
+        // After retakes: how much do you still need from new credits?
+        const newNeededPts = target * (credAfter + remaining) - ptsAfter;
+        const newNeededGPA = remaining > 0 ? newNeededPts / remaining : null;
+        const cgpaColor = cgpaAfterRetakes >= target ? '#2ECC71' : cgpaAfterRetakes >= 3.0 ? '#F0A500' : '#e74c3c';
+        const targetLine = (newNeededGPA !== null && remaining > 0)
+          ? (newNeededGPA > 4.0
+              ? `Even with these retakes, reaching <strong>${target.toFixed(2)}</strong> requires more than perfect grades from remaining credits.`
+              : newNeededGPA <= 0
+              ? `🎉 With these retakes alone, you'd already exceed your target of <strong style="color:#2ECC71">${target.toFixed(2)}</strong>!`
+              : `After these retakes, you'd need avg GPA <strong style="color:${newNeededGPA >= 3.5 ? '#F0A500' : '#2ECC71'}">${newNeededGPA.toFixed(2)}</strong> from your remaining <strong>${remaining}</strong> credits to hit <strong>${target.toFixed(2)}</strong>.`)
+          : '';
+
+        retakeImpactHtml = `
+          <div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.2)">
+            <div style="font-size:12px;color:var(--text2)">
+              ✅ <strong>${checkedCount} retake${checkedCount > 1 ? 's' : ''} selected</strong> —
+              CGPA goes from <strong>${currentCgpa.toFixed(2)}</strong> →
+              <strong style="color:${cgpaColor};font-size:14px">${cgpaAfterRetakes.toFixed(2)}</strong>
+              <span style="color:var(--text3);font-size:11px">(+${cumBoost.toFixed(2)} boost if all raised to B)</span>
+            </div>
+            ${targetLine ? `<div style="margin-top:6px;font-size:12px;color:var(--text2)">${targetLine}</div>` : ''}
+          </div>`;
+      } else if (checkedCount === 0) {
+        retakeImpactHtml = `
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">
+            💡 Click any row to select it and see how your CGPA changes after those retakes.
+          </div>`;
+      }
+
+      return `
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:4px">
+            🔁 Smart Retake Strategy
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+            Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking retakes.
+          </div>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border)">
+                  <th style="padding:4px 8px;width:24px"></th>
+                  <th style="padding:4px 8px;text-align:left;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Course</th>
+                  <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Semester</th>
+                  <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Grade → Target</th>
+                  <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (B)</th>
+                  <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (A)</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          ${retakeImpactHtml}
+        </div>`;
+    }
+
+    // Global toggle handler for retake checkboxes (called from inline onclick)
+    window._toggleRetake = function(key) {
+      if (_retakeChecked.has(key)) _retakeChecked.delete(key);
+      else _retakeChecked.add(key);
+      recalc(); // re-render simulator with updated selection
+    };
 
     document.getElementById('targetCgpa').addEventListener('input', recalc);
     document.getElementById('creditsRemaining').addEventListener('input', recalc);
