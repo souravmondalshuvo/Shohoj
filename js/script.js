@@ -1161,10 +1161,10 @@
         const gpa = calcSemGPA(sem);
         const isRunning = !!sem.running;
         return `
-        <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}"><div class="lg-shine"></div>
+        <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}" draggable="${isRunning ? 'false' : 'true'}"><div class="lg-shine"></div>
           <div class="semester-head">
             <div class="semester-head-left">
-              <span class="semester-label">${sem.name}</span>
+              ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}           <span class="semester-label">${sem.name}</span>
               ${isRunning
                 ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
                 : (gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : '')
@@ -1204,7 +1204,14 @@
                   onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
                 ${isRetaken ? `<span class="retaken-badge">Retaken</span>` : ''}
               </div>
-              <span class="credits-static">${c.credits}</span>
+              <span class="credits-static-wrap">
+                <span class="credits-static">${c.credits}</span>${
+                  c.name.trim() && c.credits > 0 && ![0.5,1,1.5,2,2.5,3,3.5,4].includes(c.credits)
+                    ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
+                    : c.name.trim() && c.credits > 0 && c.credits > 4
+                    ? `<span class="credit-error-dot" title="Credits above 4 is unusual"></span>`
+                    : ''
+                }</span>
               ${c.credits === 0 && c.name.trim() !== ''
                 ? `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
                     <option value="" disabled ${!c.grade ? 'selected' : ''}>P / F</option>
@@ -1236,6 +1243,93 @@
           </div>
         </div>`;
       }).join('');
+
+      // ── EMPTY STATE ──────────────────────────────────────
+      if (semesters.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🎓</div>
+            <div class="empty-state-title">No semesters yet</div>
+            <div class="empty-state-sub">
+              Add your first semester to start tracking your CGPA,
+              or load sample data to see how everything works.
+            </div>
+            <div class="empty-state-actions">
+              <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
+              <button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>
+            </div>
+            <div class="empty-arrow">← use the buttons above too &nbsp;↑</div>
+          </div>`;
+        return;
+      }
+
+      // ── DRAG-AND-DROP WIRING ─────────────────────────────
+      setTimeout(() => {
+        let dragSrcId = null;
+        container.querySelectorAll('.semester-block[draggable="true"]').forEach(block => {
+          block.addEventListener('dragstart', e => {
+            dragSrcId = parseInt(block.id.replace('sem-', ''));
+            block.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          block.addEventListener('dragend', () => {
+            block.classList.remove('dragging');
+            container.querySelectorAll('.semester-block').forEach(b => b.classList.remove('drag-over'));
+          });
+          block.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            container.querySelectorAll('.semester-block').forEach(b => b.classList.remove('drag-over'));
+            const targetId = parseInt(block.id.replace('sem-', ''));
+            if (targetId !== dragSrcId) block.classList.add('drag-over');
+          });
+          block.addEventListener('dragleave', () => block.classList.remove('drag-over'));
+          block.addEventListener('drop', e => {
+            e.preventDefault();
+            block.classList.remove('drag-over');
+            const targetId = parseInt(block.id.replace('sem-', ''));
+            if (dragSrcId === null || dragSrcId === targetId) return;
+            const srcIdx = semesters.findIndex(s => s.id === dragSrcId);
+            const tgtIdx = semesters.findIndex(s => s.id === targetId);
+            if (srcIdx < 0 || tgtIdx < 0) return;
+            const [moved] = semesters.splice(srcIdx, 1);
+            semesters.splice(tgtIdx, 0, moved);
+            dragSrcId = null;
+            renderSemesters();
+            recalc();
+            saveState();
+          });
+        });
+      }, 0);
+    }
+
+    // ── SAMPLE DATA LOADER ───────────────────────────────────
+    function loadSampleData() {
+      if (semesters.length > 0 &&
+          !confirm('This will replace your current data. Continue?')) return;
+      semesters = [];
+      semesterCounter = 0;
+      const sample = [
+        { name: 'Fall 2024', courses: [
+          { name: 'Programming Language I (CSE110)',   credits: 3, grade: 'B+', gradePoint: 3.3 },
+          { name: 'Fundamentals of English (ENG101)',  credits: 3, grade: 'A-', gradePoint: 3.7 },
+          { name: 'Remedial Mathematics (MAT092)',     credits: 0, grade: 'P',  gradePoint: 'P' },
+          { name: 'Principles of Physics I (PHY111)', credits: 3, grade: 'B',  gradePoint: 3.0 },
+        ]},
+        { name: 'Spring 2025', courses: [
+          { name: 'Programming Language II (CSE111)',  credits: 3, grade: 'B-', gradePoint: 2.7 },
+          { name: 'Discrete Mathematics (CSE230)',     credits: 3, grade: 'B+', gradePoint: 3.3 },
+          { name: 'Differential Calculus (MAT110)',    credits: 3, grade: 'A',  gradePoint: 4.0 },
+          { name: 'Principles of Physics II (PHY112)', credits: 3, grade: 'B',  gradePoint: 3.0 },
+        ]},
+      ];
+      sample.forEach(s => {
+        const id = semesterCounter++;
+        semesters.push({ id, name: s.name, courses: s.courses });
+      });
+      renderSemesters();
+      recalc();
+      saveState();
     }
 
     function onPFChange(semId, cIdx, val) {
