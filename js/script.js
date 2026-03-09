@@ -2086,9 +2086,10 @@
       const fi = document.getElementById('transcriptFileInput');
       if (fi) fi.value = '';
     }
-    // Close modal on backdrop click
+    // Close modal on backdrop click (not when clicking inside the card)
     document.getElementById('importModal').addEventListener('click', function(e) {
-      if (e.target === this) hideImportModal();
+      const card = document.getElementById('importModalCard');
+      if (card && !card.contains(e.target)) hideImportModal();
     });
 
     async function importTranscriptPDF(inputEl) {
