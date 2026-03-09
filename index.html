@@ -17,6 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
   <div id="scroll-progress"></div>
@@ -37,6 +38,13 @@
   <!-- DOT MATRIX CANVAS -->
   <canvas id="dot-matrix"></canvas>
   <div id="suggestions-portal"></div>
+
+  <!-- Import Transcript Modal -->
+  <div id="importModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:28px 32px;max-width:480px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+      <div id="importModalContent"></div>
+    </div>
+  </div>
   <!-- CURSOR GLOW -->
   <div id="cursor-glow"></div>
   <div class="orb orb-1"></div>
@@ -327,6 +335,8 @@
         <div class="footer-btn-group">
           <button class="btn-add-semester magnetic" id="addSemesterBtn">+ Add Semester</button>
           <button class="btn-running-sem magnetic" id="addRunningSemBtn">🎯 Running Semester</button>
+          <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
+          <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
           <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
         </div>
