@@ -1709,7 +1709,7 @@
         return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
                     onclick="window._toggleRetake('${c.key.replace(/'/g,"\\'")}')">
           <td style="padding:6px 8px;font-size:12px">${chk}</td>
-          <td style="padding:6px 8px;color:var(--text1);font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+          <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
           <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${c.sem}</td>
           <td style="padding:6px 8px;text-align:center;font-size:12px">
             <span style="font-weight:700;color:${gradeCol(c.grade)}">${c.grade}</span>
@@ -2072,6 +2072,266 @@
       const fname = `CGPA_Report_${new Date().toISOString().slice(0,10)}.pdf`;
       doc.save(fname);
     }
+
+    // ── PDF TRANSCRIPT IMPORT ─────────────────────────────
+    function showImportModal(html) {
+      const modal = document.getElementById('importModal');
+      document.getElementById('importModalContent').innerHTML = html;
+      modal.style.display = 'flex';
+    }
+    function hideImportModal() {
+      const modal = document.getElementById('importModal');
+      modal.style.display = 'none';
+      // Reset file input so same file can be re-selected
+      const fi = document.getElementById('transcriptFileInput');
+      if (fi) fi.value = '';
+    }
+    // Close modal on backdrop click
+    document.getElementById('importModal').addEventListener('click', function(e) {
+      if (e.target === this) hideImportModal();
+    });
+
+    async function importTranscriptPDF(inputEl) {
+      const file = inputEl.files[0];
+      if (!file) return;
+
+      // Loading state
+      showImportModal(`
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:28px;margin-bottom:12px">⏳</div>
+          <div style="font-size:15px;font-weight:600;color:var(--text)">Reading transcript…</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:6px">Parsing your grade sheet</div>
+        </div>`);
+
+      try {
+        // Set PDF.js worker
+        if (window.pdfjsLib) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        } else {
+          throw new Error('PDF.js not loaded. Check your internet connection.');
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        // Extract all text from all pages
+        let fullText = '';
+        for (let p = 1; p <= pdf.numPages; p++) {
+          const page = await pdf.getPage(p);
+          const content = await page.getTextContent();
+          // Join items with spaces, preserve line breaks via y-position grouping
+          let lastY = null;
+          for (const item of content.items) {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 3) {
+              fullText += '\n';
+            }
+            fullText += item.str + ' ';
+            lastY = item.transform[5];
+          }
+          fullText += '\n';
+        }
+
+        // ── PARSE ──────────────────────────────────────
+        const parsed = parseTranscriptText(fullText);
+
+        if (!parsed.semesters.length) {
+          throw new Error('No BRACU semester data found. Make sure this is an official BRACU grade sheet (Unofficial Copy).');
+        }
+
+        // ── CONFIRM MODAL ──────────────────────────────
+        const semRows = parsed.semesters.map(s =>
+          `<tr>
+            <td style="padding:4px 8px;color:var(--text);font-size:13px">${s.name}</td>
+            <td style="padding:4px 8px;text-align:center;color:var(--text3);font-size:13px">${s.courses.length} courses</td>
+            <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P').length} graded</td>
+          </tr>`
+        ).join('');
+
+        const totalCourses = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
+
+        showImportModal(`
+          <div style="margin-bottom:16px">
+            <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">📄 Transcript Parsed</div>
+            <div style="font-size:12px;color:var(--text3)">Found <strong style="color:#1DB954">${parsed.semesters.length} semesters</strong> and <strong style="color:#1DB954">${totalCourses} courses</strong></div>
+          </div>
+          <div style="overflow-x:auto;margin-bottom:16px;border:1px solid var(--border);border-radius:8px">
+            <table style="width:100%;border-collapse:collapse">
+              <thead><tr style="border-bottom:1px solid var(--border);background:rgba(255,255,255,0.03)">
+                <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Semester</th>
+                <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Courses</th>
+                <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Graded</th>
+              </tr></thead>
+              <tbody>${semRows}</tbody>
+            </table>
+          </div>
+          ${parsed.detectedDept ? `<div style="font-size:12px;color:var(--text3);margin-bottom:12px">🎓 Detected department: <strong style="color:var(--text)">${parsed.detectedDept}</strong></div>` : ''}
+          <div style="font-size:12px;color:#F0A500;margin-bottom:16px;padding:8px 10px;background:rgba(240,165,0,0.08);border-radius:6px;border:1px solid rgba(240,165,0,0.2)">
+            ⚠ This will <strong>replace</strong> your current data. Any unsaved changes will be lost.
+          </div>
+          <div style="display:flex;gap:10px">
+            <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;')})"
+              style="flex:1;padding:10px;border-radius:8px;border:none;background:#1DB954;color:#000;font-weight:700;font-size:14px;cursor:pointer">
+              ✅ Import Now
+            </button>
+            <button onclick="hideImportModal()"
+              style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:14px;cursor:pointer">
+              Cancel
+            </button>
+          </div>`);
+
+      } catch (err) {
+        showImportModal(`
+          <div style="text-align:center;padding:8px 0">
+            <div style="font-size:28px;margin-bottom:12px">❌</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px">Import Failed</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:20px;line-height:1.6">${err.message}</div>
+            <button onclick="hideImportModal()"
+              style="padding:8px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer">
+              Close
+            </button>
+          </div>`);
+      }
+    }
+
+    function parseTranscriptText(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const semesters = [];
+      let currentSem = null;
+      let detectedDept = '';
+
+      // Detect department from header text
+      if (/COMPUTER SCIENCE/i.test(text)) detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
+      else if (/ELECTRICAL/i.test(text)) detectedDept = 'B.Sc. in Electrical and Electronic Engineering (EEE)';
+      else if (/BUSINESS ADMINISTRATION/i.test(text)) detectedDept = 'Bachelor of Business Administration (BBA)';
+      else if (/ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
+      else if (/LAW/i.test(text)) detectedDept = 'LL.B. (Hons) in Law';
+      else if (/PHARMACY/i.test(text)) detectedDept = 'B. Pharm';
+      else if (/ARCHITECTURE/i.test(text)) detectedDept = 'B.Arch';
+
+      // Course regex: code + title (multi-word) + credits + grade + grade points
+      // Handles: C-, B+, F (NT), C+ (RT), P, D+
+      const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z]\s*\([A-Z]+\)|[A-Z][+-]?\s*\([A-Z]+\))|P|F)\s+([\d]+\.[\d]+)\s*$/;
+      const semRe    = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+
+      const SEASON_MAP = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
+
+      for (const line of lines) {
+        // Semester header detection
+        const semMatch = line.match(semRe);
+        if (semMatch) {
+          const season = SEASON_MAP[semMatch[1].toUpperCase()] || semMatch[1];
+          const year   = semMatch[2];
+          currentSem = { name: `${season} ${year}`, season, year: parseInt(year), courses: [] };
+          semesters.push(currentSem);
+          continue;
+        }
+
+        // Skip summary lines
+        if (/^(SEMESTER|CUMULATIVE)\s+Credits/i.test(line)) continue;
+        if (/^(Credits Attempted|Credits Earned|GPA|CGPA)/i.test(line)) continue;
+        if (/^(BRAC University|Grade Sheet|Student|Name|Program|Course No)/i.test(line)) continue;
+        if (/^Page \d/i.test(line)) continue;
+
+        if (!currentSem) continue;
+
+        // Try to parse course line
+        // Normalise spacing around parenthetical grade markers
+        const normalised = line
+          .replace(/F\s*\(NT\)/g, 'F(NT)')
+          .replace(/([A-Z][+-]?)\s*\(RT\)/g, '$1(RT)')
+          .replace(/\s{2,}/g, ' ');
+
+        const m = normalised.match(courseRe);
+        if (m) {
+          let [, code, title, creditsStr, grade, gpStr] = m;
+          grade  = grade.trim();
+          const credits   = parseFloat(creditsStr);
+          const gradePoint = parseFloat(gpStr);
+          const isRetake  = grade.includes('(RT)');
+          // Clean grade: strip (RT), normalise F(NT)
+          let cleanGrade = grade.replace(/\s*\(RT\)\s*/g, '').trim();
+          if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
+
+          // Title case the course name from transcript (it's ALL CAPS)
+          const titleCased = title.trim().split(/\s+/).map(w =>
+            w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
+          ).join(' ');
+
+          // Match against COURSE_DB for canonical name/credits
+          const dbEntry = COURSE_DB[code];
+          const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${code})`;
+          const finalCredits = dbEntry ? dbEntry.credits : credits;
+
+          currentSem.courses.push({
+            name: finalName, credits: finalCredits,
+            grade: cleanGrade,
+            gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gradePoint > 0 ? gradePoint : (cleanGrade === 'F' ? '0' : '')),
+            _wasRetake: isRetake,
+          });
+        }
+      }
+
+      // Remove empty semesters
+      return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
+    }
+
+    function applyImport(parsed) {
+      hideImportModal();
+
+      // Detect start season/year from first semester
+      const first = parsed.semesters[0];
+      if (first) {
+        const seasonSel = document.getElementById('startSeason');
+        const yearSel   = document.getElementById('startYear');
+        if (seasonSel) seasonSel.value = first.season;
+        if (yearSel)   yearSel.value   = String(first.year);
+      }
+
+      // Set department if detected
+      if (parsed.detectedDept) {
+        const deptSel = document.getElementById('deptSelect');
+        const match = Object.entries(DEPARTMENTS).find(([,d]) => d.label === parsed.detectedDept);
+        if (match && deptSel) {
+          deptSel.value = match[0];
+          currentDept = match[0];
+          const dept = DEPARTMENTS[currentDept];
+          if (dept) {
+            document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
+            document.getElementById('deptCredits').style.display = '';
+          }
+        }
+      }
+
+      // Show the start row if hidden
+      const startRow = document.getElementById('startSemRow');
+      if (startRow) startRow.style.display = 'flex';
+
+      // Wipe old localStorage before applying imported data
+      clearState();
+
+      // Build semesters array
+      semesterCounter = 0;
+      semesters = parsed.semesters.map(s => ({
+        id: semesterCounter++,
+        name: s.name,
+        courses: s.courses,
+      }));
+
+      renderSemesters();
+      recalc();
+      saveState();
+
+      // Scroll to calculator
+      const calc = document.getElementById('calculator');
+      if (calc) {
+        const top = calc.getBoundingClientRect().top + window.scrollY - 80;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    }
+
+    window.applyImport    = applyImport;
+    window.hideImportModal = hideImportModal;
 
     function initCalculator() {
       document.getElementById('deptCreditsText').textContent = '';
