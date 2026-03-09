@@ -2201,13 +2201,14 @@
       let detectedDept = '';
 
       // Detect department from header text
-      if (/COMPUTER SCIENCE/i.test(text)) detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
+      // Note: PDF.js may split "COMPUTER\nSCIENCE" across lines — use \s* to bridge
+      if (/COMPUTER[\s\S]{0,10}SCIENCE/i.test(text) || /B\.?SC\.?\s+IN\s+COMPUTER/i.test(text)) detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
       else if (/ELECTRICAL/i.test(text)) detectedDept = 'B.Sc. in Electrical and Electronic Engineering (EEE)';
       else if (/BUSINESS ADMINISTRATION/i.test(text)) detectedDept = 'Bachelor of Business Administration (BBA)';
-      else if (/ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
-      else if (/LAW/i.test(text)) detectedDept = 'LL.B. (Hons) in Law';
       else if (/PHARMACY/i.test(text)) detectedDept = 'B. Pharm';
       else if (/ARCHITECTURE/i.test(text)) detectedDept = 'B.Arch';
+      else if (/LAW/i.test(text)) detectedDept = 'LL.B. (Hons) in Law';
+      else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
 
       // Course regex: code + title (multi-word) + credits + grade + grade points
       // Handles: C-, B+, F (NT), C+ (RT), P, D+
@@ -2216,10 +2217,14 @@
 
       const SEASON_MAP = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
 
+      let pendingCode = '';   // course code from a line whose title wraps to next line
+      let pendingTitle = '';  // partial title accumulated so far
+
       for (const line of lines) {
         // Semester header detection
         const semMatch = line.match(semRe);
         if (semMatch) {
+          pendingCode = ''; pendingTitle = '';
           const season = SEASON_MAP[semMatch[1].toUpperCase()] || semMatch[1];
           const year   = semMatch[2];
           currentSem = { name: `${season} ${year}`, season, year: parseInt(year), courses: [] };
@@ -2235,13 +2240,49 @@
 
         if (!currentSem) continue;
 
-        // Try to parse course line
-        // Normalise spacing around parenthetical grade markers
+        // Normalise grade markers
         const normalised = line
           .replace(/F\s*\(NT\)/g, 'F(NT)')
           .replace(/([A-Z][+-]?)\s*\(RT\)/g, '$1(RT)')
           .replace(/\s{2,}/g, ' ');
 
+        // ── CONTINUATION LINE handling ────────────────────
+        // If previous line had a course code but title wrapped, try to complete it
+        if (pendingCode) {
+          // Continuation line looks like: "GEOMETRY 3.00 B 3.00"
+          // It starts with the rest of the title + credits + grade + gp
+          const contRe = /^(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z][+-]?\([A-Z]+\))|P|F)\s+([\d]+\.[\d]+)\s*$/;
+          const cm = normalised.match(contRe);
+          if (cm) {
+            const fullTitle = (pendingTitle + ' ' + cm[1]).trim();
+            const code = pendingCode;
+            let grade = cm[3].trim();
+            const credits    = parseFloat(cm[2]);
+            const gradePoint = parseFloat(cm[4]);
+            const isRetake   = grade.includes('(RT)');
+            let cleanGrade   = grade.replace(/\s*\(RT\)\s*/g, '').trim();
+            if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
+            const titleCased = fullTitle.split(/\s+/).map(w =>
+              w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
+            ).join(' ');
+            const dbEntry      = COURSE_DB[code];
+            const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${code})`;
+            const finalCredits = dbEntry ? dbEntry.credits : credits;
+            currentSem.courses.push({
+              name: finalName, credits: finalCredits,
+              grade: cleanGrade,
+              gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gradePoint > 0 ? gradePoint : (cleanGrade === 'F' ? '0' : '')),
+              _wasRetake: isRetake,
+            });
+            pendingCode = ''; pendingTitle = '';
+            continue;
+          }
+          // Continuation didn't resolve — line is more title text, keep accumulating
+          pendingTitle += ' ' + normalised;
+          continue;
+        }
+
+        // ── NORMAL COURSE LINE ────────────────────────────
         const m = normalised.match(courseRe);
         if (m) {
           let [, code, title, creditsStr, grade, gpStr] = m;
@@ -2249,28 +2290,33 @@
           const credits   = parseFloat(creditsStr);
           const gradePoint = parseFloat(gpStr);
           const isRetake  = grade.includes('(RT)');
-          // Clean grade: strip (RT), normalise F(NT)
           let cleanGrade = grade.replace(/\s*\(RT\)\s*/g, '').trim();
           if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
-
-          // Title case the course name from transcript (it's ALL CAPS)
           const titleCased = title.trim().split(/\s+/).map(w =>
             w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
           ).join(' ');
-
-          // Match against COURSE_DB for canonical name/credits
-          const dbEntry = COURSE_DB[code];
+          const dbEntry      = COURSE_DB[code];
           const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${code})`;
           const finalCredits = dbEntry ? dbEntry.credits : credits;
-
           currentSem.courses.push({
             name: finalName, credits: finalCredits,
             grade: cleanGrade,
             gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gradePoint > 0 ? gradePoint : (cleanGrade === 'F' ? '0' : '')),
             _wasRetake: isRetake,
           });
+          pendingCode = ''; pendingTitle = '';
+        } else {
+          // ── PARTIAL COURSE LINE (title wraps) ────────────
+          // Detect: starts with course code but no credits/grade at end
+          const partialRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
+          const pm = normalised.match(partialRe);
+          if (pm && !semRe.test(normalised)) {
+            pendingCode  = pm[1];
+            pendingTitle = pm[2];
+          }
         }
-      }
+
+      } // end for loop
 
       // Remove empty semesters
       return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
