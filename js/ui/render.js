@@ -2,16 +2,16 @@
 
 import { GRADES }         from '../core/grades.js';
 import { DEPARTMENTS }    from '../core/departments.js';
-import { semesters, saveState, clearState, whatIfMode } from '../core/state.js';
+import { state, saveState, clearState } from '../core/state.js';
 import { ordinalSup, generateSemesterNames, getStartSeason, getStartYear, countSemesters, getLastCompletedSemester } from '../core/helpers.js';
 import { app }            from '../core/registry.js';
 
 function onDeptSelect() {
       const sel = document.getElementById('deptSelect');
-      currentDept = sel.value;
-      if (!currentDept) return;
+      state.currentDept = sel.value;
+      if (!state.currentDept) return;
       app.updateSetupWizard();
-      const dept = DEPARTMENTS[currentDept];
+      const dept = DEPARTMENTS[state.currentDept];
       // show credits badge
       const creditsEl = document.getElementById('deptCredits');
       if (creditsEl) creditsEl.style.display = 'inline-flex';
@@ -20,11 +20,11 @@ function onDeptSelect() {
       const startRow = document.getElementById('startSemRow');
       if (startRow) startRow.style.display = 'flex';
       // clear semesters until user confirms (skip if just restored from storage)
-      if (_restoredFromStorage) {
-        _restoredFromStorage = false; // consume the flag — next dept change WILL wipe
+      if (state._restoredFromStorage) {
+        state._restoredFromStorage = false; // consume the flag — next dept change WILL wipe
       } else {
-        semesters = [];
-        semesterCounter = 0;
+        state.semesters = [];
+        state.semesterCounter = 0;
       }
       app.renderSemesters();
       app.recalc();
@@ -32,9 +32,9 @@ function onDeptSelect() {
 
     // Step 2: user clicks "Let's go" → build semesters
     function onStartSemConfirm() {
-      if (!currentDept) return;
+      if (!state.currentDept) return;
       if (!getStartSeason() || !getStartYear()) return;
-      const dept = DEPARTMENTS[currentDept];
+      const dept = DEPARTMENTS[state.currentDept];
       const startSeason = getStartSeason();
       const startYear   = parseInt(getStartYear());
       const last        = getLastCompletedSemester();
@@ -46,24 +46,24 @@ function onDeptSelect() {
 
       const semNames = generateSemesterNames(startSeason, startYear, semCount);
       // Skip rebuild if data was just restored from storage
-      if (_restoredFromStorage) {
-        _restoredFromStorage = false;
+      if (state._restoredFromStorage) {
+        state._restoredFromStorage = false;
         app.renderSemesters();
         app.recalc();
         return;
       }
 
-      semesters = [];
-      semesterCounter = 0;
+      state.semesters = [];
+      state.semesterCounter = 0;
       clearState(); // wipe saved state when starting fresh
 
       for (let idx = 0; idx < semCount; idx++) {
-        const id = semesterCounter++;
+        const id = state.semesterCounter++;
         const preset = dept.presets[idx];
         const courses = preset
           ? preset.courses.map(c => ({ name: '', credits: 0, grade: '', gradePoint: '' }))
           : [{ name: '', credits: 0, grade: '', gradePoint: '' }];
-        semesters.push({ id, name: semNames[idx], courses });
+        state.semesters.push({ id, name: semNames[idx], courses });
       }
 
       app.renderSemesters();
@@ -76,9 +76,9 @@ function onDeptSelect() {
 
     function addRunningSemester() {
       // Only one running semester allowed
-      if (semesters.some(s => s.running)) return;
+      if (state.semesters.some(s => s.running)) return;
       const nextName = generateNextSemesterName();
-      semesters.push({
+      state.semesters.push({
         id: Date.now(),
         name: nextName + ' (Running)',
         running: true,
@@ -91,9 +91,9 @@ function onDeptSelect() {
     function generateNextSemesterName() {
       // Generate the name of the next semester after the last one
       const SEASONS = ['Spring','Summer','Fall'];
-      if (!semesters.length) return 'Current Semester';
+      if (!state.semesters.length) return 'Current Semester';
       // Find last non-running semester
-      const last = [...semesters].reverse().find(s => !s.running);
+      const last = [...state.semesters].reverse().find(s => !s.running);
       if (!last || !last.name) return 'Current Semester';
       const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
       if (!match) return 'Current Semester';
@@ -105,31 +105,31 @@ function onDeptSelect() {
     }
 
     function addSemester(prefill = null) {
-      const id = semesterCounter++;
-      const completedCount = semesters.filter(s => !s.running).length;
+      const id = state.semesterCounter++;
+      const completedCount = state.semesters.filter(s => !s.running).length;
       const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1);
       const name = allNames[completedCount] || `Semester ${completedCount + 1}`;
       const courses = prefill || [{ name: '', credits: 0, grade: '', gradePoint: '' }];
-      semesters.push({ id, name, courses });
+      state.semesters.push({ id, name, courses });
       app.renderSemesters();
       app.recalc();
     }
 
     function removeSemester(id) {
-      semesters = semesters.filter(s => s.id !== id);
+      state.semesters = state.semesters.filter(s => s.id !== id);
       app.renderSemesters();
       app.recalc();
     }
 
     function addCourse(semId) {
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (sem) { sem.courses.push({ name: '', credits: 0, grade: '' }); }
       app.renderSemesters();
       app.recalc();
     }
 
     function removeCourse(semId, cIdx) {
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (sem && sem.courses.length > 1) {
         sem.courses.splice(cIdx, 1);
         app.renderSemesters();
@@ -159,7 +159,7 @@ function onDeptSelect() {
     }
 
     function getRetakenKeys(semList) {
-      const list = semList || semesters;
+      const list = semList || state.semesters;
       const bestGrade = usesBestGradePolicy();
 
       // Flatten all courses with position info, in semester order
@@ -215,12 +215,12 @@ function onDeptSelect() {
     function renderSemesters() {
       const container = document.getElementById('semestersContainer');
       const esc = s => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      document.getElementById('semesterCount').textContent = semesters.length;
+      document.getElementById('semesterCount').textContent = state.semesters.length;
       const runBtn = document.getElementById('addRunningSemBtn');
-      if (runBtn) runBtn.disabled = semesters.some(s => s.running);
+      if (runBtn) runBtn.disabled = state.semesters.some(s => s.running);
       const retakenKeys = getRetakenKeys();
 
-      container.innerHTML = semesters.map(sem => {
+      container.innerHTML = state.semesters.map(sem => {
         const gpa = calcSemGPA(sem);
         const isRunning = !!sem.running;
         return `
@@ -262,7 +262,7 @@ function onDeptSelect() {
             ${sem.courses.map((c, i) => {
               const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
               return `
-            <div class="course-row${isRetaken ? ' retaken' : ''}${whatIfMode ? ' whatif-active' : ''}">
+            <div class="course-row${isRetaken ? ' retaken' : ''}${state.whatIfMode ? ' whatif-active' : ''}">
               <div class="course-input-wrap" style="position:relative;">
                 <input type="text" placeholder="Type course code / title"
                   id="course-input-${sem.id}-${i}"
@@ -303,7 +303,7 @@ function onDeptSelect() {
                   c.grade && c.grade.startsWith('D') ? '#e67e22' :
                   'var(--text3)'
                 }">${c.grade || '—'}</span>
-              ${whatIfMode && c.grade && c.grade !== 'P' && c.grade !== 'F(NT)' ? app.buildWhatIfSelect(sem.id, i, c.grade) : ''}
+              ${state.whatIfMode && c.grade && c.grade !== 'P' && c.grade !== 'F(NT)' ? app.buildWhatIfSelect(sem.id, i, c.grade) : ''}
               <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
             </div>`;
             }).join('')}
@@ -315,9 +315,9 @@ function onDeptSelect() {
       }).join('');
 
       // ── EMPTY STATE ──────────────────────────────────────
-      if (semesters.length === 0) {
+      if (state.semesters.length === 0) {
         // Contextual copy based on setup progress (#9)
-        const _deptDone = !!currentDept;
+        const _deptDone = !!state.currentDept;
         const _semDone  = _deptDone && getStartSeason() && getStartYear();
         const _emptyHint = !_deptDone
           ? '<div class="empty-state-steps"><div class="empty-state-step"><span class="empty-state-step-num">1</span><span>Pick your <strong>department</strong> in the header above</span></div><div class="empty-state-step"><span class="empty-state-step-num">2</span><span>Set your <strong>starting semester</strong> (e.g. Fall 2022)</span></div><div class="empty-state-step"><span class="empty-state-step-num">3</span><span>Add your first semester and enter grades</span></div></div>'
@@ -328,7 +328,7 @@ function onDeptSelect() {
           <div class="empty-state">
             <div class="empty-state-icon">${!_deptDone ? '👋' : !_semDone ? '📅' : '🎓'}</div>
             <div class="empty-state-title">${!_deptDone ? "Let's get you set up" : !_semDone ? 'Almost ready...' : 'Ready to go!'}</div>
-            <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, or load sample data to explore.'}</div>
+            <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add state.semesters.' : 'Add your first semester, or load sample data to explore.'}</div>
             ${_emptyHint}
             <div class="empty-state-actions">
               <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
@@ -364,11 +364,11 @@ function onDeptSelect() {
             block.classList.remove('drag-over');
             const targetId = parseInt(block.id.replace('sem-', ''));
             if (dragSrcId === null || dragSrcId === targetId) return;
-            const srcIdx = semesters.findIndex(s => s.id === dragSrcId);
-            const tgtIdx = semesters.findIndex(s => s.id === targetId);
+            const srcIdx = state.semesters.findIndex(s => s.id === dragSrcId);
+            const tgtIdx = state.semesters.findIndex(s => s.id === targetId);
             if (srcIdx < 0 || tgtIdx < 0) return;
-            const [moved] = semesters.splice(srcIdx, 1);
-            semesters.splice(tgtIdx, 0, moved);
+            const [moved] = state.semesters.splice(srcIdx, 1);
+            state.semesters.splice(tgtIdx, 0, moved);
             dragSrcId = null;
             app.renderSemesters();
             app.recalc();
@@ -380,10 +380,10 @@ function onDeptSelect() {
 
     // ── SAMPLE DATA LOADER ───────────────────────────────────
     function loadSampleData() {
-      if (semesters.length > 0 &&
+      if (state.semesters.length > 0 &&
           !confirm('This will replace your current data. Continue?')) return;
-      semesters = [];
-      semesterCounter = 0;
+      state.semesters = [];
+      state.semesterCounter = 0;
       const sample = [
         { name: 'Fall 2024', courses: [
           { name: 'Programming Language I (CSE110)',   credits: 3, grade: 'B+', gradePoint: 3.3 },
@@ -399,8 +399,8 @@ function onDeptSelect() {
         ]},
       ];
       sample.forEach(s => {
-        const id = semesterCounter++;
-        semesters.push({ id, name: s.name, courses: s.courses });
+        const id = state.semesterCounter++;
+        state.semesters.push({ id, name: s.name, courses: s.courses });
       });
       app.renderSemesters();
       app.recalc();
