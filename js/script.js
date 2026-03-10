@@ -55,16 +55,92 @@
     }
     window.addEventListener('scroll', updateNav, { passive: true });
 
-    // ── SCROLL REVEAL ─────────────────────────────────────
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          revealObserver.unobserve(e.target);
-        }
+    // ── SCROLL REVEAL — premium choreography ────────────────
+    // One factory, consistent unobserve, GPU-only transitions.
+    function makeObserver(threshold, rootMargin, cb) {
+      return new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) cb(e); });
+      }, { threshold, rootMargin });
+    }
+
+    // ── 1. Generic .reveal (from-bottom / from-scale etc.) ──
+    // Fires when element crests the fold — 12% in, -50px bottom margin
+    // so the reveal starts just as the user sees it coming
+    const revealObs = makeObserver(0.12, '0px 0px -50px 0px', e => {
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    });
+    document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+    // ── 2. Section labels — letterspace focus ───────────────
+    const labelObs = makeObserver(0.25, '0px 0px -30px 0px', e => {
+      e.target.classList.add('visible');
+      labelObs.unobserve(e.target);
+    });
+    document.querySelectorAll('[data-reveal-label]').forEach(el => labelObs.observe(el));
+
+    // ── 3. Section titles ────────────────────────────────────
+    const titleObs = makeObserver(0.2, '0px 0px -30px 0px', e => {
+      e.target.classList.add('visible');
+      titleObs.unobserve(e.target);
+    });
+    document.querySelectorAll('[data-reveal-title]').forEach(el => titleObs.observe(el));
+
+    // ── 4. Section descs ─────────────────────────────────────
+    const descObs = makeObserver(0.2, '0px 0px -30px 0px', e => {
+      e.target.classList.add('visible');
+      descObs.unobserve(e.target);
+    });
+    document.querySelectorAll('[data-reveal-desc]').forEach(el => descObs.observe(el));
+
+    // ── 5. Hero cascade — fires on page load ─────────────────
+    // Badge → h1 → sub → CTA → (stats handled by statObs)
+    // 130ms between each beat — eye is led downward naturally
+    (function revealHero() {
+      const heroEls = document.querySelectorAll('[data-reveal-hero]');
+      heroEls.forEach((el, i) => {
+        setTimeout(() => el.classList.add('visible'), 100 + i * 130);
       });
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+    })();
+
+    // ── 6. Hero stats — stagger + counter roll ───────────────
+    // Counter fires 200ms after the stat slide-in begins — second beat
+    function animateCounter(el) {
+      const numEl  = el.querySelector('.stat-num');
+      const count  = parseInt(el.dataset.count, 10);
+      const suffix = el.dataset.suffix || '';
+      if (!numEl || isNaN(count) || count === 0) return; // ∞ stays as-is
+      numEl.classList.add('counting');
+      const dur   = 820; // ms — expo-out feel
+      const t0    = performance.now();
+      (function tick(now) {
+        const p  = Math.min((now - t0) / dur, 1);
+        const ep = p < 1 ? 1 - Math.pow(2, -10 * p) : 1; // expo out
+        numEl.textContent = Math.round(ep * count) + suffix;
+        if (p < 1) requestAnimationFrame(tick);
+        else { numEl.textContent = count + suffix; numEl.classList.remove('counting'); }
+      })(performance.now());
+    }
+
+    const statObs = makeObserver(0.35, '0px 0px -10px 0px', e => {
+      const idx = [...e.target.parentElement.children].indexOf(e.target);
+      // Stagger: 0, 110ms, 220ms — each stat reads as its own moment
+      const delay = idx * 110;
+      e.target.style.transitionDelay = delay + 'ms';
+      e.target.classList.add('visible');
+      // Counter fires as second beat: after slide-in begins settling
+      setTimeout(() => animateCounter(e.target), delay + 200);
+      statObs.unobserve(e.target);
+    });
+    document.querySelectorAll('[data-reveal-stat]').forEach(el => statObs.observe(el));
+
+    // ── 7. Calc wrapper — hero feature entrance ──────────────
+    // Lower threshold so it fires early — user sees it rising into view
+    const calcObs = makeObserver(0.05, '0px 0px -20px 0px', e => {
+      e.target.classList.add('visible');
+      calcObs.unobserve(e.target);
+    });
+    document.querySelectorAll('[data-reveal-calc]').forEach(el => calcObs.observe(el));
 
     // ── PARALLAX ORBS ────────────────────────────────────
     const orbs = document.querySelectorAll('.orb');
@@ -2829,47 +2905,153 @@ function initCalculator() {
       el.addEventListener('mouseleave', () => { el.style.transform = 'translate(0,0)'; });
     });
 
-    // ── DOT MATRIX ────────────────────────────────────────
+    // ── DOT MATRIX — repulsion + swirl spring physics ─────
     (function() {
       const canvas = document.getElementById('dot-matrix');
       const ctx    = canvas.getContext('2d');
-      const SPACING = 28, BASE_R = 1.1, MAX_R = 3.2, REACH = 140, BASE_A = 0.13, MAX_A = 0.72;
-      let W, H, cols, rows, cx = -999, cy = -999;
 
-      function resize() {
+      // ── tuning constants ─────────────────────────────────
+      const SPACING  = 28;      // grid pitch (px)
+      const SPRING   = 0.052;   // restore stiffness
+      const DAMPING  = 0.74;    // velocity bleed per frame
+      const REPEL    = 52;      // max repulsion displacement (px)
+      const REACH    = 200;     // cursor influence radius (px)
+      const SWIRL    = 0.28;    // tangential swirl blend (0=pure radial)
+      const BASE_R   = 1.1,  MAX_R = 2.9;
+      const BASE_A   = 0.13, MAX_A = 0.74;
+
+      let W, H, cols, rows;
+      let cx = -9999, cy = -9999;
+      let pcx = -9999, pcy = -9999;   // previous cursor pos (velocity delta)
+      let cvx = 0, cvy = 0;           // smoothed cursor velocity
+      let dots = [];
+      const isMobile = window.matchMedia('(pointer: coarse)').matches;
+
+      // ── grid ─────────────────────────────────────────────
+      function buildGrid() {
         W = canvas.width  = window.innerWidth;
         H = canvas.height = window.innerHeight;
         cols = Math.ceil(W / SPACING) + 1;
         rows = Math.ceil(H / SPACING) + 1;
-      }
-      resize();
-      window.addEventListener('resize', resize);
-      window.addEventListener('mousemove', e => { cx = e.clientX; cy = e.clientY; }, { passive: true });
-      window.addEventListener('mouseleave', () => { cx = -999; cy = -999; });
-
-      function isLight() { return document.documentElement.dataset.theme === 'light'; }
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-        const light = isLight();
+        const prev = {};
+        dots.forEach(d => { prev[d.row * 10000 + d.col] = d; });
+        dots = [];
         for (let row = 0; row < rows; row++) {
           for (let col = 0; col < cols; col++) {
-            const x = col * SPACING, y = row * SPACING;
-            const dist = Math.sqrt((x-cx)**2 + (y-cy)**2);
-            const ease = Math.max(0, 1 - dist / REACH) ** 2;
-            const r = BASE_R + (MAX_R - BASE_R) * ease;
-            const a = BASE_A + (MAX_A - BASE_A) * ease;
-            const dotColor = light
-              ? `rgba(10, ${Math.round(120 + 80*ease)}, 50, ${a})`
-              : `rgba(46, ${Math.round(180 + 60*ease)}, ${Math.round(80 - 60*ease)}, ${a})`;
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fillStyle = dotColor;
-            ctx.fill();
+            const key = row * 10000 + col;
+            const p   = prev[key];
+            dots.push({
+              row, col,
+              ox: col * SPACING,
+              oy: row * SPACING,
+              dx: p ? p.dx : 0,
+              dy: p ? p.dy : 0,
+              vx: p ? p.vx : 0,
+              vy: p ? p.vy : 0,
+            });
           }
         }
+      }
+
+      buildGrid();
+      window.addEventListener('resize', buildGrid);
+
+      window.addEventListener('mousemove', e => {
+        // Track cursor velocity for extra punch on fast sweeps
+        cvx = cvx * 0.6 + (e.clientX - cx) * 0.4;
+        cvy = cvy * 0.6 + (e.clientY - cy) * 0.4;
+        cx  = e.clientX;
+        cy  = e.clientY;
+      }, { passive: true });
+
+      window.addEventListener('mouseleave', () => {
+        cx = -9999; cy = -9999;
+        cvx = 0;    cvy = 0;
+      });
+
+      function isLight() {
+        return document.documentElement.dataset.theme === 'light';
+      }
+
+      // ── animation loop ────────────────────────────────────
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        const light  = isLight();
+        // Cursor speed scalar — fast sweeps push harder
+        const cSpeed = Math.sqrt(cvx * cvx + cvy * cvy);
+        const boost  = 1 + Math.min(cSpeed * 0.018, 0.85);
+
+        for (let i = 0; i < dots.length; i++) {
+          const d  = dots[i];
+          const ox = d.ox, oy = d.oy;
+
+          if (!isMobile) {
+            const fromCx = ox - cx;   // vector: cursor → dot (repulsion direction)
+            const fromCy = oy - cy;
+            const dist   = Math.sqrt(fromCx * fromCx + fromCy * fromCy);
+
+            if (dist < REACH && cx > -999) {
+              const falloff  = 1 - dist / REACH;
+              const strength = falloff * falloff * REPEL * boost;
+              const invDist  = 1 / (dist || 0.001);
+
+              // Radial unit vector (away from cursor)
+              const rx = fromCx * invDist;
+              const ry = fromCy * invDist;
+              // Tangential unit vector (CCW perpendicular) → creates the swirl
+              const tx = -ry;
+              const ty =  rx;
+
+              // Target displacement = radial push + tangential drift
+              const targetDx = (rx + tx * SWIRL) * strength;
+              const targetDy = (ry + ty * SWIRL) * strength;
+
+              d.vx += (targetDx - d.dx) * SPRING;
+              d.vy += (targetDy - d.dy) * SPRING;
+
+            } else {
+              // Outside influence — spring back to grid origin
+              d.vx += (0 - d.dx) * SPRING;
+              d.vy += (0 - d.dy) * SPRING;
+            }
+
+            d.vx *= DAMPING;
+            d.vy *= DAMPING;
+            d.dx += d.vx;
+            d.dy += d.vy;
+          }
+
+          const x = ox + d.dx;
+          const y = oy + d.dy;
+
+          // Displacement-based brightness
+          const dispMag  = Math.sqrt(d.dx * d.dx + d.dy * d.dy);
+          const dispNorm = Math.min(dispMag / REPEL, 1);
+
+          // Rim glow: ring of light at the parting boundary (~65% of REACH)
+          const distO   = Math.sqrt((ox - cx) * (ox - cx) + (oy - cy) * (oy - cy));
+          const rimEase = cx > -999
+            ? Math.max(0, 1 - Math.abs(distO - REACH * 0.62) / (REACH * 0.42)) ** 1.6
+            : 0;
+
+          const ease = Math.max(dispNorm * 0.88, rimEase * 0.72);
+
+          const r = BASE_R + (MAX_R - BASE_R) * ease;
+          const a = BASE_A + (MAX_A - BASE_A) * ease;
+
+          const dotColor = light
+            ? `rgba(10,${Math.round(120 + 80 * ease)},50,${a})`
+            : `rgba(46,${Math.round(180 + 60 * ease)},${Math.round(80 - 60 * ease)},${a})`;
+
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = dotColor;
+          ctx.fill();
+        }
+
         requestAnimationFrame(draw);
       }
+
       draw();
       themeBtn.addEventListener('click', () => { ctx.clearRect(0, 0, W, H); });
     })();
