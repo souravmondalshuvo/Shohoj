@@ -2629,7 +2629,6 @@
 
       // ── Dept detection ──────────────────────────────
       let detectedDept = null;
-      const fullText = text.toUpperCase();
       if (/COMPUTER[\s\S]{0,10}SCIENCE|B\.?SC\.?\s+IN\s+COMPUTER/i.test(text))
         detectedDept = 'BSc CSE — Computer Science & Engineering';
       else if (/ELECTRICAL/i.test(text))
@@ -2646,101 +2645,100 @@
         detectedDept = 'B.A. in English (ENG)';
 
       const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-      const semRe     = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
-      const skipRe    = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
-      const courseRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z]\s*\([A-Z]{2}\))\s*\(RT\)?)\s+([\d]+\.[\d]+)/;
-      const fntRe     = /F\s*\(NT\)/;
-      const rtRe      = /([A-Z][+-]?)\s*\(RT\)/;
 
-      const semesters   = [];
-      let   currentSem  = null;
-      let   pendingTitle = null;
+      const semRe   = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+      const skipRe  = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
+      const fntRe   = /F\s*\(NT\)/;
 
-      const flushPending = () => { pendingTitle = null; };
+      // Standard layout: "CODE title credits GRADE gp"
+      // Greedy title match handles single-letter grades (A, B, D) correctly
+      const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+
+      // Title-first layout (PDF column reflow): "CODE credits GRADE gp"
+      // Title was already accumulated in pendingTitle before this line
+      const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+
+      // Pure title fragment: e.g. "GEOMETRY", "EQUATIONS" — trailing word after codeOnly
+      const titleFragRe = /^[A-Z][A-Z\s&:,\(\)\-\.]+$/;
+
+      const semesters  = [];
+      let currentSem   = null;
+      let pendingTitle = null;
+      let skipNextFrag = false; // true after codeOnly — discard trailing title word
 
       for (const line of lines) {
-        if (skipRe.test(line)) { flushPending(); continue; }
+        if (skipRe.test(line)) { pendingTitle = null; skipNextFrag = false; continue; }
 
         // New semester header
         const semM = line.match(semRe);
         if (semM) {
           const season = semM[1].toUpperCase();
-          const year   = semM[2];
           currentSem = {
             id: Date.now() + semesters.length,
-            name: `${SEASON_NAMES[season] || semM[1]} ${year}`,
+            name: `${SEASON_NAMES[season] || semM[1]} ${semM[2]}`,
             courses: [],
             running: false,
           };
           semesters.push(currentSem);
-          flushPending();
+          pendingTitle = null; skipNextFrag = false;
           continue;
         }
 
         if (!currentSem) continue;
 
+        // After a codeOnly line, the next line may be a trailing title fragment
+        // (e.g. "GEOMETRY" after MAT110, "EQUATIONS" after MAT120) — skip silently
+        if (skipNextFrag) {
+          skipNextFrag = false;
+          if (titleFragRe.test(line)) continue;
+          // Not a fragment — fall through to parse normally
+        }
+
         // F(NT) line
         if (fntRe.test(line)) {
-          const parts = line.replace(/\s{2,}/g, ' ').split(' ');
-          const code  = parts[0];
-          const name  = pendingTitle || code;
+          const code = line.trim().split(/\s+/)[0];
           if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
-            currentSem.courses.push({ name, credits: 0, grade: 'F(NT)', gradePoint: 'NT' });
-            flushPending(); continue;
+            currentSem.courses.push({ name: code, credits: 0, grade: 'F(NT)', gradePoint: 'NT' });
+            pendingTitle = null; continue;
           }
         }
 
-        // Standard course line: CODE Title credits Grade gradePoint
+        // Title-first layout: "CODE credits GRADE gp"
+        // PDF.js sometimes reflows long titles to appear BEFORE the course code line
+        const co = line.match(codeOnlyRe);
+        if (co) {
+          const grade = co[3].replace(/\(RT\)/,'').trim();
+          const title = pendingTitle ? pendingTitle.trim() : '';
+          const name  = title ? `${title} (${co[1]})` : co[1];
+          currentSem.courses.push({ name, credits: parseFloat(co[2]), grade, gradePoint: parseFloat(co[4]) });
+          pendingTitle = null; skipNextFrag = true; continue;
+        }
+
+        // Standard layout: "CODE title credits GRADE gp"
         const cm = line.match(courseRe);
         if (cm) {
-          const code     = cm[1];
-          const titleRaw = cm[2].replace(/\s{2,}/g, ' ').trim();
-          const credits  = parseFloat(cm[3]);
-          let   grade    = cm[4].replace(/\(RT\)/,'').trim().replace(/\s+/g,'');
-          const gp       = parseFloat(cm[5]);
-
-          // (RT) marker means retaken — we store as-is; retake dedup handles it
-          const name = pendingTitle
-            ? pendingTitle + ' ' + titleRaw
-            : `${code} ${titleRaw}`.trim();
-
-          currentSem.courses.push({ name: name.trim(), credits, grade, gradePoint: gp });
-          flushPending();
-          continue;
+          let grade = cm[4].trim().replace(/\s+/g,'');
+          // Normalise: F(NT) and F(RT) variants
+          if (/F.*NT/i.test(cm[4])) grade = 'F(NT)';
+          else grade = grade.replace('(RT)','').replace('(NT)','').trim();
+          const name = cm[1] + ' ' + cm[2].trim();
+          currentSem.courses.push({ name, credits: parseFloat(cm[3]), grade, gradePoint: parseFloat(cm[5]) });
+          pendingTitle = null; continue;
         }
 
-        // Continuation line (title wraps to next line)
-        // If line looks like it continues a course title (no grade, no floats at start)
-        if (currentSem && !/^\d/.test(line) && line.length > 2 && line.length < 80) {
-          const res = _parseContLine(line, pendingTitle);
-          if (res && res.grade && GRADES[res.grade] !== undefined) {
-            const lastCourse = currentSem.courses[currentSem.courses.length - 1];
-            if (lastCourse && !lastCourse.grade) {
-              lastCourse.grade      = res.grade;
-              lastCourse.gradePoint = res.gradePoint;
-              if (res.credits) lastCourse.credits = res.credits;
-            } else {
-              currentSem.courses.push({
-                name: res.fullTitle || line,
-                credits: res.credits || 0,
-                grade: res.grade,
-                gradePoint: res.gradePoint,
-              });
-            }
-            flushPending(); continue;
-          }
-          // Might be a multi-line title
+        // Accumulate title fragment lines (long titles that spill to next line)
+        if (!line[0].match(/\d/) && line.length > 2 && line.length < 100
+            && !/^[A-Z]{2,4}\d{3}/.test(line)) {
           pendingTitle = (pendingTitle ? pendingTitle + ' ' : '') + line;
         } else {
-          flushPending();
+          pendingTitle = null;
         }
       }
 
-      // Filter out empty semesters
       return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
     }
 
-    // ── applyImport ───────────────────────────────────────
+    
     function applyImport(parsed) {
       hideImportModal();
       clearState();
