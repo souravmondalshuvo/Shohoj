@@ -1,0 +1,205 @@
+BRACU Shohoj — File Tree After Refactor
+========================================
+
+souravmondalshuvo.github.io/
+├── index.html
+├── css/
+│   └── style.css                         (unchanged)
+└── js/
+    ├── main.js                           ← ENTRY POINT
+    ├── script.js                         ← DELETE (replaced by modules)
+    ├── core/
+    │   ├── registry.js
+    │   ├── grades.js
+    │   ├── helpers.js
+    │   ├── departments.js
+    │   ├── catalog.js
+    │   ├── state.js
+    │   └── calculator.js
+    ├── ui/
+    │   ├── render.js
+    │   ├── suggestions.js
+    │   ├── charts.js
+    │   ├── simulator.js
+    │   ├── modals.js
+    │   └── setupWizard.js
+    ├── import/
+    │   ├── parser.js
+    │   └── importer.js
+    └── animations/
+        ├── reveal.js
+        ├── cursor.js
+        └── dotmatrix.js
+
+
+FILE RESPONSIBILITIES
+═════════════════════
+
+ENTRY
+─────
+main.js
+  • Imports all modules
+  • Populates app registry (breaks circular deps)
+  • Theme toggle + scroll progress bar
+  • DOMContentLoaded boot: initReveal → initCursor → initDotMatrix → initCalculator
+
+CORE  (no DOM, pure logic)
+───────────────────────────
+core/registry.js
+  • Exports a single mutable `app` object
+  • main.js writes: app.recalc, app.renderSemesters, app.updateSetupWizard,
+    app.runSimulator, app.drawTrendChart, app.buildWhatIfSelect,
+    app.importTranscriptPDF, app.applyImport, app.parseTranscriptText
+  • Any module that would create a circular import calls app.fn() instead
+
+core/grades.js
+  • GRADES map  { 'A': 4.00 … 'F(NT)': null, 'P': null, 'I': null }
+  • POINTS_TO_GRADE reverse-lookup array
+
+core/helpers.js
+  • detectGrade(val) — GP value → letter grade
+  • ordinalSup(n) — 1 → '1st', 2 → '2nd' …
+  • getCurrentSeason(), getLastCompletedSemester()
+  • countSemesters(), generateSemesterNames()
+  • getStartSeason(), getStartYear()
+  imports: grades.js, state.js (semesters)
+
+core/departments.js
+  • DEPARTMENTS object — 8 keys: CSE EEE BBA ECO ENG ARC PHR LAW
+  • Each key: { label, totalCredits, presets[] }
+  • Presets drive the setup wizard semester list
+
+core/catalog.js
+  • COURSE_CATALOG object keyed by dept
+  • 255 courses with name + default credits
+  • Powers the autocomplete suggestion portal
+  imports: departments.js
+
+core/state.js
+  • let semesters = []
+  • let whatIfMode = false, whatIfGrades = {}
+  • saveState()  — writes to localStorage
+  • loadState()  — reads + migrates from localStorage
+  • clearState() — resets to empty
+  imports: grades.js, departments.js, registry.js (app.recalc, app.renderSemesters)
+
+core/calculator.js
+  • calcSemGPA(sem) — single semester GPA
+  • recalc()        — full CGPA + all display updates (standing, chart, simulator)
+  • autoDetectGrade(semId, cIdx, val, inputEl)
+  • onPFChange(semId, cIdx, val)
+  imports: grades.js, state.js, helpers.js, registry.js
+
+UI  (DOM manipulation)
+───────────────────────
+ui/render.js
+  • renderSemesters()       — rebuilds entire calculator DOM
+  • addSemester(prefill)    — appends new semester row
+  • removeSemester(id)
+  • addCourse(semId)
+  • removeCourse(semId, cIdx)
+  • onDeptSelect()          — dept dropdown change handler
+  • onStartSemConfirm()     — wizard confirm step
+  • usesBestGradePolicy()   — check if dept uses best-grade retake rule
+  • getRetakenKeys(sems)    — build retake lookup map
+  • getSemCreditWarning(sem)
+  imports: grades.js, departments.js, state.js, helpers.js, registry.js
+
+ui/suggestions.js
+  • showPortalSuggestions(inputEl, semId, cIdx, matches)
+  • onCourseBlur / onCourseInput / onCourseKey — course name input handlers
+  • closeSuggestions(id)
+  • pickSuggestion(semId, cIdx, fullName, credits)
+  imports: catalog.js, state.js, registry.js
+
+ui/charts.js
+  • drawTrendChart(canvas, data) — canvas semester GPA trend line
+  imports: state.js
+
+ui/simulator.js
+  • runSimulator(cgpa, credits, pts) — CGPA goal projections table
+  • buildRetakeSuggestions(...)      — ranked retake recommendations
+  • buildWhatIfSelect(semId, cIdx, currentGrade)
+  • onWhatIfChange(semId, cIdx, grade)
+  • toggleWhatIf()
+  imports: grades.js, state.js, helpers.js, render.js, registry.js
+
+ui/modals.js
+  • exportPDF()                  — jsPDF transcript export
+  • getModalTheme()              — dark/light aware modal colours
+  • showImportModal(html)        — renders parsed-transcript preview modal
+  • hideImportModal()
+  • importTranscriptPDF(inputEl) — PDF.js file reader + calls parseTranscriptText
+  imports: grades.js, departments.js, state.js, calculator.js, render.js, registry.js
+
+ui/setupWizard.js
+  • updateSetupWizard() — updates step indicators (1→2→3)
+  • initCalculator()   — first-run init: renderSemesters + recalc
+  imports: state.js, helpers.js, registry.js
+
+IMPORT  (transcript parsing)
+─────────────────────────────
+import/parser.js
+  • parseTranscriptText(text)  — main parser (codeOnlyRe, skipNextFrag, all fixes)
+  • parseBlobFallback(text)    — fallback for blob extraction
+  • _parseContLine(line, pending)
+  imports: grades.js
+
+import/importer.js
+  • importTranscriptPDF(inputEl) — re-exported from modals.js
+  • applyImport(parsed)          — applies parsed result to state, triggers render
+  imports: grades.js, departments.js, state.js, parser.js, modals.js, registry.js
+
+ANIMATIONS  (no logic, pure visual)
+──────────────────────────────────
+animations/reveal.js   → initReveal()
+  • makeObserver() factory
+  • revealObs, labelObs, titleObs, descObs, cardObs, calcObs, statObs
+  • Counter animation (expo-out count-up)
+  • Hero cascade (badge→h1→sub→CTA, 130ms stagger)
+  • Parallax orbs on scroll
+
+animations/cursor.js   → initCursor()
+  • Custom cursor dot + ring + glow elements
+  • Magnetic effect on .magnetic elements
+  • cursor-hover / cursor-text / cursor-click body classes
+  • mousemove, mouseenter, mouseleave, mousedown, mouseup listeners
+
+animations/dotmatrix.js → initDotMatrix()
+  • Canvas dot grid, mobile guard (pointer:coarse → skip)
+  • Physics: SPRING=0.052, DAMPING=0.74, REPEL=52, REACH=200, SWIRL=0.28
+  • Repulsion + swirl on mousemove, elastic snap to origin
+  • Rim glow on proximity, requestAnimationFrame loop
+
+
+HOW TO DEPLOY
+═════════════
+1. Delete  js/script.js  from your repo
+2. Add all new files maintaining the folder structure above
+3. index.html already updated:
+     <script type="module" src="js/main.js"></script>
+4. No build step needed — ES modules work natively on GitHub Pages
+
+
+COMMIT MESSAGES (one per file)
+════════════════════════════════
+index.html                                     refactor: switch script.js to type=module src=js/main.js
+js/main.js                                     refactor: entry point — boot sequence, registry population, theme toggle, scroll progress
+js/core/registry.js                            refactor: cycle-breaker registry — app object populated by main.js to avoid circular imports
+js/core/grades.js                              refactor: extract GRADES map and POINTS_TO_GRADE array into standalone module
+js/core/helpers.js                             refactor: extract detectGrade, ordinalSup, season/semester name helpers
+js/core/departments.js                         refactor: extract 8 department presets (CSE/EEE/BBA/ECO/ENG/ARC/PHR/LAW) into module
+js/core/catalog.js                             refactor: extract 255-course autocomplete catalog into standalone module
+js/core/state.js                               refactor: extract shared mutable state (semesters, whatIfMode) + saveState/loadState/clearState
+js/core/calculator.js                          refactor: extract calcSemGPA, recalc, autoDetectGrade, onPFChange into calculator module
+js/ui/render.js                                refactor: extract renderSemesters, add/remove semester+course, dept confirm, retake helpers
+js/ui/suggestions.js                           refactor: extract course autocomplete portal — showPortalSuggestions, onCourseBlur/Input/Key
+js/ui/charts.js                                refactor: extract drawTrendChart canvas renderer into standalone module
+js/ui/simulator.js                             refactor: extract CGPA simulator, buildRetakeSuggestions, what-if toggle/select
+js/ui/modals.js                                refactor: extract exportPDF, getModalTheme, showImportModal, importTranscriptPDF
+js/ui/setupWizard.js                           refactor: extract updateSetupWizard + initCalculator bootstrap
+js/import/parser.js                            refactor: extract transcript parser — parseTranscriptText, codeOnlyRe, skipNextFrag fix
+js/import/importer.js                          refactor: extract importTranscriptPDF orchestrator and applyImport
+js/animations/reveal.js                        refactor: extract scroll reveal IntersectionObserver system into initReveal()
+js/animations/cursor.js                        refactor: extract magnetic cursor — dot, ring, glow, hover/click/text classes into initCursor()
+js/animations/dotmatrix.js                     refactor: extract dot matrix canvas physics — repulsion, swirl, spring snap into initDotMatrix()
