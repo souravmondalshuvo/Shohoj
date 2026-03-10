@@ -759,6 +759,18 @@
       portal.innerHTML = html;
     }
 
+    function onCourseBlur(e, semId, cIdx) {
+      const sem = semesters.find(s => s.id === semId);
+      if (!sem || !sem.courses[cIdx]) return;
+      const val = e.target.value.trim();
+      // Only write back if value differs from stored (avoids unnecessary re-renders)
+      if (sem.courses[cIdx].name !== val) {
+        sem.courses[cIdx].name = val;
+        // Don't re-render (would steal focus) — just recalc and save
+        recalc();
+      }
+    }
+
     function onCourseInput(e, semId, cIdx) {
       const raw = e.target.value.trim();
       const val = raw.toLowerCase();
@@ -1201,6 +1213,7 @@
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
+                  onblur="onCourseBlur(event,${sem.id},${i})"
                   onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
                 ${isRetaken ? `<span class="retaken-badge">Retaken</span>` : ''}
               </div>
@@ -2289,7 +2302,25 @@
         }
 
         // ── PARSE ──────────────────────────────────────
-        const parsed = parseTranscriptText(fullText);
+        let parsed = parseTranscriptText(fullText);
+
+        // ── FALLBACK: blob parser ───────────────────────────────────────
+        // If line-based parser found semesters but suspiciously few courses
+        // (e.g. PDF.js scrambled column order), re-parse the raw text blob
+        // by scanning for course-code tokens directly, independent of line breaks.
+        const totalCourses = parsed.semesters.reduce((s,sem)=>s+sem.courses.length,0);
+        const semCount     = parsed.semesters.length;
+        if (semCount > 0 && totalCourses < semCount * 2) {
+          console.warn('[Shohoj] Line parser got only', totalCourses, 'courses — trying blob fallback');
+          const blobParsed = parseBlobFallback(fullText);
+          if (blobParsed.semesters.length > 0) {
+            const blobTotal = blobParsed.semesters.reduce((s,sem)=>s+sem.courses.length,0);
+            if (blobTotal > totalCourses) {
+              console.info('[Shohoj] Blob fallback found', blobTotal, 'courses — using it');
+              parsed = blobParsed;
+            }
+          }
+        }
 
         if (!parsed.semesters.length) {
           throw new Error('No BRACU semester data found. Make sure this is an official BRACU grade sheet (Unofficial Copy).');
@@ -2305,13 +2336,13 @@
           </tr>`
         ).join('');
 
-        const totalCourses = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
+        const totalCoursesDisplay = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
 
         const t2 = getModalTheme();
         showImportModal(`
           <div style="margin-bottom:16px">
             <div style="font-size:18px;font-weight:700;color:${t2.text};margin-bottom:4px">📄 Transcript Parsed</div>
-            <div style="font-size:12px;color:${t2.text3}">Found <strong style="color:#1DB954">${parsed.semesters.length} semesters</strong> and <strong style="color:#1DB954">${totalCourses} courses</strong></div>
+            <div style="font-size:12px;color:${t2.text3}">Found <strong style="color:#1DB954">${parsed.semesters.length} semesters</strong> and <strong style="color:#1DB954">${totalCoursesDisplay} courses</strong></div>
           </div>
           <div style="overflow-x:auto;margin-bottom:16px;border:1px solid ${t2.tableBorder};border-radius:8px">
             <table style="width:100%;border-collapse:collapse">
@@ -2328,7 +2359,7 @@
             ⚠ This will <strong>replace</strong> your current data. Any unsaved changes will be lost.
           </div>
           <div style="display:flex;gap:10px">
-            <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;')})"
+            <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
               onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(29,185,84,0.4)'"
               onmouseleave="this.style.background='#1DB954';this.style.transform='translateY(0)';this.style.boxShadow='none'"
               onmousedown="this.style.transform='translateY(1px)';this.style.boxShadow='none'"
@@ -2363,6 +2394,127 @@
       }
     }
 
+
+    // Flexible continuation-line parser: extracts credits/grade/gradePoint from a line
+    // regardless of what order PDF.js returns the table columns.
+    // Handles: "GEOMETRY 3.00 B 3.00", "3.00 GEOMETRY B 3.00", "3.00 B 3.00 GEOMETRY" etc.
+    function _parseContLine(line, pendingTitle) {
+      // Must contain at least 2 floats and 1 grade letter to be a valid continuation
+      const floatRe = /\b(\d+\.\d+)\b/g;
+      // Use lookahead/lookbehind instead of \b — \b fails before '(' in F(NT)/C+(RT)
+      const gradeRe = /(?<!\w)((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)(?!\w)/;
+
+      const floats = [...line.matchAll(floatRe)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
+      const gradeM = line.match(gradeRe);
+
+      if (floats.length < 2 || !gradeM) return null;
+
+      // Pick the two floats: one is credits (standard value), one is grade points
+      const VALID_CREDITS = new Set([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]);
+      let creditsEntry = floats.find(f => VALID_CREDITS.has(f.val));
+      let gpEntry      = floats.find(f => f !== creditsEntry);
+      if (!creditsEntry || !gpEntry) {
+        // Fallback: first float = credits, second = gp
+        creditsEntry = floats[0];
+        gpEntry      = floats[1];
+      }
+
+      // Strip the two float values and the grade from the line to get the title remainder
+      let remainder = line;
+      // Remove in reverse index order to preserve positions
+      const toRemove = [
+        { idx: creditsEntry.idx, len: creditsEntry.val.toString().length + (line[creditsEntry.idx + creditsEntry.val.toString().length] === '0' ? 1 : 0) },
+        { idx: gpEntry.idx,      len: gpEntry.val.toString().length      + (line[gpEntry.idx      + gpEntry.val.toString().length]      === '0' ? 1 : 0) },
+        { idx: gradeM.index,     len: gradeM[0].length },
+      ].sort((a, b) => b.idx - a.idx); // descending
+
+      // Use string replacement to remove matched tokens
+      remainder = remainder
+        .replace(new RegExp('\\b' + creditsEntry.val.toFixed(2) + '\\b'), '')
+        .replace(new RegExp('\\b' + gpEntry.val.toFixed(2) + '\\b'), '')
+        .replace(gradeRe, '')
+        .replace(/\s{2,}/g, ' ').trim();
+
+      const fullTitle = (pendingTitle + (remainder ? ' ' + remainder : '')).trim();
+      return { fullTitle, credits: creditsEntry.val, grade: gradeM[0], gradePoint: gpEntry.val };
+    }
+
+    // ── BLOB FALLBACK PARSER ─────────────────────────────────────────────
+    // Scans raw text blob for course-code + data patterns regardless of line breaks.
+    // Used when PDF.js scrambles column order and the line-based parser misses courses.
+    function parseBlobFallback(text) {
+      const SEASON = { FALL:'Fall', SPRING:'Spring', SUMMER:'Summer' };
+      const semesters = [];
+      let currentSem = null;
+
+      // Collapse all whitespace/newlines into single spaces for blob scanning
+      const blob = text.replace(/\s+/g, ' ');
+
+      // Find semester headers in order
+      const semRe = /SEMESTER[:\s]+([A-Z]+)\s+(\d{4})/gi;
+      const semMatches = [];
+      let sm;
+      while ((sm = semRe.exec(blob)) !== null) {
+        const season = sm[1].toUpperCase();
+        if (SEASON[season]) {
+          semMatches.push({ name: `${SEASON[season]} ${sm[2]}`, season: SEASON[season], year: parseInt(sm[2]), idx: sm.index });
+        }
+      }
+      if (!semMatches.length) return { semesters: [], detectedDept: null };
+
+      // For each semester, scan the blob slice between this header and the next
+      for (let i = 0; i < semMatches.length; i++) {
+        const start = semMatches[i].idx;
+        const end   = i + 1 < semMatches.length ? semMatches[i+1].idx : blob.length;
+        const slice = blob.slice(start, end);
+
+        const courses = [];
+        // Match: COURSECODE ... CREDITS GRADE GRADEPOINTS
+        // e.g. "CSE110 PROGRAMMING LANGUAGE I 3.00 C- 1.70"
+        // Course code followed by anything, then float, grade, float
+        const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
+        let cm;
+        while ((cm = courseRe.exec(slice)) !== null) {
+          const code  = cm[1];
+          const creds = parseFloat(cm[3]);
+          let grade   = cm[4].trim();
+          const gp    = parseFloat(cm[5]);
+
+          // Skip semester/cumulative summary lines
+          if (/^(SEMESTER|CUMULATIVE)/i.test(cm[0])) continue;
+          // Skip if credits > 4 (likely a year like 2024)
+          if (creds > 4) continue;
+
+          const isRetake = grade.includes('(RT)');
+          let cleanGrade = grade.replace(/\s*\(RT\)\s*/g, '').trim();
+          if (/^F\s*\(?NT\)?$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
+
+          const dbEntry = COURSE_DB[code];
+          const finalName    = dbEntry ? dbEntry.full : `${code}`;
+          const finalCredits = dbEntry ? dbEntry.credits : creds;
+
+          courses.push({
+            name: finalName, credits: finalCredits,
+            grade: cleanGrade,
+            gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gp > 0 ? gp : (cleanGrade === 'F' ? '0' : '')),
+            _wasRetake: isRetake,
+          });
+        }
+
+        if (courses.length) {
+          const { season, year } = semMatches[i];
+          semesters.push({ name: semMatches[i].name, season, year, courses });
+        }
+      }
+
+      const detectedDept = /CSE|COMPUTER SCIENCE/i.test(blob)
+        ? 'B.Sc. in Computer Science and Engineering (CSE)'
+        : /BBA|BUSINESS ADMINISTRATION/i.test(blob)
+        ? 'Bachelor of Business Administration (BBA)'
+        : null;
+      return { semesters, detectedDept };
+    }
+
     function parseTranscriptText(text) {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       const semesters = [];
@@ -2372,11 +2524,11 @@
       // Detect department from header text
       // Note: PDF.js may split "COMPUTER\nSCIENCE" across lines — use \s* to bridge
       if (/COMPUTER[\s\S]{0,10}SCIENCE/i.test(text) || /B\.?SC\.?\s+IN\s+COMPUTER/i.test(text)) detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
-      else if (/ELECTRICAL/i.test(text)) detectedDept = 'B.Sc. in Electrical and Electronic Engineering (EEE)';
+      else if (/ELECTRICAL/i.test(text)) detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
       else if (/BUSINESS ADMINISTRATION/i.test(text)) detectedDept = 'Bachelor of Business Administration (BBA)';
-      else if (/PHARMACY/i.test(text)) detectedDept = 'B. Pharm';
-      else if (/ARCHITECTURE/i.test(text)) detectedDept = 'B.Arch';
-      else if (/LAW/i.test(text)) detectedDept = 'LL.B. (Hons) in Law';
+      else if (/PHARMACY/i.test(text)) detectedDept = 'B.Sc. in Pharmacy (PHR)';
+      else if (/ARCHITECTURE/i.test(text)) detectedDept = 'B.Sc. in Architecture (ARC)';
+      else if (/LAW/i.test(text)) detectedDept = 'Bachelor of Laws (LLB)';
       else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
 
       // Course regex: code + title (multi-word) + credits + grade + grade points
@@ -2416,26 +2568,22 @@
           .replace(/\s{2,}/g, ' ');
 
         // ── CONTINUATION LINE handling ────────────────────
-        // If previous line had a course code but title wrapped, try to complete it
+        // If previous line had a course code but title wrapped, try to complete it.
+        // PDF.js may return table columns in any order (credits before title-remainder,
+        // or title-remainder before credits) depending on PDF content stream ordering.
+        // So we extract credits/grade/gp positionally regardless of column order.
         if (pendingCode) {
-          // Continuation line looks like: "GEOMETRY 3.00 B 3.00"
-          // It starts with the rest of the title + credits + grade + gp
-          const contRe = /^(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z][+-]?\([A-Z]+\))|P|F)\s+([\d]+\.[\d]+)\s*$/;
-          const cm = normalised.match(contRe);
-          if (cm) {
-            const fullTitle = (pendingTitle + ' ' + cm[1]).trim();
-            const code = pendingCode;
-            let grade = cm[3].trim();
-            const credits    = parseFloat(cm[2]);
-            const gradePoint = parseFloat(cm[4]);
-            const isRetake   = grade.includes('(RT)');
-            let cleanGrade   = grade.replace(/\s*\(RT\)\s*/g, '').trim();
+          const contResult = _parseContLine(normalised, pendingTitle);
+          if (contResult) {
+            const { fullTitle, credits, grade, gradePoint } = contResult;
+            const isRetake  = grade.includes('(RT)');
+            let cleanGrade  = grade.replace(/\s*\(RT\)\s*/g, '').trim();
             if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
             const titleCased = fullTitle.split(/\s+/).map(w =>
               w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
             ).join(' ');
-            const dbEntry      = COURSE_DB[code];
-            const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${code})`;
+            const dbEntry      = COURSE_DB[pendingCode];
+            const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${pendingCode})`;
             const finalCredits = dbEntry ? dbEntry.credits : credits;
             currentSem.courses.push({
               name: finalName, credits: finalCredits,
