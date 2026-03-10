@@ -41,7 +41,7 @@
   <div id="suggestions-portal"></div>
 
   <!-- Import Transcript Modal -->
-  <div id="importModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div id="importModal" onclick="if(event.target===this)hideImportModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
     <div id="importModalCard" style="background:#0f1f14;border:1px solid rgba(46,204,113,0.25);border-radius:16px;padding:28px 32px;max-width:480px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:85vh;overflow-y:auto;overflow-x:hidden;position:relative;z-index:10000;">
       <div id="importModalContent"></div>
     </div>
@@ -161,7 +161,26 @@
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
           <h3>CGPA Calculator</h3>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+
+          <!-- ── ONBOARDING STEP WIZARD ── -->
+          <div class="setup-wizard" id="setupWizard">
+            <div class="setup-step" id="setupStep1">
+              <div class="setup-step-indicator">
+                <span class="setup-step-num active" id="stepNum1">1</span>
+                <span class="setup-step-label">Department</span>
+              </div>
+              <div class="setup-step-indicator" id="stepIndicator2">
+                <span class="setup-step-num" id="stepNum2">2</span>
+                <span class="setup-step-label">Start Semester</span>
+              </div>
+              <div class="setup-step-indicator" id="stepIndicator3">
+                <span class="setup-step-num" id="stepNum3">3</span>
+                <span class="setup-step-label">Add Courses</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
 
             <!-- Step 1: Department -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -338,6 +357,7 @@
           <button class="btn-running-sem magnetic" id="addRunningSemBtn">🎯 Running Semester</button>
           <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
+          <button class="btn-whatif magnetic" id="whatIfBtn" onclick="toggleWhatIf()" title="Hypothetically change any grade and see CGPA preview">🔮 What-if</button>
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
           <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
         </div>
