@@ -763,11 +763,26 @@
       const sem = semesters.find(s => s.id === semId);
       if (!sem || !sem.courses[cIdx]) return;
       const val = e.target.value.trim();
-      // Only write back if value differs from stored (avoids unnecessary re-renders)
       if (sem.courses[cIdx].name !== val) {
         sem.courses[cIdx].name = val;
-        // Don't re-render (would steal focus) — just recalc and save
-        recalc();
+        recalc(); // re-renders DOM — e.target is now detached
+        // Flash saved-tick on the LIVE (re-rendered) input via stable id
+        if (val) {
+          const liveInput = document.getElementById(`course-input-${semId}-${cIdx}`);
+          const wrap = liveInput ? liveInput.closest('.course-input-wrap') : null;
+          if (wrap) {
+            let tick = wrap.querySelector('.course-saved-tick');
+            if (!tick) {
+              tick = document.createElement('span');
+              tick.className = 'course-saved-tick';
+              tick.textContent = '✓';
+              wrap.appendChild(tick);
+            }
+            tick.classList.add('visible');
+            clearTimeout(tick._hideTimer);
+            tick._hideTimer = setTimeout(() => tick.classList.remove('visible'), 1400);
+          }
+        }
       }
     }
 
@@ -834,6 +849,7 @@
       // Full re-render so P/F dropdown appears immediately for 0-credit courses
       renderSemesters();
       recalc();
+      updateSetupWizard();
 
       // Restore focus to the grade input of the picked row
       setTimeout(() => {
@@ -871,7 +887,7 @@
       const labelColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
       const dotBg     = isDark ? '#060d09' : '#d4edde';
 
-      const PAD = { top: 12, right: 16, bottom: 36, left: 32 };
+      const PAD = { top: 12, right: 16, bottom: 48, left: 36 };
       const cW = W - PAD.left - PAD.right;
       const cH = H - PAD.top  - PAD.bottom;
 
@@ -945,11 +961,31 @@
         ctx.textAlign = 'center';
         ctx.fillText(d.gpa.toFixed(2), x, y - 9);
 
-        // Semester label below x-axis
-        ctx.font = '10px DM Sans, sans-serif';
+        // Semester label below x-axis — rotate when many semesters
+        ctx.save();
+        ctx.translate(x, H - PAD.bottom + 8);
+        if (n > 5) {
+          ctx.rotate(-Math.PI / 4);
+          ctx.textAlign = 'right';
+          ctx.font = '9px DM Sans, sans-serif';
+        } else {
+          ctx.textAlign = 'center';
+          ctx.font = '10px DM Sans, sans-serif';
+        }
         ctx.fillStyle = labelColor;
-        ctx.fillText(d.label, x, H - PAD.bottom + 14);
+        ctx.fillText(d.label, 0, 0);
+        ctx.restore();
       });
+
+      // Y-axis title
+      ctx.save();
+      ctx.translate(10, PAD.top + cH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.font = '9px DM Sans, sans-serif';
+      ctx.fillStyle = labelColor;
+      ctx.fillText('GPA', 0, 0);
+      ctx.restore();
     }
 
     // Step 1: dept chosen → show semester picker
@@ -957,6 +993,7 @@
       const sel = document.getElementById('deptSelect');
       currentDept = sel.value;
       if (!currentDept) return;
+      updateSetupWizard();
       const dept = DEPARTMENTS[currentDept];
       // show credits badge
       const creditsEl = document.getElementById('deptCredits');
@@ -1020,6 +1057,8 @@
     function onDeptChange() { onStartSemConfirm(); }
 
     let semesters = [];
+    let whatIfMode = false;
+    const whatIfGrades = {}; // key: 'semId-cIdx', value: grade string
     let semesterCounter = 0;
     let _restoredFromStorage = false; // prevents Let's go / dept change from wiping restored data
 
@@ -1179,7 +1218,12 @@
               ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}           <span class="semester-label">${sem.name}</span>
               ${isRunning
                 ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
-                : (gpa !== null ? `<span class="semester-gpa-badge">GPA ${gpa.toFixed(2)}</span>` : '')
+                : (gpa !== null ? (() => {
+                    const col = gpa >= 3.5 ? '#2ECC71' : gpa >= 3.0 ? '#27ae60' : gpa >= 2.5 ? '#F0A500' : '#e74c3c';
+                    const bg  = gpa >= 3.5 ? 'rgba(46,204,113,0.10)' : gpa >= 3.0 ? 'rgba(46,204,113,0.07)' : gpa >= 2.5 ? 'rgba(240,165,0,0.10)' : 'rgba(231,76,60,0.10)';
+                    const bd  = gpa >= 3.5 ? 'rgba(46,204,113,0.25)' : gpa >= 3.0 ? 'rgba(46,204,113,0.18)' : gpa >= 2.5 ? 'rgba(240,165,0,0.25)' : 'rgba(231,76,60,0.25)';
+                    return `<span class="semester-gpa-badge" style="color:${col};background:${bg};border:1px solid ${bd}">GPA ${gpa.toFixed(2)}</span>`;
+                  })() : '')
               }
               ${!isRunning && sem.courses.some(c => c.name.trim() && !c.grade)
                 ? `<span class="semester-incomplete-badge">⚠ Incomplete</span>`
@@ -1206,15 +1250,15 @@
             ${sem.courses.map((c, i) => {
               const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
               return `
-            <div class="course-row${isRetaken ? ' retaken' : ''}">
+            <div class="course-row${isRetaken ? ' retaken' : ''}${whatIfMode ? ' whatif-active' : ''}">
               <div class="course-input-wrap" style="position:relative;">
                 <input type="text" placeholder="Type course code / title"
+                  id="course-input-${sem.id}-${i}"
                   value="${esc(c.name)}"
                   autocomplete="off"
                   oninput="onCourseInput(event,${sem.id},${i})"
                   onkeydown="onCourseKey(event,${sem.id},${i})"
-                  onblur="onCourseBlur(event,${sem.id},${i})"
-                  onblur="setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
+                  onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
                 ${isRetaken ? `<span class="retaken-badge">Retaken</span>` : ''}
               </div>
               <span class="credits-static-wrap">
@@ -1247,6 +1291,7 @@
                   c.grade && c.grade.startsWith('D') ? '#e67e22' :
                   'var(--text3)'
                 }">${c.grade || '—'}</span>
+              ${whatIfMode && c.grade && c.grade !== 'P' && c.grade !== 'F(NT)' ? buildWhatIfSelect(sem.id, i, c.grade) : ''}
               <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
             </div>`;
             }).join('')}
@@ -1259,21 +1304,26 @@
 
       // ── EMPTY STATE ──────────────────────────────────────
       if (semesters.length === 0) {
+        // Contextual copy based on setup progress (#9)
+        const _deptDone = !!currentDept;
+        const _semDone  = _deptDone && getStartSeason() && getStartYear();
+        const _emptyHint = !_deptDone
+          ? '<div class="empty-state-steps"><div class="empty-state-step"><span class="empty-state-step-num">1</span><span>Pick your <strong>department</strong> in the header above</span></div><div class="empty-state-step"><span class="empty-state-step-num">2</span><span>Set your <strong>starting semester</strong> (e.g. Fall 2022)</span></div><div class="empty-state-step"><span class="empty-state-step-num">3</span><span>Add your first semester and enter grades</span></div></div>'
+          : !_semDone
+          ? '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department selected</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">2</span><span>Set your <strong>starting semester</strong> above and click <strong>Let\'s go →</strong></span></div></div>'
+          : '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department &amp; semester set</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">3</span><span>Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to auto-fill</span></div></div>';
         container.innerHTML = `
           <div class="empty-state">
-            <div class="empty-state-icon">🎓</div>
-            <div class="empty-state-title">No semesters yet</div>
-            <div class="empty-state-sub">
-              Add your first semester to start tracking your CGPA,
-              or load sample data to see how everything works.
-            </div>
+            <div class="empty-state-icon">${!_deptDone ? '👋' : !_semDone ? '📅' : '🎓'}</div>
+            <div class="empty-state-title">${!_deptDone ? "Let's get you set up" : !_semDone ? 'Almost ready...' : 'Ready to go!'}</div>
+            <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, or load sample data to explore.'}</div>
+            ${_emptyHint}
             <div class="empty-state-actions">
               <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
-              <button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>
+              ${_semDone ? '<button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>' : ''}
             </div>
-            <div class="empty-arrow">← use the buttons above too &nbsp;↑</div>
+            ${_semDone ? '<div class="empty-arrow">← use the buttons above too &nbsp;↑</div>' : ''}
           </div>`;
-        return;
       }
 
       // ── DRAG-AND-DROP WIRING ─────────────────────────────
@@ -1498,6 +1548,22 @@
 
       const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
 
+      // ── WHAT-IF CGPA (uses whatIfGrades overrides) ────────────────────
+      let whatIfPts = 0, whatIfCr = 0;
+      if (whatIfMode && Object.keys(whatIfGrades).length > 0) {
+        for (const sem of semesters) {
+          sem.courses.forEach((c, i) => {
+            const key = `${sem.id}-${i}`;
+            const grade = whatIfGrades[key] || c.grade;
+            const gp = GRADES[grade];
+            if (gp === undefined || !c.credits || grade === 'P' || grade === 'I') return;
+            if (retakenKeys.has(key)) return;
+            if (gp !== null) { whatIfPts += gp * c.credits; whatIfCr += c.credits; }
+          });
+        }
+      }
+      const whatIfCgpa = whatIfCr > 0 ? whatIfPts / whatIfCr : null;
+
       // CGPA for completed semesters only (for meter + status bar)
       let completedPts = 0, completedEarned = 0;
       semesters.filter(s => !s.running).forEach(sem => {
@@ -1533,6 +1599,28 @@
       } else {
         incWarn.style.display = 'none';
       }
+      // Show what-if preview
+      let wiPreview = document.getElementById('whatIfPreview');
+      if (!wiPreview) {
+        wiPreview = document.createElement('div');
+        wiPreview.id = 'whatIfPreview';
+        wiPreview.className = 'whatif-cgpa-preview';
+        const meterBox = document.querySelector('.cgpa-meter');
+        if (meterBox) meterBox.insertAdjacentElement('afterend', wiPreview);
+      }
+      if (whatIfMode && whatIfCgpa !== null && cgpa !== null) {
+        const delta = whatIfCgpa - cgpa;
+        const sign  = delta >= 0 ? '+' : '';
+        wiPreview.innerHTML = `
+          <span class="whatif-cgpa-label">🔮 What-if CGPA</span>
+          <span class="whatif-cgpa-val">${whatIfCgpa.toFixed(2)}</span>
+          <span class="whatif-cgpa-delta">${sign}${delta.toFixed(2)}</span>
+          <span style="font-size:11px;color:var(--text3);margin-left:4px">(vs current ${cgpa.toFixed(2)})</span>`;
+        wiPreview.style.display = 'flex';
+      } else {
+        wiPreview.style.display = 'none';
+      }
+
       cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
         cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
         cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
@@ -1665,8 +1753,9 @@
         statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
       }
 
-      runSimulator(cgpa, totalAttempted, totalPts);
+      runSimulator(cgpa, totalEarnedCGPA, totalPts);
       saveState();
+      updateSetupWizard();
     }
 
     function runSimulator(currentCgpa, currentCredits, currentPts) {
@@ -1675,7 +1764,7 @@
       const resultEl = document.getElementById('simulatorResult');
 
       if (!target || !remaining || currentCgpa === null) {
-        resultEl.innerHTML = 'Enter your target CGPA and remaining credits to see what you need.';
+        resultEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>';
         return;
       }
       if (target > 4.0 || target < 0) {
@@ -1684,23 +1773,54 @@
       }
 
       const totalCredits = currentCredits + remaining;
-      const neededPts = target * totalCredits - currentPts;
-      const neededGPA = neededPts / remaining;
+      const neededPts    = target * totalCredits - currentPts;
+      const neededGPA    = neededPts / remaining;
 
-      let msg = '';
+      // ── Difficulty metrics ──────────────────────────────
+      const diffPct   = Math.min(100, Math.round((neededGPA / 4.0) * 100));
+      const diffClass = neededGPA >= 3.8 ? 'hard' : neededGPA >= 3.2 ? 'medium' : 'easy';
+      const diffLabel = neededGPA >= 3.8 ? '🔴 Very Hard' : neededGPA >= 3.2 ? '🟡 Challenging' : '🟢 Achievable';
+      const neededColor = neededGPA >= 3.8 ? '#e74c3c' : neededGPA >= 3.2 ? '#F0A500' : '#2ECC71';
+      const targetColor = target >= 3.5 ? '#2ECC71' : target >= 3.0 ? '#F0A500' : 'var(--text)';
+
+      let msg = '<div class="sim-result-card">';
+
       if (neededGPA <= 4.0 && neededGPA >= 0) {
-        const difficulty = neededGPA >= 3.8 ? 'danger' : neededGPA >= 3.5 ? 'warn' : 'highlight';
-        msg = `To reach CGPA <span class="highlight">${target.toFixed(2)}</span>, you need an average GPA of
-               <span class="${difficulty}">${neededGPA.toFixed(2)}</span> across your remaining
-               <span class="highlight">${remaining}</span> credits.`;
-        if (neededGPA >= 3.9) msg += ` This requires near-perfect grades — <span class="danger">extremely difficult</span> but not impossible.`;
-        else if (neededGPA >= 3.5) msg += ` This is <span class="warn">challenging but achievable</span> with consistent effort and smart retakes.`;
-        else if (neededGPA >= 3.0) msg += ` This is <span class="highlight">very realistic</span> — stay consistent and avoid D or F grades.`;
-        else msg += ` This is <span class="highlight">very achievable</span> — you're in a great position.`;
+        // Before / After cards
+        msg += `<div class="sim-before-after">
+          <div class="sim-ba-block">
+            <div class="sim-ba-label">Current CGPA</div>
+            <div class="sim-ba-val">${currentCgpa.toFixed(2)}</div>
+          </div>
+          <div class="sim-ba-arrow">→</div>
+          <div class="sim-ba-block">
+            <div class="sim-ba-label">Target CGPA</div>
+            <div class="sim-ba-val" style="color:${targetColor}">${target.toFixed(2)}</div>
+          </div>
+          <div style="flex:1;min-width:80px">
+            <div class="sim-ba-label">Avg GPA Needed</div>
+            <div class="sim-ba-val" style="color:${neededColor}">${neededGPA.toFixed(2)}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">over ${remaining} credits</div>
+          </div>
+          <div class="sim-ba-delta">+${Math.max(0, target - currentCgpa).toFixed(2)}</div>
+        </div>`;
 
-        // ── Semester breakdown ──────────────────────────────
-        // Show how many semesters at standard credit loads (9/12/15 cr/sem)
-        // and the approximate letter grade needed
+        // Difficulty bar
+        const diffLabelShort = neededGPA >= 3.8 ? 'Very Hard' : neededGPA >= 3.2 ? 'Challenging' : 'Achievable';
+        msg += `<div style="margin-bottom:12px">
+          <div class="sim-difficulty-label"><span>${diffLabel}</span><span>${neededGPA.toFixed(2)} / 4.00</span></div>
+          <div class="sim-difficulty-bar"><div class="sim-difficulty-fill ${diffClass}" style="width:${diffPct}%"></div></div>
+        </div>`;
+
+        // Insight line
+        let insight = '';
+        if (neededGPA >= 3.9)      insight = `<span style="color:#e74c3c">Requires near-perfect grades every semester</span> — focus on strategic retakes below.`;
+        else if (neededGPA >= 3.5) insight = `Challenging but doable — <span style="color:#F0A500">consistent B+/A- performance</span> needed across remaining semesters.`;
+        else if (neededGPA >= 3.0) insight = `Very realistic — <span style="color:#2ECC71">avoid D/F grades</span> and stay consistent.`;
+        else                       insight = `<span style="color:#2ECC71">You're in great shape!</span> Maintain current effort.`;
+        msg += `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">${insight}</div>`;
+
+        // Semester breakdown table (compact)
         const gpToLetter = gp => {
           if (gp >= 3.85) return 'All A';
           if (gp >= 3.50) return 'A / A-';
@@ -1708,29 +1828,24 @@
           if (gp >= 2.85) return 'B / B+';
           if (gp >= 2.50) return 'B- / B';
           if (gp >= 2.15) return 'C+ / B-';
-          if (gp >= 1.85) return 'C / C+';
-          return 'C- or below';
+          return 'C / C+';
         };
-        const crLoads = [9, 12, 15];
-        const gpColor = neededGPA >= 3.8 ? '#e74c3c' : neededGPA >= 3.5 ? '#F0A500' : '#2ECC71';
-        const rows = crLoads.map(cr => {
+        const rows = [9, 12, 15].map(cr => {
           const semsNeeded = Math.ceil(remaining / cr);
-          const label = semsNeeded === 1 ? '1 semester' : `${semsNeeded} semesters`;
           return `<tr>
             <td style="padding:4px 10px;color:var(--text2);text-align:center">${cr} cr/sem</td>
-            <td style="padding:4px 10px;color:var(--text3);text-align:center">${label}</td>
-            <td style="padding:4px 10px;text-align:center;font-weight:700;color:${gpColor}">${neededGPA.toFixed(2)}</td>
+            <td style="padding:4px 10px;color:var(--text3);text-align:center">${semsNeeded} sem${semsNeeded!==1?'s':''}</td>
+            <td style="padding:4px 10px;text-align:center;font-weight:700;color:${neededColor}">${neededGPA.toFixed(2)}</td>
             <td style="padding:4px 10px;text-align:center;color:var(--text2)">${gpToLetter(neededGPA)}</td>
           </tr>`;
         }).join('');
-
-        msg += `<div style="margin-top:10px;overflow-x:auto">
+        msg += `<div style="overflow-x:auto;margin-bottom:4px">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="border-bottom:1px solid var(--border)">
-              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">Credits/sem</th>
-              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">Semesters left</th>
-              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">GPA needed</th>
-              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:1px">~Grades</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">cr/sem</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">semesters</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">gpa needed</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">~grades</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -1738,12 +1853,30 @@
 
       } else if (neededGPA > 4.0) {
         const ceiling = ((4.0 * remaining + currentPts) / totalCredits).toFixed(2);
-        msg = `<span class="danger">This target is mathematically out of reach</span> with ${remaining} credits remaining. ` +
-              `Your ceiling with perfect grades is <span class="highlight">${ceiling}</span>. ` +
-              `Consider lowering your target or boosting via strategic retakes below.`;
+        msg += `<div class="sim-before-after" style="border-color:rgba(231,76,60,0.25);background:rgba(231,76,60,0.06)">
+          <div class="sim-ba-block">
+            <div class="sim-ba-label">Current CGPA</div>
+            <div class="sim-ba-val">${currentCgpa.toFixed(2)}</div>
+          </div>
+          <div class="sim-ba-arrow" style="color:#e74c3c">✗</div>
+          <div class="sim-ba-block">
+            <div class="sim-ba-label">Your Ceiling</div>
+            <div class="sim-ba-val red">${ceiling}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">with all A grades</div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#e74c3c;margin-bottom:10px">
+          ⛔ Target ${target.toFixed(2)} is out of reach from ${remaining} remaining credits.
+          Consider lowering your goal or using strategic retakes below to raise your ceiling.
+        </div>`;
       } else {
-        msg = `<span class="highlight">You've already achieved CGPA ${target.toFixed(2)}!</span> Set a higher goal.`;
+        msg += `<div style="padding:12px 14px;border-radius:10px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.22)">
+          <div style="font-size:18px;font-weight:800;color:#2ECC71;font-family:'Syne',sans-serif">🎉 Already achieved!</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">Your CGPA ${currentCgpa.toFixed(2)} already meets the target of ${target.toFixed(2)}. Set a higher goal!</div>
+        </div>`;
       }
+
+      msg += '</div>'; // close .sim-result-card
 
       // ── RETAKE SUGGESTIONS ──────────────────────────────
       msg += buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target);
@@ -1910,404 +2043,332 @@
       if (!jsPDF) { alert('PDF library not loaded. Please check your connection.'); return; }
       if (!semesters.length) { alert('No data to export.'); return; }
 
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-      const W = 210, margin = 16;
-      const col = W - margin * 2;
-      let y = 0;
+      const doc  = new jsPDF({ unit: 'mm', format: 'a4' });
+      const PW   = 210, PH = 297;
+      const ML   = 14, MR = 14, MT = 14;
+      const CW   = PW - ML - MR;  // content width
+      let   y    = MT;
 
-      // ── helpers ──────────────────────────────────────────
-      const hex = c => { const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16); return [r,g,b]; };
-      const GREEN  = hex('#1DB954');
-      const GREEN2 = hex('#145E30');
-      const WHITE  = [255,255,255];
-      const GRAY1  = [20,40,20];
-      const GRAY2  = [60,90,60];
-      const GRAY3  = [120,150,120];
-      const LIGHT  = [235,245,235];
-      const RETAKE = hex('#F0A500');
-      const RED    = hex('#e74c3c');
+      // ── Colour palette ─────────────────────────────────
+      const GREEN  = [46, 204, 113];
+      const DARK   = [11, 15, 13];
+      const GREY1  = [30,  45, 35];
+      const GREY2  = [60,  80, 65];
+      const GREY3  = [120, 140, 125];
+      const WHITE  = [240, 245, 242];
+      const GOLD   = [240, 165,   0];
+      const RED    = [231,  76,  60];
 
-      function newPage() {
-        doc.addPage();
-        y = margin;
-      }
+      const gradeColor = g => {
+        if (!g) return GREY3;
+        if (g === 'F' || g === 'F(NT)') return RED;
+        if (g.startsWith('A')) return GREEN;
+        if (g.startsWith('B')) return [39, 174, 96];
+        if (g.startsWith('C')) return GOLD;
+        if (g.startsWith('D')) return [230, 126, 34];
+        return GREY3;
+      };
 
-      function checkY(needed = 10) {
-        if (y + needed > 282) newPage();
-      }
+      const setColor = (rgb, alpha) => {
+        const c = alpha ? `rgba(${rgb.join(',')},${alpha})` : `rgb(${rgb.join(',')})`;
+        return rgb;
+      };
 
-      // ── recompute stats ───────────────────────────────────
-      const retakenKeys = getRetakenKeys();
-      const retakenKeysCompleted = getRetakenKeys(semesters.filter(s => !s.running));
-      let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
-      let completedPts = 0, completedEarned = 0;
-      semesters.forEach(sem => {
-        sem.courses.forEach((c, i) => {
-          const gp = GRADES[c.grade];
-          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
-          if (!sem.running) totalAttempted += c.credits;
-          const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-          if (!isRetaken) { totalPts += gp * c.credits; if (gp !== null) totalEarnedCGPA += c.credits; }
-          if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
-        });
-      });
-      semesters.filter(s => !s.running).forEach(sem => {
-        sem.courses.forEach((c, i) => {
-          const gp = GRADES[c.grade];
-          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
-          if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
-          completedPts += gp * c.credits; if (gp !== null) completedEarned += c.credits;
-        });
-      });
-      const cgpa          = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
-      const cgpaCompleted = completedEarned  > 0 ? completedPts / completedEarned : null;
-      const hasRunning    = semesters.some(s => s.running);
-      const dept          = DEPARTMENTS[currentDept];
+      const checkY = (needed, addPage) => {
+        if (y + needed > PH - 12) {
+          doc.addPage();
+          // Page header stripe
+          doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+          doc.rect(0, 0, PW, 10, 'F');
+          doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+          doc.rect(0, 10, PW, 1, 'F');
+          doc.setFontSize(7);
+          doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+          doc.text('Shohoj — BRACU CGPA Report', ML, 7);
+          doc.text('souravmondalshuvo.github.io/Shohoj', PW - MR, 7, { align: 'right' });
+          y = 18;
+        }
+      };
 
-      // ── HEADER ────────────────────────────────────────────
-      doc.setFillColor(...GREEN2);
-      doc.rect(0, 0, W, 42, 'F');
+      // ── Cover header ───────────────────────────────────
+      // Dark bg strip
+      doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+      doc.rect(0, 0, PW, 38, 'F');
+      doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+      doc.rect(0, 38, PW, 1.2, 'F');
 
-      doc.setFontSize(20);
+      // Logo mark
+      doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+      doc.roundedRect(ML, 7, 16, 16, 2, 2, 'F');
+      doc.setFontSize(14);
+      doc.setTextColor(DARK[0], DARK[1], DARK[2]);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...GREEN);
-      doc.text('Shohoj', margin, 14);
-      doc.setTextColor(...WHITE);
-      doc.text('CGPA Report', margin + 26, 14);
+      doc.text('S', ML + 8, 18.5, { align: 'center' });
 
+      // Title
+      doc.setFontSize(18);
+      doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CGPA Report', ML + 20, 14);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...GRAY3);
-      doc.text(dept ? dept.label : '', margin, 21);
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
-      const timeStr = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
-      doc.text('Generated: ' + dateStr + ' at ' + timeStr, margin, 27);
+      doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+      const deptLabel = currentDept && DEPARTMENTS[currentDept] ? DEPARTMENTS[currentDept].label : 'BRAC University';
+      doc.text(deptLabel, ML + 20, 20);
+      doc.text('Generated by Shohoj · souravmondalshuvo.github.io/Shohoj', ML + 20, 26);
 
-      // Big CGPA number
-      const cgpaDisplay = cgpa !== null ? cgpa.toFixed(2) : '--';
-      doc.setFontSize(28);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...GREEN);
-      doc.text(cgpaDisplay, W - margin, 20, { align: 'right' });
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...GRAY3);
-      doc.text(hasRunning ? 'PROJECTED CGPA' : 'CURRENT CGPA', W - margin, 27, { align: 'right' });
+      // CGPA badge (right side of header)
+      let totalPts = 0, totalCr = 0, totalEarned = 0, totalAttempted = 0;
+      const rk = getRetakenKeys();
+      semesters.forEach(sem => {
+        if (sem.running) return;
+        sem.courses.forEach((c, i) => {
+          const gp = GRADES[c.grade];
+          if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
+          totalAttempted += c.credits;
+          if (!rk.has(sem.id + '-' + i)) {
+            if (gp !== null) { totalPts += gp * c.credits; totalCr += c.credits; }
+          }
+          if (gp > 0 && !rk.has(sem.id + '-' + i)) totalEarned += c.credits;
+        });
+      });
+      const cgpa = totalCr > 0 ? totalPts / totalCr : null;
+      if (cgpa !== null) {
+        const cgpaColor = cgpa >= 3.5 ? GREEN : cgpa >= 3.0 ? [39,174,96] : cgpa >= 2.5 ? GOLD : RED;
+        doc.setFontSize(28);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...cgpaColor);
+        doc.text(cgpa.toFixed(2), PW - MR, 20, { align: 'right' });
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+        doc.text('CGPA', PW - MR, 27, { align: 'right' });
+      }
 
       y = 50;
 
-      // ── SUMMARY STATS ROW ─────────────────────────────────
+      // ── Summary stats row ────────────────────────────────
       const stats = [
-        { label: 'Credits Attempted', value: totalAttempted.toFixed(0) },
-        { label: 'Credits Earned',    value: totalEarned.toFixed(0) },
-        { label: 'Semesters',         value: semesters.filter(s=>!s.running).length },
-        { label: hasRunning ? 'Projected CGPA' : 'Current CGPA', value: cgpaDisplay },
+        ['Credits Attempted', totalAttempted.toFixed(1)],
+        ['Credits Earned',    totalEarned.toFixed(1)],
+        ['Semesters',         semesters.filter(s => !s.running).length.toString()],
+        ['Standing',          cgpa === null ? '—' : cgpa >= 3.5 ? 'Excellent' : cgpa >= 3.0 ? 'Good' : cgpa >= 2.5 ? 'Satisfactory' : 'Warning'],
       ];
-      if (hasRunning && cgpaCompleted !== null) {
-        stats.push({ label: 'Completed CGPA', value: cgpaCompleted.toFixed(2) });
-      }
-      const bw = col / stats.length;
-      stats.forEach((s, i) => {
-        const x = margin + i * bw;
-        doc.setFillColor(...LIGHT);
-        doc.roundedRect(x, y, bw - 2, 16, 2, 2, 'F');
-        doc.setFontSize(14);
+      const statW = CW / stats.length;
+      doc.setFillColor(22, 38, 28);
+      doc.roundedRect(ML, y, CW, 16, 2, 2, 'F');
+      stats.forEach(([label, val], idx) => {
+        const sx = ML + idx * statW + statW / 2;
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...GREEN2);
-        doc.text(String(s.value), x + bw/2 - 1, y + 8, { align: 'center' });
-        doc.setFontSize(7);
+        doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
+        doc.text(val, sx, y + 7, { align: 'center' });
+        doc.setFontSize(6.5);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...GRAY2);
-        doc.text(s.label, x + bw/2 - 1, y + 13, { align: 'center' });
+        doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+        doc.text(label.toUpperCase(), sx, y + 12.5, { align: 'center' });
       });
       y += 22;
 
-      // ── SEMESTER SECTIONS ─────────────────────────────────
-      const rk = retakenKeys; // reuse already-computed retakenKeys
-
-      semesters.forEach((sem, si) => {
-        const semGPA = calcSemGPA(sem);
-        const courses = sem.courses.filter(c => c.name.trim());
-        if (!courses.length) return;
-
-        // Estimate height needed: header(8) + col header(6) + courses(7 each) + gap(4)
-        const needed = 8 + 6 + courses.length * 7 + 4;
-        checkY(needed);
+      // ── Semester sections ────────────────────────────────
+      semesters.forEach(sem => {
+        const semGpa = calcSemGPA(sem);
+        checkY(28, true);
 
         // Semester header bar
-        doc.setFillColor(...(sem.running ? hex('#2C2000') : GREEN2));
-        doc.roundedRect(margin, y, col, 8, 1.5, 1.5, 'F');
+        doc.setFillColor(18, 32, 22);
+        doc.rect(ML, y, CW, 7, 'F');
+        doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+        doc.rect(ML, y, 2.5, 7, 'F');
 
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-        // Strip HTML but reconstruct ordinal suffix as plain text
-        // e.g. "Fall 2025 (1<sup>st</sup> Semester)" → "Fall 2025 (1st Semester)"
-        // jsPDF can't do superscript, so we fake it: draw number, then tiny suffix higher up
-        const semNameRaw = sem.name;
-        const supMatch = semNameRaw.match(/^(.*?\()(\d+)<sup>(\w+)<\/sup>(.*)$/);
-        if (supMatch) {
-          // Split: prefix + number + suffix text
-          const prefix    = supMatch[1]; // e.g. "Fall 2025 ("
-          const num       = supMatch[2]; // e.g. "1"
-          const sup       = supMatch[3]; // e.g. "st"
-          const rest      = supMatch[4]; // e.g. " Semester)"
-          // Draw prefix+number at normal size
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-          const prefixNumStr = prefix + num;
-          doc.text(prefixNumStr, margin + 3, y + 5.5);
-          const prefixNumW = doc.getTextWidth(prefixNumStr);
-          // Draw superscript suffix smaller and higher
-          doc.setFontSize(5.5);
-          doc.text(sup, margin + 3 + prefixNumW, y + 3.8);
-          const supW = doc.getTextWidth(sup); // measured at 5.5pt — accurate
-          // Draw rest at normal size
-          doc.setFontSize(9);
-          doc.text(rest, margin + 3 + prefixNumW + supW, y + 5.5);
-          var semNameClean = prefix + num + sup + rest; // for getTextWidth fallback
-        } else {
-          var semNameClean = semNameRaw.replace(/<sup>[^<]*<\/sup>/g, '');
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-          doc.text(semNameClean, margin + 3, y + 5.5);
+        doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+        doc.text(sem.name + (sem.running ? '  [Running]' : ''), ML + 5, y + 5);
+        if (semGpa !== null) {
+          const gc = semGpa >= 3.5 ? GREEN : semGpa >= 3.0 ? [39,174,96] : semGpa >= 2.5 ? GOLD : RED;
+          doc.setTextColor(...gc);
+          doc.text('GPA ' + semGpa.toFixed(2), PW - MR, y + 5, { align: 'right' });
         }
+        y += 9;
 
-        if (semGPA !== null) {
-          doc.setTextColor(...(sem.running ? RETAKE : GREEN));
-          doc.text('GPA ' + semGPA.toFixed(2), W - margin - 3, y + 5.5, { align: 'right' });
-        }
-        if (sem.running) {
-          doc.setFontSize(9); // measure at 9pt — same size name was drawn at
-          const semNameW = doc.getTextWidth(semNameClean);
-          doc.setFontSize(7);
-          doc.setTextColor(...RETAKE);
-          doc.text('[Running]', margin + 3 + semNameW + 3, y + 5.5);
-        }
-        y += 10;
-
-        // Column headers
-        doc.setFillColor(245, 250, 245);
-        doc.rect(margin, y, col, 6, 'F');
-        doc.setFontSize(7);
+        // Table header
+        const COL = { name: ML, cr: ML+88, gp: ML+102, grade: ML+120, note: ML+135 };
+        doc.setFillColor(14, 26, 18);
+        doc.rect(ML, y, CW, 5.5, 'F');
+        doc.setFontSize(6);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...GRAY2);
-        doc.text('COURSE', margin + 2, y + 4);
-        doc.text('CREDITS', margin + col * 0.72, y + 4, { align: 'center' });
-        doc.text('GRADE PT', margin + col * 0.84, y + 4, { align: 'center' });
-        doc.text('GRADE', margin + col * 0.94, y + 4, { align: 'center' });
-        y += 6;
+        doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+        doc.text('COURSE', COL.name, y + 3.8);
+        doc.text('CR', COL.cr, y + 3.8, { align: 'right' });
+        doc.text('GP', COL.gp, y + 3.8, { align: 'right' });
+        doc.text('GRADE', COL.grade + 5, y + 3.8, { align: 'center' });
+        doc.text('NOTE', COL.note, y + 3.8);
+        y += 7;
 
         // Course rows
-        courses.forEach((c, ci) => {
-          const gp = GRADES[c.grade];
-          const isRetaken = rk.has(`${sem.id}-${sem.courses.indexOf(c)}`);
-          const isFNT     = c.grade === 'F(NT)';
-          const isF       = c.grade === 'F';
+        sem.courses.forEach((c, ci) => {
+          if (!c.name.trim() && !c.grade) return;
+          checkY(6, true);
+          const isRet = rk.has(sem.id + '-' + ci);
 
           // Alternating row bg
           if (ci % 2 === 0) {
-            doc.setFillColor(248, 253, 248);
-            doc.rect(margin, y, col, 7, 'F');
-          }
-
-          // Retaken badge background
-          if (isRetaken) {
-            doc.setFillColor(255, 248, 225);
-            doc.rect(margin, y, col, 7, 'F');
+            doc.setFillColor(12, 22, 16);
+            doc.rect(ML, y - 1, CW, 6, 'F');
           }
 
           doc.setFontSize(7.5);
-          doc.setFont('helvetica', isRetaken ? 'italic' : 'normal');
-          doc.setTextColor(...(isRetaken ? [160,120,0] : GRAY1));
-          // Truncate long course names
-          let name = c.name;
-          while (doc.getTextWidth(name) > col * 0.65 && name.length > 5) name = name.slice(0, -1);
-          if (name !== c.name) name += '...';
-          doc.text(name, margin + 2, y + 4.8);
+          doc.setFont('helvetica', isRet ? 'italic' : 'normal');
+          const _tc = isRet ? GREY3 : WHITE; doc.setTextColor(_tc[0], _tc[1], _tc[2]);
+          const nameStr = c.name.length > 45 ? c.name.slice(0, 43) + '…' : c.name;
+          doc.text(nameStr || '—', COL.name, y + 3.2);
 
-          if (isRetaken) {
-            doc.setFontSize(6);
+          doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+          doc.text(c.credits ? c.credits.toString() : '—', COL.cr, y + 3.2, { align: 'right' });
+
+          const gp = GRADES[c.grade];
+          doc.text(gp !== undefined && gp !== null ? gp.toFixed(2) : '—', COL.gp, y + 3.2, { align: 'right' });
+
+          // Grade pill
+          if (c.grade) {
+            const gc = gradeColor(c.grade);
+            doc.setFillColor(gc[0], gc[1], gc[2], 0.15);
+            doc.roundedRect(COL.grade, y - 0.5, 16, 5, 1, 1, 'F');
+            doc.setFontSize(7);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(...RETAKE);
-            doc.text('RT', margin + col * 0.67, y + 4.8, { align: 'center' });
+            doc.setTextColor(...gradeColor(c.grade));
+            doc.text(c.grade, COL.grade + 8, y + 3.2, { align: 'center' });
           }
 
+          // Note column
+          doc.setFontSize(6.5);
           doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7.5);
-          doc.setTextColor(...GRAY1);
-          doc.text(String(c.credits), margin + col * 0.72, y + 4.8, { align: 'center' });
+          doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+          const note = isRet ? 'Retaken' : c.grade === 'F(NT)' ? 'No Transfer' : c.grade === 'P' ? 'Pass/Fail' : '';
+          if (note) doc.text(note, COL.note, y + 3.2);
 
-          if (gp !== undefined && gp !== null && c.grade !== 'P' && c.grade !== 'I') {
-            doc.text(gp.toFixed(1), margin + col * 0.84, y + 4.8, { align: 'center' });
-          }
-
-          // Grade with color
-          const isPI = c.grade === 'P' || c.grade === 'I';
-          const gradeColor = isPI ? GRAY3 : isFNT || isF ? RED : isRetaken ? [160,120,0] : (gp >= 3.5 ? GREEN : gp >= 2.0 ? GRAY1 : RED);
-          doc.setTextColor(...gradeColor);
-          doc.setFont('helvetica', 'bold');
-          doc.text(c.grade || '-', margin + col * 0.94, y + 4.8, { align: 'center' });
-          doc.setFont('helvetica', 'normal');
-
-          // Bottom divider
-          doc.setDrawColor(220, 235, 220);
-          doc.setLineWidth(0.1);
-          doc.line(margin, y + 7, margin + col, y + 7);
-
-          y += 7;
+          y += 6;
         });
-
-        y += 5; // gap between semesters
+        y += 4; // gap between semesters
       });
 
-      // ── FOOTER ────────────────────────────────────────────
-      const totalPages = doc.getNumberOfPages();
-      for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...GRAY3);
-        doc.text('Shohoj - BRACU Smart CGPA Calculator', margin, 292);
-        doc.text(`Page ${p} of ${totalPages}`, W - margin, 292, { align: 'right' });
-      }
+      // ── Footer on last page ──────────────────────────────
+      doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+      doc.rect(0, PH - 10, PW, 10, 'F');
+      doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]);
+      doc.rect(0, PH - 10, PW, 0.8, 'F');
+      doc.setFontSize(7);
+      doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
+      doc.text('Generated by Shohoj · BRAC University CGPA Calculator', ML, PH - 4);
+      doc.text(new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }), PW - MR, PH - 4, { align: 'right' });
 
-      // ── SAVE ─────────────────────────────────────────────
-      const fname = `CGPA_Report_${new Date().toISOString().slice(0,10)}.pdf`;
-      doc.save(fname);
+      doc.save('BRACU_CGPA_Report_Shohoj.pdf');
     }
 
-    // ── PDF TRANSCRIPT IMPORT ─────────────────────────────
-    // Returns theme-matched colors for the import modal
+// ── MODAL THEME ───────────────────────────────────────
     function getModalTheme() {
       const isDark = document.documentElement.dataset.theme === 'dark';
       if (isDark) {
         return {
           isDark,
-          // Card background is set in index.html as #0f1f14
           text:              '#e8f0ea',
-          text2:             '#8aab90',
-          text3:             '#6a9b72',
-          tableHeadBg:       'rgba(46,204,113,0.06)',
-          tableRowBorder:    'rgba(46,204,113,0.10)',
-          warnBg:            'rgba(240,165,0,0.10)',
-          warnBorder:        'rgba(240,165,0,0.25)',
-          warnText:          '#F0A500',
-          cancelColor:       'rgba(255,255,255,0.65)',
-          cancelBorder:      'rgba(255,255,255,0.18)',
-          cancelHoverBg:     'rgba(255,255,255,0.08)',
-          cancelHoverBorder: 'rgba(255,255,255,0.35)',
-          cancelHoverColor:  '#ffffff',
+          text2:             '#a8c4ad',
+          text3:             '#6a9070',
+          card:              '#0f1f14',
           tableBorder:       'rgba(46,204,113,0.18)',
+          tableRowBorder:    'rgba(46,204,113,0.10)',
+          tableHeadBg:       'rgba(46,204,113,0.07)',
+          inputBg:           'rgba(46,204,113,0.07)',
+          warnBg:            'rgba(231,76,60,0.12)',
+          warnBorder:        'rgba(231,76,60,0.3)',
+          warnText:          '#e74c3c',
+          highlightBg:       'rgba(46,204,113,0.08)',
+          highlightBorder:   'rgba(46,204,113,0.22)',
         };
       } else {
         return {
           isDark,
-          // Card background set to white in index.html for light theme
           text:              '#0d2914',
-          text2:             '#3a6b47',
-          text3:             '#5a8f65',
-          tableHeadBg:       'rgba(46,204,113,0.08)',
-          tableRowBorder:    'rgba(46,204,113,0.12)',
-          warnBg:            'rgba(240,165,0,0.08)',
-          warnBorder:        'rgba(240,165,0,0.30)',
-          warnText:          '#b07800',
-          cancelColor:       '#3a6b47',
-          cancelBorder:      'rgba(46,204,113,0.35)',
-          cancelHoverBg:     'rgba(46,204,113,0.08)',
-          cancelHoverBorder: 'rgba(46,204,113,0.5)',
-          cancelHoverColor:  '#0d2914',
-          tableBorder:       'rgba(46,204,113,0.22)',
+          text2:             '#2d5a3d',
+          text3:             '#5a8a6a',
+          card:              '#ffffff',
+          tableBorder:       'rgba(0,0,0,0.12)',
+          tableRowBorder:    'rgba(0,0,0,0.07)',
+          tableHeadBg:       'rgba(46,204,113,0.06)',
+          inputBg:           'rgba(46,204,113,0.05)',
+          warnBg:            'rgba(231,76,60,0.06)',
+          warnBorder:        'rgba(231,76,60,0.2)',
+          warnText:          '#c0392b',
+          highlightBg:       'rgba(46,204,113,0.06)',
+          highlightBorder:   'rgba(46,204,113,0.18)',
         };
       }
     }
 
+    // ── IMPORT MODAL ──────────────────────────────────────
     function showImportModal(html) {
-      const modal = document.getElementById('importModal');
-      const card  = document.getElementById('importModalCard');
-      const isDark = document.documentElement.dataset.theme === 'dark';
-      // Backdrop: dark overlay in dark mode, soft green-tinted in light mode
-      modal.style.background = isDark
-        ? 'rgba(0,0,0,0.75)'
-        : 'rgba(13,41,20,0.45)';
-      // Apply theme-matched card styling
-      if (isDark) {
-        card.style.background   = '#0f1f14';
-        card.style.border       = '1px solid rgba(46,204,113,0.22)';
-        card.style.boxShadow    = '0 24px 80px rgba(0,0,0,0.6)';
-      } else {
-        card.style.background   = '#ffffff';
-        card.style.border       = '1px solid rgba(46,204,113,0.30)';
-        card.style.boxShadow    = '0 24px 80px rgba(46,204,113,0.15), 0 0 0 1px rgba(255,255,255,0.9)';
-      }
-      document.getElementById('importModalContent').innerHTML = html;
+      const modal    = document.getElementById('importModal');
+      const card     = document.getElementById('importModalCard');
+      const content  = document.getElementById('importModalContent');
+      if (!modal || !content) return;
+
+      // Theme-aware card background
+      const t = getModalTheme();
+      card.style.background   = t.card;
+      card.style.borderColor  = t.tableBorder;
+
+      content.innerHTML = html;
       modal.style.display = 'flex';
+      requestAnimationFrame(() => { modal.style.opacity = '1'; });
+
+      // Backdrop click — but guard so clicks on card don't close
+      modal.addEventListener('click', function _bd(e) {
+        if (e.target === modal) { hideImportModal(); modal.removeEventListener('click', _bd); }
+      });
     }
+
     function hideImportModal() {
       const modal = document.getElementById('importModal');
-      modal.style.display = 'none';
-      // Reset file input so same file can be re-selected
-      const fi = document.getElementById('transcriptFileInput');
-      if (fi) fi.value = '';
+      if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; }, 220); }
     }
-    // Close modal on backdrop click (not when clicking inside the card)
-    document.getElementById('importModal').addEventListener('click', function(e) {
-      const card = document.getElementById('importModalCard');
-      if (card && !card.contains(e.target)) hideImportModal();
-    });
 
+    // ── PDF IMPORT ────────────────────────────────────────
     async function importTranscriptPDF(inputEl) {
       const file = inputEl.files[0];
       if (!file) return;
 
-      // Loading state
-      const t = getModalTheme();
-      showImportModal(`
-        <div style="text-align:center;padding:20px 0">
-          <div style="font-size:28px;margin-bottom:12px">⏳</div>
-          <div style="font-size:15px;font-weight:600;color:${t.text}">Reading transcript…</div>
-          <div style="font-size:12px;color:${t.text3};margin-top:6px">Parsing your grade sheet</div>
-        </div>`);
+      // Loading state on the import button
+      const btn = document.getElementById('importPdfBtn');
+      const origText = btn ? btn.textContent : '';
+      if (btn) { btn.textContent = '⏳ Reading…'; btn.disabled = true; }
 
       try {
-        // Set PDF.js worker
-        if (window.pdfjsLib) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc =
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        } else {
-          throw new Error('PDF.js not loaded. Check your internet connection.');
-        }
+        if (!window.pdfjsLib) { throw new Error('PDF.js not loaded. Check your connection.'); }
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let   fullText    = '';
 
-        // Extract all text from all pages
-        let fullText = '';
         for (let p = 1; p <= pdf.numPages; p++) {
-          const page = await pdf.getPage(p);
+          const page    = await pdf.getPage(p);
           const content = await page.getTextContent();
-          // Join items with spaces, preserve line breaks via y-position grouping
+          // Preserve newlines between text items based on y-position
           let lastY = null;
-          for (const item of content.items) {
-            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 3) {
-              fullText += '\n';
-            }
-            fullText += item.str + ' ';
+          content.items.forEach(item => {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) fullText += '\n';
+            fullText += item.str;
             lastY = item.transform[5];
-          }
+          });
           fullText += '\n';
         }
 
         // ── PARSE ──────────────────────────────────────
         let parsed = parseTranscriptText(fullText);
 
-        // ── FALLBACK: blob parser ───────────────────────────────────────
-        // If line-based parser found semesters but suspiciously few courses
-        // (e.g. PDF.js scrambled column order), re-parse the raw text blob
-        // by scanning for course-code tokens directly, independent of line breaks.
+        // ── FALLBACK: blob parser ─────────────────────
         const totalCourses = parsed.semesters.reduce((s,sem)=>s+sem.courses.length,0);
         const semCount     = parsed.semesters.length;
         if (semCount > 0 && totalCourses < semCount * 2) {
@@ -2323,22 +2384,30 @@
         }
 
         if (!parsed.semesters.length) {
-          throw new Error('No BRACU semester data found. Make sure this is an official BRACU grade sheet (Unofficial Copy).');
+          showImportModal(`
+            <div style="text-align:center;padding:20px">
+              <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+              <div style="font-size:16px;font-weight:700;color:${getModalTheme().text};margin-bottom:8px">Could not parse transcript</div>
+              <div style="font-size:13px;color:${getModalTheme().text2};margin-bottom:16px">
+                No semesters were detected. Make sure this is a BRACU official grade sheet PDF.
+              </div>
+              <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
+            </div>`);
+          return;
         }
 
-        // ── CONFIRM MODAL ──────────────────────────────
-        const _mt = getModalTheme();
-        const semRows = parsed.semesters.map(s =>
-          `<tr>
-            <td style="padding:4px 8px;color:${_mt.text};font-size:13px">${s.name}</td>
-            <td style="padding:4px 8px;text-align:center;color:${_mt.text3};font-size:13px">${s.courses.length} courses</td>
+        // ── BUILD PREVIEW MODAL ───────────────────────
+        const t2 = getModalTheme();
+        const semRows = parsed.semesters.map(s => `
+          <tr style="border-bottom:1px solid ${t2.tableRowBorder}">
+            <td style="padding:4px 8px;font-size:12px;color:${t2.text}">${s.name}</td>
+            <td style="padding:4px 8px;text-align:center;font-size:12px;color:${t2.text2}">${s.courses.length} courses</td>
             <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P').length} graded</td>
           </tr>`
         ).join('');
 
         const totalCoursesDisplay = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
 
-        const t2 = getModalTheme();
         showImportModal(`
           <div style="margin-bottom:16px">
             <div style="font-size:18px;font-weight:700;color:${t2.text};margin-bottom:4px">📄 Transcript Parsed</div>
@@ -2354,332 +2423,275 @@
               <tbody>${semRows}</tbody>
             </table>
           </div>
-          ${parsed.detectedDept ? `<div style="font-size:12px;color:${t2.text3};margin-bottom:12px">🎓 Detected department: <strong style="color:${t2.text}">${parsed.detectedDept}</strong></div>` : ''}
-          <div style="font-size:12px;color:${t2.warnText};margin-bottom:16px;padding:8px 10px;background:${t2.warnBg};border-radius:6px;border:1px solid ${t2.warnBorder}">
-            ⚠ This will <strong>replace</strong> your current data. Any unsaved changes will be lost.
-          </div>
+          ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${parsed.detectedDept}</strong></div>` : ''}
           <div style="display:flex;gap:10px">
             <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
-              onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(29,185,84,0.4)'"
-              onmouseleave="this.style.background='#1DB954';this.style.transform='translateY(0)';this.style.boxShadow='none'"
-              onmousedown="this.style.transform='translateY(1px)';this.style.boxShadow='none'"
-              onmouseup="this.style.transform='translateY(-1px)'"
-              style="flex:1;padding:10px;border-radius:8px;border:none;background:#1DB954;color:#000;font-weight:700;font-size:14px;cursor:pointer;transition:background 0.15s,transform 0.1s,box-shadow 0.15s">
+              onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(46,204,113,0.35)'"
+              onmouseleave="this.style.background='#1DB954';this.style.transform='';this.style.boxShadow=''"
+              style="flex:1;background:#1DB954;color:#0b0f0d;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s">
               ✅ Import Now
             </button>
             <button onclick="hideImportModal()"
-              onmouseenter="this.style.background='${t2.cancelHoverBg}';this.style.borderColor='${t2.cancelHoverBorder}';this.style.color='${t2.cancelHoverColor}';this.style.transform='translateY(-1px)'"
-              onmouseleave="this.style.background='transparent';this.style.borderColor='${t2.cancelBorder}';this.style.color='${t2.cancelColor}';this.style.transform='translateY(0)'"
-              onmousedown="this.style.transform='translateY(1px)'"
-              onmouseup="this.style.transform='translateY(-1px)'"
-              style="padding:10px 16px;border-radius:8px;border:1px solid ${t2.cancelBorder};background:transparent;color:${t2.cancelColor};font-size:14px;cursor:pointer;transition:background 0.15s,border-color 0.15s,color 0.15s,transform 0.1s">
+              onmouseenter="this.style.background='rgba(255,255,255,0.12)'"
+              onmouseleave="this.style.background='rgba(255,255,255,0.07)'"
+              style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
               Cancel
             </button>
           </div>`);
 
       } catch (err) {
-        const te = getModalTheme();
         showImportModal(`
-          <div style="text-align:center;padding:8px 0">
-            <div style="font-size:28px;margin-bottom:12px">❌</div>
-            <div style="font-size:15px;font-weight:600;color:${te.text};margin-bottom:8px">Import Failed</div>
-            <div style="font-size:12px;color:${te.text3};margin-bottom:20px;line-height:1.6">${err.message}</div>
-            <button onclick="hideImportModal()"
-              onmouseenter="this.style.background='${te.cancelHoverBg}';this.style.borderColor='${te.cancelHoverBorder}';this.style.color='${te.cancelHoverColor}'"
-              onmouseleave="this.style.background='transparent';this.style.borderColor='${te.cancelBorder}';this.style.color='${te.cancelColor}'"
-              style="padding:8px 20px;border-radius:8px;border:1px solid ${te.cancelBorder};background:transparent;color:${te.cancelColor};cursor:pointer;transition:background 0.15s,border-color 0.15s,color 0.15s">
-              Close
-            </button>
+          <div style="text-align:center;padding:20px">
+            <div style="font-size:32px;margin-bottom:12px">❌</div>
+            <div style="font-size:15px;font-weight:700;color:${getModalTheme().text};margin-bottom:8px">Import failed</div>
+            <div style="font-size:12px;color:${getModalTheme().text2};margin-bottom:16px">${err.message}</div>
+            <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
           </div>`);
+      } finally {
+        if (btn) { btn.textContent = origText; btn.disabled = false; }
+        if (inputEl) inputEl.value = '';
       }
     }
 
-
-    // Flexible continuation-line parser: extracts credits/grade/gradePoint from a line
-    // regardless of what order PDF.js returns the table columns.
-    // Handles: "GEOMETRY 3.00 B 3.00", "3.00 GEOMETRY B 3.00", "3.00 B 3.00 GEOMETRY" etc.
+// ── _parseContLine (column-order-independent continuation line parser) ──
     function _parseContLine(line, pendingTitle) {
-      // Must contain at least 2 floats and 1 grade letter to be a valid continuation
+      // Extract all floats from line
       const floatRe = /\b(\d+\.\d+)\b/g;
-      // Use lookahead/lookbehind instead of \b — \b fails before '(' in F(NT)/C+(RT)
+      const floats  = [...line.matchAll(floatRe)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
+
+      // Extract grade with lookahead/lookbehind to handle F(NT), C+(RT), etc.
       const gradeRe = /(?<!\w)((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)(?!\w)/;
+      const gradeM  = line.match(gradeRe);
+      const grade   = gradeM ? gradeM[1].replace(/\(RT\)/,'').trim() : null;
 
-      const floats = [...line.matchAll(floatRe)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
-      const gradeM = line.match(gradeRe);
+      if (floats.length < 1 || !grade) return null;
 
-      if (floats.length < 2 || !gradeM) return null;
+      // credits = first float, gradePoint = last float (or only float)
+      const credits    = floats[0].val;
+      const gradePoint = floats[floats.length - 1].val;
 
-      // Pick the two floats: one is credits (standard value), one is grade points
-      const VALID_CREDITS = new Set([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]);
-      let creditsEntry = floats.find(f => VALID_CREDITS.has(f.val));
-      let gpEntry      = floats.find(f => f !== creditsEntry);
-      if (!creditsEntry || !gpEntry) {
-        // Fallback: first float = credits, second = gp
-        creditsEntry = floats[0];
-        gpEntry      = floats[1];
-      }
+      // Title = everything before the first float, or use pendingTitle
+      const beforeFirst = line.slice(0, floats[0].idx).trim().replace(/\s{2,}/g, ' ');
+      const fullTitle   = (pendingTitle ? pendingTitle + ' ' : '') + beforeFirst;
 
-      // Strip the two float values and the grade from the line to get the title remainder
-      let remainder = line;
-      // Remove in reverse index order to preserve positions
-      const toRemove = [
-        { idx: creditsEntry.idx, len: creditsEntry.val.toString().length + (line[creditsEntry.idx + creditsEntry.val.toString().length] === '0' ? 1 : 0) },
-        { idx: gpEntry.idx,      len: gpEntry.val.toString().length      + (line[gpEntry.idx      + gpEntry.val.toString().length]      === '0' ? 1 : 0) },
-        { idx: gradeM.index,     len: gradeM[0].length },
-      ].sort((a, b) => b.idx - a.idx); // descending
-
-      // Use string replacement to remove matched tokens
-      remainder = remainder
-        .replace(new RegExp('\\b' + creditsEntry.val.toFixed(2) + '\\b'), '')
-        .replace(new RegExp('\\b' + gpEntry.val.toFixed(2) + '\\b'), '')
-        .replace(gradeRe, '')
-        .replace(/\s{2,}/g, ' ').trim();
-
-      const fullTitle = (pendingTitle + (remainder ? ' ' + remainder : '')).trim();
-      return { fullTitle, credits: creditsEntry.val, grade: gradeM[0], gradePoint: gpEntry.val };
+      return { fullTitle: fullTitle.trim(), credits, grade: grade.trim(), gradePoint };
     }
 
-    // ── BLOB FALLBACK PARSER ─────────────────────────────────────────────
-    // Scans raw text blob for course-code + data patterns regardless of line breaks.
-    // Used when PDF.js scrambles column order and the line-based parser misses courses.
+    // ── parseBlobFallback (nuclear fallback: scan raw text for course tokens) ──
     function parseBlobFallback(text) {
-      const SEASON = { FALL:'Fall', SPRING:'Spring', SUMMER:'Summer' };
-      const semesters = [];
-      let currentSem = null;
-
-      // Collapse all whitespace/newlines into single spaces for blob scanning
       const blob = text.replace(/\s+/g, ' ');
 
-      // Find semester headers in order
-      const semRe = /SEMESTER[:\s]+([A-Z]+)\s+(\d{4})/gi;
+      const SEASON = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
+      const semRe  = /SEMESTER[:\s]+([A-Z]+)\s+(\d{4})/gi;
       const semMatches = [];
       let sm;
       while ((sm = semRe.exec(blob)) !== null) {
         const season = sm[1].toUpperCase();
-        if (SEASON[season]) {
-          semMatches.push({ name: `${SEASON[season]} ${sm[2]}`, season: SEASON[season], year: parseInt(sm[2]), idx: sm.index });
-        }
+        const year   = sm[2];
+        semMatches.push({ name: `${SEASON[season] || sm[1]} ${year}`, season, year, idx: sm.index });
       }
       if (!semMatches.length) return { semesters: [], detectedDept: null };
 
-      // For each semester, scan the blob slice between this header and the next
-      for (let i = 0; i < semMatches.length; i++) {
-        const start = semMatches[i].idx;
-        const end   = i + 1 < semMatches.length ? semMatches[i+1].idx : blob.length;
-        const slice = blob.slice(start, end);
-
-        const courses = [];
-        // Match: COURSECODE ... CREDITS GRADE GRADEPOINTS
-        // e.g. "CSE110 PROGRAMMING LANGUAGE I 3.00 C- 1.70"
-        // Course code followed by anything, then float, grade, float
-        const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
-        let cm;
+      const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
+      const semesters = semMatches.map((s, idx) => {
+        const sliceEnd = idx + 1 < semMatches.length ? semMatches[idx+1].idx : blob.length;
+        const slice    = blob.slice(s.idx, sliceEnd);
+        const courses  = [];
+        let   cm;
         while ((cm = courseRe.exec(slice)) !== null) {
           const code  = cm[1];
+          const title = (cm[2] || '').trim().replace(/\s{2,}/g, ' ');
           const creds = parseFloat(cm[3]);
-          let grade   = cm[4].trim();
+          const grade = cm[4].replace(/\(RT\)/,'').trim();
           const gp    = parseFloat(cm[5]);
-
-          // Skip semester/cumulative summary lines
-          if (/^(SEMESTER|CUMULATIVE)/i.test(cm[0])) continue;
-          // Skip if credits > 4 (likely a year like 2024)
-          if (creds > 4) continue;
-
-          const isRetake = grade.includes('(RT)');
-          let cleanGrade = grade.replace(/\s*\(RT\)\s*/g, '').trim();
-          if (/^F\s*\(?NT\)?$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
-
-          const dbEntry = COURSE_DB[code];
-          const finalName    = dbEntry ? dbEntry.full : `${code}`;
-          const finalCredits = dbEntry ? dbEntry.credits : creds;
-
-          courses.push({
-            name: finalName, credits: finalCredits,
-            grade: cleanGrade,
-            gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gp > 0 ? gp : (cleanGrade === 'F' ? '0' : '')),
-            _wasRetake: isRetake,
-          });
+          if (!isNaN(creds) && creds > 0) {
+            courses.push({ name: `${code} ${title}`.trim(), credits: creds, grade, gradePoint: gp });
+          }
         }
+        courseRe.lastIndex = 0;
+        return { id: Date.now() + idx, name: s.name, courses, running: false };
+      }).filter(s => s.courses.length > 0);
 
-        if (courses.length) {
-          const { season, year } = semMatches[i];
-          semesters.push({ name: semMatches[i].name, season, year, courses });
-        }
-      }
+      // Dept detection
+      let detectedDept = null;
+      if (/CSE|COMPUTER SCIENCE/i.test(text))              detectedDept = 'BSc CSE — Computer Science & Engineering';
+      else if (/ELECTRICAL/i.test(text))                   detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
+      else if (/BBA|BUSINESS ADMINISTRATION/i.test(text))  detectedDept = 'BBA — Business Administration';
+      else if (/PHARMACY/i.test(text))                     detectedDept = 'B.Sc. in Pharmacy (PHR)';
+      else if (/ARCHITECTURE/i.test(text))                 detectedDept = 'B.Sc. in Architecture (ARC)';
+      else if (/LAW/i.test(text))                          detectedDept = 'Bachelor of Laws (LLB)';
+      else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
 
-      const detectedDept = /CSE|COMPUTER SCIENCE/i.test(blob)
-        ? 'B.Sc. in Computer Science and Engineering (CSE)'
-        : /BBA|BUSINESS ADMINISTRATION/i.test(blob)
-        ? 'Bachelor of Business Administration (BBA)'
-        : null;
       return { semesters, detectedDept };
     }
 
+    // ── parseTranscriptText (line-by-line BRACU transcript parser) ───────────
     function parseTranscriptText(text) {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      const semesters = [];
-      let currentSem = null;
-      let detectedDept = '';
 
-      // Detect department from header text
-      // Note: PDF.js may split "COMPUTER\nSCIENCE" across lines — use \s* to bridge
-      if (/COMPUTER[\s\S]{0,10}SCIENCE/i.test(text) || /B\.?SC\.?\s+IN\s+COMPUTER/i.test(text)) detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
-      else if (/ELECTRICAL/i.test(text)) detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
-      else if (/BUSINESS ADMINISTRATION/i.test(text)) detectedDept = 'Bachelor of Business Administration (BBA)';
-      else if (/PHARMACY/i.test(text)) detectedDept = 'B.Sc. in Pharmacy (PHR)';
-      else if (/ARCHITECTURE/i.test(text)) detectedDept = 'B.Sc. in Architecture (ARC)';
-      else if (/LAW/i.test(text)) detectedDept = 'Bachelor of Laws (LLB)';
-      else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
+      // ── Dept detection ──────────────────────────────
+      let detectedDept = null;
+      const fullText = text.toUpperCase();
+      if (/COMPUTER[\s\S]{0,10}SCIENCE|B\.?SC\.?\s+IN\s+COMPUTER/i.test(text))
+        detectedDept = 'BSc CSE — Computer Science & Engineering';
+      else if (/ELECTRICAL/i.test(text))
+        detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
+      else if (/BUSINESS ADMINISTRATION/i.test(text))
+        detectedDept = 'BBA — Business Administration';
+      else if (/PHARMACY/i.test(text))
+        detectedDept = 'B.Sc. in Pharmacy (PHR)';
+      else if (/ARCHITECTURE/i.test(text))
+        detectedDept = 'B.Sc. in Architecture (ARC)';
+      else if (/LAW/i.test(text))
+        detectedDept = 'Bachelor of Laws (LLB)';
+      else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text))
+        detectedDept = 'B.A. in English (ENG)';
 
-      // Course regex: code + title (multi-word) + credits + grade + grade points
-      // Handles: C-, B+, F (NT), C+ (RT), P, D+
-      const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z]\s*\([A-Z]+\)|[A-Z][+-]?\s*\([A-Z]+\))|P|F)\s+([\d]+\.[\d]+)\s*$/;
-      const semRe    = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+      const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
+      const semRe     = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+      const skipRe    = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
+      const courseRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+?)\s+([\d]+\.[\d]+)\s+((?:[A-Z][+-]?|[A-Z]\s*\([A-Z]{2}\))\s*\(RT\)?)\s+([\d]+\.[\d]+)/;
+      const fntRe     = /F\s*\(NT\)/;
+      const rtRe      = /([A-Z][+-]?)\s*\(RT\)/;
 
-      const SEASON_MAP = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
+      const semesters   = [];
+      let   currentSem  = null;
+      let   pendingTitle = null;
 
-      let pendingCode = '';   // course code from a line whose title wraps to next line
-      let pendingTitle = '';  // partial title accumulated so far
+      const flushPending = () => { pendingTitle = null; };
 
       for (const line of lines) {
-        // Semester header detection
-        const semMatch = line.match(semRe);
-        if (semMatch) {
-          pendingCode = ''; pendingTitle = '';
-          const season = SEASON_MAP[semMatch[1].toUpperCase()] || semMatch[1];
-          const year   = semMatch[2];
-          currentSem = { name: `${season} ${year}`, season, year: parseInt(year), courses: [] };
+        if (skipRe.test(line)) { flushPending(); continue; }
+
+        // New semester header
+        const semM = line.match(semRe);
+        if (semM) {
+          const season = semM[1].toUpperCase();
+          const year   = semM[2];
+          currentSem = {
+            id: Date.now() + semesters.length,
+            name: `${SEASON_NAMES[season] || semM[1]} ${year}`,
+            courses: [],
+            running: false,
+          };
           semesters.push(currentSem);
+          flushPending();
           continue;
         }
-
-        // Skip summary lines
-        if (/^(SEMESTER|CUMULATIVE)\s+Credits/i.test(line)) continue;
-        if (/^(Credits Attempted|Credits Earned|GPA|CGPA)/i.test(line)) continue;
-        if (/^(BRAC University|Grade Sheet|Student|Name|Program|Course No)/i.test(line)) continue;
-        if (/^Page \d/i.test(line)) continue;
 
         if (!currentSem) continue;
 
-        // Normalise grade markers
-        const normalised = line
-          .replace(/F\s*\(NT\)/g, 'F(NT)')
-          .replace(/([A-Z][+-]?)\s*\(RT\)/g, '$1(RT)')
-          .replace(/\s{2,}/g, ' ');
-
-        // ── CONTINUATION LINE handling ────────────────────
-        // If previous line had a course code but title wrapped, try to complete it.
-        // PDF.js may return table columns in any order (credits before title-remainder,
-        // or title-remainder before credits) depending on PDF content stream ordering.
-        // So we extract credits/grade/gp positionally regardless of column order.
-        if (pendingCode) {
-          const contResult = _parseContLine(normalised, pendingTitle);
-          if (contResult) {
-            const { fullTitle, credits, grade, gradePoint } = contResult;
-            const isRetake  = grade.includes('(RT)');
-            let cleanGrade  = grade.replace(/\s*\(RT\)\s*/g, '').trim();
-            if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
-            const titleCased = fullTitle.split(/\s+/).map(w =>
-              w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
-            ).join(' ');
-            const dbEntry      = COURSE_DB[pendingCode];
-            const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${pendingCode})`;
-            const finalCredits = dbEntry ? dbEntry.credits : credits;
-            currentSem.courses.push({
-              name: finalName, credits: finalCredits,
-              grade: cleanGrade,
-              gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gradePoint > 0 ? gradePoint : (cleanGrade === 'F' ? '0' : '')),
-              _wasRetake: isRetake,
-            });
-            pendingCode = ''; pendingTitle = '';
-            continue;
+        // F(NT) line
+        if (fntRe.test(line)) {
+          const parts = line.replace(/\s{2,}/g, ' ').split(' ');
+          const code  = parts[0];
+          const name  = pendingTitle || code;
+          if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
+            currentSem.courses.push({ name, credits: 0, grade: 'F(NT)', gradePoint: 'NT' });
+            flushPending(); continue;
           }
-          // Continuation didn't resolve — line is more title text, keep accumulating
-          pendingTitle += ' ' + normalised;
+        }
+
+        // Standard course line: CODE Title credits Grade gradePoint
+        const cm = line.match(courseRe);
+        if (cm) {
+          const code     = cm[1];
+          const titleRaw = cm[2].replace(/\s{2,}/g, ' ').trim();
+          const credits  = parseFloat(cm[3]);
+          let   grade    = cm[4].replace(/\(RT\)/,'').trim().replace(/\s+/g,'');
+          const gp       = parseFloat(cm[5]);
+
+          // (RT) marker means retaken — we store as-is; retake dedup handles it
+          const name = pendingTitle
+            ? pendingTitle + ' ' + titleRaw
+            : `${code} ${titleRaw}`.trim();
+
+          currentSem.courses.push({ name: name.trim(), credits, grade, gradePoint: gp });
+          flushPending();
           continue;
         }
 
-        // ── NORMAL COURSE LINE ────────────────────────────
-        const m = normalised.match(courseRe);
-        if (m) {
-          let [, code, title, creditsStr, grade, gpStr] = m;
-          grade  = grade.trim();
-          const credits   = parseFloat(creditsStr);
-          const gradePoint = parseFloat(gpStr);
-          const isRetake  = grade.includes('(RT)');
-          let cleanGrade = grade.replace(/\s*\(RT\)\s*/g, '').trim();
-          if (/^F\s*\(NT\)$/i.test(cleanGrade)) cleanGrade = 'F(NT)';
-          const titleCased = title.trim().split(/\s+/).map(w =>
-            w.length <= 2 ? w : w[0] + w.slice(1).toLowerCase()
-          ).join(' ');
-          const dbEntry      = COURSE_DB[code];
-          const finalName    = dbEntry ? dbEntry.full : `${titleCased} (${code})`;
-          const finalCredits = dbEntry ? dbEntry.credits : credits;
-          currentSem.courses.push({
-            name: finalName, credits: finalCredits,
-            grade: cleanGrade,
-            gradePoint: cleanGrade === 'F(NT)' ? 'NT' : (gradePoint > 0 ? gradePoint : (cleanGrade === 'F' ? '0' : '')),
-            _wasRetake: isRetake,
-          });
-          pendingCode = ''; pendingTitle = '';
-        } else {
-          // ── PARTIAL COURSE LINE (title wraps) ────────────
-          // Detect: starts with course code but no credits/grade at end
-          const partialRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
-          const pm = normalised.match(partialRe);
-          if (pm && !semRe.test(normalised)) {
-            pendingCode  = pm[1];
-            pendingTitle = pm[2];
+        // Continuation line (title wraps to next line)
+        // If line looks like it continues a course title (no grade, no floats at start)
+        if (currentSem && !/^\d/.test(line) && line.length > 2 && line.length < 80) {
+          const res = _parseContLine(line, pendingTitle);
+          if (res && res.grade && GRADES[res.grade] !== undefined) {
+            const lastCourse = currentSem.courses[currentSem.courses.length - 1];
+            if (lastCourse && !lastCourse.grade) {
+              lastCourse.grade      = res.grade;
+              lastCourse.gradePoint = res.gradePoint;
+              if (res.credits) lastCourse.credits = res.credits;
+            } else {
+              currentSem.courses.push({
+                name: res.fullTitle || line,
+                credits: res.credits || 0,
+                grade: res.grade,
+                gradePoint: res.gradePoint,
+              });
+            }
+            flushPending(); continue;
           }
+          // Might be a multi-line title
+          pendingTitle = (pendingTitle ? pendingTitle + ' ' : '') + line;
+        } else {
+          flushPending();
         }
+      }
 
-      } // end for loop
-
-      // Remove empty semesters
+      // Filter out empty semesters
       return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
     }
 
+    // ── applyImport ───────────────────────────────────────
     function applyImport(parsed) {
       hideImportModal();
+      clearState();
 
-      // Detect start season/year from first semester
-      const first = parsed.semesters[0];
-      if (first) {
-        const seasonSel = document.getElementById('startSeason');
-        const yearSel   = document.getElementById('startYear');
-        if (seasonSel) seasonSel.value = first.season;
-        if (yearSel)   yearSel.value   = String(first.year);
-      }
-
-      // Set department if detected
+      // Reset dept state before import to avoid stale values
+      currentDept = null;
+      const _dSel = document.getElementById('deptSelect'); if (_dSel) _dSel.value = '';
+      document.getElementById('deptCreditsText').textContent = '';
+      const _dCred = document.getElementById('deptCredits'); if (_dCred) _dCred.style.display = 'none';
+      // Set dept if detected
       if (parsed.detectedDept) {
-        const deptSel = document.getElementById('deptSelect');
-        const match = Object.entries(DEPARTMENTS).find(([,d]) => d.label === parsed.detectedDept);
-        if (match && deptSel) {
-          deptSel.value = match[0];
-          currentDept = match[0];
-          const dept = DEPARTMENTS[currentDept];
-          if (dept) {
-            document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
-            document.getElementById('deptCredits').style.display = '';
-          }
+        const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === parsed.detectedDept);
+        if (deptKey) {
+          currentDept = deptKey;
+          const sel = document.getElementById('deptSelect');
+          if (sel) sel.value = deptKey;
+          const dept = DEPARTMENTS[deptKey];
+          document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
+          const credEl = document.getElementById('deptCredits');
+          if (credEl) credEl.style.display = 'inline-flex';
+          const startRow = document.getElementById('startSemRow');
+          if (startRow) startRow.style.display = 'flex';
         }
       }
 
-      // Show the start row if hidden
-      const startRow = document.getElementById('startSemRow');
-      if (startRow) startRow.style.display = 'flex';
-
-      // Wipe old localStorage before applying imported data
-      clearState();
-
-      // Build semesters array
-      semesterCounter = 0;
-      semesters = parsed.semesters.map(s => ({
-        id: semesterCounter++,
-        name: s.name,
-        courses: s.courses,
+      // Assign fresh sequential IDs
+      semesters = parsed.semesters.map((s, idx) => ({
+        ...s,
+        id: idx + 1,
+        courses: s.courses.map(c => ({
+          name:       c.name       || '',
+          credits:    c.credits    || 0,
+          grade:      c.grade      || '',
+          gradePoint: c.gradePoint !== undefined ? c.gradePoint : '',
+        })),
       }));
+      semesterCounter = semesters.length + 1;
+
+      // Set start season/year from first semester
+      if (semesters.length > 0) {
+        const first   = semesters[0];
+        const parts   = first.name.split(' ');
+        const season  = parts[0];
+        const year    = parts[1];
+        const seasonEl = document.getElementById('startSeason');
+        const yearEl   = document.getElementById('startYear');
+        if (seasonEl && ['Spring','Summer','Fall'].includes(season)) seasonEl.value = season;
+        if (yearEl   && year && /^\d{4}$/.test(year))                yearEl.value   = year;
+      }
 
       renderSemesters();
       recalc();
@@ -2693,17 +2705,66 @@
       }
     }
 
-    window.applyImport    = applyImport;
-    window.hideImportModal = hideImportModal;
+// ── WHAT-IF MODE HELPERS (#5) ─────────────────────────
+    function buildWhatIfSelect(semId, cIdx, currentGrade) {
+      const key = semId + '-' + cIdx;
+      const selected = whatIfGrades[key] || currentGrade;
+      const grades = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)');
+      const opts = grades.map(g =>
+        '<option value="' + g + '"' + (selected === g ? ' selected' : '') + '>?' + g + '</option>'
+      ).join('');
+      return '<select class="whatif-grade-select" style="font-size:10px;padding:1px 4px;' +
+             'border-radius:5px;max-width:64px;cursor:pointer;" ' +
+             'onchange="onWhatIfChange(' + semId + ',' + cIdx + ',this.value)" ' +
+             'title="What-if grade">' + opts + '</select>';
+    }
 
-    function initCalculator() {
+    function onWhatIfChange(semId, cIdx, grade) {
+      whatIfGrades[semId + '-' + cIdx] = grade;
+      recalc();
+    }
+
+    function toggleWhatIf() {
+      whatIfMode = !whatIfMode;
+      if (!whatIfMode) {
+        Object.keys(whatIfGrades).forEach(k => delete whatIfGrades[k]);
+      }
+      const btn = document.getElementById('whatIfBtn');
+      if (btn) {
+        btn.style.background  = whatIfMode ? 'rgba(240,165,0,0.15)' : '';
+        btn.style.borderColor = whatIfMode ? 'rgba(240,165,0,0.5)'  : '';
+        btn.style.color       = whatIfMode ? '#F0A500' : '';
+        btn.textContent       = whatIfMode ? '🔮 Exit What-if' : '🔮 What-if';
+      }
+      renderSemesters();
+      recalc();
+    }
+
+    // ── SETUP WIZARD STEP INDICATOR (#1) ──────────────────
+    function updateSetupWizard() {
+      const s1  = document.getElementById('stepNum1');
+      const s2  = document.getElementById('stepNum2');
+      const s3  = document.getElementById('stepNum3');
+      const si2 = document.getElementById('stepIndicator2');
+      const si3 = document.getElementById('stepIndicator3');
+      if (!s1) return;
+      const hasDept    = !!currentDept;
+      const hasSem     = hasDept && getStartSeason() && getStartYear();
+      const hasCourses = hasSem && semesters.length > 0;
+      s1.className  = 'setup-step-num ' + (hasDept ? 'done' : 'active');
+      if (si2) si2.className = 'setup-step-indicator ' + (hasSem ? 'step-done' : hasDept ? 'step-active' : '');
+      s2.className  = 'setup-step-num ' + (hasSem ? 'done' : hasDept ? 'active' : '');
+      if (si3) si3.className = 'setup-step-indicator ' + (hasCourses ? 'step-done' : hasSem ? 'step-active' : '');
+      s3.className  = 'setup-step-num ' + (hasCourses ? 'done' : hasSem ? 'active' : '');
+      const wizard  = document.getElementById('setupWizard');
+      if (wizard) wizard.style.opacity = hasCourses ? '0.4' : '1';
+    }
+
+function initCalculator() {
       document.getElementById('deptCreditsText').textContent = '';
       document.getElementById('deptCredits').style.display = 'none';
-      // Try to restore previous session first
-      if (!loadState()) {
-        renderSemesters();
-        recalc();
-      }
+      renderSemesters();
+      recalc();
     }
 
     initCalculator();
@@ -2812,8 +2873,3 @@
       draw();
       themeBtn.addEventListener('click', () => { ctx.clearRect(0, 0, W, H); });
     })();
-
-    window.addEventListener('resize', () => {
-      clearTimeout(window._resizeTimer);
-      window._resizeTimer = setTimeout(recalc, 150);
-    });
