@@ -2,12 +2,12 @@
 // calcSemGPA, recalc, autoDetectGrade, onPFChange.
 
 import { GRADES, POINTS_TO_GRADE } from './grades.js';
-import { semesters, whatIfMode, whatIfGrades, saveState } from './state.js';
+import { state, saveState } from './state.js';
 import { detectGrade } from './helpers.js';
 import { app }         from './registry.js';
 
 function onPFChange(semId, cIdx, val) {
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (!sem) return;
       sem.courses[cIdx].grade = val;
       sem.courses[cIdx].gradePoint = val;
@@ -18,7 +18,7 @@ function onPFChange(semId, cIdx, val) {
     function autoDetectGrade(semId, cIdx, val, inputEl) {
       // Special case: typing "NT" sets F(NT) grade
       if (val.trim().toUpperCase() === 'NT') {
-        const sem = semesters.find(s => s.id === semId);
+        const sem = state.semesters.find(s => s.id === semId);
         if (!sem) return;
         sem.courses[cIdx].grade = 'F(NT)';
         sem.courses[cIdx].gradePoint = 'NT';
@@ -27,7 +27,7 @@ function onPFChange(semId, cIdx, val) {
         return;
       }
       const letter = detectGrade(val);
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (!sem) return;
       sem.courses[cIdx].grade = letter;
       sem.courses[cIdx].gradePoint = val;
@@ -80,9 +80,9 @@ function onPFChange(semId, cIdx, val) {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
       const retakenKeys = getRetakenKeys();
       // For progress bar: retake keys considering only completed semesters
-      const completedOnly = semesters.filter(s => !s.running);
+      const completedOnly = state.semesters.filter(s => !s.running);
       const retakenKeysCompleted = getRetakenKeys(completedOnly);
-      for (const sem of semesters) {
+      for (const sem of state.semesters) {
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits) return;
@@ -107,11 +107,11 @@ function onPFChange(semId, cIdx, val) {
 
       // ── WHAT-IF CGPA (uses whatIfGrades overrides) ────────────────────
       let whatIfPts = 0, whatIfCr = 0;
-      if (whatIfMode && Object.keys(whatIfGrades).length > 0) {
-        for (const sem of semesters) {
+      if (state.whatIfMode && Object.keys(state.whatIfGrades).length > 0) {
+        for (const sem of state.semesters) {
           sem.courses.forEach((c, i) => {
             const key = `${sem.id}-${i}`;
-            const grade = whatIfGrades[key] || c.grade;
+            const grade = state.whatIfGrades[key] || c.grade;
             const gp = GRADES[grade];
             if (gp === undefined || !c.credits || grade === 'P' || grade === 'I') return;
             if (retakenKeys.has(key)) return;
@@ -123,7 +123,7 @@ function onPFChange(semId, cIdx, val) {
 
       // CGPA for completed semesters only (for meter + status bar)
       let completedPts = 0, completedEarned = 0;
-      semesters.filter(s => !s.running).forEach(sem => {
+      state.semesters.filter(s => !s.running).forEach(sem => {
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
           if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
@@ -136,11 +136,11 @@ function onPFChange(semId, cIdx, val) {
       const cgpaCompleted = completedEarned > 0 ? completedPts / completedEarned : null;
       const cgpaEl = document.getElementById('cgpaVal');
       cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
-      const hasRunning = semesters.some(s => s.running);
+      const hasRunning = state.semesters.some(s => s.running);
       document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
 
       // Global incomplete warning
-      const hasIncomplete = semesters.some(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade));
+      const hasIncomplete = state.semesters.some(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade));
       let incWarn = document.getElementById('incompleteWarning');
       if (!incWarn) {
         incWarn = document.createElement('div');
@@ -150,7 +150,7 @@ function onPFChange(semId, cIdx, val) {
         if (meter) meter.parentNode.insertBefore(incWarn, meter.nextSibling);
       }
       if (hasIncomplete) {
-        const count = semesters.filter(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade)).length;
+        const count = state.semesters.filter(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade)).length;
         incWarn.textContent = `⚠ ${count} semester${count > 1 ? 's have' : ' has'} missing grades — CGPA may be inaccurate`;
         incWarn.style.display = '';
       } else {
@@ -165,7 +165,7 @@ function onPFChange(semId, cIdx, val) {
         const meterBox = document.querySelector('.cgpa-meter');
         if (meterBox) meterBox.insertAdjacentElement('afterend', wiPreview);
       }
-      if (whatIfMode && whatIfCgpa !== null && cgpa !== null) {
+      if (state.whatIfMode && whatIfCgpa !== null && cgpa !== null) {
         const delta = whatIfCgpa - cgpa;
         const sign  = delta >= 0 ? '+' : '';
         wiPreview.innerHTML = `
@@ -186,7 +186,7 @@ function onPFChange(semId, cIdx, val) {
       document.getElementById('totalEarned').textContent = totalEarned.toFixed(1);
 
       // ── CREDITS PROGRESS BAR ──────────────────────────
-      const dept = currentDept ? DEPARTMENTS[currentDept] : null;
+      const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
       const totalRequired = dept ? dept.totalCredits : 0;
       const creditsBox = document.getElementById('creditsProgressBox');
       if (dept && totalRequired > 0) {
@@ -203,7 +203,7 @@ function onPFChange(semId, cIdx, val) {
       // ── ACADEMIC STANDING ─────────────────────────────
       const standingBox = document.getElementById('standingBox');
       const cgpaNum = cgpaCompleted; // standing based on completed sems only
-      const semCount = semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
+      const semCount = state.semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
 
       if (cgpaNum !== null) {
         standingBox.style.display = '';
@@ -252,7 +252,7 @@ function onPFChange(semId, cIdx, val) {
 
       // Gather per-semester GPAs (only semesters with at least one graded course)
       const semGPAs = [];
-      semesters.forEach(sem => {
+      state.semesters.forEach(sem => {
         if (sem.running) return; // exclude running semester from trend chart
         const gpa = calcSemGPA(sem);
         if (gpa !== null) {
