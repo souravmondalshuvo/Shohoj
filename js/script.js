@@ -2375,6 +2375,10 @@
           warnText:          '#e74c3c',
           highlightBg:       'rgba(46,204,113,0.08)',
           highlightBorder:   'rgba(46,204,113,0.22)',
+          cancelBg:          'rgba(255,255,255,0.07)',
+          cancelBorder:      'rgba(255,255,255,0.18)',
+          cancelText:        'rgba(255,255,255,0.78)',
+          cancelHover:       'rgba(255,255,255,0.13)',
         };
       } else {
         return {
@@ -2392,6 +2396,10 @@
           warnText:          '#c0392b',
           highlightBg:       'rgba(46,204,113,0.06)',
           highlightBorder:   'rgba(46,204,113,0.18)',
+          cancelBg:          'rgba(0,0,0,0.05)',
+          cancelBorder:      'rgba(0,0,0,0.18)',
+          cancelText:        '#2d5a3d',
+          cancelHover:       'rgba(0,0,0,0.09)',
         };
       }
     }
@@ -2522,9 +2530,9 @@
               ✅ Import Now
             </button>
             <button onclick="hideImportModal()"
-              onmouseenter="this.style.background='rgba(255,255,255,0.12)'"
-              onmouseleave="this.style.background='rgba(255,255,255,0.07)'"
-              style="background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
+              onmouseenter="this.style.background='${t2.cancelHover}'"
+              onmouseleave="this.style.background='${t2.cancelBg}'"
+              style="background:${t2.cancelBg};color:${t2.cancelText};border:1px solid ${t2.cancelBorder};border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
               Cancel
             </button>
           </div>`);
