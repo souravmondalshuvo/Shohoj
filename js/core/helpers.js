@@ -1,7 +1,7 @@
 // ── HELPER UTILITIES ─────────────────────────────────
 
 import { GRADES, POINTS_TO_GRADE } from './grades.js';
-import { semesters }               from './state.js';
+import { state }               from './state.js';
 
 function detectGrade(val) {
       const n = parseFloat(val);
