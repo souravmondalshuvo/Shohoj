@@ -63,8 +63,8 @@ function saveState() {
         if (startRow) startRow.style.display = 'flex';
 
         state._restoredFromStorage = true;
-        renderSemesters();
-        recalc();
+        app.renderSemesters();
+        app.recalc();
         return true;
       } catch(e) { return false; }
     }
