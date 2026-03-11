@@ -12,16 +12,18 @@ import { autoDetectGrade, onPFChange }            from './core/calculator.js';
 import { renderSemesters,
          addSemester, removeSemester,
          addCourse, removeCourse,
-         loadSampleData, getRetakenKeys }          from './ui/render.js';
+         loadSampleData, getRetakenKeys,
+         onDeptSelect, onStartSemConfirm }         from './ui/render.js';
 import { updateSetupWizard, initCalculator }      from './ui/setupWizard.js';
 import { runSimulator, buildWhatIfSelect,
-         onWhatIfChange }                         from './ui/simulator.js';
+         onWhatIfChange, toggleWhatIf }            from './ui/simulator.js';
 import { drawTrendChart }                         from './ui/charts.js';
 import { hideImportModal, exportPDF }                              from './ui/modals.js';
 import { onCourseBlur, onCourseInput,
          onCourseKey, pickSuggestion,
          closeSuggestions }                      from './ui/suggestions.js';
 import { importTranscriptPDF, applyImport }  from './import/importer.js';
+import { clearState }                          from './core/state.js';
 import { parseTranscriptText }                    from './import/parser.js';
 import { initReveal }                             from './animations/reveal.js';
 import { initCursor }                             from './animations/cursor.js';
@@ -54,6 +56,11 @@ window.pickSuggestion   = pickSuggestion;
 window.closeSuggestions = closeSuggestions;
 window.hideImportModal  = hideImportModal;
 window.onWhatIfChange   = onWhatIfChange;
+window.toggleWhatIf     = toggleWhatIf;
+window.onDeptSelect     = onDeptSelect;
+window.onStartSemConfirm = onStartSemConfirm;
+window.importTranscriptPDF = importTranscriptPDF;
+window.clearState       = clearState;
 window.exportPDF        = exportPDF;
 
 // ── BOOT ─────────────────────────────────────────────
