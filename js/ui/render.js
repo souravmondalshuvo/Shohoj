@@ -412,5 +412,5 @@ export {
   addRunningSemester, generateNextSemesterName,
   addSemester, removeSemester, addCourse, removeCourse,
   usesBestGradePolicy, getRetakenKeys, getSemCreditWarning,
-  renderSemesters,
+  renderSemesters, loadSampleData,
 };
