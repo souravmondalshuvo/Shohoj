@@ -5,6 +5,7 @@ import { DEPARTMENTS }    from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { ordinalSup, generateSemesterNames, getStartSeason, getStartYear, countSemesters, getLastCompletedSemester } from '../core/helpers.js';
 import { app }            from '../core/registry.js';
+import { calcSemGPA }      from '../core/calculator.js';
 
 function onDeptSelect() {
       const sel = document.getElementById('deptSelect');
