@@ -2,7 +2,8 @@
 
 import { state, loadState } from '../core/state.js';
 import { getStartSeason, getStartYear } from '../core/helpers.js';
-import { app }         from '../core/registry.js';
+import { app }                              from '../core/registry.js';
+import { addSemester, addRunningSemester }   from './render.js';
 
 function updateSetupWizard() {
       const s1  = document.getElementById('stepNum1');
@@ -26,8 +27,22 @@ function updateSetupWizard() {
 function initCalculator() {
       document.getElementById('deptCreditsText').textContent = '';
       document.getElementById('deptCredits').style.display = 'none';
-      app.renderSemesters();
-      app.recalc();
+
+      // Wire footer buttons
+      const addSemBtn     = document.getElementById('addSemesterBtn');
+      const addRunBtn     = document.getElementById('addRunningSemBtn');
+      const targetInput   = document.getElementById('targetCgpa');
+      const remainInput   = document.getElementById('creditsRemaining');
+      if (addSemBtn)   addSemBtn.addEventListener('click', () => addSemester());
+      if (addRunBtn)   addRunBtn.addEventListener('click', () => addRunningSemester());
+      if (targetInput) targetInput.addEventListener('input', () => app.recalc());
+      if (remainInput) remainInput.addEventListener('input', () => app.recalc());
+
+      // Load saved state or render empty
+      if (!loadState()) {
+        app.renderSemesters();
+        app.recalc();
+      }
     }
 
 export { updateSetupWizard, initCalculator };
