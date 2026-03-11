@@ -1,10 +1,17 @@
 // ── COURSE AUTOCOMPLETE / SUGGESTIONS ────────────────
 
-import { COURSE_CATALOG } from '../core/catalog.js';
-import { state, saveState } from '../core/state.js';
-import { app }             from '../core/registry.js';
+import { COURSE_DB, ALL_COURSES } from '../core/catalog.js';
+import { state, saveState }       from '../core/state.js';
+import { app }                    from '../core/registry.js';
 
-function showPortalSuggestions(inputEl, semId, cIdx, matches) {
+// currentDept → use state.currentDept
+
+// ── AUTOCOMPLETE LOGIC ────────────────────────────────
+// portal is fetched lazily so this module is safe at import time
+function getPortal() { return document.getElementById('suggestions-portal'); }
+let activeInput = null;
+
+    function showPortalSuggestions(inputEl, semId, cIdx, matches) {
       const rect = inputEl.getBoundingClientRect();
       const top  = rect.bottom + 4;
       const left = rect.left;
@@ -19,7 +26,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
           <span class="suggestion-credits">${c.credits} cr</span>
         </div>`).join('');
       html += '</div>';
-      portal.innerHTML = html;
+      getPortal().innerHTML = html;
     }
 
     function onCourseBlur(e, semId, cIdx) {
@@ -54,7 +61,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
       const val = raw.toLowerCase();
       activeInput = e.target;
 
-      if (!val) { portal.innerHTML = ''; return; }
+      if (!val) { getPortal().innerHTML = ''; return; }
 
       const exactMatch = COURSE_DB[raw.toUpperCase()];
       const t1 = exactMatch ? [exactMatch] : [];
@@ -63,12 +70,12 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
       const t4 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
 
       const matches = [...t1, ...t2, ...t3, ...t4].slice(0, 8);
-      if (!matches.length) { portal.innerHTML = ''; return; }
+      if (!matches.length) { getPortal().innerHTML = ''; return; }
       showPortalSuggestions(e.target, semId, cIdx, matches);
     }
 
     function onCourseKey(e, semId, cIdx) {
-      const box = portal.querySelector('.course-suggestions');
+      const box = getPortal().querySelector('.course-suggestions');
       if (!box) return;
       const items = box.querySelectorAll('.suggestion-item');
       let active = box.querySelector('.suggestion-item.active');
@@ -85,7 +92,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
         active.dispatchEvent(new MouseEvent('mousedown'));
         return;
       } else if (e.key === 'Escape') {
-        portal.innerHTML = ''; return;
+        getPortal().innerHTML = ''; return;
       } else { return; }
 
       items.forEach(el => el.classList.remove('active'));
@@ -93,15 +100,15 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
     }
 
     function closeSuggestions(id) {
-      portal.innerHTML = '';
+      getPortal().innerHTML = '';
     }
 
     window.addEventListener('scroll', () => {
-      if (activeInput && portal.innerHTML) portal.innerHTML = '';
+      if (activeInput && getPortal().innerHTML) getPortal().innerHTML = '';
     }, { passive: true });
 
     function pickSuggestion(semId, cIdx, fullName, credits) {
-      portal.innerHTML = '';
+      getPortal().innerHTML = '';
       const sem = state.semesters.find(s => s.id === semId);
       if (!sem) return;
       sem.courses[cIdx].name    = fullName;
