@@ -335,6 +335,6 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
       s3.className  = 'setup-step-num ' + (hasCourses ? 'done' : hasSem ? 'active' : '');
       const wizard  = document.getElementById('setupWizard');
       if (wizard) wizard.style.opacity = hasCourses ? '0.4' : '1';
-    }
+    } 
 
 export { runSimulator, buildRetakeSuggestions, buildWhatIfSelect, onWhatIfChange, toggleWhatIf };
