@@ -1,6 +1,6 @@
 // ── SETUP WIZARD + CALCULATOR INIT ───────────────────
 
-import { semesters, loadState } from '../core/state.js';
+import { state, loadState } from '../core/state.js';
 import { getStartSeason, getStartYear } from '../core/helpers.js';
 import { app }         from '../core/registry.js';
 
@@ -11,9 +11,9 @@ function updateSetupWizard() {
       const si2 = document.getElementById('stepIndicator2');
       const si3 = document.getElementById('stepIndicator3');
       if (!s1) return;
-      const hasDept    = !!currentDept;
+      const hasDept    = !!state.currentDept;
       const hasSem     = hasDept && getStartSeason() && getStartYear();
-      const hasCourses = hasSem && semesters.length > 0;
+      const hasCourses = hasSem && state.semesters.length > 0;
       s1.className  = 'setup-step-num ' + (hasDept ? 'done' : 'active');
       if (si2) si2.className = 'setup-step-indicator ' + (hasSem ? 'step-done' : hasDept ? 'step-active' : '');
       s2.className  = 'setup-step-num ' + (hasSem ? 'done' : hasDept ? 'active' : '');
