@@ -1,6 +1,6 @@
 // ── TREND CHART ──────────────────────────────────────
 
-import { semesters } from '../core/state.js';
+import { state } from '../core/state.js';
 
 function drawTrendChart(canvas, data) {
       const dpr = window.devicePixelRatio || 1;
