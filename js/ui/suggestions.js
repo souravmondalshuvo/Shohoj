@@ -1,7 +1,7 @@
 // ── COURSE AUTOCOMPLETE / SUGGESTIONS ────────────────
 
 import { COURSE_CATALOG } from '../core/catalog.js';
-import { semesters, saveState } from '../core/state.js';
+import { state, saveState } from '../core/state.js';
 import { app }             from '../core/registry.js';
 
 function showPortalSuggestions(inputEl, semId, cIdx, matches) {
@@ -23,7 +23,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
     }
 
     function onCourseBlur(e, semId, cIdx) {
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (!sem || !sem.courses[cIdx]) return;
       const val = e.target.value.trim();
       if (sem.courses[cIdx].name !== val) {
@@ -102,7 +102,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
 
     function pickSuggestion(semId, cIdx, fullName, credits) {
       portal.innerHTML = '';
-      const sem = semesters.find(s => s.id === semId);
+      const sem = state.semesters.find(s => s.id === semId);
       if (!sem) return;
       sem.courses[cIdx].name    = fullName;
       sem.courses[cIdx].credits = credits;
