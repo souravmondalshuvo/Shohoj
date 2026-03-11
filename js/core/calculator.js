@@ -78,10 +78,10 @@ function onPFChange(semId, cIdx, val) {
 
     function recalc() {
       let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
-      const retakenKeys = getRetakenKeys();
+      const retakenKeys = app.getRetakenKeys();
       // For progress bar: retake keys considering only completed semesters
       const completedOnly = state.semesters.filter(s => !s.running);
-      const retakenKeysCompleted = getRetakenKeys(completedOnly);
+      const retakenKeysCompleted = app.getRetakenKeys(completedOnly);
       for (const sem of state.semesters) {
         sem.courses.forEach((c, i) => {
           const gp = GRADES[c.grade];
