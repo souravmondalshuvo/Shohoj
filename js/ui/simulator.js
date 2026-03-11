@@ -280,11 +280,6 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
       app.recalc(); // re-render simulator with updated selection
     };
 
-    document.getElementById('targetCgpa').addEventListener('input', recalc);
-    document.getElementById('creditsRemaining').addEventListener('input', recalc);
-    document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
-    document.getElementById('addRunningSemBtn').addEventListener('click', () => addRunningSemester());
-
     // ── INIT ──────────────────────────────────────────────
 
 
