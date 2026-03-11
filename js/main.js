@@ -16,7 +16,8 @@ import { renderSemesters,
          onDeptSelect, onStartSemConfirm }         from './ui/render.js';
 import { updateSetupWizard, initCalculator }      from './ui/setupWizard.js';
 import { runSimulator, buildWhatIfSelect,
-         onWhatIfChange, toggleWhatIf }            from './ui/simulator.js';
+         onWhatIfChange, toggleWhatIf,
+         registerToggleRetake }                   from './ui/simulator.js';
 import { drawTrendChart }                         from './ui/charts.js';
 import { hideImportModal, exportPDF }                              from './ui/modals.js';
 import { onCourseBlur, onCourseInput,
@@ -65,6 +66,7 @@ window.exportPDF        = exportPDF;
 
 // ── BOOT ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  registerToggleRetake();
   // Theme toggle
   const html     = document.documentElement;
   const themeBtn = document.getElementById('themeToggle');
