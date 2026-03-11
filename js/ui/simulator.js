@@ -1,7 +1,7 @@
 // ── SIMULATOR + WHAT-IF MODE ─────────────────────────
 
 import { GRADES }      from '../core/grades.js';
-import { semesters, whatIfMode, whatIfGrades, saveState } from '../core/state.js';
+import { state, saveState } from '../core/state.js';
 import { getStartSeason, getStartYear } from '../core/helpers.js';
 import { addSemester, addRunningSemester, getRetakenKeys, renderSemesters } from './render.js';
 import { app }         from '../core/registry.js';
@@ -63,7 +63,7 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
         // Insight line
         let insight = '';
         if (neededGPA >= 3.9)      insight = `<span style="color:#e74c3c">Requires near-perfect grades every semester</span> — focus on strategic retakes below.`;
-        else if (neededGPA >= 3.5) insight = `Challenging but doable — <span style="color:#F0A500">consistent B+/A- performance</span> needed across remaining semesters.`;
+        else if (neededGPA >= 3.5) insight = `Challenging but doable — <span style="color:#F0A500">consistent B+/A- performance</span> needed across remaining state.semesters.`;
         else if (neededGPA >= 3.0) insight = `Very realistic — <span style="color:#2ECC71">avoid D/F grades</span> and stay consistent.`;
         else                       insight = `<span style="color:#2ECC71">You're in great shape!</span> Maintain current effort.`;
         msg += `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">${insight}</div>`;
@@ -91,7 +91,7 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="border-bottom:1px solid var(--border)">
               <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">cr/sem</th>
-              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">semesters</th>
+              <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">state.semesters</th>
               <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">gpa needed</th>
               <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">~grades</th>
             </tr></thead>
@@ -138,12 +138,12 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
 
 
     function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target) {
-      if (currentCgpa === null || !semesters.length) return '';
+      if (currentCgpa === null || !state.semesters.length) return '';
 
       const retakenKeys = getRetakenKeys();
       const candidates = [];
 
-      semesters.forEach(sem => {
+      state.semesters.forEach(sem => {
         if (sem.running) return;
         sem.courses.forEach((c, i) => {
           if (!c.name.trim() || !c.credits) return;
@@ -290,7 +290,7 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
 
     function buildWhatIfSelect(semId, cIdx, currentGrade) {
       const key = semId + '-' + cIdx;
-      const selected = whatIfGrades[key] || currentGrade;
+      const selected = state.whatIfGrades[key] || currentGrade;
       const grades = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)');
       const opts = grades.map(g =>
         '<option value="' + g + '"' + (selected === g ? ' selected' : '') + '>?' + g + '</option>'
@@ -302,21 +302,21 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
     }
 
     function onWhatIfChange(semId, cIdx, grade) {
-      whatIfGrades[semId + '-' + cIdx] = grade;
+      state.whatIfGrades[semId + '-' + cIdx] = grade;
       app.recalc();
     }
 
     function toggleWhatIf() {
-      whatIfMode = !whatIfMode;
-      if (!whatIfMode) {
-        Object.keys(whatIfGrades).forEach(k => delete whatIfGrades[k]);
+      state.whatIfMode = !state.whatIfMode;
+      if (!state.whatIfMode) {
+        Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
       }
       const btn = document.getElementById('whatIfBtn');
       if (btn) {
-        btn.style.background  = whatIfMode ? 'rgba(240,165,0,0.15)' : '';
-        btn.style.borderColor = whatIfMode ? 'rgba(240,165,0,0.5)'  : '';
-        btn.style.color       = whatIfMode ? '#F0A500' : '';
-        btn.textContent       = whatIfMode ? '🔮 Exit What-if' : '🔮 What-if';
+        btn.style.background  = state.whatIfMode ? 'rgba(240,165,0,0.15)' : '';
+        btn.style.borderColor = state.whatIfMode ? 'rgba(240,165,0,0.5)'  : '';
+        btn.style.color       = state.whatIfMode ? '#F0A500' : '';
+        btn.textContent       = state.whatIfMode ? '🔮 Exit What-if' : '🔮 What-if';
       }
       app.renderSemesters();
       app.recalc();
@@ -330,9 +330,9 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
       const si2 = document.getElementById('stepIndicator2');
       const si3 = document.getElementById('stepIndicator3');
       if (!s1) return;
-      const hasDept    = !!currentDept;
+      const hasDept    = !!state.currentDept;
       const hasSem     = hasDept && getStartSeason() && getStartYear();
-      const hasCourses = hasSem && semesters.length > 0;
+      const hasCourses = hasSem && state.semesters.length > 0;
       s1.className  = 'setup-step-num ' + (hasDept ? 'done' : 'active');
       if (si2) si2.className = 'setup-step-indicator ' + (hasSem ? 'step-done' : hasDept ? 'step-active' : '');
       s2.className  = 'setup-step-num ' + (hasSem ? 'done' : hasDept ? 'active' : '');
