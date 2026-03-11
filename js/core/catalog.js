@@ -1,5 +1,6 @@
 // ── COURSE CATALOG ───────────────────────────────────
 // 255 courses across CSE, EEE, BBA, ECO, ENG, ARC, PHR, LAW.
+// Builds COURSE_DB (keyed by code) and ALL_COURSES (sorted array).
 
 import { DEPARTMENTS } from './departments.js';
 
@@ -292,10 +293,4 @@ import { DEPARTMENTS } from './departments.js';
     });
     const ALL_COURSES = Object.values(COURSE_DB).sort((a,b) => a.code.localeCompare(b.code));
 
-    let currentDept = '';
-
-    // ── AUTOCOMPLETE LOGIC ────────────────────────────────
-    const portal = document.getElementById('suggestions-portal');
-    let activeInput = null;
-
-export { COURSE_CATALOG };
+export { COURSE_DB, ALL_COURSES };
