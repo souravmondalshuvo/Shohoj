@@ -273,12 +273,7 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
         </div>`;
     }
 
-    // Global toggle handler for retake checkboxes (called from inline onclick)
-    window._toggleRetake = function(key) {
-      if (_retakeChecked.has(key)) _retakeChecked.delete(key);
-      else _retakeChecked.add(key);
-      app.recalc(); // re-render simulator with updated selection
-    };
+// window._toggleRetake is registered in main.js after DOMContentLoaded
 
     // ── INIT ──────────────────────────────────────────────
 
@@ -335,6 +330,14 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
       s3.className  = 'setup-step-num ' + (hasCourses ? 'done' : hasSem ? 'active' : '');
       const wizard  = document.getElementById('setupWizard');
       if (wizard) wizard.style.opacity = hasCourses ? '0.4' : '1';
-    } 
+    }
+
+export function registerToggleRetake() {
+  window._toggleRetake = function(key) {
+    if (_retakeChecked.has(key)) _retakeChecked.delete(key);
+    else _retakeChecked.add(key);
+    app.recalc();
+  };
+}
 
 export { runSimulator, buildRetakeSuggestions, buildWhatIfSelect, onWhatIfChange, toggleWhatIf };
