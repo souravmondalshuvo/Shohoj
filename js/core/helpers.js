@@ -61,3 +61,4 @@ export function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
 }
+ 
