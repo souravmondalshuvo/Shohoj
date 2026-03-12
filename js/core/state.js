@@ -1,76 +1,29 @@
-// ── APPLICATION STATE ────────────────────────────────
-// Single exported `state` object.
-// NEVER reassign state itself — only mutate its properties.
-// ES module live bindings work on the object reference, not individual vars.
-
-import { GRADES }      from './grades.js';
-import { DEPARTMENTS } from './departments.js';
-import { app }         from './registry.js';
-
-const STORAGE_KEY = 'shohoj_cgpa_v1';
-
+// Single shared mutable state — all modules import this object and mutate its properties.
+// Never reassign `state` itself; always mutate properties: state.semesters = [...], etc.
 export const state = {
   semesters:            [],
   whatIfMode:           false,
-  whatIfGrades:         {},
+  whatIfGrades:         {},   // key: 'semId-cIdx', value: grade string
   semesterCounter:      0,
   currentDept:          '',
   _restoredFromStorage: false,
 };
 
-function saveState() {
-      try {
-        const snapshot = {
-          currentDept: state.currentDept,
-          semesterCounter: state.semesterCounter,
-          semesters: state.semesters,
-          startSeason: document.getElementById('startSeason')?.value || '',
-          startYear:   document.getElementById('startYear')?.value   || '',
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      } catch(e) { /* storage unavailable */ }
-    }
+export const STORAGE_KEY = 'shohoj_cgpa_v1';
 
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return false;
-        const saved = JSON.parse(raw);
-        if (!saved.currentDept || !saved.semesters?.length) return false;
+export function saveState() {
+  try {
+    const snap = {
+      currentDept:     state.currentDept,
+      semesterCounter: state.semesterCounter,
+      semesters:       state.semesters,
+      startSeason:     document.getElementById('startSeason')?.value || '',
+      startYear:       document.getElementById('startYear')?.value   || '',
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+  } catch(e) { /* storage unavailable */ }
+}
 
-        // Restore dept dropdown
-        const deptSel = document.getElementById('deptSelect');
-        if (deptSel) { deptSel.value = saved.currentDept; }
-        state.currentDept    = saved.currentDept;
-
-        // Restore start season/year dropdowns
-        const seasonSel = document.getElementById('startSeason');
-        const yearSel   = document.getElementById('startYear');
-        if (seasonSel && saved.startSeason) seasonSel.value = saved.startSeason;
-        if (yearSel   && saved.startYear)   yearSel.value   = saved.startYear;
-
-        // Restore semesters & counter
-        state.semesters      = saved.semesters;
-        state.semesterCounter = saved.semesterCounter || state.semesters.length;
-
-        // Show dept info + start row (so user can still change semester)
-        const dept = DEPARTMENTS[state.currentDept];
-        if (dept) {
-          document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
-          document.getElementById('deptCredits').style.display = '';
-        }
-        const startRow = document.getElementById('startSemRow');
-        if (startRow) startRow.style.display = 'flex';
-
-        state._restoredFromStorage = true;
-        app.renderSemesters();
-        app.recalc();
-        return true;
-      } catch(e) { return false; }
-    }
-
-    function clearState() {
-      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-    }
-
-export { saveState, loadState, clearState };
+export function clearState() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+}
