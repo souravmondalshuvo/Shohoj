@@ -110,6 +110,7 @@ export function pickSuggestion(semId, cIdx, fullName, credits) {
   sem.courses[cIdx].gradePoint = '';
 
   window._shohoj_renderAndRecalc();
+  window._shohoj_updateSetupWizard();
 
   setTimeout(() => {
     const block = document.getElementById(`sem-${semId}`);
