@@ -1,18 +1,3 @@
-// ── _parseContLine ────────────────────────────────────────────────────────────
-function _parseContLine(line, pendingTitle) {
-  const floatRe = /\b(\d+\.\d+)\b/g;
-  const floats  = [...line.matchAll(floatRe)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
-  const gradeRe = /(?<!\w)((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)(?!\w)/;
-  const gradeM  = line.match(gradeRe);
-  const grade   = gradeM ? gradeM[1].replace(/\(RT\)/,'').trim() : null;
-  if (floats.length < 1 || !grade) return null;
-  const credits    = floats[0].val;
-  const gradePoint = floats[floats.length - 1].val;
-  const beforeFirst = line.slice(0, floats[0].idx).trim().replace(/\s{2,}/g, ' ');
-  const fullTitle   = (pendingTitle ? pendingTitle + ' ' : '') + beforeFirst;
-  return { fullTitle: fullTitle.trim(), credits, grade: grade.trim(), gradePoint };
-}
-
 // ── parseBlobFallback ─────────────────────────────────────────────────────────
 export function parseBlobFallback(text) {
   const blob = text.replace(/\s+/g, ' ');
@@ -60,9 +45,16 @@ export function parseBlobFallback(text) {
 }
 
 // ── parseTranscriptText ───────────────────────────────────────────────────────
+// BRACU PDFs (via pdf.js) render in column order:
+//   • All semester blocks (codes + titles) appear first, each followed by
+//     semester/cumulative credit totals (which we skip)
+//   • Then ALL individual course credits in one contiguous block
+//   • Then ALL grades in one contiguous block
+//   • Then ALL grade points in one contiguous block
 export function parseTranscriptText(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
+  // ── Dept detection ────────────────────────────────────────────────────────
   let detectedDept = null;
   if (/COMPUTER[\s\S]{0,10}SCIENCE|B\.?SC\.?\s+IN\s+COMPUTER/i.test(text))
     detectedDept = 'BSc CSE — Computer Science & Engineering';
@@ -80,76 +72,220 @@ export function parseTranscriptText(text) {
     detectedDept = 'B.A. in English (ENG)';
 
   const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe   = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
-  const skipRe  = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
-  const fntRe   = /F\s*\(NT\)/;
-  const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-  const titleFragRe = /^[A-Z][A-Z\s&:,\(\)\-\.]+$/;
+  const semRe    = /^SEMESTER:\s*([A-Z]+)\s+(\d{4})/i;
+  const codeRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
+  const numberRe = /^\d+\.\d+$/;
+  const gradeRe  = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
+  // Lines to skip entirely in pass 1
+  const skipRe   = /^(SEMESTER\b(?!:)|CUMULATIVE\s+Credits|Credits\s+(Attempted|Earned)|GPA$|CGPA$|BRAC\s+University|Kha\s+224|Merul|GRADE\s+SHEET|UNOFFICIAL|Student\s+ID|^Name$|Course\s+No|Course\s+Title|UNDERGRADUATE|PROGRAM:|Page\s+\d|Credits\s+Earned\s+Grade|Grade\s+Points)/i;
 
-  const semesters  = [];
-  let currentSem   = null;
-  let pendingTitle = null;
-  let skipNextFrag = false;
+  // ── Pass 1: collect semester codes + titles (ignore all numbers) ──────────
+  const sems = [];
+  let curSem = null;
 
   for (const line of lines) {
-    if (skipRe.test(line)) { pendingTitle = null; skipNextFrag = false; continue; }
+    if (skipRe.test(line))   continue;   // skip junk header/footer lines
+    if (numberRe.test(line)) continue;   // skip all standalone numbers
+    if (gradeRe.test(line))  continue;   // skip stray grade tokens
 
-    const semM = line.match(semRe);
-    if (semM) {
-      const season = semM[1].toUpperCase();
-      currentSem = {
-        id: Date.now() + semesters.length,
-        name: `${SEASON_NAMES[season] || semM[1]} ${semM[2]}`,
-        courses: [],
-        running: false,
+    const sm = line.match(semRe);
+    if (sm) {
+      const season = sm[1].toUpperCase();
+      curSem = {
+        name: `${SEASON_NAMES[season] || sm[1]} ${sm[2]}`,
+        codes: [], titles: [],
       };
-      semesters.push(currentSem);
-      pendingTitle = null; skipNextFrag = false;
+      sems.push(curSem);
+      continue;
+    }
+    if (!curSem) continue;
+
+    const cm = line.match(codeRe);
+    if (cm) {
+      curSem.codes.push(cm[1]);
       continue;
     }
 
-    if (!currentSem) continue;
-
-    if (skipNextFrag) {
-      skipNextFrag = false;
-      if (titleFragRe.test(line)) continue;
+    // Title line — pair with latest unmatched code, or extend previous title
+    if (!line[0].match(/\d/)) {
+      if (curSem.titles.length < curSem.codes.length) {
+        curSem.titles.push(line);
+      } else if (curSem.titles.length > 0) {
+        curSem.titles[curSem.titles.length - 1] += ' ' + line;
+      }
     }
+  }
 
+  const semCounts = sems.map(s => s.codes.length);
+  const totalCourses = semCounts.reduce((a, b) => a + b, 0);
+  if (totalCourses === 0) return _legacyParseTranscript(lines, detectedDept);
+
+  // ── Find where the individual-course credits block begins ─────────────────
+  // It starts immediately after the LAST "Credits Earned" line that precedes
+  // the contiguous block of per-course decimals.
+  let creditsBlockStart = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (/^Credits Earned$/i.test(lines[i])) {
+      // Confirm next non-empty line is a decimal
+      if (i + 1 < lines.length && numberRe.test(lines[i + 1])) {
+        creditsBlockStart = i + 1;
+        break;
+      }
+    }
+  }
+  if (creditsBlockStart < 0) return _legacyParseTranscript(lines, detectedDept);
+
+  // ── Collect raw numbers/grades/gp from creditsBlockStart onwards ──────────
+  const creditsRaw = [];
+  const gradesRaw  = [];
+  const gpRaw      = [];
+  let phase = 'credits'; // credits -> grades -> gp
+
+  for (let i = creditsBlockStart; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === 'GPA' || line === 'CGPA') continue;
+
+    if (phase === 'credits') {
+      if (numberRe.test(line)) { creditsRaw.push(parseFloat(line)); continue; }
+      if (gradeRe.test(line))  { phase = 'grades'; /* fall through */ }
+    }
+    if (phase === 'grades') {
+      if (numberRe.test(line)) { phase = 'gp'; gpRaw.push(parseFloat(line)); continue; }
+      if (gradeRe.test(line)) {
+        let g = line.trim().replace(/\s+/g, '');
+        if (/F.*NT/i.test(line))  g = 'F(NT)';
+        else if (/\(RT\)/i.test(line)) g = g.replace('(RT)', '').trim();
+        gradesRaw.push(g);
+        continue;
+      }
+    }
+    if (phase === 'gp') {
+      if (numberRe.test(line)) { gpRaw.push(parseFloat(line)); continue; }
+    }
+  }
+
+  // ── Extract per-course values by skipping 2 semester totals after each N ──
+  function extractCourseValues(raw, counts) {
+    const out = [];
+    let pos = 0;
+    for (const n of counts) {
+      for (let k = 0; k < n; k++) {
+        out.push(raw[pos] !== undefined ? raw[pos] : null);
+        pos++;
+      }
+      pos += 2; // skip semester total + cumulative total
+    }
+    return out;
+  }
+
+  const allCredits = extractCourseValues(creditsRaw, semCounts);
+  const allGP      = extractCourseValues(gpRaw,      semCounts);
+  // Grades column doesn't have semester totals interspersed (already stripped GPA/CGPA)
+  // so gradesRaw is already flat
+  const allGrades  = gradesRaw;
+
+  // ── Assemble final semesters ──────────────────────────────────────────────
+  const semesters = [];
+  let flat = 0;
+  for (const sem of sems) {
+    const courses = [];
+    for (let k = 0; k < sem.codes.length; k++) {
+      const code       = sem.codes[k];
+      const title      = sem.titles[k] || '';
+      const name       = title ? `${title} (${code})` : code;
+      const credits    = allCredits[flat] !== null ? allCredits[flat]  : 0;
+      const grade      = allGrades[flat]  !== undefined ? allGrades[flat] : '';
+      const gradePoint = allGP[flat]      !== null ? allGP[flat]      : '';
+      courses.push({ name, credits, grade, gradePoint });
+      flat++;
+    }
+    if (courses.length > 0) {
+      semesters.push({
+        id: Date.now() + semesters.length,
+        name: sem.name,
+        courses,
+        running: false,
+      });
+    }
+  }
+
+  if (semesters.length === 0) return _legacyParseTranscript(lines, detectedDept);
+  return { semesters, detectedDept };
+}
+
+// ── _legacyParseTranscript — fallback for non-column-format PDFs ──────────────
+function _legacyParseTranscript(lines, detectedDept) {
+  const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
+  const semRe      = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+  const skipRe     = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
+  const fntRe      = /F\s*\(NT\)/;
+  const courseRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+  const partialRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
+  const contRe     = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+
+  const semesters = [];
+  let currentSem = null, pendingTitle = null, skipNextFrag = false;
+
+  for (const line of lines) {
+    if (skipRe.test(line)) { pendingTitle = null; skipNextFrag = false; continue; }
+    const semM = line.match(semRe);
+    if (semM) {
+      const season = semM[1].toUpperCase();
+      currentSem = { id: Date.now() + semesters.length, name: `${SEASON_NAMES[season] || semM[1]} ${semM[2]}`, courses: [], running: false };
+      semesters.push(currentSem);
+      pendingTitle = null; skipNextFrag = false; continue;
+    }
+    if (!currentSem) continue;
+    if (skipNextFrag) { skipNextFrag = false; if (/^[A-Z][A-Z\s&:,\(\)\-\.]+$/.test(line)) continue; }
     if (fntRe.test(line)) {
       const code = line.trim().split(/\s+/)[0];
       if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
-        currentSem.courses.push({ name: code, credits: 0, grade: 'F(NT)', gradePoint: 'NT' });
+        const credM = line.match(/\b(\d+\.\d+)\b/);
+        currentSem.courses.push({ name: code, credits: credM ? parseFloat(credM[1]) : 0, grade: 'F(NT)', gradePoint: 'NT' });
         pendingTitle = null; continue;
       }
     }
-
+    if (pendingTitle) {
+      const cont = line.match(contRe);
+      if (cont) {
+        const fullLine = pendingTitle + ' ' + line;
+        const cm2 = fullLine.match(courseRe);
+        if (cm2) {
+          let grade = cm2[4].trim().replace(/\s+/g,'');
+          if (/F.*NT/i.test(cm2[4])) grade = 'F(NT)';
+          else grade = grade.replace('(RT)','').replace('(NT)','').trim();
+          currentSem.courses.push({ name: cm2[1]+' '+cm2[2].trim(), credits: parseFloat(cm2[3]), grade, gradePoint: parseFloat(cm2[5]) });
+          pendingTitle = null; continue;
+        }
+        const code2 = (pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || pendingTitle;
+        const tp = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim();
+        let g2 = cont[3].trim().replace(/\s+/g,'').replace('(RT)','').replace('(NT)','').trim();
+        if (/F.*NT/i.test(cont[3])) g2 = 'F(NT)';
+        currentSem.courses.push({ name: `${(tp+' '+cont[1].trim()).trim()} (${code2})`, credits: parseFloat(cont[2]), grade: g2, gradePoint: parseFloat(cont[4]) });
+        pendingTitle = null; continue;
+      }
+    }
     const co = line.match(codeOnlyRe);
     if (co) {
       const grade = co[3].replace(/\(RT\)/,'').trim();
-      const title = pendingTitle ? pendingTitle.trim() : '';
-      const name  = title ? `${title} (${co[1]})` : co[1];
-      currentSem.courses.push({ name, credits: parseFloat(co[2]), grade, gradePoint: parseFloat(co[4]) });
+      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim() : '';
+      currentSem.courses.push({ name: title ? `${title} (${co[1]})` : co[1], credits: parseFloat(co[2]), grade, gradePoint: parseFloat(co[4]) });
       pendingTitle = null; skipNextFrag = true; continue;
     }
-
     const cm = line.match(courseRe);
     if (cm) {
       let grade = cm[4].trim().replace(/\s+/g,'');
       if (/F.*NT/i.test(cm[4])) grade = 'F(NT)';
       else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-      const name = cm[1] + ' ' + cm[2].trim();
-      currentSem.courses.push({ name, credits: parseFloat(cm[3]), grade, gradePoint: parseFloat(cm[5]) });
+      currentSem.courses.push({ name: cm[1]+' '+cm[2].trim(), credits: parseFloat(cm[3]), grade, gradePoint: parseFloat(cm[5]) });
       pendingTitle = null; continue;
     }
-
-    if (!line[0].match(/\d/) && line.length > 2 && line.length < 100
-        && !/^[A-Z]{2,4}\d{3}/.test(line)) {
-      pendingTitle = (pendingTitle ? pendingTitle + ' ' : '') + line;
-    } else {
-      pendingTitle = null;
-    }
+    const partial = line.match(partialRe);
+    if (partial && !/\d+\.\d+\s*$/.test(line)) { pendingTitle = line; continue; }
+    if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line))
+      pendingTitle = (pendingTitle ? pendingTitle+' ' : '') + line;
+    else pendingTitle = null;
   }
-
   return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
 }
