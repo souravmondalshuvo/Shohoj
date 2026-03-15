@@ -11,9 +11,15 @@ export function initCursor() {
 
   document.addEventListener('mousemove', e => { mX = e.clientX; mY = e.clientY; }, { passive: true });
 
-  document.querySelectorAll('a, button, .feature-card, .nav-logo').forEach(el => {
-    el.addEventListener('mouseenter', () => body.classList.add('cursor-hover'));
-    el.addEventListener('mouseleave', () => body.classList.remove('cursor-hover'));
+  // Use event delegation for hover state so dynamically added buttons/links
+  // (semester actions, add/remove course, etc.) also trigger cursor-hover
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('a, button, .feature-card, .nav-logo');
+    if (el) body.classList.add('cursor-hover');
+  });
+  document.addEventListener('mouseout', e => {
+    const el = e.target.closest('a, button, .feature-card, .nav-logo');
+    if (el) body.classList.remove('cursor-hover');
   });
   document.querySelectorAll('select, textarea').forEach(el => {
     el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
