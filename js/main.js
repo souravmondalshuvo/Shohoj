@@ -67,7 +67,17 @@ window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
 window.applyImport       = applyImport;
-window.clearState        = () => { clearState(); state.semesters = []; state.semesterCounter = 0; renderSemesters(); recalc(); };
+window.clearState        = () => {
+  clearState();
+  state.semesters = [];
+  state.semesterCounter = 0;
+  state.whatIfMode = false;
+  Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
+  const btn = document.getElementById('whatIfBtn');
+  if (btn) { btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; btn.textContent = '🔮 What-if'; }
+  renderSemesters();
+  recalc();
+};
 
 window._toggleRetake = toggleRetake;
 
