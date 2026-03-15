@@ -37,16 +37,18 @@ export function initCursor() {
     dot.style.opacity = '0'; ring.style.opacity = '0'; cursorGlow.style.opacity = '0';
   });
   document.addEventListener('mouseenter', () => {
-    dot.style.opacity = '1'; ring.style.opacity = '1'; cursorGlow.style.opacity = '1';
+    dot.style.opacity = ''; ring.style.opacity = ''; cursorGlow.style.opacity = '';
   });
 
   function animateCursor() {
     dX += (mX - dX) * 0.85; dY += (mY - dY) * 0.85;
     rX += (mX - rX) * 0.14; rY += (mY - rY) * 0.14;
     gX += (mX - gX) * 0.07; gY += (mY - gY) * 0.07;
-    dot.style.left  = dX + 'px'; dot.style.top   = dY + 'px';
-    ring.style.left = rX + 'px'; ring.style.top  = rY + 'px';
-    cursorGlow.style.left = gX + 'px'; cursorGlow.style.top = gY + 'px';
+    // Use transform instead of left/top so position updates stay on the
+    // compositor thread and don't interrupt CSS transitions on width/height/border-radius
+    dot.style.transform        = `translate(${dX}px, ${dY}px) translate(-50%, -50%)`;
+    ring.style.transform       = `translate(${rX}px, ${rY}px) translate(-50%, -50%)`;
+    cursorGlow.style.transform = `translate(${gX}px, ${gY}px) translate(-50%, -50%)`;
     requestAnimationFrame(animateCursor);
   }
   animateCursor();
