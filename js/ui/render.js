@@ -77,7 +77,9 @@ export function renderSemesters() {
                 : ''
             }</span>
           ${c.credits === 0 && c.name.trim() !== ''
-            ? `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
+            ? c.grade === 'F(NT)'
+              ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
+              : `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
                 <option value="" disabled ${!c.grade ? 'selected' : ''}>P / F</option>
                 <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P — Pass</option>
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F — Fail</option>
@@ -268,6 +270,22 @@ export function loadSampleData() {
     const id = state.semesterCounter++;
     state.semesters.push({ id, name: s.name, courses: s.courses });
   });
+
+  // Set dept + starting semester so wizard advances to complete state
+  state.currentDept = 'CSE';
+  const deptSel = document.getElementById('deptSelect');
+  if (deptSel) deptSel.value = 'CSE';
+  const credEl = document.getElementById('deptCredits');
+  if (credEl) credEl.style.display = 'inline-flex';
+  const credTxt = document.getElementById('deptCreditsText');
+  if (credTxt) credTxt.textContent = '136 Total Credits';
+  const startSeason = document.getElementById('startSeason');
+  if (startSeason) startSeason.value = 'Fall';
+  const startYear = document.getElementById('startYear');
+  if (startYear) startYear.value = '2024';
+  const startRow = document.getElementById('startSemRow');
+  if (startRow) startRow.style.display = 'flex';
+
   renderSemesters();
   window._shohoj_recalc();
   saveState();
@@ -330,4 +348,3 @@ export function onStartSemConfirm() {
   renderSemesters();
   window._shohoj_recalc();
 }
- 
