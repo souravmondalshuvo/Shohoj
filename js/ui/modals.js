@@ -366,7 +366,8 @@ export function exportPDF() {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-    doc.text(sem.name + (sem.running ? '  [Running]' : ''), ML + 5, y + 5);
+    const semNameClean = sem.name.replace(/<[^>]+>/g, '');
+    doc.text(semNameClean + (sem.running ? '  [Running]' : ''), ML + 5, y + 5);
     if (semGpa !== null) {
       const gc = semGpa >= 3.5 ? GREEN : semGpa >= 3.0 ? [39,174,96] : semGpa >= 2.5 ? GOLD : RED;
       doc.setTextColor(...gc);
@@ -374,7 +375,8 @@ export function exportPDF() {
     }
     y += 9;
 
-    const COL = { name: ML, cr: ML+88, gp: ML+102, grade: ML+120, note: ML+135 };
+    // COL.grade wider (22→fits "C+" etc), COL.note adjusted accordingly
+    const COL = { name: ML, cr: ML+88, gp: ML+102, grade: ML+116, note: ML+140 };
     doc.setFillColor(14, 26, 18);
     doc.rect(ML, y, CW, 5.5, 'F');
     doc.setFontSize(6);
@@ -383,7 +385,7 @@ export function exportPDF() {
     doc.text('COURSE', COL.name, y + 3.8);
     doc.text('CR', COL.cr, y + 3.8, { align: 'right' });
     doc.text('GP', COL.gp, y + 3.8, { align: 'right' });
-    doc.text('GRADE', COL.grade + 5, y + 3.8, { align: 'center' });
+    doc.text('GRADE', COL.grade + 11, y + 3.8, { align: 'center' });
     doc.text('NOTE', COL.note, y + 3.8);
     y += 7;
 
@@ -398,25 +400,35 @@ export function exportPDF() {
       doc.setFontSize(7.5);
       doc.setFont('helvetica', isRet ? 'italic' : 'normal');
       const _tc = isRet ? GREY3 : WHITE; doc.setTextColor(_tc[0], _tc[1], _tc[2]);
-      const nameStr = c.name.length > 45 ? c.name.slice(0, 43) + '…' : c.name;
+      // FIX 1: increase max name length now that grade col shifted left
+      const nameStr = c.name.length > 50 ? c.name.slice(0, 48) + '…' : c.name;
       doc.text(nameStr || '—', COL.name, y + 3.2);
       doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
-      doc.text(c.credits ? c.credits.toString() : '—', COL.cr, y + 3.2, { align: 'right' });
+      // FIX 2: show '0' for zero-credit courses instead of '—'
+      doc.text(c.credits !== undefined && c.credits !== null ? c.credits.toString() : '—', COL.cr, y + 3.2, { align: 'right' });
       const gp = GRADES[c.grade];
-      doc.text(gp !== undefined && gp !== null ? gp.toFixed(2) : '—', COL.gp, y + 3.2, { align: 'right' });
+      // FIX 3: show '0.00' for F(NT) (gp=null means no GPA impact, but GP was 0)
+      const gpDisplay = c.grade === 'F(NT)' ? '0.00'
+        : (gp !== undefined && gp !== null ? gp.toFixed(2) : '—');
+      doc.text(gpDisplay, COL.gp, y + 3.2, { align: 'right' });
       if (c.grade) {
         const gc = gradeColor(c.grade);
+        // FIX 4: wider badge (22px) so "C+" / "A-" / "B-" etc. fit without clipping
         doc.setFillColor(gc[0], gc[1], gc[2], 0.15);
-        doc.roundedRect(COL.grade, y - 0.5, 16, 5, 1, 1, 'F');
+        doc.roundedRect(COL.grade, y - 0.5, 22, 5, 1, 1, 'F');
         doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...gradeColor(c.grade));
-        doc.text(c.grade, COL.grade + 8, y + 3.2, { align: 'center' });
+        doc.text(c.grade, COL.grade + 11, y + 3.2, { align: 'center' });
       }
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
-      const note = isRet ? 'Retaken' : c.grade === 'F(NT)' ? 'No Transfer' : c.grade === 'P' ? 'Pass/Fail' : '';
+      // FIX 5: F(NT) note is 'No Transfer', retaken shows 'Retaken' only if actually retaken
+      const note = c.grade === 'F(NT)' ? 'No Transfer'
+        : isRet ? 'Retaken'
+        : c.grade === 'P' ? 'Pass/Fail'
+        : '';
       if (note) doc.text(note, COL.note, y + 3.2);
       y += 6;
     });
