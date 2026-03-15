@@ -33,9 +33,9 @@ export function parseBlobFallback(text) {
   }).filter(s => s.courses.length > 0);
 
   let detectedDept = null;
-  if (/CSE|COMPUTER SCIENCE/i.test(text))              detectedDept = 'BSc CSE — Computer Science & Engineering';
+  if (/CSE|COMPUTER SCIENCE/i.test(text))              detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
   else if (/ELECTRICAL/i.test(text))                   detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
-  else if (/BBA|BUSINESS ADMINISTRATION/i.test(text))  detectedDept = 'BBA — Business Administration';
+  else if (/BBA|BUSINESS ADMINISTRATION/i.test(text))  detectedDept = 'Bachelor of Business Administration (BBA)';
   else if (/PHARMACY/i.test(text))                     detectedDept = 'B.Sc. in Pharmacy (PHR)';
   else if (/ARCHITECTURE/i.test(text))                 detectedDept = 'B.Sc. in Architecture (ARC)';
   else if (/LAW/i.test(text))                          detectedDept = 'Bachelor of Laws (LLB)';
@@ -57,11 +57,11 @@ export function parseTranscriptText(text) {
   // ── Dept detection ────────────────────────────────────────────────────────
   let detectedDept = null;
   if (/COMPUTER[\s\S]{0,10}SCIENCE|B\.?SC\.?\s+IN\s+COMPUTER/i.test(text))
-    detectedDept = 'BSc CSE — Computer Science & Engineering';
+    detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
   else if (/ELECTRICAL/i.test(text))
     detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
   else if (/BUSINESS ADMINISTRATION/i.test(text))
-    detectedDept = 'BBA — Business Administration';
+    detectedDept = 'Bachelor of Business Administration (BBA)';
   else if (/PHARMACY/i.test(text))
     detectedDept = 'B.Sc. in Pharmacy (PHR)';
   else if (/ARCHITECTURE/i.test(text))
