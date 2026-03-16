@@ -400,8 +400,8 @@ export function exportPDF() {
       doc.setFontSize(7.5);
       doc.setFont('helvetica', isRet ? 'italic' : 'normal');
       const _tc = isRet ? GREY3 : WHITE; doc.setTextColor(_tc[0], _tc[1], _tc[2]);
-      // FIX 1: increase max name length now that grade col shifted left
-      const nameStr = c.name.length > 50 ? c.name.slice(0, 48) + '…' : c.name;
+      // Increase to 60 chars; use '...' (jsPDF standard fonts don't support U+2026 ellipsis)
+      const nameStr = c.name.length > 60 ? c.name.slice(0, 57) + '...' : c.name;
       doc.text(nameStr || '—', COL.name, y + 3.2);
       doc.setTextColor(GREY3[0], GREY3[1], GREY3[2]);
       // FIX 2: show '0' for zero-credit courses instead of '—'
