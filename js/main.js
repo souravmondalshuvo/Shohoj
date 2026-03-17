@@ -26,7 +26,8 @@ import { drawTrendChart } from './ui/charts.js';
 
 import {
   runSimulator, buildWhatIfSelect, onWhatIfChange,
-  toggleWhatIf, updateSetupWizard, buildRetakeSuggestions, toggleRetake
+  toggleWhatIf, updateSetupWizard, buildRetakeSuggestions, toggleRetake,
+  renderRetakeAnalyzer, toggleRetakeAnalyzer, onRetakeTargetChange
 } from './ui/simulator.js';
 
 import {
@@ -80,6 +81,8 @@ window.clearState        = () => {
 };
 
 window._toggleRetake = toggleRetake;
+window.toggleRetakeAnalyzer = toggleRetakeAnalyzer;
+window.onRetakeTargetChange = onRetakeTargetChange;
 
 // ── THEME ─────────────────────────────────────────────────────────────────────
 const html     = document.documentElement;
@@ -401,6 +404,7 @@ function recalc() {
     statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
   }
 
+  renderRetakeAnalyzer(cgpa, totalEarnedCGPA, totalPts);
   runSimulator(cgpa, totalEarnedCGPA, totalPts);
   saveState();
   updateSetupWizard();
