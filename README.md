@@ -71,10 +71,6 @@ Upload your official BRACU grade sheet PDF and Shohoj reads it automatically —
 
 Toggle hypothetical grades on any course and watch your CGPA update in real time. Plan retakes, set targets, and see exactly what it takes to reach your goal — before you commit.
 
-<p align="center">
-  <img src="assets/screenshots/what-if.png" alt="What-If Simulator" width="700" />
-</p>
-
 ### 📊 GPA Trend Chart
 
 A visual timeline of your GPA across semesters. Spot patterns, track improvement, and see your academic journey at a glance.
@@ -122,10 +118,6 @@ Shohoj is built to feel like a real product, not a student project.
 - **Custom cursor system** — animated dot + ring + glow with hover/click states, fully delegated for dynamic elements
 - **Scroll reveal animations** — IntersectionObserver-powered entrance effects with staggered timing
 - **Responsive layout** — works on desktop and mobile
-
-<p align="center">
-  <img src="assets/screenshots/ui-polish.png" alt="UI Design" width="700" />
-</p>
 
 ---
 
@@ -224,11 +216,9 @@ Shohoj/
 │       ├── hero-preview.png
 │       ├── calculator.png
 │       ├── transcript-import.png
-│       ├── what-if.png
 │       ├── trend-chart.png
 │       ├── autocomplete.png
-│       ├── pdf-export.png
-│       └── ui-polish.png
+│       └── pdf-export.png
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism
 ├── js/
