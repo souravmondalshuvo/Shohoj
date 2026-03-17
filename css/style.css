@@ -637,7 +637,7 @@ h1[data-reveal-hero].visible {
       .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
       .cgpa-display { align-self: flex-end; } .cgpa-display .cgpa-val { font-size: 2rem; }
       .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; align-items: stretch; gap: 0.8rem; }
-      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .course-row { grid-template-columns: 1fr 54px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
       .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
@@ -930,6 +930,291 @@ h1[data-reveal-hero].visible {
       .trend-chart-box { margin: 0 2.5rem 1.8rem; }
       .trend-canvas-wrap { height: 180px; }
     }
+
+    /* ── RETAKE IMPACT ANALYZER ────────────────────────── */
+    .retake-analyzer {
+      margin: 0 2rem 1.5rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      position: relative;
+    }
+    .retake-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .retake-header h4 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin: 0;
+    }
+    .retake-subtitle {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Preview (before → after) */
+    .retake-cgpa-preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(46,204,113,0.06);
+      border: 1px solid rgba(46,204,113,0.18);
+      border-radius: 10px;
+      padding: 8px 14px;
+      flex-shrink: 0;
+    }
+    .retake-preview-current, .retake-preview-after {
+      text-align: center;
+    }
+    .retake-preview-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text3);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .retake-preview-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .retake-preview-arrow {
+      color: var(--text3);
+      font-size: 14px;
+    }
+    .retake-preview-delta {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(46,204,113,0.12);
+    }
+
+    /* Table header */
+    .retake-table-header {
+      display: grid;
+      grid-template-columns: 32px 1fr 180px 90px;
+      align-items: center;
+      padding: 0 4px 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .retake-th-check { width: 32px; }
+    .retake-th-course, .retake-th-grade, .retake-th-impact {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text3);
+      font-weight: 700;
+    }
+    .retake-th-grade { text-align: center; }
+    .retake-th-impact { text-align: center; }
+
+    /* Row */
+    .retake-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 180px 90px;
+      align-items: center;
+      padding: 10px 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.2s;
+      border-radius: 6px;
+    }
+    [data-theme="light"] .retake-row {
+      border-bottom-color: rgba(0,0,0,0.05);
+    }
+    .retake-row:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    [data-theme="light"] .retake-row:hover {
+      background: rgba(0,0,0,0.02);
+    }
+    .retake-row.selected {
+      background: rgba(46,204,113,0.06);
+      border-color: rgba(46,204,113,0.12);
+    }
+    [data-theme="light"] .retake-row.selected {
+      background: rgba(46,204,113,0.08);
+    }
+
+    /* Check circle */
+    .retake-row-check {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .retake-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      font-size: 11px;
+      color: var(--text3);
+      transition: all 0.2s;
+    }
+    .retake-check.on {
+      background: rgba(46,204,113,0.18);
+      border-color: #2ECC71;
+      color: #2ECC71;
+      font-weight: 700;
+    }
+
+    /* Info */
+    .retake-row-info {
+      overflow: hidden;
+      padding-right: 8px;
+    }
+    .retake-row-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .retake-row-meta {
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .retake-row-sem {
+      font-size: 10px;
+      color: var(--text3);
+    }
+    .retake-row-cr {
+      font-size: 10px;
+      color: var(--text3);
+      opacity: 0.7;
+    }
+
+    /* Grade column */
+    .retake-row-grade {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .retake-current-grade {
+      font-weight: 800;
+      font-size: 13px;
+      font-family: 'Syne', sans-serif;
+      min-width: 28px;
+      text-align: right;
+    }
+    .retake-arrow {
+      color: var(--text3);
+      font-size: 12px;
+    }
+    .retake-target-select {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 8px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s, opacity 0.2s;
+      min-width: 72px;
+    }
+    .retake-target-select:focus {
+      border-color: rgba(46,204,113,0.5);
+    }
+    .retake-row.selected .retake-target-select {
+      opacity: 1 !important;
+      border-color: rgba(46,204,113,0.35);
+    }
+
+    /* Impact column */
+    .retake-row-impact {
+      text-align: center;
+    }
+    .retake-impact-cgpa {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .retake-impact-boost {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    /* Summary / hint */
+    .retake-summary {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: rgba(46,204,113,0.07);
+      border: 1px solid rgba(46,204,113,0.18);
+    }
+    .retake-summary-count {
+      font-size: 12px;
+      font-weight: 700;
+      color: #2ECC71;
+      margin-bottom: 4px;
+    }
+    .retake-summary-insight {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+    .retake-hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--text3);
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .retake-analyzer { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .retake-table-header { grid-template-columns: 28px 1fr 130px 70px; }
+      .retake-row { grid-template-columns: 28px 1fr 130px 70px; padding: 8px 2px; }
+      .retake-row-name { font-size: 11px; }
+      .retake-current-grade { font-size: 11px; min-width: 22px; }
+      .retake-target-select { font-size: 11px; min-width: 60px; padding: 3px 5px; }
+      .retake-impact-cgpa { font-size: 12px; }
+      .retake-header { flex-direction: column; }
+      .retake-cgpa-preview { width: 100%; justify-content: center; }
+    }
+    @media (max-width: 360px) {
+      .retake-table-header, .retake-row {
+        grid-template-columns: 26px 1fr 100px 60px;
+      }
+    }
+    @media (min-width: 768px) {
+      .retake-analyzer { margin: 0 1.5rem 1.2rem; }
+    }
+    @media (min-width: 1024px) {
+      .retake-analyzer { margin: 0 2rem 1.5rem; }
+    }
+    @media (min-width: 1440px) {
+      .retake-analyzer { margin: 0 2.5rem 1.8rem; }
+    }
+
     /* ── RUNNING SEMESTER ───────────────────────────────── */
     .semester-block.semester-running {
       border-color: rgba(240,165,0,0.4);
