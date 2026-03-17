@@ -217,31 +217,45 @@ Shohoj is designed from Day 1 to scale beyond BRAC University. The architecture 
 ## Project Structure
 
 ```
-index.html                  Main HTML shell
-css/
-  style.css                 All styles — themes, animations, glassmorphism
-js/
-  main.js                   Entry point — wires all modules together
-  core/
-    grades.js               BRACU grading scale & grade detection
-    helpers.js              Semester name generation, season/year utilities
-    state.js                Shared state object, localStorage persistence
-    departments.js          8 department definitions with preset semesters
-    catalog.js              Full BRACU course database
-    calculator.js           GPA/CGPA engine, retake policy, credit warnings
-  ui/
-    render.js               Semester rendering, drag-drop reorder
-    suggestions.js          Course autocomplete suggestion portal
-    charts.js               Canvas GPA trend chart
-    simulator.js            What-If mode logic & UI
-    modals.js               Transcript import modal, PDF export
-  animations/
-    cursor.js               Custom animated cursor with event delegation
-    dotmatrix.js            Spring-physics dot matrix canvas background
-    reveal.js               IntersectionObserver scroll reveal system
-  import/
-    parser.js               BRACU transcript PDF parser (dual-strategy)
-build3.py                   Build script — bundles into single shohoj.html
+Shohoj/
+├── assets/
+│   ├── shohoj-logo.png
+│   └── screenshots/
+│       ├── hero-preview.png
+│       ├── calculator.png
+│       ├── transcript-import.png
+│       ├── what-if.png
+│       ├── trend-chart.png
+│       ├── autocomplete.png
+│       ├── pdf-export.png
+│       └── ui-polish.png
+├── css/
+│   └── style.css                 All styles — themes, animations, glassmorphism
+├── js/
+│   ├── main.js                   Entry point — wires all modules together
+│   ├── core/
+│   │   ├── grades.js             BRACU grading scale & grade detection
+│   │   ├── helpers.js            Semester name generation, season/year utilities
+│   │   ├── state.js              Shared state object, localStorage persistence
+│   │   ├── departments.js        8 department definitions with preset semesters
+│   │   ├── catalog.js            Full BRACU course database
+│   │   └── calculator.js         GPA/CGPA engine, retake policy, credit warnings
+│   ├── ui/
+│   │   ├── render.js             Semester rendering, drag-drop reorder
+│   │   ├── suggestions.js        Course autocomplete suggestion portal
+│   │   ├── charts.js             Canvas GPA trend chart
+│   │   ├── simulator.js          What-If mode logic & UI
+│   │   └── modals.js             Transcript import modal, PDF export
+│   ├── animations/
+│   │   ├── cursor.js             Custom animated cursor with event delegation
+│   │   ├── dotmatrix.js          Spring-physics dot matrix canvas background
+│   │   └── reveal.js             IntersectionObserver scroll reveal system
+│   └── import/
+│       └── parser.js             BRACU transcript PDF parser (dual-strategy)
+├── index.html                    Main HTML shell
+├── README.md
+├── LICENSE
+└── build3.py                     Build script — bundles into single shohoj.html
 ```
 
 ---
