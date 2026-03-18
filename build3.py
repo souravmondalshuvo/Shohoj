@@ -26,6 +26,7 @@ JS_FILES = [
     # UI
     'js/ui/charts.js',          # no imports
     'js/ui/suggestions.js',     # imports catalog, state
+    'js/ui/tracker.js',         # imports grades, departments, state, calculator, helpers
     'js/ui/render.js',          # imports grades, departments, state, calculator, helpers
     'js/ui/simulator.js',       # imports grades, state, calculator
     'js/ui/modals.js',          # imports grades, departments, state, calculator, parser
