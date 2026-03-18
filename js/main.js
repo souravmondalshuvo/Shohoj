@@ -24,6 +24,8 @@ import {
 
 import { drawTrendChart } from './ui/charts.js';
 
+import { renderDegreeTracker } from './ui/tracker.js';
+
 import {
   runSimulator, buildWhatIfSelect, onWhatIfChange,
   toggleWhatIf, updateSetupWizard, buildRetakeSuggestions, toggleRetake,
@@ -303,6 +305,9 @@ function recalc() {
   } else {
     creditsBox.style.display = 'none';
   }
+
+  // Degree progress tracker
+  renderDegreeTracker(totalEarned);
 
   // Academic standing
   const standingBox = document.getElementById('standingBox');
