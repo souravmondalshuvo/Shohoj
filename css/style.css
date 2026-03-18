@@ -652,7 +652,8 @@ h1[data-reveal-hero].visible {
       .btn-primary, .btn-secondary { padding: 12px 24px; font-size: 14px; } .hero-stats { gap: 2rem; margin-top: 3rem; }
       section { padding: 3.5rem 1.5rem; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.2rem 1.5rem; flex-wrap: wrap; } .calc-body { padding: 1rem 1.2rem; }
-      .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box { margin: 0 1.2rem 1rem; }
+      .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker { margin: 0 1.2rem 1rem; }
+      .tracker-stats { grid-template-columns: repeat(2, 1fr); }
       .course-row { grid-template-columns: 1fr 44px 84px 30px 20px; gap: 5px; padding: 7px 1rem; }
     }
     @media (min-width: 768px) and (max-width: 1023px) {
@@ -660,7 +661,7 @@ h1[data-reveal-hero].visible {
       .hero h1 { font-size: clamp(3.5rem, 7vw, 5rem); } .hero-sub { max-width: 520px; } .hero-stats { gap: 3rem; }
       section { padding: 4rem 2rem; max-width: 100%; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.3rem 1.8rem; } .calc-body { padding: 1.2rem 1.5rem; }
-      .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box { margin: 0 1.5rem 1.2rem; }
+      .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker { margin: 0 1.5rem 1.2rem; }
       .course-row { grid-template-columns: 1fr 50px 90px 32px 22px; gap: 6px; }
     }
     @media (min-width: 1024px) and (max-width: 1279px) { section { max-width: 860px; } .hero h1 { font-size: clamp(4rem, 6vw, 5.5rem); } .features-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -670,7 +671,7 @@ h1[data-reveal-hero].visible {
       .hero h1 { font-size: clamp(5rem, 6vw, 7.5rem); } .hero-sub { font-size: 1.25rem; max-width: 560px; }
       .features-grid { grid-template-columns: repeat(3, 1fr); }
       .calc-header { padding: 1.8rem 2.5rem; } .calc-body { padding: 1.8rem 2.5rem; }
-      .calc-footer { padding: 1.5rem 2.5rem; } .cgpa-meter, .simulator-box { margin: 0 2.5rem 1.8rem; }
+      .calc-footer { padding: 1.5rem 2.5rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker { margin: 0 2.5rem 1.8rem; }
     }
     @media (min-width: 1920px) { section { max-width: 1100px; } .hero h1 { font-size: 8rem; } .hero-sub { font-size: 1.35rem; } }
     @media (max-width: 767px) and (orientation: landscape) { .hero { min-height: auto; padding: 5rem 2rem 3rem; } .hero h1 { font-size: clamp(2rem, 6vw, 3rem); } .hero-stats { margin-top: 2rem; } }
@@ -1487,6 +1488,12 @@ h1[data-reveal-hero].visible {
       .retake-current-grade { font-size: 11px; min-width: 22px; }
       .retake-target-select { font-size: 11px; min-width: 60px; padding: 3px 5px; }
       .retake-impact-cgpa { font-size: 12px; }
+      .retake-header { flex-direction: column; }
+      .retake-cgpa-preview { width: 100%; justify-content: center; }
+    }
+    @media (min-width: 481px) and (max-width: 640px) {
+      .retake-table-header { grid-template-columns: 30px 1fr 150px 80px; }
+      .retake-row { grid-template-columns: 30px 1fr 150px 80px; }
       .retake-header { flex-direction: column; }
       .retake-cgpa-preview { width: 100%; justify-content: center; }
     }
