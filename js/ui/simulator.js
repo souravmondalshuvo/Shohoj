@@ -438,8 +438,9 @@ export function renderRetakeAnalyzer(currentCgpa, currentCredits, currentPts) {
     const boostText = `+${individualBoost.toFixed(2)}`;
 
     // Truncate long course names for display
-    const displayName = c.name.length > 45 ? c.name.slice(0, 42) + '...' : c.name;
-    const safeName = c.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const displayName = c.name.length > 45 ? escHtml(c.name.slice(0, 42)) + '...' : escHtml(c.name);
+    const safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     return `
       <div class="${rowClass}" data-key="${c.key}">
