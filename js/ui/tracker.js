@@ -96,8 +96,10 @@ export function renderDegreeTracker(totalEarned) {
   const progressPct = Math.min((totalEarned / totalRequired) * 100, 100);
 
   // ── Stats strip ─────────────────────────────────────────────────────
-  const earnedDisplay = Math.round(totalEarned);
-  const remainingDisplay = Math.round(creditsRemaining);
+  // Format credits: 39 → "39", 39.5 → "39.5", never rounds away .5
+  const fmtCr = n => n % 1 === 0 ? String(n) : n.toFixed(1);
+  const earnedDisplay = fmtCr(totalEarned);
+  const remainingDisplay = fmtCr(creditsRemaining);
   const statsHtml = `
     <div class="tracker-stats">
       <div class="tracker-stat">
@@ -109,7 +111,7 @@ export function renderDegreeTracker(totalEarned) {
         <div class="tracker-stat-label">Semesters Done</div>
       </div>
       <div class="tracker-stat">
-        <div class="tracker-stat-val">${avgCredits.toFixed(0)}<span class="tracker-stat-dim"> cr/sem</span></div>
+        <div class="tracker-stat-val">${fmtCr(avgCredits)}<span class="tracker-stat-dim"> cr/sem</span></div>
         <div class="tracker-stat-label">Your Pace</div>
       </div>
       <div class="tracker-stat">
@@ -198,7 +200,7 @@ export function renderDegreeTracker(totalEarned) {
           </div>
           <div class="tracker-node-card">
             <div class="tracker-node-label">${projLabel}</div>
-            <div class="tracker-node-gpa" style="color:var(--text3)">~${avgCredits.toFixed(0)} cr</div>
+            <div class="tracker-node-gpa" style="color:var(--text3)">~${fmtCr(avgCredits)} cr</div>
           </div>
         </div>`;
     }
