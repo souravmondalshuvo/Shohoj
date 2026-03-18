@@ -44,6 +44,10 @@ import { initDotMatrix }  from './animations/dotmatrix.js';
 // ── INTERNAL HELPERS (used by modules via window._shohoj_*) ──────────────────
 // Modules that need to trigger recalc or re-render call these.
 // This avoids circular imports while keeping logic in one place.
+
+// Format credits: 39 → "39", 39.5 → "39.5", never rounds away .5
+function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
+
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window._shohoj_updateSetupWizard = updateSetupWizard;
@@ -288,8 +292,8 @@ function recalc() {
     cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
     cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
 
-  document.getElementById('totalAttempted').textContent = totalAttempted.toFixed(1);
-  document.getElementById('totalEarned').textContent = totalEarned.toFixed(1);
+  document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
+  document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
 
   // Credits progress bar
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
@@ -300,7 +304,7 @@ function recalc() {
     const creditsPct = Math.min((totalEarned / totalRequired) * 100, 100);
     document.getElementById('creditsFill').style.width = creditsPct.toFixed(1) + '%';
     document.getElementById('creditsPct').textContent = creditsPct.toFixed(1) + '%';
-    document.getElementById('creditsEarnedLabel').textContent = totalEarned.toFixed(0) + ' credits completed';
+    document.getElementById('creditsEarnedLabel').textContent = fmtCr(totalEarned) + ' credits completed';
     document.getElementById('creditsTotalLabel').textContent = 'of ' + totalRequired;
   } else {
     creditsBox.style.display = 'none';
