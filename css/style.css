@@ -637,7 +637,7 @@ h1[data-reveal-hero].visible {
       .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
       .cgpa-display { align-self: flex-end; } .cgpa-display .cgpa-val { font-size: 2rem; }
       .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; align-items: stretch; gap: 0.8rem; }
-      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .course-row { grid-template-columns: 1fr 54px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
       .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
@@ -839,6 +839,296 @@ h1[data-reveal-hero].visible {
     @media (min-width: 1440px) {
       .credits-progress { margin: 0 2.5rem 1.8rem; }
     }
+
+    /* ── DEGREE PROGRESS TRACKER ───────────────────────── */
+    .degree-tracker {
+      margin: 0 2rem 1.5rem;
+      background: var(--glass2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.5rem;
+      position: relative;
+    }
+    .tracker-header {
+      margin-bottom: 1rem;
+    }
+    .tracker-header h4 {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin: 0;
+    }
+    .tracker-subtitle {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 4px;
+    }
+
+    /* Stats strip */
+    .tracker-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .tracker-stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    [data-theme="light"] .tracker-stat {
+      background: rgba(0,0,0,0.02);
+    }
+    .tracker-stat-val {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .tracker-stat-dim {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text3);
+    }
+    .tracker-stat-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text3);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Progress bar */
+    .tracker-bar-wrap {
+      margin-bottom: 16px;
+    }
+    .tracker-bar-bg {
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    [data-theme="light"] .tracker-bar-bg {
+      background: rgba(0,0,0,0.07);
+    }
+    .tracker-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1a7a44, #2ECC71, #a8ffcb);
+      border-radius: 100px;
+      width: 0%;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 0 10px rgba(46,204,113,0.4);
+    }
+    .tracker-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 5px;
+    }
+    .tracker-bar-labels span:first-child {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* Timeline */
+    .tracker-timeline-wrap {
+      overflow-x: auto;
+      overflow-y: visible;
+      padding-bottom: 8px;
+      margin: 0 -4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tracker-timeline-wrap::-webkit-scrollbar {
+      height: 4px;
+    }
+    .tracker-timeline-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .tracker-timeline-wrap::-webkit-scrollbar-thumb {
+      background: rgba(46,204,113,0.2);
+      border-radius: 100px;
+    }
+    .tracker-timeline {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      position: relative;
+      padding: 8px 4px 4px;
+      min-width: min-content;
+    }
+    .tracker-timeline-line {
+      position: absolute;
+      top: 22px;
+      left: 16px;
+      right: 16px;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    /* Node */
+    .tracker-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 90px;
+      position: relative;
+      z-index: 1;
+      flex-shrink: 0;
+    }
+    .tracker-node-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+    .tracker-node-dot-inner {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    /* Completed node */
+    .tracker-node.completed .tracker-node-dot {
+      background: rgba(46,204,113,0.15);
+      border: 2px solid rgba(46,204,113,0.4);
+    }
+    .tracker-node.completed .tracker-node-dot-inner {
+      background: #2ECC71;
+      box-shadow: 0 0 8px rgba(46,204,113,0.5);
+    }
+    .tracker-node.completed.gpa-warning .tracker-node-dot {
+      background: rgba(240,165,0,0.12);
+      border-color: rgba(240,165,0,0.35);
+    }
+    .tracker-node.completed.gpa-warning .tracker-node-dot-inner {
+      background: #F0A500;
+      box-shadow: 0 0 8px rgba(240,165,0,0.4);
+    }
+    .tracker-node.completed.gpa-danger .tracker-node-dot {
+      background: rgba(231,76,60,0.12);
+      border-color: rgba(231,76,60,0.35);
+    }
+    .tracker-node.completed.gpa-danger .tracker-node-dot-inner {
+      background: #e74c3c;
+      box-shadow: 0 0 8px rgba(231,76,60,0.4);
+    }
+
+    /* Running node */
+    .tracker-node.running .tracker-node-dot {
+      background: rgba(240,165,0,0.15);
+      border: 2px solid rgba(240,165,0,0.45);
+      animation: tracker-pulse 2s ease-in-out infinite;
+    }
+    .tracker-node.running .tracker-node-dot-inner {
+      background: #F0A500;
+      box-shadow: 0 0 8px rgba(240,165,0,0.5);
+    }
+    @keyframes tracker-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(240,165,0,0.2); }
+      50% { box-shadow: 0 0 0 6px rgba(240,165,0,0); }
+    }
+
+    /* Projected node */
+    .tracker-node.projected .tracker-node-dot {
+      background: transparent;
+      border: 2px dashed var(--border);
+    }
+    .tracker-node.projected .tracker-node-dot-inner {
+      background: var(--border);
+      opacity: 0.4;
+    }
+    .tracker-node.projected .tracker-node-card {
+      opacity: 0.45;
+    }
+    .tracker-node.projected.more .tracker-node-dot {
+      border-style: dotted;
+    }
+
+    /* Graduation node */
+    .tracker-node.graduation .tracker-node-dot {
+      background: rgba(46,204,113,0.1);
+      border: 2px solid rgba(46,204,113,0.3);
+      width: 32px;
+      height: 32px;
+    }
+    .tracker-node.graduation .tracker-node-dot-inner {
+      background: transparent;
+      width: auto;
+      height: auto;
+      font-size: 14px;
+    }
+    .tracker-node.graduation .tracker-node-card {
+      opacity: 0.7;
+    }
+    .tracker-node.graduation.completed .tracker-node-dot {
+      background: rgba(46,204,113,0.2);
+      border-color: #2ECC71;
+      box-shadow: 0 0 12px rgba(46,204,113,0.3);
+    }
+    .tracker-node.graduation.completed .tracker-node-card {
+      opacity: 1;
+    }
+
+    /* Node card */
+    .tracker-node-card {
+      text-align: center;
+      max-width: 88px;
+    }
+    .tracker-node-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 88px;
+    }
+    .tracker-node-gpa {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .tracker-node-meta {
+      font-size: 9px;
+      color: var(--text3);
+      margin-top: 1px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .degree-tracker { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .tracker-stats { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .tracker-stat { padding: 8px 10px; }
+      .tracker-stat-val { font-size: 15px; }
+      .tracker-node { min-width: 76px; }
+      .tracker-node-card { max-width: 74px; }
+      .tracker-node-label { font-size: 9px; max-width: 74px; }
+    }
+    @media (min-width: 768px) {
+      .degree-tracker { margin: 0 1.5rem 1.2rem; }
+    }
+    @media (min-width: 1024px) {
+      .degree-tracker { margin: 0 2rem 1.5rem; }
+    }
+    @media (min-width: 1440px) {
+      .degree-tracker { margin: 0 2.5rem 1.8rem; }
+    }
+
     /* ── ACADEMIC STANDING ──────────────────────────────── */
     .standing-box {
       margin: 0 2rem 1.5rem;
