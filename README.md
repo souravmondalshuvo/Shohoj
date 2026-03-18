@@ -71,10 +71,6 @@ Upload your official BRACU grade sheet PDF and Shohoj reads it automatically —
 
 Toggle hypothetical grades on any course and watch your CGPA update in real time. Plan retakes, set targets, and see exactly what it takes to reach your goal — before you commit.
 
-<p align="center">
-  <img src="assets/screenshots/what-if.png" alt="What-If Simulator" width="700" />
-</p>
-
 ### 📊 GPA Trend Chart
 
 A visual timeline of your GPA across semesters. Spot patterns, track improvement, and see your academic journey at a glance.
@@ -123,10 +119,6 @@ Shohoj is built to feel like a real product, not a student project.
 - **Scroll reveal animations** — IntersectionObserver-powered entrance effects with staggered timing
 - **Responsive layout** — works on desktop and mobile
 
-<p align="center">
-  <img src="assets/screenshots/ui-polish.png" alt="UI Design" width="700" />
-</p>
-
 ---
 
 ## Supported Departments
@@ -172,7 +164,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Course Catalog & Autocomplete       | ✅ Complete _(bonus — not in original plan)_ |
 | Credit Load Warnings                | ✅ Complete _(bonus — not in original plan)_ |
 | Retake Impact Analyzer              | ✅ Complete                                  |
-| Degree Progress Tracker             | 🔜 Planned                                   |
+| Degree Progress Tracker             | ✅ Complete                                  |
 | Semester Planner with Prerequisites | 🔜 Planned                                   |
 | Course Difficulty Map               | 🔜 Planned                                   |
 | Advising Week Checklist             | 🔜 Planned                                   |
@@ -224,11 +216,9 @@ Shohoj/
 │       ├── hero-preview.png
 │       ├── calculator.png
 │       ├── transcript-import.png
-│       ├── what-if.png
 │       ├── trend-chart.png
 │       ├── autocomplete.png
-│       ├── pdf-export.png
-│       └── ui-polish.png
+│       └── pdf-export.png
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism
 ├── js/
@@ -245,6 +235,7 @@ Shohoj/
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
 │   │   ├── charts.js             Canvas GPA trend chart
 │   │   ├── simulator.js          What-If mode logic & UI
+│   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
 │   │   ├── cursor.js             Custom animated cursor with event delegation
