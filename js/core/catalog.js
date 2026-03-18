@@ -24,7 +24,7 @@ const _CATALOG = [
   ['CSE101','Introduction to Computer Science',3],
   ['CSE103','Introduction to Computing',3],
   ['CSE110','Programming Language I',3],
-  ['CSE111','Programming Language-II',3],
+  ['CSE111','Programming Language II',3],
   ['CSE220','Data Structures',3],
   ['CSE221','Algorithms',3],
   ['CSE230','Discrete Mathematics',3],
