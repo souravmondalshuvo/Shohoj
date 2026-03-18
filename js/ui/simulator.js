@@ -318,7 +318,7 @@ export function toggleRetakeAnalyzer(key, defaultGrade) {
 }
 
 export function onRetakeTargetChange(key, grade) {
-  _retakeAnalyzerSelected[key] = grade;
+  _retakeAnalyzerSelected[key] = grade;  // auto-selects row if not already selected
   window._shohoj_recalc();
 }
 
@@ -439,12 +439,13 @@ export function renderRetakeAnalyzer(currentCgpa, currentCredits, currentPts) {
 
     // Truncate long course names for display
     const displayName = c.name.length > 45 ? c.name.slice(0, 42) + '...' : c.name;
+    const safeName = c.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
     return `
       <div class="${rowClass}" data-key="${c.key}">
         <div class="retake-row-check" onclick="toggleRetakeAnalyzer('${c.key}','${selectedGrade}')">${checkIcon}</div>
         <div class="retake-row-info">
-          <div class="retake-row-name" title="${c.name}">${displayName}</div>
+          <div class="retake-row-name" title="${safeName}">${displayName}</div>
           <div class="retake-row-meta">
             <span class="retake-row-sem">${c.sem}</span>
             <span class="retake-row-cr">${c.credits} cr</span>
