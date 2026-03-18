@@ -10,7 +10,7 @@ export const DEPARTMENTS = {
         { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
       ]},
       { name: 'Spring — Semester 2', courses: [
-        { name: 'Programming Language II (CSE111)', credits: 3, grade: '' },
+        { name: 'Programming Language-II (CSE111)', credits: 3, grade: '' },
         { name: 'Discrete Mathematics (CSE230)', credits: 3, grade: '' },
         { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
         { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
@@ -23,21 +23,21 @@ export const DEPARTMENTS = {
       ]},
       { name: 'Fall — Semester 4', courses: [
         { name: 'Data Structures (CSE220)', credits: 3, grade: '' },
-        { name: 'Electronic Devices & Circuits (CSE251)', credits: 3, grade: '' },
+        { name: 'Circuits and Electronics (CSE250)', credits: 3, grade: '' },
         { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
         { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
       ]},
       { name: 'Spring — Semester 5', courses: [
         { name: 'Algorithms (CSE221)', credits: 3, grade: '' },
-        { name: 'Computer Architecture (CSE341)', credits: 3, grade: '' },
-        { name: 'Software Engineering (CSE361)', credits: 3, grade: '' },
+        { name: 'Computer Architecture (CSE340)', credits: 3, grade: '' },
+        { name: 'Software Engineering (CSE470)', credits: 3, grade: '' },
         { name: 'Linear Algebra (MAT215)', credits: 3, grade: '' },
       ]},
       { name: 'Summer — Semester 6', courses: [
         { name: 'Database Systems (CSE370)', credits: 3, grade: '' },
-        { name: 'Operating Systems (CSE421)', credits: 3, grade: '' },
-        { name: 'Computer Networks (CSE431)', credits: 3, grade: '' },
-        { name: 'Artificial Intelligence (CSE440)', credits: 3, grade: '' },
+        { name: 'Operating Systems (CSE321)', credits: 3, grade: '' },
+        { name: 'Computer Networks (CSE421)', credits: 3, grade: '' },
+        { name: 'Artificial Intelligence (CSE422)', credits: 3, grade: '' },
       ]},
     ]
   },
