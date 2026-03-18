@@ -42,10 +42,11 @@ export function renderDegreeTracker(totalEarned) {
       ? sem.name.replace(/<[^>]+>/g, '').replace(/\s*\(.*\)$/, '')
       : 'Semester';
 
-    // Get credits attempted this semester (graded courses only, exclude P/F and F(NT))
+    // Get credits this semester (only courses with actual grades, exclude P/F and F(NT))
     const creditsThisSem = sem.courses.reduce((sum, c) => {
       if (!c.name.trim() || !c.credits) return sum;
-      if (c.grade === 'P' || c.grade === 'F(NT)') return sum;
+      if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
+      if (GRADES[c.grade] === undefined) return sum;
       return sum + c.credits;
     }, 0);
 
