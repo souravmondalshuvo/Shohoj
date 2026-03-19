@@ -2,7 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
-import { SEASON_ORDER, getStartSeason, getStartYear } from '../core/helpers.js';
+import { getStartSeason, getStartYear } from '../core/helpers.js';
 
 export function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
@@ -77,20 +77,23 @@ export function renderDegreeTracker(totalEarned) {
   // Projected semesters remaining
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
+  // Department-specific season cycle
+  const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
+
   // Estimated graduation
   let gradEstimate = '—';
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
   if (startSeason && startYear) {
     const totalSemsNeeded = completedSems.length + (runningSem ? 1 : 0) + semsRemaining;
-    let si = SEASON_ORDER.indexOf(startSeason);
+    let si = deptSeasons.indexOf(startSeason);
     if (si === -1) si = 0;
     let yr = startYear;
     for (let i = 0; i < totalSemsNeeded - 1; i++) {
       si++;
-      if (si >= SEASON_ORDER.length) { si = 0; yr++; }
+      if (si >= deptSeasons.length) { si = 0; yr++; }
     }
-    gradEstimate = `${SEASON_ORDER[si]} '${String(yr).slice(2)}`;
+    gradEstimate = `${deptSeasons[si]} '${String(yr).slice(2)}`;
   }
 
   const progressPct = Math.min((totalEarned / totalRequired) * 100, 100);
@@ -180,18 +183,24 @@ export function renderDegreeTracker(totalEarned) {
     let nextYr = 0;
     const seasonMatch = lastLabel.match(/(Spring|Summer|Fall)\s*'?(\d{2,4})/);
     if (seasonMatch) {
-      nextSi = SEASON_ORDER.indexOf(seasonMatch[1]);
       nextYr = seasonMatch[2].length === 2 ? 2000 + parseInt(seasonMatch[2]) : parseInt(seasonMatch[2]);
-      nextSi++;
-      if (nextSi >= SEASON_ORDER.length) { nextSi = 0; nextYr++; }
+      const matchedIdx = deptSeasons.indexOf(seasonMatch[1]);
+      if (matchedIdx === -1) {
+        // Season not in dept cycle (e.g. Fall for pharmacy) — start from first season next year
+        nextSi = 0;
+        nextYr++;
+      } else {
+        nextSi = matchedIdx + 1;
+        if (nextSi >= deptSeasons.length) { nextSi = 0; nextYr++; }
+      }
     }
 
     for (let j = 0; j < maxShow; j++) {
       let projLabel = `Semester ${completedSems.length + (runningSem ? 1 : 0) + j + 1}`;
       if (nextSi >= 0) {
-        projLabel = `${SEASON_ORDER[nextSi]} '${String(nextYr).slice(2)}`;
+        projLabel = `${deptSeasons[nextSi]} '${String(nextYr).slice(2)}`;
         nextSi++;
-        if (nextSi >= SEASON_ORDER.length) { nextSi = 0; nextYr++; }
+        if (nextSi >= deptSeasons.length) { nextSi = 0; nextYr++; }
       }
       projectedHtml += `
         <div class="tracker-node projected">
