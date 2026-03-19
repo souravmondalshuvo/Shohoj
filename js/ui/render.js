@@ -3,7 +3,7 @@ import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
 import {
-  SEASON_ORDER, generateSemesterNames, getLastCompletedSemester,
+  generateSemesterNames, getLastCompletedSemester,
   countSemesters, getStartSeason, getStartYear
 } from '../core/helpers.js';
 
@@ -190,7 +190,9 @@ function buildWhatIfSelect(semId, cIdx, currentGrade) {
 export function addSemester(prefill = null) {
   const id = state.semesterCounter++;
   const completedCount = state.semesters.filter(s => !s.running).length;
-  const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1);
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+  const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1, deptSeasons);
   const name = allNames[completedCount] || `Semester ${completedCount + 1}`;
   const courses = prefill || [{ name: '', credits: 0, grade: '', gradePoint: '' }];
   state.semesters.push({ id, name, courses });
@@ -212,7 +214,8 @@ export function addRunningSemester() {
 }
 
 function generateNextSemesterName() {
-  const SEASONS = ['Spring','Summer','Fall'];
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const SEASONS = dept && dept.seasons ? dept.seasons : ['Spring','Summer','Fall'];
   if (!state.semesters.length) return 'Current Semester';
   const last = [...state.semesters].reverse().find(s => !s.running);
   if (!last || !last.name) return 'Current Semester';
@@ -220,7 +223,7 @@ function generateNextSemesterName() {
   if (!match) return 'Current Semester';
   let season = match[1], year = parseInt(match[2]);
   const idx = SEASONS.indexOf(season);
-  if (idx === 2) { season = 'Spring'; year++; }
+  if (idx === -1 || idx === SEASONS.length - 1) { season = SEASONS[0]; year++; }
   else { season = SEASONS[idx + 1]; }
   return `${season} ${year}`;
 }
@@ -300,6 +303,18 @@ export function onDeptSelect() {
   const creditsEl = document.getElementById('deptCredits');
   if (creditsEl) creditsEl.style.display = 'inline-flex';
   document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
+
+  // Update season dropdown based on department
+  const seasonSel = document.getElementById('startSeason');
+  if (seasonSel) {
+    const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
+    const currentVal = seasonSel.value;
+    seasonSel.innerHTML = '<option value="" disabled selected>— Season —</option>'
+      + deptSeasons.map(s => `<option value="${s}">${s}</option>`).join('');
+    // Restore previous selection if still valid
+    if (deptSeasons.includes(currentVal)) seasonSel.value = currentVal;
+  }
+
   const startRow = document.getElementById('startSemRow');
   if (startRow) startRow.style.display = 'flex';
   if (state._restoredFromStorage) {
@@ -316,15 +331,16 @@ export function onStartSemConfirm() {
   if (!state.currentDept) return;
   if (!getStartSeason() || !getStartYear()) return;
   const dept = DEPARTMENTS[state.currentDept];
+  const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear   = parseInt(getStartYear());
-  const last        = getLastCompletedSemester();
+  const last        = getLastCompletedSemester(deptSeasons);
 
-  const startIdx = SEASON_ORDER.indexOf(startSeason) + startYear * 3;
-  const lastIdx  = SEASON_ORDER.indexOf(last.season)  + last.year  * 3;
-  const semCount = startIdx > lastIdx ? 0 : countSemesters(startSeason, startYear, last.season, last.year);
+  const startIdx = deptSeasons.indexOf(startSeason) + startYear * deptSeasons.length;
+  const lastIdx  = deptSeasons.indexOf(last.season)  + last.year  * deptSeasons.length;
+  const semCount = startIdx > lastIdx ? 0 : countSemesters(startSeason, startYear, last.season, last.year, deptSeasons);
 
-  const semNames = generateSemesterNames(startSeason, startYear, semCount);
+  const semNames = generateSemesterNames(startSeason, startYear, semCount, deptSeasons);
   if (state._restoredFromStorage) {
     state._restoredFromStorage = false;
     renderSemesters();
