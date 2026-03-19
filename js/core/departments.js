@@ -128,28 +128,31 @@ export const DEPARTMENTS = {
     seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
-        { name: 'Microeconomics I (ECO101)', credits: 3, grade: '' },
+        { name: 'Introduction to Microeconomics (ECO101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
         { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
-        { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
-        { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
       ]},
       { name: 'Spring — Semester 2', courses: [
-        { name: 'Macroeconomics I (ECO102)', credits: 3, grade: '' },
-        { name: 'Mathematics for Economics (ECO201)', credits: 3, grade: '' },
+        { name: 'Introduction to Macroeconomics (ECO102)', credits: 3, grade: '' },
+        { name: 'Mathematics for Business and Economics (ECO201)', credits: 3, grade: '' },
+        { name: 'Statistical Methods for Business and Economics (ECO202)', credits: 3, grade: '' },
         { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
-        { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
       ]},
       { name: 'Summer — Semester 3', courses: [
         { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
-        { name: 'Microeconomics II (ECO211)', credits: 3, grade: '' },
-        { name: 'Macroeconomics II (ECO212)', credits: 3, grade: '' },
         { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
       ]},
       { name: 'Fall — Semester 4', courses: [
-        { name: 'Econometrics (ECO301)', credits: 3, grade: '' },
-        { name: 'Development Economics (ECO311)', credits: 3, grade: '' },
-        { name: 'International Economics (ECO321)', credits: 3, grade: '' },
-        { name: 'Public Finance (ECO331)', credits: 3, grade: '' },
+        { name: 'Intermediate Microeconomics I (ECO206)', credits: 3, grade: '' },
+        { name: 'Intermediate Macroeconomics I (ECO207)', credits: 3, grade: '' },
+        { name: 'Introduction to Econometrics (ECO303)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Intermediate Microeconomics II (ECO208)', credits: 3, grade: '' },
+        { name: 'Intermediate Macroeconomics II (ECO209)', credits: 3, grade: '' },
+        { name: 'History of Economic Thought (ECO310)', credits: 3, grade: '' },
       ]},
     ]
   },
