@@ -7,7 +7,7 @@ import {
   onPFChange, getSemCreditWarning
 } from './core/calculator.js';
 import {
-  SEASON_ORDER, generateSemesterNames, getStartSeason, getStartYear
+  generateSemesterNames, getStartSeason, getStartYear
 } from './core/helpers.js';
 import { COURSE_DB, ALL_COURSES } from './core/catalog.js';
 
@@ -180,6 +180,14 @@ function loadState() {
     if (dept) {
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       document.getElementById('deptCredits').style.display = '';
+      // Update season dropdown for department
+      if (seasonSel) {
+        const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
+        const currentVal = seasonSel.value;
+        seasonSel.innerHTML = '<option value="" disabled selected>— Season —</option>'
+          + deptSeasons.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (deptSeasons.includes(currentVal)) seasonSel.value = currentVal;
+      }
     }
     const startRow = document.getElementById('startSemRow');
     if (startRow) startRow.style.display = 'flex';
