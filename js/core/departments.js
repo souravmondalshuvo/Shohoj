@@ -2,6 +2,7 @@ export const DEPARTMENTS = {
   CSE: {
     label: 'B.Sc. in Computer Science and Engineering (CSE)',
     totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Programming Language I (CSE110)', credits: 3, grade: '' },
@@ -44,6 +45,7 @@ export const DEPARTMENTS = {
   EEE: {
     label: 'BSc EEE — Electrical & Electronic Engineering',
     totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Electrical Circuits I (EEE101)', credits: 3, grade: '' },
@@ -80,6 +82,7 @@ export const DEPARTMENTS = {
   BBA: {
     label: 'Bachelor of Business Administration (BBA)',
     totalCredits: 130,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Introduction to Business (BUS101)', credits: 3, grade: '' },
@@ -116,6 +119,7 @@ export const DEPARTMENTS = {
   ECO: {
     label: 'B.S.S. in Economics (ECO)',
     totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Microeconomics I (ECO101)', credits: 3, grade: '' },
@@ -146,6 +150,7 @@ export const DEPARTMENTS = {
   ENG: {
     label: 'B.A. in English (ENG)',
     totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
@@ -176,6 +181,7 @@ export const DEPARTMENTS = {
   ARC: {
     label: 'B.Sc. in Architecture (ARC)',
     totalCredits: 180,
+    seasons: ['Spring', 'Summer', 'Fall'],
     presets: [
       { name: 'Fall — Semester 1', courses: [
         { name: 'Architectural Design I (ARC101)', credits: 6, grade: '' },
@@ -206,26 +212,27 @@ export const DEPARTMENTS = {
   PHR: {
     label: 'B.Sc. in Pharmacy (PHR)',
     totalCredits: 164,
+    seasons: ['Spring', 'Summer'],
     presets: [
-      { name: 'Fall — Semester 1', courses: [
+      { name: 'Spring — Semester 1', courses: [
         { name: 'Inorganic Chemistry I (PHB101)', credits: 3, grade: '' },
         { name: 'Pharmaceutical Microbiology I (PHB102)', credits: 3, grade: '' },
         { name: 'Physiology & Anatomy I (PHB103)', credits: 3, grade: '' },
         { name: 'Organic Chemistry I (PHB104)', credits: 3, grade: '' },
       ]},
-      { name: 'Spring — Semester 2', courses: [
+      { name: 'Summer — Semester 2', courses: [
         { name: 'Inorganic Chemistry II (PHB105)', credits: 3, grade: '' },
         { name: 'Physical Pharmacy I (PHB106)', credits: 3, grade: '' },
         { name: 'Pharmaceutical Microbiology II (PHB108)', credits: 3, grade: '' },
         { name: 'Organic Chemistry II (PHB109)', credits: 3, grade: '' },
       ]},
-      { name: 'Summer — Semester 3', courses: [
+      { name: 'Spring — Semester 3', courses: [
         { name: 'Mathematics and Elementary Statistics (PHB107)', credits: 3, grade: '' },
         { name: 'Pharmacognosy & Herbal Medicine (PHB202)', credits: 3, grade: '' },
         { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
         { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
       ]},
-      { name: 'Fall — Semester 4', courses: [
+      { name: 'Summer — Semester 4', courses: [
         { name: 'Physical Pharmacy II (PHB203)', credits: 3, grade: '' },
         { name: 'Pharmaceutical Analysis I (PHB204)', credits: 3, grade: '' },
         { name: 'Pharmacology I (PHB205)', credits: 3, grade: '' },
@@ -236,26 +243,27 @@ export const DEPARTMENTS = {
   LAW: {
     label: 'Bachelor of Laws (LLB)',
     totalCredits: 130,
+    seasons: ['Spring', 'Summer'],
     presets: [
-      { name: 'Fall — Semester 1', courses: [
+      { name: 'Spring — Semester 1', courses: [
         { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
         { name: 'Legal System of Bangladesh (LAW101)', credits: 3, grade: '' },
         { name: 'Introduction to Law (LAW111)', credits: 3, grade: '' },
         { name: 'Political Science (POL101)', credits: 3, grade: '' },
       ]},
-      { name: 'Spring — Semester 2', courses: [
+      { name: 'Summer — Semester 2', courses: [
         { name: 'Contract Law (LAW201)', credits: 3, grade: '' },
         { name: 'Constitutional Law I (LAW211)', credits: 3, grade: '' },
         { name: 'Criminal Law (LAW221)', credits: 3, grade: '' },
         { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
       ]},
-      { name: 'Summer — Semester 3', courses: [
+      { name: 'Spring — Semester 3', courses: [
         { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
         { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
         { name: 'Constitutional Law II (LAW301)', credits: 3, grade: '' },
         { name: 'Property Law (LAW311)', credits: 3, grade: '' },
       ]},
-      { name: 'Fall — Semester 4', courses: [
+      { name: 'Summer — Semester 4', courses: [
         { name: 'Administrative Law (LAW401)', credits: 3, grade: '' },
         { name: 'Company Law (LAW411)', credits: 3, grade: '' },
         { name: 'International Law (LAW421)', credits: 3, grade: '' },
