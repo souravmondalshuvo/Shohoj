@@ -14,40 +14,49 @@ export function getCurrentSeason() {
   return 'Fall';
 }
 
-export function getLastCompletedSemester() {
+export function getLastCompletedSemester(seasons) {
+  const order = seasons || SEASON_ORDER;
   const now = new Date();
   const curSeason = getCurrentSeason();
   const curYear   = now.getFullYear();
-  const idx = SEASON_ORDER.indexOf(curSeason);
-  if (idx === 0) {
-    return { season: SEASON_ORDER[SEASON_ORDER.length - 1], year: curYear - 1 };
+  const idx = order.indexOf(curSeason);
+  if (idx === -1) {
+    // Current season not in dept cycle (e.g. Fall for pharmacy)
+    // Return last season in dept cycle for this year
+    return { season: order[order.length - 1], year: curYear };
   }
-  return { season: SEASON_ORDER[idx - 1], year: curYear };
+  if (idx === 0) {
+    return { season: order[order.length - 1], year: curYear - 1 };
+  }
+  return { season: order[idx - 1], year: curYear };
 }
 
-export function countSemesters(startSeason, startYear, endSeason, endYear) {
-  let si = SEASON_ORDER.indexOf(startSeason);
+export function countSemesters(startSeason, startYear, endSeason, endYear, seasons) {
+  const order = seasons || SEASON_ORDER;
+  let si = order.indexOf(startSeason);
+  if (si === -1) si = 0;
   let yr = parseInt(startYear);
   let count = 0;
   while (true) {
     count++;
-    if (SEASON_ORDER[si] === endSeason && yr === parseInt(endYear)) break;
+    if (order[si] === endSeason && yr === parseInt(endYear)) break;
     si++;
-    if (si >= SEASON_ORDER.length) { si = 0; yr++; }
+    if (si >= order.length) { si = 0; yr++; }
     if (yr > parseInt(endYear) + 1) break;
   }
   return count;
 }
 
-export function generateSemesterNames(startSeason, startYear, count) {
+export function generateSemesterNames(startSeason, startYear, count, seasons) {
+  const order = seasons || SEASON_ORDER;
   const names = [];
-  let si = SEASON_ORDER.indexOf(startSeason);
+  let si = order.indexOf(startSeason);
   if (si === -1) si = 0;
   let yr = parseInt(startYear);
   for (let i = 0; i < count; i++) {
-    names.push(`${SEASON_ORDER[si]} ${yr} (${ordinalSup(i + 1)} Semester)`);
+    names.push(`${order[si]} ${yr} (${ordinalSup(i + 1)} Semester)`);
     si++;
-    if (si >= SEASON_ORDER.length) { si = 0; yr++; }
+    if (si >= order.length) { si = 0; yr++; }
   }
   return names;
 }
@@ -61,4 +70,3 @@ export function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
 }
- 
