@@ -243,7 +243,7 @@ export const DEPARTMENTS = {
   LAW: {
     label: 'Bachelor of Laws (LLB)',
     totalCredits: 135,
-    seasons: ['Spring', 'Summer'],
+    seasons: ['Spring', 'Fall'],
     presets: [
       { name: 'Spring — Semester 1', courses: [
         { name: 'The Jurisprudence of Legal Concepts (LAW101)', credits: 3, grade: '' },
@@ -252,7 +252,7 @@ export const DEPARTMENTS = {
         { name: 'Muslim Family Law and Reforms (LAW202)', credits: 3, grade: '' },
         { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
       ]},
-      { name: 'Summer — Semester 2', courses: [
+      { name: 'Fall — Semester 2', courses: [
         { name: 'Constitutional Law (LAW104)', credits: 3, grade: '' },
         { name: 'Equitable Principles and Specific Relief (LAW201)', credits: 3, grade: '' },
         { name: 'Property Law and Transfer (LAW203)', credits: 3, grade: '' },
@@ -264,7 +264,7 @@ export const DEPARTMENTS = {
         { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
         { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
       ]},
-      { name: 'Summer — Semester 4', courses: [
+      { name: 'Fall — Semester 4', courses: [
         { name: 'Business Law (LAW205)', credits: 3, grade: '' },
         { name: 'Criminal Law (LAW302)', credits: 3, grade: '' },
         { name: 'Company Law (LAW303)', credits: 3, grade: '' },
