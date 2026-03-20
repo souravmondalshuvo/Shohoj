@@ -485,9 +485,6 @@
 }
 
 /* ── STAGGER GRID — each card observed individually ─────── */
-/* Cards no longer share a parent trigger — each fires on its
-   own IntersectionObserver so slow scrollers see true sequential
-   reveals rather than all-at-once after a delay batch.          */
 .feature-card[data-reveal-card] {
   opacity: 0;
   transform: translateY(38px) scale(0.95);
@@ -588,8 +585,6 @@ h1[data-reveal-hero].visible {
 }
 
 /* ── CALC WRAPPER — hero feature, heaviest entrance ─────── */
-/* Longest duration, most travel, subtle scale — feels like  */
-/* a substantial panel settling into place, not just fading  */
 .calc-wrapper[data-reveal-calc] {
   opacity: 0;
   transform: translateY(52px) scale(0.982);
@@ -686,13 +681,13 @@ h1[data-reveal-hero].visible {
     body:not(:hover) #cursor-glow { opacity: 0; }
 
     * { cursor: none !important; }
-    #cursor-dot { position: fixed; top: 0; left: 0; width: 6px; height: 6px; background: var(--green); border-radius: 50%; pointer-events: none; z-index: 99999; transition: width 0.22s cubic-bezier(.4,0,.2,1), height 0.22s cubic-bezier(.4,0,.2,1), border-radius 0.22s cubic-bezier(.4,0,.2,1), background 0.22s ease, opacity 0.2s ease; will-change: transform; }
-    #cursor-ring { position: fixed; top: 0; left: 0; width: 36px; height: 36px; border: 1.5px solid rgba(46,204,113,0.7); border-radius: 50%; pointer-events: none; z-index: 99998; transition: width 0.22s cubic-bezier(.4,0,.2,1), height 0.22s cubic-bezier(.4,0,.2,1), border-radius 0.22s cubic-bezier(.4,0,.2,1), border-color 0.22s ease, opacity 0.25s ease, background 0.22s ease; will-change: transform; backdrop-filter: blur(1px); }
+    #cursor-dot { position: fixed; top: 0; left: 0; width: 6px; height: 6px; background: var(--green); border-radius: 50%; pointer-events: none; z-index: 99999; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), background 0.3s ease, opacity 0.2s ease; will-change: transform; }
+    #cursor-ring { position: fixed; top: 0; left: 0; width: 36px; height: 36px; border: 1.5px solid rgba(46,204,113,0.7); border-radius: 50%; pointer-events: none; z-index: 99998; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), border-color 0.3s ease, opacity 0.3s ease, background 0.3s ease; will-change: transform; backdrop-filter: blur(1px); }
     body.cursor-hover #cursor-dot { width: 8px; height: 8px; background: #fff; }
     body.cursor-hover #cursor-ring { width: 52px; height: 52px; border-color: var(--green); background: rgba(46,204,113,0.07); box-shadow: 0 0 18px rgba(46,204,113,0.25); }
     body.cursor-click #cursor-ring { width: 28px; height: 28px; background: rgba(46,204,113,0.18); border-color: var(--green); }
-    body.cursor-text #cursor-dot { width: 3px; height: 22px; border-radius: 2px; background: var(--green); }
-    body.cursor-text #cursor-ring { opacity: 0; }
+    body.cursor-text #cursor-dot { width: 2.5px; height: 24px; border-radius: 1.5px; background: var(--green); }
+    body.cursor-text #cursor-ring { width: 4px; height: 28px; border-radius: 2px; border-color: transparent; background: transparent; opacity: 0; }
 
     .magnetic { display: inline-block; transition: transform 0.4s cubic-bezier(.23,1,.32,1); will-change: transform; }
 
