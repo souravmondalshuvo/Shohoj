@@ -1657,7 +1657,7 @@ h1[data-reveal-hero].visible {
         opacity          0.35s cubic-bezier(.4,0,.2,1);
     }
     /* Exclude elements where transition would break existing animations */
-    .cursor-dot, .cursor-ring, #cursor-dot, #cursor-ring,
+    .cursor-dot, .cursor-ring,
     .course-suggestions, #suggestions-portal *,
     input, select, textarea,
     .reveal, .stagger > *, .magnetic {
@@ -1666,6 +1666,12 @@ h1[data-reveal-hero].visible {
     /* Re-apply original transitions for these */
     input, select, textarea {
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    #cursor-dot {
+      transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), background 0.3s ease, opacity 0.2s ease;
+    }
+    #cursor-ring {
+      transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), border-color 0.3s ease, opacity 0.3s ease, background 0.3s ease;
     }
 
     /* ── EMPTY STATE ──────────────────────────────────────── */
