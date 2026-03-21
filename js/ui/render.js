@@ -181,8 +181,7 @@ function buildWhatIfSelect(semId, cIdx, currentGrade) {
   const opts = grades.map(g =>
     '<option value="' + g + '"' + (selected === g ? ' selected' : '') + '>?' + g + '</option>'
   ).join('');
-  return '<select class="whatif-grade-select" style="font-size:10px;padding:1px 4px;' +
-         'border-radius:5px;max-width:64px;cursor:pointer;" ' +
+  return '<select class="whatif-grade-select" ' +
          'onchange="onWhatIfChange(' + semId + ',' + cIdx + ',this.value)" ' +
          'title="What-if grade">' + opts + '</select>';
 }
