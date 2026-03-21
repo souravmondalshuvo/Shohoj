@@ -133,7 +133,6 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
       return `<tr>
         <td style="padding:4px 10px;color:var(--text2);text-align:center">${cr} cr/sem</td>
         <td style="padding:4px 10px;text-align:center;font-weight:700;font-size:13px;color:var(--text)">${semsNeeded} sem${semsNeeded!==1?'s':''}</td>
-        <td style="padding:4px 10px;text-align:center;color:var(--text3)">${neededGPA.toFixed(2)}</td>
         <td style="padding:4px 10px;text-align:center;color:var(--text2)">${gpToLetter(neededGPA)}</td>
       </tr>`;
     }).join('');
@@ -142,7 +141,6 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
         <thead><tr style="border-bottom:1px solid var(--border)">
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">cr/sem</th>
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">semesters</th>
-          <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">gpa needed</th>
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">avg grade</th>
         </tr></thead>
         <tbody>${rows}</tbody>
