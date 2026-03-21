@@ -37,6 +37,13 @@ import {
   importTranscriptPDF, applyImport
 } from './ui/modals.js';
 
+import {
+  renderPlayground, switchPlaygroundTab,
+  onPlaygroundGradeChange, removePlaygroundChange, clearPlaygroundChanges,
+  addPlaygroundChange, onSolverTargetChange, onSolverCourseChange,
+  addSimCourse, removeSimCourse, onSimCourseChange
+} from './ui/playground.js';
+
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
 import { initDotMatrix }  from './animations/dotmatrix.js';
@@ -89,6 +96,18 @@ window.clearState        = () => {
 window._toggleRetake = toggleRetake;
 window.toggleRetakeAnalyzer = toggleRetakeAnalyzer;
 window.onRetakeTargetChange = onRetakeTargetChange;
+
+// Playground
+window.switchPlaygroundTab    = switchPlaygroundTab;
+window.onPlaygroundGradeChange = onPlaygroundGradeChange;
+window.removePlaygroundChange = removePlaygroundChange;
+window.clearPlaygroundChanges = clearPlaygroundChanges;
+window.addPlaygroundChange    = addPlaygroundChange;
+window.onSolverTargetChange   = onSolverTargetChange;
+window.onSolverCourseChange   = onSolverCourseChange;
+window.addSimCourse           = addSimCourse;
+window.removeSimCourse        = removeSimCourse;
+window.onSimCourseChange      = onSimCourseChange;
 
 // ── THEME ─────────────────────────────────────────────────────────────────────
 const html     = document.documentElement;
@@ -286,12 +305,68 @@ function recalc() {
   if (state.whatIfMode && whatIfCgpa !== null && cgpa !== null) {
     const delta = whatIfCgpa - cgpa;
     const sign  = delta >= 0 ? '+' : '';
+
+    // Build changed courses list
+    const changedCourses = [];
+    for (const [key, newGrade] of Object.entries(state.whatIfGrades)) {
+      const [semIdStr, idxStr] = key.split('-');
+      const sem = state.semesters.find(s => s.id === parseInt(semIdStr));
+      if (!sem) continue;
+      const c = sem.courses[parseInt(idxStr)];
+      if (!c || newGrade === c.grade) continue;
+      const oldGp = GRADES[c.grade] ?? 0;
+      const newGp = GRADES[newGrade] ?? 0;
+      const impact = totalEarnedCGPA > 0 ? (c.credits * (newGp - oldGp)) / totalEarnedCGPA : 0;
+      // Extract short code from "Course Name (CODE)"
+      const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
+      const label = codeMatch ? codeMatch[1] : (c.name.length > 25 ? c.name.slice(0, 22) + '...' : c.name);
+      const gradeColor = g => {
+        if (!g) return 'var(--text3)';
+        if (g.startsWith('A')) return '#2ECC71';
+        if (g.startsWith('B')) return '#27ae60';
+        if (g.startsWith('C')) return '#F0A500';
+        if (g.startsWith('D')) return '#e67e22';
+        if (g === 'F') return '#e74c3c';
+        return 'var(--text3)';
+      };
+      changedCourses.push({ label, oldGrade: c.grade, newGrade, impact, gradeColor });
+    }
+
+    let changesHtml = '';
+    if (changedCourses.length > 0) {
+      const changeRows = changedCourses.map(ch =>
+        `<div class="whatif-change-row">
+          <span class="whatif-change-course">${ch.label}</span>
+          <span class="whatif-change-grades">
+            <span style="color:${ch.gradeColor(ch.oldGrade)}">${ch.oldGrade}</span>
+            <span style="color:var(--text3)">→</span>
+            <span style="color:${ch.gradeColor(ch.newGrade)};font-weight:700">${ch.newGrade}</span>
+          </span>
+          <span class="whatif-change-impact" style="color:${ch.impact >= 0 ? '#2ECC71' : '#e74c3c'}">${ch.impact >= 0 ? '+' : ''}${ch.impact.toFixed(2)}</span>
+        </div>`
+      ).join('');
+      changesHtml = `<div class="whatif-changes-list">${changeRows}</div>`;
+    }
+
     wiPreview.innerHTML = `
-      <span class="whatif-cgpa-label">🔮 What-if CGPA</span>
-      <span class="whatif-cgpa-val">${whatIfCgpa.toFixed(2)}</span>
-      <span class="whatif-cgpa-delta">${sign}${delta.toFixed(2)}</span>
-      <span style="font-size:11px;color:var(--text3);margin-left:4px">(vs current ${cgpa.toFixed(2)})</span>`;
-    wiPreview.style.display = 'flex';
+      <div class="whatif-header-row">
+        <span class="whatif-cgpa-label">🔮 What-if CGPA</span>
+        <div class="whatif-cgpa-hero">
+          <span style="font-size:13px;color:var(--text3)">${cgpa.toFixed(2)}</span>
+          <span style="font-size:13px;color:var(--text3)">→</span>
+          <span class="whatif-cgpa-val">${whatIfCgpa.toFixed(2)}</span>
+          <span class="whatif-cgpa-delta">${sign}${delta.toFixed(2)}</span>
+        </div>
+      </div>
+      ${changesHtml}`;
+    wiPreview.style.display = '';
+  } else if (state.whatIfMode) {
+    wiPreview.innerHTML = `
+      <div class="whatif-header-row">
+        <span class="whatif-cgpa-label">🔮 What-if Mode Active</span>
+        <span style="font-size:11px;color:var(--text3)">Change any grade using the gold dropdowns above</span>
+      </div>`;
+    wiPreview.style.display = '';
   } else {
     wiPreview.style.display = 'none';
   }
@@ -436,6 +511,7 @@ function recalc() {
 
   renderRetakeAnalyzer(cgpa, totalEarnedCGPA, totalPts);
   runSimulator(cgpa, totalEarnedCGPA, totalPts);
+  renderPlayground();
   saveState();
   updateSetupWizard();
 }
