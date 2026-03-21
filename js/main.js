@@ -306,6 +306,19 @@ function recalc() {
   // Credits progress bar
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
+
+  // Auto-populate credits remaining in simulator
+  const crRemEl = document.getElementById('creditsRemaining');
+  if (dept && totalRequired > 0 && document.activeElement !== crRemEl) {
+    const autoRemaining = Math.max(0, totalRequired - totalEarned);
+    const autoVal = fmtCr(autoRemaining);
+    // Only auto-fill if empty or still matches previous auto value (user hasn't manually changed it)
+    if (!crRemEl.value || crRemEl.dataset.auto === crRemEl.value) {
+      crRemEl.value = autoVal;
+    }
+    crRemEl.dataset.auto = autoVal;
+  }
+
   const creditsBox = document.getElementById('creditsProgressBox');
   if (dept && totalRequired > 0) {
     creditsBox.style.display = '';
