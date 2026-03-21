@@ -90,21 +90,25 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
 
   if (neededGPA <= 4.0 && neededGPA >= 0) {
     msg += `<div class="sim-before-after">
-      <div class="sim-ba-block">
-        <div class="sim-ba-label">Current CGPA</div>
-        <div class="sim-ba-val">${currentCgpa.toFixed(2)}</div>
+      <div class="sim-ba-left">
+        <div class="sim-ba-block">
+          <div class="sim-ba-label">Current CGPA</div>
+          <div class="sim-ba-val">${currentCgpa.toFixed(2)}</div>
+        </div>
+        <div class="sim-ba-arrow">→</div>
+        <div class="sim-ba-block">
+          <div class="sim-ba-label">Target CGPA</div>
+          <div class="sim-ba-val" style="color:${targetColor}">${target.toFixed(2)}</div>
+        </div>
       </div>
-      <div class="sim-ba-arrow">→</div>
-      <div class="sim-ba-block">
-        <div class="sim-ba-label">Target CGPA</div>
-        <div class="sim-ba-val" style="color:${targetColor}">${target.toFixed(2)}</div>
+      <div class="sim-ba-right">
+        <div class="sim-ba-label">Avg CGPA Needed</div>
+        <div class="sim-ba-val" style="color:${neededColor};font-size:28px">${neededGPA.toFixed(2)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <span style="font-size:10px;color:var(--text3)">over ${remaining} credits</span>
+          <span class="sim-ba-delta">+${Math.max(0, target - currentCgpa).toFixed(2)}</span>
+        </div>
       </div>
-      <div style="flex:1;min-width:80px">
-        <div class="sim-ba-label">Avg GPA Needed</div>
-        <div class="sim-ba-val" style="color:${neededColor}">${neededGPA.toFixed(2)}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">over ${remaining} credits</div>
-      </div>
-      <div class="sim-ba-delta">+${Math.max(0, target - currentCgpa).toFixed(2)}</div>
     </div>`;
 
     msg += `<div style="margin-bottom:12px">
