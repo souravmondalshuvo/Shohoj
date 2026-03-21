@@ -36,7 +36,7 @@ export function getRetakenKeys(semList) {
   list.forEach(sem => {
     sem.courses.forEach((c, i) => {
       if (!c.name.trim()) return;
-      const codeMatch = c.name.match(/\(([A-Z]{2,3}\d{3}[A-Z]?)\)$/);
+      const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
       const code = codeMatch ? codeMatch[1] : null;
       const baseName = c.name.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
       const gp = (c.grade && c.grade !== 'F(NT)') ? (GRADES[c.grade] ?? -1) : -1;
