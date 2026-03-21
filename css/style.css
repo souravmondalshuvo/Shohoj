@@ -1924,6 +1924,7 @@ h1[data-reveal-hero].visible {
 .sim-before-after {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 12px 14px;
   border-radius: 10px;
@@ -1931,6 +1932,17 @@ h1[data-reveal-hero].visible {
   border: 1px solid rgba(46,204,113,0.18);
   margin-bottom: 10px;
   flex-wrap: wrap;
+}
+.sim-ba-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sim-ba-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 .sim-ba-block {
   display: flex;
