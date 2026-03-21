@@ -1964,10 +1964,10 @@ h1[data-reveal-hero].visible {
   color: var(--text);
 }
 .sim-ba-left .sim-ba-val {
-  font-size: 20px;
+  font-size: 24px;
 }
 .sim-ba-right .sim-ba-val {
-  font-size: 28px;
+  font-size: 24px;
 }
 .sim-ba-val.green  { color: #2ECC71; }
 .sim-ba-val.gold   { color: #F0A500; }
