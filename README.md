@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-8%20Supported-9B59B6?style=flat-square" alt="Departments" />
+  <img src="https://img.shields.io/badge/Courses-500%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
 </p>
 
 ---
@@ -67,9 +68,23 @@ Upload your official BRACU grade sheet PDF and Shohoj reads it automatically —
   <img src="assets/screenshots/transcript-import.png" alt="Transcript Import" width="700" />
 </p>
 
-### 🔮 What-If Simulator
+### 🔮 CGPA Playground
 
-Toggle hypothetical grades on any course and watch your CGPA update in real time. Plan retakes, set targets, and see exactly what it takes to reach your goal — before you commit.
+A dedicated panel with three powerful tools for planning your academic future:
+
+**✏️ Grade Changer** — Pick any graded course, set a hypothetical new grade, and see the exact CGPA impact instantly. Stack multiple changes and see the cumulative effect. Each change shows its individual contribution to your CGPA shift.
+
+**🎯 Reverse Solver** — _"What grade do I need in CSE220 to reach 3.0 CGPA?"_ — Enter your target CGPA, pick a course, and Shohoj tells you the minimum grade required. Shows whether it's achievable, impossible, or already reached. Every BRACU student asks this question — now there's a tool that answers it.
+
+**📊 Semester Simulator** — Plan your next semester before advising week. Type course codes (auto-filled from the 500-course catalog), assign expected grades, and see your projected CGPA live. Know exactly where you'll land before you register.
+
+### 🎯 CGPA Goal Simulator
+
+Set a target CGPA and see what average GPA you need across your remaining credits. Includes a difficulty assessment, credit-pace breakdown showing how many semesters it'll take at 9/12/15 credits per semester, and smart retake suggestions ranked by CGPA impact.
+
+### 🔄 Retake Impact Analyzer
+
+Select courses to retake and see exactly how your CGPA changes — individually per course and cumulatively. Includes target grade selection with live CGPA preview, so you can plan the most efficient retake strategy.
 
 ### 📊 GPA Trend Chart
 
@@ -79,9 +94,13 @@ A visual timeline of your GPA across semesters. Spot patterns, track improvement
   <img src="assets/screenshots/trend-chart.png" alt="GPA Trend Chart" width="700" />
 </p>
 
+### 🎓 Degree Progress Tracker
+
+Visual timeline of your degree journey — credits earned vs total required, semester-by-semester progress nodes, estimated graduation date based on your current pace, and a running credit pace indicator.
+
 ### 🔍 Course Autocomplete
 
-Start typing a course code or name and get instant suggestions from a complete BRACU course catalog. Credits auto-fill when you pick a course. Covers all 8 departments.
+Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **500 courses** across all 8 departments. Credits auto-fill when you pick a course.
 
 <p align="center">
   <img src="assets/screenshots/autocomplete.png" alt="Course Autocomplete" width="700" />
@@ -101,7 +120,7 @@ Automatic alerts when your semester credit load falls below the 9-credit minimum
 
 ### 🏛️ 8 Department Presets
 
-Pre-built semester templates for **CSE, EEE, BBA, Economics, English, Architecture, Pharmacy, and Law**. Select your department and get a ready-made course plan to start from.
+Pre-built semester templates for **CSE, EEE, BBA, Economics, English, Architecture, Pharmacy, and Law**. Select your department and get a ready-made course plan to start from. Includes bi/tri-semester support — Pharmacy runs Spring+Summer, Law runs Spring+Fall, all others run all three semesters.
 
 ### 🌓 Dark & Light Theme
 
@@ -115,24 +134,26 @@ Shohoj is built to feel like a real product, not a student project.
 
 - **Liquid glass UI** — glassmorphism panels with layered depth and shine
 - **Animated dot matrix background** — spring-physics canvas with mouse-reactive particles
-- **Custom cursor system** — animated dot + ring + glow with hover/click states, fully delegated for dynamic elements
+- **Custom cursor system** — animated dot + ring + glow with hover/click states, circle-to-I-beam morphing with spring easing
 - **Scroll reveal animations** — IntersectionObserver-powered entrance effects with staggered timing
-- **Responsive layout** — works on desktop and mobile
+- **Responsive layout** — works on desktop and mobile with 5 breakpoints (480px → 1440px+)
 
 ---
 
 ## Supported Departments
 
-| Department                          | Code | Status          |
-| ----------------------------------- | ---- | --------------- |
-| Computer Science & Engineering      | CSE  | 🟢 Full support |
-| Electrical & Electronic Engineering | EEE  | 🟢 Full support |
-| Business Administration             | BBA  | 🟢 Full support |
-| Economics                           | ECO  | 🟢 Full support |
-| English                             | ENG  | 🟢 Full support |
-| Architecture                        | ARC  | 🟢 Full support |
-| Pharmacy                            | PHR  | 🟢 Full support |
-| Law                                 | LLB  | 🟢 Full support |
+| Department                          | Code | Courses | Credits | Status          |
+| ----------------------------------- | ---- | ------- | ------- | --------------- |
+| Computer Science & Engineering      | CSE  | 51      | 136     | 🟢 Full support |
+| Electrical & Electronic Engineering | EEE  | 42      | 136     | 🟢 Full support |
+| Business Administration             | BBA  | 99      | 130     | 🟢 Full support |
+| Economics                           | ECO  | 39      | 120     | 🟢 Full support |
+| English                             | ENG  | 66      | 120     | 🟢 Full support |
+| Architecture                        | ARC  | 49      | 207     | 🟢 Full support |
+| Pharmacy                            | PHR  | 60      | 164     | 🟢 Full support |
+| Law                                 | LLB  | 34      | 135     | 🟢 Full support |
+
+**Total: 500 courses in catalog** (including GED/common courses shared across departments)
 
 ---
 
@@ -154,21 +175,24 @@ Shohoj is built to feel like a real product, not a student project.
 
 ### Phase 1 — Academic Core _(Current)_
 
-| Feature                             | Status                                       |
-| ----------------------------------- | -------------------------------------------- |
-| Smart GPA Calculator                | ✅ Complete                                  |
-| CGPA What-If Simulator              | ✅ Complete                                  |
-| GPA Trend Analysis                  | ✅ Complete _(originally Phase 6)_           |
-| Transcript PDF Import               | ✅ Complete _(bonus — not in original plan)_ |
-| PDF Grade Report Export             | ✅ Complete _(bonus — not in original plan)_ |
-| Course Catalog & Autocomplete       | ✅ Complete _(bonus — not in original plan)_ |
-| Credit Load Warnings                | ✅ Complete _(bonus — not in original plan)_ |
-| Retake Impact Analyzer              | ✅ Complete                                  |
-| Degree Progress Tracker             | ✅ Complete                                  |
-| Semester Planner with Prerequisites | 🔜 Planned                                   |
-| Course Difficulty Map               | 🔜 Planned                                   |
-| Advising Week Checklist             | 🔜 Planned                                   |
-| Freshman Survival Guide             | 🔜 Planned                                   |
+| Feature                              | Status                                       |
+| ------------------------------------ | -------------------------------------------- |
+| Smart GPA Calculator                 | ✅ Complete                                  |
+| CGPA Playground (Grade Changer)      | ✅ Complete                                  |
+| CGPA Playground (Reverse Solver)     | ✅ Complete                                  |
+| CGPA Playground (Semester Simulator) | ✅ Complete                                  |
+| CGPA Goal Simulator                  | ✅ Complete                                  |
+| GPA Trend Analysis                   | ✅ Complete _(originally Phase 6)_           |
+| Transcript PDF Import                | ✅ Complete _(bonus — not in original plan)_ |
+| PDF Grade Report Export              | ✅ Complete _(bonus — not in original plan)_ |
+| Course Catalog & Autocomplete        | ✅ Complete _(bonus — not in original plan)_ |
+| Credit Load Warnings                 | ✅ Complete _(bonus — not in original plan)_ |
+| Retake Impact Analyzer               | ✅ Complete                                  |
+| Degree Progress Tracker              | ✅ Complete                                  |
+| Semester Planner with Prerequisites  | 🔜 Planned                                   |
+| Course Difficulty Map                | 🔜 Planned                                   |
+| Advising Week Checklist              | 🔜 Planned                                   |
+| Freshman Survival Guide              | 🔜 Planned                                   |
 
 ### Phase 2 — Community Layer
 
@@ -228,13 +252,14 @@ Shohoj/
 │   │   ├── helpers.js            Semester name generation, season/year utilities
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        8 department definitions with preset semesters
-│   │   ├── catalog.js            Full BRACU course database
+│   │   ├── catalog.js            Full BRACU course database (500 courses)
 │   │   └── calculator.js         GPA/CGPA engine, retake policy, credit warnings
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
 │   │   ├── charts.js             Canvas GPA trend chart
-│   │   ├── simulator.js          What-If mode logic & UI
+│   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake Strategy
+│   │   ├── playground.js         CGPA Playground — Grade Changer, Reverse Solver, Semester Simulator
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
