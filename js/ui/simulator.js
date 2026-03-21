@@ -35,10 +35,8 @@ export function toggleWhatIf() {
   }
   const btn = document.getElementById('whatIfBtn');
   if (btn) {
-    btn.style.background  = state.whatIfMode ? 'rgba(240,165,0,0.15)' : '';
-    btn.style.borderColor = state.whatIfMode ? 'rgba(240,165,0,0.5)'  : '';
-    btn.style.color       = state.whatIfMode ? '#F0A500' : '';
-    btn.textContent       = state.whatIfMode ? '🔮 Exit What-if' : '🔮 What-if';
+    btn.classList.toggle('btn-whatif-active', state.whatIfMode);
+    btn.textContent = state.whatIfMode ? '🔮 Exit What-if' : '🔮 What-if';
   }
   window._shohoj_renderAndRecalc();
 }
