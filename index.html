@@ -312,10 +312,6 @@
 
       <!-- Degree Progress Tracker -->
       <div class="degree-tracker lg-panel" id="degreeTrackerBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="tracker-header">
-          <h4>🎓 Degree Progress Tracker</h4>
-          <div class="tracker-subtitle">Your roadmap from Semester 1 to graduation.</div>
-        </div>
         <div id="degreeTrackerContent"></div>
       </div>
 
@@ -342,18 +338,6 @@
         </div>
       </div>
 
-      <!-- Retake Impact Analyzer -->
-      <div class="retake-analyzer lg-panel" id="retakeAnalyzerBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="retake-header">
-          <div>
-            <h4>🔁 Retake Impact Analyzer</h4>
-            <div class="retake-subtitle">Select courses to retake and see exactly how your CGPA changes.</div>
-          </div>
-          <div class="retake-cgpa-preview" id="retakeCgpaPreview"></div>
-        </div>
-        <div id="retakeAnalyzerContent"></div>
-      </div>
-
       <!-- Simulator -->
       <div class="simulator-box lg-panel"><div class="lg-shine"></div>
         <h4>🎯 CGPA Goal Simulator</h4>
@@ -361,9 +345,21 @@
           <label>Target CGPA:</label>
           <input type="number" id="targetCgpa" min="0" max="4" step="0.01" placeholder="e.g. 3.50" />
           <label>Credits remaining:</label>
-          <input type="number" id="creditsRemaining" min="1" max="150" placeholder="e.g. 97" />
+          <input type="number" id="creditsRemaining" min="0" max="250" placeholder="e.g. 97" />
         </div>
         <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
+      </div>
+
+      <!-- Retake Impact Analyzer -->
+      <div class="retake-analyzer lg-panel" id="retakeAnalyzerBox" style="display:none;"><div class="lg-shine"></div>
+        <div class="retake-header">
+          <div>
+            <h4>🔄 Retake Impact Analyzer</h4>
+            <div class="retake-subtitle">Select courses to retake and see exactly how your CGPA changes.</div>
+          </div>
+          <div class="retake-cgpa-preview" id="retakeCgpaPreview"></div>
+        </div>
+        <div id="retakeAnalyzerContent"></div>
       </div>
 
       <!-- Footer -->
@@ -376,10 +372,12 @@
         <div class="footer-btn-group">
           <button class="btn-add-semester magnetic" id="addSemesterBtn">+ Add Semester</button>
           <button class="btn-running-sem magnetic" id="addRunningSemBtn">🎯 Running Semester</button>
+          <span class="footer-btn-separator"></span>
           <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
           <button class="btn-whatif magnetic" id="whatIfBtn" onclick="toggleWhatIf()" title="Hypothetically change any grade and see CGPA preview">🔮 What-if</button>
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
+          <span class="footer-btn-separator"></span>
           <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
         </div>
       </div>
