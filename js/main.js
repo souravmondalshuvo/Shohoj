@@ -38,7 +38,7 @@ import {
 } from './ui/modals.js';
 
 import {
-  renderPlayground, switchPlaygroundTab,
+  renderPlayground, switchPlaygroundTab, resetPlayground,
   onPlaygroundGradeChange, removePlaygroundChange, clearPlaygroundChanges,
   addPlaygroundChange, onSolverTargetChange, onSolverCourseChange,
   addSimCourse, removeSimCourse, onSimCourseChange
@@ -87,6 +87,7 @@ window.clearState        = () => {
   state.semesterCounter = 0;
   state.whatIfMode = false;
   Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
+  resetPlayground();
   const btn = document.getElementById('whatIfBtn');
   if (btn) { btn.classList.remove('btn-whatif-active'); btn.textContent = '🔮 What-if'; }
   renderSemesters();
