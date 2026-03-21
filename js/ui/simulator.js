@@ -132,8 +132,8 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
       const semsNeeded = Math.ceil(remaining / cr);
       return `<tr>
         <td style="padding:4px 10px;color:var(--text2);text-align:center">${cr} cr/sem</td>
-        <td style="padding:4px 10px;color:var(--text3);text-align:center">${semsNeeded} sem${semsNeeded!==1?'s':''}</td>
-        <td style="padding:4px 10px;text-align:center;font-weight:700;color:${neededColor}">${neededGPA.toFixed(2)}</td>
+        <td style="padding:4px 10px;text-align:center;font-weight:700;font-size:13px;color:var(--text)">${semsNeeded} sem${semsNeeded!==1?'s':''}</td>
+        <td style="padding:4px 10px;text-align:center;color:var(--text3)">${neededGPA.toFixed(2)}</td>
         <td style="padding:4px 10px;text-align:center;color:var(--text2)">${gpToLetter(neededGPA)}</td>
       </tr>`;
     }).join('');
@@ -143,7 +143,7 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">cr/sem</th>
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">semesters</th>
           <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">gpa needed</th>
-          <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">~grades</th>
+          <th style="padding:4px 10px;text-align:center;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px">avg grade</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -232,7 +232,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
                 onclick="window._toggleRetake('${c.key.replace(/'/g,"\\'")}')">
       <td style="padding:6px 8px;font-size:12px">${chk}</td>
-      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
+      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${c.sem}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px">
         <span style="font-weight:700;color:${gradeCol(c.grade)}">${c.grade}</span>
@@ -437,9 +437,8 @@ export function renderRetakeAnalyzer(currentCgpa, currentCredits, currentPts) {
     const rowClass = isSelected ? 'retake-row selected' : 'retake-row';
     const boostText = `+${individualBoost.toFixed(2)}`;
 
-    // Truncate long course names for display
     const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const displayName = c.name.length > 45 ? escHtml(c.name.slice(0, 42)) + '...' : escHtml(c.name);
+    const displayName = escHtml(c.name);
     const safeName = c.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     return `
