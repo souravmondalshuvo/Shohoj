@@ -81,7 +81,7 @@ window.clearState        = () => {
   state.whatIfMode = false;
   Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
   const btn = document.getElementById('whatIfBtn');
-  if (btn) { btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; btn.textContent = '🔮 What-if'; }
+  if (btn) { btn.classList.remove('btn-whatif-active'); btn.textContent = '🔮 What-if'; }
   renderSemesters();
   recalc();
 };
