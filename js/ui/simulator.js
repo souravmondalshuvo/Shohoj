@@ -103,7 +103,7 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
       </div>
       <div class="sim-ba-right">
         <div class="sim-ba-label">Avg CGPA Needed</div>
-        <div class="sim-ba-val" style="color:${neededColor};font-size:28px">${neededGPA.toFixed(2)}</div>
+        <div class="sim-ba-val" style="color:${neededColor}">${neededGPA.toFixed(2)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="font-size:10px;color:var(--text3)">over ${remaining} credits</span>
           <span class="sim-ba-delta">+${Math.max(0, target - currentCgpa).toFixed(2)}</span>
