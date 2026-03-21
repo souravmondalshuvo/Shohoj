@@ -1963,6 +1963,12 @@ h1[data-reveal-hero].visible {
   font-family: 'Syne', sans-serif;
   color: var(--text);
 }
+.sim-ba-left .sim-ba-val {
+  font-size: 20px;
+}
+.sim-ba-right .sim-ba-val {
+  font-size: 28px;
+}
 .sim-ba-val.green  { color: #2ECC71; }
 .sim-ba-val.gold   { color: #F0A500; }
 .sim-ba-val.red    { color: #e74c3c; }
