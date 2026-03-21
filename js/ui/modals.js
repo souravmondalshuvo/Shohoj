@@ -277,6 +277,9 @@ export function exportPDF() {
   const setStroke = c => doc.setDrawColor(c[0], c[1], c[2]);
   const setTxt    = c => doc.setTextColor(c[0], c[1], c[2]);
 
+  // Credit display helper — shows "39" not "39.0", "39.5" for halves
+  const fmtCr = n => n % 1 === 0 ? String(n) : n.toFixed(1);
+
   const gpaColor = gpa =>
     gpa >= 3.0 ? GREEN_DARK : gpa >= 2.5 ? AMBER_TXT : RED_TXT;
   const gpaBg = gpa =>
@@ -369,10 +372,10 @@ export function exportPDF() {
 
   // ── STATS STRIP ────────────────────────────────────────────────────────────
   const stats = [
-    [totalAttempted.toFixed(1), 'Credits Attempted'],
-    [totalEarned.toFixed(1),    'Credits Earned'],
-    [semCount.toString(),       'Semesters'],
-    [standing,                  'Academic Standing'],
+    [fmtCr(totalAttempted), 'Credits Attempted'],
+    [fmtCr(totalEarned),    'Credits Earned'],
+    [semCount.toString(),    'Semesters'],
+    [standing,               'Academic Standing'],
   ];
   const statW = CW / stats.length;
   // Stats container
