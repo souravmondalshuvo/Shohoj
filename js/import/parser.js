@@ -37,8 +37,9 @@ export function parseBlobFallback(text) {
   else if (/ELECTRICAL/i.test(text))                   detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
   else if (/BBA|BUSINESS ADMINISTRATION/i.test(text))  detectedDept = 'Bachelor of Business Administration (BBA)';
   else if (/PHARMACY/i.test(text))                     detectedDept = 'B.Sc. in Pharmacy (PHR)';
-  else if (/ARCHITECTURE/i.test(text))                 detectedDept = 'B.Sc. in Architecture (ARC)';
+  else if (/ARCHITECTURE/i.test(text))                 detectedDept = 'B.Arch. in Architecture (ARC)';
   else if (/LAW/i.test(text))                          detectedDept = 'Bachelor of Laws (LLB)';
+  else if (/B\.?S\.?S\.?\s+IN\s+ECONOMICS|SOCIAL\s+SCIENCE.*ECONOMICS/i.test(text)) detectedDept = 'B.S.S. in Economics (ECO)';
   else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
 
   return { semesters, detectedDept };
@@ -65,9 +66,11 @@ export function parseTranscriptText(text) {
   else if (/PHARMACY/i.test(text))
     detectedDept = 'B.Sc. in Pharmacy (PHR)';
   else if (/ARCHITECTURE/i.test(text))
-    detectedDept = 'B.Sc. in Architecture (ARC)';
+    detectedDept = 'B.Arch. in Architecture (ARC)';
   else if (/LAW/i.test(text))
     detectedDept = 'Bachelor of Laws (LLB)';
+  else if (/B\.?S\.?S\.?\s+IN\s+ECONOMICS|SOCIAL\s+SCIENCE.*ECONOMICS/i.test(text))
+    detectedDept = 'B.S.S. in Economics (ECO)';
   else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text))
     detectedDept = 'B.A. in English (ENG)';
 
