@@ -1,6 +1,5 @@
 import { GRADES } from '../core/grades.js';
-import { DEPARTMENTS } from '../core/departments.js';
-import { COURSE_DB, ALL_COURSES } from '../core/catalog.js';
+import { COURSE_DB } from '../core/catalog.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
 
@@ -74,6 +73,14 @@ function getCurrentTotals() {
 }
 
 // ── Tab switching ───────────────────────────────────────────────────────────
+export function resetPlayground() {
+  pg.activeTab = 'changer';
+  Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
+  pg.simCourses = [];
+  pg.solverKey = '';
+  pg.solverTarget = '';
+}
+
 export function switchPlaygroundTab(tab) {
   pg.activeTab = tab;
   renderPlayground();
@@ -102,7 +109,6 @@ export function clearPlaygroundChanges() {
 }
 
 function renderGradeChanger(courses, totals) {
-  const changeKeys = Object.keys(pg.changes);
 
   // Calculate what-if CGPA with all changes applied
   let newPts = totals.pts, newCr = totals.cr;
@@ -122,7 +128,7 @@ function renderGradeChanger(courses, totals) {
 
   // Hero: before → after
   let heroHtml = '';
-  if (changeKeys.length > 0 && totals.cgpa !== null && newCgpa !== null) {
+  if (changeDetails.length > 0 && totals.cgpa !== null && newCgpa !== null) {
     const sign = cgpaDelta >= 0 ? '+' : '';
     const deltaColor = cgpaDelta >= 0 ? '#2ECC71' : '#e74c3c';
     heroHtml = `
