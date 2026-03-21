@@ -2076,26 +2076,36 @@ h1[data-reveal-hero].visible {
   opacity: 0.6;
   pointer-events: none;
 }
-/* What-if grade select — gold tinted */
+/* What-if grade select — gold tinted, prominent */
 .whatif-grade-select {
-  background: rgba(240,165,0,0.10) !important;
-  border-color: rgba(240,165,0,0.35) !important;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 6px;
+  border-radius: 6px;
+  max-width: 72px;
+  cursor: pointer;
+  background: rgba(240,165,0,0.12) !important;
+  border: 1px solid rgba(240,165,0,0.4) !important;
   color: #F0A500 !important;
-  font-weight: 700 !important;
+  transition: background 0.2s, border-color 0.2s;
+}
+.whatif-grade-select:hover {
+  background: rgba(240,165,0,0.20) !important;
+  border-color: rgba(240,165,0,0.6) !important;
 }
 .whatif-cgpa-preview {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
   background: rgba(240,165,0,0.07);
-  border: 1px solid rgba(240,165,0,0.2);
-  margin: 8px 0 0;
+  border: 1px solid rgba(240,165,0,0.22);
+  margin: 0 1.5rem 0.8rem;
 }
-.whatif-cgpa-label { font-size: 11px; color: var(--text3); }
-.whatif-cgpa-val   { font-size: 18px; font-weight: 800; color: #F0A500; font-family: 'Syne', sans-serif; }
-.whatif-cgpa-delta { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px;
+.whatif-cgpa-label { font-size: 12px; font-weight: 600; color: var(--text3); }
+.whatif-cgpa-val   { font-size: 22px; font-weight: 800; color: #F0A500; font-family: 'Syne', sans-serif; }
+.whatif-cgpa-delta { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
                      background: rgba(240,165,0,0.15); color: #F0A500; }
 
 /* ══════════════════════════════════════════════════════════
@@ -2169,13 +2179,26 @@ h1[data-reveal-hero].visible {
 }
 
 .btn-whatif {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text2);
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  background: rgba(240,165,0,0.06);
+  border: 1px solid rgba(240,165,0,0.25);
+  color: #F0A500;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
 .btn-whatif:hover {
-  background: rgba(240,165,0,0.08);
-  border-color: rgba(240,165,0,0.35);
+  background: rgba(240,165,0,0.12);
+  border-color: rgba(240,165,0,0.45);
   color: #F0A500;
+  box-shadow: 0 0 12px rgba(240,165,0,0.15);
+}
+.btn-whatif-active {
+  background: rgba(240,165,0,0.15) !important;
+  border-color: rgba(240,165,0,0.5) !important;
+  color: #F0A500 !important;
+  box-shadow: 0 0 16px rgba(240,165,0,0.2);
+}
+.btn-whatif-active:hover {
+  background: rgba(231,76,60,0.12) !important;
+  border-color: rgba(231,76,60,0.4) !important;
+  color: #e74c3c !important;
+  box-shadow: 0 0 12px rgba(231,76,60,0.15);
 }
