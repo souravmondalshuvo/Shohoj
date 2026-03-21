@@ -635,7 +635,7 @@ h1[data-reveal-hero].visible {
       .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .course-row { grid-template-columns: 1fr 54px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
-      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
+      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data, .btn-whatif { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
       .footer-btn-separator { display: none; }
       .semester-head { padding: 0.7rem 1rem; }
       footer { padding: 2rem 1.2rem; }
@@ -2179,6 +2179,12 @@ h1[data-reveal-hero].visible {
 }
 
 .btn-whatif {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
   background: rgba(240,165,0,0.06);
   border: 1px solid rgba(240,165,0,0.25);
   color: #F0A500;
