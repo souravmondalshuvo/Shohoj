@@ -203,7 +203,13 @@ export function addPlaygroundChange() {
 // ── Reverse Solver ──────────────────────────────────────────────────────────
 export function onSolverTargetChange(val) {
   pg.solverTarget = val;
-  renderPlayground(true);
+  // Update only the result section, not the whole playground
+  const resultEl = document.getElementById('pgSolverResult');
+  if (resultEl) {
+    const courses = getGradedCourses();
+    const totals = getCurrentTotals();
+    resultEl.innerHTML = computeSolverResult(courses, totals);
+  }
 }
 
 export function onSolverCourseChange(key) {
@@ -211,81 +217,82 @@ export function onSolverCourseChange(key) {
   renderPlayground(true);
 }
 
+function getEffectiveTarget() {
+  const simTarget = document.getElementById('targetCgpa');
+  return pg.solverTarget || (simTarget ? simTarget.value : '');
+}
+
+function computeSolverResult(courses, totals) {
+  const effectiveTarget = getEffectiveTarget();
+  if (!effectiveTarget || !pg.solverKey) return '';
+
+  const target = parseFloat(effectiveTarget);
+  const c = courses.find(x => x.key === pg.solverKey);
+
+  if (!c || isNaN(target) || target < 0 || target > 4.0) return '';
+
+  const neededGp = (target * totals.cr - totals.pts + c.credits * c.gp) / c.credits;
+
+  const sortedGrades = GRADE_LIST
+    .map(g => ({ grade: g, gp: GRADES[g] }))
+    .filter(x => x.gp !== null && x.gp !== undefined)
+    .sort((a, b) => a.gp - b.gp);
+
+  const minGrade = sortedGrades.find(x => x.gp >= neededGp);
+
+  if (neededGp > 4.0) {
+    const bestPossible = (totals.pts - c.credits * c.gp + c.credits * 4.0) / totals.cr;
+    return `
+      <div class="pg-solver-result pg-solver-impossible">
+        <div class="pg-solver-icon">⛔</div>
+        <div>
+          <div class="pg-solver-msg">Not possible with <strong>${courseLabel(c.name)}</strong> alone</div>
+          <div class="pg-solver-detail">Even with an A (4.0), your CGPA would be <strong>${bestPossible.toFixed(2)}</strong> — below your target of <strong>${target.toFixed(2)}</strong>. Consider retaking multiple courses.</div>
+        </div>
+      </div>`;
+  } else if (neededGp <= 0) {
+    return `
+      <div class="pg-solver-result pg-solver-easy">
+        <div class="pg-solver-icon">🎉</div>
+        <div>
+          <div class="pg-solver-msg">You've already reached ${target.toFixed(2)} CGPA!</div>
+          <div class="pg-solver-detail">Any grade in <strong>${courseLabel(c.name)}</strong> will keep you above your target.</div>
+        </div>
+      </div>`;
+  } else if (minGrade) {
+    const newCgpa = (totals.pts - c.credits * c.gp + c.credits * minGrade.gp) / totals.cr;
+    return `
+      <div class="pg-solver-result pg-solver-found">
+        <div class="pg-solver-answer">
+          <div class="pg-solver-answer-label">You need at least</div>
+          <div class="pg-solver-answer-grade" style="color:${gradeColor(minGrade.grade)}">${minGrade.grade}</div>
+          <div class="pg-solver-answer-gp">(${minGrade.gp.toFixed(1)} GP)</div>
+        </div>
+        <div class="pg-solver-explain">
+          <div>in <strong>${courseLabel(c.name)}</strong> (${c.credits} cr, currently ${c.grade})</div>
+          <div style="margin-top:4px">
+            CGPA: <span style="color:var(--text3)">${totals.cgpa.toFixed(2)}</span>
+            → <strong style="color:#2ECC71">${newCgpa.toFixed(2)}</strong>
+            <span style="color:#2ECC71;font-size:11px;margin-left:4px">+${(newCgpa - totals.cgpa).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+  return '';
+}
+
 function renderReverseSolver(courses, totals) {
   if (totals.cgpa === null) {
     return `<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Add some graded courses first to use the Reverse Solver.</div>`;
   }
 
-  // Pre-fill from Goal Simulator if solver target is empty
-  const simTarget = document.getElementById('targetCgpa');
-  const effectiveTarget = pg.solverTarget || (simTarget ? simTarget.value : '');
+  const effectiveTarget = getEffectiveTarget();
 
-  // Course options: running semester courses + all graded courses
   const courseOpts = courses.map(c =>
     `<option value="${c.key}"${pg.solverKey === c.key ? ' selected' : ''}>${courseLabel(c.name)}${c.running ? ' 🟡' : ''} (${c.grade}) — ${c.sem}</option>`
   ).join('');
 
-  // Input row
-  let resultHtml = '';
-
-  if (effectiveTarget && pg.solverKey) {
-    const target = parseFloat(effectiveTarget);
-    const c = courses.find(x => x.key === pg.solverKey);
-
-    if (c && !isNaN(target) && target >= 0 && target <= 4.0) {
-      // Math: targetCgpa = (totalPts - oldPts + newPts) / totalCr
-      // newGp = (target * totalCr - totalPts + c.credits * c.gp) / c.credits
-      const neededGp = (target * totals.cr - totals.pts + c.credits * c.gp) / c.credits;
-
-      // Find minimum grade that meets or exceeds neededGp
-      const sortedGrades = GRADE_LIST
-        .map(g => ({ grade: g, gp: GRADES[g] }))
-        .filter(x => x.gp !== null && x.gp !== undefined)
-        .sort((a, b) => a.gp - b.gp);
-
-      const minGrade = sortedGrades.find(x => x.gp >= neededGp);
-
-      if (neededGp > 4.0) {
-        // Calculate ceiling — what's the best possible CGPA with A in this course
-        const bestPossible = (totals.pts - c.credits * c.gp + c.credits * 4.0) / totals.cr;
-        resultHtml = `
-          <div class="pg-solver-result pg-solver-impossible">
-            <div class="pg-solver-icon">⛔</div>
-            <div>
-              <div class="pg-solver-msg">Not possible with <strong>${courseLabel(c.name)}</strong> alone</div>
-              <div class="pg-solver-detail">Even with an A (4.0), your CGPA would be <strong>${bestPossible.toFixed(2)}</strong> — below your target of <strong>${target.toFixed(2)}</strong>. Consider retaking multiple courses.</div>
-            </div>
-          </div>`;
-      } else if (neededGp <= 0) {
-        resultHtml = `
-          <div class="pg-solver-result pg-solver-easy">
-            <div class="pg-solver-icon">🎉</div>
-            <div>
-              <div class="pg-solver-msg">You've already reached ${target.toFixed(2)} CGPA!</div>
-              <div class="pg-solver-detail">Any grade in <strong>${courseLabel(c.name)}</strong> will keep you above your target.</div>
-            </div>
-          </div>`;
-      } else if (minGrade) {
-        const newCgpa = (totals.pts - c.credits * c.gp + c.credits * minGrade.gp) / totals.cr;
-        resultHtml = `
-          <div class="pg-solver-result pg-solver-found">
-            <div class="pg-solver-answer">
-              <div class="pg-solver-answer-label">You need at least</div>
-              <div class="pg-solver-answer-grade" style="color:${gradeColor(minGrade.grade)}">${minGrade.grade}</div>
-              <div class="pg-solver-answer-gp">(${minGrade.gp.toFixed(1)} GP)</div>
-            </div>
-            <div class="pg-solver-explain">
-              <div>in <strong>${courseLabel(c.name)}</strong> (${c.credits} cr, currently ${c.grade})</div>
-              <div style="margin-top:4px">
-                CGPA: <span style="color:var(--text3)">${totals.cgpa.toFixed(2)}</span>
-                → <strong style="color:#2ECC71">${newCgpa.toFixed(2)}</strong>
-                <span style="color:#2ECC71;font-size:11px;margin-left:4px">+${(newCgpa - totals.cgpa).toFixed(2)}</span>
-              </div>
-            </div>
-          </div>`;
-      }
-    }
-  }
+  const resultHtml = computeSolverResult(courses, totals);
 
   return `
     <div class="pg-solver-inputs">
@@ -293,7 +300,7 @@ function renderReverseSolver(courses, totals) {
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
           placeholder="e.g. 3.00" value="${effectiveTarget}"
-          onchange="onSolverTargetChange(this.value)" />
+          oninput="onSolverTargetChange(this.value)" />
       </div>
       <div class="pg-solver-input-group" style="flex:2">
         <label class="pg-solver-label">Course</label>
@@ -303,7 +310,7 @@ function renderReverseSolver(courses, totals) {
         </select>
       </div>
     </div>
-    ${resultHtml}`;
+    <div id="pgSolverResult">${resultHtml}</div>`;
 }
 
 
