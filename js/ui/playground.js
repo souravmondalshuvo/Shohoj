@@ -80,7 +80,7 @@ export function resetPlayground() {
 
 export function switchPlaygroundTab(tab) {
   pg.activeTab = tab;
-  renderPlayground();
+  renderPlayground(true);
 }
 
 // ── Grade Changer ───────────────────────────────────────────────────────────
@@ -92,17 +92,17 @@ export function onPlaygroundGradeChange(key, grade) {
   } else {
     pg.changes[key] = grade;
   }
-  renderPlayground();
+  renderPlayground(true);
 }
 
 export function removePlaygroundChange(key) {
   delete pg.changes[key];
-  renderPlayground();
+  renderPlayground(true);
 }
 
 export function clearPlaygroundChanges() {
   Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
-  renderPlayground();
+  renderPlayground(true);
 }
 
 function renderGradeChanger(courses, totals) {
@@ -197,18 +197,18 @@ export function addPlaygroundChange() {
   const gradeEl = document.getElementById('pgChangerGradeSelect');
   if (!courseEl || !gradeEl || !courseEl.value || !gradeEl.value) return;
   pg.changes[courseEl.value] = gradeEl.value;
-  renderPlayground();
+  renderPlayground(true);
 }
 
 // ── Reverse Solver ──────────────────────────────────────────────────────────
 export function onSolverTargetChange(val) {
   pg.solverTarget = val;
-  renderPlayground();
+  renderPlayground(true);
 }
 
 export function onSolverCourseChange(key) {
   pg.solverKey = key;
-  renderPlayground();
+  renderPlayground(true);
 }
 
 function renderReverseSolver(courses, totals) {
@@ -308,7 +308,7 @@ function renderReverseSolver(courses, totals) {
 
 
 // ── Main render ─────────────────────────────────────────────────────────────
-export function renderPlayground() {
+export function renderPlayground(force) {
   const box = document.getElementById('playgroundBox');
   const content = document.getElementById('playgroundContent');
   if (!box || !content) return;
@@ -321,6 +321,15 @@ export function renderPlayground() {
     return;
   }
   box.style.display = '';
+
+  // Don't re-render if user is typing in a playground input field
+  // (external recalc would destroy the focused input mid-keystroke)
+  if (!force) {
+    const active = document.activeElement;
+    if (active && content.contains(active) && active.tagName === 'INPUT') {
+      return;
+    }
+  }
 
   const tabs = [
     { id: 'changer',   label: '✏️ Grade Changer',      desc: 'Change any grade, see impact' },
