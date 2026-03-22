@@ -27,9 +27,7 @@ import { drawTrendChart } from './ui/charts.js';
 import { renderDegreeTracker } from './ui/tracker.js';
 
 import {
-  runSimulator, buildWhatIfSelect, onWhatIfChange,
-  toggleWhatIf, updateSetupWizard, buildRetakeSuggestions, toggleRetake,
-  renderRetakeAnalyzer, toggleRetakeAnalyzer, onRetakeTargetChange
+  runSimulator, updateSetupWizard, buildRetakeSuggestions, toggleRetake
 } from './ui/simulator.js';
 
 import {
@@ -74,8 +72,6 @@ window.closeSuggestions  = closeSuggestions;
 window.pickSuggestion    = pickSuggestion;
 window.autoDetectGrade   = autoDetectGrade;
 window.onPFChange        = onPFChange;
-window.onWhatIfChange    = onWhatIfChange;
-window.toggleWhatIf      = toggleWhatIf;
 window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
@@ -84,18 +80,12 @@ window.clearState        = () => {
   clearState();
   state.semesters = [];
   state.semesterCounter = 0;
-  state.whatIfMode = false;
-  Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
   resetPlayground();
-  const btn = document.getElementById('whatIfBtn');
-  if (btn) { btn.classList.remove('btn-whatif-active'); btn.textContent = '🔮 What-if'; }
   renderSemesters();
   recalc();
 };
 
 window._toggleRetake = toggleRetake;
-window.toggleRetakeAnalyzer = toggleRetakeAnalyzer;
-window.onRetakeTargetChange = onRetakeTargetChange;
 
 // Playground
 window.switchPlaygroundTab    = switchPlaygroundTab;
@@ -238,22 +228,6 @@ function recalc() {
 
   const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
 
-  // What-if CGPA
-  let whatIfPts = 0, whatIfCr = 0;
-  if (state.whatIfMode && Object.keys(state.whatIfGrades).length > 0) {
-    for (const sem of state.semesters) {
-      sem.courses.forEach((c, i) => {
-        const key = `${sem.id}-${i}`;
-        const grade = state.whatIfGrades[key] || c.grade;
-        const gp = GRADES[grade];
-        if (gp === undefined || !c.credits || grade === 'P' || grade === 'I') return;
-        if (retakenKeys.has(key)) return;
-        if (gp !== null) { whatIfPts += gp * c.credits; whatIfCr += c.credits; }
-      });
-    }
-  }
-  const whatIfCgpa = whatIfCr > 0 ? whatIfPts / whatIfCr : null;
-
   // CGPA for completed semesters only
   let completedPts = 0, completedEarned = 0;
   state.semesters.filter(s => !s.running).forEach(sem => {
@@ -290,84 +264,6 @@ function recalc() {
     incWarn.style.display = 'none';
   }
 
-  // What-if preview
-  let wiPreview = document.getElementById('whatIfPreview');
-  if (!wiPreview) {
-    wiPreview = document.createElement('div');
-    wiPreview.id = 'whatIfPreview';
-    wiPreview.className = 'whatif-cgpa-preview';
-    const meterBox = document.querySelector('.cgpa-meter');
-    if (meterBox) meterBox.insertAdjacentElement('afterend', wiPreview);
-  }
-  if (state.whatIfMode && whatIfCgpa !== null && cgpa !== null) {
-    const delta = whatIfCgpa - cgpa;
-    const sign  = delta >= 0 ? '+' : '';
-
-    // Build changed courses list
-    const changedCourses = [];
-    for (const [key, newGrade] of Object.entries(state.whatIfGrades)) {
-      const [semIdStr, idxStr] = key.split('-');
-      const sem = state.semesters.find(s => s.id === parseInt(semIdStr));
-      if (!sem) continue;
-      const c = sem.courses[parseInt(idxStr)];
-      if (!c || newGrade === c.grade) continue;
-      const oldGp = GRADES[c.grade] ?? 0;
-      const newGp = GRADES[newGrade] ?? 0;
-      const impact = totalEarnedCGPA > 0 ? (c.credits * (newGp - oldGp)) / totalEarnedCGPA : 0;
-      // Extract short code from "Course Name (CODE)"
-      const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      const label = codeMatch ? codeMatch[1] : (c.name.length > 25 ? c.name.slice(0, 22) + '...' : c.name);
-      const gradeColor = g => {
-        if (!g) return 'var(--text3)';
-        if (g.startsWith('A')) return '#2ECC71';
-        if (g.startsWith('B')) return '#27ae60';
-        if (g.startsWith('C')) return '#F0A500';
-        if (g.startsWith('D')) return '#e67e22';
-        if (g === 'F') return '#e74c3c';
-        return 'var(--text3)';
-      };
-      changedCourses.push({ label, oldGrade: c.grade, newGrade, impact, gradeColor });
-    }
-
-    let changesHtml = '';
-    if (changedCourses.length > 0) {
-      const changeRows = changedCourses.map(ch =>
-        `<div class="whatif-change-row">
-          <span class="whatif-change-course">${ch.label}</span>
-          <span class="whatif-change-grades">
-            <span style="color:${ch.gradeColor(ch.oldGrade)}">${ch.oldGrade}</span>
-            <span style="color:var(--text3)">→</span>
-            <span style="color:${ch.gradeColor(ch.newGrade)};font-weight:700">${ch.newGrade}</span>
-          </span>
-          <span class="whatif-change-impact" style="color:${ch.impact >= 0 ? '#2ECC71' : '#e74c3c'}">${ch.impact >= 0 ? '+' : ''}${ch.impact.toFixed(2)}</span>
-        </div>`
-      ).join('');
-      changesHtml = `<div class="whatif-changes-list">${changeRows}</div>`;
-    }
-
-    wiPreview.innerHTML = `
-      <div class="whatif-header-row">
-        <span class="whatif-cgpa-label">🔮 What-if CGPA</span>
-        <div class="whatif-cgpa-hero">
-          <span style="font-size:13px;color:var(--text3)">${cgpa.toFixed(2)}</span>
-          <span style="font-size:13px;color:var(--text3)">→</span>
-          <span class="whatif-cgpa-val">${whatIfCgpa.toFixed(2)}</span>
-          <span class="whatif-cgpa-delta">${sign}${delta.toFixed(2)}</span>
-        </div>
-      </div>
-      ${changesHtml}`;
-    wiPreview.style.display = '';
-  } else if (state.whatIfMode) {
-    wiPreview.innerHTML = `
-      <div class="whatif-header-row">
-        <span class="whatif-cgpa-label">🔮 What-if Mode Active</span>
-        <span style="font-size:11px;color:var(--text3)">Change any grade using the gold dropdowns above</span>
-      </div>`;
-    wiPreview.style.display = '';
-  } else {
-    wiPreview.style.display = 'none';
-  }
-
   cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
     cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
     cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
@@ -389,18 +285,6 @@ function recalc() {
       crRemEl.value = autoVal;
     }
     crRemEl.dataset.auto = autoVal;
-  }
-
-  const creditsBox = document.getElementById('creditsProgressBox');
-  if (dept && totalRequired > 0) {
-    creditsBox.style.display = '';
-    const creditsPct = Math.min((totalEarned / totalRequired) * 100, 100);
-    document.getElementById('creditsFill').style.width = creditsPct.toFixed(1) + '%';
-    document.getElementById('creditsPct').textContent = creditsPct.toFixed(1) + '%';
-    document.getElementById('creditsEarnedLabel').textContent = fmtCr(totalEarned) + ' credits completed';
-    document.getElementById('creditsTotalLabel').textContent = 'of ' + totalRequired;
-  } else {
-    creditsBox.style.display = 'none';
   }
 
   // Degree progress tracker
@@ -506,7 +390,6 @@ function recalc() {
     statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
   }
 
-  renderRetakeAnalyzer(cgpa, totalEarnedCGPA, totalPts);
   runSimulator(cgpa, totalEarnedCGPA, totalPts);
   renderPlayground();
   saveState();
