@@ -2533,68 +2533,6 @@ h1[data-reveal-hero].visible {
   align-self: center;
 }
 
-/* Semester Simulator */
-.pg-sim-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.pg-sim-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-.pg-sim-code {
-  width: 80px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-}
-.pg-sim-name {
-  flex: 1;
-  color: var(--text2);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.pg-sim-cr {
-  font-size: 11px;
-  color: var(--text3);
-  flex-shrink: 0;
-}
-.pg-sim-grade {
-  padding: 5px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  color: var(--text);
-  font-size: 12px;
-  min-width: 70px;
-}
-.pg-sim-add {
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: 8px;
-  color: var(--text3);
-  font-size: 12px;
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.2s, border-color 0.2s;
-}
-.pg-sim-add:hover {
-  background: rgba(46,204,113,0.05);
-  border-color: rgba(46,204,113,0.3);
-  color: var(--text2);
-}
-
 /* Responsive — playground margins */
 @media (max-width: 480px) {
   .playground-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
@@ -2602,5 +2540,4 @@ h1[data-reveal-hero].visible {
   .pg-tab { min-width: 0; }
   .pg-solver-result { flex-direction: column; }
   .pg-add-row { flex-direction: column; }
-  .pg-sim-row { flex-wrap: wrap; }
 }
