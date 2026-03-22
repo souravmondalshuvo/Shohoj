@@ -351,11 +351,9 @@
         <div class="footer-btn-group">
           <button class="btn-add-semester magnetic" id="addSemesterBtn">+ Add Semester</button>
           <button class="btn-running-sem magnetic" id="addRunningSemBtn">🎯 Running Semester</button>
-          <span class="footer-btn-separator"></span>
           <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
-          <span class="footer-btn-separator"></span>
           <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
         </div>
       </div>
