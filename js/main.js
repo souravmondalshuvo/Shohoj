@@ -40,8 +40,7 @@ import {
 import {
   renderPlayground, switchPlaygroundTab, resetPlayground,
   onPlaygroundGradeChange, removePlaygroundChange, clearPlaygroundChanges,
-  addPlaygroundChange, onSolverTargetChange, onSolverCourseChange,
-  addSimCourse, removeSimCourse, onSimCourseChange
+  addPlaygroundChange, onSolverTargetChange, onSolverCourseChange
 } from './ui/playground.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -106,9 +105,6 @@ window.clearPlaygroundChanges = clearPlaygroundChanges;
 window.addPlaygroundChange    = addPlaygroundChange;
 window.onSolverTargetChange   = onSolverTargetChange;
 window.onSolverCourseChange   = onSolverCourseChange;
-window.addSimCourse           = addSimCourse;
-window.removeSimCourse        = removeSimCourse;
-window.onSimCourseChange      = onSimCourseChange;
 
 // ── THEME ─────────────────────────────────────────────────────────────────────
 const html     = document.documentElement;
