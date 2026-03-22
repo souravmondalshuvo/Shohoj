@@ -57,7 +57,7 @@ export function renderSemesters() {
         ${sem.courses.map((c, i) => {
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
           return `
-        <div class="course-row${isRetaken ? ' retaken' : ''}${state.whatIfMode ? ' whatif-active' : ''}">
+        <div class="course-row${isRetaken ? ' retaken' : ''}">
           <div class="course-input-wrap" style="position:relative;">
             <input type="text" placeholder="Type course code / title"
               id="course-input-${sem.id}-${i}"
@@ -100,7 +100,6 @@ export function renderSemesters() {
               c.grade && c.grade.startsWith('D') ? '#e67e22' :
               'var(--text3)'
             }">${c.grade || '—'}</span>
-          ${state.whatIfMode && c.grade && c.grade !== 'P' && c.grade !== 'F(NT)' ? buildWhatIfSelect(sem.id, i, c.grade) : ''}
           <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
         </div>`;
         }).join('')}
@@ -172,18 +171,6 @@ export function renderSemesters() {
       });
     });
   }, 0);
-}
-
-function buildWhatIfSelect(semId, cIdx, currentGrade) {
-  const key = semId + '-' + cIdx;
-  const selected = state.whatIfGrades[key] || currentGrade;
-  const grades = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)');
-  const opts = grades.map(g =>
-    '<option value="' + g + '"' + (selected === g ? ' selected' : '') + '>?' + g + '</option>'
-  ).join('');
-  return '<select class="whatif-grade-select" ' +
-         'onchange="onWhatIfChange(' + semId + ',' + cIdx + ',this.value)" ' +
-         'title="What-if grade">' + opts + '</select>';
 }
 
 export function addSemester(prefill = null) {
