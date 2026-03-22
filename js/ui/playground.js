@@ -1,5 +1,4 @@
 import { GRADES } from '../core/grades.js';
-import { COURSE_DB } from '../core/catalog.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
 
@@ -7,8 +6,7 @@ import { getRetakenKeys } from '../core/calculator.js';
 const pg = {
   activeTab: 'changer',
   changes: {},      // key → newGrade
-  simCourses: [],   // [{ code, name, credits, grade }]
-  solverKey: '',     // course key 'semId-idx' or '__new-CODE'
+  solverKey: '',     // course key 'semId-idx'
   solverTarget: '',
 };
 
@@ -76,7 +74,6 @@ function getCurrentTotals() {
 export function resetPlayground() {
   pg.activeTab = 'changer';
   Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
-  pg.simCourses = [];
   pg.solverKey = '';
   pg.solverTarget = '';
 }
@@ -305,93 +302,6 @@ function renderReverseSolver(courses, totals) {
     ${resultHtml}`;
 }
 
-// ── Semester Simulator ──────────────────────────────────────────────────────
-export function addSimCourse() {
-  pg.simCourses.push({ code: '', name: '', credits: 3, grade: '' });
-  renderPlayground();
-}
-
-export function removeSimCourse(idx) {
-  pg.simCourses.splice(idx, 1);
-  renderPlayground();
-}
-
-export function onSimCourseChange(idx, field, value) {
-  if (field === 'credits') value = parseFloat(value) || 0;
-  pg.simCourses[idx][field] = value;
-  // If code changed, try to fill name + credits from catalog
-  if (field === 'code') {
-    const entry = COURSE_DB[value.toUpperCase()];
-    if (entry) {
-      pg.simCourses[idx].name = entry.name;
-      pg.simCourses[idx].credits = entry.credits;
-    }
-  }
-  renderPlayground();
-}
-
-function renderSemesterSimulator(courses, totals) {
-  if (totals.cgpa === null) {
-    return `<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Add some graded courses first to use the Semester Simulator.</div>`;
-  }
-
-  // Calculate projected CGPA with sim courses
-  let simPts = totals.pts, simCr = totals.cr;
-  pg.simCourses.forEach(sc => {
-    if (!sc.grade || !sc.credits) return;
-    const gp = GRADES[sc.grade];
-    if (gp === undefined || gp === null) return;
-    simPts += gp * sc.credits;
-    simCr += sc.credits;
-  });
-  const simCgpa = simCr > 0 ? simPts / simCr : null;
-  const simDelta = totals.cgpa !== null && simCgpa !== null ? simCgpa - totals.cgpa : 0;
-
-  const gradeOpts = GRADE_LIST.map(g => `<option value="${g}">${g}</option>`).join('');
-
-  const rows = pg.simCourses.map((sc, idx) => {
-    const gradeSelected = GRADE_LIST.map(g =>
-      `<option value="${g}"${sc.grade === g ? ' selected' : ''}>${g}</option>`
-    ).join('');
-    return `
-      <div class="pg-sim-row">
-        <input type="text" class="pg-sim-code" placeholder="e.g. CSE220"
-          value="${sc.code}" oninput="onSimCourseChange(${idx},'code',this.value)" />
-        <span class="pg-sim-name">${sc.name || '—'}</span>
-        <span class="pg-sim-cr">${sc.credits} cr</span>
-        <select class="pg-sim-grade" onchange="onSimCourseChange(${idx},'grade',this.value)">
-          <option value="" disabled ${!sc.grade ? 'selected' : ''}>Grade</option>
-          ${gradeSelected}
-        </select>
-        <button class="pg-change-remove" onclick="removeSimCourse(${idx})">×</button>
-      </div>`;
-  }).join('');
-
-  let heroHtml = '';
-  if (pg.simCourses.some(sc => sc.grade && sc.credits)) {
-    const sign = simDelta >= 0 ? '+' : '';
-    const deltaColor = simDelta >= 0 ? '#2ECC71' : '#e74c3c';
-    heroHtml = `
-      <div class="pg-hero">
-        <div class="pg-hero-block">
-          <div class="pg-hero-label">Current</div>
-          <div class="pg-hero-val">${totals.cgpa.toFixed(2)}</div>
-        </div>
-        <div class="pg-hero-arrow">→</div>
-        <div class="pg-hero-block">
-          <div class="pg-hero-label">Projected</div>
-          <div class="pg-hero-val" style="color:${simDelta >= 0 ? '#2ECC71' : '#e74c3c'}">${simCgpa.toFixed(2)}</div>
-        </div>
-        <div class="pg-hero-delta" style="background:${simDelta >= 0 ? 'rgba(46,204,113,0.12)' : 'rgba(231,76,60,0.12)'};color:${deltaColor}">${sign}${simDelta.toFixed(2)}</div>
-      </div>`;
-  }
-
-  return `
-    ${heroHtml}
-    <div class="pg-sim-list">${rows}</div>
-    <button class="pg-sim-add" onclick="addSimCourse()">+ Add course</button>
-    <div style="font-size:11px;color:var(--text3);margin-top:8px">Type a course code to auto-fill name and credits from the catalog.</div>`;
-}
 
 // ── Main render ─────────────────────────────────────────────────────────────
 export function renderPlayground() {
@@ -411,7 +321,6 @@ export function renderPlayground() {
   const tabs = [
     { id: 'changer',   label: '✏️ Grade Changer',      desc: 'Change any grade, see impact' },
     { id: 'solver',    label: '🎯 Reverse Solver',      desc: 'What grade do I need?' },
-    { id: 'simulator', label: '📊 Semester Simulator',   desc: 'Plan next semester' },
   ];
 
   const tabsHtml = tabs.map(t => `
@@ -424,7 +333,6 @@ export function renderPlayground() {
   let bodyHtml = '';
   if (pg.activeTab === 'changer')   bodyHtml = renderGradeChanger(courses, totals);
   if (pg.activeTab === 'solver')    bodyHtml = renderReverseSolver(courses, totals);
-  if (pg.activeTab === 'simulator') bodyHtml = renderSemesterSimulator(courses, totals);
 
   content.innerHTML = `
     <div class="pg-tabs">${tabsHtml}</div>
