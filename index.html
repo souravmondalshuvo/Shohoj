@@ -295,21 +295,6 @@
         <div class="meter-status" id="meterStatus">Add your courses to get started.</div>
       </div>
 
-      <!-- Credits Progress Bar -->
-      <div class="credits-progress lg-panel" id="creditsProgressBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="meter-header">
-          <span>Degree Progress</span>
-          <span id="creditsPct">0%</span>
-        </div>
-        <div class="credits-progress-track">
-          <div class="credits-progress-fill" id="creditsFill"></div>
-        </div>
-        <div class="credits-progress-footer">
-          <span id="creditsEarnedLabel">0 credits completed</span>
-          <span id="creditsTotalLabel">of 136</span>
-        </div>
-      </div>
-
       <!-- Degree Progress Tracker -->
       <div class="degree-tracker lg-panel" id="degreeTrackerBox" style="display:none;"><div class="lg-shine"></div>
         <div id="degreeTrackerContent"></div>
@@ -356,18 +341,6 @@
         <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
       </div>
 
-      <!-- Retake Impact Analyzer -->
-      <div class="retake-analyzer lg-panel" id="retakeAnalyzerBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="retake-header">
-          <div>
-            <h4>🔄 Retake Impact Analyzer</h4>
-            <div class="retake-subtitle">Select courses to retake and see exactly how your CGPA changes.</div>
-          </div>
-          <div class="retake-cgpa-preview" id="retakeCgpaPreview"></div>
-        </div>
-        <div id="retakeAnalyzerContent"></div>
-      </div>
-
       <!-- Footer -->
       <div class="calc-footer lg-panel">
         <div class="calc-footer-stats">
@@ -381,7 +354,6 @@
           <span class="footer-btn-separator"></span>
           <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
-          <button class="btn-whatif magnetic" id="whatIfBtn" onclick="toggleWhatIf()" title="Hypothetically change any grade and see CGPA preview">🔮 What-if</button>
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
           <span class="footer-btn-separator"></span>
           <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
