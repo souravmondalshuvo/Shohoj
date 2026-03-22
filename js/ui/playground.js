@@ -216,6 +216,10 @@ function renderReverseSolver(courses, totals) {
     return `<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Add some graded courses first to use the Reverse Solver.</div>`;
   }
 
+  // Pre-fill from Goal Simulator if solver target is empty
+  const simTarget = document.getElementById('targetCgpa');
+  const effectiveTarget = pg.solverTarget || (simTarget ? simTarget.value : '');
+
   // Course options: running semester courses + all graded courses
   const courseOpts = courses.map(c =>
     `<option value="${c.key}"${pg.solverKey === c.key ? ' selected' : ''}>${courseLabel(c.name)}${c.running ? ' 🟡' : ''} (${c.grade}) — ${c.sem}</option>`
@@ -224,8 +228,8 @@ function renderReverseSolver(courses, totals) {
   // Input row
   let resultHtml = '';
 
-  if (pg.solverTarget && pg.solverKey) {
-    const target = parseFloat(pg.solverTarget);
+  if (effectiveTarget && pg.solverKey) {
+    const target = parseFloat(effectiveTarget);
     const c = courses.find(x => x.key === pg.solverKey);
 
     if (c && !isNaN(target) && target >= 0 && target <= 4.0) {
@@ -288,7 +292,7 @@ function renderReverseSolver(courses, totals) {
       <div class="pg-solver-input-group">
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
-          placeholder="e.g. 3.00" value="${pg.solverTarget}"
+          placeholder="e.g. 3.00" value="${effectiveTarget}"
           oninput="onSolverTargetChange(this.value)" />
       </div>
       <div class="pg-solver-input-group" style="flex:2">
