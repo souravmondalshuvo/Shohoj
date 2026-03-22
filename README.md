@@ -70,13 +70,11 @@ Upload your official BRACU grade sheet PDF and Shohoj reads it automatically —
 
 ### 🔮 CGPA Playground
 
-A dedicated panel with three powerful tools for planning your academic future:
+A dedicated panel with two powerful tools for planning your academic future:
 
 **✏️ Grade Changer** — Pick any graded course, set a hypothetical new grade, and see the exact CGPA impact instantly. Stack multiple changes and see the cumulative effect. Each change shows its individual contribution to your CGPA shift.
 
 **🎯 Reverse Solver** — _"What grade do I need in CSE220 to reach 3.0 CGPA?"_ — Enter your target CGPA, pick a course, and Shohoj tells you the minimum grade required. Shows whether it's achievable, impossible, or already reached. Every BRACU student asks this question — now there's a tool that answers it.
-
-**📊 Semester Simulator** — Plan your next semester before advising week. Type course codes (auto-filled from the 500-course catalog), assign expected grades, and see your projected CGPA live. Know exactly where you'll land before you register.
 
 ### 🎯 CGPA Goal Simulator
 
@@ -175,24 +173,23 @@ Shohoj is built to feel like a real product, not a student project.
 
 ### Phase 1 — Academic Core _(Current)_
 
-| Feature                              | Status                                       |
-| ------------------------------------ | -------------------------------------------- |
-| Smart GPA Calculator                 | ✅ Complete                                  |
-| CGPA Playground (Grade Changer)      | ✅ Complete                                  |
-| CGPA Playground (Reverse Solver)     | ✅ Complete                                  |
-| CGPA Playground (Semester Simulator) | ✅ Complete                                  |
-| CGPA Goal Simulator                  | ✅ Complete                                  |
-| GPA Trend Analysis                   | ✅ Complete _(originally Phase 6)_           |
-| Transcript PDF Import                | ✅ Complete _(bonus — not in original plan)_ |
-| PDF Grade Report Export              | ✅ Complete _(bonus — not in original plan)_ |
-| Course Catalog & Autocomplete        | ✅ Complete _(bonus — not in original plan)_ |
-| Credit Load Warnings                 | ✅ Complete _(bonus — not in original plan)_ |
-| Retake Impact Analyzer               | ✅ Complete                                  |
-| Degree Progress Tracker              | ✅ Complete                                  |
-| Semester Planner with Prerequisites  | 🔜 Planned                                   |
-| Course Difficulty Map                | 🔜 Planned                                   |
-| Advising Week Checklist              | 🔜 Planned                                   |
-| Freshman Survival Guide              | 🔜 Planned                                   |
+| Feature                             | Status                                       |
+| ----------------------------------- | -------------------------------------------- |
+| Smart GPA Calculator                | ✅ Complete                                  |
+| CGPA Playground (Grade Changer)     | ✅ Complete                                  |
+| CGPA Playground (Reverse Solver)    | ✅ Complete                                  |
+| CGPA Goal Simulator                 | ✅ Complete                                  |
+| GPA Trend Analysis                  | ✅ Complete _(originally Phase 6)_           |
+| Transcript PDF Import               | ✅ Complete _(bonus — not in original plan)_ |
+| PDF Grade Report Export             | ✅ Complete _(bonus — not in original plan)_ |
+| Course Catalog & Autocomplete       | ✅ Complete _(bonus — not in original plan)_ |
+| Credit Load Warnings                | ✅ Complete _(bonus — not in original plan)_ |
+| Retake Impact Analyzer              | ✅ Complete                                  |
+| Degree Progress Tracker             | ✅ Complete                                  |
+| Semester Planner with Prerequisites | 🔜 Planned                                   |
+| Course Difficulty Map               | 🔜 Planned                                   |
+| Advising Week Checklist             | 🔜 Planned                                   |
+| Freshman Survival Guide             | 🔜 Planned                                   |
 
 ### Phase 2 — Community Layer
 
@@ -259,7 +256,7 @@ Shohoj/
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
 │   │   ├── charts.js             Canvas GPA trend chart
 │   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake Strategy
-│   │   ├── playground.js         CGPA Playground — Grade Changer, Reverse Solver, Semester Simulator
+│   │   ├── playground.js         CGPA Playground — Grade Changer & Reverse Solver
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
