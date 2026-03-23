@@ -165,12 +165,15 @@ export function parseTranscriptText(text) {
   // the contiguous block of per-course decimals.
   let creditsBlockStart = -1;
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (/^Credits Earned$/i.test(lines[i])) {
-      // Confirm next non-empty line is a decimal
-      if (i + 1 < lines.length && numberRe.test(lines[i + 1])) {
-        creditsBlockStart = i + 1;
-        break;
+    if (/^Credits\s+Earned\b/i.test(lines[i])) {
+      // Confirm one of the next few lines starts the decimals block.
+      for (let j = i + 1; j <= i + 4 && j < lines.length; j++) {
+        if (numberRe.test(lines[j])) {
+          creditsBlockStart = j;
+          break;
+        }
       }
+      if (creditsBlockStart >= 0) break;
     }
   }
   if (creditsBlockStart < 0) return _legacyParseTranscript(lines, detectedDept);
@@ -260,7 +263,10 @@ function _legacyParseTranscript(lines, detectedDept) {
   const skipRe     = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
   const fntRe      = /F\s*\(NT\)/;
   const courseRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  // Some PDFs merge code+credits+grade+gp into one compact token stream,
+  // e.g. "MAT1103.00B3.00" or "MAT120  3.00  B  3.00".
+  const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
   const partialRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
   const contRe     = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
 
@@ -308,9 +314,20 @@ function _legacyParseTranscript(lines, detectedDept) {
     }
     const co = line.match(codeOnlyRe);
     if (co) {
-      const grade = co[3].replace(/\(RT\)/,'').trim();
+      let grade = co[3].trim().replace(/\s+/g,'');
+      if (/F.*NT/i.test(co[3])) grade = 'F(NT)';
+      else grade = grade.replace('(RT)','').replace('(NT)','').trim();
       const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim() : '';
       currentSem.courses.push({ name: title ? `${title} (${co[1]})` : co[1], credits: parseFloat(co[2]), grade, gradePoint: parseFloat(co[4]) });
+      pendingTitle = null; skipNextFrag = true; continue;
+    }
+    const coc = line.match(codeOnlyCompactRe);
+    if (coc) {
+      let grade = coc[3].trim().replace(/\s+/g,'');
+      if (/F.*NT/i.test(coc[3])) grade = 'F(NT)';
+      else grade = grade.replace('(RT)','').replace('(NT)','').trim();
+      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim() : '';
+      currentSem.courses.push({ name: title ? `${title} (${coc[1]})` : coc[1], credits: parseFloat(coc[2]), grade, gradePoint: parseFloat(coc[4]) });
       pendingTitle = null; skipNextFrag = true; continue;
     }
     const cm = line.match(courseRe);
