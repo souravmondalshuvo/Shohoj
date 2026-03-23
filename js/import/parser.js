@@ -77,6 +77,10 @@ export function parseTranscriptText(text) {
   const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
   const semRe    = /^SEMESTER:\s*([A-Z]+)\s+(\d{4})/i;
   const codeRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
+  // Detects a course code at the start of a line merged with credits data.
+  // This happens when pdf.js joins a code with credits/grade/GP that share
+  // the same y-coordinate (multi-line course title rows in BRACU PDFs).
+  const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*\d/;
   const numberRe = /^\d+\.\d+$/;
   const gradeRe  = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
   // Lines to skip entirely in pass 1
@@ -85,6 +89,14 @@ export function parseTranscriptText(text) {
   // ── Pass 1: collect semester codes + titles (ignore all numbers) ──────────
   const sems = [];
   let curSem = null;
+
+  // Track last title extension for multi-line title un-appending.
+  // When a title overflow line is wrongly appended to the previous course's
+  // title, and we later discover the real code (merged with data), we need
+  // to undo the append and reassign the text as the new code's title.
+  let lastExtText = null;   // the text that was appended
+  let lastExtIdx  = -1;     // which title index it was appended to
+  let lastExtOrigLen = 0;   // title length before the extension was added
 
   for (const line of lines) {
     if (skipRe.test(line))   continue;   // skip junk header/footer lines
@@ -99,6 +111,7 @@ export function parseTranscriptText(text) {
         codes: [], titles: [],
       };
       sems.push(curSem);
+      lastExtText = null; lastExtIdx = -1;
       continue;
     }
     if (!curSem) continue;
@@ -106,6 +119,24 @@ export function parseTranscriptText(text) {
     const cm = line.match(codeRe);
     if (cm) {
       curSem.codes.push(cm[1]);
+      lastExtText = null; lastExtIdx = -1; // reset — normal standalone code
+      continue;
+    }
+
+    // Check for course code merged with credits data on the same line.
+    // In BRACU PDFs, multi-line course titles cause the code to share a
+    // y-coordinate with the credits/grade/GP columns, so pdf.js joins
+    // them into one line like "MAT1103.00B3.00" or "MAT120  3.00  B  3.00".
+    const cmStart = line.match(codeStartRe);
+    if (cmStart) {
+      curSem.codes.push(cmStart[1]);
+      // The last title extension was actually the START of this code's title.
+      // Un-append it from the previous title and assign it to the new code.
+      if (lastExtText !== null && lastExtIdx >= 0 && lastExtIdx < curSem.titles.length) {
+        curSem.titles[lastExtIdx] = curSem.titles[lastExtIdx].substring(0, lastExtOrigLen);
+        curSem.titles.push(lastExtText);
+      }
+      lastExtText = null; lastExtIdx = -1;
       continue;
     }
 
@@ -113,7 +144,13 @@ export function parseTranscriptText(text) {
     if (!line[0].match(/\d/)) {
       if (curSem.titles.length < curSem.codes.length) {
         curSem.titles.push(line);
+        lastExtText = null; lastExtIdx = -1; // fresh title, not an extension
       } else if (curSem.titles.length > 0) {
+        // Extension — track it so we can un-append if it turns out to be
+        // the start of a new title for a code that hasn't been seen yet.
+        lastExtOrigLen = curSem.titles[curSem.titles.length - 1].length;
+        lastExtText = line;
+        lastExtIdx = curSem.titles.length - 1;
         curSem.titles[curSem.titles.length - 1] += ' ' + line;
       }
     }
