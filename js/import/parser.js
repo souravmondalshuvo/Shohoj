@@ -80,7 +80,10 @@ export function parseTranscriptText(text) {
   // Detects a course code at the start of a line merged with credits data.
   // This happens when pdf.js joins a code with credits/grade/GP that share
   // the same y-coordinate (multi-line course title rows in BRACU PDFs).
-  const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*\d/;
+  // Supports merged forms where pdf.js outputs:
+  //   - "MAT120  3.00  B  3.00"
+  //   - "MAT1103.00B3.00"  (note the credit may start with ".00" immediately)
+  const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)(?:\s*(?:\d|\.\d))/;
   const numberRe = /^\d+\.\d+$/;
   const gradeRe  = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
   // Lines to skip entirely in pass 1
@@ -264,11 +267,19 @@ function _legacyParseTranscript(lines, detectedDept) {
   const fntRe      = /F\s*\(NT\)/;
   const courseRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
   const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  const codeMarkerRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
   // Some PDFs merge code+credits+grade+gp into one compact token stream,
   // e.g. "MAT1103.00B3.00" or "MAT120  3.00  B  3.00".
   const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
   const partialRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
   const contRe     = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  // Multi-line titles sometimes become:
+  //   <CODE>                 (e.g. "MAT110")
+  //   <TITLE line 1>
+  //   <TITLE line 2>
+  //   <CREDITS> <GRADE> <GP> (e.g. "3.00 B 3.00")
+  const creditsGradeGpOnlyRe =
+    /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
 
   const semesters = [];
   let currentSem = null, pendingTitle = null, skipNextFrag = false;
@@ -284,6 +295,15 @@ function _legacyParseTranscript(lines, detectedDept) {
     }
     if (!currentSem) continue;
     if (skipNextFrag) { skipNextFrag = false; if (/^[A-Z][A-Z\s&:,\(\)\-\.]+$/.test(line)) continue; }
+
+    // If the parser extracted just the course code as a standalone line,
+    // start a pending title so we can attach later "credits grade gp" lines.
+    const codeMarker = line.match(codeMarkerRe);
+    if (codeMarker) {
+      pendingTitle = line;
+      continue;
+    }
+
     if (fntRe.test(line)) {
       const code = line.trim().split(/\s+/)[0];
       if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
@@ -293,6 +313,20 @@ function _legacyParseTranscript(lines, detectedDept) {
       }
     }
     if (pendingTitle) {
+      const cgOnly = line.match(creditsGradeGpOnlyRe);
+      if (cgOnly) {
+        const code2 = (pendingTitle.match(codeMarkerRe) || pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || '';
+        const tp = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim();
+
+        let grade = cgOnly[2].trim().replace(/\s+/g,'');
+        if (/F.*NT/i.test(cgOnly[2])) grade = 'F(NT)';
+        else grade = grade.replace('(RT)','').replace('(NT)','').trim();
+
+        currentSem.courses.push({ name: tp ? `${tp} (${code2})` : code2, credits: parseFloat(cgOnly[1]), grade, gradePoint: parseFloat(cgOnly[3]) });
+        pendingTitle = null;
+        continue;
+      }
+
       const cont = line.match(contRe);
       if (cont) {
         const fullLine = pendingTitle + ' ' + line;
