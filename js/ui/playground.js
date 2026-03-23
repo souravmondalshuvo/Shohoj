@@ -8,6 +8,7 @@ const pg = {
   changes: {},      // key → newGrade
   solverKey: '',     // course key 'semId-idx'
   solverTarget: '',
+  solverTouched: false,  // true once user types in solver target
 };
 
 // ── Grade list (exclude special grades) ─────────────────────────────────────
@@ -76,10 +77,13 @@ export function resetPlayground() {
   Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
   pg.solverKey = '';
   pg.solverTarget = '';
+  pg.solverTouched = false;
 }
 
 export function switchPlaygroundTab(tab) {
   pg.activeTab = tab;
+  pg.solverTouched = false;
+  pg.solverTarget = '';
   renderPlayground(true);
 }
 
@@ -203,6 +207,7 @@ export function addPlaygroundChange() {
 // ── Reverse Solver ──────────────────────────────────────────────────────────
 export function onSolverTargetChange(val) {
   pg.solverTarget = val;
+  pg.solverTouched = true;
   // Update only the result section, not the whole playground
   const resultEl = document.getElementById('pgSolverResult');
   if (resultEl) {
@@ -218,6 +223,9 @@ export function onSolverCourseChange(key) {
 }
 
 function getEffectiveTarget() {
+  // If user has typed in solver, use their value (even if empty = cleared)
+  if (pg.solverTouched) return pg.solverTarget;
+  // Otherwise pre-fill from Goal Simulator
   const simTarget = document.getElementById('targetCgpa');
   return pg.solverTarget || (simTarget ? simTarget.value : '');
 }
