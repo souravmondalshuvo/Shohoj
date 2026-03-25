@@ -161,7 +161,7 @@ export async function importTranscriptPDF(inputEl) {
       <tr style="border-bottom:1px solid ${t2.tableRowBorder}">
         <td style="padding:4px 8px;font-size:12px;color:${t2.text}">${s.name}</td>
         <td style="padding:4px 8px;text-align:center;font-size:12px;color:${t2.text2}">${s.courses.length} courses</td>
-        <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P'&&c.grade!=='I'&&c.grade!=='F(NT)'&&c.credits>0).length} graded</td>
+        <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P'&&c.grade!=='I'&&c.credits>0).length} graded</td>
       </tr>`
     ).join('');
 
