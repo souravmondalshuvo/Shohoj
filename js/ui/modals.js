@@ -351,9 +351,13 @@ export function exportPDF() {
     : 'Probation';
 
   setFill(GREEN); doc.rect(0, 0, PW, 1.5, 'F');
-  setFill(GREEN); doc.roundedRect(ML, y + 4, 18, 18, 2.5, 2.5, 'F');
-  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); setTxt(WHITE);
-  doc.text('S', ML + 9, y + 16, { align: 'center' });
+
+  // Logo as base64 PNG (স in green rounded square)
+  const LOGO_B64 = 'data:image/png;base64,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';
+  try { doc.addImage(LOGO_B64, 'PNG', ML, y + 4, 18, 18); } catch(e) {
+    // Fallback if image fails
+    setFill(GREEN); doc.roundedRect(ML, y + 4, 18, 18, 2.5, 2.5, 'F');
+  }
 
   doc.setFontSize(15); setTxt(TEXT1); doc.setFont('helvetica', 'bold');
   doc.text('CGPA Report', ML + 22, y + 10);
@@ -397,8 +401,8 @@ export function exportPDF() {
   });
   y += 22;
 
-  const COL = { name: ML, cr: ML + 120, gp: ML + 135, grade: ML + 139, note: ML + 166 };
-  const BADGE_W = 24;
+  const COL = { name: ML, cr: ML + 118, gp: ML + 132, grade: ML + 136, note: ML + 164 };
+  const BADGE_W = 26;
 
   state.semesters.forEach(sem => {
     const semGpa = calcSemGPA(sem);
@@ -468,22 +472,52 @@ export function exportPDF() {
         doc.text(c.grade, badgeX + BADGE_W / 2, y + 4.3, { align: 'center' });
       }
 
-      const note = c.grade === 'F(NT)' ? 'No Transfer' : isRet ? 'Retaken' : c.grade === 'P' ? 'Pass/Fail' : '';
+      const note = isRet ? 'Retaken' : c.grade === 'F(NT)' ? 'No Transfer' : c.grade === 'P' ? 'Pass/Fail' : '';
       if (note) { doc.setFontSize(6); setTxt(TEXT3); doc.setFont('helvetica', 'normal'); doc.text(note, COL.note, y + 4.5); }
       y += 7;
     });
+
+    // Semester summary row
+    if (semGpa !== null) {
+      checkY(8);
+      const semAttempted = sem.courses.reduce((s, c) => {
+        if (!c.name.trim() || !c.credits) return s;
+        if (c.grade === 'P' || c.grade === 'I') return s;
+        return s + c.credits;
+      }, 0);
+      const semFailed = sem.courses.reduce((s, c) => {
+        if (!c.name.trim() || !c.credits) return s;
+        const gp = GRADES[c.grade];
+        if (gp === undefined || gp === null) return s;
+        if (gp === 0) return s + c.credits; // F and F(NT) = 0 GP, not earned
+        return s;
+      }, 0);
+      const semEarned = semAttempted - semFailed;
+
+      setFill([238, 248, 241]); doc.rect(ML, y, CW, 6, 'F');
+      setStroke(BORDER); doc.setLineWidth(0.15);
+      doc.line(ML, y, PW - MR, y);
+      doc.setFontSize(6); doc.setFont('helvetica', 'bold'); setTxt(TEXT3);
+      const summaryText = `Credits Attempted: ${fmtCr(semAttempted)}   ·   Credits Earned: ${fmtCr(semEarned)}   ·   Semester GPA: ${semGpa.toFixed(2)}`;
+      doc.text(summaryText, ML + CW / 2, y + 4, { align: 'center' });
+      y += 6;
+    }
+
     y += 5;
   });
 
   const footerY = PH - 10;
   setStroke(BORDER); doc.setLineWidth(0.4); doc.line(ML, footerY, PW - MR, footerY);
   setFill(LGREY); doc.rect(0, footerY, PW, 10, 'F');
-  setFill(GREEN); doc.roundedRect(ML, footerY + 2.5, 7, 7, 1.5, 1.5, 'F');
-  doc.setFontSize(5); doc.setFont('helvetica', 'bold'); setTxt(WHITE);
-  doc.text('S', ML + 3.5, footerY + 7, { align: 'center' });
+  try { doc.addImage(LOGO_B64, 'PNG', ML, footerY + 1.5, 7, 7); } catch(e) {
+    setFill(GREEN); doc.roundedRect(ML, footerY + 2.5, 7, 7, 1.5, 1.5, 'F');
+  }
   doc.setFontSize(6.5); setTxt(TEXT3); doc.setFont('helvetica', 'normal');
   doc.text('Generated by Shohoj . BRAC University CGPA Calculator', ML + 10, footerY + 6.5);
-  doc.text(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), PW - MR, footerY + 6.5, { align: 'right' });
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    + ', ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  doc.text(dateStr, PW - MR, footerY + 6.5, { align: 'right' });
 
   doc.save('BRACU_CGPA_Report_Shohoj.pdf');
 }
