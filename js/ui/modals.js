@@ -117,20 +117,26 @@ export async function importTranscriptPDF(inputEl) {
       }
     }
 
-    // ── Fix F(NT) credits ────────────────────────────────────────────────
-    // BRACU PDFs show 0.00 credits for F(NT) courses, but these courses
-    // still count in GPA denominator with their real credit value.
-    // Look up actual credits from the course catalog.
+    // ── Post-parse cleanup: names, credits ─────────────────────────────
+    // PDF gives ALL-CAPS names like "CSE110 PROGRAMMING LANGUAGE I".
+    // Replace with clean catalog names like "Programming Language I (CSE110)".
+    // Also fix F(NT) credits — BRACU PDFs show 0.00 but they count in GPA.
     parsed.semesters.forEach(sem => {
       sem.courses.forEach(c => {
-        if (c.credits > 0 || c.grade !== 'F(NT)') return;
-        const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/) || c.name.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/);
+        // Extract course code from parsed name
+        const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/)
+                       || c.name.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/);
         const code = codeMatch ? codeMatch[1] : null;
         if (!code) return;
-        if (COURSE_DB[code]) {
-          c.credits = COURSE_DB[code].credits;
-        } else {
-          // Any 100+ level course defaults to 3 credits
+
+        const cat = COURSE_DB[code];
+        if (cat) {
+          // Use clean catalog name: "Programming Language I (CSE110)"
+          c.name = cat.full;
+          // Use catalog credits when PDF shows 0 (F(NT) case)
+          if (!c.credits && cat.credits) c.credits = cat.credits;
+        } else if (c.grade === 'F(NT)' && !c.credits) {
+          // Not in catalog but 100+ level → default 3 credits
           const num = parseInt(code.replace(/^[A-Z]+/, ''));
           if (num >= 100) c.credits = 3;
         }
