@@ -565,6 +565,41 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Biotechnology (BIO)',
     totalCredits: 136,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Introduction to Biotechnology and Genetic Engineering (BTE101)', credits: 3, grade: '' },
+        { name: 'Introduction to Biology (BIO101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Microbial World (BTE102)', credits: 3, grade: '' },
+        { name: 'Plants and People (BTE103)', credits: 3, grade: '' },
+        { name: 'Basic Biochemistry (BCH101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Bangladesh Studies (DEV101)', credits: 3, grade: '' },
+        { name: 'Introduction to Computer Science (CSE101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Bioorganic Chemistry (BTE201)', credits: 3, grade: '' },
+        { name: 'Biophysical Chemistry (BCH102)', credits: 3, grade: '' },
+        { name: 'Introduction to Molecular Biology (BTE203)', credits: 3, grade: '' },
+        { name: 'Human Physiology (BCH201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Metabolism (BTE202)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Genetic Engineering (BTE204)', credits: 3, grade: '' },
+        { name: 'Enzyme and Enzyme Kinetics (BCH202)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Microbial Biotechnology (BTE302)', credits: 3, grade: '' },
+        { name: 'Basic Immunology (BTE303)', credits: 3, grade: '' },
+        { name: 'Advanced Molecular Biology (BTE307)', credits: 3, grade: '' },
+      ]},
+    ]
   },
 };
