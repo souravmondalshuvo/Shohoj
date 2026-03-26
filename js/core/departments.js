@@ -327,7 +327,41 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Electronic & Communication Engineering (ECE)',
     totalCredits: 136,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Principles of Chemistry (CHE110)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits I (ECE101)', credits: 3, grade: '' },
+        { name: 'Computer Programming (ECE103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits II (ECE203)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+        { name: 'Electronic Circuits I (ECE205)', credits: 3, grade: '' },
+        { name: 'Numerical Techniques (ECE282)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Electromagnetic Waves and Fields (ECE241)', credits: 3, grade: '' },
+        { name: 'Signals and Systems (ECE243)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (ECE283)', credits: 3, grade: '' },
+      ]},
+    ]
   },
   ANT: {
     label: 'B.S.S. in Anthropology (ANT)',
