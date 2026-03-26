@@ -373,7 +373,35 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Physics (PHY)',
     totalCredits: 132,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Physics (PHY102)', credits: 2, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Waves, Oscillation and Acoustics (PHY113)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Electricity and Magnetism (PHY115)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Solid State Physics (PHY201)', credits: 3, grade: '' },
+        { name: 'Basic Electronics (PHY306)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+      ]},
+    ]
   },
   APE: {
     label: 'B.Sc. in Applied Physics & Electronics (APE)',
@@ -385,7 +413,40 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Mathematics (MAT)',
     totalCredits: 127,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Basic Algebra (MAT121)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Calculus I (MAT123)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Calculus II (MAT211)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+        { name: 'Differential Equations I (MAT222)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Complex Variables & Fourier Analysis (MAT204)', credits: 3, grade: '' },
+        { name: 'Introduction to Numerical Methods (MAT205)', credits: 3, grade: '' },
+        { name: 'Mathematics Lab I (MAT250)', credits: 2, grade: '' },
+      ]},
+    ]
   },
   MIC: {
     label: 'B.Sc. in Microbiology (MIC)',
