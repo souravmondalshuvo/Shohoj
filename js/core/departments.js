@@ -280,4 +280,52 @@ export const DEPARTMENTS = {
       ]},
     ]
   },
+  CS: {
+    label: 'B.Sc. in Computer Science (CS)',
+    totalCredits: 124,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  ECE: {
+    label: 'B.Sc. in Electronic & Communication Engineering (ECE)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  ANT: {
+    label: 'B.S.S. in Anthropology (ANT)',
+    totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  PHY: {
+    label: 'B.Sc. in Physics (PHY)',
+    totalCredits: 132,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  APE: {
+    label: 'B.Sc. in Applied Physics & Electronics (APE)',
+    totalCredits: 130,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  MAT: {
+    label: 'B.Sc. in Mathematics (MAT)',
+    totalCredits: 127,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  MIC: {
+    label: 'B.Sc. in Microbiology (MIC)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
+  BIO: {
+    label: 'B.Sc. in Biotechnology (BIO)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: []
+  },
 };
