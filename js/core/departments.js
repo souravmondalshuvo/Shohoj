@@ -367,7 +367,42 @@ export const DEPARTMENTS = {
     label: 'B.S.S. in Anthropology (ANT)',
     totalCredits: 120,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Introduction to Anthropology (ANT101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Biological Anthropology (ANT104)', credits: 3, grade: '' },
+        { name: 'Language, Society and Culture (ANT201)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Inequality and Power (ANT202)', credits: 3, grade: '' },
+        { name: 'Social Theory (ANT203)', credits: 3, grade: '' },
+        { name: 'Gender and Society (ANT350)', credits: 3, grade: '' },
+        { name: 'World Civilization and Culture (HUM101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'History of Anthropological Thought (ANT301)', credits: 3, grade: '' },
+        { name: 'Politics, Domination and Society (ANT320)', credits: 3, grade: '' },
+        { name: 'Economy and Society (ANT321)', credits: 3, grade: '' },
+        { name: 'Research Methodology (ANT376)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Contemporary Issues in Anthropological Theory (ANT302)', credits: 3, grade: '' },
+        { name: 'Anthropology of Development (ANT330)', credits: 3, grade: '' },
+        { name: 'Reading Ethnography: Understanding the Anthropological Method (ANT375)', credits: 3, grade: '' },
+      ]},
+    ]
   },
   PHY: {
     label: 'B.Sc. in Physics (PHY)',
