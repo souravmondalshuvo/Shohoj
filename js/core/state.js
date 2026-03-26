@@ -2,8 +2,6 @@
 // Never reassign `state` itself; always mutate properties: state.semesters = [...], etc.
 export const state = {
   semesters:            [],
-  whatIfMode:           false,
-  whatIfGrades:         {},   // key: 'semId-cIdx', value: grade string
   semesterCounter:      0,
   currentDept:          '',
   _restoredFromStorage: false,
