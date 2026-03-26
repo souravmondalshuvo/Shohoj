@@ -632,11 +632,10 @@ h1[data-reveal-hero].visible {
       .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
       .cgpa-display { align-self: flex-end; } .cgpa-display .cgpa-val { font-size: 2rem; }
       .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; align-items: stretch; gap: 0.8rem; }
-      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker, .whatif-cgpa-preview, .playground-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
+      .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .course-row { grid-template-columns: 1fr 54px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
-      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data, .btn-whatif { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
-      .footer-btn-separator { display: none; }
+      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
       .semester-head { padding: 0.7rem 1rem; }
       footer { padding: 2rem 1.2rem; }
       .orb-1 { width: 280px; height: 280px; } .orb-2 { width: 220px; height: 220px; } .orb-3 { width: 180px; height: 180px; }
@@ -648,7 +647,7 @@ h1[data-reveal-hero].visible {
       .btn-primary, .btn-secondary { padding: 12px 24px; font-size: 14px; } .hero-stats { gap: 2rem; margin-top: 3rem; }
       section { padding: 3.5rem 1.5rem; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.2rem 1.5rem; flex-wrap: wrap; } .calc-body { padding: 1rem 1.2rem; }
-      .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker, .whatif-cgpa-preview, .playground-box { margin: 0 1.2rem 1rem; }
+      .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.2rem 1rem; }
       .tracker-stats { grid-template-columns: repeat(2, 1fr); }
       .course-row { grid-template-columns: 1fr 44px 84px 30px 20px; gap: 5px; padding: 7px 1rem; }
     }
@@ -657,7 +656,7 @@ h1[data-reveal-hero].visible {
       .hero h1 { font-size: clamp(3.5rem, 7vw, 5rem); } .hero-sub { max-width: 520px; } .hero-stats { gap: 3rem; }
       section { padding: 4rem 2rem; max-width: 100%; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.3rem 1.8rem; } .calc-body { padding: 1.2rem 1.5rem; }
-      .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker, .whatif-cgpa-preview, .playground-box { margin: 0 1.5rem 1.2rem; }
+      .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.5rem 1.2rem; }
       .course-row { grid-template-columns: 1fr 50px 90px 32px 22px; gap: 6px; }
     }
     @media (min-width: 1024px) and (max-width: 1279px) { section { max-width: 860px; } .hero h1 { font-size: clamp(4rem, 6vw, 5.5rem); } .features-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -667,7 +666,7 @@ h1[data-reveal-hero].visible {
       .hero h1 { font-size: clamp(5rem, 6vw, 7.5rem); } .hero-sub { font-size: 1.25rem; max-width: 560px; }
       .features-grid { grid-template-columns: repeat(3, 1fr); }
       .calc-header { padding: 1.8rem 2.5rem; } .calc-body { padding: 1.8rem 2.5rem; }
-      .calc-footer { padding: 1.5rem 2.5rem; } .cgpa-meter, .simulator-box, .retake-analyzer, .degree-tracker, .whatif-cgpa-preview, .playground-box { margin: 0 2.5rem 1.8rem; }
+      .calc-footer { padding: 1.5rem 2.5rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 2.5rem 1.8rem; }
     }
     @media (min-width: 1920px) { section { max-width: 1100px; } .hero h1 { font-size: 8rem; } .hero-sub { font-size: 1.35rem; } }
     @media (max-width: 767px) and (orientation: landscape) { .hero { min-height: auto; padding: 5rem 2rem 3rem; } .hero h1 { font-size: clamp(2rem, 6vw, 3rem); } .hero-stats { margin-top: 2rem; } }
@@ -792,50 +791,6 @@ h1[data-reveal-hero].visible {
     }
     .pf-select option { background: #0d1a10; }
     [data-theme="light"] .pf-select option { background: #fff; }
-    /* ── CREDITS PROGRESS BAR ───────────────────────────── */
-    .credits-progress {
-      margin: 0 2rem 1.5rem;
-      background: var(--glass2);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.2rem 1.5rem;
-      position: relative;
-    }
-    .credits-progress-track {
-      height: 8px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 100px;
-      overflow: hidden;
-      margin: 0.6rem 0 0.4rem;
-    }
-    [data-theme="light"] .credits-progress-track { background: rgba(0,0,0,0.08); }
-    .credits-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #1a7a44, #2ECC71, #a8ffcb);
-      border-radius: 100px;
-      width: 0%;
-      transition: width 0.6s cubic-bezier(.4,0,.2,1);
-      box-shadow: 0 0 12px rgba(46,204,113,0.5);
-    }
-    .credits-progress-footer {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--text3);
-      margin-top: 0.2rem;
-    }
-    .credits-progress-footer #creditsEarnedLabel {
-      color: var(--green);
-      font-weight: 600;
-    }
-    @media (max-width: 480px) {
-      .credits-progress { margin: 0 0.8rem 0.8rem; padding: 1rem; }
-    }
-    @media (min-width: 1440px) {
-      .credits-progress { margin: 0 2.5rem 1.8rem; }
-    }
 
     /* ── DEGREE PROGRESS TRACKER ───────────────────────── */
     .degree-tracker {
@@ -1218,299 +1173,6 @@ h1[data-reveal-hero].visible {
       .trend-canvas-wrap { height: 180px; }
     }
 
-    /* ── RETAKE IMPACT ANALYZER ────────────────────────── */
-    .retake-analyzer {
-      margin: 0 2rem 1.5rem;
-      background: var(--glass2);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.2rem 1.5rem;
-      position: relative;
-    }
-    .retake-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-    .retake-header h4 {
-      font-family: 'Syne', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin: 0;
-    }
-    .retake-subtitle {
-      font-size: 11px;
-      color: var(--text3);
-      margin-top: 4px;
-      line-height: 1.4;
-    }
-
-    /* Preview (before → after) */
-    .retake-cgpa-preview {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      background: rgba(46,204,113,0.06);
-      border: 1px solid rgba(46,204,113,0.18);
-      border-radius: 10px;
-      padding: 8px 14px;
-      flex-shrink: 0;
-    }
-    .retake-preview-current, .retake-preview-after {
-      text-align: center;
-    }
-    .retake-preview-label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text3);
-      font-weight: 600;
-      margin-bottom: 2px;
-    }
-    .retake-preview-val {
-      font-family: 'Syne', sans-serif;
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--text);
-    }
-    .retake-preview-arrow {
-      color: var(--text3);
-      font-size: 14px;
-    }
-    .retake-preview-delta {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 14px;
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: rgba(46,204,113,0.12);
-    }
-
-    /* Table header */
-    .retake-table-header {
-      display: grid;
-      grid-template-columns: 32px 1fr 180px 90px;
-      align-items: center;
-      padding: 0 4px 8px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 4px;
-    }
-    .retake-th-check { width: 32px; }
-    .retake-th-course, .retake-th-grade, .retake-th-impact {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      color: var(--text3);
-      font-weight: 700;
-    }
-    .retake-th-grade { text-align: center; }
-    .retake-th-impact { text-align: center; }
-
-    /* Row */
-    .retake-row {
-      display: grid;
-      grid-template-columns: 32px 1fr 180px 90px;
-      align-items: center;
-      padding: 10px 4px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
-      transition: background 0.2s;
-      border-radius: 6px;
-    }
-    [data-theme="light"] .retake-row {
-      border-bottom-color: rgba(0,0,0,0.05);
-    }
-    .retake-row:hover {
-      background: rgba(255,255,255,0.03);
-    }
-    [data-theme="light"] .retake-row:hover {
-      background: rgba(0,0,0,0.02);
-    }
-    .retake-row.selected {
-      background: rgba(46,204,113,0.06);
-      border-color: rgba(46,204,113,0.12);
-    }
-    [data-theme="light"] .retake-row.selected {
-      background: rgba(46,204,113,0.08);
-    }
-
-    /* Check circle */
-    .retake-row-check {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .retake-check {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 1.5px solid var(--border);
-      font-size: 11px;
-      color: var(--text3);
-      transition: all 0.2s;
-    }
-    .retake-check.on {
-      background: rgba(46,204,113,0.18);
-      border-color: #2ECC71;
-      color: #2ECC71;
-      font-weight: 700;
-    }
-
-    /* Info */
-    .retake-row-info {
-      overflow: hidden;
-      padding-right: 8px;
-    }
-    .retake-row-name {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      white-space: normal;
-      line-height: 1.4;
-    }
-    .retake-row-meta {
-      display: flex;
-      gap: 8px;
-      margin-top: 2px;
-    }
-    .retake-row-sem {
-      font-size: 10px;
-      color: var(--text3);
-    }
-    .retake-row-cr {
-      font-size: 10px;
-      color: var(--text3);
-      opacity: 0.7;
-    }
-
-    /* Grade column */
-    .retake-row-grade {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .retake-current-grade {
-      font-weight: 800;
-      font-size: 13px;
-      font-family: 'Syne', sans-serif;
-      min-width: 28px;
-      text-align: right;
-    }
-    .retake-arrow {
-      color: var(--text3);
-      font-size: 12px;
-    }
-    .retake-target-select {
-      background: var(--input-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 4px 8px;
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.2s, opacity 0.2s;
-      min-width: 72px;
-    }
-    .retake-target-select:focus {
-      border-color: rgba(46,204,113,0.5);
-    }
-    .retake-row.selected .retake-target-select {
-      opacity: 1 !important;
-      border-color: rgba(46,204,113,0.35);
-    }
-
-    /* Impact column */
-    .retake-row-impact {
-      text-align: center;
-    }
-    .retake-impact-cgpa {
-      font-family: 'Syne', sans-serif;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-    }
-    .retake-impact-boost {
-      font-size: 10px;
-      font-weight: 700;
-      margin-top: 1px;
-    }
-
-    /* Summary / hint */
-    .retake-summary {
-      margin-top: 12px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: rgba(46,204,113,0.07);
-      border: 1px solid rgba(46,204,113,0.18);
-    }
-    .retake-summary-count {
-      font-size: 12px;
-      font-weight: 700;
-      color: #2ECC71;
-      margin-bottom: 4px;
-    }
-    .retake-summary-insight {
-      font-size: 12px;
-      color: var(--text2);
-      line-height: 1.5;
-    }
-    .retake-hint {
-      margin-top: 10px;
-      font-size: 11px;
-      color: var(--text3);
-      text-align: center;
-      padding: 8px 0;
-    }
-
-    /* Responsive */
-    @media (max-width: 480px) {
-      .retake-analyzer { margin: 0 0.8rem 0.8rem; padding: 1rem; }
-      .retake-table-header { grid-template-columns: 28px 1fr 130px 70px; }
-      .retake-row { grid-template-columns: 28px 1fr 130px 70px; padding: 8px 2px; }
-      .retake-row-name { font-size: 11px; }
-      .retake-current-grade { font-size: 11px; min-width: 22px; }
-      .retake-target-select { font-size: 11px; min-width: 60px; padding: 3px 5px; }
-      .retake-impact-cgpa { font-size: 12px; }
-      .retake-header { flex-direction: column; }
-      .retake-cgpa-preview { width: 100%; justify-content: center; }
-    }
-    @media (min-width: 481px) and (max-width: 640px) {
-      .retake-table-header { grid-template-columns: 30px 1fr 150px 80px; }
-      .retake-row { grid-template-columns: 30px 1fr 150px 80px; }
-      .retake-header { flex-direction: column; }
-      .retake-cgpa-preview { width: 100%; justify-content: center; }
-    }
-    @media (max-width: 360px) {
-      .retake-table-header, .retake-row {
-        grid-template-columns: 26px 1fr 100px 60px;
-      }
-    }
-    @media (min-width: 768px) {
-      .retake-analyzer { margin: 0 1.5rem 1.2rem; }
-    }
-    @media (min-width: 1024px) {
-      .retake-analyzer { margin: 0 2rem 1.5rem; }
-    }
-    @media (min-width: 1440px) {
-      .retake-analyzer { margin: 0 2.5rem 1.8rem; }
-    }
 
     /* ── RUNNING SEMESTER ───────────────────────────────── */
     .semester-block.semester-running {
@@ -1559,12 +1221,6 @@ h1[data-reveal-hero].visible {
       gap: 8px;
       flex-wrap: wrap;
       align-items: center;
-    }
-    .footer-btn-separator {
-      width: 1px;
-      height: 24px;
-      background: var(--border);
-      flex-shrink: 0;
     }
     .btn-clear-data {
       padding: 10px 18px;
@@ -2010,14 +1666,6 @@ h1[data-reveal-hero].visible {
   margin-bottom: 10px;
 }
 
-/* retake table rows — larger touch target */
-.retake-row {
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.retake-row:hover { background: rgba(46,204,113,0.04); }
-.retake-row.checked { background: rgba(46,204,113,0.07); }
 
 /* ══════════════════════════════════════════════════════════
    #4  SEMESTER GPA BADGE (already exists — polish only)
@@ -2032,119 +1680,6 @@ h1[data-reveal-hero].visible {
   border: 1px solid rgba(46,204,113,0.22);
   font-family: 'DM Sans', sans-serif;
   letter-spacing: 0.3px;
-}
-
-/* ══════════════════════════════════════════════════════════
-   #5  WHAT-IF MODE
-   ══════════════════════════════════════════════════════════ */
-.whatif-toggle-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 6px 0 0;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(240,165,0,0.06);
-  border: 1px solid rgba(240,165,0,0.18);
-  cursor: pointer;
-  user-select: none;
-  width: fit-content;
-  transition: background 0.2s;
-}
-.whatif-toggle-row:hover { background: rgba(240,165,0,0.10); }
-.whatif-toggle-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #F0A500;
-  font-family: 'DM Sans', sans-serif;
-}
-.whatif-badge {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(240,165,0,0.15);
-  color: #F0A500;
-}
-.course-row.whatif-active {
-  background: rgba(240,165,0,0.04);
-  border-left: 2px solid rgba(240,165,0,0.4);
-}
-.course-row.whatif-active input[type="text"] {
-  opacity: 0.6;
-  pointer-events: none;
-}
-/* What-if grade select — gold tinted, prominent */
-.whatif-grade-select {
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 6px;
-  border-radius: 6px;
-  max-width: 72px;
-  cursor: pointer;
-  background: rgba(240,165,0,0.12) !important;
-  border: 1px solid rgba(240,165,0,0.4) !important;
-  color: #F0A500 !important;
-  transition: background 0.2s, border-color 0.2s;
-}
-.whatif-grade-select:hover {
-  background: rgba(240,165,0,0.20) !important;
-  border-color: rgba(240,165,0,0.6) !important;
-}
-.whatif-cgpa-preview {
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: rgba(240,165,0,0.07);
-  border: 1px solid rgba(240,165,0,0.22);
-  margin: 0 1.5rem 0.8rem;
-}
-.whatif-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.whatif-cgpa-hero {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.whatif-cgpa-label { font-size: 12px; font-weight: 600; color: var(--text3); }
-.whatif-cgpa-val   { font-size: 22px; font-weight: 800; color: #F0A500; font-family: 'Syne', sans-serif; }
-.whatif-cgpa-delta { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
-                     background: rgba(240,165,0,0.15); color: #F0A500; }
-.whatif-changes-list {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(240,165,0,0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.whatif-change-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-.whatif-change-course {
-  font-weight: 600;
-  color: var(--text2);
-  min-width: 70px;
-}
-.whatif-change-grades {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
-.whatif-change-impact {
-  margin-left: auto;
-  font-weight: 700;
-  font-size: 11px;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2217,36 +1752,6 @@ h1[data-reveal-hero].visible {
   margin-top: 1px;
 }
 
-.btn-whatif {
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  background: rgba(240,165,0,0.06);
-  border: 1px solid rgba(240,165,0,0.25);
-  color: #F0A500;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
-}
-.btn-whatif:hover {
-  background: rgba(240,165,0,0.12);
-  border-color: rgba(240,165,0,0.45);
-  color: #F0A500;
-  box-shadow: 0 0 12px rgba(240,165,0,0.15);
-}
-.btn-whatif-active {
-  background: rgba(240,165,0,0.15) !important;
-  border-color: rgba(240,165,0,0.5) !important;
-  color: #F0A500 !important;
-  box-shadow: 0 0 16px rgba(240,165,0,0.2);
-}
-.btn-whatif-active:hover {
-  background: rgba(231,76,60,0.12) !important;
-  border-color: rgba(231,76,60,0.4) !important;
-  color: #e74c3c !important;
-  box-shadow: 0 0 12px rgba(231,76,60,0.15);
-}
 
 /* ══════════════════════════════════════════════════════════
    #11  CGPA PLAYGROUND
