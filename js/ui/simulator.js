@@ -256,7 +256,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking retakes.
       </div>
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse">
+        <table class="sim-retake-table" style="width:100%;border-collapse:collapse">
           <thead>
             <tr style="border-bottom:1px solid var(--border)">
               <th style="padding:4px 8px;width:24px"></th>
