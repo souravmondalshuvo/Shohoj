@@ -1694,14 +1694,16 @@ h1[data-reveal-hero].visible {
    #8  MOBILE COURSE ROW FIX
    ══════════════════════════════════════════════════════════ */
 @media (max-width: 580px) {
-  /* Course row: hide grade-point col, tighten layout */
+  /* Course row: hide grade-letter col, keep grade-point input */
   .course-row {
-    grid-template-columns: 1fr 60px 50px 24px !important;
+    grid-template-columns: 1fr 54px 70px 24px !important;
     gap: 6px !important;
     padding: 7px 10px !important;
   }
-  /* Hide grade-point (3rd col) — it's derivative */
-  .course-row > *:nth-child(3) { display: none !important; }
+  /* Hide grade letter (4th col) — grade-point input (3rd) is the primary input */
+  .course-row > *:nth-child(4) { display: none !important; }
+  /* Also hide it in header row */
+  .course-row.course-header > *:nth-child(4) { display: none !important; }
   /* Credits pill full width on mobile */
   .credits-static { min-width: 44px; font-size: 11px; }
   /* Semester head wraps gracefully */
@@ -1710,6 +1712,12 @@ h1[data-reveal-hero].visible {
   /* Footer buttons scroll horizontally */
   .footer-btn-group { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; }
   .footer-btn-group button { flex-shrink: 0; }
+  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (6th) columns */
+  .sim-retake-table th:nth-child(3),
+  .sim-retake-table td:nth-child(3) { display: none; }
+  .sim-retake-table th:nth-child(6),
+  .sim-retake-table td:nth-child(6) { display: none; }
+  .sim-retake-table td:nth-child(2) { max-width: 140px; }
 }
 
 /* ══════════════════════════════════════════════════════════
