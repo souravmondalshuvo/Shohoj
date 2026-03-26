@@ -442,7 +442,43 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Applied Physics & Electronics (APE)',
     totalCredits: 130,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Mechanics, Properties of Matter, Waves & Oscillations (APE101)', credits: 3, grade: '' },
+        { name: 'Introduction to Computer Science (CSE101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Mathematics (MAT102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Thermal Physics, Radiation & Statistical Mechanics (APE102)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits I (APE103)', credits: 3, grade: '' },
+        { name: 'Calculus (MAT105)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Bangladesh Studies (DEV101)', credits: 3, grade: '' },
+        { name: 'APE Lab I (APE104)', credits: 1.5, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Solid State Physics & Materials Science (APE201)', credits: 3, grade: '' },
+        { name: 'Electrodynamics & Electromagnetic Waves & Fields (APE202)', credits: 3, grade: '' },
+        { name: 'Electricity and Magnetism (PHY115)', credits: 3, grade: '' },
+        { name: 'Matrices, Linear Algebra & Differential Equations (MAT203)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Electrical Circuits II (APE203)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (APE204)', credits: 3, grade: '' },
+        { name: 'Electronic Devices and Circuits I (APE205)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Complex Variables & Fourier Analysis (MAT204)', credits: 3, grade: '' },
+        { name: 'Optics (PHY202)', credits: 3, grade: '' },
+        { name: 'APE Lab II (APE206)', credits: 1.5, grade: '' },
+      ]},
+    ]
   },
   MAT: {
     label: 'B.Sc. in Mathematics (MAT)',
