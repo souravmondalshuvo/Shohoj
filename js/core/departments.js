@@ -284,7 +284,44 @@ export const DEPARTMENTS = {
     label: 'B.Sc. in Computer Science (CS)',
     totalCredits: 124,
     seasons: ['Spring', 'Summer', 'Fall'],
-    presets: []
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Programming Language I (CSE110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Programming Language-II (CSE111)', credits: 3, grade: '' },
+        { name: 'Discrete Mathematics (CSE230)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Data Structures (CSE220)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (CSE260)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Algorithms (CSE221)', credits: 3, grade: '' },
+        { name: 'Numerical Methods (CSE330)', credits: 3, grade: '' },
+        { name: 'Computer Architecture (CSE340)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Operating Systems (CSE321)', credits: 3, grade: '' },
+        { name: 'Automata and Computability (CSE331)', credits: 3, grade: '' },
+        { name: 'Database Systems (CSE370)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+      ]},
+    ]
   },
   ECE: {
     label: 'B.Sc. in Electronic & Communication Engineering (ECE)',
