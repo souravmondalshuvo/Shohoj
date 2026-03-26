@@ -29,7 +29,7 @@ JS_FILES = [
     'js/ui/tracker.js',         # imports grades, departments, state, calculator, helpers
     'js/ui/render.js',          # imports grades, departments, state, calculator, helpers
     'js/ui/simulator.js',       # imports grades, state, calculator
-    'js/ui/modals.js',          # imports grades, departments, state, calculator, parser
+    'js/ui/modals.js',          # imports grades, departments, state, calculator, parser, catalog
     # Animations
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
@@ -105,10 +105,7 @@ function clearAllData() {
   clearState();
   state.semesters = [];
   state.semesterCounter = 0;
-  state.whatIfMode = false;
-  Object.keys(state.whatIfGrades).forEach(k => delete state.whatIfGrades[k]);
-  const btn = document.getElementById('whatIfBtn');
-  if (btn) { btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = ''; btn.textContent = '🔮 What-if'; }
+  resetPlayground();
   renderSemesters();
   recalc();
 }
