@@ -30,6 +30,7 @@ JS_FILES = [
     'js/ui/render.js',          # imports grades, departments, state, calculator, helpers
     'js/ui/simulator.js',       # imports grades, state, calculator
     'js/ui/modals.js',          # imports grades, departments, state, calculator, parser, catalog
+    'js/ui/playground.js',      # imports grades, state, calculator
     # Animations
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
