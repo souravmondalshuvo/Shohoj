@@ -310,7 +310,7 @@ function renderReverseSolver(courses, totals) {
           placeholder="e.g. 3.00" value="${effectiveTarget}"
           oninput="onSolverTargetChange(this.value)" />
       </div>
-      <div class="pg-solver-input-group" style="flex:2">
+      <div class="pg-solver-input-group">
         <label class="pg-solver-label">Course</label>
         <select class="pg-solver-course-select" onchange="onSolverCourseChange(this.value)">
           <option value="" disabled ${!pg.solverKey ? 'selected' : ''}>Pick a course</option>
