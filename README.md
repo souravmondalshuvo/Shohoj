@@ -16,8 +16,8 @@
   <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/Departments-8%20Supported-9B59B6?style=flat-square" alt="Departments" />
-  <img src="https://img.shields.io/badge/Courses-500%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
+  <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
+  <img src="https://img.shields.io/badge/Courses-758%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
 </p>
 
 ---
@@ -98,7 +98,7 @@ Visual timeline of your degree journey — credits earned vs total required, sem
 
 ### 🔍 Course Autocomplete
 
-Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **500 courses** across all 8 departments. Credits auto-fill when you pick a course.
+Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **758 courses** across all **16 departments**. Credits auto-fill when you pick a course.
 
 <p align="center">
   <img src="assets/screenshots/autocomplete.png" alt="Course Autocomplete" width="700" />
@@ -116,9 +116,21 @@ Export a professionally designed grade report — color-coded grade badges, per-
 
 Automatic alerts when your semester credit load falls below the 9-credit minimum, exceeds the 15-credit maximum, or enters the 13–15 range that requires chairman's permission.
 
-### 🏛️ 8 Department Presets
+### 🏅 Academic Standing
 
-Pre-built semester templates for **CSE, EEE, BBA, Economics, English, Architecture, Pharmacy, and Law**. Select your department and get a ready-made course plan to start from. Includes bi/tri-semester support — Pharmacy runs Spring+Summer, Law runs Spring+Fall, all others run all three semesters.
+Live indicator showing your current academic standing based on BRACU policy — from Perfect Standing (4.0) and Higher Distinction (≥3.65) down to Academic Probation (<2.0). Updates instantly as you enter grades.
+
+### 🎯 Running Semester (Projected CGPA)
+
+Add a "running" semester for your current in-progress courses. See projected CGPA before final grades come in — without affecting your earned credits or official CGPA.
+
+### ↕️ Drag-to-Reorder Semesters
+
+Drag and drop semester blocks to reorder them. Useful if you imported a transcript and want to rearrange the layout.
+
+### 🏛️ 16 Department Presets
+
+Pre-built semester templates for **CSE, CS, ECE, EEE, BBA, Economics, English, Anthropology, Physics, Applied Physics & Electronics, Mathematics, Microbiology, Biotechnology, Architecture, Pharmacy, and Law**. Select your department and get a ready-made course plan to start from. Includes bi/tri-semester support — Pharmacy runs Spring+Summer, Law runs Spring+Fall, all others run all three semesters.
 
 ### 🌓 Dark & Light Theme
 
@@ -134,24 +146,32 @@ Shohoj is built to feel like a real product, not a student project.
 - **Animated dot matrix background** — spring-physics canvas with mouse-reactive particles
 - **Custom cursor system** — animated dot + ring + glow with hover/click states, circle-to-I-beam morphing with spring easing
 - **Scroll reveal animations** — IntersectionObserver-powered entrance effects with staggered timing
-- **Responsive layout** — works on desktop and mobile with 5 breakpoints (480px → 1440px+)
+- **Responsive layout** — works on desktop and mobile with 6 breakpoints (480px → 1920px)
 
 ---
 
 ## Supported Departments
 
-| Department                          | Code | Courses | Credits | Status          |
-| ----------------------------------- | ---- | ------- | ------- | --------------- |
-| Computer Science & Engineering      | CSE  | 51      | 136     | 🟢 Full support |
-| Electrical & Electronic Engineering | EEE  | 42      | 136     | 🟢 Full support |
-| Business Administration             | BBA  | 99      | 130     | 🟢 Full support |
-| Economics                           | ECO  | 39      | 120     | 🟢 Full support |
-| English                             | ENG  | 66      | 120     | 🟢 Full support |
-| Architecture                        | ARC  | 49      | 207     | 🟢 Full support |
-| Pharmacy                            | PHR  | 60      | 164     | 🟢 Full support |
-| Law                                 | LLB  | 34      | 135     | 🟢 Full support |
+| Department                          | Code | Credits | Semesters  | Status          |
+| ----------------------------------- | ---- | ------- | ---------- | --------------- |
+| Computer Science & Engineering      | CSE  | 136     | Tri        | 🟢 Full support |
+| Computer Science                    | CS   | 124     | Tri        | 🟢 Full support |
+| Electronic & Communication Eng.     | ECE  | 136     | Tri        | 🟢 Full support |
+| Electrical & Electronic Engineering | EEE  | 136     | Tri        | 🟢 Full support |
+| Business Administration             | BBA  | 130     | Tri        | 🟢 Full support |
+| Economics                           | ECO  | 120     | Tri        | 🟢 Full support |
+| English                             | ENG  | 120     | Tri        | 🟢 Full support |
+| Anthropology                        | ANT  | 120     | Tri        | 🟢 Full support |
+| Physics                             | PHY  | 132     | Tri        | 🟢 Full support |
+| Applied Physics & Electronics       | APE  | 130     | Tri        | 🟢 Full support |
+| Mathematics                         | MAT  | 127     | Tri        | 🟢 Full support |
+| Microbiology                        | MIC  | 136     | Tri        | 🟢 Full support |
+| Biotechnology                       | BIO  | 136     | Tri        | 🟢 Full support |
+| Architecture                        | ARC  | 207     | Tri        | 🟢 Full support |
+| Pharmacy                            | PHR  | 164     | Bi (Sp+Su) | 🟢 Full support |
+| Law                                 | LLB  | 135     | Bi (Sp+Fa) | 🟢 Full support |
 
-**Total: 500 courses in catalog** (including GED/common courses shared across departments)
+**Total: 758 courses in catalog** (including GED/common courses shared across departments)
 
 ---
 
@@ -248,8 +268,8 @@ Shohoj/
 │   │   ├── grades.js             BRACU grading scale & grade detection
 │   │   ├── helpers.js            Semester name generation, season/year utilities
 │   │   ├── state.js              Shared state object, localStorage persistence
-│   │   ├── departments.js        8 department definitions with preset semesters
-│   │   ├── catalog.js            Full BRACU course database (500 courses)
+│   │   ├── departments.js        16 department definitions with preset semesters
+│   │   ├── catalog.js            Full BRACU course database (758 courses)
 │   │   └── calculator.js         GPA/CGPA engine, retake policy, credit warnings
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder
