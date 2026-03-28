@@ -87,6 +87,7 @@ export function renderSemesters() {
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
                 oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
+                onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
           }
           <span class="grade-letter" id="gl-${sem.id}-${i}"
