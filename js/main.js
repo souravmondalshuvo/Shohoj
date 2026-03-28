@@ -4,7 +4,7 @@ import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
 import {
   calcSemGPA, getRetakenKeys, autoDetectGrade,
-  onPFChange, getSemCreditWarning
+  onPFChange, getSemCreditWarning, onGradePointBlur
 } from './core/calculator.js';
 import {
   generateSemesterNames, getStartSeason, getStartYear
@@ -72,6 +72,7 @@ window.closeSuggestions  = closeSuggestions;
 window.pickSuggestion    = pickSuggestion;
 window.autoDetectGrade   = autoDetectGrade;
 window.onPFChange        = onPFChange;
+window.onGradePointBlur  = onGradePointBlur;
 window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
