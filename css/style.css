@@ -1985,13 +1985,17 @@ h1[data-reveal-hero].visible {
 }
 .pg-solver-target, .pg-solver-course-select {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--glass);
   color: var(--text);
   font-size: 13px;
   height: 40px;
   box-sizing: border-box;
+}
+.pg-solver-course-select {
+  -webkit-appearance: none;
+  appearance: none;
 }
 .pg-solver-result {
   padding: 14px 16px;
