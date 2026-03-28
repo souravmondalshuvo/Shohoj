@@ -1990,6 +1990,8 @@ h1[data-reveal-hero].visible {
   background: var(--glass);
   color: var(--text);
   font-size: 13px;
+  height: 40px;
+  box-sizing: border-box;
 }
 .pg-solver-result {
   padding: 14px 16px;
