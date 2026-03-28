@@ -77,6 +77,34 @@ export function getSemCreditWarning(sem) {
   return null;
 }
 
+/**
+ * Normalize grade point input for common shorthand.
+ * Two modes:
+ *   'input' — only fixes 2-digit shorthand (safe mid-typing)
+ *             "33" → "3.3",  "27" → "2.7",  "40" → "4.0"
+ *   'blur'  — also fixes single digits (user is done typing)
+ *             "3"  → "3.0",  "0"  → "0.0",  "4"  → "4.0"
+ * Already valid inputs like "3.3", "2.70", "NT" pass through unchanged.
+ */
+function normalizeGradePoint(raw, mode) {
+  const trimmed = raw.trim();
+
+  // Let NT / text pass through untouched
+  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
+
+  // Already has a decimal point → leave it alone
+  if (trimmed.includes('.')) return trimmed;
+
+  // Two digits where first is 0-4 → insert decimal  (e.g. "33" → "3.3", "27" → "2.7")
+  if (/^[0-4]\d$/.test(trimmed)) return trimmed[0] + '.' + trimmed[1];
+
+  // Single digit 0-4 → append .0 — only on blur (user is done typing)
+  if (mode === 'blur' && /^[0-4]$/.test(trimmed)) return trimmed + '.0';
+
+  // Anything else → pass through
+  return trimmed;
+}
+
 export function autoDetectGrade(semId, cIdx, val, inputEl) {
   if (val.trim().toUpperCase() === 'NT') {
     const sem = state.semesters.find(s => s.id === semId);
@@ -87,6 +115,14 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
     window._shohoj_renderAndRecalc();
     return;
   }
+
+  // Normalize shorthand: "33" → "3.3" (2-digit only on input)
+  const normalized = normalizeGradePoint(val, 'input');
+  if (normalized !== val) {
+    inputEl.value = normalized;
+    val = normalized;
+  }
+
   const letter = detectGrade(val);
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem) return;
@@ -108,6 +144,22 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
       gpInput.focus();
       const len = gpInput.value.length;
       gpInput.setSelectionRange(len, len);
+    }
+  }
+}
+
+/** Called on blur — normalizes single digits like "3" → "3.0" */
+export function onGradePointBlur(semId, cIdx, inputEl) {
+  const val = inputEl.value;
+  const normalized = normalizeGradePoint(val, 'blur');
+  if (normalized !== val) {
+    inputEl.value = normalized;
+    const sem = state.semesters.find(s => s.id === semId);
+    if (sem) {
+      sem.courses[cIdx].gradePoint = normalized;
+      const letter = detectGrade(normalized);
+      if (letter) sem.courses[cIdx].grade = letter;
+      window._shohoj_renderAndRecalc();
     }
   }
 }
