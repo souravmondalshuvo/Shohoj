@@ -304,13 +304,13 @@ function renderReverseSolver(courses, totals) {
 
   return `
     <div class="pg-solver-inputs">
-      <div class="pg-solver-input-group">
+      <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
           placeholder="e.g. 3.00" value="${effectiveTarget}"
           oninput="onSolverTargetChange(this.value)" />
       </div>
-      <div class="pg-solver-input-group">
+      <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
         <label class="pg-solver-label">Course</label>
         <select class="pg-solver-course-select" onchange="onSolverCourseChange(this.value)">
           <option value="" disabled ${!pg.solverKey ? 'selected' : ''}>Pick a course</option>
