@@ -105,6 +105,18 @@ function normalizeGradePoint(raw, mode) {
   return trimmed;
 }
 
+/**
+ * Clamp a grade point value to the valid 0.0–4.0 range.
+ * Returns the clamped string, or the original if non-numeric.
+ */
+function clampGradePoint(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return val;
+  if (n > 4.0) return '4.0';
+  if (n < 0)   return '0.0';
+  return val;
+}
+
 export function autoDetectGrade(semId, cIdx, val, inputEl) {
   if (val.trim().toUpperCase() === 'NT') {
     const sem = state.semesters.find(s => s.id === semId);
@@ -117,10 +129,17 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 
   // Normalize shorthand: "33" → "3.3" (2-digit only on input)
-  const normalized = normalizeGradePoint(val, 'input');
+  let normalized = normalizeGradePoint(val, 'input');
   if (normalized !== val) {
     inputEl.value = normalized;
     val = normalized;
+  }
+
+  // Clamp to 0.0–4.0 range
+  const clamped = clampGradePoint(val);
+  if (clamped !== val) {
+    inputEl.value = clamped;
+    val = clamped;
   }
 
   const letter = detectGrade(val);
@@ -148,16 +167,20 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 }
 
-/** Called on blur — normalizes single digits like "3" → "3.0" */
+/** Called on blur — normalizes single digits like "3" → "3.0" and clamps to 0.0–4.0 */
 export function onGradePointBlur(semId, cIdx, inputEl) {
-  const val = inputEl.value;
+  const original = inputEl.value;
+  let val = original;
   const normalized = normalizeGradePoint(val, 'blur');
-  if (normalized !== val) {
-    inputEl.value = normalized;
+  if (normalized !== val) val = normalized;
+  const clamped = clampGradePoint(val);
+  if (clamped !== val) val = clamped;
+  if (val !== original) {
+    inputEl.value = val;
     const sem = state.semesters.find(s => s.id === semId);
     if (sem) {
-      sem.courses[cIdx].gradePoint = normalized;
-      const letter = detectGrade(normalized);
+      sem.courses[cIdx].gradePoint = val;
+      const letter = detectGrade(val);
       if (letter) sem.courses[cIdx].grade = letter;
       window._shohoj_renderAndRecalc();
     }
