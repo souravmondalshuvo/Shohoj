@@ -395,7 +395,9 @@
     .simulator-box h4 { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
     .simulator-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .simulator-row label { font-size: 13px; color: var(--text2); white-space: nowrap; }
-    .simulator-row input { background: var(--input-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; padding: 8px 12px; width: 90px; outline: none; transition: border-color 0.2s, background 0.2s; }
+    .simulator-row input { background: var(--input-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; padding: 8px 12px; width: 130px; outline: none; transition: border-color 0.2s, background 0.2s; -moz-appearance: textfield; }
+    .simulator-row input::-webkit-outer-spin-button,
+    .simulator-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .simulator-row input:focus { border-color: rgba(46,204,113,0.55); background: rgba(46,204,113,0.05); }
     .simulator-result { margin-top: 0.8rem; font-size: 13px; color: var(--text2); line-height: 1.6; min-height: 20px; overflow-x: auto; }
     .simulator-result .highlight { color: var(--green); font-weight: 600; }
