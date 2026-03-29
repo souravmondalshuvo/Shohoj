@@ -627,7 +627,9 @@ h1[data-reveal-hero].visible {
       .hero-badge { font-size: 11px; padding: 5px 11px; }
       .hero-cta { flex-direction: column; align-items: center; gap: 10px; }
       .btn-primary, .btn-secondary { width: 100%; max-width: 280px; text-align: center; padding: 13px 20px; }
-      .hero-stats { gap: 1.5rem; margin-top: 2.5rem; } .stat-num { font-size: 1.5rem; }
+      .hero-stats { gap: 1.2rem; margin-top: 2.5rem; flex-wrap: wrap; justify-content: center; }
+      .stat-num { font-size: 1.4rem; }
+      .stat-label { font-size: 10px; }
       section { padding: 3rem 1.2rem; } .section-title { font-size: 1.6rem; letter-spacing: -0.5px; }
       .features-grid { grid-template-columns: 1fr; } .feature-card { padding: 1.4rem; }
       .calc-wrapper { border-radius: 14px; }
@@ -636,11 +638,24 @@ h1[data-reveal-hero].visible {
       .calc-body { padding: 0.8rem; } .calc-footer { padding: 0.8rem 1rem; flex-direction: column; align-items: stretch; gap: 0.8rem; }
       .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
+      .simulator-row input { width: 100% !important; }
       .course-row { grid-template-columns: 1fr 54px 76px 28px 20px; gap: 4px; padding: 7px 0.8rem; }
       .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
       .semester-head { padding: 0.7rem 1rem; }
       footer { padding: 2rem 1.2rem; }
       .orb-1 { width: 280px; height: 280px; } .orb-2 { width: 220px; height: 220px; } .orb-3 { width: 180px; height: 180px; }
+      /* ── Dept select full width on mobile ── */
+      #deptSelect { width: 100% !important; max-width: 100% !important; }
+      #deptCredits { width: 100% !important; justify-content: center; }
+      #startSemRow { width: 100%; }
+      #startSemRow select { flex: 1; min-width: 0; }
+      #startSemRow button { width: 100%; }
+      /* ── Standing box mobile ── */
+      .standing-inner { flex-wrap: wrap; }
+      .standing-desc { max-width: 100%; }
+      /* ── Playground solver stack on mobile ── */
+      .pg-solver-inputs { flex-direction: column !important; }
+      .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
     }
     @media (min-width: 481px) and (max-width: 767px) {
       nav { padding: 0 1.4rem; height: 60px; }
@@ -652,6 +667,11 @@ h1[data-reveal-hero].visible {
       .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.2rem 1rem; }
       .tracker-stats { grid-template-columns: repeat(2, 1fr); }
       .course-row { grid-template-columns: 1fr 44px 84px 30px 20px; gap: 5px; padding: 7px 1rem; }
+      /* ── Tablet: dept select + solver fixes ── */
+      #deptSelect { width: 100% !important; max-width: 100% !important; }
+      .simulator-row input { width: 130px; }
+      .pg-solver-inputs { flex-direction: row; }
+      .standing-inner { flex-wrap: wrap; }
     }
     @media (min-width: 768px) and (max-width: 1023px) {
       nav { padding: 0 1.8rem; } .hero { padding: 7rem 2.5rem 4rem; }
@@ -1720,6 +1740,11 @@ h1[data-reveal-hero].visible {
   .sim-retake-table th:nth-child(6),
   .sim-retake-table td:nth-child(6) { display: none; }
   .sim-retake-table td:nth-child(2) { max-width: 140px; }
+  /* ── Playground solver stack on small tablets ── */
+  .pg-solver-inputs { flex-direction: column !important; }
+  .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
+  /* ── Simulator inputs wider on small screens ── */
+  .simulator-row input { width: 100% !important; }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2074,4 +2099,10 @@ h1[data-reveal-hero].visible {
   .pg-tab { min-width: 0; }
   .pg-solver-result { flex-direction: column; }
   .pg-add-row { flex-direction: column; }
+  .pg-hero { flex-direction: column; align-items: flex-start; }
+  .pg-hero-val { font-size: 18px; }
+  .pg-hero-delta { margin-left: 0; }
+  .pg-change-row { flex-wrap: wrap; }
+  .pg-course-select { min-width: 0 !important; width: 100% !important; }
+  .pg-grade-select { min-width: 0 !important; }
 }
