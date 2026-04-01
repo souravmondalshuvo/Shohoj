@@ -63,6 +63,7 @@ const _CATALOG = [
   ['DEV104','Foundations of International Development',3],
   ['DEV201','Health, Culture and Development',3],
   ['ENG091','Foundation Course in English',0],
+  ['ENG092','Remedial Course in English',0],
   ['ENG101','Fundamentals of English',3],
   ['ENG102','English Composition I',3],
   ['ENG103','Advanced Writing Skills and Presentation',3],
