@@ -1,6 +1,7 @@
 import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
+import { escHtml, escAttr } from '../core/helpers.js';
 
 const _retakeChecked = new Set();
 
@@ -198,13 +199,15 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       ? `<span style="color:#2ECC71;font-size:14px">☑</span>`
       : `<span style="color:var(--text3);font-size:14px">☐</span>`;
     const rowBg = checked ? 'background:rgba(29,185,84,0.07);' : '';
+    // XSS FIX: escape c.name, c.sem, and c.key before inserting into HTML
+    const safeKey = escAttr(c.key);
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
-                onclick="window._toggleRetake('${c.key.replace(/'/g,"\\'")}')">
+                onclick="window._toggleRetake('${safeKey}')">
       <td style="padding:6px 8px;font-size:12px">${chk}</td>
-      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.name}">${c.name}</td>
-      <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${c.sem}</td>
+      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(c.name)}">${escHtml(c.name)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${escHtml(c.sem)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px">
-        <span style="font-weight:700;color:${gradeCol(c.grade)}">${c.grade}</span>
+        <span style="font-weight:700;color:${gradeCol(c.grade)}">${escHtml(c.grade)}</span>
         <span style="color:var(--text3)"> → </span>
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
