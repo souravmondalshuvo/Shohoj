@@ -4,6 +4,7 @@ import { state, saveState, clearState } from '../core/state.js';
 import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
 import { parseTranscriptText, parseBlobFallback } from '../import/parser.js';
 import { COURSE_DB } from '../core/catalog.js';
+import { escHtml } from '../core/helpers.js';
 
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -73,6 +74,10 @@ export function hideImportModal() {
   if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; }, 220); }
 }
 
+// ── IMPORT: store parsed data in a temp slot so the "Import Now" button
+//    doesn't need to serialize it into an HTML attribute (XSS risk). ──────
+let _pendingImport = null;
+
 export async function importTranscriptPDF(inputEl) {
   const file = inputEl.files[0];
   if (!file) return;
@@ -118,12 +123,8 @@ export async function importTranscriptPDF(inputEl) {
     }
 
     // ── Post-parse cleanup: names, credits ─────────────────────────────
-    // PDF gives ALL-CAPS names like "CSE110 PROGRAMMING LANGUAGE I".
-    // Replace with clean catalog names like "Programming Language I (CSE110)".
-    // Also fix F(NT) credits — BRACU PDFs show 0.00 but they count in GPA.
     parsed.semesters.forEach(sem => {
       sem.courses.forEach(c => {
-        // Extract course code from parsed name
         const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/)
                        || c.name.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/);
         const code = codeMatch ? codeMatch[1] : null;
@@ -131,12 +132,9 @@ export async function importTranscriptPDF(inputEl) {
 
         const cat = COURSE_DB[code];
         if (cat) {
-          // Use clean catalog name: "Programming Language I (CSE110)"
           c.name = cat.full;
-          // Use catalog credits when PDF shows 0 (F(NT) case)
           if (!c.credits && cat.credits) c.credits = cat.credits;
         } else if (c.grade === 'F(NT)' && !c.credits) {
-          // Not in catalog but 100+ level → default 3 credits
           const num = parseInt(code.replace(/^[A-Z]+/, ''));
           if (num >= 100) c.credits = 3;
         }
@@ -157,15 +155,20 @@ export async function importTranscriptPDF(inputEl) {
     }
 
     const t2 = getModalTheme();
+    // XSS FIX: escape semester names from PDF before inserting into HTML
     const semRows = parsed.semesters.map(s => `
       <tr style="border-bottom:1px solid ${t2.tableRowBorder}">
-        <td style="padding:4px 8px;font-size:12px;color:${t2.text}">${s.name}</td>
+        <td style="padding:4px 8px;font-size:12px;color:${t2.text}">${escHtml(s.name)}</td>
         <td style="padding:4px 8px;text-align:center;font-size:12px;color:${t2.text2}">${s.courses.length} courses</td>
         <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P'&&c.grade!=='I'&&c.credits>0).length} graded</td>
       </tr>`
     ).join('');
 
     const totalCoursesDisplay = parsed.semesters.reduce((n, s) => n + s.courses.length, 0);
+
+    // XSS FIX: store parsed data in a JS variable instead of serializing
+    // into an onclick attribute (which was vulnerable to attribute injection).
+    _pendingImport = parsed;
 
     showImportModal(`
       <div style="margin-bottom:16px">
@@ -182,9 +185,9 @@ export async function importTranscriptPDF(inputEl) {
           <tbody>${semRows}</tbody>
         </table>
       </div>
-      ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${parsed.detectedDept}</strong></div>` : ''}
+      ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${escHtml(parsed.detectedDept)}</strong></div>` : ''}
       <div style="display:flex;gap:10px">
-        <button onclick="applyImport(${JSON.stringify(parsed).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')})"
+        <button onclick="applyImport()"
           onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(46,204,113,0.35)'"
           onmouseleave="this.style.background='#1DB954';this.style.transform='';this.style.boxShadow=''"
           style="flex:1;background:#1DB954;color:#0b0f0d;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s">
@@ -203,7 +206,7 @@ export async function importTranscriptPDF(inputEl) {
       <div style="text-align:center;padding:20px">
         <div style="font-size:32px;margin-bottom:12px">❌</div>
         <div style="font-size:15px;font-weight:700;color:${getModalTheme().text};margin-bottom:8px">Import failed</div>
-        <div style="font-size:12px;color:${getModalTheme().text2};margin-bottom:16px">${err.message}</div>
+        <div style="font-size:12px;color:${getModalTheme().text2};margin-bottom:16px">${escHtml(err.message)}</div>
         <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
       </div>`);
   } finally {
@@ -213,6 +216,12 @@ export async function importTranscriptPDF(inputEl) {
 }
 
 export function applyImport(parsed) {
+  // XSS FIX: use the stored _pendingImport instead of parsing data from
+  // an HTML attribute (the old approach serialized JSON into onclick).
+  const data = parsed || _pendingImport;
+  _pendingImport = null;
+  if (!data) return;
+
   hideImportModal();
   clearState();
 
@@ -221,8 +230,8 @@ export function applyImport(parsed) {
   document.getElementById('deptCreditsText').textContent = '';
   const _dCred = document.getElementById('deptCredits'); if (_dCred) _dCred.style.display = 'none';
 
-  if (parsed.detectedDept) {
-    const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === parsed.detectedDept);
+  if (data.detectedDept) {
+    const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === data.detectedDept);
     if (deptKey) {
       state.currentDept = deptKey;
       const sel = document.getElementById('deptSelect');
@@ -236,7 +245,7 @@ export function applyImport(parsed) {
     }
   }
 
-  state.semesters = parsed.semesters.map((s, idx) => ({
+  state.semesters = data.semesters.map((s, idx) => ({
     ...s,
     id: idx + 1,
     courses: s.courses.map(c => ({
@@ -352,10 +361,8 @@ export function exportPDF() {
 
   setFill(GREEN); doc.rect(0, 0, PW, 1.5, 'F');
 
-  // Logo as base64 PNG (স in green rounded square)
-  const LOGO_B64 = 'data:image/png;base64,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';
+  const LOGO_B64 = 'data:image/png;base64,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';
   try { doc.addImage(LOGO_B64, 'PNG', ML, y + 4, 18, 18); } catch(e) {
-    // Fallback if image fails
     setFill(GREEN); doc.roundedRect(ML, y + 4, 18, 18, 2.5, 2.5, 'F');
   }
 
@@ -417,6 +424,7 @@ export function exportPDF() {
     setFill(GREEN); doc.roundedRect(ML, y, 3, 8, 1, 1, 'F');
     doc.rect(ML + 1.5, y, 1.5, 8, 'F');
 
+    // PDF export: strip HTML from sem.name (jsPDF uses plain text, not innerHTML)
     const semNameClean = sem.name.replace(/<[^>]+>/g, '').replace(/\s*\((\d+(?:st|nd|rd|th)) Semester\)/i, ' | $1 Semester') + (sem.running ? ' [Running]' : '');
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); setTxt(TEXT1);
     doc.text(semNameClean, ML + 6, y + 5.3);
@@ -479,7 +487,6 @@ export function exportPDF() {
       y += 7;
     });
 
-    // Semester summary row
     if (semGpa !== null) {
       checkY(8);
       const semAttempted = sem.courses.reduce((s, c) => {
@@ -491,7 +498,7 @@ export function exportPDF() {
         if (!c.name.trim() || !c.credits) return s;
         const gp = GRADES[c.grade];
         if (gp === undefined || gp === null) return s;
-        if (gp === 0) return s + c.credits; // F and F(NT) = 0 GP, not earned
+        if (gp === 0) return s + c.credits;
         return s;
       }, 0);
       const semEarned = semAttempted - semFailed;
