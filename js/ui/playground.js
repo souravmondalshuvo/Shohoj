@@ -1,6 +1,7 @@
 import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
+import { escHtml, escAttr } from '../core/helpers.js';
 
 // ── Local playground state ──────────────────────────────────────────────────
 const pg = {
@@ -147,22 +148,22 @@ function renderGradeChanger(courses, totals) {
       </div>`;
   }
 
-  // Changes list
+  // Changes list — XSS FIX: escape all user-sourced data
   let changesHtml = '';
   if (changeDetails.length > 0) {
     const rows = changeDetails.map(ch => `
       <div class="pg-change-row">
         <div class="pg-change-course">
-          <strong>${courseLabel(ch.name)}</strong>
-          <span class="pg-change-meta">${ch.sem} · ${ch.credits} cr</span>
+          <strong>${escHtml(courseLabel(ch.name))}</strong>
+          <span class="pg-change-meta">${escHtml(ch.sem)} · ${ch.credits} cr</span>
         </div>
         <div class="pg-change-grades">
-          <span style="color:${gradeColor(ch.grade)}">${ch.grade}</span>
+          <span style="color:${gradeColor(ch.grade)}">${escHtml(ch.grade)}</span>
           <span style="color:var(--text3)">→</span>
-          <span style="color:${gradeColor(ch.newGrade)};font-weight:700">${ch.newGrade}</span>
+          <span style="color:${gradeColor(ch.newGrade)};font-weight:700">${escHtml(ch.newGrade)}</span>
         </div>
         <div class="pg-change-impact" style="color:${ch.impact >= 0 ? '#2ECC71' : '#e74c3c'}">${ch.impact >= 0 ? '+' : ''}${ch.impact.toFixed(3)}</div>
-        <button class="pg-change-remove" onclick="removePlaygroundChange('${ch.key}')" title="Remove">×</button>
+        <button class="pg-change-remove" onclick="removePlaygroundChange('${escAttr(ch.key)}')" title="Remove">×</button>
       </div>`).join('');
 
     changesHtml = `
@@ -175,9 +176,9 @@ function renderGradeChanger(courses, totals) {
 
   // Course picker — show all graded courses not yet changed
   const available = courses.filter(c => !pg.changes[c.key]);
-  const gradeOpts = GRADE_LIST.map(g => `<option value="${g}">${g}</option>`).join('');
+  const gradeOpts = GRADE_LIST.map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
   const courseOpts = available.map(c =>
-    `<option value="${c.key}">${courseLabel(c.name)} (${c.grade}) — ${c.sem}</option>`
+    `<option value="${escAttr(c.key)}">${escHtml(courseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const pickerHtml = available.length > 0 ? `
@@ -208,7 +209,6 @@ export function addPlaygroundChange() {
 export function onSolverTargetChange(val) {
   pg.solverTarget = val;
   pg.solverTouched = true;
-  // Update only the result section, not the whole playground
   const resultEl = document.getElementById('pgSolverResult');
   if (resultEl) {
     const courses = getGradedCourses();
@@ -223,9 +223,7 @@ export function onSolverCourseChange(key) {
 }
 
 function getEffectiveTarget() {
-  // If user has typed in solver, use their value (even if empty = cleared)
   if (pg.solverTouched) return pg.solverTarget;
-  // Otherwise pre-fill from Goal Simulator
   const simTarget = document.getElementById('targetCgpa');
   return pg.solverTarget || (simTarget ? simTarget.value : '');
 }
@@ -248,13 +246,16 @@ function computeSolverResult(courses, totals) {
 
   const minGrade = sortedGrades.find(x => x.gp >= neededGp);
 
+  // XSS FIX: escape course labels
+  const safeCourseLabel = escHtml(courseLabel(c.name));
+
   if (neededGp > 4.0) {
     const bestPossible = (totals.pts - c.credits * c.gp + c.credits * 4.0) / totals.cr;
     return `
       <div class="pg-solver-result pg-solver-impossible">
         <div class="pg-solver-icon">⛔</div>
         <div>
-          <div class="pg-solver-msg">Not possible with <strong>${courseLabel(c.name)}</strong> alone</div>
+          <div class="pg-solver-msg">Not possible with <strong>${safeCourseLabel}</strong> alone</div>
           <div class="pg-solver-detail">Even with an A (4.0), your CGPA would be <strong>${bestPossible.toFixed(2)}</strong> — below your target of <strong>${target.toFixed(2)}</strong>. Consider retaking multiple courses.</div>
         </div>
       </div>`;
@@ -264,7 +265,7 @@ function computeSolverResult(courses, totals) {
         <div class="pg-solver-icon">🎉</div>
         <div>
           <div class="pg-solver-msg">You've already reached ${target.toFixed(2)} CGPA!</div>
-          <div class="pg-solver-detail">Any grade in <strong>${courseLabel(c.name)}</strong> will keep you above your target.</div>
+          <div class="pg-solver-detail">Any grade in <strong>${safeCourseLabel}</strong> will keep you above your target.</div>
         </div>
       </div>`;
   } else if (minGrade) {
@@ -273,11 +274,11 @@ function computeSolverResult(courses, totals) {
       <div class="pg-solver-result pg-solver-found">
         <div class="pg-solver-answer">
           <div class="pg-solver-answer-label">You need at least</div>
-          <div class="pg-solver-answer-grade" style="color:${gradeColor(minGrade.grade)}">${minGrade.grade}</div>
+          <div class="pg-solver-answer-grade" style="color:${gradeColor(minGrade.grade)}">${escHtml(minGrade.grade)}</div>
           <div class="pg-solver-answer-gp">(${minGrade.gp.toFixed(1)} GP)</div>
         </div>
         <div class="pg-solver-explain">
-          <div>in <strong>${courseLabel(c.name)}</strong> (${c.credits} cr, currently ${c.grade})</div>
+          <div>in <strong>${safeCourseLabel}</strong> (${c.credits} cr, currently ${escHtml(c.grade)})</div>
           <div style="margin-top:4px">
             CGPA: <span style="color:var(--text3)">${totals.cgpa.toFixed(2)}</span>
             → <strong style="color:#2ECC71">${newCgpa.toFixed(2)}</strong>
@@ -296,8 +297,9 @@ function renderReverseSolver(courses, totals) {
 
   const effectiveTarget = getEffectiveTarget();
 
+  // XSS FIX: escape course names/labels in option elements
   const courseOpts = courses.map(c =>
-    `<option value="${c.key}"${pg.solverKey === c.key ? ' selected' : ''}>${courseLabel(c.name)}${c.running ? ' 🟡' : ''} (${c.grade}) — ${c.sem}</option>`
+    `<option value="${escAttr(c.key)}"${pg.solverKey === c.key ? ' selected' : ''}>${escHtml(courseLabel(c.name))}${c.running ? ' 🟡' : ''} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const resultHtml = computeSolverResult(courses, totals);
@@ -307,7 +309,7 @@ function renderReverseSolver(courses, totals) {
       <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
-          placeholder="e.g. 3.00" value="${effectiveTarget}"
+          placeholder="e.g. 3.00" value="${escAttr(effectiveTarget)}"
           oninput="onSolverTargetChange(this.value)" />
       </div>
       <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
@@ -337,8 +339,6 @@ export function renderPlayground(force) {
   }
   box.style.display = '';
 
-  // Don't re-render if user is typing in a playground input field
-  // (external recalc would destroy the focused input mid-keystroke)
   if (!force) {
     const active = document.activeElement;
     if (active && content.contains(active) && active.tagName === 'INPUT') {
