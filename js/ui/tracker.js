@@ -2,7 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
-import { getStartSeason, getStartYear } from '../core/helpers.js';
+import { getStartSeason, getStartYear, escHtml } from '../core/helpers.js';
 
 export function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
@@ -11,7 +11,6 @@ export function renderDegreeTracker(totalEarned) {
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
 
-  // Need at least one semester with graded courses to show
   const gradedSemesters = state.semesters.filter(sem =>
     !sem.running && sem.courses.some(c =>
       c.name.trim() && c.grade && GRADES[c.grade] !== undefined
@@ -25,7 +24,6 @@ export function renderDegreeTracker(totalEarned) {
 
   box.style.display = '';
 
-  // ── Build semester data ─────────────────────────────────────────────
   const semData = [];
 
   state.semesters.forEach(sem => {
@@ -42,7 +40,6 @@ export function renderDegreeTracker(totalEarned) {
       ? sem.name.replace(/<[^>]+>/g, '').replace(/\s*\(.*\)$/, '')
       : 'Semester';
 
-    // Get credits this semester (only courses with actual grades, exclude P/F and F(NT))
     const creditsThisSem = sem.courses.reduce((sum, c) => {
       if (!c.name.trim() || !c.credits) return sum;
       if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
@@ -69,18 +66,14 @@ export function renderDegreeTracker(totalEarned) {
   const runningSem = semData.find(s => s.running);
   const creditsRemaining = Math.max(0, totalRequired - totalEarned);
 
-  // Average credits per completed semester
   const avgCredits = completedSems.length > 0
     ? completedSems.reduce((s, d) => s + d.credits, 0) / completedSems.length
-    : 12; // default assumption
+    : 12;
 
-  // Projected semesters remaining
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
-  // Department-specific season cycle
   const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
 
-  // Estimated graduation
   let gradEstimate = '—';
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
@@ -98,8 +91,6 @@ export function renderDegreeTracker(totalEarned) {
 
   const progressPct = Math.min((totalEarned / totalRequired) * 100, 100);
 
-  // ── Stats strip ─────────────────────────────────────────────────────
-  // Format credits: 39 → "39", 39.5 → "39.5", never rounds away .5
   const fmtCr = n => n % 1 === 0 ? String(n) : n.toFixed(1);
   const earnedDisplay = fmtCr(totalEarned);
   const remainingDisplay = fmtCr(creditsRemaining);
@@ -118,12 +109,11 @@ export function renderDegreeTracker(totalEarned) {
         <div class="tracker-stat-label">Your Pace</div>
       </div>
       <div class="tracker-stat">
-        <div class="tracker-stat-val">${gradEstimate}</div>
+        <div class="tracker-stat-val">${escHtml(gradEstimate)}</div>
         <div class="tracker-stat-label">Est. Graduation</div>
       </div>
     </div>`;
 
-  // ── Progress bar (enhanced) ─────────────────────────────────────────
   const barHtml = `
     <div class="tracker-bar-wrap">
       <div class="tracker-bar-bg">
@@ -135,7 +125,6 @@ export function renderDegreeTracker(totalEarned) {
       </div>
     </div>`;
 
-  // ── Timeline ────────────────────────────────────────────────────────
   const gpaColor = gpa => {
     if (gpa === null) return 'var(--text3)';
     if (gpa >= 3.5) return '#2ECC71';
@@ -152,7 +141,6 @@ export function renderDegreeTracker(totalEarned) {
     return 'gpa-danger';
   };
 
-  // Completed + running nodes
   const nodes = semData.map((s, idx) => {
     const gpaText = s.gpa !== null ? s.gpa.toFixed(2) : '—';
     const nodeClass = s.running ? 'tracker-node running' : `tracker-node completed ${gpaClass(s.gpa)}`;
@@ -171,13 +159,11 @@ export function renderDegreeTracker(totalEarned) {
       </div>`;
   }).join('');
 
-  // Projected future nodes
   let projectedHtml = '';
   if (semsRemaining > 0) {
     const maxShow = Math.min(semsRemaining, 4);
     const remaining = semsRemaining - maxShow;
 
-    // Figure out next season/year after last semester
     let lastLabel = semData[semData.length - 1].label;
     let nextSi = -1;
     let nextYr = 0;
@@ -186,7 +172,6 @@ export function renderDegreeTracker(totalEarned) {
       nextYr = seasonMatch[2].length === 2 ? 2000 + parseInt(seasonMatch[2]) : parseInt(seasonMatch[2]);
       const matchedIdx = deptSeasons.indexOf(seasonMatch[1]);
       if (matchedIdx === -1) {
-        // Season not in dept cycle (e.g. Fall for pharmacy) — start from first season next year
         nextSi = 0;
         nextYr++;
       } else {
@@ -208,7 +193,7 @@ export function renderDegreeTracker(totalEarned) {
             <div class="tracker-node-dot-inner"></div>
           </div>
           <div class="tracker-node-card">
-            <div class="tracker-node-label">${projLabel}</div>
+            <div class="tracker-node-label">${escHtml(projLabel)}</div>
             <div class="tracker-node-gpa" style="color:var(--text3)">~${fmtCr(avgCredits)} cr</div>
           </div>
         </div>`;
@@ -226,7 +211,6 @@ export function renderDegreeTracker(totalEarned) {
         </div>`;
     }
 
-    // Graduation node
     projectedHtml += `
       <div class="tracker-node graduation">
         <div class="tracker-node-dot">
@@ -234,11 +218,10 @@ export function renderDegreeTracker(totalEarned) {
         </div>
         <div class="tracker-node-card">
           <div class="tracker-node-label">Graduation</div>
-          <div class="tracker-node-gpa" style="color:#2ECC71">${gradEstimate}</div>
+          <div class="tracker-node-gpa" style="color:#2ECC71">${escHtml(gradEstimate)}</div>
         </div>
       </div>`;
   } else if (creditsRemaining <= 0) {
-    // All credits completed — show graduation achieved
     projectedHtml = `
       <div class="tracker-node graduation completed">
         <div class="tracker-node-dot">
@@ -260,11 +243,6 @@ export function renderDegreeTracker(totalEarned) {
       </div>
     </div>`;
 
-  // ── Assemble ────────────────────────────────────────────────────────
   const content = document.getElementById('degreeTrackerContent');
   content.innerHTML = statsHtml + barHtml + timelineHtml;
-}
-
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
