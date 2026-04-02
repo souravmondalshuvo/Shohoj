@@ -1,5 +1,6 @@
 import { COURSE_DB, ALL_COURSES } from '../core/catalog.js';
 import { state } from '../core/state.js';
+import { escHtml, escAttr } from '../core/helpers.js';
 
 let activeInput = null;
 
@@ -13,13 +14,14 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   const top  = rect.bottom + 4;
   const left = rect.left;
   const w    = rect.width;
+  // XSS FIX: escape c.full, c.code, c.name before inserting into HTML
   let html = `<div class="course-suggestions" id="sug-${semId}-${cIdx}"
     style="top:${top}px;left:${left}px;width:${w}px;">`;
   html += matches.map((c, i) => `
     <div class="suggestion-item" data-idx="${i}"
-      onmousedown="pickSuggestion(${semId},${cIdx},'${c.full.replace(/'/g,"\\'")}',${c.credits})">
-      <span class="suggestion-code">${c.code}</span>
-      <span class="suggestion-name">${c.name}</span>
+      onmousedown="pickSuggestion(${semId},${cIdx},'${escAttr(c.full)}',${c.credits})">
+      <span class="suggestion-code">${escHtml(c.code)}</span>
+      <span class="suggestion-name">${escHtml(c.name)}</span>
       <span class="suggestion-credits">${c.credits} cr</span>
     </div>`).join('');
   html += '</div>';
