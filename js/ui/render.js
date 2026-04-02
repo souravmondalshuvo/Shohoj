@@ -4,12 +4,12 @@ import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
 import {
   generateSemesterNames, getLastCompletedSemester,
-  countSemesters, getStartSeason, getStartYear
+  countSemesters, getStartSeason, getStartYear,
+  escHtml, escAttr
 } from '../core/helpers.js';
 
 export function renderSemesters() {
   const container = document.getElementById('semestersContainer');
-  const esc = s => s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   document.getElementById('semesterCount').textContent = state.semesters.length;
   const runBtn = document.getElementById('addRunningSemBtn');
   if (runBtn) runBtn.disabled = state.semesters.some(s => s.running);
@@ -22,7 +22,7 @@ export function renderSemesters() {
     <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}" draggable="${isRunning ? 'false' : 'true'}"><div class="lg-shine"></div>
       <div class="semester-head">
         <div class="semester-head-left">
-          ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}           <span class="semester-label">${sem.name}</span>
+          ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}           <span class="semester-label">${escHtml(sem.name)}</span>
           ${isRunning
             ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
             : (gpa !== null ? (() => {
@@ -40,7 +40,7 @@ export function renderSemesters() {
             const w = getSemCreditWarning(sem);
             if (!w) return '';
             const cls = w.type === 'error' ? 'semester-credit-error-badge' : 'semester-credit-warn-badge';
-            return `<span class="${cls}">${w.msg}</span>`;
+            return `<span class="${cls}">${escHtml(w.msg)}</span>`;
           })()}
         </div>
         <div class="semester-actions">
@@ -61,7 +61,7 @@ export function renderSemesters() {
           <div class="course-input-wrap" style="position:relative;">
             <input type="text" placeholder="Type course code / title"
               id="course-input-${sem.id}-${i}"
-              value="${esc(c.name)}"
+              value="${escAttr(c.name)}"
               autocomplete="off"
               oninput="onCourseInput(event,${sem.id},${i})"
               onkeydown="onCourseKey(event,${sem.id},${i})"
@@ -100,7 +100,7 @@ export function renderSemesters() {
               c.grade && c.grade.startsWith('C') ? '#F0A500' :
               c.grade && c.grade.startsWith('D') ? '#e67e22' :
               'var(--text3)'
-            }">${c.grade || '—'}</span>
+            }">${escHtml(c.grade) || '—'}</span>
           <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
         </div>`;
         }).join('')}
@@ -261,7 +261,6 @@ export function loadSampleData() {
     state.semesters.push({ id, name: s.name, courses: s.courses });
   });
 
-  // Set dept + starting semester so wizard advances to complete state
   state.currentDept = 'CSE';
   const deptSel = document.getElementById('deptSelect');
   if (deptSel) deptSel.value = 'CSE';
@@ -291,14 +290,12 @@ export function onDeptSelect() {
   if (creditsEl) creditsEl.style.display = 'inline-flex';
   document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
 
-  // Update season dropdown based on department
   const seasonSel = document.getElementById('startSeason');
   if (seasonSel) {
     const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
     const currentVal = seasonSel.value;
     seasonSel.innerHTML = '<option value="" disabled selected>— Season —</option>'
       + deptSeasons.map(s => `<option value="${s}">${s}</option>`).join('');
-    // Restore previous selection if still valid
     if (deptSeasons.includes(currentVal)) seasonSel.value = currentVal;
   }
 
