@@ -7,7 +7,8 @@ import {
   onPFChange, getSemCreditWarning, onGradePointBlur
 } from './core/calculator.js';
 import {
-  generateSemesterNames, getStartSeason, getStartYear
+  generateSemesterNames, getStartSeason, getStartYear,
+  sanitizeRestoredState
 } from './core/helpers.js';
 import { COURSE_DB, ALL_COURSES } from './core/catalog.js';
 
@@ -46,10 +47,6 @@ import { initCursor }     from './animations/cursor.js';
 import { initDotMatrix }  from './animations/dotmatrix.js';
 
 // ── INTERNAL HELPERS (used by modules via window._shohoj_*) ──────────────────
-// Modules that need to trigger recalc or re-render call these.
-// This avoids circular imports while keeping logic in one place.
-
-// Format credits: 39 → "39", 39.5 → "39.5", never rounds away .5
 function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
 window._shohoj_recalc         = recalc;
@@ -76,6 +73,7 @@ window.onGradePointBlur  = onGradePointBlur;
 window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
+// XSS FIX: applyImport no longer takes inline JSON from onclick attribute
 window.applyImport       = applyImport;
 window.clearState        = () => {
   clearState();
@@ -168,8 +166,8 @@ function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
-    const saved = JSON.parse(raw);
-    if (!saved.currentDept || !saved.semesters?.length) return false;
+    const saved = sanitizeRestoredState(JSON.parse(raw));
+    if (!saved || !saved.currentDept || !saved.semesters?.length) return false;
 
     const deptSel = document.getElementById('deptSelect');
     if (deptSel) { deptSel.value = saved.currentDept; }
@@ -187,7 +185,6 @@ function loadState() {
     if (dept) {
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       document.getElementById('deptCredits').style.display = '';
-      // Update season dropdown for department
       if (seasonSel) {
         const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
         const currentVal = seasonSel.value;
@@ -206,7 +203,7 @@ function loadState() {
   } catch(e) { return false; }
 }
 
-// ── RECALC — exact logic from script.js ──────────────────────────────────────
+// ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
   let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
   const retakenKeys = getRetakenKeys();
@@ -229,7 +226,6 @@ function recalc() {
 
   const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
 
-  // CGPA for completed semesters only
   let completedPts = 0, completedEarned = 0;
   state.semesters.filter(s => !s.running).forEach(sem => {
     sem.courses.forEach((c, i) => {
@@ -247,7 +243,6 @@ function recalc() {
   const hasRunning = state.semesters.some(s => s.running);
   document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
 
-  // Incomplete warning
   const hasIncomplete = state.semesters.some(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade));
   let incWarn = document.getElementById('incompleteWarning');
   if (!incWarn) {
@@ -272,26 +267,21 @@ function recalc() {
   document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
   document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
 
-  // Credits progress bar
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
 
-  // Auto-populate credits remaining in simulator
   const crRemEl = document.getElementById('creditsRemaining');
   if (dept && totalRequired > 0 && document.activeElement !== crRemEl) {
     const autoRemaining = Math.max(0, totalRequired - totalEarned);
     const autoVal = fmtCr(autoRemaining);
-    // Only auto-fill if empty or still matches previous auto value (user hasn't manually changed it)
     if (!crRemEl.value || crRemEl.dataset.auto === crRemEl.value) {
       crRemEl.value = autoVal;
     }
     crRemEl.dataset.auto = autoVal;
   }
 
-  // Degree progress tracker
   renderDegreeTracker(totalEarned);
 
-  // Academic standing
   const standingBox = document.getElementById('standingBox');
   const cgpaNum = cgpaCompleted;
   const semCount = state.semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
@@ -335,7 +325,6 @@ function recalc() {
     standingBox.style.display = 'none';
   }
 
-  // Trend chart
   const trendBox = document.getElementById('trendChartBox');
   const trendCanvas = document.getElementById('trendCanvas');
   const semGPAs = [];
@@ -399,26 +388,21 @@ function recalc() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Wire buttons
   document.getElementById('targetCgpa').addEventListener('input', recalc);
   document.getElementById('creditsRemaining').addEventListener('input', recalc);
   document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
   document.getElementById('addRunningSemBtn').addEventListener('click', () => addRunningSemester());
 
-  // Init suggestions scroll dismissal
   initSuggestionsScrollHandler();
 
-  // Initial render
   document.getElementById('deptCreditsText').textContent = '';
   document.getElementById('deptCredits').style.display = 'none';
 
-  // Load saved state or render blank
   if (!loadState()) {
     renderSemesters();
     recalc();
   }
 
-  // Animations
   initReveal();
   initCursor();
   initDotMatrix(document.getElementById('themeToggle'));
