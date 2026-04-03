@@ -1638,16 +1638,18 @@ h1[data-reveal-hero].visible {
 }
 .sim-ba-val {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 800;
   font-family: 'Syne', sans-serif;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .sim-ba-left .sim-ba-val {
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 800;
 }
 .sim-ba-right .sim-ba-val {
-  font-size: 24px;
+  font-size: 28px;
+  font-weight: 800;
 }
 .sim-ba-val.green  { color: #2ECC71; }
 .sim-ba-val.gold   { color: #F0A500; }
@@ -2200,4 +2202,4 @@ h1[data-reveal-hero].visible {
   .standing-desc {
     max-width: 100% !important;
   }
-} 
+}
