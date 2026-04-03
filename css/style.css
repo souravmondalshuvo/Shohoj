@@ -655,6 +655,8 @@ h1[data-reveal-hero].visible {
       /* ── Playground solver stack on mobile ── */
       .pg-solver-inputs { flex-direction: column !important; }
       .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
+      /* ── Course row compact on small phones ── */
+      .course-row { grid-template-columns: 1fr 40px 78px 26px 20px; gap: 4px; padding: 7px 0.8rem; }
     }
     @media (min-width: 481px) and (max-width: 767px) {
       nav { padding: 0 1.4rem; height: 60px; }
@@ -1636,8 +1638,9 @@ h1[data-reveal-hero].visible {
 }
 .sim-ba-val {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   font-family: 'Syne', sans-serif;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .sim-ba-left .sim-ba-val {
