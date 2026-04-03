@@ -2108,3 +2108,96 @@ h1[data-reveal-hero].visible {
   .pg-course-select { min-width: 0 !important; width: 100% !important; }
   .pg-grade-select { min-width: 0 !important; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE FIXES — fixes 1-4 (mobile only)
+   ══════════════════════════════════════════════════════════ */
+
+/* ── FIX 1: Total credits badge centered under dept select ── */
+@media (max-width: 767px) {
+  #deptCredits {
+    display: flex !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+  }
+}
+
+/* ── FIX 2: Grade letters visible on mobile ──────────────
+   The ≤580px block above hides nth-child(4) which kills the
+   grade-letter column. Restore it and show only what fits. */
+@media (max-width: 580px) {
+  /* 5-col grid: name | credits | grade-point | grade-letter | remove */
+  .course-row {
+    grid-template-columns: 1fr 42px 68px 28px 20px !important;
+    gap: 4px !important;
+    padding: 7px 8px !important;
+  }
+  /* Un-hide grade letter — was accidentally killed by nth-child(4) rule */
+  .course-row > *:nth-child(4) {
+    display: flex !important;
+  }
+  .grade-letter {
+    font-size: 10px !important;
+    min-width: 24px !important;
+    letter-spacing: 0 !important;
+  }
+  .credits-static {
+    font-size: 11px !important;
+    padding: 0 3px !important;
+    height: 32px !important;
+  }
+  .pf-select {
+    font-size: 10px !important;
+    padding: 5px 2px !important;
+  }
+}
+
+/* ── FIX 3: Retaken badge — no collision with course name ──
+   Badge lives inside .course-input-wrap (position:relative).
+   On mobile, drop it below the input instead of floating over it. */
+@media (max-width: 767px) {
+  /* Make the wrap a flex column so badge sits below input */
+  .course-input-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+  /* Reset the absolute positioning so it flows naturally */
+  .retaken-badge {
+    position: static !important;
+    transform: none !important;
+    align-self: flex-start !important;
+    font-size: 8px !important;
+    padding: 1px 5px !important;
+    margin-top: 1px !important;
+  }
+}
+
+/* ── FIX 4: Academic standing — center aligned on mobile ── */
+@media (max-width: 767px) {
+  .standing-inner {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 0.5rem !important;
+  }
+  .standing-badge {
+    order: -1 !important;
+    font-size: 2rem !important;
+  }
+  .standing-left {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+  .standing-label,
+  .standing-title,
+  .standing-desc {
+    text-align: center !important;
+  }
+  .standing-desc {
+    max-width: 100% !important;
+  }
+}
