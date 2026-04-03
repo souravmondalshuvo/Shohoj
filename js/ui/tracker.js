@@ -194,7 +194,7 @@ export function renderDegreeTracker(totalEarned) {
           </div>
           <div class="tracker-node-card">
             <div class="tracker-node-label">${escHtml(projLabel)}</div>
-            <div class="tracker-node-gpa" style="color:var(--text3)">~${fmtCr(avgCredits)} cr</div>
+            <div class="tracker-node-gpa" style="color:var(--text3)">approx. ${fmtCr(avgCredits)} cr</div>
           </div>
         </div>`;
     }
