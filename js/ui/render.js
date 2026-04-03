@@ -62,7 +62,7 @@ export function renderSemesters() {
             <input type="text" placeholder="Type course code / title"
               id="course-input-${sem.id}-${i}"
               value="${escAttr(c.name)}"
-              autocomplete="off"
+              autocomplete="off" autocorrect="off" spellcheck="false"
               oninput="onCourseInput(event,${sem.id},${i})"
               onkeydown="onCourseKey(event,${sem.id},${i})"
               onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
@@ -81,8 +81,8 @@ export function renderSemesters() {
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
               : `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
                 <option value="" disabled ${!c.grade ? 'selected' : ''}>P / F</option>
-                <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P — Pass</option>
-                <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F — Fail</option>
+                <option value="P" ${c.grade === 'P' ? 'selected' : ''}>Pass</option>
+                <option value="F" ${c.grade === 'F' ? 'selected' : ''}>Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
