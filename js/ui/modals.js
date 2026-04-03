@@ -99,11 +99,20 @@ export async function importTranscriptPDF(inputEl) {
       const content = await page.getTextContent();
       let lastY = null;
       content.items.forEach(item => {
-        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 3) fullText += '\n';
-        // Force newline before a bare course code — fixes mobile DPI merging
-        else if (lastY !== null && /^[A-Z]{2,4}[0-9]{3}[A-Z]?[ ]*$/.test(item.str.trim())) fullText += '\n';
+        const y = item.transform[5];
+        if (lastY !== null) {
+          const yDiff = Math.abs(y - lastY);
+          if (yDiff > 6) {
+            // Clearly a new line
+            fullText += '\n';
+          } else if (yDiff > 1 && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(item.str.trim())) {
+            // Bare course code on a slightly different y — force newline before it.
+            // Fixes mobile DPI merging where codes sit 2-4px below title continuations.
+            fullText += '\n';
+          }
+        }
         fullText += item.str;
-        lastY = item.transform[5];
+        lastY = y;
       });
       fullText += '\n';
     }
@@ -426,7 +435,6 @@ export function exportPDF() {
     setFill(GREEN); doc.roundedRect(ML, y, 3, 8, 1, 1, 'F');
     doc.rect(ML + 1.5, y, 1.5, 8, 'F');
 
-    // PDF export: strip HTML from sem.name (jsPDF uses plain text, not innerHTML)
     const semNameClean = sem.name.replace(/<[^>]+>/g, '').replace(/\s*\((\d+(?:st|nd|rd|th)) Semester\)/i, ' | $1 Semester') + (sem.running ? ' [Running]' : '');
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); setTxt(TEXT1);
     doc.text(semNameClean, ML + 6, y + 5.3);
