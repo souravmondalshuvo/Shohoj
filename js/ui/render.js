@@ -347,4 +347,4 @@ export function onStartSemConfirm() {
 
   renderSemesters();
   window._shohoj_recalc();
-}
+} 
