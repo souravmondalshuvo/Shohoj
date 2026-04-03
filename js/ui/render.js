@@ -80,9 +80,9 @@ export function renderSemesters() {
             ? c.grade === 'F(NT)'
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
               : `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
-                <option value="" disabled ${!c.grade ? 'selected' : ''}>P / F</option>
-                <option value="P" ${c.grade === 'P' ? 'selected' : ''}>Pass</option>
-                <option value="F" ${c.grade === 'F' ? 'selected' : ''}>Fail</option>
+                <option value="" disabled ${!c.grade ? 'selected' : ''}>Pass / Fail</option>
+                <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P - Pass</option>
+                <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
