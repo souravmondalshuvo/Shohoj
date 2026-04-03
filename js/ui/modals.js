@@ -101,7 +101,7 @@ export async function importTranscriptPDF(inputEl) {
       content.items.forEach(item => {
         if (lastY !== null && Math.abs(item.transform[5] - lastY) > 3) fullText += '\n';
         // Force newline before a bare course code — fixes mobile DPI merging
-        else if (lastY !== null && /^[A-Z]{2,4}\d{3}[A-Z]?\s*$/.test(item.str.trim())) fullText += '\n';
+        else if (lastY !== null && /^[A-Z]{2,4}[0-9]{3}[A-Z]?[ ]*$/.test(item.str.trim())) fullText += '\n';
         fullText += item.str;
         lastY = item.transform[5];
       });
