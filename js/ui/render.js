@@ -101,6 +101,7 @@ export function renderSemesters() {
               c.grade && c.grade.startsWith('D') ? '#e67e22' :
               'var(--text3)'
             };${c.credits === 0 && c.grade !== 'P' && c.grade !== 'F' ? 'visibility:hidden' : ''}"
+          >${escHtml(c.grade) || '—'}</span>
           <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
         </div>`;
         }).join('')}
@@ -347,4 +348,4 @@ export function onStartSemConfirm() {
 
   renderSemesters();
   window._shohoj_recalc();
-} 
+}
