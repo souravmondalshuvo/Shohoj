@@ -99,7 +99,9 @@ export async function importTranscriptPDF(inputEl) {
       const content = await page.getTextContent();
       let lastY = null;
       content.items.forEach(item => {
-        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 2) fullText += '\n';
+        if (lastY !== null && Math.abs(item.transform[5] - lastY) > 3) fullText += '\n';
+        // Force newline before a bare course code — fixes mobile DPI merging
+        else if (lastY !== null && /^[A-Z]{2,4}\d{3}[A-Z]?\s*$/.test(item.str.trim())) fullText += '\n';
         fullText += item.str;
         lastY = item.transform[5];
       });
