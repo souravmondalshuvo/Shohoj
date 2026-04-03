@@ -2089,7 +2089,7 @@ h1[data-reveal-hero].visible {
   color: var(--text2);
   line-height: 1.6;
   align-self: center;
-}
+} 
 
 /* Responsive — playground margins */
 @media (max-width: 480px) {
