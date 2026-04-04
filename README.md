@@ -185,7 +185,20 @@ Shohoj is built to feel like a real product, not a student project.
 | Build      | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting    | GitHub Pages                                          | Free, fast, always available                           |
 
+Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prevent supply-chain tampering.
+
 **Phase 2+** will migrate to React.js, Tailwind CSS, Firebase, and Vercel as the platform scales beyond academic tools.
+
+---
+
+## Security
+
+Shohoj has been through a security audit and the following protections are in place across the codebase:
+
+- **XSS prevention** — all user-sourced strings (course names, semester labels, PDF-imported data, error messages) are escaped via `escHtml()` and `escAttr()` helpers in `helpers.js` before any `innerHTML` insertion.
+- **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
+- **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
+- **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
 
 ---
 
@@ -193,23 +206,24 @@ Shohoj is built to feel like a real product, not a student project.
 
 ### Phase 1 — Academic Core _(Current)_
 
-| Feature                             | Status                                       |
-| ----------------------------------- | -------------------------------------------- |
-| Smart GPA Calculator                | ✅ Complete                                  |
-| CGPA Playground (Grade Changer)     | ✅ Complete                                  |
-| CGPA Playground (Reverse Solver)    | ✅ Complete                                  |
-| CGPA Goal Simulator                 | ✅ Complete                                  |
-| GPA Trend Analysis                  | ✅ Complete _(originally Phase 6)_           |
-| Transcript PDF Import               | ✅ Complete _(bonus — not in original plan)_ |
-| PDF Grade Report Export             | ✅ Complete _(bonus — not in original plan)_ |
-| Course Catalog & Autocomplete       | ✅ Complete _(bonus — not in original plan)_ |
-| Credit Load Warnings                | ✅ Complete _(bonus — not in original plan)_ |
-| Retake Impact Analyzer              | ✅ Complete                                  |
-| Degree Progress Tracker             | ✅ Complete                                  |
-| Semester Planner with Prerequisites | 🔜 Planned                                   |
-| Course Difficulty Map               | 🔜 Planned                                   |
-| Advising Week Checklist             | 🔜 Planned                                   |
-| Freshman Survival Guide             | 🔜 Planned                                   |
+| Feature                             | Status      |
+| ----------------------------------- | ----------- |
+| Smart GPA Calculator                | ✅ Complete |
+| CGPA Playground (Grade Changer)     | ✅ Complete |
+| CGPA Playground (Reverse Solver)    | ✅ Complete |
+| CGPA Goal Simulator                 | ✅ Complete |
+| GPA Trend Analysis                  | ✅ Complete |
+| Transcript PDF Import               | ✅ Complete |
+| PDF Grade Report Export             | ✅ Complete |
+| Course Catalog & Autocomplete       | ✅ Complete |
+| Credit Load Warnings                | ✅ Complete |
+| Retake Impact Analyzer              | ✅ Complete |
+| Degree Progress Tracker             | ✅ Complete |
+| Security audit & XSS hardening      | ✅ Complete |
+| Semester Planner with Prerequisites | 🔜 Planned  |
+| Course Difficulty Map               | 🔜 Planned  |
+| Advising Week Checklist             | 🔜 Planned  |
+| Freshman Survival Guide             | 🔜 Planned  |
 
 ### Phase 2 — Community Layer
 
@@ -266,7 +280,7 @@ Shohoj/
 │   ├── main.js                   Entry point — wires all modules together
 │   ├── core/
 │   │   ├── grades.js             BRACU grading scale & grade detection
-│   │   ├── helpers.js            Semester name generation, season/year utilities
+│   │   ├── helpers.js            Semester utilities, escHtml/escAttr, sanitizers
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
 │   │   ├── catalog.js            Full BRACU course database (758 courses)
@@ -350,6 +364,7 @@ Shohoj is built for students, by students. Contributions are welcome.
 - Phase 1 is **vanilla HTML/CSS/JS** — no frameworks, no build tools beyond `build3.py`
 - All cross-module calls use `window._shohoj_*` to avoid circular imports
 - Functions called from HTML `onclick`/`onchange` are assigned to `window.*` in `main.js`
+- **Escape all user-sourced strings** with `escHtml()` / `escAttr()` from `helpers.js` before any `innerHTML` insertion — do not bypass this for convenience
 - Test in both **dark and light themes**
 - Check that **jsPDF export** doesn't break — only ASCII characters in helvetica font strings
 
