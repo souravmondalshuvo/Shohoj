@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
-  <img src="https://img.shields.io/badge/Courses-758%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
+  <img src="https://img.shields.io/badge/Courses-774%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
 </p>
 
 ---
@@ -98,7 +98,7 @@ Visual timeline of your degree journey — credits earned vs total required, sem
 
 ### 🔍 Course Autocomplete
 
-Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **758 courses** across all **16 departments**. Credits auto-fill when you pick a course.
+Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **774 courses** across all **16 departments**. Credits auto-fill when you pick a course.
 
 <p align="center">
   <img src="assets/screenshots/autocomplete.png" alt="Course Autocomplete" width="700" />
