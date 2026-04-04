@@ -100,14 +100,21 @@ export async function importTranscriptPDF(inputEl) {
       let lastY = null;
       content.items.forEach(item => {
         const y = item.transform[5];
+        const str = item.str.trim();
         if (lastY !== null) {
           const yDiff = Math.abs(y - lastY);
           if (yDiff > 6) {
             // Clearly a new line
             fullText += '\n';
-          } else if (yDiff > 1 && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(item.str.trim())) {
+          } else if (yDiff > 1 && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(str)) {
             // Bare course code on a slightly different y — force newline before it.
             // Fixes mobile DPI merging where codes sit 2-4px below title continuations.
+            fullText += '\n';
+          } else if (yDiff > 1 && /^[A-Z][A-Z ]+$/.test(str) && str.length > 3) {
+            // All-caps title continuation fragment on a slightly different y.
+            // e.g. "EQUATIONS" or "GEOMETRY" appearing after a code+data row.
+            // Force newline so parser treats it as a title continuation, not
+            // part of the next course row — fixes MAT120/STA201 mobile drop.
             fullText += '\n';
           }
         }
