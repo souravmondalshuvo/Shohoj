@@ -1,6 +1,9 @@
 // ── js/auth/firebase.js ───────────────────────────────────────────────────────
 // Firebase Authentication + Firestore cloud sync for Shohoj
 // Handles: Google Sign-In, Sign-Out, save/load state, migration modal
+//
+// Config is read from window._shohoj_firebase_config (set in index.html <head>)
+// so the API key never lives in a .js file and won't trigger GitHub secret scanning.
 
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
@@ -8,16 +11,11 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ── Config ────────────────────────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey:            'AIzaSyA4cz0TPyvqgeZicrsX5bEgxIJuGlour54',
-  authDomain:        'shohoj.firebaseapp.com',
-  projectId:         'shohoj',
-  storageBucket:     'shohoj.firebasestorage.app',
-  messagingSenderId: '878391653144',
-  appId:             '1:878391653144:web:172ccb90535dfd48d9a46d',
-  measurementId:     'G-7DVX82DTF3',
-};
+// ── Config (injected via index.html, not stored here) ────────────────────────
+const firebaseConfig = window._shohoj_firebase_config;
+if (!firebaseConfig) {
+  console.error('[Shohoj] Firebase config missing — auth will not work.');
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 const app      = initializeApp(firebaseConfig);
@@ -25,7 +23,7 @@ const auth     = getAuth(app);
 const db       = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Force BRACU Google account picker every time (don't silently reuse last account)
+// Force account picker every time — don't silently reuse last account
 provider.setCustomParameters({ prompt: 'select_account' });
 
 // ── Exported auth state ───────────────────────────────────────────────────────
@@ -66,11 +64,11 @@ export async function loadFromCloud() {
 // Resolves with 'local' or 'cloud'.
 function showMigrationModal(localSems, cloudSems) {
   return new Promise(resolve => {
-    const t = document.documentElement.dataset.theme === 'dark';
-    const bg   = t ? '#0f1f14' : '#ffffff';
-    const text = t ? '#e8f0ea' : '#0d2914';
-    const text2 = t ? '#a8c4ad' : '#2d5a3d';
-    const border = t ? 'rgba(46,204,113,0.25)' : 'rgba(46,204,113,0.3)';
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const bg     = isDark ? '#0f1f14' : '#ffffff';
+    const text   = isDark ? '#e8f0ea' : '#0d2914';
+    const text2  = isDark ? '#a8c4ad' : '#2d5a3d';
+    const border = isDark ? 'rgba(46,204,113,0.25)' : 'rgba(46,204,113,0.3)';
 
     const modal = document.createElement('div');
     modal.id = 'migrationModal';
@@ -161,13 +159,12 @@ export async function signOutUser() {
 }
 
 // ── Auth state listener ───────────────────────────────────────────────────────
-// This is the core of the sync logic. Runs on every page load and after sign-in/out.
+// Core sync logic — runs on every page load and after sign-in/out.
 export function initAuth() {
   onAuthStateChanged(auth, async user => {
     currentUser = user;
 
     if (user) {
-      // ── Logged in ──────────────────────────────────────────────────────────
       updateAuthUI(user);
 
       const cloudData = await loadFromCloud();
@@ -190,7 +187,7 @@ export function initAuth() {
       }
 
       if (hasLocal && !hasCloud) {
-        // Situation 1 — local data exists, cloud is empty, upload it
+        // Situation 1 — local data exists, cloud empty, upload it
         const localParsed = JSON.parse(localRaw);
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
@@ -200,8 +197,8 @@ export function initAuth() {
 
       // Situation 3 — both have data, ask user
       const localParsed = JSON.parse(localRaw);
-      const localSems  = localParsed?.semesters?.length || 0;
-      const cloudSems  = cloudData?.semesters?.length   || 0;
+      const localSems   = localParsed?.semesters?.length || 0;
+      const cloudSems   = cloudData?.semesters?.length   || 0;
 
       const choice = await showMigrationModal(localSems, cloudSems);
 
@@ -216,7 +213,6 @@ export function initAuth() {
       }
 
     } else {
-      // ── Logged out ─────────────────────────────────────────────────────────
       currentUser = null;
       updateAuthUI(null);
     }
@@ -225,8 +221,6 @@ export function initAuth() {
 
 // ── Apply cloud data to the app ───────────────────────────────────────────────
 function applyCloudData(cloudData) {
-  // Inject into localStorage so the existing loadState() picks it up,
-  // then trigger a page reload to re-initialize everything cleanly.
   try {
     localStorage.setItem('shohoj_cgpa_v1', JSON.stringify(cloudData));
   } catch(e) {}
@@ -235,32 +229,34 @@ function applyCloudData(cloudData) {
 
 // ── Auth UI ───────────────────────────────────────────────────────────────────
 function updateAuthUI(user) {
-  const btn = document.getElementById('authBtn');
+  const btn    = document.getElementById('authBtn');
   const avatar = document.getElementById('authAvatar');
   if (!btn) return;
 
   if (user) {
-    btn.title = `Signed in as ${user.email}\nClick to sign out`;
+    btn.title   = `Signed in as ${user.email}\nClick to sign out`;
     btn.onclick = () => {
       if (confirm(`Sign out of ${user.email}?`)) signOutUser();
     };
     if (avatar) {
       if (user.photoURL) {
-        avatar.src = user.photoURL;
+        avatar.src           = user.photoURL;
         avatar.style.display = 'block';
-        btn.querySelector('#authLabel').style.display = 'none';
+        const label = btn.querySelector('#authLabel');
+        if (label) label.style.display = 'none';
       } else {
         avatar.style.display = 'none';
-        btn.querySelector('#authLabel').textContent = user.displayName?.split(' ')[0] || 'Account';
+        const label = btn.querySelector('#authLabel');
+        if (label) label.textContent = user.displayName?.split(' ')[0] || 'Account';
       }
     }
     btn.style.borderColor = 'rgba(46,204,113,0.5)';
   } else {
-    btn.title = 'Sign in with Google to sync your data across devices';
+    btn.title   = 'Sign in with Google to sync your data across devices';
     btn.onclick = signInWithGoogle;
     if (avatar) avatar.style.display = 'none';
     const label = btn.querySelector('#authLabel');
-    if (label) label.textContent = 'Sign in';
+    if (label) { label.textContent = 'Sign in'; label.style.display = ''; }
     btn.style.borderColor = '';
   }
 }
@@ -280,8 +276,8 @@ function showToast(msg) {
   `;
   document.body.appendChild(t);
   setTimeout(() => {
-    t.style.opacity = '0';
+    t.style.opacity    = '0';
     t.style.transition = 'opacity 0.3s';
-    setTimeout(() => document.body.removeChild(t), 300);
+    setTimeout(() => { if (t.parentNode) document.body.removeChild(t); }, 300);
   }, 3000);
 }
