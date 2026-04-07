@@ -704,8 +704,8 @@ h1[data-reveal-hero].visible {
     body:not(:hover) #cursor-glow { opacity: 0; }
 
     * { cursor: none !important; }
-    #cursor-dot { position: fixed; top: 0; left: 0; width: 6px; height: 6px; background: var(--green); border-radius: 50%; pointer-events: none; z-index: 99999; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), background 0.3s ease, opacity 0.2s ease; will-change: transform; }
-    #cursor-ring { position: fixed; top: 0; left: 0; width: 36px; height: 36px; border: 1.5px solid rgba(46,204,113,0.7); border-radius: 50%; pointer-events: none; z-index: 99998; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), border-color 0.3s ease, opacity 0.3s ease, background 0.3s ease; will-change: transform; backdrop-filter: blur(1px); }
+    #cursor-dot { position: fixed; top: 0; left: 0; width: 6px; height: 6px; background: var(--green); border-radius: 50%; pointer-events: none; z-index: 999999; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), background 0.3s ease, opacity 0.2s ease; will-change: transform; }
+    #cursor-ring { position: fixed; top: 0; left: 0; width: 36px; height: 36px; border: 1.5px solid rgba(46,204,113,0.7); border-radius: 50%; pointer-events: none; z-index: 999998; transition: width 0.35s cubic-bezier(.22,.68,0,1.2), height 0.35s cubic-bezier(.22,.68,0,1.2), border-radius 0.35s cubic-bezier(.22,.68,0,1.2), border-color 0.3s ease, opacity 0.3s ease, background 0.3s ease; will-change: transform; backdrop-filter: blur(1px); }
     body.cursor-hover #cursor-dot { width: 8px; height: 8px; background: #fff; }
     body.cursor-hover #cursor-ring { width: 52px; height: 52px; border-color: var(--green); background: rgba(46,204,113,0.07); box-shadow: 0 0 18px rgba(46,204,113,0.25); }
     body.cursor-click #cursor-ring { width: 28px; height: 28px; background: rgba(46,204,113,0.18); border-color: var(--green); }
@@ -2213,4 +2213,12 @@ h1[data-reveal-hero].visible {
 @media (max-width: 380px) {
   #authLabel { display: none !important; }
   #authBtn { padding: 5px 8px !important; }
+}
+
+#authBtn:hover {
+  border-color: var(--green);
+  background: var(--glass2);
+}
+#authBtn:active {
+  transform: scale(0.97);
 }
