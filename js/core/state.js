@@ -18,7 +18,15 @@ export function saveState() {
       startSeason:     document.getElementById('startSeason')?.value || '',
       startYear:       document.getElementById('startYear')?.value   || '',
     };
+
+    // Always save to localStorage as fallback (works when logged out too)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+
+    // Cloud sync — only fires when user is signed in via Firebase
+    // window._shohoj_onSave is set in index.html after initAuth() boots
+    if (typeof window._shohoj_onSave === 'function') {
+      window._shohoj_onSave(snap);
+    }
   } catch(e) { /* storage unavailable */ }
 }
 
