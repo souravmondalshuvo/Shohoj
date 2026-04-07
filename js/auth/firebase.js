@@ -140,8 +140,17 @@ function showMigrationModal(localSems, cloudSems) {
 // ── Sign in ───────────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    const email  = result.user.email || '';
+
+    // Only allow BRACU student emails for now
+    if (!email.endsWith('@g.bracu.ac.bd')) {
+      await signOut(auth);
+      alert(`Only BRACU student emails (@g.bracu.ac.bd) are supported right now.\n\nYou signed in with: ${email}`);
+      return;
+    }
     // onAuthStateChanged handles everything after this
+
   } catch (e) {
     if (e.code !== 'auth/popup-closed-by-user') {
       console.error('[Shohoj] Sign-in failed:', e);
