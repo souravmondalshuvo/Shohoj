@@ -7,9 +7,8 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
-  gtag('config', 'G-1WXKLJDM6P');
-</script>
+    gtag('config', 'G-1WXKLJDM6P');
+  </script>
   <meta charset="UTF-8" />
   <meta name="referrer" content="no-referrer" />
   <script>
@@ -25,10 +24,22 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-  <!-- CDN dependencies: run `bash generate-sri.sh` to get integrity hashes, then add integrity="sha384-..." below -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+  <!-- Firebase config — stored here so the API key stays out of JS files -->
+  <script>
+    window._shohoj_firebase_config = {
+      apiKey:            'AIzaSyA4cz0TPyvqgeZicrsX5bEgxIJuGlour54',
+      authDomain:        'shohoj.firebaseapp.com',
+      projectId:         'shohoj',
+      storageBucket:     'shohoj.firebasestorage.app',
+      messagingSenderId: '878391653144',
+      appId:             '1:878391653144:web:172ccb90535dfd48d9a46d',
+      measurementId:     'G-7DVX82DTF3',
+    };
+  </script>
 </head>
 <body>
   <div id="scroll-progress"></div>
@@ -71,6 +82,33 @@
     <div class="nav-right">
       <a href="#features" class="nav-link magnetic">Features</a>
       <a href="#calculator" class="nav-link magnetic">CGPA Calc</a>
+      <!-- Auth button -->
+      <button id="authBtn" aria-label="Sign in with Google" title="Sign in to sync your data" style="
+        display:flex;align-items:center;gap:7px;
+        background:var(--glass);
+        backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+        border:1px solid var(--border);
+        border-radius:100px;
+        padding:5px 14px 5px 8px;
+        cursor:pointer;
+        height:36px;
+        color:var(--text);
+        font-family:'DM Sans',sans-serif;
+        font-size:13px;
+        font-weight:500;
+        transition:border-color 0.2s,background 0.2s;
+        flex-shrink:0;
+      ">
+        <img id="authAvatar" src="" alt="" style="
+          width:22px;height:22px;border-radius:50%;
+          display:none;object-fit:cover;flex-shrink:0;
+        "/>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;opacity:0.7">
+          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" fill="currentColor"/>
+        </svg>
+        <span id="authLabel">Sign in</span>
+      </button>
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
         <span class="toggle-pill" id="togglePill">🌙</span>
       </button>
@@ -94,7 +132,7 @@
     <div class="hero-cta" data-reveal-hero>
       <a href="#calculator" class="btn-primary magnetic">Try CGPA Calculator</a>
       <a href="https://github.com/souravmondalshuvo/Shohoj" target="_blank" class="btn-secondary magnetic"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-2px;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>View on GitHub</a>
-    </div> 
+    </div>
     <div class="hero-stats">
       <div class="stat" data-reveal-stat data-count="774" data-suffix="">
         <div class="stat-num">774</div>
@@ -389,6 +427,21 @@
     <p>University life, made simple. · Built by &copy; <a href="https://github.com/souravmondalshuvo" target="_blank">Sourav Mondal Shuvo</a> · BRAC University · 2026</p>
   </footer>
 
-    <script type="module" src="js/main.js"></script>
+  <!-- Firebase auth init — loaded as module so it can import from firebase.js -->
+  <script type="module">
+    import { initAuth, saveToCloud, currentUser } from './js/auth/firebase.js';
+
+    // Boot Firebase auth on every page load
+    initAuth();
+
+    // Patch saveState to also sync to cloud when logged in
+    window._shohoj_onSave = async function(snap) {
+      if (currentUser) {
+        await saveToCloud(snap);
+      }
+    };
+  </script>
+
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
