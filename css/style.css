@@ -2222,3 +2222,34 @@ h1[data-reveal-hero].visible {
 #authBtn:active {
   transform: scale(0.97);
 }
+/* ── Auth nudge banner ───────────────────────────────────────────────────── */
+#authNudgeBanner {
+  transition: opacity 0.3s;
+}
+#authNudgeBanner button:hover {
+  opacity: 0.85;
+}
+
+/* ── Last sync label ─────────────────────────────────────────────────────── */
+#lastSyncLabel {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: right;
+  margin-top: 2px;
+  transition: opacity 0.3s;
+}
+
+/* ── Cursor above modals ─────────────────────────────────────────────────── */
+#cursor-dot  { z-index: 999999 !important; }
+#cursor-ring { z-index: 999998 !important; }
+
+/* ── Auth button hide label on very small screens ────────────────────────── */
+@media (max-width: 380px) {
+  #authLabel { display: none !important; }
+  #authBtn   { padding: 5px 8px !important; }
+}
+
+/* ── Offline banner bottom padding so it doesn't cover toast ─────────────── */
+#offlineBanner + * {
+  padding-bottom: 44px;
+}
