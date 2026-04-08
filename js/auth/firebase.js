@@ -72,10 +72,7 @@ async function loadFromCloud() {
 }
 
 // ── Feature 3: Real-time listener ────────────────────────────────────────────
-// Replaces the one-time getDoc after initial migration is resolved.
-// If data changes on another device/tab, this updates localStorage and reloads.
 function startRealtimeSync(uid) {
-  // Clean up any existing listener first
   if (_unsubscribeSnapshot) {
     _unsubscribeSnapshot();
     _unsubscribeSnapshot = null;
@@ -84,7 +81,6 @@ function startRealtimeSync(uid) {
   let isFirstSnapshot = true;
 
   _unsubscribeSnapshot = onSnapshot(userDocRef(uid), snap => {
-    // Skip the first emission — that's the initial load we already handled
     if (isFirstSnapshot) {
       isFirstSnapshot = false;
       return;
@@ -94,7 +90,6 @@ function startRealtimeSync(uid) {
     const raw = snap.data()?.data;
     if (!raw) return;
 
-    // Data changed on another device — update localStorage and reload cleanly
     try {
       const current = localStorage.getItem(STORAGE_KEY);
       if (current !== raw) {
@@ -139,7 +134,6 @@ export async function deleteCloudData() {
 }
 
 // ── Feature 5: Sync status persistence ───────────────────────────────────────
-// Read last sync time from localStorage so UI shows it even before Firebase boots
 function restoreSyncLabel() {
   try {
     const ts = localStorage.getItem(LAST_SYNC_KEY);
@@ -165,7 +159,6 @@ function initOfflineDetection() {
   function handleOnline() {
     setSyncIndicator('synced');
     hideOfflineBanner();
-    // Trigger a save in case saves were missed while offline
     if (currentUser && typeof window._shohoj_recalc === 'function') {
       window._shohoj_recalc();
     }
@@ -176,7 +169,6 @@ function initOfflineDetection() {
   }
   window.addEventListener('online',  handleOnline);
   window.addEventListener('offline', handleOffline);
-  // Set initial state
   if (!navigator.onLine) handleOffline();
 }
 
@@ -269,7 +261,6 @@ export async function signInWithGoogle() {
       showToast('⚠ Only @g.bracu.ac.bd emails are supported right now', true);
       return;
     }
-    // onAuthStateChanged handles everything after this
   } catch (e) {
     setAuthBtnLoading(false);
     if (e.code !== 'auth/popup-closed-by-user') {
@@ -292,11 +283,8 @@ export async function signOutUser() {
 
 // ── Init auth ─────────────────────────────────────────────────────────────────
 export function initAuth() {
-  // Restore last sync label immediately from localStorage (Feature 5)
   restoreSyncLabel();
-  // Start offline detection (Feature 6)
   initOfflineDetection();
-  // Show loading state while Firebase boots
   setAuthBtnLoading(true);
 
   onAuthStateChanged(auth, async user => {
@@ -314,7 +302,6 @@ export function initAuth() {
       const hasCloud = !!cloudData;
 
       if (!hasLocal && !hasCloud) {
-        // Situation 4 — both empty
         setSyncIndicator('synced');
         startRealtimeSync(user.uid);
         showNudgeBanner(false);
@@ -322,13 +309,11 @@ export function initAuth() {
       }
 
       if (!hasLocal && hasCloud) {
-        // Situation 2 — load from cloud silently
         applyCloudData(cloudData);
         return;
       }
 
       if (hasLocal && !hasCloud) {
-        // Situation 1 — upload local to cloud
         const localParsed = JSON.parse(localRaw);
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
@@ -339,7 +324,6 @@ export function initAuth() {
         return;
       }
 
-      // Situation 3 — both have data
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.removeItem('shohoj_cloud_applied');
@@ -372,7 +356,6 @@ export function initAuth() {
       currentUser = null;
       stopRealtimeSync();
       updateAuthUI(null);
-      // Show nudge only if user has local data worth backing up
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         const parsed = raw ? JSON.parse(raw) : null;
@@ -394,7 +377,7 @@ function applyCloudData(cloudData) {
   window.location.reload();
 }
 
-// ── Feature 1: Nudge banner ───────────────────────────────────────────────────
+// ── Nudge banner ──────────────────────────────────────────────────────────────
 function showNudgeBanner(show) {
   let banner = document.getElementById('authNudgeBanner');
 
@@ -405,7 +388,6 @@ function showNudgeBanner(show) {
 
   if (banner) { banner.style.display = ''; return; }
 
-  // Create it and insert after the calc footer
   banner = document.createElement('div');
   banner.id = 'authNudgeBanner';
   banner.style.cssText = `
@@ -432,31 +414,43 @@ function showNudgeBanner(show) {
     ">Sign in with Google</button>
   `;
 
-  // Insert before the simulator box, after the calc footer
   const calcFooter = document.querySelector('.calc-footer');
   if (calcFooter && calcFooter.parentNode) {
     calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
   }
 }
 
-// Expose signIn for the nudge banner button
 window._shohoj_signIn = signInWithGoogle;
 
 // ── Auth button loading state ─────────────────────────────────────────────────
 function setAuthBtnLoading(loading) {
-  const btn   = document.getElementById('authBtn');
-  const label = document.getElementById('authLabel');
-  if (!btn || !label) return;
+  const btn = document.getElementById('authBtn');
+  if (!btn) return;
   btn.disabled      = loading;
-  btn.style.opacity = loading ? '0.6' : '';
-  if (loading) label.textContent = '…';
+  btn.style.opacity = loading ? '0.55' : '';
+  if (loading) {
+    // Show spinner in whatever state the button is currently in
+    const label = btn.querySelector('.auth-name, .auth-signin-label');
+    if (label) label.textContent = '…';
+  }
 }
 
 // ── Sync indicator ────────────────────────────────────────────────────────────
 function setSyncIndicator(status) {
   const dot = document.getElementById('syncDot');
   if (!dot) return;
-  const colors = { syncing: '#F0A500', synced: '#2ECC71', error: '#e74c3c', offline: '#e74c3c' };
+  const colors = {
+    syncing: '#F0A500',
+    synced:  '#2ECC71',
+    error:   '#e74c3c',
+    offline: '#e74c3c',
+  };
+  const shadows = {
+    syncing: 'rgba(240,165,0,0.6)',
+    synced:  'rgba(46,204,113,0.6)',
+    error:   'rgba(231,76,60,0.6)',
+    offline: 'rgba(231,76,60,0.6)',
+  };
   const titles = {
     syncing: 'Syncing to cloud…',
     synced:  'Data synced to cloud',
@@ -464,85 +458,68 @@ function setSyncIndicator(status) {
     offline: 'Offline — changes saved locally',
   };
   dot.style.background = colors[status] || '#2ECC71';
+  dot.style.boxShadow  = `0 0 0 2px var(--bg), 0 0 6px ${shadows[status] || shadows.synced}`;
   dot.title            = titles[status] || '';
-  if (status === 'syncing') {
-    dot.style.animation = 'pulse 1s infinite';
-  } else {
-    dot.style.animation = '';
-  }
+  dot.style.animation  = status === 'syncing' ? 'pulse 1s infinite' : '';
 }
 
 // ── Auth UI ───────────────────────────────────────────────────────────────────
 function updateAuthUI(user) {
-  const btn    = document.getElementById('authBtn');
-  const avatar = document.getElementById('authAvatar');
-  const label  = document.getElementById('authLabel');
+  const btn = document.getElementById('authBtn');
   if (!btn) return;
 
   if (user) {
-    btn.title   = `Signed in as ${user.email}\nClick to sign out`;
-    btn.onclick = () => {
-      if (confirm(`Sign out of ${user.email}?`)) signOutUser();
-    };
-    if (avatar && user.photoURL) {
-      avatar.src           = user.photoURL;
-      avatar.style.display = 'block';
-      if (label) label.style.display = 'none';
-    } else {
-      if (avatar) avatar.style.display = 'none';
-      if (label) { label.textContent = user.displayName?.split(' ')[0] || 'Account'; label.style.display = ''; }
-    }
-    btn.style.borderColor = 'rgba(46,204,113,0.5)';
-    btn.style.opacity     = '';
-    btn.disabled          = false;
+    // ── Logged in ────────────────────────────────────────────────────────────
+    btn.className = 'auth-btn-signed-in magnetic';
+    btn.style.cssText = '';
+    btn.disabled  = false;
+    btn.title     = `Signed in as ${user.email}\nClick to sign out · Double-click to delete cloud data`;
+    btn.onclick   = () => { if (confirm(`Sign out of ${user.email}?`)) signOutUser(); };
+    btn.ondblclick = () => deleteCloudData();
 
-    // Sync dot
-    let dot = document.getElementById('syncDot');
-    if (!dot) {
-      dot = document.createElement('span');
-      dot.id = 'syncDot';
-      dot.style.cssText = `
-        width:7px;height:7px;border-radius:50%;background:#2ECC71;
-        display:inline-block;flex-shrink:0;margin-left:2px;
-        box-shadow:0 0 6px rgba(46,204,113,0.6);transition:background 0.3s;
-      `;
-      btn.appendChild(dot);
-    }
-    dot.style.display = 'inline-block';
+    const firstName = user.displayName?.split(' ')[0] || 'Account';
+    const initial   = firstName.charAt(0).toUpperCase();
 
-    // Last sync label
+    btn.innerHTML = `
+      <div class="auth-avatar-wrap">
+        ${user.photoURL
+          ? `<img src="${user.photoURL}" alt="${firstName}" class="auth-avatar-img" referrerpolicy="no-referrer" />`
+          : `<div class="auth-avatar-fallback">${initial}</div>`
+        }
+        <span id="syncDot" class="auth-sync-dot"></span>
+      </div>
+      <span class="auth-name">${firstName}</span>
+    `;
+
+    setSyncIndicator('synced');
+    restoreSyncLabel();
+
+    // Last sync label below button
     let syncLabel = document.getElementById('lastSyncLabel');
     if (!syncLabel) {
       syncLabel = document.createElement('div');
       syncLabel.id = 'lastSyncLabel';
-      syncLabel.style.cssText = `
-        font-size:10px;color:var(--text3);
-        text-align:right;margin-top:2px;display:none;
-      `;
+      syncLabel.className = 'auth-last-sync';
       btn.parentNode?.insertBefore(syncLabel, btn.nextSibling);
     }
-    restoreSyncLabel();
-
-    // Delete data option — append to sign-out confirm flow
-    btn.onclick = () => {
-      const choice = confirm(`Signed in as ${user.email}\n\nClick OK to sign out.`);
-      if (choice) signOutUser();
-    };
-    btn.ondblclick = () => {
-      deleteCloudData();
-    };
-    btn.title = `Signed in as ${user.email}\nClick to sign out · Double-click to delete cloud data`;
+    syncLabel.style.display = '';
 
   } else {
-    btn.title   = 'Sign in with Google to sync your data across devices';
-    btn.onclick = signInWithGoogle;
-    if (avatar) avatar.style.display = 'none';
-    if (label)  { label.textContent = 'Sign in'; label.style.display = ''; }
-    btn.style.borderColor = '';
-    btn.style.opacity     = '';
-    btn.disabled          = false;
-    const dot = document.getElementById('syncDot');
-    if (dot) dot.style.display = 'none';
+    // ── Logged out ───────────────────────────────────────────────────────────
+    btn.className = 'auth-btn-signed-out magnetic';
+    btn.style.cssText = '';
+    btn.disabled  = false;
+    btn.title     = 'Sign in with Google to sync your data across devices';
+    btn.onclick   = signInWithGoogle;
+    btn.ondblclick = null;
+
+    btn.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;opacity:0.75">
+        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" fill="currentColor"/>
+      </svg>
+      <span class="auth-signin-label">Sign in</span>
+    `;
+
     const syncLabel = document.getElementById('lastSyncLabel');
     if (syncLabel) syncLabel.style.display = 'none';
   }
