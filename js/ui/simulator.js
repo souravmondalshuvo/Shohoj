@@ -20,7 +20,11 @@ export function updateSetupWizard() {
   if (!s1) return;
   const hasDept    = !!state.currentDept;
   const hasSem     = hasDept && (document.getElementById('startSeason')?.value) && (document.getElementById('startYear')?.value);
-  const hasCourses = hasSem && state.semesters.length > 0;
+  // treat summary block as "has courses" so wizard completes properly
+  const hasCourses = hasSem && (
+    state.semesters.some(s => !s.summary && s.courses.some(c => c.name.trim())) ||
+    state.semesters.some(s => s.summary)
+  );
   s1.className  = 'setup-step-num ' + (hasDept ? 'done' : 'active');
   if (si2) si2.className = 'setup-step-indicator ' + (hasSem ? 'step-done' : hasDept ? 'step-active' : '');
   s2.className  = 'setup-step-num ' + (hasSem ? 'done' : hasDept ? 'active' : '');
@@ -70,7 +74,7 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
         </div>
       </div>
       <div class="sim-ba-right">
-        <div class="sim-ba-label">Avg CGPA Needed</div>
+        <div class="sim-ba-label">Avg GPA Needed</div>
         <div class="sim-ba-val" style="color:${neededColor}">${neededGPA.toFixed(2)}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
           <span style="font-size:10px;color:var(--text3)">over ${remaining} credits</span>
@@ -156,7 +160,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
   const candidates = [];
 
   state.semesters.forEach(sem => {
-    if (sem.running) return;
+    if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
       const gp = GRADES[c.grade];
@@ -199,7 +203,6 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       ? `<span style="color:#2ECC71;font-size:14px">☑</span>`
       : `<span style="color:var(--text3);font-size:14px">☐</span>`;
     const rowBg = checked ? 'background:rgba(29,185,84,0.07);' : '';
-    // XSS FIX: escape c.name, c.sem, and c.key before inserting into HTML
     const safeKey = escAttr(c.key);
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
                 onclick="window._toggleRetake('${safeKey}')">
