@@ -205,7 +205,16 @@ function _injectModalKeyframes() {
   document.head.appendChild(s);
 }
 
+// ── Reset all magnetic transforms and remove modal-open flag ─────────────────
+function _clearModalOpen() {
+  document.body.classList.remove('modal-open');
+  document.querySelectorAll('.magnetic').forEach(el => {
+    el.style.transform = 'translate(0,0)';
+  });
+}
+
 function _closeModal(overlay, resolve, value) {
+  _clearModalOpen();
   overlay.style.opacity    = '0';
   overlay.style.transition = 'opacity 0.15s';
   setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
@@ -284,14 +293,16 @@ function showSignInModal() {
       </div>
     `;
 
+    document.body.classList.add('modal-open');
     document.body.appendChild(overlay);
     const close = v => _closeModal(overlay, resolve, v);
 
     overlay.querySelector('#_mClose').onclick = () => close(false);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
 
-    // Dismiss modal before firing popup so it doesn't block the popup window
+    // Must clear modal-open before the popup fires (popup blocks the tab)
     overlay.querySelector('#_siGoogle').addEventListener('click', () => {
+      _clearModalOpen();
       overlay.style.opacity    = '0';
       overlay.style.transition = 'opacity 0.12s';
       setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 120);
@@ -365,6 +376,7 @@ function showSignOutModal(email) {
       </div>
     `;
 
+    document.body.classList.add('modal-open');
     document.body.appendChild(overlay);
     const close = v => _closeModal(overlay, resolve, v);
 
@@ -374,6 +386,7 @@ function showSignOutModal(email) {
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
 
     overlay.querySelector('#_soDelete').addEventListener('click', () => {
+      _clearModalOpen();
       overlay.style.opacity    = '0';
       overlay.style.transition = 'opacity 0.12s';
       setTimeout(async () => {
@@ -413,6 +426,7 @@ function showConfirmModal({ icon, title, body, confirmLabel, confirmDanger }) {
         </div>
       </div>
     `;
+    document.body.classList.add('modal-open');
     document.body.appendChild(overlay);
     const close = v => _closeModal(overlay, resolve, v);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
@@ -456,9 +470,15 @@ function showMigrationModal(localSems, cloudSems) {
           <button id="keepCloudBtn" style="flex:1;padding:11px;border-radius:10px;background:rgba(86,180,233,0.15);color:#56B4E9;border:1px solid rgba(86,180,233,0.3);font-size:13px;font-weight:700;cursor:pointer;">Keep cloud data</button>
         </div>
       </div>`;
+    document.body.classList.add('modal-open');
     document.body.appendChild(modal);
-    document.getElementById('keepLocalBtn').onclick = () => { document.body.removeChild(modal); resolve('local'); };
-    document.getElementById('keepCloudBtn').onclick = () => { document.body.removeChild(modal); resolve('cloud'); };
+    const close = (val) => {
+      _clearModalOpen();
+      document.body.removeChild(modal);
+      resolve(val);
+    };
+    document.getElementById('keepLocalBtn').onclick = () => close('local');
+    document.getElementById('keepCloudBtn').onclick = () => close('cloud');
   });
 }
 
@@ -547,7 +567,6 @@ export function initAuth() {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
-      // Migration already resolved in a previous session — skip the modal
       const migrationDone = localStorage.getItem('shohoj_migration_done');
       if (migrationDone) {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
