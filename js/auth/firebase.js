@@ -530,6 +530,12 @@ export function initAuth() {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
+      // Migration already resolved in a previous session — skip the modal
+      const migrationDone = localStorage.getItem('shohoj_migration_done');
+      if (migrationDone) {
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+      }
+
       const localParsed = JSON.parse(localRaw);
       const localSems   = localParsed?.semesters?.length || 0;
       const cloudSems   = cloudData?.semesters?.length   || 0;
@@ -541,7 +547,9 @@ export function initAuth() {
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         showToast('Local data saved to cloud ✓');
         setSyncIndicator('synced');
+        try { localStorage.setItem('shohoj_migration_done', '1'); } catch(e) {}
       } else {
+        try { localStorage.setItem('shohoj_migration_done', '1'); } catch(e) {}
         applyCloudData(cloudData); return;
       }
       startRealtimeSync(user.uid); showNudgeBanner(false);
