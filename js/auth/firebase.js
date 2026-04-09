@@ -1,10 +1,10 @@
 // ── js/auth/firebase.js ───────────────────────────────────────────────────────
 // Firebase Authentication + Firestore cloud sync for Shohoj
-// Features: Google Sign-In (redirect), Sign-Out, cloud save/load, migration modal,
+// Features: Google Sign-In, Sign-Out, cloud save/load, migration modal,
 //           real-time sync, offline detection, sync persistence, data deletion
 
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -24,7 +24,7 @@ provider.setCustomParameters({ prompt: 'select_account' });
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
-let _unsubscribeSnapshot  = null;
+let _unsubscribeSnapshot  = null; // real-time listener cleanup
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
 
@@ -36,7 +36,10 @@ function userDocRef(uid) {
 // ── Save to cloud ─────────────────────────────────────────────────────────────
 export async function saveToCloud(stateSnap) {
   if (!currentUser) return;
-  if (!navigator.onLine) { setSyncIndicator('offline'); return; }
+  if (!navigator.onLine) {
+    setSyncIndicator('offline');
+    return;
+  }
   setSyncIndicator('syncing');
   try {
     await setDoc(userDocRef(currentUser.uid), {
@@ -54,7 +57,7 @@ export async function saveToCloud(stateSnap) {
   }
 }
 
-// ── Load from cloud ───────────────────────────────────────────────────────────
+// ── Load from cloud (one-time) ────────────────────────────────────────────────
 async function loadFromCloud() {
   if (!currentUser) return null;
   try {
@@ -68,15 +71,25 @@ async function loadFromCloud() {
   }
 }
 
-// ── Real-time listener ────────────────────────────────────────────────────────
+// ── Feature 3: Real-time listener ────────────────────────────────────────────
 function startRealtimeSync(uid) {
-  if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
+  if (_unsubscribeSnapshot) {
+    _unsubscribeSnapshot();
+    _unsubscribeSnapshot = null;
+  }
+
   let isFirstSnapshot = true;
+
   _unsubscribeSnapshot = onSnapshot(userDocRef(uid), snap => {
-    if (isFirstSnapshot) { isFirstSnapshot = false; return; }
+    if (isFirstSnapshot) {
+      isFirstSnapshot = false;
+      return;
+    }
     if (!snap.exists()) return;
+
     const raw = snap.data()?.data;
     if (!raw) return;
+
     try {
       const current = localStorage.getItem(STORAGE_KEY);
       if (current !== raw) {
@@ -86,24 +99,28 @@ function startRealtimeSync(uid) {
         setTimeout(() => window.location.reload(), 1500);
       }
     } catch(e) {}
-  }, err => { console.error('[Shohoj] Real-time sync error:', err); });
+  }, err => {
+    console.error('[Shohoj] Real-time sync error:', err);
+  });
 }
 
 function stopRealtimeSync() {
-  if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
+  if (_unsubscribeSnapshot) {
+    _unsubscribeSnapshot();
+    _unsubscribeSnapshot = null;
+  }
 }
 
-// ── Account data deletion ─────────────────────────────────────────────────────
+// ── Feature 4: Account data deletion ─────────────────────────────────────────
 export async function deleteCloudData() {
   if (!currentUser) return;
-  const confirmed = await showConfirmModal({
-    icon:          '🗑️',
-    title:         'Delete cloud data?',
-    body:          'This will permanently delete all your Shohoj data from the cloud. Your local data on this device will remain untouched.',
-    confirmLabel:  'Delete cloud data',
-    confirmDanger: true,
-  });
+  const confirmed = confirm(
+    'This will permanently delete all your data from Shohoj\'s cloud.\n\n' +
+    'Your local data on this device will remain untouched.\n\n' +
+    'Are you sure?'
+  );
   if (!confirmed) return;
+
   try {
     stopRealtimeSync();
     await deleteDoc(userDocRef(currentUser.uid));
@@ -116,7 +133,7 @@ export async function deleteCloudData() {
   }
 }
 
-// ── Sync status persistence ───────────────────────────────────────────────────
+// ── Feature 5: Sync status persistence ───────────────────────────────────────
 function restoreSyncLabel() {
   try {
     const ts = localStorage.getItem(LAST_SYNC_KEY);
@@ -129,286 +146,50 @@ function updateLastSyncLabel(timestamp) {
   if (!el || !timestamp) return;
   const diff = Math.floor((Date.now() - timestamp) / 1000);
   let text;
-  if (diff < 60)         text = 'Synced just now';
-  else if (diff < 3600)  text = `Synced ${Math.floor(diff / 60)}m ago`;
-  else if (diff < 86400) text = `Synced ${Math.floor(diff / 3600)}h ago`;
-  else                   text = `Synced ${Math.floor(diff / 86400)}d ago`;
-  el.textContent   = text;
+  if (diff < 60)        text = 'Synced just now';
+  else if (diff < 3600) text = `Synced ${Math.floor(diff / 60)}m ago`;
+  else if (diff < 86400)text = `Synced ${Math.floor(diff / 3600)}h ago`;
+  else                  text = `Synced ${Math.floor(diff / 86400)}d ago`;
+  el.textContent = text;
   el.style.display = '';
 }
 
-// ── Offline detection ─────────────────────────────────────────────────────────
+// ── Feature 6: Offline detection ─────────────────────────────────────────────
 function initOfflineDetection() {
-  const handleOnline = () => {
+  function handleOnline() {
     setSyncIndicator('synced');
     hideOfflineBanner();
-    if (currentUser && typeof window._shohoj_recalc === 'function') window._shohoj_recalc();
-  };
-  const handleOffline = () => { setSyncIndicator('offline'); showOfflineBanner(); };
+    if (currentUser && typeof window._shohoj_recalc === 'function') {
+      window._shohoj_recalc();
+    }
+  }
+  function handleOffline() {
+    setSyncIndicator('offline');
+    showOfflineBanner();
+  }
   window.addEventListener('online',  handleOnline);
   window.addEventListener('offline', handleOffline);
   if (!navigator.onLine) handleOffline();
 }
 
 function showOfflineBanner() {
-  let b = document.getElementById('offlineBanner');
-  if (b) { b.style.display = ''; return; }
-  b = document.createElement('div');
-  b.id = 'offlineBanner';
-  b.style.cssText = `position:fixed;bottom:0;left:0;right:0;z-index:9997;background:rgba(240,165,0,0.95);color:#0b0f0d;text-align:center;font-size:13px;font-weight:600;padding:10px;backdrop-filter:blur(8px);`;
-  b.textContent = '📡 You\'re offline — changes are saved locally and will sync when you reconnect';
-  document.body.appendChild(b);
+  let banner = document.getElementById('offlineBanner');
+  if (banner) { banner.style.display = ''; return; }
+  banner = document.createElement('div');
+  banner.id = 'offlineBanner';
+  banner.style.cssText = `
+    position:fixed;bottom:0;left:0;right:0;z-index:9997;
+    background:rgba(240,165,0,0.95);color:#0b0f0d;
+    text-align:center;font-size:13px;font-weight:600;
+    padding:10px;backdrop-filter:blur(8px);
+  `;
+  banner.textContent = '📡 You\'re offline — changes are saved locally and will sync when you reconnect';
+  document.body.appendChild(banner);
 }
 
 function hideOfflineBanner() {
-  const b = document.getElementById('offlineBanner');
-  if (b) b.style.display = 'none';
-}
-
-// ── Modal helpers ─────────────────────────────────────────────────────────────
-function _modalTheme() {
-  const isDark = document.documentElement.dataset.theme === 'dark';
-  return {
-    isDark,
-    bg:     isDark ? '#0d1f12' : '#ffffff',
-    text:   isDark ? '#e8f0ea' : '#0d2914',
-    text2:  isDark ? '#8aab90' : '#3a6b47',
-    border: isDark ? 'rgba(46,204,113,0.20)' : 'rgba(46,204,113,0.28)',
-  };
-}
-
-function _injectModalKeyframes() {
-  if (document.getElementById('shohojModalKeyframes')) return;
-  const s = document.createElement('style');
-  s.id = 'shohojModalKeyframes';
-  s.textContent = `
-    @keyframes modalFadeIn {
-      from { opacity:0; transform:scale(0.97) translateY(8px); }
-      to   { opacity:1; transform:scale(1)    translateY(0);   }
-    }
-    .shohoj-modal-btn {
-      transition: opacity 0.15s, transform 0.12s, background 0.15s, border-color 0.15s !important;
-    }
-    .shohoj-modal-btn:hover  { opacity: 0.85; }
-    .shohoj-modal-btn:active { transform: scale(0.97); }
-  `;
-  document.head.appendChild(s);
-}
-
-function _closeModal(overlay, resolve, value) {
-  overlay.style.opacity    = '0';
-  overlay.style.transition = 'opacity 0.15s';
-  setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
-  resolve(value);
-}
-
-function _closeBtn(text2, isDark) {
-  return `<button class="shohoj-modal-btn" id="_mClose" style="
-    position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
-    background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
-    border:1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'};
-    color:${text2};font-size:18px;line-height:1;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-  ">×</button>`;
-}
-
-// ── Sign-in modal ─────────────────────────────────────────────────────────────
-function showSignInModal() {
-  return new Promise(resolve => {
-    _injectModalKeyframes();
-    const { isDark, bg, text, text2, border } = _modalTheme();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'signInModal';
-    overlay.style.cssText = `
-      position:fixed;inset:0;z-index:99999;
-      background:rgba(0,0,0,0.72);
-      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;
-      animation:modalFadeIn 0.2s ease;
-    `;
-    overlay.innerHTML = `
-      <div style="
-        background:${bg};border:1px solid ${border};border-radius:20px;
-        padding:32px 28px 28px;max-width:360px;width:90%;
-        box-shadow:0 32px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(46,204,113,0.06);
-        position:relative;text-align:center;
-      ">
-        ${_closeBtn(text2, isDark)}
-
-        <div style="
-          width:52px;height:52px;background:#2ECC71;border-radius:14px;
-          display:inline-flex;align-items:center;justify-content:center;
-          font-family:'Syne',sans-serif;font-weight:800;font-size:22px;
-          color:#0b0f0d;margin-bottom:18px;
-          box-shadow:0 8px 24px rgba(46,204,113,0.35);
-        ">স</div>
-
-        <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${text};margin-bottom:8px;letter-spacing:-0.5px;">
-          Sign in to Shohoj
-        </div>
-        <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:24px;max-width:280px;margin-left:auto;margin-right:auto;">
-          Use your BRACU G-Suite account to sync your data across all your devices.
-        </div>
-
-        <button id="_siGoogle" class="shohoj-modal-btn" style="
-          width:100%;padding:13px 20px;border-radius:12px;
-          background:${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)'};
-          border:1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)'};
-          color:${text};font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;
-          cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
-          margin-bottom:14px;
-        ">
-          <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-            <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-            <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-          </svg>
-          Continue with Google
-        </button>
-
-        <div style="font-size:11px;color:${text2};opacity:0.7;line-height:1.5;">
-          Only <strong>@g.bracu.ac.bd</strong> accounts are supported
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    const close = v => _closeModal(overlay, resolve, v);
-
-    overlay.querySelector('#_mClose').onclick = () => close(false);
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
-
-    overlay.querySelector('#_siGoogle').addEventListener('click', () => {
-      // Show loading state on button — page will navigate away momentarily
-      const btn = overlay.querySelector('#_siGoogle');
-      btn.disabled = true;
-      btn.innerHTML = `<span style="font-size:13px;opacity:0.7;">Redirecting to Google…</span>`;
-      resolve(true);
-    });
-  });
-}
-
-// ── Sign-out modal ────────────────────────────────────────────────────────────
-function showSignOutModal(email) {
-  return new Promise(resolve => {
-    _injectModalKeyframes();
-    const { isDark, bg, text, text2, border } = _modalTheme();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'signOutModal';
-    overlay.style.cssText = `
-      position:fixed;inset:0;z-index:99999;
-      background:rgba(0,0,0,0.72);
-      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;
-      animation:modalFadeIn 0.2s ease;
-    `;
-    overlay.innerHTML = `
-      <div style="
-        background:${bg};border:1px solid ${border};border-radius:20px;
-        padding:28px;max-width:360px;width:90%;
-        box-shadow:0 32px 80px rgba(0,0,0,0.55);
-        position:relative;text-align:center;
-      ">
-        ${_closeBtn(text2, isDark)}
-
-        <div style="font-size:30px;margin-bottom:14px;">👋</div>
-        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${text};margin-bottom:8px;letter-spacing:-0.5px;">
-          Sign out?
-        </div>
-        <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:8px;">
-          You're signed in as
-        </div>
-        <div style="
-          font-size:13px;font-weight:700;color:${text};
-          background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.18);
-          border-radius:8px;padding:6px 14px;display:inline-block;
-          margin-bottom:20px;word-break:break-all;
-        ">${email}</div>
-
-        <div style="display:flex;gap:10px;margin-bottom:14px;">
-          <button id="_soCancel" class="shohoj-modal-btn" style="
-            flex:1;padding:12px;border-radius:10px;
-            background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};
-            border:1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'};
-            color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
-            cursor:pointer;
-          ">Cancel</button>
-          <button id="_soConfirm" class="shohoj-modal-btn" style="
-            flex:1;padding:12px;border-radius:10px;
-            background:rgba(231,76,60,0.12);
-            border:1px solid rgba(231,76,60,0.35);
-            color:#e74c3c;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
-            cursor:pointer;
-          ">Sign out</button>
-        </div>
-
-        <button id="_soDelete" class="shohoj-modal-btn" style="
-          width:100%;padding:9px;border-radius:8px;
-          background:transparent;border:none;
-          color:${text2};font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
-          cursor:pointer;opacity:0.55;
-          text-decoration:underline;text-underline-offset:2px;
-        ">Delete my cloud data</button>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    const close = v => _closeModal(overlay, resolve, v);
-
-    overlay.querySelector('#_mClose').onclick   = () => close(false);
-    overlay.querySelector('#_soCancel').onclick  = () => close(false);
-    overlay.querySelector('#_soConfirm').onclick = () => close(true);
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
-
-    overlay.querySelector('#_soDelete').addEventListener('click', () => {
-      overlay.style.opacity    = '0';
-      overlay.style.transition = 'opacity 0.12s';
-      setTimeout(async () => {
-        if (overlay.parentNode) document.body.removeChild(overlay);
-        resolve(false);
-        await deleteCloudData();
-      }, 120);
-    });
-  });
-}
-
-// ── Generic confirm modal ─────────────────────────────────────────────────────
-function showConfirmModal({ icon, title, body, confirmLabel, confirmDanger }) {
-  return new Promise(resolve => {
-    _injectModalKeyframes();
-    const { isDark, bg, text, text2, border } = _modalTheme();
-    const confirmStyle = confirmDanger
-      ? 'background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.35);color:#e74c3c;'
-      : 'background:#2ECC71;border:none;color:#0b0f0d;';
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-      position:fixed;inset:0;z-index:99999;
-      background:rgba(0,0,0,0.72);
-      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      display:flex;align-items:center;justify-content:center;
-      animation:modalFadeIn 0.2s ease;
-    `;
-    overlay.innerHTML = `
-      <div style="background:${bg};border:1px solid ${border};border-radius:20px;padding:28px;max-width:360px;width:90%;box-shadow:0 32px 80px rgba(0,0,0,0.55);text-align:center;">
-        <div style="font-size:28px;margin-bottom:12px;">${icon}</div>
-        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${text};margin-bottom:8px;letter-spacing:-0.5px;">${title}</div>
-        <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:22px;">${body}</div>
-        <div style="display:flex;gap:10px;">
-          <button id="_cfCancel" class="shohoj-modal-btn" style="flex:1;padding:12px;border-radius:10px;background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};border:1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'};color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
-          <button id="_cfOk" class="shohoj-modal-btn" style="flex:1;padding:12px;border-radius:10px;${confirmStyle}font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">${confirmLabel}</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    const close = v => _closeModal(overlay, resolve, v);
-    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
-    overlay.querySelector('#_cfCancel').onclick = () => close(false);
-    overlay.querySelector('#_cfOk').onclick     = () => close(true);
-  });
+  const banner = document.getElementById('offlineBanner');
+  if (banner) banner.style.display = 'none';
 }
 
 // ── Migration modal ───────────────────────────────────────────────────────────
@@ -419,17 +200,27 @@ function showMigrationModal(localSems, cloudSems) {
     const text   = isDark ? '#e8f0ea' : '#0d2914';
     const text2  = isDark ? '#a8c4ad' : '#2d5a3d';
     const border = isDark ? 'rgba(46,204,113,0.25)' : 'rgba(46,204,113,0.3)';
-    const localLabel = localSems === 0 ? 'No local data' : `${localSems} semester${localSems !== 1 ? 's' : ''}`;
-    const cloudLabel = cloudSems === 0 ? 'No cloud data' : `${cloudSems} semester${cloudSems !== 1 ? 's' : ''}`;
+
+    const localLabel = localSems === 0 ? 'No local data'  : `${localSems} semester${localSems !== 1 ? 's' : ''}`;
+    const cloudLabel = cloudSems === 0 ? 'No cloud data'  : `${cloudSems} semester${cloudSems !== 1 ? 's' : ''}`;
 
     const modal = document.createElement('div');
     modal.id = 'migrationModal';
-    modal.style.cssText = `position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;`;
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:99999;
+      background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);
+      display:flex;align-items:center;justify-content:center;
+    `;
     modal.innerHTML = `
-      <div style="background:${bg};border:1px solid ${border};border-radius:16px;padding:28px 32px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
+      <div style="background:${bg};border:1px solid ${border};border-radius:16px;
+        padding:28px 32px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);">
         <div style="font-size:22px;margin-bottom:8px">⚠️</div>
-        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:${text};margin-bottom:6px">We found data in two places</div>
-        <div style="font-size:13px;color:${text2};margin-bottom:20px;line-height:1.6">You have saved data on this device and in your cloud account. Which one do you want to keep?</div>
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:${text};margin-bottom:6px">
+          We found data in two places
+        </div>
+        <div style="font-size:13px;color:${text2};margin-bottom:20px;line-height:1.6">
+          You have saved data on this device and in your cloud account. Which one do you want to keep?
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
           <div style="background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.2);border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#2ECC71;margin-bottom:6px">This device</div>
@@ -440,10 +231,16 @@ function showMigrationModal(localSems, cloudSems) {
             <div style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;color:${text}">${cloudLabel}</div>
           </div>
         </div>
-        <div style="font-size:11px;color:${text2};margin-bottom:16px;text-align:center">The other will be discarded. This cannot be undone.</div>
+        <div style="font-size:11px;color:${text2};margin-bottom:16px;text-align:center">
+          The other will be discarded. This cannot be undone.
+        </div>
         <div style="display:flex;gap:10px">
-          <button id="keepLocalBtn" style="flex:1;padding:11px;border-radius:10px;background:#2ECC71;color:#0b0f0d;border:none;font-size:13px;font-weight:700;cursor:pointer;">Keep this device's data</button>
-          <button id="keepCloudBtn" style="flex:1;padding:11px;border-radius:10px;background:rgba(86,180,233,0.15);color:#56B4E9;border:1px solid rgba(86,180,233,0.3);font-size:13px;font-weight:700;cursor:pointer;">Keep cloud data</button>
+          <button id="keepLocalBtn" style="flex:1;padding:11px;border-radius:10px;background:#2ECC71;color:#0b0f0d;border:none;font-size:13px;font-weight:700;cursor:pointer;">
+            Keep this device's data
+          </button>
+          <button id="keepCloudBtn" style="flex:1;padding:11px;border-radius:10px;background:rgba(86,180,233,0.15);color:#56B4E9;border:1px solid rgba(86,180,233,0.3);font-size:13px;font-weight:700;cursor:pointer;">
+            Keep cloud data
+          </button>
         </div>
       </div>`;
     document.body.appendChild(modal);
@@ -452,16 +249,24 @@ function showMigrationModal(localSems, cloudSems) {
   });
 }
 
-// ── Sign in (redirect flow) ───────────────────────────────────────────────────
+// ── Sign in ───────────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
-  const proceed = await showSignInModal();
-  if (!proceed) return;
+  setAuthBtnLoading(true);
   try {
-    await signInWithRedirect(auth, provider);
-    // Page navigates away here — nothing after this runs
+    const result = await signInWithPopup(auth, provider);
+    const email  = result.user.email || '';
+    if (!email.endsWith('@g.bracu.ac.bd')) {
+      await signOut(auth);
+      setAuthBtnLoading(false);
+      showToast('⚠ Only @g.bracu.ac.bd emails are supported right now', true);
+      return;
+    }
   } catch (e) {
-    console.error('[Shohoj] Redirect sign-in failed:', e);
-    showToast('⚠ Sign-in failed — please try again', true);
+    setAuthBtnLoading(false);
+    if (e.code !== 'auth/popup-closed-by-user') {
+      console.error('[Shohoj] Sign-in failed:', e);
+      showToast('⚠ Sign-in failed — please try again', true);
+    }
   }
 }
 
@@ -482,52 +287,50 @@ export function initAuth() {
   initOfflineDetection();
   setAuthBtnLoading(true);
 
-  // ── Handle redirect result first (runs after Google sends user back) ────────
-  getRedirectResult(auth).then(async result => {
-    if (result) {
-      const email = result.user.email || '';
-      if (!email.endsWith('@g.bracu.ac.bd')) {
-        await signOut(auth);
-        showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true);
-      }
-      // onAuthStateChanged will fire next and handle the rest
-    }
-  }).catch(e => {
-    console.error('[Shohoj] Redirect result error:', e);
-    showToast('⚠ Sign-in failed — please try again', true);
-    setAuthBtnLoading(false);
-  });
-
-  // ── Auth state listener ─────────────────────────────────────────────────────
   onAuthStateChanged(auth, async user => {
     currentUser = user;
     setAuthBtnLoading(false);
 
     if (user) {
       updateAuthUI(user);
+
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+
       const hasLocal = !!localRaw;
       const hasCloud = !!cloudData;
 
       if (!hasLocal && !hasCloud) {
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced');
+        startRealtimeSync(user.uid);
+        showNudgeBanner(false);
+        return;
       }
-      if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
+
+      if (!hasLocal && hasCloud) {
+        applyCloudData(cloudData);
+        return;
+      }
+
       if (hasLocal && !hasCloud) {
         const localParsed = JSON.parse(localRaw);
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         showToast('Data uploaded to your cloud account ✓');
-        startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        startRealtimeSync(user.uid);
+        showNudgeBanner(false);
+        return;
       }
 
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.removeItem('shohoj_cloud_applied');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced');
+        startRealtimeSync(user.uid);
+        showNudgeBanner(false);
+        return;
       }
 
       const localParsed = JSON.parse(localRaw);
@@ -542,19 +345,25 @@ export function initAuth() {
         showToast('Local data saved to cloud ✓');
         setSyncIndicator('synced');
       } else {
-        applyCloudData(cloudData); return;
+        applyCloudData(cloudData);
+        return;
       }
-      startRealtimeSync(user.uid); showNudgeBanner(false);
+
+      startRealtimeSync(user.uid);
+      showNudgeBanner(false);
 
     } else {
       currentUser = null;
       stopRealtimeSync();
       updateAuthUI(null);
       try {
-        const raw    = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY);
         const parsed = raw ? JSON.parse(raw) : null;
-        showNudgeBanner(parsed?.semesters?.length > 0);
-      } catch(e) { showNudgeBanner(false); }
+        const hasSemesters = parsed?.semesters?.length > 0;
+        showNudgeBanner(hasSemesters);
+      } catch(e) {
+        showNudgeBanner(false);
+      }
     }
   });
 }
@@ -571,17 +380,44 @@ function applyCloudData(cloudData) {
 // ── Nudge banner ──────────────────────────────────────────────────────────────
 function showNudgeBanner(show) {
   let banner = document.getElementById('authNudgeBanner');
-  if (!show) { if (banner) banner.style.display = 'none'; return; }
+
+  if (!show) {
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+
   if (banner) { banner.style.display = ''; return; }
+
   banner = document.createElement('div');
   banner.id = 'authNudgeBanner';
-  banner.style.cssText = `margin:0 2rem 1.5rem;padding:12px 16px;border-radius:12px;background:rgba(86,180,233,0.07);border:1px solid rgba(86,180,233,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--text2);`;
-  banner.innerHTML = `
-    <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button onclick="window._shohoj_signIn()" style="padding:7px 16px;border-radius:8px;background:#56B4E9;color:#0b0f0d;border:none;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Sign in</button>
+  banner.style.cssText = `
+    margin:0 2rem 1.5rem;
+    padding:12px 16px;
+    border-radius:12px;
+    background:rgba(86,180,233,0.07);
+    border:1px solid rgba(86,180,233,0.25);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    font-size:13px;
+    color:var(--text2);
   `;
+  banner.innerHTML = `
+    <span>☁ Sign in with your BRACU email to back up your data and access it from any device.</span>
+    <button onclick="window._shohoj_signIn()" style="
+      padding:7px 16px;border-radius:8px;
+      background:#56B4E9;color:#0b0f0d;
+      border:none;font-size:12px;font-weight:700;
+      cursor:pointer;white-space:nowrap;flex-shrink:0;
+    ">Sign in with Google</button>
+  `;
+
   const calcFooter = document.querySelector('.calc-footer');
-  if (calcFooter?.parentNode) calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
+  if (calcFooter && calcFooter.parentNode) {
+    calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
+  }
 }
 
 window._shohoj_signIn = signInWithGoogle;
@@ -593,6 +429,7 @@ function setAuthBtnLoading(loading) {
   btn.disabled      = loading;
   btn.style.opacity = loading ? '0.55' : '';
   if (loading) {
+    // Show spinner in whatever state the button is currently in
     const label = btn.querySelector('.auth-name, .auth-signin-label');
     if (label) label.textContent = '…';
   }
@@ -602,12 +439,27 @@ function setAuthBtnLoading(loading) {
 function setSyncIndicator(status) {
   const dot = document.getElementById('syncDot');
   if (!dot) return;
-  const colors  = { syncing:'#F0A500', synced:'#2ECC71', error:'#e74c3c', offline:'#e74c3c' };
-  const shadows = { syncing:'rgba(240,165,0,0.6)', synced:'rgba(46,204,113,0.6)', error:'rgba(231,76,60,0.6)', offline:'rgba(231,76,60,0.6)' };
-  const titles  = { syncing:'Syncing to cloud…', synced:'Data synced to cloud', error:'Cloud sync failed — data saved locally', offline:'Offline — changes saved locally' };
-  dot.style.background = colors[status]  || '#2ECC71';
+  const colors = {
+    syncing: '#F0A500',
+    synced:  '#2ECC71',
+    error:   '#e74c3c',
+    offline: '#e74c3c',
+  };
+  const shadows = {
+    syncing: 'rgba(240,165,0,0.6)',
+    synced:  'rgba(46,204,113,0.6)',
+    error:   'rgba(231,76,60,0.6)',
+    offline: 'rgba(231,76,60,0.6)',
+  };
+  const titles = {
+    syncing: 'Syncing to cloud…',
+    synced:  'Data synced to cloud',
+    error:   'Cloud sync failed — data saved locally',
+    offline: 'Offline — changes saved locally',
+  };
+  dot.style.background = colors[status] || '#2ECC71';
   dot.style.boxShadow  = `0 0 0 2px var(--bg), 0 0 6px ${shadows[status] || shadows.synced}`;
-  dot.title            = titles[status]  || '';
+  dot.title            = titles[status] || '';
   dot.style.animation  = status === 'syncing' ? 'pulse 1s infinite' : '';
 }
 
@@ -617,49 +469,57 @@ function updateAuthUI(user) {
   if (!btn) return;
 
   if (user) {
-    btn.className     = 'auth-btn-signed-in magnetic';
+    // ── Logged in ────────────────────────────────────────────────────────────
+    btn.className = 'auth-btn-signed-in magnetic';
     btn.style.cssText = '';
-    btn.disabled      = false;
-    btn.title         = `Signed in as ${user.email}`;
-    btn.onclick       = async () => { if (await showSignOutModal(user.email)) signOutUser(); };
-    btn.ondblclick    = null;
+    btn.disabled  = false;
+    btn.title     = `Signed in as ${user.email}\nClick to sign out · Double-click to delete cloud data`;
+    btn.onclick   = () => { if (confirm(`Sign out of ${user.email}?`)) signOutUser(); };
+    btn.ondblclick = () => deleteCloudData();
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
+    const initial   = firstName.charAt(0).toUpperCase();
+
     btn.innerHTML = `
       <div class="auth-avatar-wrap">
         ${user.photoURL
           ? `<img src="${user.photoURL}" alt="${firstName}" class="auth-avatar-img" referrerpolicy="no-referrer" />`
-          : `<div class="auth-avatar-fallback">${firstName.charAt(0).toUpperCase()}</div>`
+          : `<div class="auth-avatar-fallback">${initial}</div>`
         }
         <span id="syncDot" class="auth-sync-dot"></span>
       </div>
       <span class="auth-name">${firstName}</span>
     `;
+
     setSyncIndicator('synced');
     restoreSyncLabel();
 
+    // Last sync label below button
     let syncLabel = document.getElementById('lastSyncLabel');
     if (!syncLabel) {
-      syncLabel           = document.createElement('div');
-      syncLabel.id        = 'lastSyncLabel';
+      syncLabel = document.createElement('div');
+      syncLabel.id = 'lastSyncLabel';
       syncLabel.className = 'auth-last-sync';
       btn.parentNode?.insertBefore(syncLabel, btn.nextSibling);
     }
     syncLabel.style.display = '';
 
   } else {
-    btn.className     = 'auth-btn-signed-out magnetic';
+    // ── Logged out ───────────────────────────────────────────────────────────
+    btn.className = 'auth-btn-signed-out magnetic';
     btn.style.cssText = '';
-    btn.disabled      = false;
-    btn.title         = 'Sign in with your BRACU G-Suite account';
-    btn.onclick       = signInWithGoogle;
-    btn.ondblclick    = null;
+    btn.disabled  = false;
+    btn.title     = 'Sign in with Google to sync your data across devices';
+    btn.onclick   = signInWithGoogle;
+    btn.ondblclick = null;
+
     btn.innerHTML = `
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;opacity:0.75">
         <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" fill="currentColor"/>
       </svg>
       <span class="auth-signin-label">Sign in</span>
     `;
+
     const syncLabel = document.getElementById('lastSyncLabel');
     if (syncLabel) syncLabel.style.display = 'none';
   }
@@ -671,14 +531,19 @@ function showToast(msg, isError = false) {
   t.textContent = msg;
   t.style.cssText = `
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    background:${isError ? '#e74c3c' : '#2ECC71'};color:${isError ? '#fff' : '#0b0f0d'};
-    padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;
+    background:${isError ? '#e74c3c' : '#2ECC71'};
+    color:${isError ? '#fff' : '#0b0f0d'};
+    padding:10px 20px;border-radius:100px;
+    font-size:13px;font-weight:600;
     box-shadow:0 4px 20px ${isError ? 'rgba(231,76,60,0.4)' : 'rgba(46,204,113,0.4)'};
-    z-index:99998;pointer-events:none;animation:toastIn 0.3s ease;white-space:nowrap;
+    z-index:99998;pointer-events:none;
+    animation:toastIn 0.3s ease;
+    white-space:nowrap;
   `;
   document.body.appendChild(t);
   setTimeout(() => {
-    t.style.opacity = '0'; t.style.transition = 'opacity 0.3s';
+    t.style.opacity    = '0';
+    t.style.transition = 'opacity 0.3s';
     setTimeout(() => { if (t.parentNode) document.body.removeChild(t); }, 300);
   }, 3500);
 }
