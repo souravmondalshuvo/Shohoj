@@ -353,13 +353,12 @@ function showSignOutModal(email) {
           ">Sign out</button>
         </div>
 
-        <button id="_soDelete" class="shohoj-modal-btn" style="
-          width:100%;padding:9px;border-radius:8px;
-          background:transparent;border:none;
+        <span id="_soDelete" style="
           color:${text2};font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
           cursor:pointer;opacity:0.55;
           text-decoration:underline;text-underline-offset:2px;
-        ">Delete my cloud data</button>
+          display:inline-block;
+        ">Delete my cloud data</span>
       </div>
     `;
 
