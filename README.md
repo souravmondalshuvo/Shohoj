@@ -13,7 +13,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Phase%201%20Live-2ECC71?style=flat-square" alt="Status" />
-  <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS-3498DB?style=flat-square" alt="Stack" />
+  <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
@@ -34,7 +34,7 @@
 
 It is a university life platform built by a BRAC University student, for every university student in Bangladesh. One login. One place. Your entire university life.
 
-Shohoj starts with the tool every student needs most — a **smart CGPA calculator** that understands BRACU's exact grading system, reads your official transcript PDF, and helps you plan your path to graduation.
+Shohoj starts with the tool every student needs most — a **smart CGPA calculator** that understands BRACU's exact grading system, reads your official transcript PDF, syncs your data to the cloud, and helps you plan your path to graduation.
 
 > **[Try it live →](https://souravmondalshuvo.github.io/Shohoj)**
 
@@ -51,6 +51,17 @@ Nobody was building a solution. So I decided to build it myself.
 ---
 
 ## Features — What's Live Today
+
+### ☁ Cloud Sync (New)
+
+Sign in with your BRACU G-Suite account (`@g.bracu.ac.bd`) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
+
+- **Google Sign-In** — custom modal with BRACU domain restriction, no browser dialogs
+- **Automatic sync** — data saves to Firestore every time you make a change
+- **Real-time updates** — if you edit on another device, this one reloads automatically
+- **Offline support** — changes save locally and sync when you reconnect
+- **Migration flow** — if you already have local data, a modal lets you choose which to keep
+- **Data deletion** — delete your cloud data any time from the sign-out modal
 
 ### 🎓 Smart CGPA Calculator
 
@@ -171,23 +182,24 @@ Shohoj is built to feel like a real product, not a student project.
 | Pharmacy                            | PHR  | 164     | Bi (Sp+Su) | 🟢 Full support |
 | Law                                 | LLB  | 135     | Bi (Sp+Fa) | 🟢 Full support |
 
-**Total: 758 courses in catalog** (including GED/common courses shared across departments)
+**Total: 774 courses in catalog** (including GED/common courses shared across departments)
 
 ---
 
 ## Tech Stack
 
-| Layer      | Technology                                            | Purpose                                                |
-| ---------- | ----------------------------------------------------- | ------------------------------------------------------ |
-| Frontend   | HTML, CSS, Vanilla JavaScript                         | Zero-dependency, fast, portable                        |
-| PDF Import | [pdf.js](https://mozilla.github.io/pdf.js/) v3.11.174 | Reading BRACU transcript PDFs                          |
-| PDF Export | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
-| Build      | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
-| Hosting    | GitHub Pages                                          | Free, fast, always available                           |
+| Layer       | Technology                                            | Purpose                                                |
+| ----------- | ----------------------------------------------------- | ------------------------------------------------------ |
+| Frontend    | HTML, CSS, Vanilla JavaScript                         | Zero-dependency, fast, portable                        |
+| Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
+| PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/) v3.11.174 | Reading BRACU transcript PDFs                          |
+| PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
+| Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
+| Hosting     | GitHub Pages                                          | Free, fast, always available                           |
 
 Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prevent supply-chain tampering.
 
-**Phase 2+** will migrate to React.js, Tailwind CSS, Firebase, and Vercel as the platform scales beyond academic tools.
+**Phase 2+** will migrate to React.js, Tailwind CSS, and Vercel as the platform scales beyond academic tools.
 
 ---
 
@@ -199,6 +211,9 @@ Shohoj has been through a security audit and the following protections are in pl
 - **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
+- **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. No other access is permitted.
+- **Firebase config exposure** — the Firebase config is stored in `index.html` as `window._shohoj_firebase_config` rather than inside JS source files, keeping it out of the GitHub secret scanner's path. The API key is safe to expose as Firestore rules enforce all access control.
 
 ---
 
@@ -220,6 +235,7 @@ Shohoj has been through a security audit and the following protections are in pl
 | Retake Impact Analyzer              | ✅ Complete |
 | Degree Progress Tracker             | ✅ Complete |
 | Security audit & XSS hardening      | ✅ Complete |
+| Cloud Sync (Firebase Auth)          | ✅ Complete |
 | Semester Planner with Prerequisites | 🔜 Planned  |
 | Course Difficulty Map               | 🔜 Planned  |
 | Advising Week Checklist             | 🔜 Planned  |
@@ -268,22 +284,18 @@ Shohoj/
 ├── assets/
 │   ├── shohoj-logo.png
 │   └── screenshots/
-│       ├── hero-preview.png
-│       ├── calculator.png
-│       ├── transcript-import.png
-│       ├── trend-chart.png
-│       ├── autocomplete.png
-│       └── pdf-export.png
 ├── css/
-│   └── style.css                 All styles — themes, animations, glassmorphism
+│   └── style.css                 All styles — themes, animations, glassmorphism, auth UI
 ├── js/
 │   ├── main.js                   Entry point — wires all modules together
+│   ├── auth/
+│   │   └── firebase.js           Firebase Auth + Firestore cloud sync
 │   ├── core/
 │   │   ├── grades.js             BRACU grading scale & grade detection
 │   │   ├── helpers.js            Semester utilities, escHtml/escAttr, sanitizers
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
-│   │   ├── catalog.js            Full BRACU course database (758 courses)
+│   │   ├── catalog.js            Full BRACU course database (774 courses)
 │   │   └── calculator.js         GPA/CGPA engine, retake policy, credit warnings
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder
@@ -332,6 +344,8 @@ python3 -m http.server 8000
 python3 build3.py
 # Outputs shohoj.html — single file, ready to deploy
 ```
+
+> **Note:** Cloud sync requires a Firebase project. The live site uses the production Firebase config already embedded in `index.html`. For local development, cloud sync features will work as long as `localhost` is added as an authorized domain in your Firebase console.
 
 ---
 
