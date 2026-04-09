@@ -1,10 +1,10 @@
 // ── js/auth/firebase.js ───────────────────────────────────────────────────────
 // Firebase Authentication + Firestore cloud sync for Shohoj
-// Features: Google Sign-In, Sign-Out, cloud save/load, migration modal,
+// Features: Google Sign-In (redirect), Sign-Out, cloud save/load, migration modal,
 //           real-time sync, offline detection, sync persistence, data deletion
 
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -279,10 +279,12 @@ function showSignInModal() {
 
     overlay.querySelector('#_mClose').onclick = () => close(false);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+
     overlay.querySelector('#_siGoogle').addEventListener('click', () => {
-      overlay.style.opacity    = '0';
-      overlay.style.transition = 'opacity 0.12s';
-      setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 120);
+      // Show loading state on button — page will navigate away momentarily
+      const btn = overlay.querySelector('#_siGoogle');
+      btn.disabled = true;
+      btn.innerHTML = `<span style="font-size:13px;opacity:0.7;">Redirecting to Google…</span>`;
       resolve(true);
     });
   });
@@ -354,7 +356,6 @@ function showSignOutModal(email) {
     `;
 
     document.body.appendChild(overlay);
-
     const close = v => _closeModal(overlay, resolve, v);
 
     overlay.querySelector('#_mClose').onclick   = () => close(false);
@@ -363,12 +364,11 @@ function showSignOutModal(email) {
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
 
     overlay.querySelector('#_soDelete').addEventListener('click', () => {
-      // Close sign-out modal first, then trigger delete flow
       overlay.style.opacity    = '0';
       overlay.style.transition = 'opacity 0.12s';
       setTimeout(async () => {
         if (overlay.parentNode) document.body.removeChild(overlay);
-        resolve(false); // don't sign out
+        resolve(false);
         await deleteCloudData();
       }, 120);
     });
@@ -452,25 +452,16 @@ function showMigrationModal(localSems, cloudSems) {
   });
 }
 
-// ── Sign in ───────────────────────────────────────────────────────────────────
+// ── Sign in (redirect flow) ───────────────────────────────────────────────────
 export async function signInWithGoogle() {
   const proceed = await showSignInModal();
   if (!proceed) return;
-  setAuthBtnLoading(true);
   try {
-    const result = await signInWithPopup(auth, provider);
-    const email  = result.user.email || '';
-    if (!email.endsWith('@g.bracu.ac.bd')) {
-      await signOut(auth);
-      setAuthBtnLoading(false);
-      showToast('⚠ Only @g.bracu.ac.bd accounts are supported right now', true);
-    }
+    await signInWithRedirect(auth, provider);
+    // Page navigates away here — nothing after this runs
   } catch (e) {
-    setAuthBtnLoading(false);
-    if (e.code !== 'auth/popup-closed-by-user') {
-      console.error('[Shohoj] Sign-in failed:', e);
-      showToast('⚠ Sign-in failed — please try again', true);
-    }
+    console.error('[Shohoj] Redirect sign-in failed:', e);
+    showToast('⚠ Sign-in failed — please try again', true);
   }
 }
 
@@ -491,6 +482,23 @@ export function initAuth() {
   initOfflineDetection();
   setAuthBtnLoading(true);
 
+  // ── Handle redirect result first (runs after Google sends user back) ────────
+  getRedirectResult(auth).then(async result => {
+    if (result) {
+      const email = result.user.email || '';
+      if (!email.endsWith('@g.bracu.ac.bd')) {
+        await signOut(auth);
+        showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true);
+      }
+      // onAuthStateChanged will fire next and handle the rest
+    }
+  }).catch(e => {
+    console.error('[Shohoj] Redirect result error:', e);
+    showToast('⚠ Sign-in failed — please try again', true);
+    setAuthBtnLoading(false);
+  });
+
+  // ── Auth state listener ─────────────────────────────────────────────────────
   onAuthStateChanged(auth, async user => {
     currentUser = user;
     setAuthBtnLoading(false);
@@ -614,7 +622,7 @@ function updateAuthUI(user) {
     btn.disabled      = false;
     btn.title         = `Signed in as ${user.email}`;
     btn.onclick       = async () => { if (await showSignOutModal(user.email)) signOutUser(); };
-    btn.ondblclick    = null; // delete is now inside sign-out modal
+    btn.ondblclick    = null;
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
     btn.innerHTML = `
