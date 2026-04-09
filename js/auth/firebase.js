@@ -97,10 +97,10 @@ function stopRealtimeSync() {
 export async function deleteCloudData() {
   if (!currentUser) return;
   const confirmed = await showConfirmModal({
-    icon:         '🗑️',
-    title:        'Delete cloud data?',
-    body:         'This will permanently delete all your Shohoj data from the cloud. Your local data on this device will remain untouched.',
-    confirmLabel: 'Delete cloud data',
+    icon:          '🗑️',
+    title:         'Delete cloud data?',
+    body:          'This will permanently delete all your Shohoj data from the cloud. Your local data on this device will remain untouched.',
+    confirmLabel:  'Delete cloud data',
     confirmDanger: true,
   });
   if (!confirmed) return;
@@ -185,7 +185,13 @@ function _injectModalKeyframes() {
     @keyframes modalFadeIn {
       from { opacity:0; transform:scale(0.97) translateY(8px); }
       to   { opacity:1; transform:scale(1)    translateY(0);   }
-    }`;
+    }
+    .shohoj-modal-btn {
+      transition: opacity 0.15s, transform 0.12s, background 0.15s, border-color 0.15s !important;
+    }
+    .shohoj-modal-btn:hover  { opacity: 0.85; }
+    .shohoj-modal-btn:active { transform: scale(0.97); }
+  `;
   document.head.appendChild(s);
 }
 
@@ -194,6 +200,16 @@ function _closeModal(overlay, resolve, value) {
   overlay.style.transition = 'opacity 0.15s';
   setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
   resolve(value);
+}
+
+function _closeBtn(text2, isDark) {
+  return `<button class="shohoj-modal-btn" id="_mClose" style="
+    position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
+    background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
+    border:1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'};
+    color:${text2};font-size:18px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  ">×</button>`;
 }
 
 // ── Sign-in modal ─────────────────────────────────────────────────────────────
@@ -218,13 +234,7 @@ function showSignInModal() {
         box-shadow:0 32px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(46,204,113,0.06);
         position:relative;text-align:center;
       ">
-        <button id="_siClose" style="
-          position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
-          background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
-          border:1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'};
-          color:${text2};font-size:18px;line-height:1;cursor:pointer;
-          display:flex;align-items:center;justify-content:center;
-        ">×</button>
+        ${_closeBtn(text2, isDark)}
 
         <div style="
           width:52px;height:52px;background:#2ECC71;border-radius:14px;
@@ -238,16 +248,16 @@ function showSignInModal() {
           Sign in to Shohoj
         </div>
         <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:24px;max-width:280px;margin-left:auto;margin-right:auto;">
-          Use your BRACU Google account to sync your data across all your devices.
+          Use your BRACU G-Suite account to sync your data across all your devices.
         </div>
 
-        <button id="_siGoogle" style="
+        <button id="_siGoogle" class="shohoj-modal-btn" style="
           width:100%;padding:13px 20px;border-radius:12px;
           background:${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)'};
           border:1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)'};
           color:${text};font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;
           cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
-          margin-bottom:14px;transition:background 0.2s,transform 0.15s;
+          margin-bottom:14px;
         ">
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
@@ -267,12 +277,10 @@ function showSignInModal() {
     document.body.appendChild(overlay);
     const close = v => _closeModal(overlay, resolve, v);
 
-    overlay.querySelector('#_siClose').onclick = () => close(false);
+    overlay.querySelector('#_mClose').onclick = () => close(false);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
-
     overlay.querySelector('#_siGoogle').addEventListener('click', () => {
-      // Dismiss modal first so popup isn't blocked by overlay
-      overlay.style.opacity = '0';
+      overlay.style.opacity    = '0';
       overlay.style.transition = 'opacity 0.12s';
       setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 120);
       resolve(true);
@@ -280,7 +288,7 @@ function showSignInModal() {
   });
 }
 
-// ── Sign-out confirmation modal ───────────────────────────────────────────────
+// ── Sign-out modal ────────────────────────────────────────────────────────────
 function showSignOutModal(email) {
   return new Promise(resolve => {
     _injectModalKeyframes();
@@ -302,13 +310,7 @@ function showSignOutModal(email) {
         box-shadow:0 32px 80px rgba(0,0,0,0.55);
         position:relative;text-align:center;
       ">
-        <button id="_soClose" style="
-          position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
-          background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
-          border:1px solid ${isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'};
-          color:${text2};font-size:18px;line-height:1;cursor:pointer;
-          display:flex;align-items:center;justify-content:center;
-        ">×</button>
+        ${_closeBtn(text2, isDark)}
 
         <div style="font-size:30px;margin-bottom:14px;">👋</div>
         <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${text};margin-bottom:8px;letter-spacing:-0.5px;">
@@ -321,35 +323,55 @@ function showSignOutModal(email) {
           font-size:13px;font-weight:700;color:${text};
           background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.18);
           border-radius:8px;padding:6px 14px;display:inline-block;
-          margin-bottom:22px;word-break:break-all;
+          margin-bottom:20px;word-break:break-all;
         ">${email}</div>
 
-        <div style="display:flex;gap:10px;">
-          <button id="_soCancel" style="
-            flex:1;padding:11px;border-radius:10px;background:transparent;
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+          <button id="_soCancel" class="shohoj-modal-btn" style="
+            flex:1;padding:12px;border-radius:10px;
+            background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};
             border:1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'};
-            color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+            color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+            cursor:pointer;
           ">Cancel</button>
-          <button id="_soConfirm" style="
-            flex:1;padding:11px;border-radius:10px;
-            background:rgba(231,76,60,0.10);border:1px solid rgba(231,76,60,0.32);
-            color:#e74c3c;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+          <button id="_soConfirm" class="shohoj-modal-btn" style="
+            flex:1;padding:12px;border-radius:10px;
+            background:rgba(231,76,60,0.12);
+            border:1px solid rgba(231,76,60,0.35);
+            color:#e74c3c;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
+            cursor:pointer;
           ">Sign out</button>
         </div>
 
-        <div style="margin-top:14px;font-size:11px;color:${text2};opacity:0.55;">
-          Double-click the account button to delete your cloud data
-        </div>
+        <button id="_soDelete" class="shohoj-modal-btn" style="
+          width:100%;padding:9px;border-radius:8px;
+          background:transparent;border:none;
+          color:${text2};font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
+          cursor:pointer;opacity:0.55;
+          text-decoration:underline;text-underline-offset:2px;
+        ">Delete my cloud data</button>
       </div>
     `;
 
     document.body.appendChild(overlay);
+
     const close = v => _closeModal(overlay, resolve, v);
 
-    overlay.querySelector('#_soClose').onclick   = () => close(false);
+    overlay.querySelector('#_mClose').onclick   = () => close(false);
     overlay.querySelector('#_soCancel').onclick  = () => close(false);
     overlay.querySelector('#_soConfirm').onclick = () => close(true);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+
+    overlay.querySelector('#_soDelete').addEventListener('click', () => {
+      // Close sign-out modal first, then trigger delete flow
+      overlay.style.opacity    = '0';
+      overlay.style.transition = 'opacity 0.12s';
+      setTimeout(async () => {
+        if (overlay.parentNode) document.body.removeChild(overlay);
+        resolve(false); // don't sign out
+        await deleteCloudData();
+      }, 120);
+    });
   });
 }
 
@@ -359,7 +381,7 @@ function showConfirmModal({ icon, title, body, confirmLabel, confirmDanger }) {
     _injectModalKeyframes();
     const { isDark, bg, text, text2, border } = _modalTheme();
     const confirmStyle = confirmDanger
-      ? 'background:rgba(231,76,60,0.10);border:1px solid rgba(231,76,60,0.32);color:#e74c3c;'
+      ? 'background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.35);color:#e74c3c;'
       : 'background:#2ECC71;border:none;color:#0b0f0d;';
 
     const overlay = document.createElement('div');
@@ -376,8 +398,8 @@ function showConfirmModal({ icon, title, body, confirmLabel, confirmDanger }) {
         <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${text};margin-bottom:8px;letter-spacing:-0.5px;">${title}</div>
         <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:22px;">${body}</div>
         <div style="display:flex;gap:10px;">
-          <button id="_cfCancel" style="flex:1;padding:11px;border-radius:10px;background:transparent;border:1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'};color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
-          <button id="_cfOk" style="flex:1;padding:11px;border-radius:10px;${confirmStyle}font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">${confirmLabel}</button>
+          <button id="_cfCancel" class="shohoj-modal-btn" style="flex:1;padding:12px;border-radius:10px;background:${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};border:1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)'};color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+          <button id="_cfOk" class="shohoj-modal-btn" style="flex:1;padding:12px;border-radius:10px;${confirmStyle}font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">${confirmLabel}</button>
         </div>
       </div>
     `;
@@ -441,7 +463,7 @@ export async function signInWithGoogle() {
     if (!email.endsWith('@g.bracu.ac.bd')) {
       await signOut(auth);
       setAuthBtnLoading(false);
-      showToast('⚠ Only @g.bracu.ac.bd emails are supported right now', true);
+      showToast('⚠ Only @g.bracu.ac.bd accounts are supported right now', true);
     }
   } catch (e) {
     setAuthBtnLoading(false);
@@ -484,9 +506,7 @@ export function initAuth() {
       if (!hasLocal && !hasCloud) {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
-      if (!hasLocal && hasCloud) {
-        applyCloudData(cloudData); return;
-      }
+      if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
         const localParsed = JSON.parse(localRaw);
         setSyncIndicator('syncing');
@@ -523,7 +543,7 @@ export function initAuth() {
       stopRealtimeSync();
       updateAuthUI(null);
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw    = localStorage.getItem(STORAGE_KEY);
         const parsed = raw ? JSON.parse(raw) : null;
         showNudgeBanner(parsed?.semesters?.length > 0);
       } catch(e) { showNudgeBanner(false); }
@@ -549,8 +569,8 @@ function showNudgeBanner(show) {
   banner.id = 'authNudgeBanner';
   banner.style.cssText = `margin:0 2rem 1.5rem;padding:12px 16px;border-radius:12px;background:rgba(86,180,233,0.07);border:1px solid rgba(86,180,233,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--text2);`;
   banner.innerHTML = `
-    <span>☁ Sign in with your BRACU email to back up your data and access it from any device.</span>
-    <button onclick="window._shohoj_signIn()" style="padding:7px 16px;border-radius:8px;background:#56B4E9;color:#0b0f0d;border:none;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Sign in with Google</button>
+    <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
+    <button onclick="window._shohoj_signIn()" style="padding:7px 16px;border-radius:8px;background:#56B4E9;color:#0b0f0d;border:none;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Sign in</button>
   `;
   const calcFooter = document.querySelector('.calc-footer');
   if (calcFooter?.parentNode) calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
@@ -592,9 +612,9 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-in magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = `Signed in as ${user.email}\nClick to sign out · Double-click to delete cloud data`;
+    btn.title         = `Signed in as ${user.email}`;
     btn.onclick       = async () => { if (await showSignOutModal(user.email)) signOutUser(); };
-    btn.ondblclick    = () => deleteCloudData();
+    btn.ondblclick    = null; // delete is now inside sign-out modal
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
     btn.innerHTML = `
@@ -623,7 +643,7 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-out magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = 'Sign in with Google to sync your data across devices';
+    btn.title         = 'Sign in with your BRACU G-Suite account';
     btn.onclick       = signInWithGoogle;
     btn.ondblclick    = null;
     btn.innerHTML = `
