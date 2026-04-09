@@ -11,13 +11,17 @@ export function renderDegreeTracker(totalEarned) {
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
 
+  // summary block is already folded into totalEarned by recalc()
+  const summaryBlock = state.semesters.find(s => s.summary);
+
   const gradedSemesters = state.semesters.filter(sem =>
-    !sem.running && sem.courses.some(c =>
+    !sem.running && !sem.summary && sem.courses.some(c =>
       c.name.trim() && c.grade && GRADES[c.grade] !== undefined
     )
   );
 
-  if (!gradedSemesters.length || !totalRequired) {
+  // show tracker if we have a summary block OR real graded semesters
+  if ((!gradedSemesters.length && !summaryBlock) || !totalRequired) {
     box.style.display = 'none';
     return;
   }
@@ -27,6 +31,7 @@ export function renderDegreeTracker(totalEarned) {
   const semData = [];
 
   state.semesters.forEach(sem => {
+    if (sem.summary) return;   // handled separately as a special node
     let hasCourses = false;
 
     sem.courses.forEach(c => {
@@ -57,7 +62,7 @@ export function renderDegreeTracker(totalEarned) {
     });
   });
 
-  if (!semData.length) {
+  if (!semData.length && !summaryBlock) {
     box.style.display = 'none';
     return;
   }
@@ -68,7 +73,9 @@ export function renderDegreeTracker(totalEarned) {
 
   const avgCredits = completedSems.length > 0
     ? completedSems.reduce((s, d) => s + d.credits, 0) / completedSems.length
-    : 12;
+    : summaryBlock
+      ? summaryBlock.summaryCredits / Math.max(1, completedSems.length + 1)
+      : 12;
 
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
@@ -78,7 +85,8 @@ export function renderDegreeTracker(totalEarned) {
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
   if (startSeason && startYear) {
-    const totalSemsNeeded = completedSems.length + (runningSem ? 1 : 0) + semsRemaining;
+    const totalSemsNeeded = completedSems.length + (runningSem ? 1 : 0) + semsRemaining
+      + (summaryBlock ? 0 : 0); // summary sems already counted via completedSems
     let si = deptSeasons.indexOf(startSeason);
     if (si === -1) si = 0;
     let yr = startYear;
@@ -101,7 +109,7 @@ export function renderDegreeTracker(totalEarned) {
         <div class="tracker-stat-label">Credits Earned</div>
       </div>
       <div class="tracker-stat">
-        <div class="tracker-stat-val">${completedSems.length}</div>
+        <div class="tracker-stat-val">${completedSems.length + (summaryBlock ? 1 : 0)}</div>
         <div class="tracker-stat-label">Semesters Done</div>
       </div>
       <div class="tracker-stat">
@@ -141,6 +149,19 @@ export function renderDegreeTracker(totalEarned) {
     return 'gpa-danger';
   };
 
+  // Build summary node if present
+  const summaryNodeHtml = summaryBlock ? `
+    <div class="tracker-node completed">
+      <div class="tracker-node-dot">
+        <div class="tracker-node-dot-inner"></div>
+      </div>
+      <div class="tracker-node-card">
+        <div class="tracker-node-label">Past Semesters</div>
+        <div class="tracker-node-gpa" style="color:#2ECC71">${summaryBlock.summaryCGPA.toFixed(2)}</div>
+        <div class="tracker-node-meta">${fmtCr(summaryBlock.summaryCredits)} cr</div>
+      </div>
+    </div>` : '';
+
   const nodes = semData.map((s, idx) => {
     const gpaText = s.gpa !== null ? s.gpa.toFixed(2) : '—';
     const nodeClass = s.running ? 'tracker-node running' : `tracker-node completed ${gpaClass(s.gpa)}`;
@@ -164,7 +185,9 @@ export function renderDegreeTracker(totalEarned) {
     const maxShow = Math.min(semsRemaining, 4);
     const remaining = semsRemaining - maxShow;
 
-    let lastLabel = semData[semData.length - 1].label;
+    let lastLabel = semData.length > 0
+      ? semData[semData.length - 1].label
+      : (summaryBlock ? 'Past Semesters' : '');
     let nextSi = -1;
     let nextYr = 0;
     const seasonMatch = lastLabel.match(/(Spring|Summer|Fall)\s*'?(\d{2,4})/);
@@ -238,6 +261,7 @@ export function renderDegreeTracker(totalEarned) {
     <div class="tracker-timeline-wrap">
       <div class="tracker-timeline">
         <div class="tracker-timeline-line"></div>
+        ${summaryNodeHtml}
         ${nodes}
         ${projectedHtml}
       </div>
