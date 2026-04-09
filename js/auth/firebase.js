@@ -27,6 +27,8 @@ export let currentUser    = null;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
+const SESSION_START_KEY   = 'shohoj_session_start';
+const SESSION_MAX_MS      = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -485,6 +487,7 @@ export async function signInWithGoogle() {
 // ── Sign out ──────────────────────────────────────────────────────────────────
 export async function signOutUser() {
   try {
+    try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
     stopRealtimeSync();
     await signOut(auth);
     showToast('Signed out successfully');
@@ -504,6 +507,20 @@ export function initAuth() {
     setAuthBtnLoading(false);
 
     if (user) {
+      // ── 30-day session expiry ──────────────────────────────────────────
+      let sessionStart = null;
+      try { sessionStart = parseInt(localStorage.getItem(SESSION_START_KEY)); } catch(e) {}
+      const now = Date.now();
+      if (!sessionStart || isNaN(sessionStart)) {
+        try { localStorage.setItem(SESSION_START_KEY, String(now)); } catch(e) {}
+      } else if (now - sessionStart > SESSION_MAX_MS) {
+        try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
+        stopRealtimeSync();
+        await signOut(auth);
+        showToast('Your session expired — please sign in again', true);
+        return;
+      }
+
       updateAuthUI(user);
       const cloudData = await loadFromCloud();
       let localRaw = null;
