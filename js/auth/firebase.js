@@ -358,7 +358,8 @@ function showSignOutModal(email) {
           cursor:pointer;opacity:0.55;
           text-decoration:underline;text-underline-offset:2px;
           display:inline-block;
-        ">Delete my cloud data</span>
+        " onmouseenter="document.body.classList.add('cursor-hover')" 
+          onmouseleave="document.body.classList.remove('cursor-hover')">Delete my cloud data</span>
       </div>
     `;
 
