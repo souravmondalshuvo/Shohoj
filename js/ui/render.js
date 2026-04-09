@@ -5,24 +5,222 @@ import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calcula
 import {
   generateSemesterNames, getLastCompletedSemester,
   countSemesters, getStartSeason, getStartYear,
-  escHtml, escAttr
+  escHtml, escAttr, getCurrentSeason, SEASON_ORDER
 } from '../core/helpers.js';
+
+// ── Summary block form state ─────────────────────────────────────────────────
+let _summaryFormVisible = false;
+let _summaryEditId      = null;   // non-null when editing existing block
+
+export function showSummaryForm(editId = null) {
+  _summaryFormVisible = true;
+  _summaryEditId      = editId;
+  renderSemesters();
+  // focus first input after render
+  setTimeout(() => {
+    const el = document.getElementById('summaryCgpaInput');
+    if (el) el.focus();
+  }, 30);
+}
+
+export function hideSummaryForm() {
+  _summaryFormVisible = false;
+  _summaryEditId      = null;
+  renderSemesters();
+}
+
+export function confirmSummaryForm() {
+  const cgpaEl    = document.getElementById('summaryCgpaInput');
+  const creditsEl = document.getElementById('summaryCreditsInput');
+  if (!cgpaEl || !creditsEl) return;
+
+  const cgpa    = parseFloat(cgpaEl.value);
+  const credits = parseFloat(creditsEl.value);
+
+  if (isNaN(cgpa) || cgpa < 0 || cgpa > 4.0) {
+    cgpaEl.style.borderColor = '#e74c3c';
+    cgpaEl.focus();
+    return;
+  }
+  if (isNaN(credits) || credits < 0) {
+    creditsEl.style.borderColor = '#e74c3c';
+    creditsEl.focus();
+    return;
+  }
+
+  if (_summaryEditId !== null) {
+    // editing existing block
+    const existing = state.semesters.find(s => s.id === _summaryEditId && s.summary);
+    if (existing) {
+      existing.summaryCGPA    = cgpa;
+      existing.summaryCredits = credits;
+    }
+  } else {
+    // creating new block — insert at position 0
+    const id = state.semesterCounter++;
+    state.semesters.unshift({
+      id,
+      name:             'Past Semesters',
+      summary:          true,
+      summaryCGPA:      cgpa,
+      summaryCredits:   credits,
+      courses:          [],
+      running:          false,
+    });
+  }
+
+  _summaryFormVisible = false;
+  _summaryEditId      = null;
+  renderSemesters();
+  window._shohoj_recalc();
+}
+
+// ── Render summary block ─────────────────────────────────────────────────────
+function renderSummaryBlock(sem) {
+  const cgpaColor = sem.summaryCGPA >= 3.5 ? '#2ECC71'
+    : sem.summaryCGPA >= 3.0 ? '#27ae60'
+    : sem.summaryCGPA >= 2.5 ? '#F0A500'
+    : '#e74c3c';
+
+  return `
+  <div class="semester-block summary-block lg-surface" id="sem-${sem.id}"><div class="lg-shine"></div>
+    <div class="semester-head" style="background:rgba(46,204,113,0.06);border-bottom-color:rgba(46,204,113,0.2);">
+      <div class="semester-head-left">
+        <span style="font-size:16px;margin-right:4px">📊</span>
+        <span class="semester-label" style="color:var(--green)">Past Semesters</span>
+        <span class="semester-gpa-badge" style="color:${cgpaColor};background:rgba(46,204,113,0.10);border:1px solid rgba(46,204,113,0.22);">
+          CGPA ${sem.summaryCGPA.toFixed(2)}
+        </span>
+        <span class="semester-gpa-badge" style="color:var(--text2);background:var(--glass2);border:1px solid var(--border);">
+          ${sem.summaryCredits % 1 === 0 ? sem.summaryCredits : sem.summaryCredits.toFixed(1)} cr earned
+        </span>
+      </div>
+      <div class="semester-actions">
+        <button class="btn-icon" onclick="window._shohoj_editSummary(${sem.id})">Edit</button>
+        <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+      </div>
+    </div>
+    <div style="padding:10px 1.2rem;font-size:12px;color:var(--text3);font-style:italic;">
+      This block represents your academic history before using Shohoj. Add new semesters below to continue tracking.
+    </div>
+  </div>`;
+}
+
+// ── Render summary entry form ────────────────────────────────────────────────
+function renderSummaryForm() {
+  const existing = _summaryEditId !== null
+    ? state.semesters.find(s => s.id === _summaryEditId && s.summary)
+    : null;
+
+  const cgpaVal    = existing ? existing.summaryCGPA.toFixed(2)  : '';
+  const creditsVal = existing ? existing.summaryCredits.toString() : '';
+  const title      = existing ? 'Edit Past Semesters' : 'Start from Current CGPA';
+
+  return `
+  <div class="semester-block lg-surface" style="border-color:rgba(46,204,113,0.35);" id="summaryFormBlock"><div class="lg-shine"></div>
+    <div class="semester-head" style="background:rgba(46,204,113,0.06);border-bottom-color:rgba(46,204,113,0.2);">
+      <div class="semester-head-left">
+        <span style="font-size:16px;margin-right:4px">📊</span>
+        <span class="semester-label" style="color:var(--green)">${title}</span>
+      </div>
+      <div class="semester-actions">
+        <button class="btn-icon danger" onclick="window._shohoj_hideSummaryForm()">Cancel</button>
+      </div>
+    </div>
+    <div style="padding:1rem 1.2rem;display:flex;flex-direction:column;gap:12px;">
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin:0;">
+        Enter your current academic standing. Shohoj will use this as the foundation for all calculations — simulator, playground, degree tracker, and more.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+
+        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">
+            Current CGPA
+          </label>
+          <input
+            id="summaryCgpaInput"
+            type="number" min="0" max="4" step="0.01"
+            placeholder="e.g. 2.57"
+            value="${escAttr(cgpaVal)}"
+            style="
+              background:var(--input-bg);border:1px solid var(--border);
+              border-radius:10px;color:var(--text);
+              font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;
+              padding:9px 12px;outline:none;width:100%;
+              -moz-appearance:textfield;
+            "
+            oninput="this.style.borderColor=''"
+            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+          />
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">
+            Credits Earned
+          </label>
+          <input
+            id="summaryCreditsInput"
+            type="number" min="0" step="0.5"
+            placeholder="e.g. 39"
+            value="${escAttr(creditsVal)}"
+            style="
+              background:var(--input-bg);border:1px solid var(--border);
+              border-radius:10px;color:var(--text);
+              font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;
+              padding:9px 12px;outline:none;width:100%;
+              -moz-appearance:textfield;
+            "
+            oninput="this.style.borderColor=''"
+            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+          />
+        </div>
+
+        <button
+          onclick="window._shohoj_confirmSummaryForm()"
+          style="
+            background:var(--green);color:#0b0f0d;
+            font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
+            padding:9px 20px;border:none;border-radius:10px;cursor:pointer;
+            height:40px;white-space:nowrap;flex-shrink:0;
+            transition:transform 0.15s,box-shadow 0.15s;
+          "
+          onmouseenter="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 16px rgba(46,204,113,0.35)'"
+          onmouseleave="this.style.transform='';this.style.boxShadow=''"
+        >Confirm →</button>
+
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin:0;">
+        💡 Find your CGPA and credits earned on CONNECT → Grade Sheet, or from your official transcript.
+      </p>
+    </div>
+  </div>`;
+}
 
 export function renderSemesters() {
   const container = document.getElementById('semestersContainer');
-  document.getElementById('semesterCount').textContent = state.semesters.length;
+  document.getElementById('semesterCount').textContent = state.semesters.filter(s => !s.summary).length;
   const runBtn = document.getElementById('addRunningSemBtn');
   if (runBtn) runBtn.disabled = state.semesters.some(s => s.running);
   const retakenKeys = getRetakenKeys();
 
-  container.innerHTML = state.semesters.map(sem => {
+  // If summary form is open, show it first then everything else
+  let html = '';
+  if (_summaryFormVisible) {
+    html += renderSummaryForm();
+  }
+
+  html += state.semesters.map(sem => {
+    // ── Summary block ──────────────────────────────────────────────────────
+    if (sem.summary) return renderSummaryBlock(sem);
+
     const gpa = calcSemGPA(sem);
     const isRunning = !!sem.running;
     return `
     <div class="semester-block lg-surface${isRunning ? ' semester-running' : ''}" id="sem-${sem.id}" draggable="${isRunning ? 'false' : 'true'}"><div class="lg-shine"></div>
       <div class="semester-head">
         <div class="semester-head-left">
-          ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}           <span class="semester-label">${escHtml(sem.name)}</span>
+          ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}
+          <span class="semester-label">${escHtml(sem.name)}</span>
           ${isRunning
             ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
             : (gpa !== null ? (() => {
@@ -112,30 +310,43 @@ export function renderSemesters() {
     </div>`;
   }).join('');
 
-  // ── EMPTY STATE ──────────────────────────────────────
-  if (state.semesters.length === 0) {
+  // ── EMPTY STATE ──────────────────────────────────────────────────────────
+  const nonSummaryCount = state.semesters.filter(s => !s.summary).length;
+  const hasSummaryBlock = state.semesters.some(s => s.summary);
+
+  if (nonSummaryCount === 0 && !_summaryFormVisible) {
     const _deptDone = !!state.currentDept;
     const _semDone  = _deptDone && getStartSeason() && getStartYear();
+
     const _emptyHint = !_deptDone
       ? '<div class="empty-state-steps"><div class="empty-state-step"><span class="empty-state-step-num">1</span><span>Pick your <strong>department</strong> in the header above</span></div><div class="empty-state-step"><span class="empty-state-step-num">2</span><span>Set your <strong>starting semester</strong> (e.g. Fall 2022)</span></div><div class="empty-state-step"><span class="empty-state-step-num">3</span><span>Add your first semester and enter grades</span></div></div>'
       : !_semDone
       ? '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department selected</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">2</span><span>Set your <strong>starting semester</strong> above and click <strong>Let\'s go →</strong></span></div></div>'
       : '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department &amp; semester set</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">3</span><span>Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to auto-fill</span></div></div>';
-    container.innerHTML = `
+
+    // "Start from CGPA" button — only show if setup done and no summary block yet
+    const cgpaBtn = (_semDone && !hasSummaryBlock)
+      ? `<button class="btn-sample-ghost" onclick="window._shohoj_showSummaryForm()" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
+      : '';
+
+    html += `
       <div class="empty-state">
         <div class="empty-state-icon">${!_deptDone ? '👋' : !_semDone ? '📅' : '🎓'}</div>
         <div class="empty-state-title">${!_deptDone ? "Let's get you set up" : !_semDone ? 'Almost ready...' : 'Ready to go!'}</div>
-        <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, or load sample data to explore.'}</div>
+        <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, import your transcript, or start from your current CGPA.'}</div>
         ${_emptyHint}
         <div class="empty-state-actions">
           <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
           ${_semDone ? '<button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>' : ''}
+          ${cgpaBtn}
         </div>
         ${_semDone ? '<div class="empty-arrow">← use the buttons above too &nbsp;↑</div>' : ''}
       </div>`;
   }
 
-  // ── DRAG-AND-DROP ────────────────────────────────────
+  container.innerHTML = html;
+
+  // ── DRAG-AND-DROP (skip summary blocks) ──────────────────────────────────
   setTimeout(() => {
     let dragSrcId = null;
     container.querySelectorAll('.semester-block[draggable="true"]').forEach(block => {
@@ -164,6 +375,9 @@ export function renderSemesters() {
         const srcIdx = state.semesters.findIndex(s => s.id === dragSrcId);
         const tgtIdx = state.semesters.findIndex(s => s.id === targetId);
         if (srcIdx < 0 || tgtIdx < 0) return;
+        // don't allow dragging above a summary block
+        const tgtSem = state.semesters[tgtIdx];
+        if (tgtSem && tgtSem.summary) return;
         const [moved] = state.semesters.splice(srcIdx, 1);
         state.semesters.splice(tgtIdx, 0, moved);
         dragSrcId = null;
@@ -177,7 +391,7 @@ export function renderSemesters() {
 
 export function addSemester(prefill = null) {
   const id = state.semesterCounter++;
-  const completedCount = state.semesters.filter(s => !s.running).length;
+  const completedCount = state.semesters.filter(s => !s.running && !s.summary).length;
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1, deptSeasons);
@@ -204,8 +418,9 @@ export function addRunningSemester() {
 function generateNextSemesterName() {
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const SEASONS = dept && dept.seasons ? dept.seasons : ['Spring','Summer','Fall'];
-  if (!state.semesters.length) return 'Current Semester';
-  const last = [...state.semesters].reverse().find(s => !s.running);
+  const completedSems = state.semesters.filter(s => !s.running && !s.summary);
+  if (!completedSems.length) return 'Current Semester';
+  const last = [...completedSems].reverse()[0];
   if (!last || !last.name) return 'Current Semester';
   const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
   if (!match) return 'Current Semester';
