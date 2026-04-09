@@ -187,10 +187,18 @@ function _injectModalKeyframes() {
       to   { opacity:1; transform:scale(1)    translateY(0);   }
     }
     .shohoj-modal-btn {
-      transition: opacity 0.15s, transform 0.12s, background 0.15s, border-color 0.15s !important;
+      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease !important;
     }
-    .shohoj-modal-btn:hover  { opacity: 0.85; }
-    .shohoj-modal-btn:active { transform: scale(0.97); }
+    .shohoj-modal-btn:hover {
+      filter: brightness(1.12);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+    .shohoj-modal-btn:active {
+      transform: scale(0.96) translateY(0px);
+      filter: brightness(0.95);
+      box-shadow: none;
+    }
   `;
   document.head.appendChild(s);
 }
