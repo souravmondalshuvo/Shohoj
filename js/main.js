@@ -15,7 +15,8 @@ import { COURSE_DB, ALL_COURSES } from './core/catalog.js';
 import {
   renderSemesters, addSemester, addRunningSemester,
   removeSemester, addCourse, removeCourse,
-  loadSampleData, onDeptSelect, onStartSemConfirm
+  loadSampleData, onDeptSelect, onStartSemConfirm,
+  showSummaryForm, hideSummaryForm, confirmSummaryForm
 } from './ui/render.js';
 
 import {
@@ -73,7 +74,6 @@ window.onGradePointBlur  = onGradePointBlur;
 window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
-// XSS FIX: applyImport no longer takes inline JSON from onclick attribute
 window.applyImport       = applyImport;
 window.clearState        = () => {
   clearState();
@@ -94,6 +94,12 @@ window.clearPlaygroundChanges = clearPlaygroundChanges;
 window.addPlaygroundChange    = addPlaygroundChange;
 window.onSolverTargetChange   = onSolverTargetChange;
 window.onSolverCourseChange   = onSolverCourseChange;
+
+// Summary block
+window._shohoj_showSummaryForm    = showSummaryForm;
+window._shohoj_hideSummaryForm    = hideSummaryForm;
+window._shohoj_confirmSummaryForm = confirmSummaryForm;
+window._shohoj_editSummary        = (id) => showSummaryForm(id);
 
 // ── THEME ─────────────────────────────────────────────────────────────────────
 const html     = document.documentElement;
@@ -167,11 +173,13 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const saved = sanitizeRestoredState(JSON.parse(raw));
-    if (!saved || !saved.currentDept || !saved.semesters?.length) return false;
+    if (!saved || !saved.semesters?.length) return false;
+    // allow restoring even without dept if there's a summary block
+    if (!saved.currentDept && !saved.semesters.some(s => s.summary)) return false;
 
     const deptSel = document.getElementById('deptSelect');
-    if (deptSel) { deptSel.value = saved.currentDept; }
-    state.currentDept = saved.currentDept;
+    if (deptSel && saved.currentDept) { deptSel.value = saved.currentDept; }
+    state.currentDept = saved.currentDept || '';
 
     const seasonSel = document.getElementById('startSeason');
     const yearSel   = document.getElementById('startYear');
@@ -206,10 +214,22 @@ function loadState() {
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
   let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
+
+  // ── Inject summary block contribution first ────────────────────────────────
+  const summaryBlock = state.semesters.find(s => s.summary);
+  if (summaryBlock) {
+    const sp = summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+    totalPts        += sp;
+    totalEarnedCGPA += summaryBlock.summaryCredits;
+    totalAttempted  += summaryBlock.summaryCredits;
+    totalEarned     += summaryBlock.summaryCredits;
+  }
+
   const retakenKeys = getRetakenKeys();
-  const completedOnly = state.semesters.filter(s => !s.running);
+  const completedOnly = state.semesters.filter(s => !s.running && !s.summary);
   const retakenKeysCompleted = getRetakenKeys(completedOnly);
   for (const sem of state.semesters) {
+    if (sem.summary) continue;   // already handled above
     sem.courses.forEach((c, i) => {
       const gp = GRADES[c.grade];
       if (gp === undefined || !c.credits) return;
@@ -227,7 +247,14 @@ function recalc() {
   const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
 
   let completedPts = 0, completedEarned = 0;
-  state.semesters.filter(s => !s.running).forEach(sem => {
+
+  // inject summary into completed totals
+  if (summaryBlock) {
+    completedPts    += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+    completedEarned += summaryBlock.summaryCredits;
+  }
+
+  state.semesters.filter(s => !s.running && !s.summary).forEach(sem => {
     sem.courses.forEach((c, i) => {
       const gp = GRADES[c.grade];
       if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
@@ -243,7 +270,7 @@ function recalc() {
   const hasRunning = state.semesters.some(s => s.running);
   document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
 
-  const hasIncomplete = state.semesters.some(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade));
+  const hasIncomplete = state.semesters.some(s => !s.running && !s.summary && s.courses.some(c => c.name.trim() && !c.grade));
   let incWarn = document.getElementById('incompleteWarning');
   if (!incWarn) {
     incWarn = document.createElement('div');
@@ -253,7 +280,7 @@ function recalc() {
     if (meter) meter.parentNode.insertBefore(incWarn, meter.nextSibling);
   }
   if (hasIncomplete) {
-    const count = state.semesters.filter(s => !s.running && s.courses.some(c => c.name.trim() && !c.grade)).length;
+    const count = state.semesters.filter(s => !s.running && !s.summary && s.courses.some(c => c.name.trim() && !c.grade)).length;
     incWarn.textContent = `⚠ ${count} semester${count > 1 ? 's have' : ' has'} missing grades — CGPA may be inaccurate`;
     incWarn.style.display = '';
   } else {
@@ -284,7 +311,7 @@ function recalc() {
 
   const standingBox = document.getElementById('standingBox');
   const cgpaNum = cgpaCompleted;
-  const semCount = state.semesters.filter(s => s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
+  const semCount = state.semesters.filter(s => !s.summary && s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
 
   if (cgpaNum !== null) {
     standingBox.style.display = '';
@@ -329,7 +356,7 @@ function recalc() {
   const trendCanvas = document.getElementById('trendCanvas');
   const semGPAs = [];
   state.semesters.forEach(sem => {
-    if (sem.running) return;
+    if (sem.running || sem.summary) return;
     const gpa = calcSemGPA(sem);
     if (gpa !== null) {
       const label = sem.name
