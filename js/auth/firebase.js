@@ -193,11 +193,9 @@ function _injectModalKeyframes() {
     }
     .shohoj-modal-btn:hover {
       filter: brightness(1.12);
-      transform: translateY(-1px);
       box-shadow: 0 4px 14px rgba(0,0,0,0.18);
     }
     .shohoj-modal-btn:active {
-      transform: scale(0.96) translateY(0px);
       filter: brightness(0.95);
       box-shadow: none;
     }
