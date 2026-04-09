@@ -189,7 +189,7 @@ function _injectModalKeyframes() {
       to   { opacity:1; transform:scale(1)    translateY(0);   }
     }
     .shohoj-modal-btn {
-      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease !important;
+      transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
     }
     .shohoj-modal-btn:hover {
       filter: brightness(1.12);
@@ -369,7 +369,7 @@ function showSignOutModal(email) {
           cursor:pointer;opacity:0.55;
           text-decoration:underline;text-underline-offset:2px;
           display:inline-block;
-        " onmouseenter="document.body.classList.add('cursor-hover')" 
+        " onmouseenter="document.body.classList.add('cursor-hover')"
           onmouseleave="document.body.classList.remove('cursor-hover')">Delete my cloud data</span>
       </div>
     `;
@@ -559,17 +559,16 @@ export function initAuth() {
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
+      // ── Both local and cloud data exist ───────────────────────────────
+      // Skip migration modal on refresh — sessionStorage flag is set after
+      // cloud data is applied and cleared when the tab closes.
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.removeItem('shohoj_cloud_applied');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
-      const migrationDone = localStorage.getItem('shohoj_migration_done');
-      if (migrationDone) {
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
-      }
-
+      // Fresh sign-in with data on both sides — always ask the user.
       const localParsed = JSON.parse(localRaw);
       const localSems   = localParsed?.semesters?.length || 0;
       const cloudSems   = cloudData?.semesters?.length   || 0;
@@ -581,9 +580,7 @@ export function initAuth() {
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         showToast('Local data saved to cloud ✓');
         setSyncIndicator('synced');
-        try { localStorage.setItem('shohoj_migration_done', '1'); } catch(e) {}
       } else {
-        try { localStorage.setItem('shohoj_migration_done', '1'); } catch(e) {}
         applyCloudData(cloudData); return;
       }
       startRealtimeSync(user.uid); showNudgeBanner(false);
