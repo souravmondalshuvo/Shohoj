@@ -50,8 +50,6 @@ export function initCursor() {
     dX += (mX - dX) * 0.85; dY += (mY - dY) * 0.85;
     rX += (mX - rX) * 0.14; rY += (mY - rY) * 0.14;
     gX += (mX - gX) * 0.07; gY += (mY - gY) * 0.07;
-    // Use transform instead of left/top so position updates stay on the
-    // compositor thread and don't interrupt CSS transitions on width/height/border-radius
     dot.style.transform        = `translate(${dX}px, ${dY}px) translate(-50%, -50%)`;
     ring.style.transform       = `translate(${rX}px, ${rY}px) translate(-50%, -50%)`;
     cursorGlow.style.transform = `translate(${gX}px, ${gY}px) translate(-50%, -50%)`;
@@ -61,11 +59,15 @@ export function initCursor() {
 
   document.querySelectorAll('.magnetic').forEach(el => {
     el.addEventListener('mousemove', e => {
+      if (document.body.classList.contains('modal-open')) return;
       const rect = el.getBoundingClientRect();
       const cx = rect.left + rect.width  / 2;
       const cy = rect.top  + rect.height / 2;
       el.style.transform = `translate(${(e.clientX - cx) * 0.35}px, ${(e.clientY - cy) * 0.35}px)`;
     });
-    el.addEventListener('mouseleave', () => { el.style.transform = 'translate(0,0)'; });
+    el.addEventListener('mouseleave', () => {
+      if (document.body.classList.contains('modal-open')) return;
+      el.style.transform = 'translate(0,0)';
+    });
   });
 }
