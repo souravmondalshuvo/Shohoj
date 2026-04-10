@@ -573,7 +573,6 @@ export function initAuth() {
       // cloud data is applied and cleared when the tab closes.
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
-        sessionStorage.removeItem('shohoj_cloud_applied');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
