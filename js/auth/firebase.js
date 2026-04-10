@@ -615,7 +615,7 @@ function showNudgeBanner(show) {
   banner = document.createElement('div');
   banner.id = 'authNudgeBanner';
   banner.style.cssText = `
-    margin: 1.2rem 2rem 0;
+    margin: 1.2rem 2rem 1.2rem;
     padding: 14px 16px;
     border-radius: 12px;
     background: rgba(86,180,233,0.07);
