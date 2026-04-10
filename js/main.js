@@ -58,6 +58,7 @@ window._shohoj_updateSetupWizard = updateSetupWizard;
 window.addSemester       = addSemester;
 window.addRunningSemester= addRunningSemester;
 window.removeSemester    = removeSemester;
+window.renderSemesters = renderSemesters;
 window.addCourse         = addCourse;
 window.removeCourse      = removeCourse;
 window.loadSampleData    = loadSampleData;
