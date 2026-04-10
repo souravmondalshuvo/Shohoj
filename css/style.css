@@ -1348,11 +1348,12 @@ h1[data-reveal-hero].visible {
     }
     /* Exclude elements where transition would break existing animations */
     .cursor-dot, .cursor-ring,
-    .course-suggestions, #suggestions-portal *,
-    input, select, textarea,
-    .reveal, .stagger > *, .magnetic {
-      transition: revert;
-    }
+.course-suggestions, #suggestions-portal *,
+input, select, textarea,
+.reveal, .stagger > *, .magnetic,
+.btn-primary svg, .btn-secondary svg, #authBtn svg, .auth-btn-signed-out svg {
+  transition: revert;
+}
     /* Re-apply original transitions for these */
     input, select, textarea {
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
