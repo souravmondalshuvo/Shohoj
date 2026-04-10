@@ -23,13 +23,12 @@ const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
 // ── State ─────────────────────────────────────────────────────────────────────
-export let currentUser      = null;
-let _unsubscribeSnapshot    = null;
-let _pendingDomainReject    = false; // blocks onAuthStateChanged during domain rejection
-const STORAGE_KEY           = 'shohoj_cgpa_v1';
-const LAST_SYNC_KEY         = 'shohoj_last_sync';
-const SESSION_START_KEY     = 'shohoj_session_start';
-const SESSION_MAX_MS        = 30 * 24 * 60 * 60 * 1000; // 30 days
+export let currentUser    = null;
+let _unsubscribeSnapshot  = null;
+const STORAGE_KEY         = 'shohoj_cgpa_v1';
+const LAST_SYNC_KEY       = 'shohoj_last_sync';
+const SESSION_START_KEY   = 'shohoj_session_start';
+const SESSION_MAX_MS      = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -486,19 +485,9 @@ export async function signInWithGoogle() {
   if (!proceed) return;
   setAuthBtnLoading(true);
   try {
-    const result = await signInWithPopup(auth, provider);
-    const email  = result.user.email || '';
-    if (!email.endsWith('@g.bracu.ac.bd')) {
-      // Block onAuthStateChanged from acting while we reject this account.
-      // Without this flag, the listener fires before signOut() completes and
-      // attempts to load/save cloud data for the non-BRACU user.
-      _pendingDomainReject = true;
-      await signOut(auth);
-      _pendingDomainReject = false;
-      setAuthBtnLoading(false);
-      showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true, true);
-      return;
-    }
+    await signInWithPopup(auth, provider);
+    // Domain enforcement is handled inside onAuthStateChanged — the single
+    // source of truth. No domain check here to avoid race conditions.
   } catch (e) {
     setAuthBtnLoading(false);
     if (e.code !== 'auth/popup-closed-by-user') {
@@ -527,15 +516,21 @@ export function initAuth() {
   setAuthBtnLoading(true);
 
   onAuthStateChanged(auth, async user => {
-    // A non-BRACU account was just rejected — ignore this state change entirely
-    // so we never touch Firestore for unauthorized accounts.
-    if (_pendingDomainReject) return;
+    // ── Domain enforcement — the single source of truth ────────────────────
+    // Check happens before anything else so non-BRACU accounts never touch
+    // Firestore, never update UI, and never receive any cloud data.
+    if (user && !user.email?.endsWith('@g.bracu.ac.bd')) {
+      await signOut(auth);
+      setAuthBtnLoading(false);
+      showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true, true);
+      return;
+    }
 
     currentUser = user;
     setAuthBtnLoading(false);
 
     if (user) {
-      // ── 30-day session expiry ──────────────────────────────────────────
+      // ── 30-day session expiry ────────────────────────────────────────────
       let sessionStart = null;
       try { sessionStart = parseInt(localStorage.getItem(SESSION_START_KEY)); } catch(e) {}
       const now = Date.now();
@@ -747,22 +742,27 @@ function updateAuthUI(user) {
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-// isAuth=true → top-right on desktop (near the auth button), bottom-center on mobile
+// isAuth=true → top-center on desktop (≥768px), bottom-center on mobile.
+// This keeps auth feedback spatially near the nav bar on desktop while
+// staying in the thumb zone on mobile.
 function showToast(msg, isError = false, isAuth = false) {
   const t = document.createElement('div');
   t.textContent = msg;
-  const isMobile = window.innerWidth < 768;
-  const useTop = isAuth && !isMobile;
+  const useTop = isAuth && window.innerWidth >= 768;
   t.style.cssText = `
     position:fixed;
     ${useTop
-      ? 'top:72px;right:20px;left:auto;transform:none;'
+      ? 'top:72px;left:50%;transform:translateX(-50%);'
       : 'bottom:24px;left:50%;transform:translateX(-50%);'}
     background:${isError ? '#e74c3c' : '#2ECC71'};
     color:${isError ? '#fff' : '#0b0f0d'};
-    padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;
+    padding:10px 20px;
+    border-radius:100px;
+    font-size:13px;
+    font-weight:600;
     box-shadow:0 4px 20px ${isError ? 'rgba(231,76,60,0.4)' : 'rgba(46,204,113,0.4)'};
-    z-index:99998;pointer-events:none;
+    z-index:99998;
+    pointer-events:none;
     animation:toastIn 0.3s ease;
     white-space:nowrap;
     max-width:calc(100vw - 40px);
