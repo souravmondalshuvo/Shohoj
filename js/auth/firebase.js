@@ -23,12 +23,13 @@ const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
 // ── State ─────────────────────────────────────────────────────────────────────
-export let currentUser    = null;
-let _unsubscribeSnapshot  = null;
-const STORAGE_KEY         = 'shohoj_cgpa_v1';
-const LAST_SYNC_KEY       = 'shohoj_last_sync';
-const SESSION_START_KEY   = 'shohoj_session_start';
-const SESSION_MAX_MS      = 30 * 24 * 60 * 60 * 1000; // 30 days
+export let currentUser      = null;
+let _unsubscribeSnapshot    = null;
+let _pendingDomainReject    = false; // blocks onAuthStateChanged during domain rejection
+const STORAGE_KEY           = 'shohoj_cgpa_v1';
+const LAST_SYNC_KEY         = 'shohoj_last_sync';
+const SESSION_START_KEY     = 'shohoj_session_start';
+const SESSION_MAX_MS        = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -298,7 +299,6 @@ function showSignInModal() {
     overlay.querySelector('#_mClose').onclick = () => close(false);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
 
-    // Must clear modal-open before the popup fires (popup blocks the tab)
     overlay.querySelector('#_siGoogle').addEventListener('click', () => {
       _clearModalOpen();
       overlay.style.opacity    = '0';
@@ -489,15 +489,21 @@ export async function signInWithGoogle() {
     const result = await signInWithPopup(auth, provider);
     const email  = result.user.email || '';
     if (!email.endsWith('@g.bracu.ac.bd')) {
+      // Block onAuthStateChanged from acting while we reject this account.
+      // Without this flag, the listener fires before signOut() completes and
+      // attempts to load/save cloud data for the non-BRACU user.
+      _pendingDomainReject = true;
       await signOut(auth);
+      _pendingDomainReject = false;
       setAuthBtnLoading(false);
-      showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true);
+      showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true, true);
+      return;
     }
   } catch (e) {
     setAuthBtnLoading(false);
     if (e.code !== 'auth/popup-closed-by-user') {
       console.error('[Shohoj] Sign-in failed:', e);
-      showToast('⚠ Sign-in failed — please try again', true);
+      showToast('⚠ Sign-in failed — please try again', true, true);
     }
   }
 }
@@ -508,7 +514,7 @@ export async function signOutUser() {
     try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
     stopRealtimeSync();
     await signOut(auth);
-    showToast('Signed out successfully');
+    showToast('Signed out successfully', false, true);
   } catch (e) {
     console.error('[Shohoj] Sign-out failed:', e);
   }
@@ -521,6 +527,10 @@ export function initAuth() {
   setAuthBtnLoading(true);
 
   onAuthStateChanged(auth, async user => {
+    // A non-BRACU account was just rejected — ignore this state change entirely
+    // so we never touch Firestore for unauthorized accounts.
+    if (_pendingDomainReject) return;
+
     currentUser = user;
     setAuthBtnLoading(false);
 
@@ -535,7 +545,7 @@ export function initAuth() {
         try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
         stopRealtimeSync();
         await signOut(auth);
-        showToast('Your session expired — please sign in again', true);
+        showToast('Your session expired — please sign in again', true, true);
         return;
       }
 
@@ -555,7 +565,7 @@ export function initAuth() {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-        showToast('Data uploaded to your cloud account ✓');
+        showToast('Data uploaded to your cloud account ✓', false, true);
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
@@ -578,7 +588,7 @@ export function initAuth() {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
-        showToast('Local data saved to cloud ✓');
+        showToast('Local data saved to cloud ✓', false, true);
         setSyncIndicator('synced');
       } else {
         applyCloudData(cloudData); return;
@@ -737,15 +747,25 @@ function updateAuthUI(user) {
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-function showToast(msg, isError = false) {
+// isAuth=true → top-right on desktop (near the auth button), bottom-center on mobile
+function showToast(msg, isError = false, isAuth = false) {
   const t = document.createElement('div');
   t.textContent = msg;
+  const isMobile = window.innerWidth < 768;
+  const useTop = isAuth && !isMobile;
   t.style.cssText = `
-    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    background:${isError ? '#e74c3c' : '#2ECC71'};color:${isError ? '#fff' : '#0b0f0d'};
+    position:fixed;
+    ${useTop
+      ? 'top:72px;right:20px;left:auto;transform:none;'
+      : 'bottom:24px;left:50%;transform:translateX(-50%);'}
+    background:${isError ? '#e74c3c' : '#2ECC71'};
+    color:${isError ? '#fff' : '#0b0f0d'};
     padding:10px 20px;border-radius:100px;font-size:13px;font-weight:600;
     box-shadow:0 4px 20px ${isError ? 'rgba(231,76,60,0.4)' : 'rgba(46,204,113,0.4)'};
-    z-index:99998;pointer-events:none;animation:toastIn 0.3s ease;white-space:nowrap;
+    z-index:99998;pointer-events:none;
+    animation:toastIn 0.3s ease;
+    white-space:nowrap;
+    max-width:calc(100vw - 40px);
   `;
   document.body.appendChild(t);
   setTimeout(() => {
