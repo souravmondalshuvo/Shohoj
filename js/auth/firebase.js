@@ -576,11 +576,16 @@ export function initAuth() {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
-      // Fresh sign-in with data on both sides — always ask the user.
+      // If local data is empty (no semesters), skip migration — just use cloud
       const localParsed = JSON.parse(localRaw);
       const localSems   = localParsed?.semesters?.length || 0;
       const cloudSems   = cloudData?.semesters?.length   || 0;
-      const choice      = await showMigrationModal(localSems, cloudSems);
+
+      if (localSems === 0) {
+        applyCloudData(cloudData); return;
+      }
+
+      const choice = await showMigrationModal(localSems, cloudSems);
 
       if (choice === 'local') {
         setSyncIndicator('syncing');
