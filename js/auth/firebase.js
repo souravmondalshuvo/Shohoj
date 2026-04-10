@@ -172,7 +172,7 @@ function _modalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
   return {
     isDark,
-    bg:     isDark ? '#0d1f12' : '#ffffff',
+    bg:     isDark ? '#0d1f12' : '#f0faf3',
     text:   isDark ? '#e8f0ea' : '#0d2914',
     text2:  isDark ? '#8aab90' : '#3a6b47',
     border: isDark ? 'rgba(46,204,113,0.20)' : 'rgba(46,204,113,0.28)',
@@ -436,7 +436,7 @@ function showConfirmModal({ icon, title, body, confirmLabel, confirmDanger }) {
 function showMigrationModal(localSems, cloudSems) {
   return new Promise(resolve => {
     const isDark = document.documentElement.dataset.theme === 'dark';
-    const bg     = isDark ? '#0f1f14' : '#ffffff';
+    const bg     = isDark ? '#0f1f14' : '#f0faf3';
     const text   = isDark ? '#e8f0ea' : '#0d2914';
     const text2  = isDark ? '#a8c4ad' : '#2d5a3d';
     const border = isDark ? 'rgba(46,204,113,0.25)' : 'rgba(46,204,113,0.3)';
