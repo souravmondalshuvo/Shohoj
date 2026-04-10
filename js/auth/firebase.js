@@ -537,7 +537,7 @@ export function initAuth() {
       if (!sessionStart || isNaN(sessionStart)) {
         try { localStorage.setItem(SESSION_START_KEY, String(now)); } catch(e) {}
         const firstName = user.displayName?.split(' ')[0] || 'you';
-        showToast(`Welcome, ${firstName} ✓`, false, true);
+        showToast(`Welcome to Shohoj, ${firstName} `, false, true);
       } else if (now - sessionStart > SESSION_MAX_MS) {
         try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
         stopRealtimeSync();
@@ -554,6 +554,7 @@ export function initAuth() {
       const hasCloud = !!cloudData;
 
       if (!hasLocal && !hasCloud) {
+        sessionStorage.setItem('shohoj_cloud_applied', '1');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
@@ -562,6 +563,7 @@ export function initAuth() {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
@@ -585,6 +587,7 @@ export function initAuth() {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Local data saved to cloud ✓', false, true);
         setSyncIndicator('synced');
       } else {
