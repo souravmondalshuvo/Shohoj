@@ -414,7 +414,7 @@
           <button class="btn-import-pdf magnetic" id="importPdfBtn" onclick="document.getElementById('transcriptFileInput').click()">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none" onchange="importTranscriptPDF(this)">
           <button class="btn-export-pdf magnetic" id="exportPdfBtn" onclick="exportPDF()">⬇ Export PDF</button>
-          <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="if(confirm('Clear all saved data and start fresh?')){clearState();location.reload();}">🗑 Clear Data</button>
+          <button class="btn-clear-data magnetic" id="clearDataBtn" onclick="handleClearData()">🗑 Clear Data</button>
         </div>
       </div>
     </div>
