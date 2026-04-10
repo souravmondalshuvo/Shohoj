@@ -536,6 +536,8 @@ export function initAuth() {
       const now = Date.now();
       if (!sessionStart || isNaN(sessionStart)) {
         try { localStorage.setItem(SESSION_START_KEY, String(now)); } catch(e) {}
+        const firstName = user.displayName?.split(' ')[0] || 'you';
+        showToast(`Welcome, ${firstName} ✓`, false, true);
       } else if (now - sessionStart > SESSION_MAX_MS) {
         try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
         stopRealtimeSync();
@@ -752,7 +754,7 @@ function showToast(msg, isError = false, isAuth = false) {
   t.style.cssText = `
     position:fixed;
     ${useTop
-      ? 'top:72px;left:50%;transform:translateX(-50%);'
+      ? 'top:64px;left:50%;transform:translateX(-50%);'
       : 'bottom:24px;left:50%;transform:translateX(-50%);'}
     background:${isError ? '#e74c3c' : '#2ECC71'};
     color:${isError ? '#fff' : '#0b0f0d'};
