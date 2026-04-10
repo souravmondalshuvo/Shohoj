@@ -86,6 +86,28 @@ window.clearState        = () => {
 
 window._toggleRetake = toggleRetake;
 
+window.handleClearData = async function() {
+  if (typeof window._shohoj_confirmModal !== 'function') {
+    // Fallback if firebase.js hasn't loaded yet
+    if (confirm('Clear all saved data and start fresh?')) {
+      clearState();
+      location.reload();
+    }
+    return;
+  }
+  const confirmed = await window._shohoj_confirmModal({
+    icon: '🗑️',
+    title: 'Clear all data?',
+    body: 'This will permanently delete all your saved semesters, grades, and settings on this device. This cannot be undone.',
+    confirmLabel: 'Clear everything',
+    confirmDanger: true,
+  });
+  if (confirmed) {
+    clearState();
+    location.reload();
+  }
+};
+
 // Playground
 window.switchPlaygroundTab    = switchPlaygroundTab;
 window.onPlaygroundGradeChange = onPlaygroundGradeChange;
