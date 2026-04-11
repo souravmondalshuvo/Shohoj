@@ -71,11 +71,21 @@ export function renderDegreeTracker(totalEarned) {
   const runningSem = semData.find(s => s.running);
   const creditsRemaining = Math.max(0, totalRequired - totalEarned);
 
-  const avgCredits = completedSems.length > 0
-    ? completedSems.reduce((s, d) => s + d.credits, 0) / completedSems.length
-    : summaryBlock
-      ? summaryBlock.summaryCredits / Math.max(1, completedSems.length + 1)
-      : 12;
+  // Estimate how many semesters the summary block represents
+  const DEFAULT_PACE = 12;  // typical BRACU semester load
+  const estimatedSummarySems = summaryBlock
+    ? Math.round(summaryBlock.summaryCredits / DEFAULT_PACE) || 1
+    : 0;
+
+  // Total completed semester count includes estimated summary semesters
+  const totalCompletedCount = completedSems.length + estimatedSummarySems;
+
+  // Calculate pace from all available data
+  const totalCompletedCredits = completedSems.reduce((s, d) => s + d.credits, 0)
+    + (summaryBlock ? summaryBlock.summaryCredits : 0);
+  const avgCredits = totalCompletedCount > 0
+    ? totalCompletedCredits / totalCompletedCount
+    : DEFAULT_PACE;
 
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
@@ -85,8 +95,7 @@ export function renderDegreeTracker(totalEarned) {
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
   if (startSeason && startYear) {
-    const totalSemsNeeded = completedSems.length + (runningSem ? 1 : 0) + semsRemaining
-      + (summaryBlock ? 0 : 0); // summary sems already counted via completedSems
+    const totalSemsNeeded = totalCompletedCount + (runningSem ? 1 : 0) + semsRemaining;
     let si = deptSeasons.indexOf(startSeason);
     if (si === -1) si = 0;
     let yr = startYear;
@@ -109,7 +118,7 @@ export function renderDegreeTracker(totalEarned) {
         <div class="tracker-stat-label">Credits Earned</div>
       </div>
       <div class="tracker-stat">
-        <div class="tracker-stat-val">${completedSems.length + (summaryBlock ? 1 : 0)}</div>
+        <div class="tracker-stat-val">${totalCompletedCount}</div>
         <div class="tracker-stat-label">Semesters Done</div>
       </div>
       <div class="tracker-stat">
