@@ -10,6 +10,7 @@ export function renderDegreeTracker(totalEarned) {
 
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
+  const deptSeasons = dept ? (dept.seasons || ['Spring', 'Summer', 'Fall']) : ['Spring', 'Summer', 'Fall'];
 
   // summary block is already folded into totalEarned by recalc()
   const summaryBlock = state.semesters.find(s => s.summary);
@@ -32,12 +33,11 @@ export function renderDegreeTracker(totalEarned) {
 
   state.semesters.forEach(sem => {
     if (sem.summary) return;   // handled separately as a special node
-    let hasCourses = false;
 
+    let hasCourses = false;
     sem.courses.forEach(c => {
       if (c.name.trim()) hasCourses = true;
     });
-
     if (!hasCourses) return;
 
     const gpa = calcSemGPA(sem);
@@ -71,16 +71,39 @@ export function renderDegreeTracker(totalEarned) {
   const runningSem = semData.find(s => s.running);
   const creditsRemaining = Math.max(0, totalRequired - totalEarned);
 
-  // Estimate how many semesters the summary block represents
-  const DEFAULT_PACE = 12;  // typical BRACU semester load
-  const estimatedSummarySems = summaryBlock
-    ? Math.round(summaryBlock.summaryCredits / DEFAULT_PACE) || 1
-    : 0;
+  // ── Calculate how many dept semesters have elapsed from start to now ────
+  const startSeason = getStartSeason();
+  const startYearNum = parseInt(getStartYear());
+  let estimatedSummarySems = 0;
+  if (summaryBlock && startSeason && startYearNum) {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    let curSeason;
+    if (month <= 4) curSeason = 'Spring';
+    else if (month <= 8) curSeason = 'Summer';
+    else curSeason = 'Fall';
+    const curYear = now.getFullYear();
+
+    // Count dept semesters from start up to (but not including) current
+    let si = deptSeasons.indexOf(startSeason);
+    if (si === -1) si = 0;
+    let yr = startYearNum;
+    let count = 0;
+    while (!(deptSeasons[si] === curSeason && yr === curYear)) {
+      count++;
+      si++;
+      if (si >= deptSeasons.length) { si = 0; yr++; }
+      if (count > 50) break; // safety
+    }
+    // Subtract any real (non-summary) completed semesters already tracked
+    estimatedSummarySems = Math.max(0, count - completedSems.length);
+  }
 
   // Total completed semester count includes estimated summary semesters
   const totalCompletedCount = completedSems.length + estimatedSummarySems;
 
   // Calculate pace from all available data
+  const DEFAULT_PACE = 12;
   const totalCompletedCredits = completedSems.reduce((s, d) => s + d.credits, 0)
     + (summaryBlock ? summaryBlock.summaryCredits : 0);
   const avgCredits = totalCompletedCount > 0
@@ -89,16 +112,12 @@ export function renderDegreeTracker(totalEarned) {
 
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
-  const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
-
   let gradEstimate = '—';
-  const startSeason = getStartSeason();
-  const startYear = parseInt(getStartYear());
-  if (startSeason && startYear) {
+  if (startSeason && startYearNum) {
     const totalSemsNeeded = totalCompletedCount + (runningSem ? 1 : 0) + semsRemaining;
     let si = deptSeasons.indexOf(startSeason);
     if (si === -1) si = 0;
-    let yr = startYear;
+    let yr = startYearNum;
     for (let i = 0; i < totalSemsNeeded - 1; i++) {
       si++;
       if (si >= deptSeasons.length) { si = 0; yr++; }
@@ -189,11 +208,14 @@ export function renderDegreeTracker(totalEarned) {
       </div>`;
   }).join('');
 
+  // ── Build projected semester nodes with real season/year names ──────────
   let projectedHtml = '';
   if (semsRemaining > 0) {
     const maxShow = Math.min(semsRemaining, 4);
     const remaining = semsRemaining - maxShow;
 
+    // Determine the starting point for projected semesters
+    // Use the last real semester's season/year, or summary block context
     let lastLabel = semData.length > 0
       ? semData[semData.length - 1].label
       : (summaryBlock ? 'Past Semesters' : '');
@@ -210,10 +232,32 @@ export function renderDegreeTracker(totalEarned) {
         nextSi = matchedIdx + 1;
         if (nextSi >= deptSeasons.length) { nextSi = 0; nextYr++; }
       }
+    } else if (summaryBlock && startSeason && startYearNum) {
+      // No real semesters yet — project from current real-world semester
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      let curSeason;
+      if (month <= 4) curSeason = 'Spring';
+      else if (month <= 8) curSeason = 'Summer';
+      else curSeason = 'Fall';
+      const curYear = now.getFullYear();
+
+      // Find the current or next dept season
+      let season = curSeason;
+      if (!deptSeasons.includes(season)) {
+        const seasonOrder = ['Spring', 'Summer', 'Fall'];
+        const curIdx = seasonOrder.indexOf(season);
+        for (let offset = 1; offset <= 3; offset++) {
+          const candidate = seasonOrder[(curIdx + offset) % 3];
+          if (deptSeasons.includes(candidate)) { season = candidate; break; }
+        }
+      }
+      nextSi = deptSeasons.indexOf(season);
+      nextYr = curYear;
     }
 
     for (let j = 0; j < maxShow; j++) {
-      let projLabel = `Semester ${completedSems.length + (runningSem ? 1 : 0) + j + 1}`;
+      let projLabel = `Semester ${totalCompletedCount + (runningSem ? 1 : 0) + j + 1}`;
       if (nextSi >= 0) {
         projLabel = `${deptSeasons[nextSi]} '${String(nextYr).slice(2)}`;
         nextSi++;
