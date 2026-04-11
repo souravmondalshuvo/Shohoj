@@ -149,7 +149,41 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
   }
 
   msg += '</div>';
-  msg += buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target);
+
+  // ── Nudge: if user is using summary block with no detailed course data ──
+  const hasSummaryBlock = state.semesters.some(s => s.summary);
+  const hasDetailedCourses = state.semesters.some(s => !s.summary && !s.running && s.courses.some(c => c.name.trim() && c.grade));
+  if (hasSummaryBlock && !hasDetailedCourses) {
+    msg += `
+      <div style="margin-top:16px;padding:14px 16px;border-radius:12px;background:rgba(86,180,233,0.07);border:1px solid rgba(86,180,233,0.22);display:flex;align-items:flex-start;gap:10px;">
+        <span style="font-size:18px;flex-shrink:0;">💡</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Unlock full potential</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+            You're using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake Strategy</strong>, <strong>Grade Changer</strong>, and <strong>Reverse Solver</strong>, import your transcript or add your past semester courses with grades.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button onclick="document.getElementById('transcriptFileInput').click()" style="
+              padding:7px 14px;border-radius:8px;
+              background:rgba(86,180,233,0.12);border:1px solid rgba(86,180,233,0.3);
+              color:#56B4E9;font-size:12px;font-weight:600;cursor:pointer;
+              font-family:'DM Sans',sans-serif;
+              transition:background 0.2s,border-color 0.2s;
+            ">📄 Import Transcript</button>
+            <button onclick="addSemester()" style="
+              padding:7px 14px;border-radius:8px;
+              background:rgba(46,204,113,0.10);border:1px solid rgba(46,204,113,0.25);
+              color:#2ECC71;font-size:12px;font-weight:600;cursor:pointer;
+              font-family:'DM Sans',sans-serif;
+              transition:background 0.2s,border-color 0.2s;
+            ">+ Add Past Semester</button>
+          </div>
+        </div>
+      </div>`;
+  } else {
+    msg += buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target);
+  }
+
   resultEl.innerHTML = msg;
 }
 
