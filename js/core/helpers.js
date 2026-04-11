@@ -47,6 +47,9 @@ export function sanitizeRestoredState(saved) {
       const cr   = parseFloat(sem.summaryCredits);
       if (isNaN(cgpa) || cgpa < 0 || cgpa > 4.0) return false;
       if (isNaN(cr)   || cr < 0)                  return false;
+      // Normalize attempted credits — default to earned if missing
+      const att = parseFloat(sem.summaryAttempted);
+      sem.summaryAttempted = (!isNaN(att) && att >= 0) ? att : cr;
       // normalise optional semesters count
       sem.summarySemesters = typeof sem.summarySemesters === 'number'
         ? sem.summarySemesters : 0;
