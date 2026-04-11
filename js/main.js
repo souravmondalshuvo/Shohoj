@@ -244,7 +244,7 @@ function recalc() {
     const sp = summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
     totalPts        += sp;
     totalEarnedCGPA += summaryBlock.summaryCredits;
-    totalAttempted  += summaryBlock.summaryCredits;
+    totalAttempted  += summaryBlock.summaryAttempted || summaryBlock.summaryCredits;
     totalEarned     += summaryBlock.summaryCredits;
   }
 
