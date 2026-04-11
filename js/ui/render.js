@@ -10,13 +10,12 @@ import {
 
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
-let _summaryEditId      = null;   // non-null when editing existing block
+let _summaryEditId      = null;
 
 export function showSummaryForm(editId = null) {
   _summaryFormVisible = true;
   _summaryEditId      = editId;
   renderSemesters();
-  // focus first input after render
   setTimeout(() => {
     const el = document.getElementById('summaryCgpaInput');
     if (el) el.focus();
@@ -85,6 +84,65 @@ export function confirmSummaryForm() {
   _summaryEditId      = null;
   renderSemesters();
   window._shohoj_recalc();
+}
+
+// ── Helper: compute ordinal for a given season/year from start ────────────────
+function _computeOrdinal(season, year) {
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+  const startSeason = getStartSeason();
+  const startYear = parseInt(getStartYear());
+  if (!startSeason || !startYear) return null;
+
+  let si = deptSeasons.indexOf(startSeason);
+  if (si === -1) si = 0;
+  let yr = startYear;
+  let ordinal = 1;
+  while (!(deptSeasons[si] === season && yr === year)) {
+    si++;
+    if (si >= deptSeasons.length) { si = 0; yr++; }
+    ordinal++;
+    if (ordinal > 50) break;
+  }
+  return ordinal;
+}
+
+// ── Helper: get current real-world semester season + year ─────────────────────
+function _getCurrentSemester() {
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  let currentSeason;
+  if (month <= 4) currentSeason = 'Spring';
+  else if (month <= 8) currentSeason = 'Summer';
+  else currentSeason = 'Fall';
+  const currentYear = now.getFullYear();
+
+  // If current season isn't in dept's calendar, pick the nearest next one
+  let season = currentSeason;
+  if (!deptSeasons.includes(season)) {
+    const seasonOrder = ['Spring', 'Summer', 'Fall'];
+    const curIdx = seasonOrder.indexOf(season);
+    for (let offset = 1; offset <= 3; offset++) {
+      const candidate = seasonOrder[(curIdx + offset) % 3];
+      if (deptSeasons.includes(candidate)) { season = candidate; break; }
+    }
+  }
+
+  return { season, year: currentYear };
+}
+
+// ── Helper: advance season/year by one step in dept calendar ─────────────────
+function _nextSemester(season, year) {
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+  const idx = deptSeasons.indexOf(season);
+  if (idx === -1 || idx === deptSeasons.length - 1) {
+    return { season: deptSeasons[0], year: year + 1 };
+  }
+  return { season: deptSeasons[idx + 1], year };
 }
 
 // ── Render summary block ─────────────────────────────────────────────────────
@@ -230,9 +288,38 @@ function renderSummaryForm() {
   </div>`;
 }
 
+// ── Compute estimated semester count from summary block ──────────────────────
+function _estimatedSummarySemCount() {
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+  const startSeason = getStartSeason();
+  const startYearNum = parseInt(getStartYear());
+  if (!startSeason || !startYearNum) return 0;
+
+  const cur = _getCurrentSemester();
+  let si = deptSeasons.indexOf(startSeason);
+  if (si === -1) si = 0;
+  let yr = startYearNum;
+  let count = 0;
+  while (!(deptSeasons[si] === cur.season && yr === cur.year)) {
+    count++;
+    si++;
+    if (si >= deptSeasons.length) { si = 0; yr++; }
+    if (count > 50) break;
+  }
+  return count;
+}
+
 export function renderSemesters() {
   const container = document.getElementById('semestersContainer');
-  document.getElementById('semesterCount').textContent = state.semesters.filter(s => !s.summary).length;
+  const hasSummary = state.semesters.some(s => s.summary);
+
+  // Footer semester count — include estimated summary semesters
+  const nonSummarySems = state.semesters.filter(s => !s.summary);
+  const estimatedPastSems = hasSummary ? _estimatedSummarySemCount() : 0;
+  const displaySemCount = nonSummarySems.length + estimatedPastSems;
+  document.getElementById('semesterCount').textContent = displaySemCount;
+
   const runBtn = document.getElementById('addRunningSemBtn');
   if (runBtn) runBtn.disabled = state.semesters.some(s => s.running);
   const retakenKeys = getRetakenKeys();
@@ -244,7 +331,6 @@ export function renderSemesters() {
   }
 
   // Precompute: is the first non-summary non-running semester the "current" one?
-  const hasSummary = state.semesters.some(s => s.summary);
   const nonSummaryNonRunning = state.semesters.filter(s => !s.summary && !s.running);
   const currentSemId = (hasSummary && nonSummaryNonRunning.length > 0) ? nonSummaryNonRunning[0].id : null;
 
@@ -309,10 +395,8 @@ export function renderSemesters() {
           </div>
           <span class="credits-static-wrap">
             <span class="credits-static">${c.credits}</span>${
-              c.name.trim() && c.credits > 0 && ![0.5,1,1.5,2,2.5,3,3.5,4].includes(c.credits)
+              c.name.trim() && c.credits > 0 && ![0.5,1,1.5,2,2.5,3,3.5,4,4.5,6,8,10,12].includes(c.credits)
                 ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
-                : c.name.trim() && c.credits > 0 && c.credits > 4
-                ? `<span class="credit-error-dot" title="Credits above 4 is unusual"></span>`
                 : ''
             }</span>
           ${c.credits === 0 && c.name.trim() !== ''
@@ -365,7 +449,6 @@ export function renderSemesters() {
       ? '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department selected</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">2</span><span>Set your <strong>starting semester</strong> above and click <strong>Let\'s go →</strong></span></div></div>'
       : '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department &amp; semester set</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">3</span><span>Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to auto-fill</span></div></div>';
 
-    // "Start from CGPA" button — only show if setup done and no summary block yet
     const cgpaBtn = (_semDone && !hasSummaryBlock)
       ? `<button class="btn-sample-ghost" onclick="window._shohoj_showSummaryForm()" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
       : '';
@@ -387,7 +470,7 @@ export function renderSemesters() {
 
   container.innerHTML = html;
 
-  // ── DRAG-AND-DROP (skip summary blocks) ──────────────────────────────────
+  // ── DRAG-AND-DROP ────────────────────────────────────────────────────────
   setTimeout(() => {
     let dragSrcId = null;
     container.querySelectorAll('.semester-block[draggable="true"]').forEach(block => {
@@ -416,7 +499,6 @@ export function renderSemesters() {
         const srcIdx = state.semesters.findIndex(s => s.id === dragSrcId);
         const tgtIdx = state.semesters.findIndex(s => s.id === targetId);
         if (srcIdx < 0 || tgtIdx < 0) return;
-        // don't allow dragging above a summary block
         const tgtSem = state.semesters[tgtIdx];
         if (tgtSem && tgtSem.summary) return;
         const [moved] = state.semesters.splice(srcIdx, 1);
@@ -430,6 +512,15 @@ export function renderSemesters() {
   }, 0);
 }
 
+// ── _buildSemesterName: unified naming logic for summary-aware semesters ─────
+function _buildSemesterName(season, year) {
+  const ordinal = _computeOrdinal(season, year);
+  if (ordinal) {
+    return `${season} ${year} (${ordinalSup(ordinal)} Semester)`;
+  }
+  return `${season} ${year}`;
+}
+
 export function addSemester(prefill = null) {
   const id = state.semesterCounter++;
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
@@ -438,75 +529,33 @@ export function addSemester(prefill = null) {
   const hasSummary = state.semesters.some(s => s.summary);
 
   let name;
-  if (hasSummary && existingNonSummary.length === 0) {
-    // First semester after summary block — use current real-world semester
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    let currentSeason;
-    if (month <= 4) currentSeason = 'Spring';
-    else if (month <= 8) currentSeason = 'Summer';
-    else currentSeason = 'Fall';
-    const currentYear = now.getFullYear();
+  if (hasSummary) {
+    // Determine the next semester to add
+    let targetSeason, targetYear;
 
-    // If current season isn't in dept's calendar, pick the nearest next one
-    let season = currentSeason;
-    if (!deptSeasons.includes(season)) {
-      const seasonOrder = ['Spring', 'Summer', 'Fall'];
-      const curIdx = seasonOrder.indexOf(season);
-      for (let offset = 1; offset <= 3; offset++) {
-        const candidate = seasonOrder[(curIdx + offset) % 3];
-        if (deptSeasons.includes(candidate)) { season = candidate; break; }
-      }
-    }
-
-    // Calculate ordinal by counting dept semesters from start to now
-    const startSeason = getStartSeason();
-    const startYear = parseInt(getStartYear());
-    let si = deptSeasons.indexOf(startSeason);
-    if (si === -1) si = 0;
-    let yr = startYear;
-    let ordinal = 1;
-    while (!(deptSeasons[si] === season && yr === currentYear)) {
-      si++;
-      if (si >= deptSeasons.length) { si = 0; yr++; }
-      ordinal++;
-      if (ordinal > 50) break; // safety
-    }
-
-    name = `${season} ${currentYear} (${ordinalSup(ordinal)} Semester)`;
-  } else if (hasSummary && existingNonSummary.length > 0) {
-    // Subsequent semesters after summary — advance from last existing semester
-    const last = existingNonSummary[existingNonSummary.length - 1];
-    const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
-    if (match) {
-      let season = match[1];
-      let year = parseInt(match[2]);
-      const idx = deptSeasons.indexOf(season);
-      if (idx === -1 || idx === deptSeasons.length - 1) {
-        season = deptSeasons[0];
-        year++;
-      } else {
-        season = deptSeasons[idx + 1];
-      }
-
-      // Calculate ordinal from start
-      const startSeason = getStartSeason();
-      const startYear = parseInt(getStartYear());
-      let si = deptSeasons.indexOf(startSeason);
-      if (si === -1) si = 0;
-      let yr = startYear;
-      let ordinal = 1;
-      while (!(deptSeasons[si] === season && yr === year)) {
-        si++;
-        if (si >= deptSeasons.length) { si = 0; yr++; }
-        ordinal++;
-        if (ordinal > 50) break;
-      }
-
-      name = `${season} ${year} (${ordinalSup(ordinal)} Semester)`;
+    // Find the last non-summary semester (including running ones)
+    const allNonSummary = state.semesters.filter(s => !s.summary);
+    if (allNonSummary.length === 0) {
+      // First semester after summary — use current real-world semester
+      const cur = _getCurrentSemester();
+      targetSeason = cur.season;
+      targetYear = cur.year;
     } else {
-      name = `Semester ${existingNonSummary.length + 1}`;
+      // Advance from the last existing semester
+      const last = allNonSummary[allNonSummary.length - 1];
+      const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
+      if (match) {
+        const next = _nextSemester(match[1], parseInt(match[2]));
+        targetSeason = next.season;
+        targetYear = next.year;
+      } else {
+        const cur = _getCurrentSemester();
+        targetSeason = cur.season;
+        targetYear = cur.year;
+      }
     }
+
+    name = _buildSemesterName(targetSeason, targetYear);
   } else {
     // Normal case — count from start semester
     const completedCount = existingNonSummary.length;
@@ -522,10 +571,43 @@ export function addSemester(prefill = null) {
 
 export function addRunningSemester() {
   if (state.semesters.some(s => s.running)) return;
-  const nextName = generateNextSemesterName();
+  const hasSummary = state.semesters.some(s => s.summary);
+  let runningName;
+
+  if (hasSummary) {
+    // Use calendar-aware naming with ordinal
+    const allNonSummary = state.semesters.filter(s => !s.summary);
+    let targetSeason, targetYear;
+
+    if (allNonSummary.length === 0) {
+      const cur = _getCurrentSemester();
+      targetSeason = cur.season;
+      targetYear = cur.year;
+    } else {
+      const last = allNonSummary[allNonSummary.length - 1];
+      const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
+      if (match) {
+        const next = _nextSemester(match[1], parseInt(match[2]));
+        targetSeason = next.season;
+        targetYear = next.year;
+      } else {
+        const cur = _getCurrentSemester();
+        targetSeason = cur.season;
+        targetYear = cur.year;
+      }
+    }
+
+    const ordinal = _computeOrdinal(targetSeason, targetYear);
+    runningName = ordinal
+      ? `${targetSeason} ${targetYear} (${ordinalSup(ordinal)} Semester)`
+      : `${targetSeason} ${targetYear}`;
+  } else {
+    runningName = generateNextSemesterName();
+  }
+
   state.semesters.push({
     id: Date.now(),
-    name: nextName + ' (Running)',
+    name: runningName + ' (Running)',
     running: true,
     courses: [{ name:'', credits:0, grade:'', gradePoint:'' }]
   });
