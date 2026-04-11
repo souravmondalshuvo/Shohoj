@@ -30,16 +30,23 @@ export function hideSummaryForm() {
 }
 
 export function confirmSummaryForm() {
-  const cgpaEl    = document.getElementById('summaryCgpaInput');
-  const creditsEl = document.getElementById('summaryCreditsInput');
-  if (!cgpaEl || !creditsEl) return;
+  const cgpaEl      = document.getElementById('summaryCgpaInput');
+  const attemptedEl = document.getElementById('summaryAttemptedInput');
+  const creditsEl   = document.getElementById('summaryCreditsInput');
+  if (!cgpaEl || !attemptedEl || !creditsEl) return;
 
-  const cgpa    = parseFloat(cgpaEl.value);
-  const credits = parseFloat(creditsEl.value);
+  const cgpa      = parseFloat(cgpaEl.value);
+  const attempted = parseFloat(attemptedEl.value);
+  const credits   = parseFloat(creditsEl.value);
 
   if (isNaN(cgpa) || cgpa < 0 || cgpa > 4.0) {
     cgpaEl.style.borderColor = '#e74c3c';
     cgpaEl.focus();
+    return;
+  }
+  if (isNaN(attempted) || attempted < 0) {
+    attemptedEl.style.borderColor = '#e74c3c';
+    attemptedEl.focus();
     return;
   }
   if (isNaN(credits) || credits < 0) {
@@ -47,25 +54,30 @@ export function confirmSummaryForm() {
     creditsEl.focus();
     return;
   }
+  if (credits > attempted) {
+    creditsEl.style.borderColor = '#e74c3c';
+    creditsEl.focus();
+    return;
+  }
 
   if (_summaryEditId !== null) {
-    // editing existing block
     const existing = state.semesters.find(s => s.id === _summaryEditId && s.summary);
     if (existing) {
-      existing.summaryCGPA    = cgpa;
-      existing.summaryCredits = credits;
+      existing.summaryCGPA      = cgpa;
+      existing.summaryAttempted  = attempted;
+      existing.summaryCredits    = credits;
     }
   } else {
-    // creating new block — insert at position 0
     const id = state.semesterCounter++;
     state.semesters.unshift({
       id,
-      name:             'Past Semesters',
-      summary:          true,
-      summaryCGPA:      cgpa,
-      summaryCredits:   credits,
-      courses:          [],
-      running:          false,
+      name:              'Past Semesters',
+      summary:           true,
+      summaryCGPA:       cgpa,
+      summaryAttempted:  attempted,
+      summaryCredits:    credits,
+      courses:           [],
+      running:           false,
     });
   }
 
@@ -92,7 +104,7 @@ function renderSummaryBlock(sem) {
           CGPA ${sem.summaryCGPA.toFixed(2)}
         </span>
         <span class="semester-gpa-badge" style="color:var(--text2);background:var(--glass2);border:1px solid var(--border);">
-          ${sem.summaryCredits % 1 === 0 ? sem.summaryCredits : sem.summaryCredits.toFixed(1)} cr earned
+          ${sem.summaryAttempted ? (sem.summaryAttempted % 1 === 0 ? sem.summaryAttempted : sem.summaryAttempted.toFixed(1)) + ' attempted · ' : ''}${sem.summaryCredits % 1 === 0 ? sem.summaryCredits : sem.summaryCredits.toFixed(1)} cr earned
         </span>
       </div>
       <div class="semester-actions">
@@ -112,9 +124,10 @@ function renderSummaryForm() {
     ? state.semesters.find(s => s.id === _summaryEditId && s.summary)
     : null;
 
-  const cgpaVal    = existing ? existing.summaryCGPA.toFixed(2)  : '';
-  const creditsVal = existing ? existing.summaryCredits.toString() : '';
-  const title      = existing ? 'Edit Past Semesters' : 'Start from Current CGPA';
+  const cgpaVal      = existing ? existing.summaryCGPA.toFixed(2)    : '';
+  const attemptedVal = existing ? existing.summaryAttempted.toString() : '';
+  const creditsVal   = existing ? existing.summaryCredits.toString()  : '';
+  const title        = existing ? 'Edit Past Semesters' : 'Start from Current CGPA';
 
   return `
   <div class="semester-block lg-surface" style="border-color:rgba(46,204,113,0.35);" id="summaryFormBlock"><div class="lg-shine"></div>
@@ -133,7 +146,7 @@ function renderSummaryForm() {
       </p>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
 
-        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px;">
+        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px;">
           <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">
             Current CGPA
           </label>
@@ -154,7 +167,28 @@ function renderSummaryForm() {
           />
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:120px;">
+        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px;">
+          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">
+            Credits Attempted
+          </label>
+          <input
+            id="summaryAttemptedInput"
+            type="number" min="0" step="0.5"
+            placeholder="e.g. 42"
+            value="${escAttr(attemptedVal)}"
+            style="
+              background:var(--input-bg);border:1px solid var(--border);
+              border-radius:10px;color:var(--text);
+              font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;
+              padding:9px 12px;outline:none;width:100%;
+              -moz-appearance:textfield;
+            "
+            oninput="this.style.borderColor=''"
+            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+          />
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:100px;">
           <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);">
             Credits Earned
           </label>
