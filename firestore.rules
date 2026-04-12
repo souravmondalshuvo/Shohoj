@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── User data: scoped to own UID, BRACU domain only ──────────────────
+    match /users/{uid} {
+      allow read: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd')
+        && request.resource.data.updatedAt == request.time
+        && request.resource.size < 512 * 1024;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+    }
+
+    // ── Catch-all: deny everything else ──────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
