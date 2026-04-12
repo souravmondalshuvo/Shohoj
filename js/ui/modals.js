@@ -233,10 +233,10 @@ export async function importTranscriptPDF(inputEl) {
   }
 }
 
-export function applyImport(parsed) {
-  // XSS FIX: use the stored _pendingImport instead of parsing data from
-  // an HTML attribute (the old approach serialized JSON into onclick).
-  const data = parsed || _pendingImport;
+export function applyImport() {
+  // XSS FIX: applyImport no longer accepts a parameter to prevent
+  // window.applyImport() from injecting arbitrary data via console.
+  const data = _pendingImport;
   _pendingImport = null;
   if (!data) return;
 
