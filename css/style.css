@@ -2396,3 +2396,152 @@ input, select, textarea,
   .auth-btn-signed-in  { padding: 4px 6px 4px 4px !important; }
   .auth-btn-signed-out { padding: 5px 8px !important; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   CALCULATOR TABS — three-pane navigation
+   Calculator | Planner | Playground
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+.calc-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 2rem 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--glass2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: relative;
+  z-index: 2;
+}
+
+.calc-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  border-radius: 10px 10px 0 0;
+  transition: color 0.25s, background 0.25s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.calc-tab:hover {
+  color: var(--text2);
+  background: rgba(46,204,113,0.04);
+}
+
+.calc-tab.active {
+  color: var(--green);
+  background: rgba(46,204,113,0.08);
+}
+
+/* Active indicator bar */
+.calc-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--green);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px rgba(46,204,113,0.4);
+}
+
+.calc-tab-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Badge for tab (e.g. course count in planner) */
+.calc-tab-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(46,204,113,0.12);
+  color: var(--green);
+  border-radius: 10px;
+  padding: 1px 6px;
+  line-height: 1.4;
+  display: none;
+}
+.calc-tab-badge.visible {
+  display: inline-block;
+}
+
+/* ── Tab panels ──────────────────────────────────────────── */
+.calc-tab-panel {
+  display: none;
+}
+.calc-tab-panel.active {
+  display: block;
+}
+
+/* ── Planner empty state ─────────────────────────────────── */
+.planner-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 0;
+}
+.planner-coming-soon-icon {
+  font-size: 42px;
+  margin-bottom: 14px;
+  opacity: 0.85;
+}
+.planner-coming-soon-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.planner-coming-soon-desc {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .calc-tabs {
+    padding: 8px 0.8rem 0;
+    gap: 2px;
+  }
+  .calc-tab {
+    padding: 9px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .calc-tab-icon {
+    font-size: 13px;
+  }
+  .calc-tab-badge {
+    font-size: 9px;
+    padding: 0px 5px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 767px) {
+  .calc-tabs {
+    padding: 10px 1.2rem 0;
+  }
+  .calc-tab {
+    font-size: 12px;
+    padding: 10px 10px;
+  }
+}
