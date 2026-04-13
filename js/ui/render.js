@@ -310,6 +310,25 @@ function _estimatedSummarySemCount() {
   return count;
 }
 
+function _isFutureSem(semName) {
+  if (!semName) return false;
+  const match = semName.match(/(Spring|Summer|Fall)\s+(\d{4})/);
+  if (!match) return false;
+  const semSeason = match[1];
+  const semYear = parseInt(match[2]);
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const month = now.getMonth() + 1;
+  let curSeason;
+  if (month <= 4) curSeason = 'Spring';
+  else if (month <= 8) curSeason = 'Summer';
+  else curSeason = 'Fall';
+  const order = { Spring: 0, Summer: 1, Fall: 2 };
+  const semVal = semYear * 3 + (order[semSeason] || 0);
+  const curVal = curYear * 3 + (order[curSeason] || 0);
+  return semVal > curVal;
+}
+
 export function renderSemesters() {
   const container = document.getElementById('semestersContainer');
   const hasSummary = state.semesters.some(s => s.summary);
@@ -347,7 +366,7 @@ export function renderSemesters() {
         <div class="semester-head-left">
           ${!isRunning ? `<span class="drag-handle" title="Drag to reorder">⠿</span>` : ''}
           <span class="semester-label">${escHtml(sem.name)}</span>
-          ${isCurrentSem ? '<span class="semester-running-badge" style="background:rgba(46,204,113,0.12);color:#2ECC71;border-color:rgba(46,204,113,0.30);">📍 Current</span>' : ''}
+          ${isCurrentSem ? '<span class="semester-running-badge" style="background:rgba(46,204,113,0.12);color:#2ECC71;border-color:rgba(46,204,113,0.30);">📍 Current</span>' : _isFutureSem(sem.name) ? '<span class="semester-running-badge" style="background:rgba(86,180,233,0.10);color:#56B4E9;border-color:rgba(86,180,233,0.25);">🔜 Future</span>' : ''}
           ${isRunning
             ? `<span class="semester-running-badge">🎯 Projected</span>${gpa !== null ? `<span class="semester-gpa-badge" style="color:#F0A500;background:rgba(240,165,0,0.10);border:1px solid rgba(240,165,0,0.25);">GPA ${gpa.toFixed(2)}</span>` : ''}`
             : (gpa !== null ? (() => {
