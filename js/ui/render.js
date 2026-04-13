@@ -455,7 +455,7 @@ export function renderSemesters() {
   }).join('');
 
   // ── Inline "Add Semester" button after last semester block ────────────────
-  if (state.semesters.filter(s => !s.summary).length > 0) {
+  if (state.semesters.some(s => s.summary) && state.semesters.filter(s => !s.summary).length > 0) {
     html += `<button class="btn-add-course" onclick="addSemester()" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
   }
 
