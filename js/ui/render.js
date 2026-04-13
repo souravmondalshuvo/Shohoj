@@ -435,6 +435,11 @@ export function renderSemesters() {
     </div>`;
   }).join('');
 
+  // ── Inline "Add Semester" button after last semester block ────────────────
+  if (state.semesters.filter(s => !s.summary).length > 0) {
+    html += `<button class="btn-add-course" onclick="addSemester()" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
+  }
+
   // ── EMPTY STATE ──────────────────────────────────────────────────────────
   const nonSummaryCount = state.semesters.filter(s => !s.summary).length;
   const hasSummaryBlock = state.semesters.some(s => s.summary);
