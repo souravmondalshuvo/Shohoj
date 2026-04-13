@@ -158,9 +158,12 @@ window.addEventListener('scroll', updateProgress, { passive: true });
 // ── SMOOTH ANCHOR SCROLL ──────────────────────────────────────────────────────
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {
-    const target = document.querySelector(a.getAttribute('href'));
+    const href = a.getAttribute('href');
+    const target = document.querySelector(href);
     if (!target) return;
     e.preventDefault();
+    // If linking to #calculator, ensure calculator tab is active
+    if (href === '#calculator') switchCalcTab('calculator');
     const top = target.getBoundingClientRect().top + window.scrollY - 72;
     window.scrollTo({ top, behavior: 'smooth' });
   });
@@ -233,6 +236,76 @@ function loadState() {
     return true;
   } catch(e) { return false; }
 }
+
+// ── TAB SYSTEM ────────────────────────────────────────────────────────────────
+// Three tabs: calculator (default), planner, playground
+// State persists in sessionStorage so refreshing keeps your tab.
+
+const TAB_MAP = {
+  calculator: 'tabCalculator',
+  planner:    'tabPlanner',
+  playground: 'tabPlayground',
+};
+
+let _activeCalcTab = 'calculator';
+
+function switchCalcTab(tabId) {
+  if (!TAB_MAP[tabId]) return;
+  _activeCalcTab = tabId;
+
+  // Update tab buttons
+  document.querySelectorAll('.calc-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+
+  // Update panels
+  Object.entries(TAB_MAP).forEach(([key, panelId]) => {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.classList.toggle('active', key === tabId);
+  });
+
+  // Persist tab choice
+  try { sessionStorage.setItem('shohoj_active_tab', tabId); } catch(e) {}
+
+  // Update URL hash for direct linking
+  if (history.replaceState) {
+    const hash = tabId === 'calculator' ? '#calculator' : `#calculator/${tabId}`;
+    history.replaceState(null, '', hash);
+  }
+
+  // Trigger re-render for active tab content
+  if (tabId === 'playground') {
+    renderPlayground(true);
+  }
+  if (tabId === 'calculator') {
+    // Re-draw trend chart since canvas may have been hidden
+    setTimeout(() => {
+      const trendCanvas = document.getElementById('trendCanvas');
+      const trendBox = document.getElementById('trendChartBox');
+      if (trendBox && trendBox.style.display !== 'none' && trendCanvas) {
+        recalc();
+      }
+    }, 50);
+  }
+}
+
+// Restore tab from session or URL hash on load
+function restoreCalcTab() {
+  // Check URL hash first
+  const hash = window.location.hash;
+  if (hash === '#calculator/planner')    return 'planner';
+  if (hash === '#calculator/playground') return 'playground';
+
+  // Then check sessionStorage
+  try {
+    const saved = sessionStorage.getItem('shohoj_active_tab');
+    if (saved && TAB_MAP[saved]) return saved;
+  } catch(e) {}
+
+  return 'calculator';
+}
+
+window.switchCalcTab = switchCalcTab;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
@@ -452,6 +525,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSemesters();
     recalc();
   }
+
+  // Restore active tab from session/URL hash
+  const savedTab = restoreCalcTab();
+  if (savedTab !== 'calculator') switchCalcTab(savedTab);
 
   initReveal();
   initCursor();
