@@ -205,7 +205,7 @@
     </div>
 
     <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc><div class="lg-shine"></div><div class="lg-bloom"></div>
-      <!-- Header -->
+      <!-- Header (global — above tabs) -->
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
           <h3>CGPA Calculator</h3>
@@ -336,73 +336,107 @@
         </div>
       </div>
 
-      <!-- Body -->
-      <div class="calc-body">
-        <div class="semesters-container" id="semestersContainer"></div>
+      <!-- ═══ TAB BAR ═══ -->
+      <div class="calc-tabs" id="calcTabs">
+        <button class="calc-tab active" data-tab="calculator" onclick="switchCalcTab('calculator')">
+          <span class="calc-tab-icon">🧮</span>
+          <span>Calculator</span>
+        </button>
+        <button class="calc-tab" data-tab="planner" onclick="switchCalcTab('planner')">
+          <span class="calc-tab-icon">📅</span>
+          <span>Planner</span>
+          <span class="calc-tab-badge" id="plannerTabBadge"></span>
+        </button>
+        <button class="calc-tab" data-tab="playground" onclick="switchCalcTab('playground')">
+          <span class="calc-tab-icon">🔮</span>
+          <span>Playground</span>
+        </button>
       </div>
 
-      <!-- CGPA Meter -->
-      <div class="cgpa-meter lg-panel"><div class="lg-shine"></div><div class="lg-bloom"></div>
-        <div class="meter-header">
-          <span>CGPA Score</span>
-          <span id="meterPct">0%</span>
+      <!-- ═══ TAB 1: CALCULATOR ═══ -->
+      <div class="calc-tab-panel active" id="tabCalculator">
+        <!-- Body -->
+        <div class="calc-body">
+          <div class="semesters-container" id="semestersContainer"></div>
         </div>
-        <div class="meter-bar-bg">
-          <div class="meter-bar-fill" id="meterFill"></div>
-        </div>
-        <div class="meter-labels">
-          <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
-        </div>
-        <div class="meter-status" id="meterStatus">Add your courses to get started.</div>
-      </div>
 
-      <!-- Degree Progress Tracker -->
-      <div class="degree-tracker lg-panel" id="degreeTrackerBox" style="display:none;"><div class="lg-shine"></div>
-        <div id="degreeTrackerContent"></div>
-      </div>
-
-      <!-- Academic Standing -->
-      <div class="standing-box lg-panel" id="standingBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="standing-inner">
-          <div class="standing-left">
-            <div class="standing-label">Academic Standing</div>
-            <div class="standing-title" id="standingTitle">—</div>
-            <div class="standing-desc" id="standingDesc"></div>
+        <!-- CGPA Meter -->
+        <div class="cgpa-meter lg-panel"><div class="lg-shine"></div><div class="lg-bloom"></div>
+          <div class="meter-header">
+            <span>CGPA Score</span>
+            <span id="meterPct">0%</span>
           </div>
-          <div class="standing-badge" id="standingBadge"></div>
+          <div class="meter-bar-bg">
+            <div class="meter-bar-fill" id="meterFill"></div>
+          </div>
+          <div class="meter-labels">
+            <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
+          </div>
+          <div class="meter-status" id="meterStatus">Add your courses to get started.</div>
+        </div>
+
+        <!-- Degree Progress Tracker -->
+        <div class="degree-tracker lg-panel" id="degreeTrackerBox" style="display:none;"><div class="lg-shine"></div>
+          <div id="degreeTrackerContent"></div>
+        </div>
+
+        <!-- Academic Standing -->
+        <div class="standing-box lg-panel" id="standingBox" style="display:none;"><div class="lg-shine"></div>
+          <div class="standing-inner">
+            <div class="standing-left">
+              <div class="standing-label">Academic Standing</div>
+              <div class="standing-title" id="standingTitle">—</div>
+              <div class="standing-desc" id="standingDesc"></div>
+            </div>
+            <div class="standing-badge" id="standingBadge"></div>
+          </div>
+        </div>
+
+        <!-- GPA Trend Chart -->
+        <div class="trend-chart-box lg-panel" id="trendChartBox" style="display:none;"><div class="lg-shine"></div>
+          <div class="meter-header">
+            <span>Semester GPA Trend</span>
+            <span id="trendRange">—</span>
+          </div>
+          <div class="trend-canvas-wrap">
+            <canvas id="trendCanvas"></canvas>
+          </div>
         </div>
       </div>
 
-      <!-- GPA Trend Chart -->
-      <div class="trend-chart-box lg-panel" id="trendChartBox" style="display:none;"><div class="lg-shine"></div>
-        <div class="meter-header">
-          <span>Semester GPA Trend</span>
-          <span id="trendRange">—</span>
-        </div>
-        <div class="trend-canvas-wrap">
-          <canvas id="trendCanvas"></canvas>
+      <!-- ═══ TAB 2: PLANNER ═══ -->
+      <div class="calc-tab-panel" id="tabPlanner">
+        <div class="calc-body">
+          <div class="planner-coming-soon">
+            <div class="planner-coming-soon-icon">📅</div>
+            <div class="planner-coming-soon-title">Semester Planner</div>
+            <div class="planner-coming-soon-desc">Plan your next semester with prerequisite checks, credit validation, and smart course suggestions. Coming soon.</div>
+          </div>
         </div>
       </div>
 
-      <!-- CGPA Playground -->
-      <div class="playground-box lg-panel" id="playgroundBox" style="display:none;"><div class="lg-shine"></div>
-        <h4>🔮 CGPA Playground</h4>
-        <div id="playgroundContent"></div>
-      </div>
-
-      <!-- Simulator -->
-      <div class="simulator-box lg-panel"><div class="lg-shine"></div>
-        <h4>🎯 CGPA Goal Simulator</h4>
-        <div class="simulator-row">
-          <label>Target CGPA:</label>
-          <input type="number" id="targetCgpa" min="0" max="4" step="0.01" placeholder="e.g. 3.50" />
-          <label>Credits remaining:</label>
-          <input type="number" id="creditsRemaining" min="0" max="250" placeholder="e.g. 97" />
+      <!-- ═══ TAB 3: PLAYGROUND ═══ -->
+      <div class="calc-tab-panel" id="tabPlayground">
+        <!-- CGPA Playground -->
+        <div class="playground-box lg-panel" id="playgroundBox" style="display:none;"><div class="lg-shine"></div>
+          <h4>🔮 CGPA Playground</h4>
+          <div id="playgroundContent"></div>
         </div>
-        <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
+
+        <!-- Simulator -->
+        <div class="simulator-box lg-panel"><div class="lg-shine"></div>
+          <h4>🎯 CGPA Goal Simulator</h4>
+          <div class="simulator-row">
+            <label>Target CGPA:</label>
+            <input type="number" id="targetCgpa" min="0" max="4" step="0.01" placeholder="e.g. 3.50" />
+            <label>Credits remaining:</label>
+            <input type="number" id="creditsRemaining" min="0" max="250" placeholder="e.g. 97" />
+          </div>
+          <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
+        </div>
       </div>
 
-      <!-- Footer -->
+      <!-- Footer (global — below tabs) -->
       <div class="calc-footer lg-panel">
         <div class="calc-footer-stats">
           <div class="footer-stat">Credits Attempted: <strong id="totalAttempted">0</strong></div>
