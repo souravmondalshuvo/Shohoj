@@ -35,6 +35,16 @@ function userDocRef(uid) {
   return doc(db, 'users', uid);
 }
 
+function parseStoredState(raw, source = 'storage') {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn(`[Shohoj] Ignoring invalid ${source} state:`, e);
+    return null;
+  }
+}
+
 // ── Save to cloud ─────────────────────────────────────────────────────────────
 export async function saveToCloud(stateSnap) {
   if (!currentUser) return;
@@ -550,7 +560,8 @@ export function initAuth() {
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
-      const hasLocal = !!localRaw;
+      const localParsed = parseStoredState(localRaw, 'local');
+      const hasLocal = !!localParsed;
       const hasCloud = !!cloudData;
 
       if (!hasLocal && !hasCloud) {
@@ -559,7 +570,6 @@ export function initAuth() {
       }
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
-        const localParsed = JSON.parse(localRaw);
         setSyncIndicator('syncing');
         await saveToCloud(localParsed);
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
@@ -577,7 +587,6 @@ export function initAuth() {
       }
 
       // If local data is empty (no semesters), skip migration — just use cloud
-      const localParsed = JSON.parse(localRaw);
       const localSems   = localParsed?.semesters?.length || 0;
       const cloudSems   = cloudData?.semesters?.length   || 0;
 
@@ -603,11 +612,10 @@ export function initAuth() {
       currentUser = null;
       stopRealtimeSync();
       updateAuthUI(null);
-      try {
-        const raw    = localStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? JSON.parse(raw) : null;
-        showNudgeBanner(parsed?.semesters?.length > 0);
-      } catch(e) { showNudgeBanner(false); }
+      let raw = null;
+      try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+      const parsed = parseStoredState(raw, 'local');
+      showNudgeBanner(parsed?.semesters?.length > 0);
     }
   });
 }
