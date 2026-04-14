@@ -47,8 +47,10 @@ export function renderDegreeTracker(totalEarned) {
 
     const creditsThisSem = sem.courses.reduce((sum, c) => {
       if (!c.name.trim() || !c.credits) return sum;
+      if (sem.running) return sum + c.credits;
       if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
-      if (GRADES[c.grade] === undefined) return sum;
+      const gp = GRADES[c.grade];
+      if (gp === undefined || gp <= 0) return sum;
       return sum + c.credits;
     }, 0);
 
