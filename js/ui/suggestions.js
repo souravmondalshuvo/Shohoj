@@ -63,7 +63,7 @@ export function onCourseBlur(e, semId, cIdx) {
       course.gradePoint = '';
     }
 
-    window._shohoj_recalc();
+    window._shohoj_renderAndRecalc();
     if (resolvedName) {
       const liveInput = document.getElementById(`course-input-${semId}-${cIdx}`);
       const wrap = liveInput ? liveInput.closest('.course-input-wrap') : null;
