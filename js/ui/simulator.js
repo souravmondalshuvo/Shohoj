@@ -39,12 +39,34 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
   const remaining = parseFloat(document.getElementById('creditsRemaining').value);
   const resultEl = document.getElementById('simulatorResult');
 
-  if (!target || !remaining || currentCgpa === null) {
+  if (Number.isNaN(target) || Number.isNaN(remaining) || currentCgpa === null) {
     resultEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>';
     return;
   }
   if (target > 4.0 || target < 0) {
     resultEl.innerHTML = '<span class="warn">Target CGPA must be between 0.0 and 4.0.</span>';
+    return;
+  }
+  if (remaining < 0) {
+    resultEl.innerHTML = '<span class="warn">Remaining credits cannot be negative.</span>';
+    return;
+  }
+  if (remaining === 0) {
+    if (target <= currentCgpa) {
+      resultEl.innerHTML = `<div class="sim-result-card">
+        <div style="padding:12px 14px;border-radius:10px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.22)">
+          <div style="font-size:18px;font-weight:800;color:#2ECC71;font-family:'Syne',sans-serif">🎉 Target already secured</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">You have no remaining credits left, and your current CGPA <strong>${currentCgpa.toFixed(2)}</strong> already meets the target of <strong>${target.toFixed(2)}</strong>.</div>
+        </div>
+      </div>`;
+    } else {
+      resultEl.innerHTML = `<div class="sim-result-card">
+        <div style="padding:12px 14px;border-radius:10px;background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.25)">
+          <div style="font-size:18px;font-weight:800;color:#e74c3c;font-family:'Syne',sans-serif">⛔ No remaining credits</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">You have no remaining credits left, so you cannot raise your CGPA to <strong>${target.toFixed(2)}</strong> through future semesters. Consider retakes if you want to improve beyond <strong>${currentCgpa.toFixed(2)}</strong>.</div>
+        </div>
+      </div>`;
+    }
     return;
   }
 
