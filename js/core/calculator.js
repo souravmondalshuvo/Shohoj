@@ -29,7 +29,7 @@ export function usesBestGradePolicy() {
 }
 
 export function getRetakenKeys(semList) {
-  const list = semList || state.semesters;
+  const list = (semList || state.semesters).filter(sem => !sem.running && !sem.summary);
   const bestGrade = usesBestGradePolicy();
 
   const all = [];
