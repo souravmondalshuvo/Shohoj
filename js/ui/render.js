@@ -565,11 +565,13 @@ function _buildSemesterName(season, year) {
 }
 
 export function addSemester(prefill = null) {
+  const hasSummary = state.semesters.some(s => s.summary);
+  if (!hasSummary && (!state.currentDept || !getStartSeason() || !getStartYear())) return;
+
   const id = state.semesterCounter++;
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const existingNonSummary = state.semesters.filter(s => !s.running && !s.summary);
-  const hasSummary = state.semesters.some(s => s.summary);
 
   let name;
   if (hasSummary) {
@@ -615,6 +617,7 @@ export function addSemester(prefill = null) {
 export function addRunningSemester() {
   if (state.semesters.some(s => s.running)) return;
   const hasSummary = state.semesters.some(s => s.summary);
+  if (!hasSummary && (!state.currentDept || !getStartSeason() || !getStartYear())) return;
   let runningName;
 
   if (hasSummary) {
