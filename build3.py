@@ -32,6 +32,7 @@ JS_FILES = [
     'js/ui/simulator.js',
     'js/ui/modals.js',
     'js/ui/playground.js',
+    'js/ui/planner.js',
     # Animations
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
@@ -87,6 +88,7 @@ function clearAllData() {
   state.semesters = [];
   state.semesterCounter = 0;
   resetPlayground();
+  resetPlanner();
   renderSemesters();
   recalc();
 }
