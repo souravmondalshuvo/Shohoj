@@ -43,6 +43,11 @@ import {
   addPlaygroundChange, onSolverTargetChange, onSolverCourseChange
 } from './ui/playground.js';
 
+import {
+  renderPlanner, addToPlan, removeFromPlan, clearPlan,
+  viewPrereqTree, resetPlanner, onPlannerSearch, onPlannerFilter
+} from './ui/planner.js';
+
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
 import { initDotMatrix }  from './animations/dotmatrix.js';
@@ -81,6 +86,7 @@ window.clearState        = () => {
   state.semesters = [];
   state.semesterCounter = 0;
   resetPlayground();
+  resetPlanner();
   renderSemesters();
   recalc();
 };
@@ -117,6 +123,14 @@ window.clearPlaygroundChanges = clearPlaygroundChanges;
 window.addPlaygroundChange    = addPlaygroundChange;
 window.onSolverTargetChange   = onSolverTargetChange;
 window.onSolverCourseChange   = onSolverCourseChange;
+
+// Planner
+window.addToPlan         = addToPlan;
+window.removeFromPlan    = removeFromPlan;
+window.clearPlan         = clearPlan;
+window.viewPrereqTree    = viewPrereqTree;
+window.onPlannerSearch   = onPlannerSearch;
+window.onPlannerFilter   = onPlannerFilter;
 
 // Summary block
 window._shohoj_showSummaryForm    = showSummaryForm;
@@ -276,6 +290,9 @@ function switchCalcTab(tabId) {
   // Trigger re-render for active tab content
   if (tabId === 'playground') {
     renderPlayground(true);
+  }
+  if (tabId === 'planner') {
+    renderPlanner();
   }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
