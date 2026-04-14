@@ -359,10 +359,17 @@ export function exportPDF() {
     }
   };
 
+  const summaryBlock = state.semesters.find(sem => sem.summary);
   let totalPts = 0, totalCr = 0, totalEarned = 0, totalAttempted = 0;
+  if (summaryBlock) {
+    totalPts += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+    totalCr += summaryBlock.summaryCredits;
+    totalEarned += summaryBlock.summaryCredits;
+    totalAttempted += summaryBlock.summaryAttempted || summaryBlock.summaryCredits;
+  }
   const rk = getRetakenKeys();
   state.semesters.forEach(sem => {
-    if (sem.running) return;
+    if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
       const gp = GRADES[c.grade];
       if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
@@ -436,6 +443,21 @@ export function exportPDF() {
   const BADGE_W = 26;
 
   state.semesters.forEach(sem => {
+    if (sem.summary) {
+      checkY(18);
+      setFill(LGREY); setStroke(BORDER); doc.setLineWidth(0.3);
+      doc.roundedRect(ML, y, CW, 14, 1.5, 1.5, 'FD');
+      setFill(GREEN); doc.roundedRect(ML, y, 3, 14, 1, 1, 'F');
+      doc.rect(ML + 1.5, y, 1.5, 14, 'F');
+
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold'); setTxt(TEXT1);
+      doc.text('Past Semesters Summary', ML + 6, y + 5.2);
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal'); setTxt(TEXT2);
+      doc.text(`CGPA ${sem.summaryCGPA.toFixed(2)}   ·   Earned ${fmtCr(sem.summaryCredits)} cr   ·   Attempted ${fmtCr(sem.summaryAttempted || sem.summaryCredits)} cr`, ML + 6, y + 10);
+      y += 19;
+      return;
+    }
+
     const semGpa = calcSemGPA(sem);
     checkY(24);
 
