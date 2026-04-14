@@ -85,6 +85,22 @@ window.clearState        = () => {
   clearState();
   state.semesters = [];
   state.semesterCounter = 0;
+  state.currentDept = '';
+  state._restoredFromStorage = false;
+
+  const deptSel = document.getElementById('deptSelect');
+  if (deptSel) deptSel.value = '';
+  const seasonSel = document.getElementById('startSeason');
+  if (seasonSel) seasonSel.value = '';
+  const yearSel = document.getElementById('startYear');
+  if (yearSel) yearSel.value = '';
+  const startRow = document.getElementById('startSemRow');
+  if (startRow) startRow.style.display = 'none';
+  const creditsText = document.getElementById('deptCreditsText');
+  if (creditsText) creditsText.textContent = '';
+  const creditsBadge = document.getElementById('deptCredits');
+  if (creditsBadge) creditsBadge.style.display = 'none';
+
   resetPlayground();
   resetPlanner();
   renderSemesters();
