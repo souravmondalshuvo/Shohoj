@@ -2,7 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
-import { getStartSeason, getStartYear, escHtml } from '../core/helpers.js';
+import { getStartSeason, getStartYear, getLastCompletedSemester, escHtml } from '../core/helpers.js';
 
 export function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
@@ -78,20 +78,14 @@ export function renderDegreeTracker(totalEarned) {
   const startYearNum = parseInt(getStartYear());
   let estimatedSummarySems = 0;
   if (summaryBlock && startSeason && startYearNum) {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    let curSeason;
-    if (month <= 4) curSeason = 'Spring';
-    else if (month <= 8) curSeason = 'Summer';
-    else curSeason = 'Fall';
-    const curYear = now.getFullYear();
+    const lastCompleted = getLastCompletedSemester(deptSeasons);
 
     // Count dept semesters from start up to (but not including) current
     let si = deptSeasons.indexOf(startSeason);
     if (si === -1) si = 0;
     let yr = startYearNum;
     let count = 0;
-    while (!(deptSeasons[si] === curSeason && yr === curYear)) {
+    while (!(deptSeasons[si] === lastCompleted.season && yr === lastCompleted.year)) {
       count++;
       si++;
       if (si >= deptSeasons.length) { si = 0; yr++; }
