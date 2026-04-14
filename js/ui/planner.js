@@ -50,13 +50,13 @@ function getInProgressCodes() {
   return codes;
 }
 
-// ── Engine: get codes already in calculator (completed + in-progress) ────────
-function getAllEnteredCodes() {
+// ── Engine: get codes already scheduled in future/manual semester blocks ─────
+function getScheduledCodes() {
   const codes = new Set();
   state.semesters.forEach(sem => {
-    if (sem.summary) return;
+    if (sem.summary || sem.running) return;
     sem.courses.forEach(c => {
-      if (!c.name.trim()) return;
+      if (!c.name.trim() || c.grade) return;
       const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
       if (m) codes.add(m[1]);
     });
@@ -121,14 +121,15 @@ function isRelevantToDept(code, deptCode) {
 // ── Engine: get all available courses for planning ──────────────────────────
 function getAvailableCourses(completed, dept) {
   const inProgress = getInProgressCodes();
-  const entered    = getAllEnteredCodes();
+  const scheduled  = getScheduledCodes();
   const deptCode   = dept || state.currentDept || '';
   const results    = [];
 
   ALL_COURSES.forEach(c => {
-    // Skip if already completed, in progress, or already entered
+    // Skip if already completed, in progress, or already scheduled elsewhere
     if (completed.has(c.code)) return;
     if (inProgress.has(c.code)) return;
+    if (scheduled.has(c.code)) return;
     // Skip if already in plan
     if (plan.courses.includes(c.code)) return;
     // Skip 0-credit remedial courses
@@ -319,12 +320,15 @@ export function renderPlanner() {
   const hasAnyCourses = state.semesters.some(s =>
     !s.summary && s.courses.some(c => c.name.trim())
   );
-  if (!hasAnyCourses && !state.semesters.some(s => s.summary)) {
+  if (!hasAnyCourses) {
+    const hasSummary = state.semesters.some(s => s.summary);
     container.innerHTML = `
       <div class="planner-coming-soon">
         <div class="planner-coming-soon-icon">\ud83d\udcc5</div>
-        <div class="planner-coming-soon-title">Add your courses first</div>
-        <div class="planner-coming-soon-desc">Import your transcript or add courses in the Calculator tab so the planner can check prerequisites and suggest what you can take next.</div>
+        <div class="planner-coming-soon-title">${hasSummary ? 'Add completed courses first' : 'Add your courses first'}</div>
+        <div class="planner-coming-soon-desc">${hasSummary
+          ? 'Your CGPA summary helps with totals, but the planner needs actual completed courses to check prerequisites. Import your transcript or add past courses in the Calculator tab first.'
+          : 'Import your transcript or add courses in the Calculator tab so the planner can check prerequisites and suggest what you can take next.'}</div>
       </div>`;
     _updatePlannerBadge();
     return;
