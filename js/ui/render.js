@@ -783,7 +783,12 @@ export function onStartSemConfirm() {
     const id = state.semesterCounter++;
     const preset = dept.presets[idx];
     const courses = preset
-      ? preset.courses.map(c => ({ name: '', credits: 0, grade: '', gradePoint: '' }))
+      ? preset.courses.map(c => ({
+          name: c.name || '',
+          credits: c.credits || 0,
+          grade: '',
+          gradePoint: '',
+        }))
       : [{ name: '', credits: 0, grade: '', gradePoint: '' }];
     state.semesters.push({ id, name: semNames[idx], courses });
   }
