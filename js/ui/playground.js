@@ -7,7 +7,9 @@ import { escHtml, escAttr } from '../core/helpers.js';
 const pg = {
   activeTab: 'changer',
   changes: {},      // key → newGrade
+  changeSources: {}, // key → course identity snapshot
   solverKey: '',     // course key 'semId-idx'
+  solverSource: '',
   solverTarget: '',
   solverTouched: false,  // true once user types in solver target
 };
@@ -29,6 +31,36 @@ function gradeColor(g) {
 function courseLabel(name) {
   const m = name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
   return m ? m[1] : (name.length > 30 ? name.slice(0, 27) + '...' : name);
+}
+
+function courseSignature(course) {
+  return [
+    course?.name || '',
+    course?.credits || 0,
+    course?.grade || '',
+    course?.sem || '',
+    course?.running ? '1' : '0',
+  ].join('|');
+}
+
+function syncPlaygroundState(courses) {
+  const currentByKey = new Map(courses.map(c => [c.key, c]));
+
+  Object.keys(pg.changes).forEach(key => {
+    const course = currentByKey.get(key);
+    if (!course || pg.changeSources[key] !== courseSignature(course)) {
+      delete pg.changes[key];
+      delete pg.changeSources[key];
+    }
+  });
+
+  if (pg.solverKey) {
+    const course = currentByKey.get(pg.solverKey);
+    if (!course || pg.solverSource !== courseSignature(course)) {
+      pg.solverKey = '';
+      pg.solverSource = '';
+    }
+  }
 }
 
 function getGradedCourses() {
@@ -84,7 +116,9 @@ function getCurrentTotals() {
 export function resetPlayground() {
   pg.activeTab = 'changer';
   Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
+  Object.keys(pg.changeSources).forEach(k => delete pg.changeSources[k]);
   pg.solverKey = '';
+  pg.solverSource = '';
   pg.solverTarget = '';
   pg.solverTouched = false;
 }
@@ -102,19 +136,23 @@ export function onPlaygroundGradeChange(key, grade) {
   const c = courses.find(x => x.key === key);
   if (c && grade === c.grade) {
     delete pg.changes[key];
+    delete pg.changeSources[key];
   } else {
     pg.changes[key] = grade;
+    if (c) pg.changeSources[key] = courseSignature(c);
   }
   renderPlayground(true);
 }
 
 export function removePlaygroundChange(key) {
   delete pg.changes[key];
+  delete pg.changeSources[key];
   renderPlayground(true);
 }
 
 export function clearPlaygroundChanges() {
   Object.keys(pg.changes).forEach(k => delete pg.changes[k]);
+  Object.keys(pg.changeSources).forEach(k => delete pg.changeSources[k]);
   renderPlayground(true);
 }
 
@@ -209,7 +247,10 @@ export function addPlaygroundChange() {
   const courseEl = document.getElementById('pgChangerCourseSelect');
   const gradeEl = document.getElementById('pgChangerGradeSelect');
   if (!courseEl || !gradeEl || !courseEl.value || !gradeEl.value) return;
+  const courses = getGradedCourses();
+  const course = courses.find(c => c.key === courseEl.value);
   pg.changes[courseEl.value] = gradeEl.value;
+  if (course) pg.changeSources[courseEl.value] = courseSignature(course);
   renderPlayground(true);
 }
 
@@ -227,6 +268,9 @@ export function onSolverTargetChange(val) {
 
 export function onSolverCourseChange(key) {
   pg.solverKey = key;
+  const courses = getGradedCourses();
+  const course = courses.find(c => c.key === key);
+  pg.solverSource = course ? courseSignature(course) : '';
   renderPlayground(true);
 }
 
@@ -345,6 +389,7 @@ export function renderPlayground(force) {
   if (!box || !content) return;
 
   const courses = getGradedCourses();
+  syncPlaygroundState(courses);
   const totals = getCurrentTotals();
   const hasSummaryOnly = state.semesters.some(s => s.summary) && courses.length === 0;
 
