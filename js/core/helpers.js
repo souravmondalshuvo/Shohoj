@@ -84,17 +84,19 @@ export function getCurrentSeason() {
 
 export function getLastCompletedSemester(seasons) {
   const order = seasons || SEASON_ORDER;
-  const now = new Date();
   const curSeason = getCurrentSeason();
-  const curYear   = now.getFullYear();
-  const idx = order.indexOf(curSeason);
-  if (idx === -1) {
-    return { season: order[order.length - 1], year: curYear };
+  const curYear = new Date().getFullYear();
+  const curGlobalIdx = SEASON_ORDER.indexOf(curSeason);
+
+  const offeredBeforeCurrent = order.filter(season =>
+    SEASON_ORDER.indexOf(season) < curGlobalIdx
+  );
+
+  if (offeredBeforeCurrent.length > 0) {
+    return { season: offeredBeforeCurrent[offeredBeforeCurrent.length - 1], year: curYear };
   }
-  if (idx === 0) {
-    return { season: order[order.length - 1], year: curYear - 1 };
-  }
-  return { season: order[idx - 1], year: curYear };
+
+  return { season: order[order.length - 1], year: curYear - 1 };
 }
 
 export function countSemesters(startSeason, startYear, endSeason, endYear, seasons) {
