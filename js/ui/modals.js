@@ -265,6 +265,18 @@ export function applyImport() {
   const _dSel = document.getElementById('deptSelect'); if (_dSel) _dSel.value = '';
   document.getElementById('deptCreditsText').textContent = '';
   const _dCred = document.getElementById('deptCredits'); if (_dCred) _dCred.style.display = 'none';
+  const seasonEl = document.getElementById('startSeason');
+  const yearEl   = document.getElementById('startYear');
+  const startRow = document.getElementById('startSemRow');
+
+  const setSeasonOptions = (seasons) => {
+    if (!seasonEl) return;
+    const opts = seasons && seasons.length ? seasons : ['Spring', 'Summer', 'Fall'];
+    seasonEl.innerHTML = '<option value="" disabled selected>— Season —</option>'
+      + opts.map(s => `<option value="${s}">${s}</option>`).join('');
+  };
+
+  setSeasonOptions(['Spring', 'Summer', 'Fall']);
 
   if (data.detectedDept) {
     const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === data.detectedDept);
@@ -276,8 +288,7 @@ export function applyImport() {
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       const credEl = document.getElementById('deptCredits');
       if (credEl) credEl.style.display = 'inline-flex';
-      const startRow = document.getElementById('startSemRow');
-      if (startRow) startRow.style.display = 'flex';
+      setSeasonOptions(dept.seasons || ['Spring', 'Summer', 'Fall']);
     }
   }
 
@@ -298,11 +309,10 @@ export function applyImport() {
     const parts   = first.name.split(' ');
     const season  = parts[0];
     const year    = parts[1];
-    const seasonEl = document.getElementById('startSeason');
-    const yearEl   = document.getElementById('startYear');
     if (seasonEl && ['Spring','Summer','Fall'].includes(season)) seasonEl.value = season;
     if (yearEl   && year && /^\d{4}$/.test(year))                yearEl.value   = year;
   }
+  if (startRow) startRow.style.display = state.semesters.length > 0 ? 'flex' : 'none';
 
   window._shohoj_renderAndRecalc();
   saveState();
