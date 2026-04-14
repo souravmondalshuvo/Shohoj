@@ -13,6 +13,7 @@ import { resetPlayground } from './playground.js';
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
 let _summaryEditId      = null;
+let _dragBindTimer      = null;
 
 export function showSummaryForm(editId = null) {
   _summaryFormVisible = true;
@@ -511,7 +512,9 @@ export function renderSemesters() {
   container.innerHTML = html;
 
   // ── DRAG-AND-DROP ────────────────────────────────────────────────────────
-  setTimeout(() => {
+  if (_dragBindTimer) clearTimeout(_dragBindTimer);
+  _dragBindTimer = setTimeout(() => {
+    _dragBindTimer = null;
     let dragSrcId = null;
     container.querySelectorAll('.semester-block[draggable="true"]').forEach(block => {
       block.addEventListener('dragstart', e => {
