@@ -123,6 +123,7 @@ export async function deleteCloudData() {
   try {
     stopRealtimeSync();
     await deleteDoc(userDocRef(currentUser.uid));
+    startRealtimeSync(currentUser.uid);
     showToast('Cloud data deleted successfully', false, true);
     setSyncIndicator('synced');
     try { localStorage.removeItem(LAST_SYNC_KEY); } catch(e) {}
