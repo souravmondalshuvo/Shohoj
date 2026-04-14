@@ -180,7 +180,8 @@ const navEl = document.querySelector('nav');
 function updateProgress() {
   const scrollTop = window.scrollY;
   const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-  progressBar.style.width = (scrollTop / docHeight * 100) + '%';
+  const pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = Math.max(0, Math.min(100, pct)) + '%';
   navEl.classList.toggle('scrolled', scrollTop > 40);
 }
 window.addEventListener('scroll', updateProgress, { passive: true });
