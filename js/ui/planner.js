@@ -18,6 +18,9 @@ const plan = {
 // ── Search/filter state ─────────────────────────────────────────────────────
 let _searchQuery = '';
 let _filterMode  = 'all'; // 'all' | 'unlocked' | 'locked'
+let _restoreSearchFocus = false;
+let _searchCursorStart = null;
+let _searchCursorEnd = null;
 
 // ── Engine: get completed course codes ──────────────────────────────────────
 function getCompletedCodes() {
@@ -255,7 +258,16 @@ export function resetPlanner() {
 }
 
 export function onPlannerSearch(val) {
-  _searchQuery = val.trim().toLowerCase();
+  const active = document.activeElement;
+  _restoreSearchFocus = !!(active && active.id === 'plannerSearchInput');
+  _searchCursorStart = _restoreSearchFocus && typeof active.selectionStart === 'number'
+    ? active.selectionStart
+    : null;
+  _searchCursorEnd = _restoreSearchFocus && typeof active.selectionEnd === 'number'
+    ? active.selectionEnd
+    : null;
+
+  _searchQuery = val.toLowerCase();
   renderPlanner();
 }
 
@@ -521,6 +533,7 @@ export function renderPlanner() {
         <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
       </div>
       <input type="text" placeholder="Search by course code or name..."
+        id="plannerSearchInput"
         value="${escAttr(_searchQuery)}"
         oninput="onPlannerSearch(this.value)"
         style="
@@ -548,6 +561,27 @@ export function renderPlanner() {
       \ud83d\udd13 = prerequisites met &nbsp; \ud83d\udd12 = prerequisites missing &nbsp; \ud83d\udd17 = view prerequisite chain
       <br>Prerequisite data covers ${prereqCoverage} courses across CSE, EEE, ECE, MAT, PHY, BBA, ECO, and ENG departments.
     </div>`;
+
+  if (_restoreSearchFocus) {
+    const searchInput = document.getElementById('plannerSearchInput');
+    if (searchInput) {
+      requestAnimationFrame(() => {
+        searchInput.focus();
+        if (typeof searchInput.setSelectionRange === 'function') {
+          const end = typeof _searchCursorEnd === 'number'
+            ? Math.min(_searchCursorEnd, searchInput.value.length)
+            : searchInput.value.length;
+          const start = typeof _searchCursorStart === 'number'
+            ? Math.min(_searchCursorStart, end)
+            : end;
+          searchInput.setSelectionRange(start, end);
+        }
+      });
+    }
+    _restoreSearchFocus = false;
+    _searchCursorStart = null;
+    _searchCursorEnd = null;
+  }
 
   _updatePlannerBadge();
 }
