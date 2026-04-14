@@ -524,6 +524,12 @@ function recalc() {
   const statusEl = document.getElementById('meterStatus');
   if (cgpa === null) {
     statusEl.innerHTML = 'Add your courses to get started.';
+  } else if (cgpaCompleted === null) {
+    if (hasRunning) {
+      statusEl.innerHTML = `<strong>Projected only.</strong> CGPA ${cgpa.toFixed(2)} is based on running courses. Add completed semesters to assess your standing.`;
+    } else {
+      statusEl.innerHTML = 'Add completed graded courses to see your academic standing.';
+    }
   } else if (cgpaCompleted >= 3.75) {
     statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpaCompleted.toFixed(2)} — Dean's List territory. Keep it up.`;
   } else if (cgpaCompleted >= 3.5) {
