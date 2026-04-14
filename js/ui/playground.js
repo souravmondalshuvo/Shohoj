@@ -59,7 +59,15 @@ function getGradedCourses() {
 function getCurrentTotals() {
   const rk = getRetakenKeys();
   let pts = 0, cr = 0;
+
+  const summaryBlock = state.semesters.find(sem => sem.summary);
+  if (summaryBlock) {
+    pts += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+    cr  += summaryBlock.summaryCredits;
+  }
+
   state.semesters.forEach(sem => {
+    if (sem.summary) return;
     sem.courses.forEach((c, i) => {
       const gp = GRADES[c.grade];
       if (gp === undefined || gp === null || !c.credits) return;
@@ -291,6 +299,12 @@ function computeSolverResult(courses, totals) {
 }
 
 function renderReverseSolver(courses, totals) {
+  if (!courses.length) {
+    return `<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px;line-height:1.7">
+      Add your past semester courses with grades, or import your transcript, to use the Reverse Solver.
+    </div>`;
+  }
+
   if (totals.cgpa === null) {
     return `<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Add some graded courses first to use the Reverse Solver.</div>`;
   }
@@ -332,6 +346,7 @@ export function renderPlayground(force) {
 
   const courses = getGradedCourses();
   const totals = getCurrentTotals();
+  const hasSummaryOnly = state.semesters.some(s => s.summary) && courses.length === 0;
 
   if (!state.semesters.length || totals.cgpa === null) {
     box.style.display = 'none';
@@ -359,8 +374,21 @@ export function renderPlayground(force) {
     </button>`).join('');
 
   let bodyHtml = '';
-  if (pg.activeTab === 'changer')   bodyHtml = renderGradeChanger(courses, totals);
-  if (pg.activeTab === 'solver')    bodyHtml = renderReverseSolver(courses, totals);
+  if (hasSummaryOnly) {
+    bodyHtml = `
+      <div style="padding:16px 18px;border-radius:14px;background:rgba(86,180,233,0.07);border:1px solid rgba(86,180,233,0.22);display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:18px;flex-shrink:0;">💡</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:5px;">Detailed courses needed</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;">
+            Your current CGPA summary is being used as the baseline, but <strong>Grade Changer</strong> and <strong>Reverse Solver</strong> need actual past courses with grades. Import your transcript or add past semesters first.
+          </div>
+        </div>
+      </div>`;
+  } else {
+    if (pg.activeTab === 'changer') bodyHtml = renderGradeChanger(courses, totals);
+    if (pg.activeTab === 'solver')  bodyHtml = renderReverseSolver(courses, totals);
+  }
 
   content.innerHTML = `
     <div class="pg-tabs">${tabsHtml}</div>
