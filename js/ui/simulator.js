@@ -5,6 +5,17 @@ import { escHtml, escAttr } from '../core/helpers.js';
 
 const _retakeChecked = new Set();
 
+function clearRetakeSelections() {
+  _retakeChecked.clear();
+}
+
+function pruneRetakeSelections(validKeys) {
+  const valid = new Set(validKeys);
+  for (const key of [..._retakeChecked]) {
+    if (!valid.has(key)) _retakeChecked.delete(key);
+  }
+}
+
 export function toggleRetake(key) {
   if (_retakeChecked.has(key)) _retakeChecked.delete(key);
   else _retakeChecked.add(key);
@@ -40,6 +51,7 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
   const resultEl = document.getElementById('simulatorResult');
 
   if (Number.isNaN(target) || Number.isNaN(remaining) || currentCgpa === null) {
+    clearRetakeSelections();
     resultEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>';
     return;
   }
@@ -233,14 +245,15 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     });
   });
 
-  if (!candidates.length) return '';
+  if (!candidates.length) {
+    clearRetakeSelections();
+    return '';
+  }
+
+  pruneRetakeSelections(candidates.map(c => c.key));
 
   candidates.sort((a, b) => b.boostToB - a.boostToB);
   const top = candidates.slice(0, 6);
-
-  for (const k of [..._retakeChecked]) {
-    if (!top.find(c => c.key === k)) _retakeChecked.delete(k);
-  }
 
   const gradeCol = g =>
     (g === 'F' || g === 'F(NT)') ? '#e74c3c' :
