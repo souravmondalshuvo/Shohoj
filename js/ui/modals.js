@@ -55,6 +55,8 @@ function getModalTheme() {
   }
 }
 
+let _importModalBackdropHandler = null;
+
 export function showImportModal(html) {
   const modal    = document.getElementById('importModal');
   const card     = document.getElementById('importModalCard');
@@ -66,14 +68,26 @@ export function showImportModal(html) {
   content.innerHTML = html;
   modal.style.display = 'flex';
   requestAnimationFrame(() => { modal.style.opacity = '1'; });
-  modal.addEventListener('click', function _bd(e) {
-    if (e.target === modal) { hideImportModal(); modal.removeEventListener('click', _bd); }
-  });
+  if (_importModalBackdropHandler) {
+    modal.removeEventListener('click', _importModalBackdropHandler);
+  }
+  _importModalBackdropHandler = function(e) {
+    if (e.target === modal) hideImportModal();
+  };
+  modal.addEventListener('click', _importModalBackdropHandler);
 }
 
 export function hideImportModal() {
   const modal = document.getElementById('importModal');
-  if (modal) { modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; }, 220); }
+  _pendingImport = null;
+  if (modal && _importModalBackdropHandler) {
+    modal.removeEventListener('click', _importModalBackdropHandler);
+    _importModalBackdropHandler = null;
+  }
+  if (modal) {
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 220);
+  }
 }
 
 // ── IMPORT: store parsed data in a temp slot so the "Import Now" button
