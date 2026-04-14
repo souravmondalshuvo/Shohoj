@@ -45,6 +45,10 @@ function parseStoredState(raw, source = 'storage') {
   }
 }
 
+function clearCloudAppliedFlag() {
+  try { sessionStorage.removeItem('shohoj_cloud_applied'); } catch(e) {}
+}
+
 // ── Save to cloud ─────────────────────────────────────────────────────────────
 export async function saveToCloud(stateSnap) {
   if (!currentUser) return;
@@ -511,6 +515,7 @@ export async function signInWithGoogle() {
 export async function signOutUser() {
   try {
     try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
+    clearCloudAppliedFlag();
     stopRealtimeSync();
     await signOut(auth);
     showToast('Signed out successfully', false, true);
@@ -611,6 +616,7 @@ export function initAuth() {
     } else {
       currentUser = null;
       stopRealtimeSync();
+      clearCloudAppliedFlag();
       updateAuthUI(null);
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
