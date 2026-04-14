@@ -32,10 +32,39 @@ export function onCourseBlur(e, semId, cIdx) {
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem || !sem.courses[cIdx]) return;
   const val = e.target.value.trim();
-  if (sem.courses[cIdx].name !== val) {
-    sem.courses[cIdx].name = val;
+  const course = sem.courses[cIdx];
+  const prevName = course.name;
+  const exactMatch = COURSE_DB[val.toUpperCase()]
+    || ALL_COURSES.find(c =>
+      c.full.toLowerCase() === val.toLowerCase() ||
+      c.name.toLowerCase() === val.toLowerCase()
+    );
+
+  let resolvedName = val;
+  let resolvedCredits = course.credits;
+  if (exactMatch) {
+    resolvedName = exactMatch.full;
+    resolvedCredits = exactMatch.credits;
+  } else if (!val) {
+    resolvedCredits = 0;
+  } else {
+    resolvedCredits = 0;
+  }
+
+  const identityChanged = prevName !== resolvedName;
+  const creditsChanged = course.credits !== resolvedCredits;
+  if (identityChanged || creditsChanged) {
+    course.name = resolvedName;
+    course.credits = resolvedCredits;
+
+    // If the course identity changed, any previous grade belongs to the old row.
+    if (identityChanged) {
+      course.grade = '';
+      course.gradePoint = '';
+    }
+
     window._shohoj_recalc();
-    if (val) {
+    if (resolvedName) {
       const liveInput = document.getElementById(`course-input-${semId}-${cIdx}`);
       const wrap = liveInput ? liveInput.closest('.course-input-wrap') : null;
       if (wrap) {
