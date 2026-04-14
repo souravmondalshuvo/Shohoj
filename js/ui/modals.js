@@ -5,6 +5,8 @@ import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
 import { parseTranscriptText, parseBlobFallback } from '../import/parser.js';
 import { COURSE_DB } from '../core/catalog.js';
 import { escHtml } from '../core/helpers.js';
+import { resetPlayground } from './playground.js';
+import { resetPlanner } from './planner.js';
 
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -242,6 +244,8 @@ export function applyImport() {
 
   hideImportModal();
   clearState();
+  resetPlayground();
+  resetPlanner();
 
   state.currentDept = null;
   const _dSel = document.getElementById('deptSelect'); if (_dSel) _dSel.value = '';
