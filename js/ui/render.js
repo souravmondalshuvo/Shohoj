@@ -334,6 +334,20 @@ function _isFutureSem(semName) {
 export function renderSemesters() {
   const container = document.getElementById('semestersContainer');
   const hasSummary = state.semesters.some(s => s.summary);
+  const hasNonSummary = state.semesters.some(s => !s.summary);
+
+  if (_summaryFormVisible) {
+    const editingSummary = _summaryEditId !== null;
+    const currentSummary = editingSummary
+      ? state.semesters.find(s => s.id === _summaryEditId && s.summary)
+      : null;
+    const canCreateSummary = !!state.currentDept && !!getStartSeason() && !!getStartYear() && !hasNonSummary;
+
+    if ((editingSummary && !currentSummary) || (!editingSummary && !canCreateSummary)) {
+      _summaryFormVisible = false;
+      _summaryEditId = null;
+    }
+  }
 
   // Footer semester count — include estimated summary semesters
   const nonSummarySems = state.semesters.filter(s => !s.summary);
