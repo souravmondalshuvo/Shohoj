@@ -7,6 +7,7 @@ import {
   countSemesters, getStartSeason, getStartYear,
   escHtml, escAttr, getCurrentSeason, SEASON_ORDER, ordinalSup
 } from '../core/helpers.js';
+import { resetPlanner } from './planner.js';
 
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
@@ -682,6 +683,7 @@ export function loadSampleData() {
       !confirm('This will replace your current data. Continue?')) return;
   state.semesters = [];
   state.semesterCounter = 0;
+  resetPlanner();
   const sample = [
     { name: 'Fall 2024', courses: [
       { name: 'Programming Language I (CSE110)',   credits: 3, grade: 'B+', gradePoint: 3.3 },
@@ -724,6 +726,7 @@ export function onDeptSelect() {
   const sel = document.getElementById('deptSelect');
   state.currentDept = sel.value;
   if (!state.currentDept) return;
+  resetPlanner();
   window._shohoj_updateSetupWizard();
   const dept = DEPARTMENTS[state.currentDept];
   const creditsEl = document.getElementById('deptCredits');
