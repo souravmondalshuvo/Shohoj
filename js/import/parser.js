@@ -1,3 +1,82 @@
+const DEPARTMENT_LABELS = {
+  CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
+  EEE: 'BSc EEE — Electrical & Electronic Engineering',
+  BBA: 'Bachelor of Business Administration (BBA)',
+  ECO: 'B.S.S. in Economics (ECO)',
+  ENG: 'B.A. in English (ENG)',
+  ARC: 'B.Arch. in Architecture (ARC)',
+  PHR: 'B.Sc. in Pharmacy (PHR)',
+  LAW: 'Bachelor of Laws (LLB)',
+  CS: 'B.Sc. in Computer Science (CS)',
+  ECE: 'B.Sc. in Electronic & Communication Engineering (ECE)',
+  ANT: 'B.S.S. in Anthropology (ANT)',
+  PHY: 'B.Sc. in Physics (PHY)',
+  APE: 'B.Sc. in Applied Physics & Electronics (APE)',
+  MAT: 'B.Sc. in Mathematics (MAT)',
+  MIC: 'B.Sc. in Microbiology (MIC)',
+  BIO: 'B.Sc. in Biotechnology (BIO)',
+};
+
+const PROGRAM_DETECTORS = [
+  [DEPARTMENT_LABELS.CSE, /COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
+  [DEPARTMENT_LABELS.CS, /COMPUTER\s+SCIENCE(?!\s+AND\s+ENGINEERING)|\bCS\b/i],
+  [DEPARTMENT_LABELS.EEE, /ELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING|\bBSC\s*EEE\b|\bEEE\b/i],
+  [DEPARTMENT_LABELS.ECE, /ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING|\bECE\b/i],
+  [DEPARTMENT_LABELS.BBA, /BUSINESS\s+ADMINISTRATION|\bBBA\b/i],
+  [DEPARTMENT_LABELS.ECO, /ECONOMICS|\bECO\b/i],
+  [DEPARTMENT_LABELS.ENG, /ENGLISH|\bENG\b/i],
+  [DEPARTMENT_LABELS.ARC, /ARCHITECTURE|\bARCH\b|\bARC\b/i],
+  [DEPARTMENT_LABELS.PHR, /PHARMACY|\bPHR\b/i],
+  [DEPARTMENT_LABELS.LAW, /BACHELOR\s+OF\s+LAWS|\bLL\.?B\b|\bLAW\b/i],
+  [DEPARTMENT_LABELS.ANT, /ANTHROPOLOGY|\bANT\b/i],
+  [DEPARTMENT_LABELS.APE, /APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS|\bAPE\b/i],
+  [DEPARTMENT_LABELS.PHY, /PHYSICS(?!\s*(?:&|AND)\s*ELECTRONICS)|\bPHY\b/i],
+  [DEPARTMENT_LABELS.MAT, /MATHEMATICS|\bMAT\b/i],
+  [DEPARTMENT_LABELS.MIC, /MICROBIOLOGY|\bMIC\b/i],
+  [DEPARTMENT_LABELS.BIO, /BIOTECHNOLOGY|\bBIO\b/i],
+];
+
+const TEXT_DETECTORS = [
+  [DEPARTMENT_LABELS.CSE, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING\b|COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
+  [DEPARTMENT_LABELS.EEE, /\bBSC\s*EEE\b|\bELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING\b/i],
+  [DEPARTMENT_LABELS.BBA, /\bBACHELOR\s+OF\s+BUSINESS\s+ADMINISTRATION\b|\bBBA\b/i],
+  [DEPARTMENT_LABELS.ECO, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ECONOMICS\b|\bSOCIAL\s+SCIENCE.*ECONOMICS\b/i],
+  [DEPARTMENT_LABELS.ENG, /\bB\.?\s*A\.?\s+IN\s+ENGLISH\b|\bBACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH\b/i],
+  [DEPARTMENT_LABELS.ARC, /\bB\.?\s*ARCH\.?\b|\bBACHELOR\s+OF\s+ARCHITECTURE\b/i],
+  [DEPARTMENT_LABELS.PHR, /\bB\.?\s*SC\.?\s+IN\s+PHARMACY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHARMACY\b/i],
+  [DEPARTMENT_LABELS.LAW, /\bBACHELOR\s+OF\s+LAWS\b|\bLL\.?B\b/i],
+  [DEPARTMENT_LABELS.CS, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)/i],
+  [DEPARTMENT_LABELS.ECE, /\bB\.?\s*SC\.?\s+IN\s+ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b|\bELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b/i],
+  [DEPARTMENT_LABELS.ANT, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ANTHROPOLOGY\b|\bBACHELOR\s+OF\s+SOCIAL\s+SCIENCE\s+IN\s+ANTHROPOLOGY\b/i],
+  [DEPARTMENT_LABELS.APE, /\bB\.?\s*SC\.?\s+IN\s+APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b|\bAPPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b/i],
+  [DEPARTMENT_LABELS.PHY, /\bB\.?\s*SC\.?\s+IN\s+PHYSICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHYSICS\b/i],
+  [DEPARTMENT_LABELS.MAT, /\bB\.?\s*SC\.?\s+IN\s+MATHEMATICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MATHEMATICS\b/i],
+  [DEPARTMENT_LABELS.MIC, /\bB\.?\s*SC\.?\s+IN\s+MICROBIOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MICROBIOLOGY\b/i],
+  [DEPARTMENT_LABELS.BIO, /\bB\.?\s*SC\.?\s+IN\s+BIOTECHNOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+BIOTECHNOLOGY\b/i],
+];
+
+function detectDepartment(text) {
+  const compact = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!compact) return null;
+
+  const programMatch = compact.match(
+    /PROGRAM:\s*(.+?)(?=SEMESTER:|COURSE\s+NO|COURSE\s+TITLE|CREDITS\s+EARNED|GRADE\s+POINTS|GRADE\s+SHEET|STUDENT\s+ID|NAME\b|$)/i
+  );
+  const programText = programMatch ? programMatch[1].trim() : '';
+
+  if (programText) {
+    for (const [label, pattern] of PROGRAM_DETECTORS) {
+      if (pattern.test(programText)) return label;
+    }
+  }
+
+  for (const [label, pattern] of TEXT_DETECTORS) {
+    if (pattern.test(compact)) return label;
+  }
+
+  return null;
+}
+
 // ── parseBlobFallback ─────────────────────────────────────────────────────────
 export function parseBlobFallback(text) {
   const blob = text.replace(/\s+/g, ' ');
@@ -32,17 +111,7 @@ export function parseBlobFallback(text) {
     return { id: Date.now() + idx, name: s.name, courses, running: false };
   }).filter(s => s.courses.length > 0);
 
-  let detectedDept = null;
-  if (/CSE|COMPUTER SCIENCE/i.test(text))              detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
-  else if (/ELECTRICAL/i.test(text))                   detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
-  else if (/BBA|BUSINESS ADMINISTRATION/i.test(text))  detectedDept = 'Bachelor of Business Administration (BBA)';
-  else if (/PHARMACY/i.test(text))                     detectedDept = 'B.Sc. in Pharmacy (PHR)';
-  else if (/ARCHITECTURE/i.test(text))                 detectedDept = 'B.Arch. in Architecture (ARC)';
-  else if (/LAW/i.test(text))                          detectedDept = 'Bachelor of Laws (LLB)';
-  else if (/B\.?S\.?S\.?\s+IN\s+ECONOMICS|SOCIAL\s+SCIENCE.*ECONOMICS/i.test(text)) detectedDept = 'B.S.S. in Economics (ECO)';
-  else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text)) detectedDept = 'B.A. in English (ENG)';
-
-  return { semesters, detectedDept };
+  return { semesters, detectedDept: detectDepartment(text) };
 }
 
 // ── parseTranscriptText ───────────────────────────────────────────────────────
@@ -56,23 +125,7 @@ export function parseTranscriptText(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
   // ── Dept detection ────────────────────────────────────────────────────────
-  let detectedDept = null;
-  if (/COMPUTER[\s\S]{0,10}SCIENCE|B\.?SC\.?\s+IN\s+COMPUTER/i.test(text))
-    detectedDept = 'B.Sc. in Computer Science and Engineering (CSE)';
-  else if (/ELECTRICAL/i.test(text))
-    detectedDept = 'BSc EEE — Electrical & Electronic Engineering';
-  else if (/BUSINESS ADMINISTRATION/i.test(text))
-    detectedDept = 'Bachelor of Business Administration (BBA)';
-  else if (/PHARMACY/i.test(text))
-    detectedDept = 'B.Sc. in Pharmacy (PHR)';
-  else if (/ARCHITECTURE/i.test(text))
-    detectedDept = 'B.Arch. in Architecture (ARC)';
-  else if (/LAW/i.test(text))
-    detectedDept = 'Bachelor of Laws (LLB)';
-  else if (/B\.?S\.?S\.?\s+IN\s+ECONOMICS|SOCIAL\s+SCIENCE.*ECONOMICS/i.test(text))
-    detectedDept = 'B.S.S. in Economics (ECO)';
-  else if (/B\.?A\.?\s+IN\s+ENGLISH|BACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH/i.test(text))
-    detectedDept = 'B.A. in English (ENG)';
+  const detectedDept = detectDepartment(text);
 
   const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
   const semRe    = /^SEMESTER:\s*([A-Z]+)\s+(\d{4})/i;
