@@ -116,7 +116,7 @@ window.clearAllData = clearAllData;
     # ── Replace CSS link with inlined <style> ─────────────────────────────────
     html = re.sub(
         r'<link\s+[^>]*href=["\']css/style\.css["\'][^>]*/?>',
-        f'<style>\n{css}\n</style>',
+        lambda _m: f'<style>\n{css}\n</style>',
         html
     )
 
@@ -131,14 +131,14 @@ window.clearAllData = clearAllData;
 
     html = re.sub(
         r'<script\s+type=["\']module["\']\s*>\s*import\s*\{[^}]*\}\s*from\s*[\'"][^"\']*firebase\.js["\'];[\s\S]*?</script>',
-        firebase_init_block,
+        lambda _m: firebase_init_block,
         html
     )
 
     # ── Replace main.js module script with bundled <script> ───────────────────
     html = re.sub(
         r'<script\s+type=["\']module["\']\s+src=["\']js/main\.js["\'][^>]*>\s*</script>',
-        f'<script>\n{bundled_js}\n</script>',
+        lambda _m: f'<script>\n{bundled_js}\n</script>',
         html
     )
 
