@@ -29,6 +29,11 @@ const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
 const SESSION_START_KEY   = 'shohoj_session_start';
 const SESSION_MAX_MS      = 30 * 24 * 60 * 60 * 1000; // 30 days
+const CLOUD_SAVE_DEBOUNCE_MS = 700;
+let _cloudSaveTimer       = null;
+let _queuedCloudSnap      = null;
+let _queuedCloudResolvers = [];
+let _activeCloudSave      = Promise.resolve(false);
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -66,10 +71,20 @@ function clearCloudAppliedFlag() {
   try { sessionStorage.removeItem('shohoj_cloud_applied'); } catch(e) {}
 }
 
-// ── Save to cloud ─────────────────────────────────────────────────────────────
-export async function saveToCloud(stateSnap) {
-  if (!currentUser) return;
-  if (!navigator.onLine) { setSyncIndicator('offline'); return; }
+function drainQueuedCloudResolvers() {
+  return _queuedCloudResolvers.splice(0);
+}
+
+function clearQueuedCloudSave(result = false) {
+  if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = null;
+  _queuedCloudSnap = null;
+  drainQueuedCloudResolvers().forEach(resolve => resolve(result));
+}
+
+async function persistCloudState(stateSnap) {
+  if (!currentUser) return false;
+  if (!navigator.onLine) { setSyncIndicator('offline'); return false; }
   setSyncIndicator('syncing');
   try {
     await setDoc(userDocRef(currentUser.uid), {
@@ -80,11 +95,54 @@ export async function saveToCloud(stateSnap) {
     try { localStorage.setItem(LAST_SYNC_KEY, String(now)); } catch(e) {}
     setSyncIndicator('synced');
     updateLastSyncLabel(now);
+    return true;
   } catch (e) {
     console.error('[Shohoj] Cloud save failed:', e);
     setSyncIndicator('error');
     showToast('⚠ Cloud save failed — data saved locally', true);
+    return false;
   }
+}
+
+// ── Save to cloud ─────────────────────────────────────────────────────────────
+export function saveToCloud(stateSnap, options = {}) {
+  if (!currentUser) return Promise.resolve(false);
+
+  const { immediate = false } = options;
+
+  if (immediate) {
+    const queuedResolvers = drainQueuedCloudResolvers();
+    if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
+    _cloudSaveTimer = null;
+    _queuedCloudSnap = null;
+    _activeCloudSave = _activeCloudSave.then(() => persistCloudState(stateSnap));
+    return _activeCloudSave.then(result => {
+      queuedResolvers.forEach(resolve => resolve(result));
+      return result;
+    });
+  }
+
+  _queuedCloudSnap = stateSnap;
+  if (!navigator.onLine) {
+    setSyncIndicator('offline');
+  } else {
+    setSyncIndicator('syncing');
+  }
+
+  return new Promise(resolve => {
+    _queuedCloudResolvers.push(resolve);
+    if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
+    _cloudSaveTimer = setTimeout(() => {
+      const snap = _queuedCloudSnap;
+      const resolvers = drainQueuedCloudResolvers();
+      _queuedCloudSnap = null;
+      _cloudSaveTimer = null;
+      _activeCloudSave = _activeCloudSave.then(() => persistCloudState(snap));
+      _activeCloudSave.then(result => {
+        resolvers.forEach(done => done(result));
+      });
+    }, CLOUD_SAVE_DEBOUNCE_MS);
+  });
 }
 
 // ── Load from cloud ───────────────────────────────────────────────────────────
@@ -541,6 +599,7 @@ export async function signOutUser() {
   try {
     try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
     clearCloudAppliedFlag();
+    clearQueuedCloudSave(false);
     stopRealtimeSync();
     await signOut(auth);
     showToast('Signed out successfully', false, true);
@@ -601,7 +660,7 @@ export function initAuth() {
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
         setSyncIndicator('syncing');
-        await saveToCloud(localParsed);
+        await saveToCloud(localParsed, { immediate: true });
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
@@ -628,7 +687,7 @@ export function initAuth() {
 
       if (choice === 'local') {
         setSyncIndicator('syncing');
-        await saveToCloud(localParsed);
+        await saveToCloud(localParsed, { immediate: true });
         try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Local data saved to cloud ✓', false, true);
@@ -642,6 +701,7 @@ export function initAuth() {
       currentUser = null;
       stopRealtimeSync();
       clearCloudAppliedFlag();
+      clearQueuedCloudSave(false);
       updateAuthUI(null);
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
