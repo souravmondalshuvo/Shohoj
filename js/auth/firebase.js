@@ -45,6 +45,23 @@ function parseStoredState(raw, source = 'storage') {
   }
 }
 
+function normalizeStateValue(value) {
+  if (Array.isArray(value)) return value.map(normalizeStateValue);
+  if (value && typeof value === 'object') {
+    const normalized = {};
+    Object.keys(value).sort().forEach(key => {
+      if (value[key] !== undefined) normalized[key] = normalizeStateValue(value[key]);
+    });
+    return normalized;
+  }
+  return value;
+}
+
+function getStateSignature(raw, source = 'storage') {
+  const parsed = parseStoredState(raw, source);
+  return parsed ? JSON.stringify(normalizeStateValue(parsed)) : (raw || '');
+}
+
 function clearCloudAppliedFlag() {
   try { sessionStorage.removeItem('shohoj_cloud_applied'); } catch(e) {}
 }
@@ -94,7 +111,14 @@ function startRealtimeSync(uid) {
     const raw = snap.data()?.data;
     if (!raw) return;
     try {
-      const current = localStorage.getItem(STORAGE_KEY);
+      const current = localStorage.getItem(STORAGE_KEY) || '';
+      if (current === raw) return;
+
+      if (getStateSignature(current, 'local realtime') === getStateSignature(raw, 'cloud realtime')) {
+        localStorage.setItem(STORAGE_KEY, raw);
+        return;
+      }
+
       if (current !== raw) {
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         localStorage.setItem(STORAGE_KEY, raw);
