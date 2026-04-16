@@ -1,0 +1,14 @@
+{
+  "name": "shohoj",
+  "version": "1.0.0",
+  "description": "BRACU academic tools platform",
+  "private": true,
+  "scripts": {
+    "test": "node tests/calculator.test.js && node tests/parser.test.js",
+    "test:calculator": "node tests/calculator.test.js",
+    "test:parser": "node tests/parser.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
