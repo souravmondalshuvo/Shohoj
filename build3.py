@@ -120,6 +120,20 @@ window.clearAllData = clearAllData;
         html
     )
 
+    # ── Update CSP to allow gstatic.com for Firebase module imports ───────────
+    # The Firebase SDK loads from https://www.gstatic.com/firebasejs/...
+    # which must be in script-src and connect-src.
+    html = html.replace(
+        "script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com",
+        "script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com"
+    )
+    # Ensure gstatic is in connect-src
+    html = re.sub(
+        r"(connect-src\s+)(https://firestore\.googleapis\.com)",
+        r"\1https://www.gstatic.com \2",
+        html
+    )
+
     # ── Replace the Firebase module import script with inlined version ────────
     # The index.html has: <script type="module">
     #                       import { initAuth, ... } from './js/auth/firebase.js';
@@ -127,7 +141,15 @@ window.clearAllData = clearAllData;
     #                     </script>
     # We replace that entire block with firebase.js inlined directly,
     # keeping type="module" so CDN imports still work.
-    firebase_init_block = f'<script type="module">\n{firebase_js}\n\n// ── Boot ──\ninitAuth();\nwindow._shohoj_onSave = async function(snap) {{\n  if (currentUser) await saveToCloud(snap);\n}};\n</script>'
+    firebase_init_block = (
+        '<script type="module">\n'
+        + firebase_js
+        + '\n\n// ── Boot ──\ninitAuth();\n'
+        + 'window._shohoj_onSave = async function(snap) {\n'
+        + '  if (currentUser) await saveToCloud(snap);\n'
+        + '};\n'
+        + '</script>'
+    )
 
     html = re.sub(
         r'<script\s+type=["\']module["\']\s*>\s*import\s*\{[^}]*\}\s*from\s*[\'"][^"\']*firebase\.js["\'];[\s\S]*?</script>',
