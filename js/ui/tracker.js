@@ -2,7 +2,46 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
-import { getStartSeason, getStartYear, getLastCompletedSemester, escHtml } from '../core/helpers.js';
+import {
+  getStartSeason,
+  getStartYear,
+  getLastCompletedSemester,
+  countSemesters,
+  escHtml,
+} from '../core/helpers.js';
+
+export function estimateSummaryCompletedSemesters({
+  hasSummary,
+  startSeason,
+  startYear,
+  deptSeasons,
+  completedSemCount = 0,
+  lastCompleted = getLastCompletedSemester(deptSeasons),
+}) {
+  if (!hasSummary || !startSeason || !startYear || !lastCompleted) return 0;
+
+  const startYearNum = parseInt(startYear);
+  if (!startYearNum) return 0;
+
+  const seasons = deptSeasons && deptSeasons.length ? deptSeasons : ['Spring', 'Summer', 'Fall'];
+  const startSeasonIdx = seasons.indexOf(startSeason);
+  const lastCompletedIdx = seasons.indexOf(lastCompleted.season);
+  if (startSeasonIdx === -1 || lastCompletedIdx === -1) return 0;
+
+  const startPos = startYearNum * seasons.length + startSeasonIdx;
+  const endPos = parseInt(lastCompleted.year) * seasons.length + lastCompletedIdx;
+  if (startPos > endPos) return 0;
+
+  const totalCompleted = countSemesters(
+    startSeason,
+    startYearNum,
+    lastCompleted.season,
+    lastCompleted.year,
+    seasons
+  );
+
+  return Math.max(0, totalCompleted - completedSemCount);
+}
 
 export function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
@@ -76,24 +115,13 @@ export function renderDegreeTracker(totalEarned) {
   // ── Calculate how many dept semesters have elapsed from start to now ────
   const startSeason = getStartSeason();
   const startYearNum = parseInt(getStartYear());
-  let estimatedSummarySems = 0;
-  if (summaryBlock && startSeason && startYearNum) {
-    const lastCompleted = getLastCompletedSemester(deptSeasons);
-
-    // Count dept semesters from start up to (but not including) current
-    let si = deptSeasons.indexOf(startSeason);
-    if (si === -1) si = 0;
-    let yr = startYearNum;
-    let count = 0;
-    while (!(deptSeasons[si] === lastCompleted.season && yr === lastCompleted.year)) {
-      count++;
-      si++;
-      if (si >= deptSeasons.length) { si = 0; yr++; }
-      if (count > 50) break; // safety
-    }
-    // Subtract any real (non-summary) completed semesters already tracked
-    estimatedSummarySems = Math.max(0, count - completedSems.length);
-  }
+  const estimatedSummarySems = estimateSummaryCompletedSemesters({
+    hasSummary: !!summaryBlock,
+    startSeason,
+    startYear: startYearNum,
+    deptSeasons,
+    completedSemCount: completedSems.length,
+  });
 
   // Total completed semester count includes estimated summary semesters
   const totalCompletedCount = completedSems.length + estimatedSummarySems;
