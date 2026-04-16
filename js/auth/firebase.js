@@ -717,9 +717,10 @@ export function initAuth() {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed, { immediate: true });
         // Don't remove localStorage — keep it as the source of truth for this tab.
-        // The realtime listener will ignore this write via the local-write guard.
+        // The realtime listener will ignore this write via the local-write guard
+        // (_localWriteAt), so we don't need shohoj_skip_first_save here — that flag
+        // would silently drop the user's first edit after sign-in.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        sessionStorage.setItem('shohoj_skip_first_save', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
