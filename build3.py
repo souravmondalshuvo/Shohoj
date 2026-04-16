@@ -58,7 +58,7 @@ def strip_imports_exports(code):
     )
     code = re.sub(r'import\s+\w+\s+from\s*[\'"][^\'"]+[\'"];?\s*', '', code)
     code = re.sub(r'import\s*[\'"][^\'"]+[\'"];?\s*', '', code)
-    code = re.sub(r'\bexport\s+(function|const|let|var|class)\b', r'\1', code)
+    code = re.sub(r'\bexport\s+(async\s+function|function|const|let|var|class)\b', r'\1', code)
     code = re.sub(r'\bexport\s+default\s+', '', code)
     code = re.sub(
         r'export\s*\{[^}]*\}\s*from\s*[\'"][^\'"]+[\'"];?\s*',
