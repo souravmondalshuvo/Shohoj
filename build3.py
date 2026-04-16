@@ -120,42 +120,45 @@ window.clearAllData = clearAllData;
         html
     )
 
-    # ── Update CSP to allow gstatic.com for Firebase module imports ───────────
-    # The Firebase SDK loads from https://www.gstatic.com/firebasejs/...
-    # which must be in script-src and connect-src.
-    html = html.replace(
-        "script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com",
-        "script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com"
-    )
-    # Ensure gstatic is in connect-src
+    # ── Add gstatic.com to CSP connect-src for Firebase SDK module fetches ────
     html = re.sub(
-        r"(connect-src\s+)(https://firestore\.googleapis\.com)",
-        r"\1https://www.gstatic.com \2",
+        r'(connect-src\s+)(?!https://www\.gstatic\.com)',
+        r'\1https://www.gstatic.com ',
         html
     )
 
     # ── Replace the Firebase module import script with inlined version ────────
-    # The index.html has: <script type="module">
-    #                       import { initAuth, ... } from './js/auth/firebase.js';
-    #                       ...
-    #                     </script>
-    # We replace that entire block with firebase.js inlined directly,
-    # keeping type="module" so CDN imports still work.
+    # Strategy: find the comment marker, then find the NEXT <script type="module">
+    # block after it and replace it. This is more robust than a single large regex.
     firebase_init_block = (
-        '<script type="module">\n'
+        '<!-- Firebase auth init — inlined by build3.py -->\n'
+        '  <script type="module">\n'
         + firebase_js
         + '\n\n// ── Boot ──\ninitAuth();\n'
         + 'window._shohoj_onSave = async function(snap) {\n'
         + '  if (currentUser) await saveToCloud(snap);\n'
         + '};\n'
-        + '</script>'
+        + '  </script>'
     )
 
-    html = re.sub(
-        r'<script\s+type=["\']module["\']\s*>\s*import\s*\{[^}]*\}\s*from\s*[\'"][^"\']*firebase\.js["\'];[\s\S]*?</script>',
-        lambda _m: firebase_init_block,
-        html
+    # Find the firebase comment + script block and replace as a unit
+    firebase_block_pattern = re.compile(
+        r'<!--[^>]*[Ff]irebase[^>]*-->\s*'
+        r'<script\s+type=["\']module["\'][^>]*>[\s\S]*?</script>',
+        re.MULTILINE
     )
+    match = firebase_block_pattern.search(html)
+    if match:
+        html = html[:match.start()] + firebase_init_block + html[match.end():]
+        print('   Firebase block: replaced via comment anchor')
+    else:
+        # Fallback: replace any <script type="module"> that imports firebase.js
+        html = re.sub(
+            r'<script\s+type=["\']module["\']\s*>[\s\S]*?firebase\.js[\s\S]*?</script>',
+            firebase_init_block,
+            html
+        )
+        print('   Firebase block: replaced via fallback pattern')
 
     # ── Replace main.js module script with bundled <script> ───────────────────
     html = re.sub(
@@ -163,6 +166,14 @@ window.clearAllData = clearAllData;
         lambda _m: f'<script>\n{bundled_js}\n</script>',
         html
     )
+
+    # ── Sanity check: make sure no export/import keywords leaked into output ──
+    # Check the non-module script content only
+    non_module = re.sub(r'<script\s+type=["\']module["\'][\s\S]*?</script>', '', html)
+    if re.search(r'\bexport\s+(function|const|let|var|class|default|\{)', non_module):
+        print('  ⚠ WARNING: "export" keyword found outside module scripts — check build output!')
+    else:
+        print('   Sanity check: no export leaks detected ✓')
 
     # ── Write output ──────────────────────────────────────────────────────────
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
