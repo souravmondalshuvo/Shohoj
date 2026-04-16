@@ -4,6 +4,8 @@
  * Tests the text-extraction logic that runs after pdf.js extracts raw text.
  */
 
+import { parseTranscriptText } from '../js/import/parser.js';
+
 // ── Inline the parser logic ──────────────────────────────────────────────────
 // Mirrors js/import/parser.js — detectDepartment and parseBlobFallback.
 // The column-aware parseTranscriptText is tested via integration-style inputs.
@@ -282,6 +284,53 @@ test('skips zero-credit courses gracefully', () => {
     const zeroCredit = result.semesters[0].courses.find(c => c.credits === 0);
     expect(zeroCredit === undefined).toBe(true);
   }
+});
+
+// ── INTEGRATION — COMPACT PDF.JS TEXT ───────────────────────────────────────
+console.log('\nIntegration — compact PDF.js text:');
+
+test('parseTranscriptText handles compact inline course rows without spaces', () => {
+  const text = `
+    PROGRAM:Computer Science and Engineering
+    SEMESTER:FALL2022
+    CSE110Programming Language I3.00A4.00
+    MAT110Differential Calculus3.00B+3.30
+  `;
+  const result = parseTranscriptText(text);
+
+  expect(result.semesters.length).toBe(1);
+  expect(result.semesters[0].name).toBe('Fall 2022');
+  expect(result.semesters[0].courses.length).toBe(2);
+  expect(result.semesters[0].courses[0].grade).toBe('A');
+  expect(result.semesters[0].courses[1].grade).toBe('B+');
+});
+
+test('parseTranscriptText handles compact semester headers in column-style text', () => {
+  const text = `
+    PROGRAM:Computer Science and Engineering
+    SEMESTER:FALL2022
+    CSE110
+    ProgrammingLanguageI
+    MAT110
+    DifferentialCalculus
+    Credits Earned
+    3.00
+    3.00
+    6.00
+    6.00
+    A
+    B+
+    4.00
+    3.30
+    7.30
+    7.30
+  `;
+  const result = parseTranscriptText(text);
+
+  expect(result.semesters.length).toBe(1);
+  expect(result.semesters[0].courses.length).toBe(2);
+  expect(result.semesters[0].courses[0].credits).toBe(3.0);
+  expect(result.semesters[0].courses[1].gradePoint).toBe(3.3);
 });
 
 // ── GRADE VALIDITY ───────────────────────────────────────────────────────────
