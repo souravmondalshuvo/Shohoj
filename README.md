@@ -12,12 +12,14 @@
 </p>
 
 <p align="center">
+  <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/Status-Phase%201%20Live-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-774%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
+  <img src="https://img.shields.io/badge/Tests-55%20passing-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -196,6 +198,8 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
+| Testing     | Node.js (zero dependencies)                           | 55 tests across calculator and parser logic            |
+| CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 
 Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prevent supply-chain tampering.
 
@@ -236,6 +240,7 @@ Shohoj has been through a security audit and the following protections are in pl
 | Degree Progress Tracker             | ✅ Complete |
 | Security audit & XSS hardening      | ✅ Complete |
 | Cloud Sync (Firebase Auth)          | ✅ Complete |
+| Test suite & CI                     | ✅ Complete |
 | Semester Planner with Prerequisites | 🔜 Planned  |
 | Course Difficulty Map               | 🔜 Planned  |
 | Advising Week Checklist             | 🔜 Planned  |
@@ -311,7 +316,14 @@ Shohoj/
 │   │   └── reveal.js             IntersectionObserver scroll reveal system
 │   └── import/
 │       └── parser.js             BRACU transcript PDF parser (dual-strategy)
+├── tests/
+│   ├── calculator.test.js        33 tests — GPA engine, retake policies, grade detection
+│   └── parser.test.js            22 tests — department detection, semester parsing, blob parser
+├── .github/
+│   └── workflows/
+│       └── ci.yml                Runs full test suite on push and pull request
 ├── index.html                    Main HTML shell
+├── package.json                  Test runner scripts (no dependencies)
 ├── README.md
 ├── LICENSE
 └── build3.py                     Build script — bundles into single shohoj.html
@@ -338,6 +350,13 @@ python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
 
+**Run tests:**
+
+```bash
+npm test
+# Results: 55 passed, 0 failed, 55 total
+```
+
 **Build the bundled version:**
 
 ```bash
@@ -346,6 +365,97 @@ python3 build3.py
 ```
 
 > **Note:** Cloud sync requires a Firebase project. The live site uses the production Firebase config already embedded in `index.html`. For local development, cloud sync features will work as long as `localhost` is added as an authorized domain in your Firebase console.
+
+---
+
+## Known Limitations & Assumptions
+
+This section documents the boundaries of what Shohoj reliably handles. If something behaves unexpectedly, check here first.
+
+### Transcript Import
+
+- **Format:** Tested against BRACU official digital grade sheet PDFs exported from CONNECT. Scanned or photographed PDFs are not supported — the parser requires selectable text.
+- **Multi-page transcripts:** Supported. The parser reads all pages before processing.
+- **Mobile Safari / Chrome:** PDF.js renders text items at slightly different y-coordinates on mobile. A 6px threshold patch is applied; most transcripts work, but some edge-case layouts may misparse.
+- **Course titles:** Multi-line course names (titles that wrap across two lines in the PDF) are reconstructed by the parser. Rarely, a long title may be truncated or attached to the wrong course code.
+- **F(NT) grades:** Some older BRACU transcripts render this as `F (NT)` (with a space) rather than `F(NT)`. Both formats are handled.
+- **Handwritten annotations** on printed transcripts are ignored.
+
+### Retake Policy
+
+BRACU changed its retake policy starting **Fall 2024**:
+
+| Intake                  | Policy                              |
+| ----------------------- | ----------------------------------- |
+| Spring 2024 and earlier | **Best grade** counts toward CGPA   |
+| Fall 2024 onwards       | **Latest grade** counts toward CGPA |
+
+Shohoj auto-detects which policy applies based on your starting semester. If your starting semester is set incorrectly, retake calculations will use the wrong policy.
+
+### CGPA Calculation
+
+- Grade points follow BRACU's official scale (A/A+ = 4.0, D- = 0.70, F = 0.00).
+- Pass (P) and Incomplete (I) grades are excluded from GPA calculations entirely.
+- F(NT) grades count the credits in the denominator but contribute 0 grade points.
+- Running semester courses are included in **projected CGPA** but excluded from **earned credits**.
+
+### Cloud Sync
+
+- Requires a `@g.bracu.ac.bd` Google account. Other email addresses are rejected both client-side and by Firestore security rules.
+- Firestore document limit: **512KB per user**. A typical full transcript is well under 50KB, so this limit is unlikely to be reached in practice.
+- Offline changes are saved to `localStorage` and synced automatically when reconnected.
+- Real-time sync: if you edit data on two devices simultaneously, last-write-wins. No merge conflict resolution is performed.
+
+### Semester Planner
+
+- Prerequisite data currently covers **CSE, EEE, ECE, MAT, PHY, BBA, ECO, and ENG** departments (approx. 300 prerequisite rules).
+- Departments not yet in the prereq database (ARC, ANT, PHR, LAW, MIC, BIO, APE) will show courses as unlocked by default — not because they have no prerequisites, but because the data hasn't been added yet.
+- The planner does not check time conflicts or section availability — that requires integration with BRACU CONNECT, which is planned for a future phase.
+
+### Degree Progress Tracker
+
+- Graduation estimate assumes your **current credit-per-semester pace** remains constant. One unusually light or heavy semester will skew the estimate temporarily.
+- Credit requirements are sourced from BRACU's published program structure. If your program has been updated recently, the total may differ by a few credits.
+
+### Browser Support
+
+| Browser                 | Status                                   |
+| ----------------------- | ---------------------------------------- |
+| Chrome 90+              | ✅ Fully supported                       |
+| Firefox 88+             | ✅ Fully supported                       |
+| Safari 14+              | ✅ Supported                             |
+| Edge 90+                | ✅ Fully supported                       |
+| Mobile Chrome (Android) | ✅ Supported                             |
+| Mobile Safari (iOS)     | ✅ Supported (y-threshold patch applied) |
+| IE / Legacy Edge        | ❌ Not supported                         |
+
+Touch devices: the custom cursor and dot-matrix animation are automatically disabled on touch devices.
+
+### Data Storage
+
+| Key                | Location     | Contents                                      |
+| ------------------ | ------------ | --------------------------------------------- |
+| `shohoj_cgpa_v1`   | localStorage | All semesters, grades, department, settings   |
+| `shohoj_theme`     | localStorage | `"dark"` or `"light"`                         |
+| `shohoj_last_sync` | localStorage | Timestamp of last successful cloud sync       |
+| `users/{uid}`      | Firestore    | Same shape as localStorage value, JSON string |
+
+Data is never sent to any server other than Firestore. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
+
+### What's Production-Ready
+
+| Feature                                         | Status                                                  |
+| ----------------------------------------------- | ------------------------------------------------------- |
+| CGPA Calculator                                 | ✅ Production-ready                                     |
+| PDF Transcript Import                           | ✅ Production-ready                                     |
+| PDF Grade Report Export                         | ✅ Production-ready                                     |
+| Course Autocomplete (774 courses)               | ✅ Production-ready                                     |
+| Cloud Sync (Firebase)                           | ✅ Production-ready                                     |
+| CGPA Playground (Grade Changer, Reverse Solver) | ✅ Production-ready                                     |
+| CGPA Goal Simulator                             | ✅ Production-ready                                     |
+| Retake Impact Analyzer                          | ✅ Production-ready                                     |
+| Degree Progress Tracker                         | ✅ Stable — graduation estimate is an approximation     |
+| Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
 
 ---
 
@@ -361,7 +471,7 @@ Shohoj is built for students, by students. Contributions are welcome.
    git checkout -b feature/your-feature-name
    ```
 3. **Make your changes** — follow the existing code style (vanilla JS, no frameworks in Phase 1)
-4. **Test** — open `index.html` locally, verify your changes work in both dark and light themes
+4. **Test** — run `npm test` and verify all 55 tests pass
 5. **Build** — run `python3 build3.py` to regenerate the bundled file
 6. **Submit a pull request** with a clear description of what you changed and why
 
@@ -379,7 +489,8 @@ Shohoj is built for students, by students. Contributions are welcome.
 - All cross-module calls use `window._shohoj_*` to avoid circular imports
 - Functions called from HTML `onclick`/`onchange` are assigned to `window.*` in `main.js`
 - **Escape all user-sourced strings** with `escHtml()` / `escAttr()` from `helpers.js` before any `innerHTML` insertion — do not bypass this for convenience
-- Test in both **dark and light themes**
+- **All new logic must have tests** in `tests/calculator.test.js` or `tests/parser.test.js`
+- Test locally with `npm test` before submitting a pull request
 - Check that **jsPDF export** doesn't break — only ASCII characters in helvetica font strings
 
 ---
