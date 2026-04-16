@@ -762,13 +762,25 @@ export function initAuth() {
 }
 
 // ── Apply cloud data ──────────────────────────────────────────────────────────
+// Applies cloud data directly into the running app without reloading the page.
+// Writes to localStorage so the app's state restore logic can read it, then
+// calls the live state functions to update the UI immediately.
 function applyCloudData(cloudData) {
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
   } catch(e) {}
-  window.location.reload();
+
+  // Apply directly into the running app — no page reload needed.
+  // window._shohoj_applyState is set by main.js and handles full state restoration.
+  if (typeof window._shohoj_applyState === 'function') {
+    window._shohoj_applyState(cloudData);
+  } else {
+    // Fallback: if the app isn't fully booted yet (e.g. very fast sign-in on
+    // first load before main.js runs), a single reload is unavoidable.
+    window.location.reload();
+  }
 }
 
 // ── Nudge banner ──────────────────────────────────────────────────────────────
