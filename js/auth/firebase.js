@@ -413,7 +413,7 @@ function showSignInModal() {
         </button>
 
         <div style="font-size:11px;color:${text2};opacity:0.7;line-height:1.5;">
-          Only <strong>@g.bracu.ac.bd</strong> accounts are supported
+          Only <strong>BRACU G-Suite</strong> (@g.bracu.ac.bd) accounts are supported
         </div>
       </div>
     `;
@@ -647,7 +647,7 @@ export function initAuth() {
     if (user && !user.email?.endsWith('@g.bracu.ac.bd')) {
       await signOut(auth);
       setAuthBtnLoading(false);
-      showToast('⚠ Only @g.bracu.ac.bd accounts are supported', true, true);
+      showToast('⚠ Only BRACU G-Suite accounts are supported', true, true);
       return;
     }
 
