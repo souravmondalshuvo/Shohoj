@@ -110,25 +110,33 @@ window.clearState        = () => {
 window._toggleRetake = toggleRetake;
 
 window.handleClearData = async function() {
-  if (typeof window._shohoj_confirmModal !== 'function') {
-    // Fallback if firebase.js hasn't loaded yet
-    if (confirm('Clear all saved data and start fresh?')) {
-      clearState();
-      location.reload();
-    }
-    return;
-  }
-  const confirmed = await window._shohoj_confirmModal({
+  // Use styled modal if firebase.js has finished booting, else native confirm
+  const confirmFn = window._shohoj_confirmModal
+    ? window._shohoj_confirmModal
+    : ({ body }) => Promise.resolve(window.confirm(body));
+
+  const confirmed = await confirmFn({
     icon: '🗑️',
     title: 'Clear all data?',
     body: 'This will permanently delete all your saved semesters, grades, and settings on this device. This cannot be undone.',
     confirmLabel: 'Clear everything',
     confirmDanger: true,
   });
-  if (confirmed) {
-    clearState();
-    location.reload();
+  if (!confirmed) return;
+
+  // 1. Delete cloud data first (if signed in) so reload can't re-hydrate it
+  if (typeof window._shohoj_deleteCloudData === 'function') {
+    await window._shohoj_deleteCloudData();
   }
+
+  // 2. Sign out so onAuthStateChanged doesn't fire and re-load cloud data on reload
+  if (typeof window._shohoj_signOut === 'function') {
+    await window._shohoj_signOut();
+  }
+
+  // 3. Now it's safe to wipe localStorage and reload
+  clearState();
+  location.reload();
 };
 
 // Playground
