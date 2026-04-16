@@ -139,6 +139,26 @@ export function getCurrentSemesterForDeptSeasons(now, deptSeasons) {
   return { season, year };
 }
 
+function _parseSemesterSeasonYear(name) {
+  const match = String(name || '').match(/(Spring|Summer|Fall)\s+(\d{4})/);
+  if (!match) return null;
+  return { season: match[1], year: parseInt(match[2]) };
+}
+
+export function findCurrentSemesterIdForSummaryView(semesters, currentSemester) {
+  if (!currentSemester) return null;
+
+  const match = (semesters || []).find(sem => {
+    if (!sem || sem.summary || sem.running) return false;
+    const parsed = _parseSemesterSeasonYear(sem.name);
+    return parsed
+      && parsed.season === currentSemester.season
+      && parsed.year === currentSemester.year;
+  });
+
+  return match ? match.id : null;
+}
+
 // ── Helper: get current real-world semester season + year ─────────────────────
 function _getCurrentSemester() {
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
@@ -376,8 +396,9 @@ export function renderSemesters() {
   }
 
   // Precompute: is the first non-summary non-running semester the "current" one?
-  const nonSummaryNonRunning = state.semesters.filter(s => !s.summary && !s.running);
-  const currentSemId = (hasSummary && nonSummaryNonRunning.length > 0) ? nonSummaryNonRunning[0].id : null;
+  const currentSemId = hasSummary
+    ? findCurrentSemesterIdForSummaryView(state.semesters, _getCurrentSemester())
+    : null;
 
   html += state.semesters.map(sem => {
     // ── Summary block ──────────────────────────────────────────────────────
