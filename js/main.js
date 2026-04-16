@@ -268,6 +268,50 @@ function loadState() {
   } catch(e) { return false; }
 }
 
+window._shohoj_applyState = function(saved) {
+  try {
+    const clean = sanitizeRestoredState(saved);
+    if (!clean || !clean.semesters) return;
+ 
+    const deptSel = document.getElementById('deptSelect');
+    if (deptSel && clean.currentDept) deptSel.value = clean.currentDept;
+    state.currentDept = clean.currentDept || '';
+ 
+    const seasonSel = document.getElementById('startSeason');
+    const yearSel   = document.getElementById('startYear');
+    if (seasonSel && clean.startSeason) seasonSel.value = clean.startSeason;
+    if (yearSel   && clean.startYear)   yearSel.value   = clean.startYear;
+ 
+    state.semesters       = clean.semesters;
+    state.semesterCounter = clean.semesterCounter || clean.semesters.length;
+    state._restoredFromStorage = true;
+ 
+    const dept = DEPARTMENTS[state.currentDept];
+    if (dept) {
+      const credTxt   = document.getElementById('deptCreditsText');
+      const credBadge = document.getElementById('deptCredits');
+      if (credTxt)   credTxt.textContent    = dept.totalCredits + ' Total Credits';
+      if (credBadge) credBadge.style.display = 'inline-flex';
+      if (seasonSel) {
+        const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
+        const currentVal  = seasonSel.value;
+        seasonSel.innerHTML = '<option value="" disabled selected>— Season —</option>'
+          + deptSeasons.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (deptSeasons.includes(currentVal)) seasonSel.value = currentVal;
+      }
+    }
+ 
+    const startRow = document.getElementById('startSemRow');
+    if (startRow) startRow.style.display = 'flex';
+ 
+    renderSemesters();
+    recalc();
+  } catch(e) {
+    console.error('[Shohoj] _shohoj_applyState failed — falling back to reload:', e);
+    window.location.reload();
+  }
+};
+
 // ── TAB SYSTEM ────────────────────────────────────────────────────────────────
 // Three tabs: calculator (default), planner, playground
 // State persists in sessionStorage so refreshing keeps your tab.
