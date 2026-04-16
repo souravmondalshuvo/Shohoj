@@ -10374,23 +10374,16 @@ window.handleClearData = async function() {
   });
   if (!confirmed) return;
 
-  // Kill the save hook immediately — prevents the debounced saveToCloud
-  // timer from firing mid-teardown and racing against deleteDoc/signOut.
-  window._shohoj_onSave = null;
+  const savedHook = window._shohoj_onSave;
+window._shohoj_onSave = null;
 
-  // Delete Firestore document first (silent, no confirm modal).
-  if (typeof window._shohoj_deleteCloudData === 'function') {
-    try { await window._shohoj_deleteCloudData(); } catch(e) {}
-  }
+if (typeof window._shohoj_deleteCloudData === 'function') {
+  try { await window._shohoj_deleteCloudData(); } catch(e) {}
+}
 
-  // Sign out best-effort — if Firebase SDK throws (Safari stack overflow),
-  // the Firestore doc is already gone so reload won't re-hydrate.
-  if (typeof window._shohoj_signOut === 'function') {
-    try { await window._shohoj_signOut(); } catch(e) {}
-  }
-
-  clearState();
-  location.reload();
+clearState();
+window._shohoj_onSave = savedHook;
+location.reload();
 };
 
 // Playground
