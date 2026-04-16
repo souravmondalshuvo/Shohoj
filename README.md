@@ -67,7 +67,7 @@ Sign in with your BRACU G-Suite account (`@g.bracu.ac.bd`) and your data syncs a
 
 ### 🎓 Smart CGPA Calculator
 
-Full semester-based GPA and CGPA calculation using BRACU's exact grading scale. Supports all grade types — A through F, F(NT) (no transfer), Pass/Fail, and Incomplete. Handles retake detection automatically with both **best-grade** policy (students starting Spring 2024 or earlier) and **latest-grade** policy (Fall 2024 onwards).
+Full semester-based GPA and CGPA calculation using BRACU's exact grading scale. Supports all grade types — A through F, F(NT) (no transfer), Pass/Fail, and Incomplete. Handles retake and repeat detection automatically with both **best-grade** policy (students starting Spring 2024 or earlier) and **latest-grade** policy (Fall 2024 onwards).
 
 <p align="center">
   <img src="assets/screenshots/calculator.png" alt="CGPA Calculator" width="700" />
@@ -91,11 +91,16 @@ A dedicated panel with two powerful tools for planning your academic future:
 
 ### 🎯 CGPA Goal Simulator
 
-Set a target CGPA and see what average GPA you need across your remaining credits. Includes a difficulty assessment, credit-pace breakdown showing how many semesters it'll take at 9/12/15 credits per semester, and smart retake suggestions ranked by CGPA impact.
+Set a target CGPA and see what average GPA you need across your remaining credits. Includes a difficulty assessment, credit-pace breakdown showing how many semesters it'll take at 9/12/15 credits per semester, and a Smart Retake & Repeat Strategy ranked by CGPA impact.
 
-### 🔄 Retake Impact Analyzer
+### 🔄 Smart Retake & Repeat Strategy
 
-Select courses to retake and see exactly how your CGPA changes — individually per course and cumulatively. Includes target grade selection with live CGPA preview, so you can plan the most efficient retake strategy.
+Select courses to retake or repeat and see exactly how your CGPA changes — individually per course and cumulatively. Each course is tagged with its improvement mechanism:
+
+- **Retake** — for F grades. Re-enroll in the course for a full semester (allowed up to twice).
+- **Repeat** — for grades below B (B- through D-). Sit a special exam once, within 2 semesters of the initial enrollment. No grade cap — the latest grade counts.
+
+Both mechanisms follow the same intake-based CGPA policy (best grade for Spring 2024 and earlier intakes; latest grade for Fall 2024 onwards).
 
 ### 📊 GPA Trend Chart
 
@@ -236,7 +241,7 @@ Shohoj has been through a security audit and the following protections are in pl
 | PDF Grade Report Export             | ✅ Complete |
 | Course Catalog & Autocomplete       | ✅ Complete |
 | Credit Load Warnings                | ✅ Complete |
-| Retake Impact Analyzer              | ✅ Complete |
+| Retake & Repeat Strategy Analyzer   | ✅ Complete |
 | Degree Progress Tracker             | ✅ Complete |
 | Security audit & XSS hardening      | ✅ Complete |
 | Cloud Sync (Firebase Auth)          | ✅ Complete |
@@ -301,12 +306,12 @@ Shohoj/
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
 │   │   ├── catalog.js            Full BRACU course database (774 courses)
-│   │   └── calculator.js         GPA/CGPA engine, retake policy, credit warnings
+│   │   └── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
 │   │   ├── charts.js             Canvas GPA trend chart
-│   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake Strategy
+│   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake & Repeat Strategy
 │   │   ├── playground.js         CGPA Playground — Grade Changer & Reverse Solver
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
@@ -317,8 +322,8 @@ Shohoj/
 │   └── import/
 │       └── parser.js             BRACU transcript PDF parser (dual-strategy)
 ├── tests/
-│   ├── calculator.test.js        33 tests — GPA engine, retake policies, grade detection
-│   └── parser.test.js            22 tests — department detection, semester parsing, blob parser
+│   ├── calculator.test.js        40 tests — GPA engine, retake/repeat policies, grade detection
+│   └── parser.test.js            15 tests — department detection, semester parsing, blob parser
 ├── .github/
 │   └── workflows/
 │       └── ci.yml                Runs full test suite on push and pull request
@@ -381,16 +386,29 @@ This section documents the boundaries of what Shohoj reliably handles. If someth
 - **F(NT) grades:** Some older BRACU transcripts render this as `F (NT)` (with a space) rather than `F(NT)`. Both formats are handled.
 - **Handwritten annotations** on printed transcripts are ignored.
 
-### Retake Policy
+### Retake & Repeat Policy
 
-BRACU changed its retake policy starting **Fall 2024**:
+BRACU has two distinct grade improvement mechanisms, both governed by the same intake-based CGPA rule:
+
+| Mechanism | Eligibility        | How                                         | Limit                        |
+| --------- | ------------------ | ------------------------------------------- | ---------------------------- |
+| Retake    | F grade only       | Re-enroll in the course for a full semester | Up to twice (3 attempts max) |
+| Repeat    | Grade below B (B-) | Sit a special exam (no full re-enrolment)   | Once, within 2 semesters     |
+
+**Which grade counts in CGPA** depends on the student's intake:
 
 | Intake                  | Policy                              |
 | ----------------------- | ----------------------------------- |
 | Spring 2024 and earlier | **Best grade** counts toward CGPA   |
 | Fall 2024 onwards       | **Latest grade** counts toward CGPA |
 
-Shohoj auto-detects which policy applies based on your starting semester. If your starting semester is set incorrectly, retake calculations will use the wrong policy.
+This applies equally to both retakes and repeats. Shohoj auto-detects which policy applies based on your starting semester. If your starting semester is set incorrectly, retake and repeat calculations will use the wrong policy.
+
+Additional notes on Repeat:
+
+- There is **no grade cap** on a repeated course — the student can earn any grade up to A.
+- The repeat must happen **within 2 semesters** of the initial enrollment. Shohoj does not enforce this deadline automatically — it is the student's responsibility to check eligibility with their department.
+- Repeated courses appear in the transcript as a second attempt, just like retakes. The CGPA engine treats them identically.
 
 ### CGPA Calculation
 
@@ -453,7 +471,7 @@ Data is never sent to any server other than Firestore. There are no ads, no anal
 | Cloud Sync (Firebase)                           | ✅ Production-ready                                     |
 | CGPA Playground (Grade Changer, Reverse Solver) | ✅ Production-ready                                     |
 | CGPA Goal Simulator                             | ✅ Production-ready                                     |
-| Retake Impact Analyzer                          | ✅ Production-ready                                     |
+| Retake & Repeat Strategy Analyzer               | ✅ Production-ready                                     |
 | Degree Progress Tracker                         | ✅ Stable — graduation estimate is an approximation     |
 | Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
 
