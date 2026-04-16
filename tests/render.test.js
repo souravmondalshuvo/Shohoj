@@ -31,7 +31,10 @@ function expect(actual) {
 }
 
 (async function run() {
-  const { getCurrentSemesterForDeptSeasons } = await import('../js/ui/render.js');
+  const {
+    getCurrentSemesterForDeptSeasons,
+    findCurrentSemesterIdForSummaryView,
+  } = await import('../js/ui/render.js');
 
   console.log('\nRender semester calendar logic:');
 
@@ -48,6 +51,21 @@ function expect(actual) {
   test('returns the real current season when the department offers it', () => {
     const result = getCurrentSemesterForDeptSeasons(new Date('2026-02-15T00:00:00Z'), ['Spring', 'Summer', 'Fall']);
     expect(result).toEqual({ season: 'Spring', year: 2026 });
+  });
+
+  test('finds the actual current semester by date instead of array order', () => {
+    const result = findCurrentSemesterIdForSummaryView([
+      { id: 2, name: 'Spring 2027 (2nd Semester)', courses: [] },
+      { id: 1, name: 'Fall 2026 (1st Semester)', courses: [] },
+    ], { season: 'Fall', year: 2026 });
+    expect(result).toEqual(1);
+  });
+
+  test('returns null when only future semesters remain after the current one is removed', () => {
+    const result = findCurrentSemesterIdForSummaryView([
+      { id: 2, name: 'Spring 2027 (2nd Semester)', courses: [] },
+    ], { season: 'Fall', year: 2026 });
+    expect(result).toEqual(null);
   });
 
   console.log('\n──────────────────────────────────────────────────');
