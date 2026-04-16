@@ -8395,7 +8395,7 @@ function hideImportModal() {
 //    doesn't need to serialize it into an HTML attribute (XSS risk). ──────
 let _pendingImport = null;
 
-export async function importTranscriptPDF(inputEl) {
+async function importTranscriptPDF(inputEl) {
   const file = inputEl.files[0];
   if (!file) return;
   const btn = document.getElementById('importPdfBtn');
