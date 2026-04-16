@@ -100,6 +100,33 @@ function getRetakenKeys(semesters, bestGradePolicy = true) {
   return retakenKeys;
 }
 
+/**
+ * Mirrors isRepeatEligible() from js/core/calculator.js.
+ *
+ * Repeat policy (effective for all students):
+ *   - Eligible if current grade is BELOW B (i.e. B- or lower, excluding F)
+ *   - F grades require a Retake (full re-enrollment), not a Repeat
+ *   - Can only be repeated ONCE, within 2 semesters of initial enrollment
+ *   - No grade cap — latest grade counts regardless of what it is
+ *   - Same intake-based CGPA policy applies (best grade ≤ Spring 2024, latest grade ≥ Fall 2024)
+ */
+function isRepeatEligible(grade) {
+  if (grade === 'F' || grade === 'F(NT)') return false;
+  if (grade === 'P' || grade === 'I' || !grade) return false;
+  const gp = GRADES[grade];
+  if (gp === undefined || gp === null) return false;
+  return gp < 3.0; // Below B (3.0) — B itself is NOT eligible
+}
+
+/**
+ * Mirrors getImprovementStrategy() from js/core/calculator.js.
+ */
+function getImprovementStrategy(grade) {
+  if (grade === 'F' || grade === 'F(NT)') return 'retake';
+  if (isRepeatEligible(grade)) return 'repeat';
+  return null;
+}
+
 // ── Minimal test runner (no dependencies) ────────────────────────────────────
 let passed = 0, failed = 0, total = 0;
 
@@ -404,6 +431,103 @@ test('latest grade policy keeps last even if it is worse', () => {
   // D is the latest — A should be marked retaken
   expect(retakenKeys).toContain('1-0');
   expect(retakenKeys).notToContain('2-0');
+});
+
+// ── REPEAT POLICY ────────────────────────────────────────────────────────────
+// Repeat = sit a special exam once within 2 semesters to improve a below-B grade.
+// No grade cap — latest grade counts for CGPA (same intake-based policy as retake).
+// F grades require a full Retake, not a Repeat.
+console.log('\nRepeat policy — eligibility:');
+
+test('B- is eligible for repeat', () => {
+  expect(isRepeatEligible('B-')).toBeTrue();
+});
+
+test('C+ is eligible for repeat', () => {
+  expect(isRepeatEligible('C+')).toBeTrue();
+});
+
+test('C is eligible for repeat', () => {
+  expect(isRepeatEligible('C')).toBeTrue();
+});
+
+test('C- is eligible for repeat', () => {
+  expect(isRepeatEligible('C-')).toBeTrue();
+});
+
+test('D+ is eligible for repeat', () => {
+  expect(isRepeatEligible('D+')).toBeTrue();
+});
+
+test('D is eligible for repeat', () => {
+  expect(isRepeatEligible('D')).toBeTrue();
+});
+
+test('D- is eligible for repeat', () => {
+  expect(isRepeatEligible('D-')).toBeTrue();
+});
+
+test('B is NOT eligible for repeat (threshold is below B)', () => {
+  expect(isRepeatEligible('B')).toBeFalse();
+});
+
+test('B+ is NOT eligible for repeat', () => {
+  expect(isRepeatEligible('B+')).toBeFalse();
+});
+
+test('A is NOT eligible for repeat', () => {
+  expect(isRepeatEligible('A')).toBeFalse();
+});
+
+test('F is NOT eligible for repeat — requires Retake instead', () => {
+  expect(isRepeatEligible('F')).toBeFalse();
+});
+
+test('F(NT) is NOT eligible for repeat — requires Retake instead', () => {
+  expect(isRepeatEligible('F(NT)')).toBeFalse();
+});
+
+test('P (Pass) is not eligible for repeat', () => {
+  expect(isRepeatEligible('P')).toBeFalse();
+});
+
+test('I (Incomplete) is not eligible for repeat', () => {
+  expect(isRepeatEligible('I')).toBeFalse();
+});
+
+test('empty string is not eligible for repeat', () => {
+  expect(isRepeatEligible('')).toBeFalse();
+});
+
+// ── IMPROVEMENT STRATEGY ─────────────────────────────────────────────────────
+console.log('\nImprovement strategy routing:');
+
+test('F grade routes to retake strategy', () => {
+  expect(getImprovementStrategy('F')).toBe('retake');
+});
+
+test('F(NT) grade routes to retake strategy', () => {
+  expect(getImprovementStrategy('F(NT)')).toBe('retake');
+});
+
+test('B- grade routes to repeat strategy', () => {
+  expect(getImprovementStrategy('B-')).toBe('repeat');
+});
+
+test('C grade routes to repeat strategy', () => {
+  expect(getImprovementStrategy('C')).toBe('repeat');
+});
+
+test('D grade routes to repeat strategy', () => {
+  expect(getImprovementStrategy('D')).toBe('repeat');
+});
+
+test('B grade returns null — no improvement mechanism', () => {
+  expect(getImprovementStrategy('B')).toBeNull();
+});
+
+test('A grade returns null — no improvement mechanism', () => {
+  expect(getImprovementStrategy('A')).toBeNull();
 });
 
 // ── GRADE POINT NORMALIZATION ────────────────────────────────────────────────
