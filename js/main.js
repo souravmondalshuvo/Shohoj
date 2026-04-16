@@ -59,6 +59,28 @@ window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window._shohoj_updateSetupWizard = updateSetupWizard;
 
+const LOCAL_CLEAR_KEYS = [
+  STORAGE_KEY,
+  'shohoj_theme',
+  'shohoj_last_sync',
+  'shohoj_session_start',
+];
+
+const SESSION_CLEAR_KEYS = [
+  'shohoj_active_tab',
+  'shohoj_cloud_applied',
+  'shohoj_skip_first_save',
+];
+
+function clearShohojBrowserState() {
+  LOCAL_CLEAR_KEYS.forEach(key => {
+    try { localStorage.removeItem(key); } catch (e) {}
+  });
+  SESSION_CLEAR_KEYS.forEach(key => {
+    try { sessionStorage.removeItem(key); } catch (e) {}
+  });
+}
+
 // ── window.* HANDLERS (called from inline HTML onclick/onchange) ──────────────
 window.addSemester       = addSemester;
 window.addRunningSemester= addRunningSemester;
@@ -124,15 +146,34 @@ window.handleClearData = async function() {
   if (!confirmed) return;
 
   const savedHook = window._shohoj_onSave;
-window._shohoj_onSave = null;
+  window._shohoj_onSave = null;
 
-if (typeof window._shohoj_deleteCloudData === 'function') {
-  try { await window._shohoj_deleteCloudData(); } catch(e) {}
-}
+  let cloudDeleted = true;
+  try {
+    if (typeof window._shohoj_deleteCloudData === 'function') {
+      cloudDeleted = await window._shohoj_deleteCloudData();
+    }
 
-clearState();
-window._shohoj_onSave = savedHook;
-location.reload();
+    clearShohojBrowserState();
+    window.clearState();
+    switchCalcTab('calculator');
+    html.dataset.theme = 'dark';
+    if (pill) pill.textContent = '🌙';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } finally {
+    window._shohoj_onSave = savedHook;
+  }
+
+  if (cloudDeleted === false) {
+    const warn = 'Local data was cleared, but the cloud copy could not be deleted. It may come back after a refresh.';
+    if (typeof window._shohoj_showToast === 'function') window._shohoj_showToast(warn, true);
+    else window.alert(warn);
+    return;
+  }
+
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast('All Shohoj data cleared.');
+  }
 };
 
 // Playground
