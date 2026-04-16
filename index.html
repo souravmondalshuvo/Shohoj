@@ -6184,11 +6184,35 @@ function detectDepartment(text) {
   return null;
 }
 
+function normalizeTranscriptLine(line) {
+  let normalized = String(line || '').replace(/\u00a0/g, ' ').trim();
+  if (!normalized) return '';
+
+  normalized = normalized.replace(/\s+/g, ' ');
+  normalized = normalized.replace(/^(SEMESTER|PROGRAM)\s*:\s*/i, '$1: ');
+  normalized = normalized.replace(/\b(SPRING|SUMMER|FALL)(\d{4})\b/gi, '$1 $2');
+  normalized = normalized.replace(/^([A-Z]{2,4}\d{3}[A-Z]?)(?=[A-Z])/, '$1 ');
+  normalized = normalized.replace(/([A-Za-z\)])(?=\d+\.\d+)/g, '$1 ');
+  normalized = normalized.replace(/(\d+\.\d+)(?=F\s*\(\s*NT\s*\)|[A-Z][+-]?)/g, '$1 ');
+  normalized = normalized.replace(/(F\s*\(\s*NT\s*\)|[A-Z][+-]?)(?=\d+\.\d+)/g, '$1 ');
+  normalized = normalized.replace(/F\s*\(\s*NT\s*\)/gi, 'F(NT)');
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  return normalized;
+}
+
+function normalizeTranscriptText(text) {
+  return String(text || '')
+    .split(/\r?\n/)
+    .map(normalizeTranscriptLine)
+    .join('\n');
+}
+
 // ── parseBlobFallback ─────────────────────────────────────────────────────────
 function parseBlobFallback(text) {
-  const blob = text.replace(/\s+/g, ' ');
+  const normalizedText = normalizeTranscriptText(text);
+  const blob = normalizedText.replace(/\s+/g, ' ');
   const SEASON = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe  = /SEMESTER[:\s]+([A-Z]+)\s+(\d{4})/gi;
+  const semRe  = /SEMESTER[:\s]+([A-Z]+)\s*(\d{4})/gi;
   const semMatches = [];
   let sm;
   while ((sm = semRe.exec(blob)) !== null) {
@@ -6218,7 +6242,7 @@ function parseBlobFallback(text) {
     return { id: Date.now() + idx, name: s.name, courses, running: false };
   }).filter(s => s.courses.length > 0);
 
-  return { semesters, detectedDept: detectDepartment(text) };
+  return { semesters, detectedDept: detectDepartment(normalizedText) };
 }
 
 // ── parseTranscriptText ───────────────────────────────────────────────────────
@@ -6229,13 +6253,14 @@ function parseBlobFallback(text) {
 //   • Then ALL grades in one contiguous block
 //   • Then ALL grade points in one contiguous block
 function parseTranscriptText(text) {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const normalizedText = normalizeTranscriptText(text);
+  const lines = normalizedText.split('\n').map(l => l.trim()).filter(Boolean);
 
   // ── Dept detection ────────────────────────────────────────────────────────
-  const detectedDept = detectDepartment(text);
+  const detectedDept = detectDepartment(normalizedText);
 
   const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe    = /^SEMESTER:\s*([A-Z]+)\s+(\d{4})/i;
+  const semRe    = /^SEMESTER:\s*([A-Z]+)\s*(\d{4})\b/i;
   const codeRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
   // Detects a course code at the start of a line merged with credits data.
   // This happens when pdf.js joins a code with credits/grade/GP that share
@@ -6422,7 +6447,7 @@ function parseTranscriptText(text) {
 // ── _legacyParseTranscript — fallback for non-column-format PDFs ──────────────
 function _legacyParseTranscript(lines, detectedDept) {
   const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe      = /^SEMESTER[:\s]*([A-Z]+)\s+(\d{4})/i;
+  const semRe      = /^SEMESTER[:\s]*([A-Z]+)\s*(\d{4})\b/i;
   const skipRe     = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
   const fntRe      = /F\s*\(NT\)/;
   const courseRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
