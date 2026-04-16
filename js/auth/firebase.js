@@ -35,6 +35,14 @@ let _queuedCloudSnap      = null;
 let _queuedCloudResolvers = [];
 let _activeCloudSave      = Promise.resolve(false);
 
+// ── Local-write guard ─────────────────────────────────────────────────────────
+// When THIS tab writes to Firestore, the onSnapshot listener will fire with
+// that same data. We must ignore it or it triggers a false "other device" reload.
+// _localWriteAt records the timestamp of our last Firestore write.
+// Any snapshot arriving within LOCAL_WRITE_GRACE_MS of that write is ignored.
+let _localWriteAt = 0;
+const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
+
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
@@ -50,21 +58,19 @@ function parseStoredState(raw, source = 'storage') {
   }
 }
 
-function normalizeStateValue(value) {
-  if (Array.isArray(value)) return value.map(normalizeStateValue);
-  if (value && typeof value === 'object') {
-    const normalized = {};
-    Object.keys(value).sort().forEach(key => {
-      if (value[key] !== undefined) normalized[key] = normalizeStateValue(value[key]);
-    });
-    return normalized;
+// ── Canonical data fingerprint ────────────────────────────────────────────────
+// Only compare the fields that actually represent user data — ignore metadata
+// fields like updatedAt that Firestore injects and that will always differ.
+function getDataFingerprint(raw) {
+  if (!raw) return '';
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    // Strip server-side metadata before comparing
+    const { updatedAt, _serverTimestamp, ...dataOnly } = parsed;
+    return JSON.stringify(dataOnly);
+  } catch (e) {
+    return typeof raw === 'string' ? raw : JSON.stringify(raw);
   }
-  return value;
-}
-
-function getStateSignature(raw, source = 'storage') {
-  const parsed = parseStoredState(raw, source);
-  return parsed ? JSON.stringify(normalizeStateValue(parsed)) : (raw || '');
 }
 
 function clearCloudAppliedFlag() {
@@ -87,6 +93,8 @@ async function persistCloudState(stateSnap) {
   if (!navigator.onLine) { setSyncIndicator('offline'); return false; }
   setSyncIndicator('syncing');
   try {
+    // Record that THIS tab is about to write so the snapshot listener can ignore it
+    _localWriteAt = Date.now();
     await setDoc(userDocRef(currentUser.uid), {
       data:      JSON.stringify(stateSnap),
       updatedAt: serverTimestamp(),
@@ -97,6 +105,7 @@ async function persistCloudState(stateSnap) {
     updateLastSyncLabel(now);
     return true;
   } catch (e) {
+    _localWriteAt = 0; // reset guard on failure
     console.error('[Shohoj] Cloud save failed:', e);
     setSyncIndicator('error');
     showToast('⚠ Cloud save failed — data saved locally', true);
@@ -162,28 +171,50 @@ async function loadFromCloud() {
 // ── Real-time listener ────────────────────────────────────────────────────────
 function startRealtimeSync(uid) {
   if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
+
+  // Skip the very first snapshot — it's always the current state we just loaded,
+  // not an update from another device.
   let isFirstSnapshot = true;
+
   _unsubscribeSnapshot = onSnapshot(userDocRef(uid), snap => {
-    if (isFirstSnapshot) { isFirstSnapshot = false; return; }
+    // Always skip the first snapshot on subscription — it's the current state
+    if (isFirstSnapshot) {
+      isFirstSnapshot = false;
+      return;
+    }
+
+    // Skip snapshots that arrived within the grace window after THIS tab wrote.
+    // This prevents our own saves from triggering a false "other device" reload.
+    if (Date.now() - _localWriteAt < LOCAL_WRITE_GRACE_MS) {
+      console.log('[Shohoj] Ignoring own-write snapshot');
+      return;
+    }
+
     if (!snap.exists()) return;
     const raw = snap.data()?.data;
     if (!raw) return;
-    try {
-      const current = localStorage.getItem(STORAGE_KEY) || '';
-      if (current === raw) return;
 
-      if (getStateSignature(current, 'local realtime') === getStateSignature(raw, 'cloud realtime')) {
-        localStorage.setItem(STORAGE_KEY, raw);
+    try {
+      const localRaw = localStorage.getItem(STORAGE_KEY) || '';
+
+      // Compare only the actual data content, ignoring Firestore metadata
+      const localFingerprint = getDataFingerprint(localRaw);
+      const cloudFingerprint = getDataFingerprint(raw);
+
+      if (localFingerprint === cloudFingerprint) {
+        // Data is identical — no action needed
         return;
       }
 
-      if (current !== raw) {
-        sessionStorage.setItem('shohoj_cloud_applied', '1');
-        localStorage.setItem(STORAGE_KEY, raw);
-        showToast('📡 Data updated from another device — reloading…');
-        setTimeout(() => window.location.reload(), 1500);
-      }
-    } catch(e) {}
+      // Genuine update from another device — apply and reload
+      console.log('[Shohoj] Real update from another device — reloading');
+      sessionStorage.setItem('shohoj_cloud_applied', '1');
+      localStorage.setItem(STORAGE_KEY, raw);
+      showToast('📡 Data updated from another device — reloading…');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch(e) {
+      console.error('[Shohoj] Real-time sync error during comparison:', e);
+    }
   }, err => { console.error('[Shohoj] Real-time sync error:', err); });
 }
 
@@ -300,7 +331,6 @@ function _injectModalKeyframes() {
   document.head.appendChild(s);
 }
 
-// ── Reset all magnetic transforms and remove modal-open flag ─────────────────
 function _clearModalOpen() {
   document.body.classList.remove('modal-open');
   document.querySelectorAll('.magnetic').forEach(el => {
@@ -583,8 +613,6 @@ export async function signInWithGoogle() {
   setAuthBtnLoading(true);
   try {
     await signInWithPopup(auth, provider);
-    // Domain enforcement is handled inside onAuthStateChanged — the single
-    // source of truth. No domain check here to avoid race conditions.
   } catch (e) {
     setAuthBtnLoading(false);
     if (e.code !== 'auth/popup-closed-by-user') {
@@ -615,9 +643,7 @@ export function initAuth() {
   setAuthBtnLoading(true);
 
   onAuthStateChanged(auth, async user => {
-    // ── Domain enforcement — the single source of truth ────────────────────
-    // Check happens before anything else so non-BRACU accounts never touch
-    // Firestore, never update UI, and never receive any cloud data.
+    // ── Domain enforcement ─────────────────────────────────────────────────
     if (user && !user.email?.endsWith('@g.bracu.ac.bd')) {
       await signOut(auth);
       setAuthBtnLoading(false);
@@ -661,21 +687,19 @@ export function initAuth() {
       if (hasLocal && !hasCloud) {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed, { immediate: true });
-        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+        // Don't remove localStorage — keep it as the source of truth for this tab.
+        // The realtime listener will ignore this write via the local-write guard.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
       // ── Both local and cloud data exist ───────────────────────────────
-      // Skip migration modal on refresh — sessionStorage flag is set after
-      // cloud data is applied and cleared when the tab closes.
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
-      // If local data is empty (no semesters), skip migration — just use cloud
       const localSems   = localParsed?.semesters?.length || 0;
       const cloudSems   = cloudData?.semesters?.length   || 0;
 
@@ -683,12 +707,19 @@ export function initAuth() {
         applyCloudData(cloudData); return;
       }
 
+      // Compare fingerprints — if they're the same data, skip migration modal
+      const localFingerprint = getDataFingerprint(localRaw);
+      const cloudFingerprint = getDataFingerprint(JSON.stringify(cloudData));
+      if (localFingerprint === cloudFingerprint) {
+        sessionStorage.setItem('shohoj_cloud_applied', '1');
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+      }
+
       const choice = await showMigrationModal(localSems, cloudSems);
 
       if (choice === 'local') {
         setSyncIndicator('syncing');
         await saveToCloud(localParsed, { immediate: true });
-        try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Local data saved to cloud ✓', false, true);
         setSyncIndicator('synced');
@@ -702,6 +733,7 @@ export function initAuth() {
       stopRealtimeSync();
       clearCloudAppliedFlag();
       clearQueuedCloudSave(false);
+      _localWriteAt = 0;
       updateAuthUI(null);
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
@@ -851,9 +883,6 @@ function updateAuthUI(user) {
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-// isAuth=true → top-center on desktop (≥768px), bottom-center on mobile.
-// This keeps auth feedback spatially near the nav bar on desktop while
-// staying in the thumb zone on mobile.
 function showToast(msg, isError = false, isAuth = false) {
   const t = document.createElement('div');
   t.textContent = msg;
