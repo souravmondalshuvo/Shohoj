@@ -103,7 +103,12 @@ window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
 window.importTranscriptPDF = importTranscriptPDF;
 window.applyImport       = applyImport;
-window.clearState        = () => {
+// NOTE: do not name this window.clearState — the bundled build strips ES
+// imports, so `clearState` becomes a global, and `window.clearState = …`
+// would overwrite it, causing bare `clearState()` calls in other modules
+// (modals.js:applyImport, render.js, and the arrow below) to recurse into
+// themselves and throw RangeError: Maximum call stack size exceeded.
+window._shohoj_resetAppState = () => {
   clearState();
   state.semesters = [];
   state.semesterCounter = 0;
@@ -155,7 +160,7 @@ window.handleClearData = async function() {
     }
 
     clearShohojBrowserState();
-    window.clearState();
+    window._shohoj_resetAppState();
     switchCalcTab('calculator');
     html.dataset.theme = 'dark';
     if (pill) pill.textContent = '🌙';
