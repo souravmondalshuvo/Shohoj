@@ -10374,16 +10374,17 @@ window.handleClearData = async function() {
   });
   if (!confirmed) return;
 
-  // Delete cloud data first — this is the critical step.
-  // We do NOT rely on signOut succeeding (Firebase SDK stack overflow
-  // on Safari can cause signOut to throw, leaving the session alive,
-  // which causes onAuthStateChanged to re-hydrate data on reload).
+  // Kill the save hook immediately — prevents the debounced saveToCloud
+  // timer from firing mid-teardown and racing against deleteDoc/signOut.
+  window._shohoj_onSave = null;
+
+  // Delete Firestore document first (silent, no confirm modal).
   if (typeof window._shohoj_deleteCloudData === 'function') {
     try { await window._shohoj_deleteCloudData(); } catch(e) {}
   }
 
-  // Sign out best-effort — if it fails, the Firestore doc is already
-  // gone so there is nothing left to re-hydrate on reload.
+  // Sign out best-effort — if Firebase SDK throws (Safari stack overflow),
+  // the Firestore doc is already gone so reload won't re-hydrate.
   if (typeof window._shohoj_signOut === 'function') {
     try { await window._shohoj_signOut(); } catch(e) {}
   }
