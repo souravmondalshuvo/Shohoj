@@ -1,0 +1,42 @@
+name: CD
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: python3 build3.py
+
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p _deploy
+          cp shohoj.html _deploy/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_deploy
+          publish_branch: gh-pages
