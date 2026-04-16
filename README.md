@@ -205,8 +205,11 @@ Shohoj is built to feel like a real product, not a student project.
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
 | Testing     | Node.js (zero dependencies)                           | 55 tests across calculator and parser logic            |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
+| CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
 Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prevent supply-chain tampering.
+
+**Deployment pipeline:** every push to `main` triggers CI (tests) followed by CD (build + deploy). If tests fail, the live site is never touched. The built `shohoj.html` is deployed to the `gh-pages` branch as `index.html` and served by GitHub Pages.
 
 **Phase 2+** will migrate to React.js, Tailwind CSS, and Vercel as the platform scales beyond academic tools.
 
@@ -326,7 +329,8 @@ Shohoj/
 │   └── parser.test.js            15 tests — department detection, semester parsing, blob parser
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                Runs full test suite on push and pull request
+│       ├── ci.yml                Runs full test suite on push and pull request
+│       └── cd.yml                Builds and deploys to GitHub Pages on push to main
 ├── index.html                    Main HTML shell
 ├── package.json                  Test runner scripts (no dependencies)
 ├── README.md
@@ -369,7 +373,9 @@ python3 build3.py
 # Outputs shohoj.html — single file, ready to deploy
 ```
 
-> **Note:** Cloud sync requires a Firebase project. The live site uses the production Firebase config already embedded in `index.html`. For local development, cloud sync features will work as long as `localhost` is added as an authorized domain in your Firebase console.
+> **Note:** You don't need to run the build manually before pushing — the CD pipeline does it automatically on every push to `main`. Run it locally only if you want to preview the bundled output.
+
+> **Cloud sync:** requires a Firebase project. The live site uses the production Firebase config already embedded in `index.html`. For local development, cloud sync features will work as long as `localhost` is added as an authorized domain in your Firebase console.
 
 ---
 
