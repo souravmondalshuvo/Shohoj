@@ -7,6 +7,7 @@ import { COURSE_DB } from '../core/catalog.js';
 import { escHtml } from '../core/helpers.js';
 import { resetPlayground } from './playground.js';
 import { resetPlanner } from './planner.js';
+import { estimateSummaryCompletedSemesters } from './tracker.js';
 
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -405,7 +406,16 @@ export function exportPDF() {
     });
   });
   const cgpa = totalCr > 0 ? totalPts / totalCr : null;
-  const semCount = state.semesters.filter(s => !s.running).length;
+  const semCount = state.semesters.filter(s => !s.running && !s.summary).length
+    + estimateSummaryCompletedSemesters({
+      hasSummary: !!summaryBlock,
+      startSeason: document.getElementById('startSeason')?.value,
+      startYear: document.getElementById('startYear')?.value,
+      deptSeasons: state.currentDept && DEPARTMENTS[state.currentDept]
+        ? (DEPARTMENTS[state.currentDept].seasons || ['Spring', 'Summer', 'Fall'])
+        : ['Spring', 'Summer', 'Fall'],
+      completedSemCount: 0,
+    });
   const standing = cgpa === null ? '---'
     : cgpa >= 3.97 ? 'Perfect' : cgpa >= 3.65 ? 'Higher Distinction'
     : cgpa >= 3.50 ? 'Distinction' : cgpa >= 3.00 ? 'Good Standing'
