@@ -239,13 +239,16 @@ function stopRealtimeSync() {
 
 // ── Account data deletion ─────────────────────────────────────────────────────
 export async function deleteCloudDataSilent() {
-  if (!currentUser) return;
+  if (!currentUser) return true;
   try {
     stopRealtimeSync();
     await deleteDoc(userDocRef(currentUser.uid));
     try { localStorage.removeItem(LAST_SYNC_KEY); } catch(e) {}
+    return true;
   } catch (e) {
     console.error('[Shohoj] Silent delete failed:', e);
+    if (currentUser?.uid) startRealtimeSync(currentUser.uid);
+    return false;
   }
 }
 
@@ -846,6 +849,7 @@ window._shohoj_signIn = signInWithGoogle;
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
+window._shohoj_showToast = showToast;
 
 // ── Auth button loading state ─────────────────────────────────────────────────
 function setAuthBtnLoading(loading) {
