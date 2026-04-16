@@ -832,6 +832,8 @@ function showNudgeBanner(show) {
 }
 
 window._shohoj_signIn = signInWithGoogle;
+window._shohoj_signOut = signOutUser;
+window._shohoj_deleteCloudData = deleteCloudData;
 window._shohoj_confirmModal = showConfirmModal;
 
 // ── Auth button loading state ─────────────────────────────────────────────────
