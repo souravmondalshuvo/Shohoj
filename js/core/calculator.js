@@ -78,6 +78,46 @@ export function getSemCreditWarning(sem) {
 }
 
 /**
+ * Returns whether a course with the given grade is eligible for a Repeat.
+ *
+ * Repeat policy (effective for all students):
+ *   - Eligible if current grade is BELOW B (i.e. B- or lower, excluding F)
+ *   - F grades require a Retake (full re-enrollment), not a Repeat
+ *   - Can only be repeated ONCE, within 2 semesters of initial enrollment
+ *   - No grade cap — latest grade counts regardless of what it is
+ *   - Same intake-based policy applies to which grade counts in CGPA
+ *     (best grade for Spring 2024 and earlier, latest grade for Fall 2024+)
+ *
+ * @param {string} grade - The current letter grade (e.g. 'C+', 'B-', 'F')
+ * @returns {boolean}
+ */
+export function isRepeatEligible(grade) {
+  // F and F(NT) require Retake, not Repeat
+  if (grade === 'F' || grade === 'F(NT)') return false;
+  // P and I are not eligible
+  if (grade === 'P' || grade === 'I' || !grade) return false;
+  const gp = GRADES[grade];
+  if (gp === undefined || gp === null) return false;
+  // Below B means grade point < 3.0 (B = 3.0 is the threshold, not eligible)
+  return gp < 3.0;
+}
+
+/**
+ * Returns the improvement strategy for a given grade:
+ *   'retake'  — F grade, must re-enroll (up to 2 retakes)
+ *   'repeat'  — B- or below (non-F), can sit repeat exam (once, within 2 sems)
+ *   null      — B or above, no improvement mechanism available
+ *
+ * @param {string} grade
+ * @returns {'retake'|'repeat'|null}
+ */
+export function getImprovementStrategy(grade) {
+  if (grade === 'F' || grade === 'F(NT)') return 'retake';
+  if (isRepeatEligible(grade)) return 'repeat';
+  return null;
+}
+
+/**
  * Normalize grade point input for common shorthand.
  * Two modes:
  *   'input' — only fixes 2-digit shorthand (safe mid-typing)
