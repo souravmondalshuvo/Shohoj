@@ -3007,7 +3007,7 @@ input, select, textarea,
     <p>University life, made simple. · Built by &copy; <a href="https://github.com/souravmondalshuvo" target="_blank">Sourav Mondal Shuvo</a> · BRAC University · 2026</p>
   </footer>
 
-  <!-- Firebase auth init — loaded as module so it can import from firebase.js -->
+  <!-- Firebase auth init — inlined by build3.py -->
   <script type="module">
 // ── js/auth/firebase.js ───────────────────────────────────────────────────────
 // Firebase Authentication + Firestore cloud sync for Shohoj
@@ -3959,7 +3959,7 @@ initAuth();
 window._shohoj_onSave = async function(snap) {
   if (currentUser) await saveToCloud(snap);
 };
-</script>
+  </script>
 
   <script>
 // ── js/core/grades.js ───────────────────────────────────────────
