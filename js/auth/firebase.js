@@ -119,6 +119,21 @@ export function saveToCloud(stateSnap, options = {}) {
 
   const { immediate = false } = options;
 
+  // If we just applied cloud data (page reloaded after applyCloudData), the very
+  // first debounced saveToCloud call is just echoing cloud data back — skip it.
+  // Uses a separate flag so it doesn't interfere with the migration modal check.
+  // immediate=true calls (explicit uploads during sign-in) are never skipped.
+  if (!immediate) {
+    try {
+      const skipEcho = sessionStorage.getItem('shohoj_skip_first_save');
+      if (skipEcho) {
+        sessionStorage.removeItem('shohoj_skip_first_save');
+        console.log('[Shohoj] Skipping first save-back after cloud apply');
+        return Promise.resolve(true);
+      }
+    } catch(e) {}
+  }
+
   if (immediate) {
     const queuedResolvers = drainQueuedCloudResolvers();
     if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
@@ -690,6 +705,7 @@ export function initAuth() {
         // Don't remove localStorage — keep it as the source of truth for this tab.
         // The realtime listener will ignore this write via the local-write guard.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
+        sessionStorage.setItem('shohoj_skip_first_save', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
         startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
@@ -697,6 +713,7 @@ export function initAuth() {
       // ── Both local and cloud data exist ───────────────────────────────
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
+        sessionStorage.setItem('shohoj_skip_first_save', '1');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
@@ -712,6 +729,7 @@ export function initAuth() {
       const cloudFingerprint = getDataFingerprint(JSON.stringify(cloudData));
       if (localFingerprint === cloudFingerprint) {
         sessionStorage.setItem('shohoj_cloud_applied', '1');
+        sessionStorage.setItem('shohoj_skip_first_save', '1');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
@@ -747,6 +765,7 @@ export function initAuth() {
 function applyCloudData(cloudData) {
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
+    sessionStorage.setItem('shohoj_skip_first_save', '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
   } catch(e) {}
   window.location.reload();
