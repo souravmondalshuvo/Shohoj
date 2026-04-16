@@ -1,6 +1,6 @@
 import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
-import { getRetakenKeys } from '../core/calculator.js';
+import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
 const _retakeChecked = new Set();
@@ -194,7 +194,7 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Unlock full potential</div>
           <div style="font-size:12px;color:var(--text2);line-height:1.6;">
-            You're using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake Strategy</strong>, <strong>Grade Changer</strong>, and <strong>Reverse Solver</strong>, import your transcript or add your past semester courses with grades.
+            You're using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake &amp; Repeat Strategy</strong>, <strong>Grade Changer</strong>, and <strong>Reverse Solver</strong>, import your transcript or add your past semester courses with grades.
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
             <button onclick="document.getElementById('transcriptFileInput').click()" style="
@@ -234,14 +234,15 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       const gp = GRADES[c.grade];
       if (gp === undefined || gp === null) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (gp >= 3.0) return;
+      if (gp >= 3.0) return; // B and above — no improvement mechanism available
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
       const key = `${c.name}||${semLabel}`;
       const boostToB  = c.credits * (3.0 - gp) / currentCredits;
       const boostToA  = c.credits * (4.0 - gp) / currentCredits;
+      const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat'
       candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
-                        sem: semLabel, key, boostToB, boostToA });
+                        sem: semLabel, key, boostToB, boostToA, strategy });
     });
   });
 
@@ -258,6 +259,27 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
   const gradeCol = g =>
     (g === 'F' || g === 'F(NT)') ? '#e74c3c' :
     (g === 'D' || g === 'D-' || g === 'D+') ? '#e67e22' : '#F0A500';
+
+  // ── Strategy badge HTML ────────────────────────────────────────────────────
+  // Retake = F grade, must re-enroll for a full semester (up to 2 times)
+  // Repeat = below B (non-F), can sit a special exam (once, within 2 semesters)
+  //          No grade cap — same intake-based policy applies for CGPA
+  const strategyBadge = (strategy) => {
+    if (strategy === 'repeat') {
+      return `<span style="
+        font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+        background:rgba(86,180,233,0.12);color:#56B4E9;
+        border:1px solid rgba(86,180,233,0.30);
+        border-radius:4px;padding:2px 6px;white-space:nowrap;
+      " title="Repeat: sit a special exam once within 2 semesters of initial enrollment. No grade cap — latest grade counts for CGPA.">Repeat</span>`;
+    }
+    return `<span style="
+      font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+      background:rgba(231,76,60,0.10);color:#e74c3c;
+      border:1px solid rgba(231,76,60,0.28);
+      border-radius:4px;padding:2px 6px;white-space:nowrap;
+    " title="Retake: re-enroll in the course for a full semester. Allowed up to twice for F grades.">Retake</span>`;
+  };
 
   let cumBoost = 0;
   let ptsAfter  = currentPts;
@@ -276,13 +298,14 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
                 onclick="window._toggleRetake('${safeKey}')">
       <td style="padding:6px 8px;font-size:12px">${chk}</td>
-      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(c.name)}">${escHtml(c.name)}</td>
+      <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(c.name)}">${escHtml(c.name)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${escHtml(c.sem)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px">
         <span style="font-weight:700;color:${gradeCol(c.grade)}">${escHtml(c.grade)}</span>
         <span style="color:var(--text3)"> → </span>
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
+      <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
     </tr>`;
@@ -299,16 +322,16 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     const cgpaColor = cgpaAfterRetakes >= target ? '#2ECC71' : cgpaAfterRetakes >= 3.0 ? '#F0A500' : '#e74c3c';
     const targetLine = (newNeededGPA !== null && remaining > 0)
       ? (newNeededGPA > 4.0
-          ? `Even with these retakes, reaching <strong>${target.toFixed(2)}</strong> requires more than perfect grades from remaining credits.`
+          ? `Even with these improvements, reaching <strong>${target.toFixed(2)}</strong> requires more than perfect grades from remaining credits.`
           : newNeededGPA <= 0
-          ? `🎉 With these retakes alone, you'd already exceed your target of <strong style="color:#2ECC71">${target.toFixed(2)}</strong>!`
-          : `After these retakes, you'd need avg GPA <strong style="color:${newNeededGPA >= 3.5 ? '#F0A500' : '#2ECC71'}">${newNeededGPA.toFixed(2)}</strong> from your remaining <strong>${remaining}</strong> credits to hit <strong>${target.toFixed(2)}</strong>.`)
+          ? `🎉 With these improvements alone, you'd already exceed your target of <strong style="color:#2ECC71">${target.toFixed(2)}</strong>!`
+          : `After these improvements, you'd need avg GPA <strong style="color:${newNeededGPA >= 3.5 ? '#F0A500' : '#2ECC71'}">${newNeededGPA.toFixed(2)}</strong> from your remaining <strong>${remaining}</strong> credits to hit <strong>${target.toFixed(2)}</strong>.`)
       : '';
 
     retakeImpactHtml = `
       <div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(29,185,84,0.08);border:1px solid rgba(29,185,84,0.2)">
         <div style="font-size:12px;color:var(--text2)">
-          ✅ <strong>${checkedCount} retake${checkedCount > 1 ? 's' : ''} selected</strong> —
+          ✅ <strong>${checkedCount} course${checkedCount > 1 ? 's' : ''} selected</strong> —
           CGPA goes from <strong>${currentCgpa.toFixed(2)}</strong> →
           <strong style="color:${cgpaColor};font-size:14px">${cgpaAfterRetakes.toFixed(2)}</strong>
           <span style="color:var(--text3);font-size:11px">(+${cumBoost.toFixed(2)} boost if all raised to B)</span>
@@ -318,17 +341,30 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
   } else if (checkedCount === 0) {
     retakeImpactHtml = `
       <div style="margin-top:8px;font-size:11px;color:var(--text3)">
-        💡 Click any row to select it and see how your CGPA changes after those retakes.
+        💡 Click any row to select it and see how your CGPA changes after those improvements.
       </div>`;
   }
+
+  // ── Legend explaining the two badges ──────────────────────────────────────
+  const legendHtml = `
+    <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3);">
+      <span style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;background:rgba(231,76,60,0.10);color:#e74c3c;border:1px solid rgba(231,76,60,0.28);border-radius:4px;padding:1px 5px;">RETAKE</span>
+        Re-enroll for a full semester (F grades, up to 2×)
+      </span>
+      <span style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;background:rgba(86,180,233,0.12);color:#56B4E9;border:1px solid rgba(86,180,233,0.30);border-radius:4px;padding:1px 5px;">REPEAT</span>
+        Special exam, once, within 2 semesters (below B, no grade cap)
+      </span>
+    </div>`;
 
   return `
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
       <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:4px">
-        🔁 Smart Retake Strategy
+        🔁 Smart Retake &amp; Repeat Strategy
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
-        Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking retakes.
+        Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking improvements.
       </div>
       <div style="overflow-x:auto">
         <table class="sim-retake-table" style="width:100%;border-collapse:collapse">
@@ -338,6 +374,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
               <th style="padding:4px 8px;text-align:left;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Course</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Semester</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Grade → Target</th>
+              <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Type</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (B)</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (A)</th>
             </tr>
@@ -346,5 +383,6 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         </table>
       </div>
       ${retakeImpactHtml}
+      ${legendHtml}
     </div>`;
 }
