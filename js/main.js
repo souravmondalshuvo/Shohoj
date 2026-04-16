@@ -110,8 +110,7 @@ window.clearState        = () => {
 window._toggleRetake = toggleRetake;
 
 window.handleClearData = async function() {
-  // Use styled modal if firebase.js has finished booting, else native confirm
-  const confirmFn = window._shohoj_confirmModal
+  const confirmFn = typeof window._shohoj_confirmModal === 'function'
     ? window._shohoj_confirmModal
     : ({ body }) => Promise.resolve(window.confirm(body));
 
@@ -124,17 +123,20 @@ window.handleClearData = async function() {
   });
   if (!confirmed) return;
 
-  // 1. Delete cloud data first (if signed in) so reload can't re-hydrate it
+  // Delete cloud data first — this is the critical step.
+  // We do NOT rely on signOut succeeding (Firebase SDK stack overflow
+  // on Safari can cause signOut to throw, leaving the session alive,
+  // which causes onAuthStateChanged to re-hydrate data on reload).
   if (typeof window._shohoj_deleteCloudData === 'function') {
-    await window._shohoj_deleteCloudData();
+    try { await window._shohoj_deleteCloudData(); } catch(e) {}
   }
 
-  // 2. Sign out so onAuthStateChanged doesn't fire and re-load cloud data on reload
+  // Sign out best-effort — if it fails, the Firestore doc is already
+  // gone so there is nothing left to re-hydrate on reload.
   if (typeof window._shohoj_signOut === 'function') {
-    await window._shohoj_signOut();
+    try { await window._shohoj_signOut(); } catch(e) {}
   }
 
-  // 3. Now it's safe to wipe localStorage and reload
   clearState();
   location.reload();
 };
