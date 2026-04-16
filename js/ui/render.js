@@ -417,6 +417,9 @@ export function renderSemesters() {
         </div>
         ${sem.courses.map((c, i) => {
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
+          // Determine badge label: F/F(NT) = "Retaken" (full re-enrollment),
+          // any other grade = "Repeated" (special exam to improve below-B grade)
+          const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)') ? 'Retaken' : 'Repeated';
           return `
         <div class="course-row${isRetaken ? ' retaken' : ''}">
           <div class="course-input-wrap" style="position:relative;">
@@ -427,7 +430,7 @@ export function renderSemesters() {
               oninput="onCourseInput(event,${sem.id},${i})"
               onkeydown="onCourseKey(event,${sem.id},${i})"
               onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
-            ${isRetaken ? `<span class="retaken-badge">Retaken</span>` : ''}
+            ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
             <span class="credits-static">${c.credits}</span>${
@@ -575,18 +578,14 @@ export function addSemester(prefill = null) {
 
   let name;
   if (hasSummary) {
-    // Determine the next semester to add
     let targetSeason, targetYear;
 
-    // Find the last non-summary semester (including running ones)
     const allNonSummary = state.semesters.filter(s => !s.summary);
     if (allNonSummary.length === 0) {
-      // First semester after summary — use current real-world semester
       const cur = _getCurrentSemester();
       targetSeason = cur.season;
       targetYear = cur.year;
     } else {
-      // Advance from the last existing semester
       const last = allNonSummary[allNonSummary.length - 1];
       const match = last.name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
       if (match) {
@@ -602,7 +601,6 @@ export function addSemester(prefill = null) {
 
     name = _buildSemesterName(targetSeason, targetYear);
   } else {
-    // Normal case — count from start semester
     const completedCount = existingNonSummary.length;
     const allNames = generateSemesterNames(getStartSeason(), getStartYear(), completedCount + 1, deptSeasons);
     name = allNames[completedCount] || `Semester ${completedCount + 1}`;
@@ -621,7 +619,6 @@ export function addRunningSemester() {
   let runningName;
 
   if (hasSummary) {
-    // Use calendar-aware naming with ordinal
     const allNonSummary = state.semesters.filter(s => !s.summary);
     let targetSeason, targetYear;
 
