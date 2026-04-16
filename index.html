@@ -7250,12 +7250,7 @@ function _computeOrdinal(season, year) {
   return ordinal;
 }
 
-// ── Helper: get current real-world semester season + year ─────────────────────
-function _getCurrentSemester() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
-  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
-
-  const now = new Date();
+function getCurrentSemesterForDeptSeasons(now, deptSeasons) {
   const month = now.getMonth() + 1;
   let currentSeason;
   if (month <= 4) currentSeason = 'Spring';
@@ -7265,16 +7260,30 @@ function _getCurrentSemester() {
 
   // If current season isn't in dept's calendar, pick the nearest next one
   let season = currentSeason;
+  let year = currentYear;
   if (!deptSeasons.includes(season)) {
     const seasonOrder = ['Spring', 'Summer', 'Fall'];
     const curIdx = seasonOrder.indexOf(season);
     for (let offset = 1; offset <= 3; offset++) {
       const candidate = seasonOrder[(curIdx + offset) % 3];
-      if (deptSeasons.includes(candidate)) { season = candidate; break; }
+      if (deptSeasons.includes(candidate)) {
+        season = candidate;
+        // Wrapping from a later global season into an earlier one means
+        // the next offered semester falls in the following calendar year.
+        if (seasonOrder.indexOf(candidate) <= curIdx) year = currentYear + 1;
+        break;
+      }
     }
   }
 
-  return { season, year: currentYear };
+  return { season, year };
+}
+
+// ── Helper: get current real-world semester season + year ─────────────────────
+function _getCurrentSemester() {
+  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
+  return getCurrentSemesterForDeptSeasons(new Date(), deptSeasons);
 }
 
 // ── Helper: advance season/year by one step in dept calendar ─────────────────
