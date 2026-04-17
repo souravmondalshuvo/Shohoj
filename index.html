@@ -9707,18 +9707,32 @@ function getPrereqChain(code, completed, depth = 0) {
 function addToPlan(code) {
   if (plan.courses.includes(code)) return;
   plan.courses.push(code);
+  saveState();
   renderPlanner();
 }
 
 function removeFromPlan(code) {
   plan.courses = plan.courses.filter(c => c !== code);
+  saveState();
   renderPlanner();
 }
 
 function clearPlan() {
   plan.courses = [];
   plan.viewingPrereqs = '';
+  saveState();
   renderPlanner();
+}
+
+function getPlanCourses() {
+  return [...plan.courses];
+}
+
+function setPlanCourses(codes) {
+  plan.courses = Array.isArray(codes)
+    ? codes.filter(c => typeof c === 'string' && c)
+    : [];
+  _updatePlannerBadge();
 }
 
 function viewPrereqTree(code) {
@@ -9731,6 +9745,7 @@ function resetPlanner() {
   plan.viewingPrereqs = '';
   _searchQuery = '';
   _filterMode = 'all';
+  _updatePlannerBadge();
 }
 
 function onPlannerSearch(val) {
