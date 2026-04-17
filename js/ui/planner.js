@@ -8,6 +8,7 @@ import { state, saveState } from '../core/state.js';
 import { COURSE_DB, ALL_COURSES, PREREQS } from '../core/catalog.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
+import { getCurrentTotals } from './playground.js';
 
 // ── Local planner state ─────────────────────────────────────────────────────
 const plan = {
@@ -21,6 +22,7 @@ let _filterMode  = 'all'; // 'all' | 'unlocked' | 'locked'
 let _restoreSearchFocus = false;
 let _searchCursorStart = null;
 let _searchCursorEnd = null;
+let _assumedGrade = 'A';
 
 // ── Engine: get completed course codes ──────────────────────────────────────
 function getCompletedCodes() {
@@ -81,6 +83,22 @@ function checkPrereqs(code, completed) {
     missingSp,
     hasData: true,
   };
+}
+
+// ── Engine: count how many downstream courses each code unlocks ─────────────
+// Built once from PREREQS; higher count = gating more future courses.
+let _unlockCountCache = null;
+function getUnlockCount(code) {
+  if (!_unlockCountCache) {
+    _unlockCountCache = Object.create(null);
+    Object.keys(PREREQS).forEach(c => {
+      const p = PREREQS[c] || {};
+      [...(p.hp || []), ...(p.sp || [])].forEach(req => {
+        _unlockCountCache[req] = (_unlockCountCache[req] || 0) + 1;
+      });
+    });
+  }
+  return _unlockCountCache[code] || 0;
 }
 
 // ── Engine: determine if a course is relevant to the current department ──────
@@ -148,13 +166,15 @@ function getAvailableCourses(completed, dept) {
       missingSp: check.missingSp,
       hasPrereqData: check.hasData,
       isRelevant: relevant,
+      unlockCount: getUnlockCount(c.code),
     });
   });
 
-  // Sort: relevant first, then unlocked, then by course level
+  // Sort: relevant first, then unlocked, then by downstream unlock count (desc), then level
   results.sort((a, b) => {
     if (a.isRelevant !== b.isRelevant) return a.isRelevant ? -1 : 1;
     if (a.canTake !== b.canTake) return a.canTake ? -1 : 1;
+    if (a.unlockCount !== b.unlockCount) return b.unlockCount - a.unlockCount;
     const aNum = parseInt(a.code.replace(/^[A-Z]+/, ''));
     const bNum = parseInt(b.code.replace(/^[A-Z]+/, ''));
     return aNum - bNum;
@@ -183,6 +203,9 @@ function validatePlan(completed) {
     warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
   }
 
+  const scheduled    = getScheduledCodes();
+  const inProgress   = getInProgressCodes();
+
   plan.courses.forEach(code => {
     const check = checkPrereqs(code, completed);
     if (!check.canTake) {
@@ -196,6 +219,10 @@ function validatePlan(completed) {
   plan.courses.forEach(code => {
     if (completed.has(code)) {
       warnings.push(`${code} \u2014 you\u2019ve already passed this course`);
+    } else if (inProgress.has(code)) {
+      warnings.push(`${code} \u2014 already in your running semester`);
+    } else if (scheduled.has(code)) {
+      warnings.push(`${code} \u2014 already scheduled in another semester`);
     }
   });
 
@@ -225,6 +252,53 @@ function getPrereqChain(code, completed, depth = 0) {
   }
 
   return node;
+}
+
+// ── Engine: project CGPA assuming a uniform grade across planned courses ────
+const IMPACT_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D'];
+
+function projectCGPA(plannedCredits, assumedGrade) {
+  const { pts, cr } = getCurrentTotals();
+  const gp = GRADES[assumedGrade];
+  if (gp === null || gp === undefined) return { current: cr > 0 ? pts / cr : null, projected: null, delta: null };
+  const newPts = pts + plannedCredits * gp;
+  const newCr  = cr + plannedCredits;
+  const projected = newCr > 0 ? newPts / newCr : null;
+  const current   = cr > 0 ? pts / cr : null;
+  return {
+    current,
+    projected,
+    delta: (current !== null && projected !== null) ? projected - current : null,
+  };
+}
+
+function renderImpactPreview(totalCredits) {
+  if (!totalCredits) return '';
+  const { current, projected, delta } = projectCGPA(totalCredits, _assumedGrade);
+  if (projected === null) return '';
+  const sign = delta >= 0 ? '+' : '';
+  const deltaColor = delta > 0.005 ? '#2ECC71' : delta < -0.005 ? '#e74c3c' : 'var(--text3)';
+  const gradeOpts = IMPACT_GRADES.map(g =>
+    `<option value="${escAttr(g)}"${g === _assumedGrade ? ' selected' : ''}>${escHtml(g)}</option>`
+  ).join('');
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 12px;border-radius:8px;background:rgba(86,180,233,0.05);border:1px solid rgba(86,180,233,0.15);flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);">
+        <span>If all planned courses earn</span>
+        <select onchange="onPlannerImpactGrade(this.value)" style="
+          padding:3px 8px;border-radius:6px;border:1px solid var(--border);
+          background:var(--glass);color:var(--text);
+          font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+        ">${gradeOpts}</select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:12px;">
+        <span style="color:var(--text3);">CGPA</span>
+        <span style="color:var(--text2);font-weight:700;">${current !== null ? current.toFixed(2) : '—'}</span>
+        <span style="color:var(--text3);">\u2192</span>
+        <span style="color:var(--text);font-weight:800;font-family:'Syne',sans-serif;font-size:14px;">${projected.toFixed(2)}</span>
+        <span style="color:${deltaColor};font-weight:700;">${delta !== null ? sign + delta.toFixed(2) : ''}</span>
+      </div>
+    </div>`;
 }
 
 // ── Plan actions (exposed to window via main.js) ────────────────────────────
@@ -289,6 +363,13 @@ export function onPlannerSearch(val) {
 export function onPlannerFilter(mode) {
   _filterMode = mode;
   renderPlanner();
+}
+
+export function onPlannerImpactGrade(grade) {
+  if (IMPACT_GRADES.includes(grade)) {
+    _assumedGrade = grade;
+    renderPlanner();
+  }
 }
 
 export function getPlanCourseCount() {
@@ -445,6 +526,8 @@ export function renderPlanner() {
       ? '#F0A500'
       : '#2ECC71';
 
+    const impactHtml = renderImpactPreview(validation.totalCredits);
+
     planHtml = `
       <div style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -456,6 +539,7 @@ export function renderPlanner() {
           <span style="font-size:13px;font-weight:700;color:${creditColor};">${validation.totalCredits} credits</span>
           <span style="font-size:11px;color:var(--text3);">Target: 9\u201315 credits</span>
         </div>
+        ${impactHtml}
       </div>`;
 
     // Validation issues
