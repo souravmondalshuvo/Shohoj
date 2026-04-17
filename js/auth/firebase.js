@@ -701,6 +701,7 @@ export function initAuth() {
       }
 
       updateAuthUI(user);
+      showNudgeBanner(false);
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
