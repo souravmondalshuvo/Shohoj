@@ -4085,6 +4085,10 @@ function sanitizeRestoredState(saved) {
   saved.semesterCounter = typeof saved.semesterCounter === 'number'
     ? saved.semesterCounter : saved.semesters.length;
 
+  saved.planCourses = Array.isArray(saved.planCourses)
+    ? saved.planCourses.filter(c => typeof c === 'string' && /^[A-Z]{2,4}\d{3}[A-Z]?$/.test(c))
+    : [];
+
   return saved;
 }
 
