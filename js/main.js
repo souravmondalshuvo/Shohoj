@@ -45,7 +45,8 @@ import {
 
 import {
   renderPlanner, addToPlan, removeFromPlan, clearPlan,
-  viewPrereqTree, resetPlanner, onPlannerSearch, onPlannerFilter
+  viewPrereqTree, resetPlanner, onPlannerSearch, onPlannerFilter,
+  getPlanCourses, setPlanCourses
 } from './ui/planner.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -58,6 +59,7 @@ function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window._shohoj_updateSetupWizard = updateSetupWizard;
+window._shohoj_getPlanCourses = getPlanCourses;
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
@@ -295,6 +297,7 @@ function loadState() {
 
     state.semesters       = saved.semesters;
     state.semesterCounter = saved.semesterCounter || saved.semesters.length;
+    setPlanCourses(saved.planCourses);
 
     const dept = DEPARTMENTS[state.currentDept];
     if (dept) {
@@ -334,6 +337,7 @@ window._shohoj_applyState = function(saved) {
  
     state.semesters       = clean.semesters;
     state.semesterCounter = clean.semesterCounter || clean.semesters.length;
+    setPlanCourses(clean.planCourses);
     state._restoredFromStorage = true;
  
     const dept = DEPARTMENTS[state.currentDept];
