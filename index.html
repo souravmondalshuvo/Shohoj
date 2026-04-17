@@ -1999,24 +1999,30 @@ input, select, textarea,
   flex-wrap: wrap;
 }
 .pg-course-select, .pg-grade-select {
-  padding: 7px 10px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--glass);
   color: var(--text);
   font-size: 12px;
+  line-height: 1;
   cursor: pointer;
 }
 .pg-course-select { flex: 2; min-width: 160px; }
 .pg-grade-select  { flex: 0; min-width: 90px; }
 .pg-add-btn {
-  padding: 7px 14px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 14px;
   border-radius: 8px;
   background: var(--green);
   color: #0b0f0d;
   border: none;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
   transition: transform 0.2s;
 }
