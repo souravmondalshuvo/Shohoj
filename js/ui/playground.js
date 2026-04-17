@@ -88,7 +88,7 @@ function getGradedCourses() {
   return courses;
 }
 
-function getCurrentTotals() {
+export function getCurrentTotals() {
   const rk = getRetakenKeys();
   let pts = 0, cr = 0;
 
