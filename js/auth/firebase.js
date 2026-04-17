@@ -935,12 +935,9 @@ function updateAuthUI(user) {
 function showToast(msg, isError = false, isAuth = false) {
   const t = document.createElement('div');
   t.textContent = msg;
-  const useTop = isAuth && window.innerWidth >= 768;
   t.style.cssText = `
     position:fixed;
-    ${useTop
-      ? 'top:64px;left:50%;transform:translateX(-50%);'
-      : 'bottom:24px;left:50%;transform:translateX(-50%);'}
+    top:64px;left:50%;transform:translateX(-50%);
     background:${isError ? '#e74c3c' : '#2ECC71'};
     color:${isError ? '#fff' : '#0b0f0d'};
     padding:10px 20px;
