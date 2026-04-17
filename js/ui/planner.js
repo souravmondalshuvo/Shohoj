@@ -4,7 +4,7 @@
 
 import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
-import { state } from '../core/state.js';
+import { state, saveState } from '../core/state.js';
 import { COURSE_DB, ALL_COURSES, PREREQS } from '../core/catalog.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
@@ -231,18 +231,32 @@ function getPrereqChain(code, completed, depth = 0) {
 export function addToPlan(code) {
   if (plan.courses.includes(code)) return;
   plan.courses.push(code);
+  saveState();
   renderPlanner();
 }
 
 export function removeFromPlan(code) {
   plan.courses = plan.courses.filter(c => c !== code);
+  saveState();
   renderPlanner();
 }
 
 export function clearPlan() {
   plan.courses = [];
   plan.viewingPrereqs = '';
+  saveState();
   renderPlanner();
+}
+
+export function getPlanCourses() {
+  return [...plan.courses];
+}
+
+export function setPlanCourses(codes) {
+  plan.courses = Array.isArray(codes)
+    ? codes.filter(c => typeof c === 'string' && c)
+    : [];
+  _updatePlannerBadge();
 }
 
 export function viewPrereqTree(code) {
@@ -255,6 +269,7 @@ export function resetPlanner() {
   plan.viewingPrereqs = '';
   _searchQuery = '';
   _filterMode = 'all';
+  _updatePlannerBadge();
 }
 
 export function onPlannerSearch(val) {
