@@ -4176,6 +4176,9 @@ function saveState() {
       semesters:       state.semesters,
       startSeason:     document.getElementById('startSeason')?.value || '',
       startYear:       document.getElementById('startYear')?.value   || '',
+      planCourses:     typeof window._shohoj_getPlanCourses === 'function'
+        ? window._shohoj_getPlanCourses()
+        : [],
     };
 
     // Always save to localStorage as fallback (works when logged out too)
