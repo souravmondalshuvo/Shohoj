@@ -2250,11 +2250,6 @@ input, select, textarea,
   #authBtn   { padding: 5px 8px !important; }
 }
 
-/* ── Offline banner bottom padding so it doesn't cover toast ─────────────── */
-#offlineBanner + * {
-  padding-bottom: 44px;
-}
-
 /* ══════════════════════════════════════════════════════════
    AUTH BUTTON — polished avatar-based logged-in state
    ══════════════════════════════════════════════════════════ */
