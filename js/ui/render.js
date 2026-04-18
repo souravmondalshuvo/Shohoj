@@ -642,7 +642,7 @@ export function addSemester(prefill = null) {
   window._shohoj_recalc();
 }
 
-export function addRunningSemester() {
+export function addRunningSemester(prefill = null) {
   if (state.semesters.some(s => s.running)) return;
   const hasSummary = state.semesters.some(s => s.summary);
   if (!hasSummary && (!state.currentDept || !getStartSeason() || !getStartYear())) return;
@@ -678,11 +678,15 @@ export function addRunningSemester() {
     runningName = generateNextSemesterName();
   }
 
+  const courses = Array.isArray(prefill) && prefill.length
+    ? prefill
+    : [{ name:'', credits:0, grade:'', gradePoint:'' }];
+
   state.semesters.push({
     id: Date.now(),
     name: runningName + ' (Running)',
     running: true,
-    courses: [{ name:'', credits:0, grade:'', gradePoint:'' }]
+    courses,
   });
   renderSemesters();
   window._shohoj_recalc();
