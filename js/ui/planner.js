@@ -9,6 +9,7 @@ import { COURSE_DB, ALL_COURSES, PREREQS } from '../core/catalog.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { getCurrentTotals } from './playground.js';
+import { addRunningSemester } from './render.js';
 
 // ── Local planner state ─────────────────────────────────────────────────────
 const plan = {
@@ -322,6 +323,46 @@ export function clearPlan() {
   renderPlanner();
 }
 
+export function promoteToRunning() {
+  if (plan.courses.length === 0) return;
+
+  const completed = getCompletedCodes();
+  const validation = validatePlan(completed);
+  if (validation.issues.length > 0) {
+    alert('Resolve these issues before starting the semester:\n\n' + validation.issues.join('\n'));
+    return;
+  }
+
+  const prefill = plan.courses.map(code => {
+    const c = COURSE_DB[code];
+    if (!c) return null;
+    return {
+      name: `${c.name} (${c.code})`,
+      credits: c.credits,
+      grade: '',
+      gradePoint: '',
+    };
+  }).filter(Boolean);
+
+  if (prefill.length === 0) return;
+
+  const hasRunning = state.semesters.some(s => s.running);
+  if (hasRunning) {
+    const ok = confirm('You already have a running semester in the Calculator.\n\nReplace it with this plan? The existing running semester will be removed.');
+    if (!ok) return;
+    state.semesters = state.semesters.filter(s => !s.running);
+  }
+
+  plan.courses = [];
+  plan.viewingPrereqs = '';
+
+  addRunningSemester(prefill);
+
+  if (typeof window.switchCalcTab === 'function') {
+    window.switchCalcTab('calculator');
+  }
+}
+
 export function getPlanCourses() {
   return [...plan.courses];
 }
@@ -528,6 +569,22 @@ export function renderPlanner() {
 
     const impactHtml = renderImpactPreview(validation.totalCredits);
 
+    const hasRunning = state.semesters.some(s => s.running);
+    const canPromote = validation.issues.length === 0;
+    const promoteLabel = hasRunning ? 'Replace Running Semester' : 'Start Semester \u2192';
+    const promoteBtn = `
+      <button onclick="promoteToRunning()" ${canPromote ? '' : 'disabled'} style="
+        width:100%;margin-top:10px;padding:10px 14px;border-radius:10px;
+        background:${canPromote ? 'rgba(46,204,113,0.12)' : 'rgba(115,115,115,0.08)'};
+        border:1px solid ${canPromote ? 'rgba(46,204,113,0.35)' : 'var(--border)'};
+        color:${canPromote ? '#2ECC71' : 'var(--text3)'};
+        font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
+        cursor:${canPromote ? 'pointer' : 'not-allowed'};
+        transition:background 0.2s,border-color 0.2s;
+      " title="${canPromote ? 'Move this plan into a running semester in the Calculator' : 'Fix plan issues first'}">
+        \ud83d\udccd ${escHtml(promoteLabel)}
+      </button>`;
+
     planHtml = `
       <div style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -540,6 +597,7 @@ export function renderPlanner() {
           <span style="font-size:11px;color:var(--text3);">Target: 9\u201315 credits</span>
         </div>
         ${impactHtml}
+        ${promoteBtn}
       </div>`;
 
     // Validation issues

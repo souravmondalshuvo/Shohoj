@@ -46,7 +46,8 @@ import {
 import {
   renderPlanner, addToPlan, removeFromPlan, clearPlan,
   viewPrereqTree, resetPlanner, onPlannerSearch, onPlannerFilter,
-  onPlannerImpactGrade, getPlanCourses, setPlanCourses
+  onPlannerImpactGrade, getPlanCourses, setPlanCourses,
+  promoteToRunning
 } from './ui/planner.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -200,6 +201,7 @@ window.viewPrereqTree    = viewPrereqTree;
 window.onPlannerSearch   = onPlannerSearch;
 window.onPlannerFilter   = onPlannerFilter;
 window.onPlannerImpactGrade = onPlannerImpactGrade;
+window.promoteToRunning  = promoteToRunning;
 
 // Summary block
 window._shohoj_showSummaryForm    = showSummaryForm;
