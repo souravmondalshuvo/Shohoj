@@ -556,6 +556,7 @@ export function renderPlanner() {
           ${warnText}
         </div>
         <span style="font-size:12px;color:var(--text2);flex-shrink:0;">${c.credits} cr</span>
+        <button onclick="openCourseReviews('${escAttr(code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0;" title="See faculty reviews">\u2b50</button>
         <button onclick="viewPrereqTree('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
         <button onclick="removeFromPlan('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;" title="Remove">\u00d7</button>
       </div>`;
@@ -671,6 +672,7 @@ export function renderPlanner() {
       <span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(46,204,113,0.10);border-radius:4px;padding:1px 6px;flex-shrink:0;">${escHtml(c.code)}</span>
       <span style="font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.name)}${softWarn}</span>
       <span style="font-size:11px;color:var(--text3);flex-shrink:0;">${c.credits} cr</span>
+      <button onclick="openCourseReviews('${escAttr(c.code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="See faculty reviews for this course">\u2b50</button>
       <button onclick="viewPrereqTree('${escAttr(c.code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
       ${!isLocked
         ? `<button onclick="addToPlan('${escAttr(c.code)}')" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.25);color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;font-family:'DM Sans',sans-serif;">+ Add</button>`
@@ -687,7 +689,10 @@ export function renderPlanner() {
     <div style="margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Available courses</span>
-        <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button onclick="openReviewsDirectory()" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
+          <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
+        </div>
       </div>
       <input type="text" placeholder="Search by course code or name..."
         id="plannerSearchInput"
