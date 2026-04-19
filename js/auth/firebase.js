@@ -891,6 +891,41 @@ window._shohoj_fetchReviews = async function({ facultyInitials, courseCode }) {
   }
 };
 
+// Fetch all reviews for a given courseCode across every faculty.
+// Used by the planner course-row panel and the Reviews directory.
+window._shohoj_fetchReviewsByCourse = async function(courseCode) {
+  if (!currentUser || !courseCode) return [];
+  try {
+    const col = collection(db, 'facultyReviews');
+    const q = query(
+      col,
+      where('courseCode', '==', String(courseCode).toUpperCase()),
+      orderBy('createdAt', 'desc'),
+      qLimit(200),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
+    return [];
+  }
+};
+
+// Fetch the N most recent reviews site-wide. Used by the Reviews directory
+// landing view (before the user searches for anything specific).
+window._shohoj_fetchRecentReviews = async function(n = 50) {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'facultyReviews');
+    const q = query(col, orderBy('createdAt', 'desc'), qLimit(Math.min(n, 200)));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchRecentReviews failed:', e);
+    return [];
+  }
+};
+
 // ── Auth button loading state ─────────────────────────────────────────────────
 function setAuthBtnLoading(loading) {
   const btn = document.getElementById('authBtn');
