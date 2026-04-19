@@ -17,6 +17,40 @@ service cloud.firestore {
         && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
     }
 
+    // ── Faculty reviews: BRACU students can submit & read ────────────────
+    // Each review doc is keyed by a random ID. Writes require a BRACU
+    // G-Suite user. The author's UID is stored as a SHA-256 hash (uidHash)
+    // so the public-readable review cannot be traced back to a student.
+    match /facultyReviews/{reviewId} {
+      allow read: if request.auth != null
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+
+      allow create: if request.auth != null
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd')
+        && request.resource.data.keys().hasAll(['facultyInitials','courseCode','ratings','uidHash','createdAt'])
+        && request.resource.data.facultyInitials is string
+        && request.resource.data.facultyInitials.size() >= 2
+        && request.resource.data.facultyInitials.size() <= 10
+        && request.resource.data.courseCode is string
+        && request.resource.data.courseCode.size() <= 10
+        && request.resource.data.ratings is map
+        && request.resource.data.uidHash is string
+        && request.resource.data.uidHash.size() == 64
+        && (!('text' in request.resource.data) || request.resource.data.text.size() <= 500);
+
+      // Once created, reviews are immutable (no edits, no deletes from client).
+      allow update, delete: if false;
+    }
+
+    // ── Faculty profiles: read-only for students, admin-seeded ───────────
+    // Seeded via admin scripts (LLM-processed Facebook data, manual adds).
+    // Holds aggregated ratings, bio, taught-courses list.
+    match /facultyProfiles/{initials} {
+      allow read: if request.auth != null
+        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+      allow write: if false;
+    }
+
     // ── Catch-all: deny everything else ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
