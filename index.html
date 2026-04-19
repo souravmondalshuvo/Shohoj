@@ -7830,6 +7830,255 @@ function openReviewModal(opts = {}) {
   });
 }
 
+// ── Small helpers for display ────────────────────────────────────────────────
+function _starBar(score) {
+  if (score === null || score === undefined || isNaN(score)) {
+    return `<span style="color:#555;font-size:12px;">No ratings yet</span>`;
+  }
+  const full = Math.round(score);
+  const stars = '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full);
+  return `<span style="color:#F0A500;letter-spacing:1px;">${stars}</span>
+          <span style="margin-left:6px;font-size:11px;color:var(--text3);">${score.toFixed(1)}</span>`;
+}
+
+function _needsSignInBody(text, text2) {
+  return `
+    <div style="padding:28px 14px;text-align:center;">
+      <div style="font-size:26px;margin-bottom:10px;">🔒</div>
+      <div style="font-size:13px;color:${text};font-weight:600;margin-bottom:4px;">Sign in to read reviews</div>
+      <div style="font-size:12px;color:${text2};">Faculty reviews are visible to signed-in BRACU students only.</div>
+    </div>`;
+}
+
+function _buildOverlay(innerHtml) {
+  _injectKeyframes();
+  const { isDark, bg, text, text2, border, input } = _theme();
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:99999;
+    background:rgba(0,0,0,0.72);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:center;
+    animation:reviewFadeIn 0.2s ease;padding:16px;
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:${bg};border:1px solid ${border};border-radius:20px;
+      padding:24px 22px;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;
+      box-shadow:0 32px 80px rgba(0,0,0,0.55);color:${text};position:relative;
+    ">
+      <button data-close style="
+        position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;
+        background:${input};border:1px solid ${isDark?'rgba(255,255,255,0.10)':'rgba(0,0,0,0.08)'};
+        color:${text2};font-size:18px;line-height:1;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;
+      ">×</button>
+      ${innerHtml}
+    </div>`;
+  document.body.classList.add('modal-open');
+  document.body.appendChild(overlay);
+
+  const close = () => {
+    document.body.classList.remove('modal-open');
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.15s';
+    setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
+  };
+  overlay.querySelector('[data-close]').onclick = close;
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  return { overlay, close, theme: { isDark, bg, text, text2, border, input } };
+}
+
+// ── Course review panel ──────────────────────────────────────────────────────
+// Shows aggregate ratings per faculty who taught `courseCode`, plus latest
+// review text snippets. Opened from the planner course rows.
+async function openCourseReviewsPanel(courseCode, courseName = '') {
+  const code = String(courseCode || '').toUpperCase();
+  const signedIn = typeof window._shohoj_currentUid === 'function' && window._shohoj_currentUid();
+
+  const headerHtml = `
+    <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px;">
+      ${escHtml(code)} reviews
+    </div>
+    ${courseName ? `<div style="font-size:12px;color:var(--text2);margin-bottom:14px;">${escHtml(courseName)}</div>` : '<div style="margin-bottom:10px;"></div>'}
+  `;
+
+  if (!signedIn) {
+    const { theme } = _buildOverlay(headerHtml + _needsSignInBody('var(--text)', 'var(--text2)'));
+    return;
+  }
+
+  const loadingHtml = headerHtml + `
+    <div id="_cr_body" style="padding:28px 14px;text-align:center;color:var(--text3);font-size:12px;">
+      Loading reviews…
+    </div>`;
+  const { overlay, theme } = _buildOverlay(loadingHtml);
+  const body = overlay.querySelector('#_cr_body');
+
+  const reviews = await fetchReviewsForCourse(code);
+  const groups = aggregateByFaculty(reviews);
+
+  if (!groups.length) {
+    body.innerHTML = `
+      <div style="padding:24px 6px;text-align:center;">
+        <div style="font-size:24px;margin-bottom:8px;">📭</div>
+        <div style="font-size:13px;color:${theme.text};font-weight:600;margin-bottom:4px;">No reviews yet</div>
+        <div style="font-size:12px;color:${theme.text2};line-height:1.5;">Be the first — rate a faculty who taught you ${escHtml(code)}.</div>
+      </div>`;
+    return;
+  }
+
+  const rowsHtml = groups.map(g => {
+    const latest = reviews
+      .filter(r => normalizeInitials(r.facultyInitials) === g.facultyInitials && r.text)
+      .slice(0, 2);
+    const latestHtml = latest.length
+      ? `<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">
+          ${latest.map(r => `
+            <div style="font-size:11px;color:${theme.text2};line-height:1.45;padding-left:8px;border-left:2px solid ${theme.border};">
+              ${escHtml(r.text.slice(0, 220))}${r.text.length > 220 ? '…' : ''}
+            </div>`).join('')}
+         </div>`
+      : '';
+    return `
+      <div style="padding:12px 14px;border:1px solid ${theme.border};border-radius:12px;background:${theme.input};margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:${theme.text};letter-spacing:0.5px;">${escHtml(g.facultyInitials)}</span>
+            <span style="font-size:11px;color:${theme.text2};">${g.count} review${g.count !== 1 ? 's' : ''}</span>
+          </div>
+          <div>${_starBar(g.overall)}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:4px 12px;margin-top:8px;font-size:11px;color:${theme.text2};">
+          <div>Teach: <strong style="color:${theme.text};">${g.ratings.teaching !== null ? g.ratings.teaching.toFixed(1) : '—'}</strong></div>
+          <div>Marks: <strong style="color:${theme.text};">${g.ratings.marking !== null ? g.ratings.marking.toFixed(1) : '—'}</strong></div>
+          <div>Behav: <strong style="color:${theme.text};">${g.ratings.behavior !== null ? g.ratings.behavior.toFixed(1) : '—'}</strong></div>
+          <div>Diff: <strong style="color:${theme.text};">${g.ratings.difficulty !== null ? g.ratings.difficulty.toFixed(1) : '—'}</strong></div>
+          <div>Work: <strong style="color:${theme.text};">${g.ratings.workload !== null ? g.ratings.workload.toFixed(1) : '—'}</strong></div>
+        </div>
+        ${latestHtml}
+        <button data-rate="${escAttr(g.facultyInitials)}" style="
+          margin-top:10px;padding:6px 12px;border-radius:8px;
+          background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.28);
+          color:#2ECC71;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;
+        ">+ Add your rating for ${escHtml(g.facultyInitials)}</button>
+      </div>`;
+  }).join('');
+
+  body.innerHTML = rowsHtml;
+
+  body.querySelectorAll('[data-rate]').forEach(btn => {
+    btn.onclick = () => {
+      const fi = btn.getAttribute('data-rate');
+      openReviewModal({ facultyInitials: fi, courseCode: code });
+    };
+  });
+}
+
+// ── Reviews directory ────────────────────────────────────────────────────────
+// A browsable modal: search by course code or faculty initials, see aggregates.
+async function openReviewsDirectory() {
+  const signedIn = typeof window._shohoj_currentUid === 'function' && window._shohoj_currentUid();
+
+  const headerHtml = `
+    <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px;">
+      ⭐ Faculty Reviews
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">
+      Anonymous ratings from BRACU students. Search by course code or faculty initials.
+    </div>`;
+
+  if (!signedIn) {
+    _buildOverlay(headerHtml + _needsSignInBody('var(--text)', 'var(--text2)'));
+    return;
+  }
+
+  const { overlay, theme } = _buildOverlay(headerHtml + `
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input id="_rd_q" class="rv-input" type="text" placeholder="e.g. CSE110 or MNR"
+        style="background:${_theme().input};border:1px solid ${_theme().border};color:var(--text);flex:1;" />
+      <button id="_rd_go" style="
+        padding:10px 16px;border-radius:10px;background:#2ECC71;color:#0b0f0d;
+        border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+      ">Search</button>
+    </div>
+    <div id="_rd_body" style="padding:8px 4px;color:var(--text3);font-size:12px;">
+      Loading recent reviews…
+    </div>
+  `);
+
+  const body = overlay.querySelector('#_rd_body');
+  const input = overlay.querySelector('#_rd_q');
+  const go    = overlay.querySelector('#_rd_go');
+
+  const renderGroups = (groups, emptyMsg) => {
+    if (!groups.length) {
+      body.innerHTML = `<div style="padding:22px 6px;text-align:center;color:${theme.text2};font-size:12px;">${escHtml(emptyMsg)}</div>`;
+      return;
+    }
+    body.innerHTML = groups.map(g => `
+      <div style="padding:10px 12px;border:1px solid ${theme.border};border-radius:10px;background:${theme.input};margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:${theme.text};letter-spacing:0.5px;">${escHtml(g.facultyInitials)}</span>
+          <span style="font-size:11px;color:${theme.text2};">${g.count} review${g.count !== 1 ? 's' : ''}</span>
+        </div>
+        <div>${_starBar(g.overall)}</div>
+      </div>`).join('');
+  };
+
+  const runSearch = async () => {
+    const raw = (input.value || '').trim().toUpperCase();
+    if (!raw) {
+      body.textContent = 'Loading recent reviews…';
+      const recent = await fetchRecentReviews(80);
+      renderGroups(aggregateByFaculty(recent), 'No reviews yet. Be the first to submit one.');
+      return;
+    }
+    body.textContent = 'Searching…';
+    // Heuristic: course code looks like 2–4 letters + 3 digits (+ optional letter).
+    if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(raw)) {
+      const reviews = await fetchReviewsForCourse(raw);
+      renderGroups(aggregateByFaculty(reviews), `No reviews yet for ${raw}.`);
+      return;
+    }
+    // Otherwise treat as faculty initials.
+    const initials = normalizeInitials(raw);
+    if (initials.length < 2) { body.textContent = 'Enter a course code or faculty initials.'; return; }
+    const reviews = await fetchReviewsForFaculty(initials);
+    const agg = aggregateRatings(reviews);
+    if (!agg) {
+      body.innerHTML = `<div style="padding:22px 6px;text-align:center;color:${theme.text2};font-size:12px;">No reviews yet for ${escHtml(initials)}.</div>`;
+      return;
+    }
+    const r = agg.ratings;
+    const overallVals = ['teaching','marking','behavior'].map(k => r[k]).filter(v => v !== null);
+    const overall = overallVals.length ? overallVals.reduce((s,v)=>s+v,0)/overallVals.length : null;
+    body.innerHTML = `
+      <div style="padding:14px 16px;border:1px solid ${theme.border};border-radius:12px;background:${theme.input};">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+          <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:${theme.text};letter-spacing:0.5px;">${escHtml(initials)}</span>
+          <span style="font-size:11px;color:${theme.text2};">${agg.count} review${agg.count !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="margin-bottom:8px;">${_starBar(overall)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:4px 14px;font-size:12px;color:${theme.text2};">
+          <div>Teaching: <strong style="color:${theme.text};">${r.teaching !== null ? r.teaching.toFixed(1) : '—'}</strong></div>
+          <div>Marking: <strong style="color:${theme.text};">${r.marking !== null ? r.marking.toFixed(1) : '—'}</strong></div>
+          <div>Behavior: <strong style="color:${theme.text};">${r.behavior !== null ? r.behavior.toFixed(1) : '—'}</strong></div>
+          <div>Difficulty: <strong style="color:${theme.text};">${r.difficulty !== null ? r.difficulty.toFixed(1) : '—'}</strong></div>
+          <div>Workload: <strong style="color:${theme.text};">${r.workload !== null ? r.workload.toFixed(1) : '—'}</strong></div>
+        </div>
+        ${reviews.filter(x => x.text).slice(0, 3).map(x => `
+          <div style="margin-top:10px;font-size:11px;color:${theme.text2};line-height:1.45;padding-left:8px;border-left:2px solid ${theme.border};">
+            ${x.courseCode ? `<strong style="color:${theme.text};">${escHtml(x.courseCode)}</strong> · ` : ''}${escHtml(x.text.slice(0, 260))}${x.text.length > 260 ? '…' : ''}
+          </div>`).join('')}
+      </div>`;
+  };
+
+  go.onclick = runSearch;
+  input.onkeydown = e => { if (e.key === 'Enter') runSearch(); };
+  runSearch();
+}
+
 // ── js/ui/render.js ─────────────────────────────────────────────
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
