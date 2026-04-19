@@ -22,12 +22,15 @@ JS_FILES = [
     # Core (with dependencies)
     'js/core/catalog.js',
     'js/core/calculator.js',
+    'js/core/faculty.js',
+    'js/core/reviews.js',
     # Import
     'js/import/parser.js',
     # UI
     'js/ui/charts.js',
     'js/ui/suggestions.js',
     'js/ui/tracker.js',
+    'js/ui/reviews.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
