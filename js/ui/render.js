@@ -9,6 +9,8 @@ import {
 } from '../core/helpers.js';
 import { resetPlanner } from './planner.js';
 import { resetPlayground } from './playground.js';
+import { openReviewModal } from './reviews.js';
+import { normalizeInitials } from '../core/faculty.js';
 
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
@@ -175,6 +177,33 @@ function _nextSemester(season, year) {
     return { season: deptSeasons[0], year: year + 1 };
   }
   return { season: deptSeasons[idx + 1], year };
+}
+
+// ── Faculty sub-row (per course) ─────────────────────────────────────────────
+// Renders a small row under each course showing the faculty initials input
+// and a "Rate" button when both faculty and grade are filled in.
+function _renderFacultyRow(sem, c, i) {
+  // Only show for non-summary semester course rows that have a name
+  if (!c.name || !c.name.trim()) return '';
+  const faculty = (c.faculty || '').toUpperCase();
+  const hasGrade = !!c.grade && c.grade !== 'I';
+  const canRate = faculty.length >= 2 && hasGrade;
+
+  return `
+    <div class="course-faculty-row">
+      <span class="course-faculty-icon" title="Faculty initials">👤</span>
+      <input type="text" class="course-faculty-input" maxlength="6"
+        id="faculty-input-${sem.id}-${i}"
+        placeholder="Faculty initials"
+        value="${escAttr(faculty)}"
+        autocomplete="off" autocorrect="off" spellcheck="false"
+        oninput="onFacultyInput(${sem.id},${i},this.value)"
+        onblur="onFacultyBlur(${sem.id},${i},this.value)" />
+      ${canRate
+        ? `<button class="course-rate-btn" onclick="openRateForCourse(${sem.id},${i})" title="Rate this faculty">⭐ Rate</button>`
+        : ''
+      }
+    </div>`;
 }
 
 // ── Render summary block ─────────────────────────────────────────────────────
@@ -495,7 +524,8 @@ export function renderSemesters() {
             };${c.credits === 0 && c.grade !== 'P' && c.grade !== 'F' ? 'visibility:hidden' : ''}"
           >${escHtml(c.grade) || '—'}</span>
           <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
-        </div>`;
+        </div>
+        ${sem.summary ? '' : _renderFacultyRow(sem, c, i)}`;
         }).join('')}
       </div>
       <div class="add-course-row">
@@ -716,9 +746,39 @@ export function removeSemester(id) {
 
 export function addCourse(semId) {
   const sem = state.semesters.find(s => s.id === semId);
-  if (sem) { sem.courses.push({ name: '', credits: 0, grade: '' }); }
+  if (sem) { sem.courses.push({ name: '', credits: 0, grade: '', faculty: '' }); }
   renderSemesters();
   window._shohoj_recalc();
+}
+
+// ── Faculty handlers ─────────────────────────────────────────────────────────
+export function onFacultyInput(semId, cIdx, value) {
+  const sem = state.semesters.find(s => s.id === semId);
+  if (!sem || !sem.courses[cIdx]) return;
+  sem.courses[cIdx].faculty = normalizeInitials(value);
+  // Keep the input field in sync without a full re-render (preserves focus).
+  const el = document.getElementById(`faculty-input-${semId}-${cIdx}`);
+  if (el && el.value !== sem.courses[cIdx].faculty) el.value = sem.courses[cIdx].faculty;
+  saveState();
+}
+
+export function onFacultyBlur(semId, cIdx, _value) {
+  // Re-render so the Rate button appears/disappears based on faculty + grade state.
+  renderSemesters();
+}
+
+export function openRateForCourse(semId, cIdx) {
+  const sem = state.semesters.find(s => s.id === semId);
+  if (!sem || !sem.courses[cIdx]) return;
+  const c = sem.courses[cIdx];
+  // Extract course code from "Name (CSE220)" pattern if present.
+  const codeMatch = (c.name || '').match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)/);
+  const courseCode = codeMatch ? codeMatch[1] : '';
+  openReviewModal({
+    facultyInitials: c.faculty || '',
+    courseCode,
+    semester: sem.name || '',
+  });
 }
 
 export function removeCourse(semId, cIdx) {
