@@ -6423,6 +6423,59 @@ async function fetchReviewsForFaculty(initials, courseCode = '') {
   }
 }
 
+// Fetch every review for a course code across all faculty.
+// Returns an array of review docs. Silently returns [] on failure.
+async function fetchReviewsForCourse(courseCode) {
+  const hook = window._shohoj_fetchReviewsByCourse;
+  if (typeof hook !== 'function') return [];
+  if (!courseCode) return [];
+  try {
+    return await hook(String(courseCode).toUpperCase());
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
+    return [];
+  }
+}
+
+// Fetch recent reviews site-wide.
+async function fetchRecentReviews(n = 50) {
+  const hook = window._shohoj_fetchRecentReviews;
+  if (typeof hook !== 'function') return [];
+  try {
+    return await hook(n);
+  } catch (e) {
+    console.warn('[Shohoj] fetchRecentReviews failed:', e);
+    return [];
+  }
+}
+
+// Group a flat list of reviews by facultyInitials and compute aggregates
+// per faculty. Returns [{ facultyInitials, count, ratings, overall }]
+// sorted by count descending.
+function aggregateByFaculty(reviews) {
+  if (!Array.isArray(reviews) || reviews.length === 0) return [];
+  const byFac = new Map();
+  for (const r of reviews) {
+    const key = normalizeInitials(r.facultyInitials);
+    if (!key) continue;
+    if (!byFac.has(key)) byFac.set(key, []);
+    byFac.get(key).push(r);
+  }
+  const out = [];
+  for (const [initials, list] of byFac) {
+    const agg = aggregateRatings(list);
+    if (!agg) continue;
+    const r = agg.ratings;
+    const overallVals = RATING_KEYS.slice(0, 3).map(k => r[k]).filter(v => v !== null);
+    const overall = overallVals.length
+      ? overallVals.reduce((s, v) => s + v, 0) / overallVals.length
+      : null;
+    out.push({ facultyInitials: initials, count: list.length, ratings: r, overall });
+  }
+  out.sort((a, b) => b.count - a.count);
+  return out;
+}
+
 // Aggregate a list of reviews into average ratings per dimension.
 function aggregateRatings(reviews) {
   if (!Array.isArray(reviews) || reviews.length === 0) return null;
