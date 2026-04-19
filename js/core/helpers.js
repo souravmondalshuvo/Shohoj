@@ -65,6 +65,7 @@ export function sanitizeRestoredState(saved) {
       credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
       grade:      typeof c.grade === 'string' ? c.grade : '',
       gradePoint: c.gradePoint !== undefined ? c.gradePoint : '',
+      faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
     }));
     return true;
   });
