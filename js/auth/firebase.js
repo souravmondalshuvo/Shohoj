@@ -6,7 +6,8 @@
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp }
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
+         collection, addDoc, query, where, getDocs, orderBy, limit as qLimit }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -852,6 +853,43 @@ window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
 window._shohoj_showToast = showToast;
+
+// ── Faculty review hooks ──────────────────────────────────────────────────────
+// Expose a thin Firestore bridge so the bundled code (js/core/reviews.js) can
+// submit and fetch reviews without importing Firebase itself.
+
+window._shohoj_currentUid = function() {
+  return currentUser?.uid || null;
+};
+
+window._shohoj_submitReview = async function(doc) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  try {
+    const col = collection(db, 'facultyReviews');
+    await addDoc(col, { ...doc, createdAt: serverTimestamp() });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] submitReview failed:', e);
+    return { ok: false, error: e.message || 'Submission failed' };
+  }
+};
+
+window._shohoj_fetchReviews = async function({ facultyInitials, courseCode }) {
+  if (!currentUser || !facultyInitials) return [];
+  try {
+    const col = collection(db, 'facultyReviews');
+    const constraints = [where('facultyInitials', '==', facultyInitials)];
+    if (courseCode) constraints.push(where('courseCode', '==', courseCode));
+    constraints.push(orderBy('createdAt', 'desc'));
+    constraints.push(qLimit(50));
+    const q = query(col, ...constraints);
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviews failed:', e);
+    return [];
+  }
+};
 
 // ── Auth button loading state ─────────────────────────────────────────────────
 function setAuthBtnLoading(loading) {
