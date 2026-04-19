@@ -51,6 +51,8 @@ import {
   promoteToRunning
 } from './ui/planner.js';
 
+import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
+
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
 import { initDotMatrix }  from './animations/dotmatrix.js';
@@ -206,6 +208,10 @@ window.onPlannerSearch   = onPlannerSearch;
 window.onPlannerFilter   = onPlannerFilter;
 window.onPlannerImpactGrade = onPlannerImpactGrade;
 window.promoteToRunning  = promoteToRunning;
+
+// Reviews
+window.openCourseReviews   = (code, name) => openCourseReviewsPanel(code, name || '');
+window.openReviewsDirectory = openReviewsDirectory;
 
 // Summary block
 window._shohoj_showSummaryForm    = showSummaryForm;
