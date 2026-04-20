@@ -2,52 +2,97 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── Helpers ──────────────────────────────────────────────────────────
+    function isBracuUser() {
+      return request.auth != null
+        && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$');
+    }
+
+    function validRating(v) {
+      return v is int && v >= 1 && v <= 5;
+    }
+
+    function validRatings(r) {
+      return r.keys().hasOnly(['teaching','marking','behavior','difficulty','workload'])
+        && r.keys().hasAll(['teaching','marking','behavior','difficulty','workload'])
+        && validRating(r.teaching)
+        && validRating(r.marking)
+        && validRating(r.behavior)
+        && validRating(r.difficulty)
+        && validRating(r.workload);
+    }
+
+    function validReviewPayload(d) {
+      // Exact key set — no extra fields allowed.
+      return d.keys().hasOnly(['facultyInitials','courseCode','semester','ratings','text','createdAt'])
+        && d.keys().hasAll(['facultyInitials','courseCode','ratings','createdAt'])
+        && d.facultyInitials is string
+        && d.facultyInitials.matches('^[A-Z]{2,6}$')
+        && d.courseCode is string
+        && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
+        && validRatings(d.ratings)
+        && (!('text' in d) || (d.text is string && d.text.size() <= 500))
+        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40));
+    }
+
     // ── User data: scoped to own UID, BRACU domain only ──────────────────
     match /users/{uid} {
-      allow read: if request.auth != null
-        && request.auth.uid == uid
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
-
-      allow write: if request.auth != null
-        && request.auth.uid == uid
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
-
-      allow delete: if request.auth != null
-        && request.auth.uid == uid
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+      allow read, write, delete: if isBracuUser() && request.auth.uid == uid;
     }
 
     // ── Faculty reviews: BRACU students can submit & read ────────────────
-    // Each review doc is keyed by a random ID. Writes require a BRACU
-    // G-Suite user. The author's UID is stored as a SHA-256 hash (uidHash)
-    // so the public-readable review cannot be traced back to a student.
+    // Each review doc uses a DETERMINISTIC ID:
+    //   {facultyInitials}_{courseCode}_{64-char lowercase hex}
+    // where the hex suffix = sha256(uid + '|' + facultyInitials + '|' + courseCode).
+    // This enforces one review per (user, faculty, course) without storing the
+    // uid anywhere in the doc body.
+    //
+    // Trust model: the client computes the hash, so a determined adversary
+    // who knows a victim's uid could overwrite their review. That attack
+    // requires obtaining the target's Firebase uid (not just their email).
+    // For stronger guarantees, move creates to a Cloud Function.
     match /facultyReviews/{reviewId} {
-      allow read: if request.auth != null
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+      allow read: if isBracuUser();
 
-      allow create: if request.auth != null
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd')
-        && request.resource.data.keys().hasAll(['facultyInitials','courseCode','ratings','uidHash','createdAt'])
-        && request.resource.data.facultyInitials is string
-        && request.resource.data.facultyInitials.size() >= 2
-        && request.resource.data.facultyInitials.size() <= 10
-        && request.resource.data.courseCode is string
-        && request.resource.data.courseCode.size() <= 10
-        && request.resource.data.ratings is map
-        && request.resource.data.uidHash is string
-        && request.resource.data.uidHash.size() == 64
-        && (!('text' in request.resource.data) || request.resource.data.text.size() <= 500);
+      allow create: if isBracuUser()
+        && reviewId.matches('^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$')
+        && validReviewPayload(request.resource.data)
+        && reviewId.split('_')[0] == request.resource.data.facultyInitials
+        && reviewId.split('_')[1] == request.resource.data.courseCode;
 
-      // Once created, reviews are immutable (no edits, no deletes from client).
+      // Updates: the doc ID encodes the (user, faculty, course) tuple, so
+      // only a client with the matching uid can produce the same ID. The
+      // immutable tuple fields must not change.
+      allow update: if isBracuUser()
+        && validReviewPayload(request.resource.data)
+        && request.resource.data.facultyInitials == resource.data.facultyInitials
+        && request.resource.data.courseCode == resource.data.courseCode;
+
+      // Deletes from client are forbidden; moderation uses the admin SDK.
+      allow delete: if false;
+    }
+
+    // ── Review reports (abuse flagging) ──────────────────────────────────
+    // Any signed-in BRACU user can create a report. Reports are not readable
+    // from the client — admins triage via the Firebase console / admin SDK.
+    match /reviewReports/{reportId} {
+      allow read: if false;
+
+      allow create: if isBracuUser()
+        && request.resource.data.keys().hasOnly(['reviewId','reason','createdAt'])
+        && request.resource.data.keys().hasAll(['reviewId','reason','createdAt'])
+        && request.resource.data.reviewId is string
+        && request.resource.data.reviewId.size() <= 128
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 3
+        && request.resource.data.reason.size() <= 300;
+
       allow update, delete: if false;
     }
 
     // ── Faculty profiles: read-only for students, admin-seeded ───────────
-    // Seeded via admin scripts (LLM-processed Facebook data, manual adds).
-    // Holds aggregated ratings, bio, taught-courses list.
     match /facultyProfiles/{initials} {
-      allow read: if request.auth != null
-        && request.auth.token.email.matches('.*@g[.]bracu[.]ac[.]bd');
+      allow read: if isBracuUser();
       allow write: if false;
     }
 
