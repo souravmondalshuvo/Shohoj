@@ -3463,7 +3463,7 @@ import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
-         collection, addDoc, query, where, getDocs, orderBy, limit as qLimit, startAfter }
+         collection, query, where, getDocs, orderBy, limit as qLimit, startAfter }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -4337,26 +4337,47 @@ window._shohoj_submitReview = async function({ id, data }) {
   if (!id || typeof id !== 'string') return { ok: false, error: 'Invalid review id' };
   try {
     const ref = doc(db, 'facultyReviews', id);
+    const existing = await getDoc(ref);
+    if (existing.exists()) {
+      return {
+        ok: false,
+        error: 'You already submitted a review for this faculty-course pair. Reviews are locked after submission for safety.',
+        code: 'review-exists',
+      };
+    }
     await setDoc(ref, { ...data, createdAt: serverTimestamp() });
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
+    if (e.code === 'permission-denied') {
+      return {
+        ok: false,
+        error: 'Review could not be submitted. Make sure the course is valid and that you have not already reviewed this faculty for it.',
+        code: e.code,
+      };
+    }
     return { ok: false, error: e.message || 'Submission failed' };
   }
 };
 
-window._shohoj_reportReview = async function({ reviewId, reason }) {
+window._shohoj_reportReview = async function({ id, reviewId, reason, reporterUid }) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!id || typeof id !== 'string') return { ok: false, error: 'Invalid report id' };
+  if (reporterUid !== currentUser.uid) return { ok: false, error: 'Invalid reporter' };
   try {
-    const col = collection(db, 'reviewReports');
-    await addDoc(col, {
+    const ref = doc(db, 'reviewReports', id);
+    await setDoc(ref, {
       reviewId: String(reviewId || '').slice(0, 128),
       reason:   String(reason || '').slice(0, 300),
+      reporterUid: currentUser.uid,
       createdAt: serverTimestamp(),
     });
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] reportReview failed:', e);
+    if (e.code === 'permission-denied') {
+      return { ok: false, error: 'Report could not be submitted. The review may have already been removed or you may have reported it already.' };
+    }
     return { ok: false, error: e.message || 'Report failed' };
   }
 };
