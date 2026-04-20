@@ -9,7 +9,7 @@
 
 import {
   fetchRecentReviews, fetchReviewsForFaculty, fetchReviewsForCourse,
-  aggregateByFaculty, aggregateRatings,
+  aggregateByFaculty, aggregateRatings, isKnownCourseCode,
 } from '../core/reviews.js';
 import { normalizeInitials } from '../core/faculty.js';
 import { escHtml, escAttr } from '../core/helpers.js';
@@ -41,6 +41,14 @@ function _navigate(path) {
     // Same hash — still re-render (user clicked a link that matched current URL)
     renderReviewsTab();
   }
+}
+
+function _ratePrompt(courseFilter) {
+  return courseFilter && isKnownCourseCode(courseFilter)
+    ? `<button class="rv-tab-btn-primary rv-tab-btn-full" data-rate>
+        + Add your review for ${escHtml(courseFilter)}
+      </button>`
+    : `<div class="rv-tab-note">Choose a real catalog course chip above, or rate from the calculator/planner, to submit a review.</div>`;
 }
 
 // ── Public: main entry, called by main.js when tab activates or hash changes
@@ -196,11 +204,11 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       <div class="rv-tab-empty">
         <div class="rv-tab-empty-icon">📭</div>
         <div class="rv-tab-empty-title">No reviews yet for ${escHtml(initials)}</div>
-        <div class="rv-tab-empty-sub">Be the first — rate this faculty from the planner or calculator.</div>
-        <button class="rv-tab-btn-primary" id="_rvt_rateempty">+ Add a review</button>
+        <div class="rv-tab-empty-sub">Be the first — rate this faculty from the planner or calculator for a specific course.</div>
+        ${courseFilter && isKnownCourseCode(courseFilter) ? '<button class="rv-tab-btn-primary" id="_rvt_rateempty">+ Add your review</button>' : '<div class="rv-tab-note">Open a specific catalog course to submit the first review.</div>'}
       </div>`;
     const btn = body.querySelector('#_rvt_rateempty');
-    if (btn) btn.onclick = () => openReviewModal({ facultyInitials: initials });
+    if (btn) btn.onclick = () => openReviewModal({ facultyInitials: initials, courseCode: courseFilter });
     return;
   }
 
@@ -246,9 +254,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
         ${_dimCell('Difficulty', r.difficulty)}
         ${_dimCell('Workload',   r.workload)}
       </div>
-      <button class="rv-tab-btn-primary rv-tab-btn-full" data-rate>
-        + Add your review${courseFilter ? ` for ${escHtml(courseFilter)}` : ''}
-      </button>
+      ${_ratePrompt(courseFilter)}
     </div>` : `
     <div class="rv-tab-aggcard">
       <div class="rv-tab-aggcard-top">
@@ -256,9 +262,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
       </div>
       <div class="rv-tab-muted" style="margin:8px 0;">Not enough reviews to show averages yet (need at least ${HIDE_AGGREGATE_UNDER}).</div>
-      <button class="rv-tab-btn-primary rv-tab-btn-full" data-rate>
-        + Add your review${courseFilter ? ` for ${escHtml(courseFilter)}` : ''}
-      </button>
+      ${_ratePrompt(courseFilter)}
     </div>`;
 
   const reviewsHtml = scoped.length ? `
