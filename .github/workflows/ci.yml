@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run tests
+    name: Tests & build
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +20,32 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run calculator tests
-        run: node tests/calculator.test.js
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-      - name: Run parser tests
-        run: node tests/parser.test.js
+      - name: Run full test suite
+        run: npm test
+
+      - name: Build bundle (smoke test)
+        run: python3 build3.py
+
+      - name: Verify built bundle
+        run: |
+          test -s shohoj.html
+          # Fail if bare ES module syntax leaked into the non-module bundle
+          # (firebase.js is kept as type="module"; other bundled JS must not be).
+          python3 - <<'PY'
+          import re, sys
+          html = open('shohoj.html', encoding='utf-8').read()
+          # Strip all <script type="module">…</script> blocks
+          stripped = re.sub(
+              r'<script\s+type=["\']module["\'][\s\S]*?</script>',
+              '', html, flags=re.IGNORECASE,
+          )
+          if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
+              print('ERROR: bare ES module syntax leaked into bundled output', file=sys.stderr)
+              sys.exit(1)
+          print('bundle OK')
+          PY
