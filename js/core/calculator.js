@@ -28,9 +28,11 @@ export function usesBestGradePolicy() {
   return false;
 }
 
-export function getRetakenKeys(semList) {
+export function getRetakenKeys(semList, opts) {
   const list = (semList || state.semesters).filter(sem => !sem.running && !sem.summary);
-  const bestGrade = usesBestGradePolicy();
+  const bestGrade = (opts && typeof opts.bestGrade === 'boolean')
+    ? opts.bestGrade
+    : usesBestGradePolicy();
 
   const all = [];
   list.forEach(sem => {
@@ -126,7 +128,7 @@ export function getImprovementStrategy(grade) {
  *             "3"  → "3.0",  "0"  → "0.0",  "4"  → "4.0"
  * Already valid inputs like "3.3", "2.70", "NT" pass through unchanged.
  */
-function normalizeGradePoint(raw, mode) {
+export function normalizeGradePoint(raw, mode) {
   const trimmed = raw.trim();
 
   // Let NT / text pass through untouched
