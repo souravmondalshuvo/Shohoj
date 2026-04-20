@@ -8,6 +8,9 @@ import {
   reviewKeyHash,
   sha256Hex,
   buildReviewDoc,
+  isKnownCourseCode,
+  isValidReviewId,
+  buildReviewReportId,
   aggregateRatings,
   aggregateByFaculty,
   RATING_KEYS,
@@ -118,6 +121,12 @@ test('accepts a valid review', () => {
   expect(validateReview(goodReview())).toBeNull();
 });
 
+test('accepts lowercase known course codes after normalization', () => {
+  const r = goodReview();
+  r.courseCode = 'cse220';
+  expect(validateReview(r)).toBeNull();
+});
+
 test('rejects missing payload', () => {
   expect(validateReview(null)).toBeTruthy();
   expect(validateReview(undefined)).toBeTruthy();
@@ -154,13 +163,28 @@ test('rejects missing rating dimension', () => {
   expect(validateReview(r)).toBeTruthy();
 });
 
-test('rejects course code > 10 chars', () => {
-  const r = goodReview(); r.courseCode = 'CSE2200EXTRA';
+test('rejects missing course code', () => {
+  const r = goodReview(); r.courseCode = '';
+  expect(validateReview(r)).toBeTruthy();
+});
+
+test('rejects malformed course code', () => {
+  const r = goodReview(); r.courseCode = 'CSE22';
+  expect(validateReview(r)).toBeTruthy();
+});
+
+test('rejects unknown course code', () => {
+  const r = goodReview(); r.courseCode = 'CSE999';
   expect(validateReview(r)).toBeTruthy();
 });
 
 test('rejects review text > 500 chars', () => {
   const r = goodReview(); r.text = 'x'.repeat(501);
+  expect(validateReview(r)).toBeTruthy();
+});
+
+test('rejects semester label > 40 chars', () => {
+  const r = goodReview(); r.semester = 'S'.repeat(41);
   expect(validateReview(r)).toBeTruthy();
 });
 
@@ -222,6 +246,33 @@ test('uppercases course code before hashing', async () => {
   expect(a).toBe(b);
 });
 
+// ── COURSE / REVIEW ID HELPERS ──────────────────────────────────────────────
+console.log('\ncourse and review id helpers:');
+
+test('recognizes a known course code from the catalog', () => {
+  expect(isKnownCourseCode('CSE220')).toBe(true);
+  expect(isKnownCourseCode('cse220')).toBe(true);
+});
+
+test('rejects unknown or malformed course codes', () => {
+  expect(isKnownCourseCode('CSE999')).toBe(false);
+  expect(isKnownCourseCode('INVALID')).toBe(false);
+});
+
+test('accepts a valid review doc id', async () => {
+  const { id } = await buildReviewDoc(goodReview(), 'uid-1');
+  expect(isValidReviewId(id)).toBe(true);
+});
+
+test('rejects an invalid review doc id', () => {
+  expect(isValidReviewId('bad-id')).toBe(false);
+});
+
+test('builds a deterministic one-report-per-user doc id', async () => {
+  const { id } = await buildReviewDoc(goodReview(), 'uid-1');
+  expect(buildReviewReportId(id, 'uid-2')).toBe(`uid-2_${id}`);
+});
+
 // ── BUILD REVIEW DOC ─────────────────────────────────────────────────────────
 console.log('\nbuildReviewDoc:');
 
@@ -239,6 +290,7 @@ test('body does NOT leak uid or uidHash', async () => {
   const { body } = await buildReviewDoc(goodReview(), 'uid-1');
   expect('uid' in body).toBe(false);
   expect('uidHash' in body).toBe(false);
+  expect('reporterUid' in body).toBe(false);
 });
 
 test('body contains exactly the expected keys', async () => {
@@ -256,6 +308,13 @@ test('ratings are rounded to integers', async () => {
   expect(body.ratings.behavior).toBe(5);
   expect(body.ratings.difficulty).toBe(3);
   expect(body.ratings.workload).toBe(3);
+});
+
+test('normalizes course code in the review body', async () => {
+  const payload = goodReview();
+  payload.courseCode = 'cse220';
+  const { body } = await buildReviewDoc(payload, 'uid-1');
+  expect(body.courseCode).toBe('CSE220');
 });
 
 test('text is truncated to 500 chars', async () => {
