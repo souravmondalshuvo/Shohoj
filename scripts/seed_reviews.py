@@ -96,22 +96,29 @@ def validate(row, lineno):
     if errs:
         return None, f'[line {lineno}] ' + '; '.join(errs)
 
-    # Deterministic uidHash per bot+source so duplicate submissions collapse
+    # Deterministic doc ID that mirrors the client format:
+    #   {initials}_{courseCode}_{sha256(botUid|initials|course|text|source)}
+    # The 'body' dict matches the strict key set enforced by firestore.rules.
     seed  = f'{BOT_UID}|{initials}|{course}|{text[:80]}|{row.get("sourceUrl","")}'
-    uid_hash = hashlib.sha256(seed.encode('utf-8')).hexdigest()
+    hex_hash = hashlib.sha256(seed.encode('utf-8')).hexdigest()
+    doc_id = f'{initials}_{course}_{hex_hash}'
 
-    return {
+    body = {
         'facultyInitials': initials,
         'courseCode':      course,
         'semester':        semester,
         'ratings':         norm_ratings,
         'text':            text,
-        'uidHash':         uid_hash,
-        # Metadata — not read by client, kept for audit:
-        'sourceUrl':       str(row.get('sourceUrl', ''))[:200],
-        'seededBy':        BOT_UID,
-        'seededAt':        int(time.time() * 1000),
-    }, None
+    }
+    # Metadata kept on a separate dict — written only if the admin SDK is used
+    # (bypasses rules); NOT shipped to client-enforced writes.
+    meta = {
+        'sourceUrl': str(row.get('sourceUrl', ''))[:200],
+        'seededBy':  BOT_UID,
+        'seededAt':  int(time.time() * 1000),
+    }
+
+    return {'id': doc_id, 'body': body, 'meta': meta}, None
 
 
 def load_rows(path):
@@ -150,11 +157,16 @@ def write_to_firestore(docs, batch_size=400):
     for start in range(0, len(docs), batch_size):
         chunk = docs[start:start + batch_size]
         batch = db.batch()
-        for doc in chunk:
-            ref = col.document()
-            # createdAt must be a server timestamp so the client orderBy works.
-            doc_with_ts = {**doc, 'createdAt': firestore.SERVER_TIMESTAMP}
+        for entry in chunk:
+            # Deterministic doc ID (mirrors client format) + strict body
+            # that matches firestore.rules. Admin SDK bypasses rules, so we
+            # additionally fold `meta` into a subcollection audit record.
+            ref = col.document(entry['id'])
+            doc_with_ts = {**entry['body'], 'createdAt': firestore.SERVER_TIMESTAMP}
             batch.set(ref, doc_with_ts)
+            # Audit meta in a separate admin-only collection.
+            meta_ref = db.collection('facultyReviewsMeta').document(entry['id'])
+            batch.set(meta_ref, {**entry['meta'], 'createdAt': firestore.SERVER_TIMESTAMP})
         batch.commit()
         written += len(chunk)
         print(f'   wrote {written}/{len(docs)}')
