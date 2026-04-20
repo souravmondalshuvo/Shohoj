@@ -34,6 +34,7 @@ function expect(actual) {
   const {
     getCurrentSemesterForDeptSeasons,
     findCurrentSemesterIdForSummaryView,
+    getReviewableCourseCode,
   } = await import('../js/ui/render.js');
 
   console.log('\nRender semester calendar logic:');
@@ -66,6 +67,16 @@ function expect(actual) {
       { id: 2, name: 'Spring 2027 (2nd Semester)', courses: [] },
     ], { season: 'Fall', year: 2026 });
     expect(result).toEqual(null);
+  });
+
+  test('extracts a reviewable course code from catalog course labels', () => {
+    expect(getReviewableCourseCode('Data Structures (CSE220)')).toEqual('CSE220');
+    expect(getReviewableCourseCode('CSE220')).toEqual('CSE220');
+  });
+
+  test('rejects non-catalog or malformed course labels for reviews', () => {
+    expect(getReviewableCourseCode('Made Up Course (CSE999)')).toEqual('');
+    expect(getReviewableCourseCode('Custom elective')).toEqual('');
   });
 
   console.log('\n──────────────────────────────────────────────────');
