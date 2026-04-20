@@ -4,19 +4,46 @@
 // submit and read reviews without knowing about Firebase.
 
 import { normalizeInitials, upsertFacultyProfile } from './faculty.js';
+import { COURSE_DB } from './catalog.js';
 
 const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
+const REVIEW_ID_RE = /^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
+const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+
+export function normalizeCourseCode(raw) {
+  return String(raw || '').toUpperCase().trim();
+}
+
+export function isKnownCourseCode(raw) {
+  const code = normalizeCourseCode(raw);
+  return COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+}
+
+export function isValidReviewId(reviewId) {
+  return REVIEW_ID_RE.test(String(reviewId || '').trim());
+}
+
+export function buildReviewReportId(reviewId, uid) {
+  const safeReviewId = String(reviewId || '').trim();
+  const safeUid = String(uid || '').trim();
+  if (!safeReviewId || !safeUid) return '';
+  return `${safeUid}_${safeReviewId}`;
+}
 
 export function validateReview(payload) {
   if (!payload || typeof payload !== 'object') return 'Invalid payload';
   const initials = normalizeInitials(payload.facultyInitials);
+  const courseCode = normalizeCourseCode(payload.courseCode);
   if (!initials || initials.length < 2) return 'Faculty initials required';
-  if (payload.courseCode && String(payload.courseCode).length > 10) return 'Course code too long';
+  if (!courseCode) return 'Course code required';
+  if (!COURSE_CODE_RE.test(courseCode)) return 'Invalid course code';
+  if (!COURSE_DB[courseCode]) return 'Unknown course code';
   const r = payload.ratings || {};
   for (const key of RATING_KEYS) {
     const v = r[key];
     if (typeof v !== 'number' || v < 1 || v > 5) return `Rating "${key}" must be 1–5`;
   }
+  if (payload.semester && String(payload.semester).length > 40) return 'Semester label too long';
   if (payload.text && String(payload.text).length > 500) return 'Review text too long';
   return null;
 }
@@ -41,10 +68,10 @@ export async function reviewKeyHash(uid, facultyInitials, courseCode) {
 
 // Build both the deterministic doc ID and the Firestore-bound body.
 // The uid is encoded into the doc ID (as a salted hash) and is NOT stored
-// in the body — this removes the cross-review linkage by uidHash.
+// in the body — this avoids shipping a reusable user identifier in public docs.
 export async function buildReviewDoc(payload, uid) {
   const facultyInitials = normalizeInitials(payload.facultyInitials);
-  const courseCode      = String(payload.courseCode || '').toUpperCase().trim();
+  const courseCode      = normalizeCourseCode(payload.courseCode);
   const hash            = await reviewKeyHash(uid, facultyInitials, courseCode);
   const id              = `${facultyInitials}_${courseCode}_${hash}`;
 
@@ -102,10 +129,18 @@ export async function submitReview(payload) {
 export async function reportReview(reviewId, reason) {
   const hook = window._shohoj_reportReview;
   if (typeof hook !== 'function') return { ok: false, error: 'Sign in to report a review' };
+  const uid = window._shohoj_currentUid && window._shohoj_currentUid();
+  if (!uid) return { ok: false, error: 'Sign in to report a review' };
+  if (!isValidReviewId(reviewId)) return { ok: false, error: 'Invalid review reference' };
   const trimmed = String(reason || '').trim().slice(0, 300);
   if (trimmed.length < 3) return { ok: false, error: 'Please describe the issue' };
   try {
-    return await hook({ reviewId: String(reviewId || ''), reason: trimmed });
+    return await hook({
+      id: buildReviewReportId(reviewId, uid),
+      reviewId: String(reviewId || '').trim(),
+      reason: trimmed,
+      reporterUid: uid,
+    });
   } catch (e) {
     console.error('[Shohoj] reportReview failed:', e);
     return { ok: false, error: e.message || 'Report failed' };
