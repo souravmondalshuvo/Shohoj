@@ -2840,6 +2840,80 @@ input, select, textarea,
   color: var(--text);
 }
 
+/* AI Verdict card */
+.rv-verdict {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-left: 4px solid;
+  margin-bottom: 14px;
+  background: rgba(255,255,255,0.03);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+[data-theme="light"] .rv-verdict {
+  background: rgba(0,0,0,0.02);
+  border-top-color: rgba(0,0,0,0.06);
+  border-right-color: rgba(0,0,0,0.06);
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+.rv-verdict--great  { border-left-color: #2ECC71; }
+.rv-verdict--good   { border-left-color: #A8D820; }
+.rv-verdict--mixed  { border-left-color: #F0A500; }
+.rv-verdict--warn   { border-left-color: #E67E22; }
+.rv-verdict--bad    { border-left-color: #E74C3C; }
+.rv-verdict-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.rv-verdict-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.rv-verdict-result {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+}
+.rv-verdict--great  .rv-verdict-result { color: #2ECC71; }
+.rv-verdict--good   .rv-verdict-result { color: #A8D820; }
+.rv-verdict--mixed  .rv-verdict-result { color: #F0A500; }
+.rv-verdict--warn   .rv-verdict-result { color: #E67E22; }
+.rv-verdict--bad    .rv-verdict-result { color: #E74C3C; }
+.rv-verdict-reason {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.rv-verdict-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.rv-verdict-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(240,165,0,0.12);
+  color: #F0A500;
+  border: 1px solid rgba(240,165,0,0.25);
+}
+.rv-verdict-basis {
+  font-size: 10px;
+  color: var(--text2);
+  opacity: 0.6;
+}
+
 /* Stars */
 .rv-tab-stars {
   color: #F0A500;
