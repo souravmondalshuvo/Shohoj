@@ -6112,9 +6112,11 @@ function usesBestGradePolicy() {
   return false;
 }
 
-function getRetakenKeys(semList) {
+function getRetakenKeys(semList, opts) {
   const list = (semList || state.semesters).filter(sem => !sem.running && !sem.summary);
-  const bestGrade = usesBestGradePolicy();
+  const bestGrade = (opts && typeof opts.bestGrade === 'boolean')
+    ? opts.bestGrade
+    : usesBestGradePolicy();
 
   const all = [];
   list.forEach(sem => {
