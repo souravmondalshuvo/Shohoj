@@ -2,6 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
+import { COURSE_DB } from '../core/catalog.js';
 import {
   generateSemesterNames, getLastCompletedSemester,
   countSemesters, getStartSeason, getStartYear,
@@ -179,6 +180,18 @@ function _nextSemester(season, year) {
   return { season: deptSeasons[idx + 1], year };
 }
 
+export function getReviewableCourseCode(courseName) {
+  const raw = String(courseName || '').trim();
+  if (!raw) return '';
+
+  const match = raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/i)
+    || raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)$/i)
+    || raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/i);
+
+  const code = match ? match[1].toUpperCase() : '';
+  return code && COURSE_DB[code] ? code : '';
+}
+
 // ── Faculty sub-row (per course) ─────────────────────────────────────────────
 // Renders a small row under each course showing the faculty initials input
 // and a "Rate" button when both faculty and grade are filled in.
@@ -187,7 +200,8 @@ function _renderFacultyRow(sem, c, i) {
   if (!c.name || !c.name.trim()) return '';
   const faculty = (c.faculty || '').toUpperCase();
   const hasGrade = !!c.grade && c.grade !== 'I';
-  const canRate = faculty.length >= 2 && hasGrade;
+  const courseCode = getReviewableCourseCode(c.name);
+  const canRate = faculty.length >= 2 && hasGrade && !!courseCode;
 
   return `
     <div class="course-faculty-row">
@@ -771,9 +785,13 @@ export function openRateForCourse(semId, cIdx) {
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem || !sem.courses[cIdx]) return;
   const c = sem.courses[cIdx];
-  // Extract course code from "Name (CSE220)" pattern if present.
-  const codeMatch = (c.name || '').match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)/);
-  const courseCode = codeMatch ? codeMatch[1] : '';
+  const courseCode = getReviewableCourseCode(c.name);
+  if (!courseCode) {
+    if (typeof window._shohoj_showToast === 'function') {
+      window._shohoj_showToast('Select a valid catalog course before submitting a faculty review.', true);
+    }
+    return;
+  }
   openReviewModal({
     facultyInitials: c.faculty || '',
     courseCode,
