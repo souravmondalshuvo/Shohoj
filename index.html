@@ -3074,7 +3074,7 @@ import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
-         collection, addDoc, query, where, getDocs, orderBy, limit as qLimit }
+         collection, addDoc, query, where, getDocs, orderBy, limit as qLimit, startAfter }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -3114,6 +3114,19 @@ const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
+}
+
+// Only allow Google-hosted avatar URLs. Anything else (including data:/http:)
+// is rejected and we fall back to a generated initial.
+function isSafeAvatarUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return false;
+    return /(^|\.)googleusercontent\.com$/i.test(u.hostname);
+  } catch (_e) {
+    return false;
+  }
 }
 
 function parseStoredState(raw, source = 'storage') {
@@ -3563,12 +3576,12 @@ function showSignOutModal(email) {
         <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:8px;">
           You're signed in as
         </div>
-        <div style="
+        <div id="_soEmail" style="
           font-size:13px;font-weight:700;color:${text};
           background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.18);
           border-radius:8px;padding:6px 14px;display:inline-block;
           margin-bottom:20px;word-break:break-all;
-        ">${email}</div>
+        "></div>
 
         <div style="display:flex;gap:10px;margin-bottom:14px;">
           <button id="_soCancel" class="shohoj-modal-btn" style="
@@ -3599,6 +3612,7 @@ function showSignOutModal(email) {
 
     document.body.classList.add('modal-open');
     document.body.appendChild(overlay);
+    overlay.querySelector('#_soEmail').textContent = email;
     const close = v => _closeModal(overlay, resolve, v);
 
     overlay.querySelector('#_mClose').onclick   = () => close(false);
@@ -3929,11 +3943,12 @@ window._shohoj_currentUid = function() {
   return currentUser?.uid || null;
 };
 
-window._shohoj_submitReview = async function(doc) {
+window._shohoj_submitReview = async function({ id, data }) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!id || typeof id !== 'string') return { ok: false, error: 'Invalid review id' };
   try {
-    const col = collection(db, 'facultyReviews');
-    await addDoc(col, { ...doc, createdAt: serverTimestamp() });
+    const ref = doc(db, 'facultyReviews', id);
+    await setDoc(ref, { ...data, createdAt: serverTimestamp() });
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
@@ -3941,45 +3956,67 @@ window._shohoj_submitReview = async function(doc) {
   }
 };
 
-window._shohoj_fetchReviews = async function({ facultyInitials, courseCode }) {
-  if (!currentUser || !facultyInitials) return [];
+window._shohoj_reportReview = async function({ reviewId, reason }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  try {
+    const col = collection(db, 'reviewReports');
+    await addDoc(col, {
+      reviewId: String(reviewId || '').slice(0, 128),
+      reason:   String(reason || '').slice(0, 300),
+      createdAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] reportReview failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
+  }
+};
+
+// Fetch reviews scoped to a faculty, optionally a course, with paging.
+// `after` is the last review doc from the previous page (pass through).
+window._shohoj_fetchReviews = async function({ facultyInitials, courseCode, pageSize = 50, after = null }) {
+  if (!currentUser || !facultyInitials) return { reviews: [], nextCursor: null };
   try {
     const col = collection(db, 'facultyReviews');
     const constraints = [where('facultyInitials', '==', facultyInitials)];
     if (courseCode) constraints.push(where('courseCode', '==', courseCode));
     constraints.push(orderBy('createdAt', 'desc'));
-    constraints.push(qLimit(50));
+    if (after && after._cursor) constraints.push(startAfter(after._cursor));
+    constraints.push(qLimit(Math.min(pageSize, 200)));
     const q = query(col, ...constraints);
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const last = snap.docs[snap.docs.length - 1];
+    const nextCursor = snap.docs.length === pageSize && last ? { _cursor: last } : null;
+    return { reviews, nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviews failed:', e);
-    return [];
+    return { reviews: [], nextCursor: null };
   }
 };
 
-// Fetch all reviews for a given courseCode across every faculty.
-// Used by the planner course-row panel and the Reviews directory.
-window._shohoj_fetchReviewsByCourse = async function(courseCode) {
-  if (!currentUser || !courseCode) return [];
+window._shohoj_fetchReviewsByCourse = async function(courseCode, { pageSize = 200, after = null } = {}) {
+  if (!currentUser || !courseCode) return { reviews: [], nextCursor: null };
   try {
     const col = collection(db, 'facultyReviews');
-    const q = query(
-      col,
+    const constraints = [
       where('courseCode', '==', String(courseCode).toUpperCase()),
       orderBy('createdAt', 'desc'),
-      qLimit(200),
-    );
+    ];
+    if (after && after._cursor) constraints.push(startAfter(after._cursor));
+    constraints.push(qLimit(Math.min(pageSize, 200)));
+    const q = query(col, ...constraints);
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const last = snap.docs[snap.docs.length - 1];
+    const nextCursor = snap.docs.length === pageSize && last ? { _cursor: last } : null;
+    return { reviews, nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
-    return [];
+    return { reviews: [], nextCursor: null };
   }
 };
 
-// Fetch the N most recent reviews site-wide. Used by the Reviews directory
-// landing view (before the user searches for anything specific).
 window._shohoj_fetchRecentReviews = async function(n = 50) {
   if (!currentUser) return [];
   try {
@@ -4032,16 +4069,37 @@ function updateAuthUI(user) {
     btn.ondblclick    = null;
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
-    btn.innerHTML = `
-      <div class="auth-avatar-wrap">
-        ${user.photoURL
-          ? `<img src="${user.photoURL}" alt="${firstName}" class="auth-avatar-img" referrerpolicy="no-referrer" />`
-          : `<div class="auth-avatar-fallback">${firstName.charAt(0).toUpperCase()}</div>`
-        }
-        <span id="syncDot" class="auth-sync-dot"></span>
-      </div>
-      <span class="auth-name">${firstName}</span>
-    `;
+
+    // Build the signed-in pill via DOM APIs so that user.displayName /
+    // user.photoURL / user.email (which come from Google's identity data
+    // and are outside our trust boundary) never flow through innerHTML.
+    btn.textContent = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'auth-avatar-wrap';
+    if (isSafeAvatarUrl(user.photoURL)) {
+      const img = document.createElement('img');
+      img.className = 'auth-avatar-img';
+      img.setAttribute('referrerpolicy', 'no-referrer');
+      img.src = user.photoURL;
+      img.alt = firstName;
+      wrap.appendChild(img);
+    } else {
+      const fb = document.createElement('div');
+      fb.className = 'auth-avatar-fallback';
+      fb.textContent = firstName.charAt(0).toUpperCase();
+      wrap.appendChild(fb);
+    }
+    const dot = document.createElement('span');
+    dot.id = 'syncDot';
+    dot.className = 'auth-sync-dot';
+    wrap.appendChild(dot);
+    btn.appendChild(wrap);
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'auth-name';
+    nameEl.textContent = firstName;
+    btn.appendChild(nameEl);
+
     setSyncIndicator('synced');
     restoreSyncLabel();
 
