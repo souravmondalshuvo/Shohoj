@@ -71,11 +71,11 @@ Pseudonymous faculty ratings from real BRACU students — stored in Firestore, g
 
 - **5-dimension ratings** — Teaching Quality, Marking Fairness, Behavior & Attitude, Course Difficulty, Workload
 - **Pseudonymous to other users** — the review document body contains no user identifier. Each review's Firestore doc ID is derived from a salted SHA-256 of `uid + facultyInitials + courseCode`, so the same user's reviews for different courses don't share a visible hash
-- **One review per user per faculty-course pair** — deterministic doc IDs mean re-submitting overwrites your previous review instead of creating duplicates
+- **One immutable review per user per faculty-course pair** — deterministic doc IDs enforce one public review slot per user and pair. Once submitted, the client cannot edit or overwrite it.
 - **Per-course panel** — click the ⭐ on any planner course row to see aggregate ratings for every faculty who taught that course, plus sample review text
 - **Reviews directory** — search by course code or faculty initials to browse the review corpus (paginated)
 - **In-transcript rating** — rate your faculty directly from the course row in the Calculator tab, no separate flow
-- **Report for moderation** — every review surfaces a "Report" action that writes to an admin-only `reviewReports` collection
+- **Report for moderation** — every review surfaces a "Report" action that writes to an admin-only `reviewReports` collection, capped at one report per user per review
 - **LLM-assisted seeding** — the `scripts/seed_reviews.py` pipeline bulk-imports LLM-processed community posts so the directory isn't empty on day one
 
 #### Anonymity — what we do and don't claim
@@ -259,8 +259,8 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
-- **Anonymous faculty reviews** — each review's author UID is stored as a 64-char SHA-256 hash (`uidHash`), never the raw UID. The hash is produced client-side via `SubtleCrypto.digest`, validated server-side by Firestore rules, and cannot be reversed to identify a student.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase config is stored in `index.html` as `window._shohoj_firebase_config` rather than inside JS source files, keeping it out of the GitHub secret scanner's path. The API key is safe to expose as Firestore rules enforce all access control.
 
 ---
@@ -515,7 +515,8 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `shohoj_theme`            | localStorage | `"dark"` or `"light"`                                                  |
 | `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
-| `facultyReviews/{auto}`   | Firestore    | Immutable review docs — faculty initials, course code, 5 ratings, text, `uidHash` |
+| `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp |
+| `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
 | `facultyProfiles/{init}`  | Firestore    | Read-only faculty directory seeded by admin scripts                    |
 
 Data is never sent to any server other than Firestore. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
