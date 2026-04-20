@@ -31,6 +31,7 @@ JS_FILES = [
     'js/ui/suggestions.js',
     'js/ui/tracker.js',
     'js/ui/reviews.js',
+    'js/ui/reviewsTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
