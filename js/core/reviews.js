@@ -30,14 +30,28 @@ export async function sha256Hex(input) {
     .join('');
 }
 
-// Build the Firestore-bound review document. Strips any undefined fields
-// so Firestore doesn't reject the write.
+// Salted per-(user, faculty, course) hash. Two reviews by the same user for
+// different courses produce uncorrelated hashes, which makes cross-review
+// linkage by hash harder than a single uid-only hash would be.
+export async function reviewKeyHash(uid, facultyInitials, courseCode) {
+  return sha256Hex(
+    `${uid || 'anon'}|${normalizeInitials(facultyInitials)}|${String(courseCode || '').toUpperCase()}`
+  );
+}
+
+// Build both the deterministic doc ID and the Firestore-bound body.
+// The uid is encoded into the doc ID (as a salted hash) and is NOT stored
+// in the body — this removes the cross-review linkage by uidHash.
 export async function buildReviewDoc(payload, uid) {
-  const uidHash = await sha256Hex(uid || 'anon');
-  const doc = {
-    facultyInitials: normalizeInitials(payload.facultyInitials),
-    courseCode:      String(payload.courseCode || '').toUpperCase().trim(),
-    semester:        payload.semester ? String(payload.semester).slice(0, 40) : '',
+  const facultyInitials = normalizeInitials(payload.facultyInitials);
+  const courseCode      = String(payload.courseCode || '').toUpperCase().trim();
+  const hash            = await reviewKeyHash(uid, facultyInitials, courseCode);
+  const id              = `${facultyInitials}_${courseCode}_${hash}`;
+
+  const body = {
+    facultyInitials,
+    courseCode,
+    semester: payload.semester ? String(payload.semester).slice(0, 40) : '',
     ratings: {
       teaching:   Math.round(payload.ratings.teaching),
       marking:    Math.round(payload.ratings.marking),
@@ -45,11 +59,10 @@ export async function buildReviewDoc(payload, uid) {
       difficulty: Math.round(payload.ratings.difficulty),
       workload:   Math.round(payload.ratings.workload),
     },
-    text:    payload.text ? String(payload.text).slice(0, 500) : '',
-    uidHash,
+    text: payload.text ? String(payload.text).slice(0, 500) : '',
     createdAt: Date.now(),
   };
-  return doc;
+  return { id, body };
 }
 
 // Submit a review via the firebase.js hook. Returns { ok, error? }.
@@ -66,14 +79,14 @@ export async function submitReview(payload) {
   if (!uid) return { ok: false, error: 'Sign in to submit a review' };
 
   try {
-    const doc = await buildReviewDoc(payload, uid);
-    const res = await hook(doc);
+    const { id, body } = await buildReviewDoc(payload, uid);
+    const res = await hook({ id, data: body });
     if (res && res.ok) {
       // Optimistically bump the local faculty profile so the UI updates
       // without waiting for a refetch.
       upsertFacultyProfile({
-        initials: doc.facultyInitials,
-        courses:  doc.courseCode ? [doc.courseCode] : [],
+        initials: body.facultyInitials,
+        courses:  body.courseCode ? [body.courseCode] : [],
       });
       return { ok: true };
     }
@@ -84,33 +97,61 @@ export async function submitReview(payload) {
   }
 }
 
-// Fetch reviews for a faculty (optionally scoped to a course code).
-// Returns an array of review docs. Silently returns [] on failure.
-export async function fetchReviewsForFaculty(initials, courseCode = '') {
-  const hook = window._shohoj_fetchReviews;
-  if (typeof hook !== 'function') return [];
+// Report a review for moderation. Writes to a separate `reviewReports`
+// collection that only admins can read.
+export async function reportReview(reviewId, reason) {
+  const hook = window._shohoj_reportReview;
+  if (typeof hook !== 'function') return { ok: false, error: 'Sign in to report a review' };
+  const trimmed = String(reason || '').trim().slice(0, 300);
+  if (trimmed.length < 3) return { ok: false, error: 'Please describe the issue' };
   try {
-    return await hook({
-      facultyInitials: normalizeInitials(initials),
-      courseCode:      courseCode ? String(courseCode).toUpperCase() : '',
-    });
+    return await hook({ reviewId: String(reviewId || ''), reason: trimmed });
   } catch (e) {
-    console.warn('[Shohoj] fetchReviews failed:', e);
-    return [];
+    console.error('[Shohoj] reportReview failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
   }
 }
 
-// Fetch every review for a course code across all faculty.
-// Returns an array of review docs. Silently returns [] on failure.
-export async function fetchReviewsForCourse(courseCode) {
-  const hook = window._shohoj_fetchReviewsByCourse;
-  if (typeof hook !== 'function') return [];
-  if (!courseCode) return [];
+// Normalize the hook response to always return { reviews, nextCursor }.
+function _toPage(res) {
+  if (Array.isArray(res)) return { reviews: res, nextCursor: null };
+  if (res && Array.isArray(res.reviews)) return { reviews: res.reviews, nextCursor: res.nextCursor || null };
+  return { reviews: [], nextCursor: null };
+}
+
+// Fetch a page of reviews for a faculty (optionally scoped to a course code).
+// Returns { reviews, nextCursor }. `nextCursor` is null when there are no
+// more pages; pass it back as `opts.after` to load the next page.
+export async function fetchReviewsForFaculty(initials, courseCode = '', opts = {}) {
+  const hook = window._shohoj_fetchReviews;
+  if (typeof hook !== 'function') return { reviews: [], nextCursor: null };
   try {
-    return await hook(String(courseCode).toUpperCase());
+    return _toPage(await hook({
+      facultyInitials: normalizeInitials(initials),
+      courseCode:      courseCode ? String(courseCode).toUpperCase() : '',
+      pageSize:        opts.pageSize || 50,
+      after:           opts.after   || null,
+    }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviews failed:', e);
+    return { reviews: [], nextCursor: null };
+  }
+}
+
+// Fetch a page of reviews for a course code across all faculty.
+// Returns { reviews, nextCursor }.
+export async function fetchReviewsForCourse(courseCode, opts = {}) {
+  const hook = window._shohoj_fetchReviewsByCourse;
+  if (typeof hook !== 'function') return { reviews: [], nextCursor: null };
+  if (!courseCode) return { reviews: [], nextCursor: null };
+  try {
+    return _toPage(await hook(String(courseCode).toUpperCase(), {
+      pageSize: opts.pageSize || 200,
+      after:    opts.after   || null,
+    }));
   } catch (e) {
     console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
-    return [];
+    return { reviews: [], nextCursor: null };
   }
 }
 
