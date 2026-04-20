@@ -690,7 +690,7 @@ export function renderPlanner() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Available courses</span>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="openReviewsDirectory()" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
+          <button onclick="switchCalcTab('reviews')" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
           <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
         </div>
       </div>
