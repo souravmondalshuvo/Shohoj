@@ -3331,6 +3331,10 @@ input, select, textarea,
           <span class="calc-tab-icon">🔮</span>
           <span>Playground</span>
         </button>
+        <button class="calc-tab" data-tab="reviews" onclick="switchCalcTab('reviews')">
+          <span class="calc-tab-icon">⭐</span>
+          <span>Reviews</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -3411,6 +3415,15 @@ input, select, textarea,
             <input type="number" id="creditsRemaining" min="0" max="250" placeholder="e.g. 97" />
           </div>
           <div class="simulator-result" id="simulatorResult">Enter your target CGPA and remaining credits to see what you need.</div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 4: REVIEWS ═══ -->
+      <div class="calc-tab-panel" id="tabReviews">
+        <div class="calc-body">
+          <div id="reviewsContent">
+            <!-- Rendered dynamically by reviewsTab.js -->
+          </div>
         </div>
       </div>
 
