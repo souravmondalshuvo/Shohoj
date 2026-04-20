@@ -255,7 +255,8 @@ async function _renderFacultyPage(root, initials, courseFilter) {
         ${_dimCell('Workload',   r.workload)}
       </div>
       ${_ratePrompt(courseFilter)}
-    </div>` : `
+    </div>
+    ${_verdictHtml(scoped, r)}` : `
     <div class="rv-tab-aggcard">
       <div class="rv-tab-aggcard-top">
         <div class="rv-tab-aggcard-name">${escHtml(initials)}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
@@ -294,6 +295,58 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   body.querySelectorAll('[data-report]').forEach(btn => {
     btn.onclick = () => openReportModal(btn.getAttribute('data-report'));
   });
+}
+
+function _verdictHtml(scoped, ratings) {
+  if (!ratings || scoped.length < LIMITED_DATA_THRESHOLD) return '';
+
+  const qualityVals = ['teaching', 'marking', 'behavior'].map(k => ratings[k]).filter(v => v !== null);
+  if (!qualityVals.length) return '';
+  const qualityAvg = qualityVals.reduce((s, v) => s + v, 0) / qualityVals.length;
+
+  let verdict, cls, reason;
+  if (qualityAvg >= 4.2) {
+    verdict = 'Take this faculty';
+    cls = 'rv-verdict--great';
+    reason = 'Consistently rated excellent — strong teaching, fair marking, and good conduct.';
+  } else if (qualityAvg >= 3.7) {
+    verdict = 'Generally recommended';
+    cls = 'rv-verdict--good';
+    reason = 'Above-average ratings across most dimensions. Most students have a positive experience.';
+  } else if (qualityAvg >= 3.0) {
+    verdict = 'Mixed — proceed with caution';
+    cls = 'rv-verdict--mixed';
+    reason = 'Student experiences vary. Some find this faculty fine; others have concerns.';
+  } else if (qualityAvg >= 2.5) {
+    verdict = 'Think twice';
+    cls = 'rv-verdict--warn';
+    reason = 'Below-average ratings on key dimensions. Consider alternatives if possible.';
+  } else {
+    verdict = 'Avoid if possible';
+    cls = 'rv-verdict--bad';
+    reason = 'Rated poorly across teaching, marking, and/or conduct by most reviewers.';
+  }
+
+  const tags = [];
+  if (ratings.difficulty !== null && ratings.difficulty >= 4.0)
+    tags.push(`Difficult exams (${ratings.difficulty.toFixed(1)}/5)`);
+  if (ratings.workload !== null && ratings.workload >= 4.0)
+    tags.push(`Heavy workload (${ratings.workload.toFixed(1)}/5)`);
+
+  const effortHtml = tags.length
+    ? `<div class="rv-verdict-tags">${tags.map(t => `<span class="rv-verdict-tag">${escHtml(t)}</span>`).join('')}</div>`
+    : '';
+
+  return `
+    <div class="rv-verdict ${escAttr(cls)}">
+      <div class="rv-verdict-header">
+        <span class="rv-verdict-label">AI Verdict</span>
+        <span class="rv-verdict-result">${escHtml(verdict)}</span>
+      </div>
+      <div class="rv-verdict-reason">${escHtml(reason)}</div>
+      ${effortHtml}
+      <div class="rv-verdict-basis">Based on ${scoped.length} review${scoped.length !== 1 ? 's' : ''} · Quality score ${qualityAvg.toFixed(2)}/5</div>
+    </div>`;
 }
 
 function _dimCell(label, value) {
