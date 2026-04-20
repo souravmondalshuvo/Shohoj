@@ -12,6 +12,16 @@ service cloud.firestore {
       return v is int && v >= 1 && v <= 5;
     }
 
+    function validCourseCode(code) {
+      return code is string
+        && code.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$');
+    }
+
+    function validReviewId(id) {
+      return id is string
+        && id.matches('^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$');
+    }
+
     function validRatings(r) {
       return r.keys().hasOnly(['teaching','marking','behavior','difficulty','workload'])
         && r.keys().hasAll(['teaching','marking','behavior','difficulty','workload'])
@@ -28,11 +38,24 @@ service cloud.firestore {
         && d.keys().hasAll(['facultyInitials','courseCode','ratings','createdAt'])
         && d.facultyInitials is string
         && d.facultyInitials.matches('^[A-Z]{2,6}$')
-        && d.courseCode is string
-        && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
+        && validCourseCode(d.courseCode)
         && validRatings(d.ratings)
         && (!('text' in d) || (d.text is string && d.text.size() <= 500))
-        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40));
+        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40))
+        && d.createdAt == request.time;
+    }
+
+    function validReviewReportPayload(d) {
+      return d.keys().hasOnly(['reviewId','reason','reporterUid','createdAt'])
+        && d.keys().hasAll(['reviewId','reason','reporterUid','createdAt'])
+        && validReviewId(d.reviewId)
+        && exists(/databases/$(database)/documents/facultyReviews/$(d.reviewId))
+        && d.reason is string
+        && d.reason.size() >= 3
+        && d.reason.size() <= 300
+        && d.reporterUid is string
+        && d.reporterUid == request.auth.uid
+        && d.createdAt == request.time;
     }
 
     // ── User data: scoped to own UID, BRACU domain only ──────────────────
@@ -48,44 +71,34 @@ service cloud.firestore {
     // uid anywhere in the doc body.
     //
     // Trust model: the client computes the hash, so a determined adversary
-    // who knows a victim's uid could overwrite their review. That attack
-    // requires obtaining the target's Firebase uid (not just their email).
-    // For stronger guarantees, move creates to a Cloud Function.
+    // who knows a victim's uid could pre-claim that victim's review slot
+    // before they submit. That attack still requires obtaining the target's
+    // Firebase uid (not just their email). For stronger guarantees, move
+    // review creation behind a trusted backend / Cloud Function.
     match /facultyReviews/{reviewId} {
       allow read: if isBracuUser();
 
       allow create: if isBracuUser()
-        && reviewId.matches('^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$')
+        && validReviewId(reviewId)
         && validReviewPayload(request.resource.data)
         && reviewId.split('_')[0] == request.resource.data.facultyInitials
         && reviewId.split('_')[1] == request.resource.data.courseCode;
 
-      // Updates: the doc ID encodes the (user, faculty, course) tuple, so
-      // only a client with the matching uid can produce the same ID. The
-      // immutable tuple fields must not change.
-      allow update: if isBracuUser()
-        && validReviewPayload(request.resource.data)
-        && request.resource.data.facultyInitials == resource.data.facultyInitials
-        && request.resource.data.courseCode == resource.data.courseCode;
-
-      // Deletes from client are forbidden; moderation uses the admin SDK.
-      allow delete: if false;
+      // Client reviews are append-only. This narrows the abuse window for
+      // deterministic doc IDs and keeps public review content tamper-evident.
+      allow update, delete: if false;
     }
 
     // ── Review reports (abuse flagging) ──────────────────────────────────
-    // Any signed-in BRACU user can create a report. Reports are not readable
-    // from the client — admins triage via the Firebase console / admin SDK.
+    // Any signed-in BRACU user can create one report per review. Reports are
+    // not readable from the client — admins triage via the Firebase console /
+    // admin SDK.
     match /reviewReports/{reportId} {
       allow read: if false;
 
       allow create: if isBracuUser()
-        && request.resource.data.keys().hasOnly(['reviewId','reason','createdAt'])
-        && request.resource.data.keys().hasAll(['reviewId','reason','createdAt'])
-        && request.resource.data.reviewId is string
-        && request.resource.data.reviewId.size() <= 128
-        && request.resource.data.reason is string
-        && request.resource.data.reason.size() >= 3
-        && request.resource.data.reason.size() <= 300;
+        && validReviewReportPayload(request.resource.data)
+        && reportId == request.auth.uid + '_' + request.resource.data.reviewId;
 
       allow update, delete: if false;
     }
