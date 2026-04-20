@@ -5,7 +5,8 @@
 // wire buttons, remove on close.
 
 import { submitReview, RATING_KEYS, fetchReviewsForCourse, aggregateByFaculty,
-         fetchReviewsForFaculty, aggregateRatings, fetchRecentReviews } from '../core/reviews.js';
+         fetchReviewsForFaculty, aggregateRatings, fetchRecentReviews,
+         reportReview } from '../core/reviews.js';
 import { normalizeInitials, isValidInitials } from '../core/faculty.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
@@ -102,7 +103,7 @@ export function openReviewModal(opts = {}) {
           Rate your faculty
         </div>
         <div style="font-size:12px;color:${text2};line-height:1.5;margin-bottom:16px;">
-          Your identity is never shown with the review.
+          Pseudonymous to other students. Re-submitting replaces your previous review for this course.
           ${courseCode ? `<br>Course: <strong style="color:${text}">${escHtml(courseCode)}</strong>` : ''}
           ${semester ? ` · ${escHtml(semester)}` : ''}
         </div>
@@ -345,7 +346,7 @@ export async function openCourseReviewsPanel(courseCode, courseName = '') {
   const { overlay, theme } = _buildOverlay(loadingHtml);
   const body = overlay.querySelector('#_cr_body');
 
-  const reviews = await fetchReviewsForCourse(code);
+  const { reviews, nextCursor } = await fetchReviewsForCourse(code);
   const groups = aggregateByFaculty(reviews);
 
   if (!groups.length) {
@@ -358,15 +359,24 @@ export async function openCourseReviewsPanel(courseCode, courseName = '') {
     return;
   }
 
-  const rowsHtml = groups.map(g => {
+  const countNote = `
+    <div style="font-size:11px;color:${theme.text2};margin-bottom:10px;text-align:right;">
+      Showing ${reviews.length} review${reviews.length !== 1 ? 's' : ''}${nextCursor ? ' (more available)' : ''}
+    </div>`;
+
+  const rowsHtml = countNote + groups.map(g => {
     const latest = reviews
       .filter(r => normalizeInitials(r.facultyInitials) === g.facultyInitials && r.text)
       .slice(0, 2);
     const latestHtml = latest.length
       ? `<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">
           ${latest.map(r => `
-            <div style="font-size:11px;color:${theme.text2};line-height:1.45;padding-left:8px;border-left:2px solid ${theme.border};">
-              ${escHtml(r.text.slice(0, 220))}${r.text.length > 220 ? '…' : ''}
+            <div style="font-size:11px;color:${theme.text2};line-height:1.45;padding-left:8px;border-left:2px solid ${theme.border};display:flex;gap:6px;align-items:flex-start;">
+              <span style="flex:1;">${escHtml(r.text.slice(0, 220))}${r.text.length > 220 ? '…' : ''}</span>
+              <button data-report="${escAttr(r.id)}" title="Report this review" style="
+                flex-shrink:0;background:transparent;border:none;color:${theme.text2};
+                font-size:11px;opacity:0.5;cursor:pointer;padding:0 4px;
+              ">⚠ Report</button>
             </div>`).join('')}
          </div>`
       : '';
@@ -401,6 +411,72 @@ export async function openCourseReviewsPanel(courseCode, courseName = '') {
     btn.onclick = () => {
       const fi = btn.getAttribute('data-rate');
       openReviewModal({ facultyInitials: fi, courseCode: code });
+    };
+  });
+  body.querySelectorAll('[data-report]').forEach(btn => {
+    btn.onclick = () => openReportModal(btn.getAttribute('data-report'));
+  });
+}
+
+// ── Report review modal ─────────────────────────────────────────────────────
+export function openReportModal(reviewId) {
+  _injectKeyframes();
+  const { isDark, bg, text, text2, border, input } = _theme();
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.72);
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      display:flex;align-items:center;justify-content:center;
+      animation:reviewFadeIn 0.2s ease;padding:16px;
+    `;
+    overlay.innerHTML = `
+      <div style="background:${bg};border:1px solid ${border};border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 32px 80px rgba(0,0,0,0.55);color:${text};">
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:6px;">Report this review</div>
+        <div style="font-size:12px;color:${text2};line-height:1.5;margin-bottom:12px;">
+          Tell us what's wrong — abuse, harassment, personal info, or off-topic content.
+          An admin will review it.
+        </div>
+        <textarea id="_rpText" class="rv-input" rows="3" maxlength="300"
+          placeholder="What's the issue?"
+          style="background:${input};border:1px solid ${border};color:${text};resize:vertical;min-height:72px;"></textarea>
+        <div id="_rpErr" style="font-size:11px;color:#e74c3c;display:none;margin-top:6px;"></div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button id="_rpCancel" style="
+            flex:1;padding:11px;border-radius:10px;background:${input};
+            border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.10)'};
+            color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+          ">Cancel</button>
+          <button id="_rpSubmit" style="
+            flex:1;padding:11px;border-radius:10px;background:#e74c3c;border:none;color:#fff;
+            font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+          ">Send report</button>
+        </div>
+      </div>
+    `;
+    document.body.classList.add('modal-open');
+    document.body.appendChild(overlay);
+    const close = v => {
+      document.body.classList.remove('modal-open');
+      if (overlay.parentNode) document.body.removeChild(overlay);
+      resolve(v);
+    };
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+    overlay.querySelector('#_rpCancel').onclick = () => close(false);
+    overlay.querySelector('#_rpSubmit').onclick = async () => {
+      const txt = overlay.querySelector('#_rpText').value.trim();
+      const errEl = overlay.querySelector('#_rpErr');
+      errEl.style.display = 'none';
+      const res = await reportReview(reviewId, txt);
+      if (res.ok) {
+        if (typeof window._shohoj_showToast === 'function') {
+          window._shohoj_showToast('Report submitted — thanks');
+        }
+        close(true);
+      } else {
+        errEl.textContent = res.error || 'Report failed';
+        errEl.style.display = '';
+      }
     };
   });
 }
@@ -467,14 +543,14 @@ export async function openReviewsDirectory() {
     body.textContent = 'Searching…';
     // Heuristic: course code looks like 2–4 letters + 3 digits (+ optional letter).
     if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(raw)) {
-      const reviews = await fetchReviewsForCourse(raw);
+      const { reviews } = await fetchReviewsForCourse(raw);
       renderGroups(aggregateByFaculty(reviews), `No reviews yet for ${raw}.`);
       return;
     }
     // Otherwise treat as faculty initials.
     const initials = normalizeInitials(raw);
     if (initials.length < 2) { body.textContent = 'Enter a course code or faculty initials.'; return; }
-    const reviews = await fetchReviewsForFaculty(initials);
+    const { reviews } = await fetchReviewsForFaculty(initials);
     const agg = aggregateRatings(reviews);
     if (!agg) {
       body.innerHTML = `<div style="padding:22px 6px;text-align:center;color:${theme.text2};font-size:12px;">No reviews yet for ${escHtml(initials)}.</div>`;
