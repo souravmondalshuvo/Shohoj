@@ -54,7 +54,30 @@ Nobody was building a solution. So I decided to build it myself.
 
 ## Features — What's Live Today
 
-### ☁ Cloud Sync (New)
+### 📅 Semester Planner (New)
+
+Plan your next semester with prerequisite-aware recommendations. Shohoj reads your completed courses and surfaces what you can take now, what is still locked behind missing prerequisites, and what will unlock the most downstream courses if you take it next.
+
+- **Prerequisite checker** — validates every planned course against BRACU's prereq rules, flags hard-prereq misses as blockers and soft-prereq misses as warnings
+- **Prereq tree view** — expandable dependency graph for any course, so you can see exactly what you need to clear before it
+- **Relevance ranking** — available courses are sorted by department relevance, then by how many future courses they unlock
+- **Credit load validation** — enforces the 9/12/15-credit BRACU policy and flags chairman-permission zones
+- **CGPA impact preview** — see the projected CGPA if your plan lands a given grade across the board
+- **Start Semester** — promote a finished plan directly into a running semester in the Calculator with one click
+
+### ⭐ Faculty Reviews (New)
+
+Anonymous, honest faculty ratings from real BRACU students — stored in Firestore, gated behind BRACU G-Suite sign-in.
+
+- **5-dimension ratings** — Teaching Quality, Marking Fairness, Behavior & Attitude, Course Difficulty, Workload
+- **Anonymous by design** — the reviewer's UID is stored as a SHA-256 hash (`uidHash`) so no one, not even an admin, can trace a review back to the student
+- **Per-course panel** — click the ⭐ on any planner course row to see aggregate ratings for every faculty who taught that course, plus sample review text
+- **Reviews directory** — search by course code or faculty initials to browse the entire review corpus
+- **In-transcript rating** — rate your faculty directly from the course row in the Calculator tab, no separate flow
+- **Immutable writes** — reviews cannot be edited or deleted from the client after submission (Firestore security rules enforce this)
+- **LLM-assisted seeding** — the `scripts/seed_reviews.py` pipeline bulk-imports LLM-processed community posts so the directory isn't empty on day one
+
+### ☁ Cloud Sync
 
 Sign in with your BRACU G-Suite account (`@g.bracu.ac.bd`) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
 
@@ -224,7 +247,8 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Anonymous faculty reviews** — each review's author UID is stored as a 64-char SHA-256 hash (`uidHash`), never the raw UID. The hash is produced client-side via `SubtleCrypto.digest`, validated server-side by Firestore rules, and cannot be reversed to identify a student.
 - **Firebase config exposure** — the Firebase config is stored in `index.html` as `window._shohoj_firebase_config` rather than inside JS source files, keeping it out of the GitHub secret scanner's path. The API key is safe to expose as Firestore rules enforce all access control.
 
 ---
@@ -249,14 +273,15 @@ Shohoj has been through a security audit and the following protections are in pl
 | Security audit & XSS hardening      | ✅ Complete |
 | Cloud Sync (Firebase Auth)          | ✅ Complete |
 | Test suite & CI                     | ✅ Complete |
-| Semester Planner with Prerequisites | 🔜 Planned  |
+| Semester Planner with Prerequisites | ✅ Complete |
+| Faculty Reviews (anonymous, 5-dim)  | ✅ Complete |
 | Course Difficulty Map               | 🔜 Planned  |
 | Advising Week Checklist             | 🔜 Planned  |
 | Freshman Survival Guide             | 🔜 Planned  |
 
 ### Phase 2 — Community Layer
 
-Course & faculty reviews, past papers & notes library, interview experience board, study group finder.
+Review corpus seeding, past papers & notes library, interview experience board, study group finder. Faculty reviews shipped with Phase 1; Phase 2 focuses on growing the review corpus and layering resource-sharing on top.
 
 ### Phase 3 — Campus Life
 
@@ -309,13 +334,17 @@ Shohoj/
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
 │   │   ├── catalog.js            Full BRACU course database (774 courses)
-│   │   └── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
+│   │   ├── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
+│   │   ├── faculty.js            Faculty directory cache, initials normalization
+│   │   └── reviews.js            Review submission & fetch layer, aggregation helpers
 │   ├── ui/
-│   │   ├── render.js             Semester rendering, drag-drop reorder
+│   │   ├── render.js             Semester rendering, drag-drop reorder, faculty input
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
 │   │   ├── charts.js             Canvas GPA trend chart
 │   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake & Repeat Strategy
 │   │   ├── playground.js         CGPA Playground — Grade Changer & Reverse Solver
+│   │   ├── planner.js            Semester Planner — prereq checks, plan builder, tree view
+│   │   ├── reviews.js            Review modal, per-course panel, reviews directory
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
@@ -324,6 +353,9 @@ Shohoj/
 │   │   └── reveal.js             IntersectionObserver scroll reveal system
 │   └── import/
 │       └── parser.js             BRACU transcript PDF parser (dual-strategy)
+├── scripts/
+│   └── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
+├── firestore.rules               Firestore security rules (users, facultyReviews, facultyProfiles)
 ├── tests/
 │   ├── calculator.test.js        40 tests — GPA engine, retake/repeat policies, grade detection
 │   └── parser.test.js            15 tests — department detection, semester parsing, blob parser
@@ -436,6 +468,14 @@ Additional notes on Repeat:
 - Departments not yet in the prereq database (ARC, ANT, PHR, LAW, MIC, BIO, APE) will show courses as unlocked by default — not because they have no prerequisites, but because the data hasn't been added yet.
 - The planner does not check time conflicts or section availability — that requires integration with BRACU CONNECT, which is planned for a future phase.
 
+### Faculty Reviews
+
+- Reading and submitting reviews requires sign-in with a `@g.bracu.ac.bd` account — enforced both client-side and by Firestore security rules.
+- Reviews are **immutable once submitted**. There is no edit or delete flow from the client; this is deliberate to preserve review integrity. If a review needs to be removed (e.g. abuse), it has to be handled server-side by an admin.
+- Faculty are keyed by **initials only** (2–6 uppercase letters). The full faculty directory with names/departments will be seeded over time via `scripts/seed_reviews.py` and the `facultyProfiles` collection.
+- The review corpus starts empty. A panel showing "no reviews yet" for a course is not a bug — it simply means nobody has rated any faculty for that course yet. Early users carry the cost of seeding.
+- Aggregates use simple averages across all reviews for a faculty-course pair. No recency weighting, no outlier filtering, no minimum-sample gating — this will be tuned once the corpus grows.
+
 ### Degree Progress Tracker
 
 - Graduation estimate assumes your **current credit-per-semester pace** remains constant. One unusually light or heavy semester will skew the estimate temporarily.
@@ -459,10 +499,12 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 
 | Key                | Location     | Contents                                      |
 | ------------------ | ------------ | --------------------------------------------- |
-| `shohoj_cgpa_v1`   | localStorage | All semesters, grades, department, settings   |
-| `shohoj_theme`     | localStorage | `"dark"` or `"light"`                         |
-| `shohoj_last_sync` | localStorage | Timestamp of last successful cloud sync       |
-| `users/{uid}`      | Firestore    | Same shape as localStorage value, JSON string |
+| `shohoj_cgpa_v1`          | localStorage | All semesters, grades, department, settings                            |
+| `shohoj_theme`            | localStorage | `"dark"` or `"light"`                                                  |
+| `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
+| `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
+| `facultyReviews/{auto}`   | Firestore    | Immutable review docs — faculty initials, course code, 5 ratings, text, `uidHash` |
+| `facultyProfiles/{init}`  | Firestore    | Read-only faculty directory seeded by admin scripts                    |
 
 Data is never sent to any server other than Firestore. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
@@ -480,6 +522,7 @@ Data is never sent to any server other than Firestore. There are no ads, no anal
 | Retake & Repeat Strategy Analyzer               | ✅ Production-ready                                     |
 | Degree Progress Tracker                         | ✅ Stable — graduation estimate is an approximation     |
 | Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
+| Faculty Reviews                                 | 🔶 Live — corpus seeding in progress                    |
 
 ---
 
