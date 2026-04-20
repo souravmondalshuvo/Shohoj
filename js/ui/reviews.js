@@ -103,7 +103,7 @@ export function openReviewModal(opts = {}) {
           Rate your faculty
         </div>
         <div style="font-size:12px;color:${text2};line-height:1.5;margin-bottom:16px;">
-          Pseudonymous to other students. Re-submitting replaces your previous review for this course.
+          Pseudonymous to other students. Reviews are immutable once submitted from the client.
           ${courseCode ? `<br>Course: <strong style="color:${text}">${escHtml(courseCode)}</strong>` : ''}
           ${semester ? ` · ${escHtml(semester)}` : ''}
         </div>
