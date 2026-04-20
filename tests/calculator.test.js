@@ -1,57 +1,19 @@
 /**
  * tests/calculator.test.js
  * Tests for Shohoj's GPA/CGPA calculation engine.
- * These functions are pure — no DOM, no Firebase, no side effects.
+ * Imports directly from source modules so tests track implementation drift.
  */
 
-// ── Inline the core logic (mirrors js/core/grades.js + js/core/calculator.js)
-// We duplicate the minimal logic here so tests run without a bundler.
-// When migrating to React/Vite, import directly from the source modules.
+import { GRADES, detectGrade } from '../js/core/grades.js';
+import {
+  calcSemGPA,
+  isRepeatEligible,
+  getImprovementStrategy,
+  getRetakenKeys,
+  normalizeGradePoint,
+} from '../js/core/calculator.js';
 
-const GRADES = {
-  'A+': 4.00, 'A':  4.00, 'A-': 3.70,
-  'B+': 3.30, 'B':  3.00, 'B-': 2.70,
-  'C+': 2.30, 'C':  2.00, 'C-': 1.70,
-  'D+': 1.30, 'D':  1.00, 'D-': 0.70,
-  'F':  0.00, 'F(NT)': 0, 'P': null, 'I': null
-};
-
-const POINTS_TO_GRADE = [
-  [4.00, 'A'],  [3.70, 'A-'],
-  [3.30, 'B+'], [3.00, 'B'],  [2.70, 'B-'],
-  [2.30, 'C+'], [2.00, 'C'],  [1.70, 'C-'],
-  [1.30, 'D+'], [1.00, 'D'],  [0.70, 'D-'],
-  [0.00, 'F'],
-];
-
-function detectGrade(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return '';
-  for (const [pt, letter] of POINTS_TO_GRADE) {
-    if (Math.abs(n - pt) < 0.01) return letter;
-  }
-  let closest = null, minDiff = Infinity;
-  for (const [pt, letter] of POINTS_TO_GRADE) {
-    const diff = Math.abs(n - pt);
-    if (diff < minDiff) { minDiff = diff; closest = letter; }
-  }
-  return minDiff <= 0.20 ? closest : '';
-}
-
-function calcSemGPA(sem) {
-  let pts = 0, creds = 0;
-  sem.courses.forEach(c => {
-    const gp = GRADES[c.grade];
-    if (gp === undefined || !c.credits) return;
-    if (c.grade === 'P' || c.grade === 'I') return;
-    if (c.grade === 'F(NT)') { creds += c.credits; return; }
-    if (gp === null) return;
-    pts += gp * c.credits;
-    creds += c.credits;
-  });
-  return creds > 0 ? pts / creds : null;
-}
-
+// CGPA across semesters — not exported from source (test-only helper).
 function calcCGPA(semesters) {
   let pts = 0, cr = 0;
   semesters.forEach(sem => {
@@ -64,67 +26,6 @@ function calcCGPA(semesters) {
     });
   });
   return cr > 0 ? pts / cr : null;
-}
-
-// BRACU best-grade retake policy helper (mirrors calculator.js logic)
-function getRetakenKeys(semesters, bestGradePolicy = true) {
-  const all = [];
-  semesters.forEach(sem => {
-    sem.courses.forEach((c, i) => {
-      if (!c.name.trim()) return;
-      const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      const code = codeMatch ? codeMatch[1] : null;
-      const baseName = c.name.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
-      const gp = (c.grade && c.grade !== 'F(NT)') ? (GRADES[c.grade] ?? -1) : -1;
-      all.push({ semId: sem.id, idx: i, code, baseName, key: `${sem.id}-${i}`, gp });
-    });
-  });
-
-  const groups = {};
-  all.forEach(entry => {
-    const groupKey = entry.code || entry.baseName;
-    if (!groups[groupKey]) groups[groupKey] = [];
-    groups[groupKey].push(entry);
-  });
-
-  const retakenKeys = new Set();
-  Object.values(groups).forEach(group => {
-    if (group.length < 2) return;
-    if (bestGradePolicy) {
-      const best = group.reduce((a, b) => a.gp >= b.gp ? a : b);
-      group.forEach(e => { if (e.key !== best.key) retakenKeys.add(e.key); });
-    } else {
-      group.slice(0, -1).forEach(e => retakenKeys.add(e.key));
-    }
-  });
-  return retakenKeys;
-}
-
-/**
- * Mirrors isRepeatEligible() from js/core/calculator.js.
- *
- * Repeat policy (effective for all students):
- *   - Eligible if current grade is BELOW B (i.e. B- or lower, excluding F)
- *   - F grades require a Retake (full re-enrollment), not a Repeat
- *   - Can only be repeated ONCE, within 2 semesters of initial enrollment
- *   - No grade cap — latest grade counts regardless of what it is
- *   - Same intake-based CGPA policy applies (best grade ≤ Spring 2024, latest grade ≥ Fall 2024)
- */
-function isRepeatEligible(grade) {
-  if (grade === 'F' || grade === 'F(NT)') return false;
-  if (grade === 'P' || grade === 'I' || !grade) return false;
-  const gp = GRADES[grade];
-  if (gp === undefined || gp === null) return false;
-  return gp < 3.0; // Below B (3.0) — B itself is NOT eligible
-}
-
-/**
- * Mirrors getImprovementStrategy() from js/core/calculator.js.
- */
-function getImprovementStrategy(grade) {
-  if (grade === 'F' || grade === 'F(NT)') return 'retake';
-  if (isRepeatEligible(grade)) return 'repeat';
-  return null;
 }
 
 // ── Minimal test runner (no dependencies) ────────────────────────────────────
@@ -168,7 +69,7 @@ function expect(actual) {
       if (actual !== false) throw new Error(`Expected false, got ${JSON.stringify(actual)}`);
     },
     toContain(item) {
-      if (!actual.has(item) && !actual.includes?.(item)) {
+      if (!actual.has?.(item) && !actual.includes?.(item)) {
         throw new Error(`Expected collection to contain ${JSON.stringify(item)}`);
       }
     },
@@ -224,7 +125,6 @@ test('snaps 3.28 to nearest grade B+ (3.30)', () => {
 });
 
 test('does not snap value too far from any grade point (e.g. 2.50)', () => {
-  // 2.50 is 0.20 from both C+ (2.30) and B- (2.70) — outside 0.20 tolerance
   expect(detectGrade('2.50')).toBe('');
 });
 
@@ -234,20 +134,19 @@ console.log('\nSemester GPA calculation:');
 test('calculates GPA for a standard semester', () => {
   const sem = {
     courses: [
-      { name: 'CSE110', credits: 3, grade: 'A' },   // 4.0 × 3 = 12
-      { name: 'MAT110', credits: 3, grade: 'B+' },  // 3.3 × 3 = 9.9
-      { name: 'ENG101', credits: 3, grade: 'B' },   // 3.0 × 3 = 9.0
+      { name: 'CSE110', credits: 3, grade: 'A' },
+      { name: 'MAT110', credits: 3, grade: 'B+' },
+      { name: 'ENG101', credits: 3, grade: 'B' },
     ]
   };
-  // (12 + 9.9 + 9.0) / 9 = 30.9 / 9 = 3.4333...
   expect(calcSemGPA(sem)).toBeCloseTo(3.43);
 });
 
 test('ignores Pass/Fail courses in GPA calculation', () => {
   const sem = {
     courses: [
-      { name: 'MAT092', credits: 0, grade: 'P' },  // P — should be ignored
-      { name: 'CSE110', credits: 3, grade: 'A' },  // 4.0 × 3 = 12
+      { name: 'MAT092', credits: 0, grade: 'P' },
+      { name: 'CSE110', credits: 3, grade: 'A' },
     ]
   };
   expect(calcSemGPA(sem)).toBeCloseTo(4.0);
@@ -257,21 +156,19 @@ test('ignores Incomplete grades', () => {
   const sem = {
     courses: [
       { name: 'CSE110', credits: 3, grade: 'A' },
-      { name: 'CSE111', credits: 3, grade: 'I' },  // Incomplete — ignored
+      { name: 'CSE111', credits: 3, grade: 'I' },
     ]
   };
   expect(calcSemGPA(sem)).toBeCloseTo(4.0);
 });
 
 test('counts F(NT) credits in denominator but not in points', () => {
-  // F(NT) = No Transfer: credits count against you, 0 grade points
   const sem = {
     courses: [
-      { name: 'CSE110', credits: 3, grade: 'A' },    // 4.0 × 3 = 12
-      { name: 'CSE111', credits: 3, grade: 'F(NT)' }, // 0 pts, 3 cr
+      { name: 'CSE110', credits: 3, grade: 'A' },
+      { name: 'CSE111', credits: 3, grade: 'F(NT)' },
     ]
   };
-  // 12 / 6 = 2.0
   expect(calcSemGPA(sem)).toBeCloseTo(2.0);
 });
 
@@ -305,35 +202,25 @@ console.log('\nCGPA calculation:');
 
 test('calculates correct CGPA across two semesters', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [
-        { name: 'CSE110', credits: 3, grade: 'A' },  // 12
-        { name: 'MAT110', credits: 3, grade: 'B' },  // 9
-      ]
-    },
-    {
-      id: 2,
-      courses: [
-        { name: 'CSE111', credits: 3, grade: 'A-' }, // 11.1
-        { name: 'MAT120', credits: 3, grade: 'B+' }, // 9.9
-      ]
-    }
+    { id: 1, courses: [
+      { name: 'CSE110', credits: 3, grade: 'A' },
+      { name: 'MAT110', credits: 3, grade: 'B' },
+    ]},
+    { id: 2, courses: [
+      { name: 'CSE111', credits: 3, grade: 'A-' },
+      { name: 'MAT120', credits: 3, grade: 'B+' },
+    ]}
   ];
-  // (12 + 9 + 11.1 + 9.9) / 12 = 42 / 12 = 3.5
   expect(calcCGPA(semesters)).toBeCloseTo(3.5);
 });
 
 test('CGPA caps at 4.0 for all-A performance', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [
-        { name: 'CSE110', credits: 3, grade: 'A' },
-        { name: 'MAT110', credits: 3, grade: 'A' },
-        { name: 'ENG101', credits: 3, grade: 'A' },
-      ]
-    }
+    { id: 1, courses: [
+      { name: 'CSE110', credits: 3, grade: 'A' },
+      { name: 'MAT110', credits: 3, grade: 'A' },
+      { name: 'ENG101', credits: 3, grade: 'A' },
+    ]}
   ];
   expect(calcCGPA(semesters)).toBeCloseTo(4.0);
 });
@@ -350,49 +237,32 @@ console.log('\nRetake policy — best grade (≤ Spring 2024):');
 
 test('keeps best grade when course is retaken', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'C' }]
-    },
-    {
-      id: 2,
-      courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'B+' }]
-    }
+    { id: 1, courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'C' }] },
+    { id: 2, courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'B+' }] }
   ];
-  const retakenKeys = getRetakenKeys(semesters, true);
-  // C grade (sem 1) should be marked retaken — B+ is better
+  const retakenKeys = getRetakenKeys(semesters, { bestGrade: true });
   expect(retakenKeys).toContain('1-0');
   expect(retakenKeys).notToContain('2-0');
 });
 
 test('keeps better grade even when it appears first chronologically', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'B+' }]
-    },
-    {
-      id: 2,
-      courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'C' }]
-    }
+    { id: 1, courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'B+' }] },
+    { id: 2, courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'C' }] }
   ];
-  const retakenKeys = getRetakenKeys(semesters, true);
-  // C grade (sem 2) should be retaken — B+ is better
+  const retakenKeys = getRetakenKeys(semesters, { bestGrade: true });
   expect(retakenKeys).toContain('2-0');
   expect(retakenKeys).notToContain('1-0');
 });
 
 test('no retaken keys for unique courses', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [
-        { name: 'Data Structures (CSE220)', credits: 3, grade: 'B' },
-        { name: 'Algorithms (CSE221)',       credits: 3, grade: 'A' },
-      ]
-    }
+    { id: 1, courses: [
+      { name: 'Data Structures (CSE220)', credits: 3, grade: 'B' },
+      { name: 'Algorithms (CSE221)',       credits: 3, grade: 'A' },
+    ]}
   ];
-  const retakenKeys = getRetakenKeys(semesters, true);
+  const retakenKeys = getRetakenKeys(semesters, { bestGrade: true });
   expect(retakenKeys.size).toBe(0);
 });
 
@@ -401,42 +271,25 @@ console.log('\nRetake policy — latest grade (≥ Fall 2024):');
 
 test('keeps latest grade under Fall 2024+ policy', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'B+' }]
-    },
-    {
-      id: 2,
-      courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'C' }]
-    }
+    { id: 1, courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'B+' }] },
+    { id: 2, courses: [{ name: 'Data Structures (CSE220)', credits: 3, grade: 'C' }] }
   ];
-  const retakenKeys = getRetakenKeys(semesters, false);
-  // Latest = sem 2, so sem 1 is retaken regardless of grade
+  const retakenKeys = getRetakenKeys(semesters, { bestGrade: false });
   expect(retakenKeys).toContain('1-0');
   expect(retakenKeys).notToContain('2-0');
 });
 
 test('latest grade policy keeps last even if it is worse', () => {
   const semesters = [
-    {
-      id: 1,
-      courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'A' }]
-    },
-    {
-      id: 2,
-      courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'D' }]
-    }
+    { id: 1, courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'A' }] },
+    { id: 2, courses: [{ name: 'Algorithms (CSE221)', credits: 3, grade: 'D' }] }
   ];
-  const retakenKeys = getRetakenKeys(semesters, false);
-  // D is the latest — A should be marked retaken
+  const retakenKeys = getRetakenKeys(semesters, { bestGrade: false });
   expect(retakenKeys).toContain('1-0');
   expect(retakenKeys).notToContain('2-0');
 });
 
 // ── REPEAT POLICY ────────────────────────────────────────────────────────────
-// Repeat = sit a special exam once within 2 semesters to improve a below-B grade.
-// No grade cap — latest grade counts for CGPA (same intake-based policy as retake).
-// F grades require a full Retake, not a Repeat.
 console.log('\nRepeat policy — eligibility:');
 
 test('B- is eligible for repeat', () => {
@@ -532,15 +385,6 @@ test('A grade returns null — no improvement mechanism', () => {
 
 // ── GRADE POINT NORMALIZATION ────────────────────────────────────────────────
 console.log('\nGrade point shorthand normalization:');
-
-function normalizeGradePoint(raw, mode) {
-  const trimmed = raw.trim();
-  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
-  if (trimmed.includes('.')) return trimmed;
-  if (/^[0-4]\d$/.test(trimmed)) return trimmed[0] + '.' + trimmed[1];
-  if (mode === 'blur' && /^[0-4]$/.test(trimmed)) return trimmed + '.0';
-  return trimmed;
-}
 
 test('expands "33" shorthand to "3.3"', () => {
   expect(normalizeGradePoint('33', 'input')).toBe('3.3');
