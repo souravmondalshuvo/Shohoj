@@ -1,4 +1,30 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "facultyInitials", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",       "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "facultyInitials", "order": "ASCENDING" },
+        { "fieldPath": "courseCode",      "order": "ASCENDING" },
+        { "fieldPath": "createdAt",       "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courseCode", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
