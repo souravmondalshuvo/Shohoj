@@ -52,6 +52,7 @@ import {
 } from './ui/planner.js';
 
 import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
+import { renderReviewsTab } from './ui/reviewsTab.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -387,6 +388,7 @@ const TAB_MAP = {
   calculator: 'tabCalculator',
   planner:    'tabPlanner',
   playground: 'tabPlayground',
+  reviews:    'tabReviews',
 };
 
 let _activeCalcTab = 'calculator';
@@ -409,10 +411,15 @@ function switchCalcTab(tabId) {
   // Persist tab choice
   try { sessionStorage.setItem('shohoj_active_tab', tabId); } catch(e) {}
 
-  // Update URL hash for direct linking
+  // Update URL hash for direct linking — but don't clobber sub-routes like
+  // #calculator/reviews/MAK when the user is already on the reviews tab.
   if (history.replaceState) {
-    const hash = tabId === 'calculator' ? '#calculator' : `#calculator/${tabId}`;
-    history.replaceState(null, '', hash);
+    const currentHash = window.location.hash || '';
+    const onReviewsSubroute = tabId === 'reviews' && currentHash.startsWith('#calculator/reviews/');
+    if (!onReviewsSubroute) {
+      const hash = tabId === 'calculator' ? '#calculator' : `#calculator/${tabId}`;
+      history.replaceState(null, '', hash);
+    }
   }
 
   // Trigger re-render for active tab content
@@ -421,6 +428,9 @@ function switchCalcTab(tabId) {
   }
   if (tabId === 'planner') {
     renderPlanner();
+  }
+  if (tabId === 'reviews') {
+    renderReviewsTab();
   }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
@@ -436,10 +446,11 @@ function switchCalcTab(tabId) {
 
 // Restore tab from session or URL hash on load
 function restoreCalcTab() {
-  // Check URL hash first
-  const hash = window.location.hash;
-  if (hash === '#calculator/planner')    return 'planner';
-  if (hash === '#calculator/playground') return 'playground';
+  // Check URL hash first — reviews accepts sub-routes for faculty/course deep links
+  const hash = window.location.hash || '';
+  if (hash === '#calculator/planner')         return 'planner';
+  if (hash === '#calculator/playground')      return 'playground';
+  if (hash.startsWith('#calculator/reviews')) return 'reviews';
 
   // Then check sessionStorage
   try {
