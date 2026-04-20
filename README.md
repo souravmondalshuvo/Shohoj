@@ -67,15 +67,27 @@ Plan your next semester with prerequisite-aware recommendations. Shohoj reads yo
 
 ### ⭐ Faculty Reviews (New)
 
-Anonymous, honest faculty ratings from real BRACU students — stored in Firestore, gated behind BRACU G-Suite sign-in.
+Pseudonymous faculty ratings from real BRACU students — stored in Firestore, gated behind BRACU G-Suite sign-in.
 
 - **5-dimension ratings** — Teaching Quality, Marking Fairness, Behavior & Attitude, Course Difficulty, Workload
-- **Anonymous by design** — the reviewer's UID is stored as a SHA-256 hash (`uidHash`) so no one, not even an admin, can trace a review back to the student
+- **Pseudonymous to other users** — the review document body contains no user identifier. Each review's Firestore doc ID is derived from a salted SHA-256 of `uid + facultyInitials + courseCode`, so the same user's reviews for different courses don't share a visible hash
+- **One review per user per faculty-course pair** — deterministic doc IDs mean re-submitting overwrites your previous review instead of creating duplicates
 - **Per-course panel** — click the ⭐ on any planner course row to see aggregate ratings for every faculty who taught that course, plus sample review text
-- **Reviews directory** — search by course code or faculty initials to browse the entire review corpus
+- **Reviews directory** — search by course code or faculty initials to browse the review corpus (paginated)
 - **In-transcript rating** — rate your faculty directly from the course row in the Calculator tab, no separate flow
-- **Immutable writes** — reviews cannot be edited or deleted from the client after submission (Firestore security rules enforce this)
+- **Report for moderation** — every review surfaces a "Report" action that writes to an admin-only `reviewReports` collection
 - **LLM-assisted seeding** — the `scripts/seed_reviews.py` pipeline bulk-imports LLM-processed community posts so the directory isn't empty on day one
+
+#### Anonymity — what we do and don't claim
+
+Because Shohoj is a client-only app (no Cloud Functions today), the review write happens from the browser. That means:
+
+- ✅ Your raw Firebase UID and email are **never** written into the review document.
+- ✅ Reviews for different (faculty, course) pairs produce different hashes, so a third party who reads the collection **cannot trivially group all of your reviews together** by looking at a single field.
+- ⚠️ Firebase **project administrators** (and anyone with admin SDK access) can audit Firestore logs and in principle correlate a write back to the authenticated session. "Anonymous to the public" ≠ "anonymous to the service operator."
+- ⚠️ A determined adversary who already knows your UID could reconstruct your review hash for any (faculty, course) pair.
+
+For stronger guarantees we would need to move review writes behind a Cloud Function that strips the caller's identity before committing — tracked as a future hardening.
 
 ### ☁ Cloud Sync
 
