@@ -9556,6 +9556,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
         ${_dimCell('Difficulty', r.difficulty)}
         ${_dimCell('Workload',   r.workload)}
       </div>
+      ${_distributionHtml(scoped)}
       ${_ratePrompt(courseFilter)}
     </div>
     ${_verdictHtml(scoped, r)}` : `
@@ -9578,16 +9579,23 @@ async function _renderFacultyPage(root, initials, courseFilter) {
         .filter(x => x.text && x.text.trim().length > 0)
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
         .slice(0, 40)
-        .map(x => `
+        .map(x => {
+          const q = _reviewQuality(x);
+          const stars = _miniStars(q);
+          const date  = _formatRelativeDate(x.createdAt);
+          const showCourse = !courseFilter && x.courseCode;
+          return `
           <div class="rv-tab-reviewitem">
             <div class="rv-tab-reviewitem-meta">
-              ${x.courseCode ? `<span class="rv-tab-reviewitem-course">${escHtml(String(x.courseCode).toUpperCase())}</span>` : ''}
-              ${x.semester   ? `<span class="rv-tab-reviewitem-sem">· ${escHtml(x.semester)}</span>` : ''}
+              ${stars ? `<span class="rv-tab-reviewitem-stars">${stars}</span>` : ''}
+              ${showCourse ? `<span class="rv-tab-reviewitem-course">${escHtml(String(x.courseCode).toUpperCase())}</span>` : ''}
+              ${x.semester ? `<span class="rv-tab-reviewitem-sem">${escHtml(x.semester)}</span>` : ''}
+              ${date ? `<span class="rv-tab-reviewitem-date">${escHtml(date)}</span>` : ''}
               <button class="rv-tab-reviewitem-report" data-report="${escAttr(x.id)}" title="Report this review">⚠ Report</button>
             </div>
             <div class="rv-tab-reviewitem-text">${escHtml(x.text)}</div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       ${nextCursor ? `<div class="rv-tab-note">More reviews exist — refine by course to see them.</div>` : ''}
     </div>
   ` : '';
@@ -9600,6 +9608,72 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   body.querySelectorAll('[data-report]').forEach(btn => {
     btn.onclick = () => openReportModal(btn.getAttribute('data-report'));
   });
+}
+
+// Quality score for a single review (avg of teaching/marking/behavior)
+function _reviewQuality(r) {
+  if (!r || !r.ratings) return null;
+  const vals = ['teaching', 'marking', 'behavior']
+    .map(k => r.ratings[k])
+    .filter(v => typeof v === 'number');
+  if (!vals.length) return null;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+}
+
+function _timestampToMs(ts) {
+  if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+  return 0;
+}
+
+function _formatRelativeDate(ts) {
+  const ms = _timestampToMs(ts);
+  if (!ms) return '';
+  const diffDays = (Date.now() - ms) / 86400000;
+  if (diffDays < 1)   return 'Today';
+  if (diffDays < 2)   return 'Yesterday';
+  if (diffDays < 7)   return `${Math.floor(diffDays)}d ago`;
+  if (diffDays < 30)  return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+// Compact stars for a single rating score (1-5)
+function _miniStars(score) {
+  if (typeof score !== 'number' || isNaN(score)) return '';
+  const full = Math.round(Math.max(1, Math.min(5, score)));
+  return '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full);
+}
+
+// Rating distribution bar chart (5★ → 1★)
+function _distributionHtml(scoped) {
+  const buckets = [0, 0, 0, 0, 0]; // index 0 → 1★, index 4 → 5★
+  let total = 0;
+  for (const r of scoped) {
+    const q = _reviewQuality(r);
+    if (q === null) continue;
+    const idx = Math.min(4, Math.max(0, Math.round(q) - 1));
+    buckets[idx]++;
+    total++;
+  }
+  if (!total) return '';
+  const max = Math.max(...buckets, 1);
+  const rows = [];
+  for (let i = 4; i >= 0; i--) {
+    const pct = (buckets[i] / max) * 100;
+    rows.push(`
+      <div class="rv-tab-dist-row">
+        <span class="rv-tab-dist-label">${i + 1}★</span>
+        <div class="rv-tab-dist-bar"><div class="rv-tab-dist-fill" style="width:${pct}%"></div></div>
+        <span class="rv-tab-dist-count">${buckets[i]}</span>
+      </div>`);
+  }
+  return `<div class="rv-tab-distribution">
+    <div class="rv-tab-dist-title">Rating distribution</div>
+    ${rows.join('')}
+  </div>`;
 }
 
 function _ratePrompt(courseFilter) {
