@@ -1092,3 +1092,62 @@ export const PREREQS = {
   'ENG438': { hp: ['ENG334'] },
   'ENG439': { hp: ['ENG332', 'ENG334'] },
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DEPARTMENT OWNERSHIP
+// Maps every course prefix to the department that owns it.
+// Used to determine which department a course "belongs to" regardless of which
+// program a student is enrolled in.
+// ══════════════════════════════════════════════════════════════════════════════
+export const PREFIX_DEPT_MAP = {
+  // ── School of Data and Sciences (SDS) ─────────────────────────────────────
+  CSE: 'CSE',                                           // Dept of CSE
+  EEE: 'EEE',                                           // Dept of EEE
+  ECE: 'ECE',                                           // Dept of ECE
+  MAT: 'MNS', PHY: 'MNS', STA: 'MNS', ENV: 'MNS',     // Dept of Math &
+  MIC: 'MNS', BCH: 'MNS', BTE: 'MNS', BIO: 'MNS',     //   Natural Sciences
+  APE: 'MNS', CHE: 'MNS',                               //   (MNS)
+  // ── School of Business ────────────────────────────────────────────────────
+  ACT: 'BBA', BUS: 'BBA', FIN: 'BBA', MGT: 'BBA',
+  MKT: 'BBA', MIS: 'BBA', MSC: 'BBA',
+  // ── School of Humanities & Social Sciences (SHSS) ─────────────────────────
+  ENG: 'ENG',                                           // Dept of English
+  ECO: 'ECO',                                           // Dept of Economics
+  ANT: 'ANT',                                           // Dept of Anthropology
+  SOC: 'SHSS', POL: 'SHSS', PSY: 'SHSS',               // Shared SHSS depts
+  HST: 'SHSS', GEO: 'SHSS', HUM: 'SHSS',
+  // ── Other schools ─────────────────────────────────────────────────────────
+  ARC: 'ARC',                                           // School of Architecture
+  PHB: 'PHR', PHR: 'PHR',                               // School of Pharmacy
+  LAW: 'LAW',                                           // School of Law
+  // ── School of General Education (SGE) ─────────────────────────────────────
+  BNG: 'SGE', EMB: 'SGE', CST: 'SGE', FRN: 'SGE', DEV: 'SGE',
+};
+
+// Human-readable labels and school affiliation for each department code.
+export const DEPT_META = {
+  CSE:  { label: 'Computer Science & Engineering',        school: 'SDS'  },
+  EEE:  { label: 'Electrical & Electronic Engineering',   school: 'SDS'  },
+  ECE:  { label: 'Electronic & Communication Engineering',school: 'SDS'  },
+  MNS:  { label: 'Mathematics & Natural Sciences',        school: 'SDS'  },
+  BBA:  { label: 'Business',                              school: 'SoBiz'},
+  ENG:  { label: 'English',                               school: 'SHSS' },
+  ECO:  { label: 'Economics',                             school: 'SHSS' },
+  ANT:  { label: 'Anthropology',                          school: 'SHSS' },
+  SHSS: { label: 'Humanities & Social Sciences',          school: 'SHSS' },
+  ARC:  { label: 'Architecture',                          school: 'SAD'  },
+  PHR:  { label: 'Pharmacy',                              school: 'Pharmacy'},
+  LAW:  { label: 'Law',                                   school: 'Law'  },
+  SGE:  { label: 'General Education',                     school: 'SGE'  },
+};
+
+// Returns the prefix portion of a course code (letters before the first digit).
+export function getCoursePrefix(code) {
+  const m = String(code).match(/^([A-Z]+)/);
+  return m ? m[1] : '';
+}
+
+// Returns the owning department code for a course, or null if unknown.
+export function getCourseDept(code) {
+  return PREFIX_DEPT_MAP[getCoursePrefix(code)] ?? null;
+}
