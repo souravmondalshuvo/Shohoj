@@ -3206,6 +3206,19 @@ input, select, textarea,
   line-height: 1.35;
 }
 
+.rv-tab-section-header {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #aaa);
+  margin: 20px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+[data-theme="light"] .rv-tab-section-header {
+  border-bottom-color: rgba(0,0,0,0.08);
+}
 .rv-tab-coursegrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
