@@ -2993,6 +2993,114 @@ input, select, textarea,
   word-break: break-word;
 }
 
+/* ── Reviews: dept & course grids ───────────────────────── */
+.rv-tab-deptgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.rv-tab-deptcard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 14px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: center;
+}
+[data-theme="light"] .rv-tab-deptcard {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+.rv-tab-deptcard:hover {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.18);
+}
+[data-theme="light"] .rv-tab-deptcard:hover {
+  background: rgba(0,0,0,0.07);
+}
+.rv-tab-deptcard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rv-tab-deptcard-code {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 5px;
+  font-family: 'Syne', sans-serif;
+}
+.rv-tab-deptcard-label {
+  font-size: 11px;
+  color: var(--text-muted, #aaa);
+  line-height: 1.35;
+}
+
+.rv-tab-coursegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.rv-tab-coursecard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+[data-theme="light"] .rv-tab-coursecard {
+  background: rgba(0,0,0,0.03);
+  border-color: rgba(0,0,0,0.1);
+}
+.rv-tab-coursecard:hover {
+  background: rgba(255,255,255,0.09);
+  border-color: rgba(255,255,255,0.18);
+}
+[data-theme="light"] .rv-tab-coursecard:hover {
+  background: rgba(0,0,0,0.07);
+}
+.rv-tab-coursecard:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.rv-tab-coursecard-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+  font-family: 'Syne', sans-serif;
+}
+.rv-tab-coursecard-name {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+.rv-tab-coursecard-count {
+  font-size: 11px;
+  color: var(--text-muted, #aaa);
+}
+
+/* Faculty name below initials */
+.rv-tab-facultycard-name {
+  font-size: 11px;
+  color: var(--text-muted, #aaa);
+  margin: 2px 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Faculty name on aggcard */
+.rv-tab-aggcard-facultyname {
+  font-size: 13px;
+  color: var(--text-muted, #aaa);
+  margin-top: 2px;
+}
+
 /* ── Planner empty state ─────────────────────────────────── */
 .planner-coming-soon {
   display: flex;
