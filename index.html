@@ -3021,6 +3021,76 @@ input, select, textarea,
   word-break: break-word;
 }
 
+/* ── Reviews: search autocomplete ───────────────────────── */
+.rv-tab-searchwrap {
+  position: relative;
+}
+.rv-tab-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: #0d1f12;
+  border: 1px solid rgba(46,204,113,0.22);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  max-height: 320px;
+  overflow-y: auto;
+}
+[data-theme="light"] .rv-tab-suggestions-dropdown {
+  background: #f0faf3;
+  border-color: rgba(46,204,113,0.28);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+.rv-sug-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.35);
+  padding: 8px 14px 4px;
+}
+[data-theme="light"] .rv-sug-label {
+  color: rgba(0,0,0,0.35);
+}
+.rv-sug-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.rv-sug-item:hover,
+.rv-sug-item.active {
+  background: rgba(46,204,113,0.12);
+}
+[data-theme="light"] .rv-sug-item:hover,
+[data-theme="light"] .rv-sug-item.active {
+  background: rgba(46,204,113,0.10);
+}
+.rv-sug-code {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  font-family: 'Syne', sans-serif;
+}
+.rv-sug-name {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.rv-sug-hint {
+  opacity: 0.5;
+  font-style: italic;
+}
+
 /* ── Reviews: dept & course grids ───────────────────────── */
 .rv-tab-deptgrid {
   display: grid;
