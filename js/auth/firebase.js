@@ -7,7 +7,8 @@ import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
-         collection, query, where, getDocs, orderBy, limit as qLimit, startAfter }
+         collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
+         documentId }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -980,6 +981,25 @@ window._shohoj_fetchRecentReviews = async function(n = 50) {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchRecentReviews failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchFacultyProfiles = async function(initialsArr) {
+  if (!currentUser || !Array.isArray(initialsArr) || !initialsArr.length) return [];
+  try {
+    const normalized = [...new Set(initialsArr.map(i => String(i).toUpperCase().trim()).filter(Boolean))];
+    const results = [];
+    for (let i = 0; i < normalized.length; i += 30) {
+      const chunk = normalized.slice(i, i + 30);
+      const col = collection(db, 'facultyProfiles');
+      const q = query(col, where(documentId(), 'in', chunk));
+      const snap = await getDocs(q);
+      snap.docs.forEach(d => results.push({ initials: d.id, ...d.data() }));
+    }
+    return results;
+  } catch (e) {
+    console.warn('[Shohoj] fetchFacultyProfiles failed:', e);
     return [];
   }
 };
