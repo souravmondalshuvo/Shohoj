@@ -6,7 +6,7 @@
 
 import { submitReview, RATING_KEYS, fetchReviewsForCourse, aggregateByFaculty,
          fetchReviewsForFaculty, aggregateRatings, fetchRecentReviews,
-         reportReview } from '../core/reviews.js';
+         reportReview, reviewKeyHash } from '../core/reviews.js';
 import { normalizeInitials, isValidInitials } from '../core/faculty.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
@@ -67,12 +67,26 @@ function _starsRow(dimKey, initial = 0) {
 // Public: open the review modal.
 // opts: { facultyInitials, courseCode, semester, onSubmitted }
 // Returns a promise that resolves with { submitted:boolean, skipped:boolean }.
-export function openReviewModal(opts = {}) {
+export async function openReviewModal(opts = {}) {
   _injectKeyframes();
   const { isDark, bg, text, text2, border, input } = _theme();
   const initialInitials = normalizeInitials(opts.facultyInitials || '');
   const courseCode = String(opts.courseCode || '').toUpperCase();
   const semester = String(opts.semester || '');
+
+  // Fetch existing review to pre-fill if the user has already reviewed
+  let existingReview = null;
+  if (initialInitials && courseCode && typeof window._shohoj_currentUid === 'function') {
+    const uid = window._shohoj_currentUid();
+    if (uid && typeof window._shohoj_fetchReviewById === 'function') {
+      try {
+        const hash = await reviewKeyHash(uid, initialInitials, courseCode);
+        const docId = `${initialInitials}_${courseCode}_${hash}`;
+        existingReview = await window._shohoj_fetchReviewById(docId);
+      } catch (_) {}
+    }
+  }
+  const isUpdate = !!existingReview;
 
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -100,10 +114,10 @@ export function openReviewModal(opts = {}) {
         ">×</button>
 
         <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px;">
-          Rate your faculty
+          ${isUpdate ? 'Update your review' : 'Rate your faculty'}
         </div>
         <div style="font-size:12px;color:${text2};line-height:1.5;margin-bottom:16px;">
-          Pseudonymous to other students. Reviews are immutable once submitted from the client.
+          ${isUpdate ? 'Your previous rating will be replaced.' : 'Pseudonymous to other students.'}
           ${courseCode ? `<br>Course: <strong style="color:${text}">${escHtml(courseCode)}</strong>` : ''}
           ${semester ? ` · ${escHtml(semester)}` : ''}
         </div>
@@ -127,7 +141,7 @@ export function openReviewModal(opts = {}) {
                 <div class="rv-row-title" style="color:${text};">${label}</div>
                 <div class="rv-row-hint" style="color:${text2};">${hint}</div>
               </div>
-              ${_starsRow(key, 0)}
+              ${_starsRow(key, existingReview?.ratings?.[key] ?? 0)}
             </div>
           `).join('')}
         </div>
@@ -138,8 +152,8 @@ export function openReviewModal(opts = {}) {
           </label>
           <textarea id="_rvText" class="rv-input" rows="3" maxlength="500"
             placeholder="What stood out? Keep it honest and respectful."
-            style="background:${input};border:1px solid ${border};color:${text};resize:vertical;min-height:64px;"></textarea>
-          <div id="_rvCount" style="font-size:11px;color:${text2};text-align:right;">0 / 500</div>
+            style="background:${input};border:1px solid ${border};color:${text};resize:vertical;min-height:64px;">${escHtml(existingReview?.text ?? '')}</textarea>
+          <div id="_rvCount" style="font-size:11px;color:${text2};text-align:right;">${(existingReview?.text ?? '').length} / 500</div>
         </div>
 
         <div id="_rvError" style="font-size:12px;color:#e74c3c;display:none;margin-bottom:10px;"></div>
@@ -154,7 +168,7 @@ export function openReviewModal(opts = {}) {
             flex:1.4;padding:12px;border-radius:10px;
             background:#2ECC71;border:none;color:#0b0f0d;
             font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
-          ">Submit Review</button>
+          ">${isUpdate ? 'Update Review' : 'Submit Review'}</button>
         </div>
       </div>
     `;
@@ -163,7 +177,13 @@ export function openReviewModal(opts = {}) {
     document.body.appendChild(overlay);
 
     // ── Rating state ──────────────────────────────────────────────────────
-    const ratings = { teaching: 0, marking: 0, behavior: 0, difficulty: 0, workload: 0 };
+    const ratings = {
+      teaching:   existingReview?.ratings?.teaching   ?? 0,
+      marking:    existingReview?.ratings?.marking     ?? 0,
+      behavior:   existingReview?.ratings?.behavior    ?? 0,
+      difficulty: existingReview?.ratings?.difficulty  ?? 0,
+      workload:   existingReview?.ratings?.workload    ?? 0,
+    };
 
     overlay.querySelectorAll('.rv-row-stars').forEach(group => {
       const dim = group.dataset.dim;
@@ -241,7 +261,7 @@ export function openReviewModal(opts = {}) {
       const res = await submitReview(payload);
       if (res.ok) {
         if (typeof window._shohoj_showToast === 'function') {
-          window._shohoj_showToast('Review submitted — thank you ');
+          window._shohoj_showToast(res.updated ? 'Review updated — thank you' : 'Review submitted — thank you');
         }
         if (typeof opts.onSubmitted === 'function') opts.onSubmitted(payload);
         close({ submitted: true, skipped: false });
