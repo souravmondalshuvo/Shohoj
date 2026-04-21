@@ -109,13 +109,11 @@ export async function submitReview(payload) {
     const { id, body } = await buildReviewDoc(payload, uid);
     const res = await hook({ id, data: body });
     if (res && res.ok) {
-      // Optimistically bump the local faculty profile so the UI updates
-      // without waiting for a refetch.
       upsertFacultyProfile({
         initials: body.facultyInitials,
         courses:  body.courseCode ? [body.courseCode] : [],
       });
-      return { ok: true };
+      return { ok: true, updated: res.updated ?? false };
     }
     return { ok: false, error: (res && res.error) || 'Submission failed' };
   } catch (e) {
