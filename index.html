@@ -9087,13 +9087,15 @@ function _renderDeptList(root) {
         <div class="rv-tab-title">⭐ Faculty Reviews</div>
         <div class="rv-tab-sub">Browse by department, or search directly by faculty initials or course code.</div>
       </div>
-      <div class="rv-tab-searchrow">
-        <input id="_rvt_q" type="text" class="rv-tab-input"
-          placeholder="e.g. MAK or CSE220"
-          autocomplete="off" spellcheck="false" />
-        <button id="_rvt_go" class="rv-tab-btn-primary">Search</button>
+      <div class="rv-tab-searchwrap">
+        <div class="rv-tab-searchrow">
+          <input id="_rvt_q" type="text" class="rv-tab-input"
+            placeholder="e.g. MAK, CSE220, or Data Structures"
+            autocomplete="off" spellcheck="false" />
+          <button id="_rvt_go" class="rv-tab-btn-primary">Search</button>
+        </div>
+        <div id="_rvt_suggestions" class="rv-tab-suggestions-dropdown" hidden></div>
       </div>
-      <div id="_rvt_search_err"></div>
       <div class="rv-tab-deptgrid">
         ${Object.entries(DEPARTMENTS).map(([code, d]) => `
           <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0">
@@ -9105,33 +9107,138 @@ function _renderDeptList(root) {
     </div>
   `;
 
-  const input = root.querySelector('#_rvt_q');
-  const go    = root.querySelector('#_rvt_go');
-  const err   = root.querySelector('#_rvt_search_err');
+  const input   = root.querySelector('#_rvt_q');
+  const go      = root.querySelector('#_rvt_go');
+  const dropdown = root.querySelector('#_rvt_suggestions');
+
+  let activeIdx = -1;
+
+  const hideSuggestions = () => {
+    dropdown.hidden = true;
+    activeIdx = -1;
+  };
+
+  const navigate = (href) => {
+    hideSuggestions();
+    input.value = '';
+    _navigate(href);
+  };
 
   const runSearch = () => {
-    err.innerHTML = '';
     const raw = (input.value || '').trim().toUpperCase();
     if (!raw) return;
+    // If an item is keyboard-selected, use it
+    const active = dropdown.querySelector('.rv-sug-item.active');
+    if (active && !dropdown.hidden) {
+      navigate(active.dataset.href);
+      return;
+    }
     if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(raw)) {
-      _navigate(`#calculator/reviews/course/${raw}`);
+      navigate(`#calculator/reviews/course/${raw}`);
       return;
     }
     const initials = normalizeInitials(raw);
-    if (initials.length >= 2) {
-      _navigate(`#calculator/reviews/${initials}`);
-    } else {
-      err.innerHTML = `<div class="rv-tab-note">Enter a course code (e.g. CSE220) or faculty initials (e.g. MAK).</div>`;
-    }
+    if (initials.length >= 2) navigate(`#calculator/reviews/${initials}`);
   };
 
+  const updateSuggestions = () => {
+    const raw = (input.value || '').trim();
+    if (raw.length < 2) { hideSuggestions(); return; }
+
+    const q = raw.toUpperCase();
+    const courses = _suggestCourses(q, 6);
+    const faculty = suggestFaculty(q, 5);
+
+    // If input matches a course code exactly, also show a "search as faculty" fallback
+    const looksLikeInitials = /^[A-Z]{2,6}$/.test(q);
+
+    if (!courses.length && !faculty.length && !looksLikeInitials) {
+      hideSuggestions();
+      return;
+    }
+
+    let html = '';
+
+    if (courses.length) {
+      html += `<div class="rv-sug-label">Courses</div>`;
+      html += courses.map(c => `
+        <div class="rv-sug-item" data-href="#calculator/reviews/course/${escAttr(c.code)}" role="option" tabindex="-1">
+          <span class="rv-sug-code">${escHtml(c.code)}</span>
+          <span class="rv-sug-name">${escHtml(c.name)}</span>
+        </div>`).join('');
+    }
+
+    if (faculty.length) {
+      html += `<div class="rv-sug-label">Faculty</div>`;
+      html += faculty.map(f => `
+        <div class="rv-sug-item" data-href="#calculator/reviews/${escAttr(f.initials)}" role="option" tabindex="-1">
+          <span class="rv-sug-code">${escHtml(f.initials)}</span>
+          ${f.name ? `<span class="rv-sug-name">${escHtml(f.name)}</span>` : ''}
+        </div>`).join('');
+    } else if (looksLikeInitials && !faculty.length) {
+      html += `<div class="rv-sug-label">Faculty</div>`;
+      html += `<div class="rv-sug-item" data-href="#calculator/reviews/${escAttr(q)}" role="option" tabindex="-1">
+        <span class="rv-sug-code">${escHtml(q)}</span>
+        <span class="rv-sug-name rv-sug-hint">Search by initials</span>
+      </div>`;
+    }
+
+    dropdown.innerHTML = html;
+    dropdown.hidden = false;
+    activeIdx = -1;
+
+    dropdown.querySelectorAll('.rv-sug-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        navigate(item.dataset.href);
+      });
+    });
+  };
+
+  input.addEventListener('input', updateSuggestions);
+
+  input.addEventListener('keydown', e => {
+    const items = Array.from(dropdown.querySelectorAll('.rv-sug-item'));
+    if (!dropdown.hidden && items.length) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIdx = (activeIdx + 1) % items.length;
+        items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIdx = (activeIdx - 1 + items.length) % items.length;
+        items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        return;
+      }
+      if (e.key === 'Escape') { hideSuggestions(); return; }
+    }
+    if (e.key === 'Enter') runSearch();
+  });
+
   go.onclick = runSearch;
-  input.onkeydown = e => { if (e.key === 'Enter') runSearch(); };
+
+  document.addEventListener('click', e => {
+    if (!root.contains(e.target)) hideSuggestions();
+  }, { once: false, capture: false });
 
   root.querySelectorAll('[data-dept]').forEach(card => {
     card.onclick = () => _navigate(`#calculator/reviews/dept/${card.getAttribute('data-dept')}`);
     card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') card.click(); };
   });
+}
+
+// Course autocomplete — searches COURSE_DB by code prefix, code contains, name substring
+function _suggestCourses(q, limit = 6) {
+  const prefix = [], codeHit = [], nameHit = [];
+  for (const [code, info] of Object.entries(COURSE_DB)) {
+    if (code.startsWith(q))               prefix.push({ code, name: info.name });
+    else if (code.includes(q))            codeHit.push({ code, name: info.name });
+    else if (info.name.toUpperCase().includes(q)) nameHit.push({ code, name: info.name });
+    if (prefix.length + codeHit.length + nameHit.length >= limit * 2) break;
+  }
+  return [...prefix, ...codeHit, ...nameHit].slice(0, limit);
 }
 
 function _shortDeptLabel(label) {
