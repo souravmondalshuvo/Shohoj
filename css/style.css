@@ -2992,6 +2992,77 @@ input, select, textarea,
   white-space: pre-wrap;
   word-break: break-word;
 }
+.rv-tab-reviewitem-stars {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.rv-tab-reviewitem-date {
+  color: var(--text3);
+  font-size: 11px;
+  margin-left: auto;
+}
+.rv-tab-reviewitem-meta .rv-tab-reviewitem-report {
+  margin-left: 0;
+}
+
+/* ── Reviews: rating distribution ───────────────────────── */
+.rv-tab-distribution {
+  margin: 14px 0 10px;
+  padding: 12px 14px;
+  background: rgba(46,204,113,0.05);
+  border: 1px solid rgba(46,204,113,0.15);
+  border-radius: 10px;
+}
+[data-theme="light"] .rv-tab-distribution {
+  background: rgba(46,204,113,0.06);
+  border-color: rgba(46,204,113,0.2);
+}
+.rv-tab-dist-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+.rv-tab-dist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.rv-tab-dist-row:last-child {
+  margin-bottom: 0;
+}
+.rv-tab-dist-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 24px;
+  text-align: right;
+}
+.rv-tab-dist-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+[data-theme="light"] .rv-tab-dist-bar {
+  background: rgba(0,0,0,0.06);
+}
+.rv-tab-dist-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.rv-tab-dist-count {
+  font-size: 11px;
+  color: var(--text3);
+  min-width: 20px;
+}
 
 /* ── Reviews: search autocomplete ───────────────────────── */
 .rv-tab-searchwrap {
