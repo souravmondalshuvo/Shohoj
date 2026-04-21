@@ -15,7 +15,9 @@ import {
 } from '../core/reviews.js';
 import { normalizeInitials, getFacultyProfile, upsertFacultyProfile, suggestFaculty } from '../core/faculty.js';
 import { DEPARTMENTS } from '../core/departments.js';
-import { COURSE_DB } from '../core/catalog.js';
+import { COURSE_DB, PREFIX_DEPT_MAP, DEPT_META, getCourseDept, getCoursePrefix } from '../core/catalog.js';
+
+const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','SHSS','ARC','PHR','LAW','SGE'];
 import { escHtml, escAttr } from '../core/helpers.js';
 import { openReviewModal, openReportModal } from './reviews.js';
 
@@ -106,12 +108,15 @@ function _renderDeptList(root) {
         <div id="_rvt_suggestions" class="rv-tab-suggestions-dropdown" hidden></div>
       </div>
       <div class="rv-tab-deptgrid">
-        ${Object.entries(DEPARTMENTS).map(([code, d]) => `
-          <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0">
-            <div class="rv-tab-deptcard-code">${escHtml(code)}</div>
-            <div class="rv-tab-deptcard-label">${escHtml(_shortDeptLabel(d.label))}</div>
-          </div>
-        `).join('')}
+        ${DEPT_ORDER.map(code => {
+          const meta = DEPT_META[code];
+          if (!meta) return '';
+          return `
+            <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0">
+              <div class="rv-tab-deptcard-code">${escHtml(code)}</div>
+              <div class="rv-tab-deptcard-label">${escHtml(meta.label)}</div>
+            </div>`;
+        }).join('')}
       </div>
     </div>
   `;
@@ -266,24 +271,17 @@ function _extractCode(name) {
   return m ? m[1] : null;
 }
 
-// All unique course codes for a dept from its curriculum presets
-function _deptCourses(dept) {
-  const d = DEPARTMENTS[dept];
-  if (!d) return [];
-  const codes = new Set();
-  for (const preset of d.presets) {
-    for (const c of preset.courses) {
-      const code = _extractCode(c.name);
-      if (code) codes.add(code);
-    }
-  }
-  return Array.from(codes).sort();
+// All course codes in COURSE_DB that belong to the given department
+function _getDeptCourses(deptCode) {
+  return Object.keys(COURSE_DB)
+    .filter(code => getCourseDept(code) === deptCode)
+    .sort();
 }
 
 // ── COURSE LIST FOR DEPT ──────────────────────────────────────────────────────
 async function _renderCourseList(root, dept) {
-  const deptInfo  = DEPARTMENTS[dept];
-  const deptLabel = deptInfo ? deptInfo.label : dept;
+  const meta      = DEPT_META[dept];
+  const deptLabel = meta ? meta.label : dept;
 
   root.innerHTML = `
     <div class="rv-tab">
@@ -301,12 +299,12 @@ async function _renderCourseList(root, dept) {
 
   const body = root.querySelector('#_rvt_coursebody');
 
-  if (!deptInfo) {
+  if (!meta) {
     body.innerHTML = `<div class="rv-tab-note">Unknown department.</div>`;
     return;
   }
 
-  const courses = _deptCourses(dept);
+  const courses = _getDeptCourses(dept);
 
   const recent = await fetchRecentReviews(200);
   const reviewCounts = {};
@@ -315,23 +313,36 @@ async function _renderCourseList(root, dept) {
     if (c) reviewCounts[c] = (reviewCounts[c] || 0) + 1;
   }
 
-  body.innerHTML = `
+  // Group by prefix for multi-prefix departments (e.g. MNS, BBA, SHSS)
+  const byPrefix = {};
+  for (const code of courses) {
+    const pfx = getCoursePrefix(code);
+    (byPrefix[pfx] = byPrefix[pfx] || []).push(code);
+  }
+  const prefixes     = Object.keys(byPrefix).sort();
+  const isMultiPrefix = prefixes.length > 1;
+
+  const courseCardHtml = code => {
+    const info  = COURSE_DB[code];
+    const name  = info ? info.name : code;
+    const count = reviewCounts[code] || 0;
+    return `
+      <div class="rv-tab-coursecard" data-course="${escAttr(code)}" role="button" tabindex="0">
+        <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
+        <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
+        ${count > 0
+          ? `<div class="rv-tab-coursecard-count">${count} review${count !== 1 ? 's' : ''}</div>`
+          : `<div class="rv-tab-coursecard-count rv-tab-muted">No reviews yet</div>`
+        }
+      </div>`;
+  };
+
+  body.innerHTML = prefixes.map(pfx => `
+    ${isMultiPrefix ? `<div class="rv-tab-section-header">${escHtml(pfx)}</div>` : ''}
     <div class="rv-tab-coursegrid">
-      ${courses.map(code => {
-        const info  = COURSE_DB[code];
-        const name  = info ? info.name : code;
-        const count = reviewCounts[code] || 0;
-        return `
-          <div class="rv-tab-coursecard" data-course="${escAttr(code)}" role="button" tabindex="0">
-            <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
-            <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
-            ${count > 0
-              ? `<div class="rv-tab-coursecard-count">${count} review${count !== 1 ? 's' : ''}</div>`
-              : `<div class="rv-tab-coursecard-count rv-tab-muted">No reviews yet</div>`
-            }
-          </div>`;
-      }).join('')}
-    </div>`;
+      ${byPrefix[pfx].map(courseCardHtml).join('')}
+    </div>
+  `).join('');
 
   body.querySelectorAll('[data-course]').forEach(card => {
     card.onclick = () => _navigate(`#calculator/reviews/course/${card.getAttribute('data-course')}`);
@@ -343,14 +354,14 @@ async function _renderCourseList(root, dept) {
 async function _renderCoursePage(root, courseCode) {
   const info      = COURSE_DB[courseCode];
   const courseName = info ? info.name : courseCode;
-  const deptCode  = courseCode.replace(/\d.*/, '');
-  const deptInfo  = DEPARTMENTS[deptCode];
+  const deptCode  = getCourseDept(courseCode);
+  const deptMeta  = deptCode ? DEPT_META[deptCode] : null;
 
   root.innerHTML = `
     <div class="rv-tab">
       <div class="rv-tab-breadcrumb">
         <a href="#calculator/reviews" class="rv-tab-crumb">← Departments</a>
-        ${deptInfo ? `
+        ${deptMeta ? `
           <span class="rv-tab-crumb-sep">›</span>
           <a href="#calculator/reviews/dept/${escAttr(deptCode)}" class="rv-tab-crumb">${escHtml(deptCode)}</a>` : ''}
         <span class="rv-tab-crumb-sep">›</span>
