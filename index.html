@@ -4522,24 +4522,33 @@ window._shohoj_submitReview = async function({ id, data }) {
     const ref = doc(db, 'facultyReviews', id);
     const existing = await getDoc(ref);
     if (existing.exists()) {
-      return {
-        ok: false,
-        error: 'You already submitted a review for this faculty-course pair. Reviews are locked after submission for safety.',
-        code: 'review-exists',
-      };
+      await setDoc(ref, { ...data, createdAt: existing.data().createdAt, updatedAt: serverTimestamp() });
+      return { ok: true, updated: true };
     }
     await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-    return { ok: true };
+    return { ok: true, updated: false };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
     if (e.code === 'permission-denied') {
       return {
         ok: false,
-        error: 'Review could not be submitted. Make sure the course is valid and that you have not already reviewed this faculty for it.',
+        error: 'Review could not be submitted. Make sure the course is valid.',
         code: e.code,
       };
     }
     return { ok: false, error: e.message || 'Submission failed' };
+  }
+};
+
+window._shohoj_fetchReviewById = async function(id) {
+  if (!currentUser || !id) return null;
+  try {
+    const ref = doc(db, 'facultyReviews', id);
+    const snap = await getDoc(ref);
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviewById failed:', e);
+    return null;
   }
 };
 
