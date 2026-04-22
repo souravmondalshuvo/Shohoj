@@ -74,7 +74,8 @@ export async function openReviewModal(opts = {}) {
   const courseCode = String(opts.courseCode || '').toUpperCase();
   const semester = String(opts.semester || '');
 
-  // Fetch existing review to pre-fill if the user has already reviewed
+  // Reviews are intentionally immutable from the client. We still probe for an
+  // existing doc so we can stop users before they fill out a form they cannot submit.
   let existingReview = null;
   if (initialInitials && courseCode && typeof window._shohoj_currentUid === 'function') {
     const uid = window._shohoj_currentUid();
@@ -86,7 +87,6 @@ export async function openReviewModal(opts = {}) {
       } catch (_) {}
     }
   }
-  const isUpdate = !!existingReview;
 
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -114,75 +114,127 @@ export async function openReviewModal(opts = {}) {
         ">×</button>
 
         <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;letter-spacing:-0.3px;margin-bottom:4px;">
-          ${isUpdate ? 'Update your review' : 'Rate your faculty'}
+          ${existingReview ? 'Review already submitted' : 'Rate your faculty'}
         </div>
         <div style="font-size:12px;color:${text2};line-height:1.5;margin-bottom:16px;">
-          ${isUpdate ? 'Your previous rating will be replaced.' : 'Pseudonymous to other students.'}
+          ${existingReview
+            ? 'You already used your one public review slot for this faculty-course pair. To preserve review integrity, client-side editing is disabled.'
+            : 'Pseudonymous to other students.'}
           ${courseCode ? `<br>Course: <strong style="color:${text}">${escHtml(courseCode)}</strong>` : ''}
           ${semester ? ` · ${escHtml(semester)}` : ''}
         </div>
-
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};">
-            Faculty Initials
-          </label>
-          <input id="_rvInitials" class="rv-input" type="text" maxlength="6"
-            placeholder="e.g. MNR" value="${escAttr(initialInitials)}"
-            style="background:${input};border:1px solid ${border};color:${text};text-transform:uppercase;letter-spacing:1.2px;font-weight:700;" />
-          <div id="_rvInitialsErr" style="font-size:11px;color:#e74c3c;display:none;">
-            Initials must be 2–6 letters.
-          </div>
-        </div>
-
-        <div style="border:1px solid ${border};border-radius:12px;padding:2px 14px;margin-bottom:14px;background:${input};">
-          ${Object.entries(RATING_LABELS).map(([key, { label, hint }]) => `
-            <div class="rv-row">
-              <div class="rv-row-label">
-                <div class="rv-row-title" style="color:${text};">${label}</div>
-                <div class="rv-row-hint" style="color:${text2};">${hint}</div>
+        ${existingReview ? `
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="border:1px solid ${border};border-radius:12px;padding:12px 14px;background:${input};">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};margin-bottom:8px;">
+                Existing Review
               </div>
-              ${_starsRow(key, existingReview?.ratings?.[key] ?? 0)}
+              <div style="display:grid;gap:8px;">
+                ${Object.entries(RATING_LABELS).map(([key, { label }]) => `
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                    <span style="font-size:12px;color:${text2};">${label}</span>
+                    <span style="font-size:12px;color:${text};font-weight:700;">${existingReview.ratings?.[key] ?? '—'}/5</span>
+                  </div>
+                `).join('')}
+              </div>
+              ${existingReview.text ? `
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${border};">
+                  <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};margin-bottom:6px;">
+                    Your Note
+                  </div>
+                  <div style="font-size:12px;line-height:1.6;color:${text};">${escHtml(existingReview.text)}</div>
+                </div>
+              ` : ''}
             </div>
-          `).join('')}
-        </div>
 
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
-          <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};">
-            Your experience (optional)
-          </label>
-          <textarea id="_rvText" class="rv-input" rows="3" maxlength="500"
-            placeholder="What stood out? Keep it honest and respectful."
-            style="background:${input};border:1px solid ${border};color:${text};resize:vertical;min-height:64px;">${escHtml(existingReview?.text ?? '')}</textarea>
-          <div id="_rvCount" style="font-size:11px;color:${text2};text-align:right;">${(existingReview?.text ?? '').length} / 500</div>
-        </div>
+            <div style="display:flex;gap:10px;">
+              <button id="_rvSkip" style="
+                flex:1;padding:12px;border-radius:10px;
+                background:${input};border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.10)'};
+                color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+              ">Close</button>
+            </div>
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+            <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};">
+              Faculty Initials
+            </label>
+            <input id="_rvInitials" class="rv-input" type="text" maxlength="6"
+              placeholder="e.g. MNR" value="${escAttr(initialInitials)}"
+              style="background:${input};border:1px solid ${border};color:${text};text-transform:uppercase;letter-spacing:1.2px;font-weight:700;" />
+            <div id="_rvInitialsErr" style="font-size:11px;color:#e74c3c;display:none;">
+              Initials must be 2–6 letters.
+            </div>
+          </div>
 
-        <div id="_rvError" style="font-size:12px;color:#e74c3c;display:none;margin-bottom:10px;"></div>
+          <div style="border:1px solid ${border};border-radius:12px;padding:2px 14px;margin-bottom:14px;background:${input};">
+            ${Object.entries(RATING_LABELS).map(([key, { label, hint }]) => `
+              <div class="rv-row">
+                <div class="rv-row-label">
+                  <div class="rv-row-title" style="color:${text};">${label}</div>
+                  <div class="rv-row-hint" style="color:${text2};">${hint}</div>
+                </div>
+                ${_starsRow(key, 0)}
+              </div>
+            `).join('')}
+          </div>
 
-        <div style="display:flex;gap:10px;">
-          <button id="_rvSkip" style="
-            flex:1;padding:12px;border-radius:10px;
-            background:${input};border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.10)'};
-            color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
-          ">Skip</button>
-          <button id="_rvSubmit" style="
-            flex:1.4;padding:12px;border-radius:10px;
-            background:#2ECC71;border:none;color:#0b0f0d;
-            font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
-          ">${isUpdate ? 'Update Review' : 'Submit Review'}</button>
-        </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">
+            <label style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${text2};">
+              Your experience (optional)
+            </label>
+            <textarea id="_rvText" class="rv-input" rows="3" maxlength="500"
+              placeholder="What stood out? Keep it honest and respectful."
+              style="background:${input};border:1px solid ${border};color:${text};resize:vertical;min-height:64px;"></textarea>
+            <div id="_rvCount" style="font-size:11px;color:${text2};text-align:right;">0 / 500</div>
+          </div>
+
+          <div id="_rvError" style="font-size:12px;color:#e74c3c;display:none;margin-bottom:10px;"></div>
+
+          <div style="display:flex;gap:10px;">
+            <button id="_rvSkip" style="
+              flex:1;padding:12px;border-radius:10px;
+              background:${input};border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.10)'};
+              color:${text2};font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+            ">Skip</button>
+            <button id="_rvSubmit" style="
+              flex:1.4;padding:12px;border-radius:10px;
+              background:#2ECC71;border:none;color:#0b0f0d;
+              font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;
+            ">Submit Review</button>
+          </div>
+        `}
       </div>
     `;
 
     document.body.classList.add('modal-open');
     document.body.appendChild(overlay);
 
+    // ── Close helpers ────────────────────────────────────────────────────
+    const close = (result) => {
+      document.body.classList.remove('modal-open');
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.15s';
+      setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
+      resolve(result);
+    };
+
+    overlay.querySelector('#_rvClose').onclick = () => close({ submitted: false, skipped: true });
+    overlay.querySelector('#_rvSkip').onclick  = () => close({ submitted: false, skipped: true });
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) close({ submitted: false, skipped: true });
+    });
+
+    if (existingReview) return;
+
     // ── Rating state ──────────────────────────────────────────────────────
     const ratings = {
-      teaching:   existingReview?.ratings?.teaching   ?? 0,
-      marking:    existingReview?.ratings?.marking     ?? 0,
-      behavior:   existingReview?.ratings?.behavior    ?? 0,
-      difficulty: existingReview?.ratings?.difficulty  ?? 0,
-      workload:   existingReview?.ratings?.workload    ?? 0,
+      teaching:   0,
+      marking:    0,
+      behavior:   0,
+      difficulty: 0,
+      workload:   0,
     };
 
     overlay.querySelectorAll('.rv-row-stars').forEach(group => {
@@ -211,21 +263,6 @@ export async function openReviewModal(opts = {}) {
     const countEl = overlay.querySelector('#_rvCount');
     textEl.addEventListener('input', () => {
       countEl.textContent = `${textEl.value.length} / 500`;
-    });
-
-    // ── Close helpers ────────────────────────────────────────────────────
-    const close = (result) => {
-      document.body.classList.remove('modal-open');
-      overlay.style.opacity = '0';
-      overlay.style.transition = 'opacity 0.15s';
-      setTimeout(() => { if (overlay.parentNode) document.body.removeChild(overlay); }, 150);
-      resolve(result);
-    };
-
-    overlay.querySelector('#_rvClose').onclick = () => close({ submitted: false, skipped: true });
-    overlay.querySelector('#_rvSkip').onclick  = () => close({ submitted: false, skipped: true });
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) close({ submitted: false, skipped: true });
     });
 
     // ── Submit ───────────────────────────────────────────────────────────
@@ -261,7 +298,7 @@ export async function openReviewModal(opts = {}) {
       const res = await submitReview(payload);
       if (res.ok) {
         if (typeof window._shohoj_showToast === 'function') {
-          window._shohoj_showToast(res.updated ? 'Review updated — thank you' : 'Review submitted — thank you');
+          window._shohoj_showToast('Review submitted — thank you');
         }
         if (typeof opts.onSubmitted === 'function') opts.onSubmitted(payload);
         close({ submitted: true, skipped: false });
