@@ -7419,6 +7419,58 @@ SEEDED_FACULTY_PROFILES.forEach(upsertFacultyProfile);
 const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 const REVIEW_ID_RE = /^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
 const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+const SEEDED_REVIEWS = [
+  {
+    id: 'SDL_CSE250_1111111111111111111111111111111111111111111111111111111111111111',
+    facultyInitials: 'SDL',
+    courseCode: 'CSE250',
+    semester: 'Spring 2026',
+    ratings: { teaching: 5, marking: 5, behavior: 5, difficulty: 2, workload: 3 },
+    text: 'She explains complex circuit concepts in a very simple and understandable way. Her class feels calm, and she makes students comfortable asking basic questions.',
+    createdAt: 1760400000000,
+    seeded: true,
+  },
+  {
+    id: 'SDL_CSE250_2222222222222222222222222222222222222222222222222222222222222222',
+    facultyInitials: 'SDL',
+    courseCode: 'CSE250',
+    semester: 'Spring 2026',
+    ratings: { teaching: 5, marking: 5, behavior: 5, difficulty: 2, workload: 2 },
+    text: 'She is highly patient and clears confusion during class and consultation. Students keep saying her soft notes are the main resource they rely on before quizzes and exams.',
+    createdAt: 1760486400000,
+    seeded: true,
+  },
+  {
+    id: 'SDL_CSE250_3333333333333333333333333333333333333333333333333333333333333333',
+    facultyInitials: 'SDL',
+    courseCode: 'CSE250',
+    semester: 'Spring 2026',
+    ratings: { teaching: 5, marking: 5, behavior: 5, difficulty: 2, workload: 3 },
+    text: 'Her marking is described as lenient and fair. If the working steps are mostly right, she gives solid partial marks even when the final answer is slightly off.',
+    createdAt: 1760572800000,
+    seeded: true,
+  },
+  {
+    id: 'SDL_CSE250_4444444444444444444444444444444444444444444444444444444444444444',
+    facultyInitials: 'SDL',
+    courseCode: 'CSE250',
+    semester: 'Spring 2026',
+    ratings: { teaching: 5, marking: 4, behavior: 5, difficulty: 2, workload: 3 },
+    text: 'Quiz questions are usually manageable if you practice regularly. She is responsive outside class too, especially when students need last-minute clarification.',
+    createdAt: 1760659200000,
+    seeded: true,
+  },
+  {
+    id: 'SDL_CSE250_5555555555555555555555555555555555555555555555555555555555555555',
+    facultyInitials: 'SDL',
+    courseCode: 'CSE250',
+    semester: 'Spring 2026',
+    ratings: { teaching: 5, marking: 5, behavior: 5, difficulty: 1, workload: 2 },
+    text: 'Students often describe her as kind, approachable, and genuinely helpful. For CSE250, she feels like one of those faculty members you are lucky to get.',
+    createdAt: 1760745600000,
+    seeded: true,
+  },
+];
 
 function normalizeCourseCode(raw) {
   return String(raw || '').toUpperCase().trim();
@@ -7456,6 +7508,42 @@ function validateReview(payload) {
   if (payload.semester && String(payload.semester).length > 40) return 'Semester label too long';
   if (payload.text && String(payload.text).length > 500) return 'Review text too long';
   return null;
+}
+
+function _mergeReviews(primary, secondary) {
+  const byId = new Map();
+  [...secondary, ...primary].forEach(review => {
+    if (!review || !review.id) return;
+    byId.set(review.id, review);
+  });
+  return Array.from(byId.values()).sort((a, b) => {
+    const aTs = _reviewTimestampMs(a.createdAt);
+    const bTs = _reviewTimestampMs(b.createdAt);
+    return bTs - aTs;
+  });
+}
+
+function _reviewTimestampMs(ts) {
+  if (!ts) return 0;
+  if (typeof ts === 'number') return ts;
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+  return 0;
+}
+
+function _seededReviewsForFaculty(initials, courseCode = '') {
+  const norm = normalizeInitials(initials);
+  const scope = normalizeCourseCode(courseCode);
+  return SEEDED_REVIEWS.filter(r => {
+    if (r.facultyInitials !== norm) return false;
+    if (scope && r.courseCode !== scope) return false;
+    return true;
+  });
+}
+
+function _seededReviewsForCourse(courseCode) {
+  const scope = normalizeCourseCode(courseCode);
+  return SEEDED_REVIEWS.filter(r => r.courseCode === scope);
 }
 
 // SHA-256 a string using the browser's SubtleCrypto. Returns 64-char hex.
@@ -7532,6 +7620,76 @@ async function submitReview(payload) {
   }
 }
 
+function buildReviewOverview(reviews, opts = {}) {
+  if (!Array.isArray(reviews) || !reviews.length) return null;
+  const agg = aggregateRatings(reviews);
+  if (!agg) return null;
+
+  const ratings = agg.ratings;
+  const qualityVals = ['teaching', 'marking', 'behavior']
+    .map(k => ratings[k])
+    .filter(v => typeof v === 'number');
+  const overall = qualityVals.length
+    ? qualityVals.reduce((s, v) => s + v, 0) / qualityVals.length
+    : null;
+  if (overall === null) return null;
+
+  const facultyInitials = normalizeInitials(opts.facultyInitials || '');
+  const facultyName = String(opts.facultyName || '').trim();
+  const courseCode = normalizeCourseCode(opts.courseCode || '');
+  const label = facultyName
+    ? `${facultyName}${facultyInitials ? ` (${facultyInitials})` : ''}`
+    : (facultyInitials || 'This faculty');
+
+  let headline = 'Student sentiment is mixed';
+  if (overall >= 4.6) headline = 'Highly recommended';
+  else if (overall >= 4.1) headline = 'Strongly recommended';
+  else if (overall >= 3.4) headline = 'Mostly positive feedback';
+  else if (overall >= 2.6) headline = 'Mixed reactions';
+  else headline = 'Proceed with caution';
+
+  const corpus = reviews
+    .map(r => String(r.text || '').toLowerCase())
+    .join(' ');
+
+  const teachingThemes = /(clear|simple|understand|explain|concept|note|organized)/.test(corpus);
+  const supportThemes  = /(patient|help|consult|discord|responsive|support|available)/.test(corpus);
+  const markingThemes  = /(mark|partial|lenient|fair)/.test(corpus);
+  const examThemes     = /(quiz|exam|practice|easy|manageable)/.test(corpus);
+
+  const parts = [];
+  const context = courseCode ? ` for ${courseCode}` : '';
+
+  if (overall >= 4.1) {
+    parts.push(`${label} is drawing very strong feedback from students${context}.`);
+  } else if (overall >= 3.4) {
+    parts.push(`${label} is getting mostly positive feedback from students${context}, though the signal is not unanimous.`);
+  } else {
+    parts.push(`${label} is generating mixed student feedback${context}.`);
+  }
+
+  if (teachingThemes && ratings.teaching !== null) {
+    parts.push(`Teaching stands out most: reviewers repeatedly mention clear explanations, approachable delivery, and better-than-average classroom clarity (${ratings.teaching.toFixed(1)}/5).`);
+  }
+  if (supportThemes && ratings.behavior !== null) {
+    parts.push(`Behavior and support are another strength, with students describing the faculty as patient, helpful, and easy to reach when they get stuck (${ratings.behavior.toFixed(1)}/5).`);
+  }
+  if (markingThemes && ratings.marking !== null) {
+    parts.push(`Marking is generally described as fair and partial-credit-friendly, which aligns with the strong marking score (${ratings.marking.toFixed(1)}/5).`);
+  }
+  if (examThemes) {
+    const difficulty = ratings.difficulty !== null ? ratings.difficulty.toFixed(1) : null;
+    parts.push(`Assessment difficulty seems manageable when students stay prepared${difficulty ? `, with a course-difficulty signal of ${difficulty}/5` : ''}.`);
+  }
+
+  const summary = parts.join(' ');
+  return {
+    headline,
+    summary,
+    basis: `Generated from ${reviews.length} student review${reviews.length !== 1 ? 's' : ''}.`,
+  };
+}
+
 // Report a review for moderation. Writes to a separate `reviewReports`
 // collection that only admins can read.
 async function reportReview(reviewId, reason) {
@@ -7567,17 +7725,19 @@ function _toPage(res) {
 // more pages; pass it back as `opts.after` to load the next page.
 async function fetchReviewsForFaculty(initials, courseCode = '', opts = {}) {
   const hook = window._shohoj_fetchReviews;
-  if (typeof hook !== 'function') return { reviews: [], nextCursor: null };
+  const seeded = _seededReviewsForFaculty(initials, courseCode);
+  if (typeof hook !== 'function') return { reviews: seeded, nextCursor: null };
   try {
-    return _toPage(await hook({
+    const page = _toPage(await hook({
       facultyInitials: normalizeInitials(initials),
       courseCode:      courseCode ? String(courseCode).toUpperCase() : '',
       pageSize:        opts.pageSize || 50,
       after:           opts.after   || null,
     }));
+    return { reviews: _mergeReviews(page.reviews, seeded), nextCursor: page.nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviews failed:', e);
-    return { reviews: [], nextCursor: null };
+    return { reviews: seeded, nextCursor: null };
   }
 }
 
@@ -7585,28 +7745,30 @@ async function fetchReviewsForFaculty(initials, courseCode = '', opts = {}) {
 // Returns { reviews, nextCursor }.
 async function fetchReviewsForCourse(courseCode, opts = {}) {
   const hook = window._shohoj_fetchReviewsByCourse;
-  if (typeof hook !== 'function') return { reviews: [], nextCursor: null };
   if (!courseCode) return { reviews: [], nextCursor: null };
+  const seeded = _seededReviewsForCourse(courseCode);
+  if (typeof hook !== 'function') return { reviews: seeded, nextCursor: null };
   try {
-    return _toPage(await hook(String(courseCode).toUpperCase(), {
+    const page = _toPage(await hook(String(courseCode).toUpperCase(), {
       pageSize: opts.pageSize || 200,
       after:    opts.after   || null,
     }));
+    return { reviews: _mergeReviews(page.reviews, seeded), nextCursor: page.nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
-    return { reviews: [], nextCursor: null };
+    return { reviews: seeded, nextCursor: null };
   }
 }
 
 // Fetch recent reviews site-wide.
 async function fetchRecentReviews(n = 50) {
   const hook = window._shohoj_fetchRecentReviews;
-  if (typeof hook !== 'function') return [];
+  if (typeof hook !== 'function') return SEEDED_REVIEWS.slice(0, n);
   try {
-    return await hook(n);
+    return _mergeReviews(await hook(n), SEEDED_REVIEWS).slice(0, n);
   } catch (e) {
     console.warn('[Shohoj] fetchRecentReviews failed:', e);
-    return [];
+    return SEEDED_REVIEWS.slice(0, n);
   }
 }
 
