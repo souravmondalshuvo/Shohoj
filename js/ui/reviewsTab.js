@@ -13,7 +13,7 @@ import {
   fetchRecentReviews, fetchReviewsForFaculty, fetchReviewsForCourse,
   aggregateByFaculty, aggregateRatings, isKnownCourseCode,
 } from '../core/reviews.js';
-import { normalizeInitials, getFacultyProfile, upsertFacultyProfile, suggestFaculty } from '../core/faculty.js';
+import { normalizeInitials, getFacultyProfile, upsertFacultyProfile, suggestFaculty, listKnownFaculty } from '../core/faculty.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { COURSE_DB, PREFIX_DEPT_MAP, DEPT_META, getCourseDept, getCoursePrefix } from '../core/catalog.js';
 
@@ -387,31 +387,92 @@ async function _renderCoursePage(root, courseCode) {
       </div>
       <div class="rv-tab-header" style="margin-top:12px;">
         <div class="rv-tab-title">${escHtml(courseCode)} — ${escHtml(courseName)}</div>
-        <div class="rv-tab-sub">Faculty who have been reviewed for this course.</div>
+        <div class="rv-tab-sub">Browse the faculty directory for this course, ranked by the review signal Shohoj currently has.</div>
       </div>
       <div id="_rvt_coursefacbody" class="rv-tab-loading">Loading…</div>
     </div>`;
 
   const body = root.querySelector('#_rvt_coursefacbody');
   const { reviews } = await fetchReviewsForCourse(courseCode);
+  const groups = aggregateByFaculty(reviews);
+  await _loadFacultyProfiles(groups.map(g => g.facultyInitials));
 
-  if (!reviews.length) {
+  const sortedGroups = groups
+    .slice()
+    .sort((a, b) => {
+      const aShowAgg = a.count >= HIDE_AGGREGATE_UNDER ? 1 : 0;
+      const bShowAgg = b.count >= HIDE_AGGREGATE_UNDER ? 1 : 0;
+      if (bShowAgg !== aShowAgg) return bShowAgg - aShowAgg;
+      const aScore = typeof a.overall === 'number' ? a.overall : -1;
+      const bScore = typeof b.overall === 'number' ? b.overall : -1;
+      if (bScore !== aScore) return bScore - aScore;
+      if (b.count !== a.count) return b.count - a.count;
+      const aName = (getFacultyProfile(a.facultyInitials)?.name || a.facultyInitials).toUpperCase();
+      const bName = (getFacultyProfile(b.facultyInitials)?.name || b.facultyInitials).toUpperCase();
+      return aName.localeCompare(bName);
+    });
+
+  const reviewedSet = new Set(sortedGroups.map(g => g.facultyInitials));
+  const knownNoReview = listKnownFaculty()
+    .filter(p => Array.isArray(p.courses) && p.courses.map(c => String(c || '').toUpperCase()).includes(courseCode))
+    .filter(p => !reviewedSet.has(p.initials))
+    .sort((a, b) => {
+      const aName = (a.name || a.initials).toUpperCase();
+      const bName = (b.name || b.initials).toUpperCase();
+      return aName.localeCompare(bName);
+    });
+
+  const totalReviews = reviews.length;
+  const reviewedFacultyCount = sortedGroups.length;
+
+  if (!reviewedFacultyCount && !knownNoReview.length) {
     body.innerHTML = `
       <div class="rv-tab-empty">
         <div class="rv-tab-empty-icon">📭</div>
-        <div class="rv-tab-empty-title">No reviews yet for ${escHtml(courseCode)}</div>
-        <div class="rv-tab-empty-sub">Be the first — rate a faculty from the planner or calculator.</div>
+        <div class="rv-tab-empty-title">No faculty entries yet for ${escHtml(courseCode)}</div>
+        <div class="rv-tab-empty-sub">There are no reviews for this course yet. Be the first — rate a faculty from the planner or calculator.</div>
       </div>`;
     return;
   }
 
-  const groups = aggregateByFaculty(reviews);
-  await _loadFacultyProfiles(groups.map(g => g.facultyInitials));
-
   body.innerHTML = `
-    <div class="rv-tab-facultygrid">
-      ${groups.map(g => _facultyCardHtml(g, courseCode)).join('')}
-    </div>`;
+    <div class="rv-tab-course-summary">
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${reviewedFacultyCount}</div>
+        <div class="rv-tab-course-stat-label">Faculty with reviews</div>
+      </div>
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${totalReviews}</div>
+        <div class="rv-tab-course-stat-label">Total reviews</div>
+      </div>
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${knownNoReview.length}</div>
+        <div class="rv-tab-course-stat-label">Known faculty, no reviews yet</div>
+      </div>
+    </div>
+
+    ${reviewedFacultyCount ? `
+      <div class="rv-tab-section-header">Reviewed Faculty For ${escHtml(courseCode)}</div>
+      <div class="rv-tab-note">Sorted by usable review signal first: enough reviews for an aggregate, then average score, then review count.</div>
+      <div class="rv-tab-directory-list">
+        ${sortedGroups.map(g => _facultyDirectoryRowHtml(g, courseCode)).join('')}
+      </div>
+    ` : ''}
+
+    ${knownNoReview.length ? `
+      <div class="rv-tab-section-header">Known Faculty Without Reviews Yet</div>
+      <div class="rv-tab-note">These faculty are in the directory for ${escHtml(courseCode)}, but Shohoj does not have review data for them yet.</div>
+      <div class="rv-tab-directory-list">
+        ${knownNoReview.map(profile => _facultyDirectoryRowHtml({
+          facultyInitials: profile.initials,
+          count: 0,
+          overall: null,
+          ratings: null,
+          _knownOnly: true,
+        }, courseCode)).join('')}
+      </div>
+    ` : ''}
+  `;
 
   body.querySelectorAll('[data-faculty]').forEach(card => {
     card.onclick = () => {
@@ -421,6 +482,7 @@ async function _renderCoursePage(root, courseCode) {
         ? `#calculator/reviews/${fi}/${course}`
         : `#calculator/reviews/${fi}`);
     };
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') card.click(); };
   });
 }
 
@@ -680,6 +742,34 @@ function _facultyCardHtml(g, courseScope = '') {
         ? `<div class="rv-tab-limited-note">Limited data (${g.count} review${g.count !== 1 ? 's' : ''})</div>`
         : ''
       }
+    </div>`;
+}
+
+function _facultyDirectoryRowHtml(g, courseScope = '') {
+  const profile = getFacultyProfile(g.facultyInitials);
+  const name    = profile?.name || '';
+  const primary = name || g.facultyInitials;
+  const hasAgg  = g.count >= HIDE_AGGREGATE_UNDER && typeof g.overall === 'number';
+  const knownOnly = !!g._knownOnly;
+  const meta = knownOnly
+    ? 'Known in faculty directory · no reviews yet'
+    : `${g.count} review${g.count !== 1 ? 's' : ''}${hasAgg ? ` · ${g.overall.toFixed(1)}/5 overall` : ' · aggregate hidden'}`;
+
+  return `
+    <div class="rv-tab-directory-row" data-faculty="${escAttr(g.facultyInitials)}" data-course="${escAttr(courseScope)}" role="button" tabindex="0">
+      <div class="rv-tab-directory-main">
+        <div class="rv-tab-directory-name">${escHtml(primary)}</div>
+        ${name ? `<div class="rv-tab-directory-sub">${escHtml(g.facultyInitials)}</div>` : ''}
+        <div class="rv-tab-directory-meta">${escHtml(meta)}</div>
+      </div>
+      <div class="rv-tab-directory-side">
+        <span class="rv-tab-directory-badge">${escHtml(g.facultyInitials)}</span>
+        ${knownOnly
+          ? `<span class="rv-tab-directory-status rv-tab-directory-status-muted">No reviews yet</span>`
+          : (hasAgg
+            ? `<span class="rv-tab-directory-score">${_starBar(g.overall)}</span>`
+            : `<span class="rv-tab-directory-status">Limited data</span>`)}
+      </div>
     </div>`;
 }
 
