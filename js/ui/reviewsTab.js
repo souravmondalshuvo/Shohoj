@@ -175,7 +175,7 @@ function _renderDeptList(root) {
 
   const updateSuggestions = () => {
     const raw = (input.value || '').trim();
-    if (raw.length < 2) { hideSuggestions(); return; }
+    if (raw.length < 1) { hideSuggestions(); return; }
 
     const q = raw.toUpperCase();
     const courses = _suggestCourses(q, 6);
@@ -195,7 +195,7 @@ function _renderDeptList(root) {
       html += `<div class="rv-sug-label">Courses</div>`;
       html += courses.map(c => `
         <div class="rv-sug-item" data-href="#calculator/reviews/course/${escAttr(c.code)}" role="option" tabindex="-1">
-          <span class="rv-sug-code">${escHtml(c.code)}</span>
+          <span class="rv-sug-code rv-sug-code--course">${escHtml(c.code)}</span>
           <span class="rv-sug-name">${escHtml(c.name)}</span>
         </div>`).join('');
     }
@@ -204,13 +204,13 @@ function _renderDeptList(root) {
       html += `<div class="rv-sug-label">Faculty</div>`;
       html += faculty.map(f => `
         <div class="rv-sug-item" data-href="#calculator/reviews/${escAttr(f.initials)}" role="option" tabindex="-1">
-          <span class="rv-sug-code">${escHtml(f.initials)}</span>
+          <span class="rv-sug-code rv-sug-code--faculty">${escHtml(f.initials)}</span>
           ${f.name ? `<span class="rv-sug-name">${escHtml(f.name)}</span>` : ''}
         </div>`).join('');
     } else if (looksLikeInitials && !faculty.length) {
       html += `<div class="rv-sug-label">Faculty</div>`;
       html += `<div class="rv-sug-item" data-href="#calculator/reviews/${escAttr(q)}" role="option" tabindex="-1">
-        <span class="rv-sug-code">${escHtml(q)}</span>
+        <span class="rv-sug-code rv-sug-code--faculty">${escHtml(q)}</span>
         <span class="rv-sug-name rv-sug-hint">Search by initials</span>
       </div>`;
     }
@@ -545,6 +545,10 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   const scoped = courseFilter
     ? reviews.filter(r => String(r.courseCode || '').toUpperCase() === courseFilter)
     : reviews;
+  const heroCourseCode = courseFilter || (courses.length === 1 ? courses[0] : '');
+  const heroCourseName = heroCourseCode && COURSE_DB[heroCourseCode]
+    ? COURSE_DB[heroCourseCode].name
+    : '';
 
   const agg = aggregateRatings(scoped);
   const r = agg ? agg.ratings : null;
@@ -556,7 +560,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   const overview = buildReviewOverview(scoped, {
     facultyInitials: initials,
     facultyName,
-    courseCode: courseFilter || (courses.length === 1 ? courses[0] : ''),
+    courseCode: heroCourseCode,
   });
 
   const chipsHtml = courses.length > 1 ? `
@@ -569,9 +573,11 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       `).join('')}
     </div>` : '';
 
-  const nameHtml = facultyName
-    ? `<div class="rv-tab-aggcard-facultyname">${escHtml(facultyName)}</div>`
-    : '';
+  const courseHtml = heroCourseCode ? `
+    <div class="rv-tab-aggcard-subline">
+      <span class="rv-tab-aggcard-coursechip">${escHtml(heroCourseCode)}</span>
+      ${heroCourseName ? `<span class="rv-tab-aggcard-coursename">${escHtml(heroCourseName)}</span>` : ''}
+    </div>` : '';
   const emailHtml = facultyEmail
     ? `<div class="rv-tab-aggcard-email">${escHtml(facultyEmail)}</div>`
     : '';
@@ -593,8 +599,8 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       ${heroBadgeHtml}
       <div class="rv-tab-aggcard-top">
         <div>
-          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
-          ${nameHtml}
+          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}</div>
+          ${courseHtml}
           ${emailHtml}
         </div>
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
@@ -625,8 +631,8 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       ${heroBadgeHtml}
       <div class="rv-tab-aggcard-top">
         <div>
-          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
-          ${nameHtml}
+          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}</div>
+          ${courseHtml}
           ${emailHtml}
         </div>
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
