@@ -2812,7 +2812,25 @@ input, select, textarea,
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 6px;
+}
+.rv-tab-dimgroup {
+  margin-top: 12px;
+}
+.rv-tab-dimgroup-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.rv-tab-dimgroup-hint {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: none;
+  color: var(--text3);
+  opacity: 0.75;
 }
 .rv-tab-dimcell {
   padding: 8px 10px;
@@ -2850,6 +2868,10 @@ input, select, textarea,
   border-top: 1px solid rgba(255,255,255,0.06);
   border-right: 1px solid rgba(255,255,255,0.06);
   border-bottom: 1px solid rgba(255,255,255,0.06);
+  text-align: left;
+}
+.rv-verdict * {
+  text-align: left;
 }
 [data-theme="light"] .rv-verdict {
   background: rgba(0,0,0,0.02);
@@ -3044,24 +3066,32 @@ input, select, textarea,
 }
 .rv-tab-dist-bar {
   flex: 1;
-  height: 8px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 4px;
+  height: 10px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 5px;
   overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.04);
 }
 [data-theme="light"] .rv-tab-dist-bar {
-  background: rgba(0,0,0,0.06);
+  background: rgba(0,0,0,0.1);
+  border-color: rgba(0,0,0,0.04);
 }
 .rv-tab-dist-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 4px;
+  border-radius: 5px;
   transition: width 0.3s ease;
 }
 .rv-tab-dist-count {
   font-size: 11px;
+  color: var(--text2);
+  min-width: 56px;
+  font-weight: 700;
+}
+.rv-tab-dist-pct {
   color: var(--text3);
-  min-width: 20px;
+  font-weight: 500;
+  margin-left: 4px;
 }
 
 /* ── Reviews: search autocomplete ───────────────────────── */
