@@ -884,11 +884,14 @@ window._shohoj_submitReview = async function({ id, data }) {
     const ref = doc(db, 'facultyReviews', id);
     const existing = await getDoc(ref);
     if (existing.exists()) {
-      await setDoc(ref, { ...data, createdAt: existing.data().createdAt, updatedAt: serverTimestamp() });
-      return { ok: true, updated: true };
+      return {
+        ok: false,
+        error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
+        code: 'already-exists',
+      };
     }
     await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-    return { ok: true, updated: false };
+    return { ok: true };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
     if (e.code === 'permission-denied') {
