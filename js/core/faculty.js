@@ -5,8 +5,18 @@
 // questions with whatever cache we have.
 
 // Runtime cache of faculty profiles. Keyed by normalized initials.
-// Shape: { initials, name, dept, courses:[], ratings:{teaching,marking,behavior,difficulty,workload}, reviewCount }
+// Shape: { initials, name, email, dept, courses:[], ratings:{teaching,marking,behavior,difficulty,workload}, reviewCount }
 const _profiles = new Map();
+
+const SEEDED_FACULTY_PROFILES = [
+  {
+    initials: 'SDL',
+    name: 'Shadmin Sultana',
+    email: 'shadmin.sultana@bracu.ac.bd',
+    dept: 'CSE',
+    courses: ['CSE250'],
+  },
+];
 
 export function normalizeInitials(raw) {
   if (typeof raw !== 'string') return '';
@@ -57,3 +67,5 @@ export function suggestFaculty(query, limit = 6) {
   }
   return out;
 }
+
+SEEDED_FACULTY_PROFILES.forEach(upsertFacultyProfile);
