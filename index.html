@@ -10026,6 +10026,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   await _loadFacultyProfiles([initials]);
   const profile     = getFacultyProfile(initials);
   const facultyName = profile?.name || '';
+  const facultyEmail = profile?.email || '';
 
   root.innerHTML = `
     <div class="rv-tab">
@@ -10078,6 +10079,11 @@ async function _renderFacultyPage(root, initials, courseFilter) {
 
   const showAgg = scoped.length >= HIDE_AGGREGATE_UNDER;
   const limited = scoped.length < LIMITED_DATA_THRESHOLD;
+  const overview = buildReviewOverview(scoped, {
+    facultyInitials: initials,
+    facultyName,
+    courseCode: courseFilter || (courses.length === 1 ? courses[0] : ''),
+  });
 
   const chipsHtml = courses.length > 1 ? `
     <div class="rv-tab-chiprow">
@@ -10092,13 +10098,30 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   const nameHtml = facultyName
     ? `<div class="rv-tab-aggcard-facultyname">${escHtml(facultyName)}</div>`
     : '';
+  const emailHtml = facultyEmail
+    ? `<div class="rv-tab-aggcard-email">${escHtml(facultyEmail)}</div>`
+    : '';
+  const heroBadgeHtml = overview
+    ? `<div class="rv-tab-aggcard-badge ${escAttr(_overviewToneClass(overview.headline))}">${escHtml(overview.headline)}</div>`
+    : '';
+  const codeBadgeHtml = facultyName
+    ? `<span class="rv-tab-aggcard-codebadge">${escHtml(initials)}</span>`
+    : '';
+  const overviewHtml = overview ? `
+    <div class="rv-tab-overview">
+      <div class="rv-tab-overview-label">Overall overview</div>
+      <div class="rv-tab-overview-text">${escHtml(overview.summary)}</div>
+      <div class="rv-tab-overview-basis">${escHtml(overview.basis)}</div>
+    </div>` : '';
 
   const aggHtml = showAgg ? `
     <div class="rv-tab-aggcard">
+      ${heroBadgeHtml}
       <div class="rv-tab-aggcard-top">
         <div>
-          <div class="rv-tab-aggcard-name">${escHtml(initials)}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
+          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
           ${nameHtml}
+          ${emailHtml}
         </div>
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
       </div>
@@ -10119,18 +10142,22 @@ async function _renderFacultyPage(root, initials, courseFilter) {
           ${_dimCell('Workload',   r.workload)}
         </div>
       </div>
+      ${overviewHtml}
       ${_distributionHtml(scoped)}
       ${_ratePrompt(courseFilter)}
     </div>
     ${_verdictHtml(scoped, r)}` : `
     <div class="rv-tab-aggcard">
+      ${heroBadgeHtml}
       <div class="rv-tab-aggcard-top">
         <div>
-          <div class="rv-tab-aggcard-name">${escHtml(initials)}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
+          <div class="rv-tab-aggcard-name">${facultyName ? escHtml(facultyName) : escHtml(initials)}${codeBadgeHtml}${courseFilter ? ` <span class="rv-tab-aggcard-course">· ${escHtml(courseFilter)}</span>` : ''}</div>
           ${nameHtml}
+          ${emailHtml}
         </div>
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
       </div>
+      ${overviewHtml}
       <div class="rv-tab-muted" style="margin:8px 0;">Not enough reviews to show averages yet (need at least ${HIDE_AGGREGATE_UNDER}).</div>
       ${_ratePrompt(courseFilter)}
     </div>`;
@@ -10154,7 +10181,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
               ${showCourse ? `<span class="rv-tab-reviewitem-course">${escHtml(String(x.courseCode).toUpperCase())}</span>` : ''}
               ${x.semester ? `<span class="rv-tab-reviewitem-sem">${escHtml(x.semester)}</span>` : ''}
               ${date ? `<span class="rv-tab-reviewitem-date">${escHtml(date)}</span>` : ''}
-              <button class="rv-tab-reviewitem-report" data-report="${escAttr(x.id)}" title="Report this review">⚠ Report</button>
+              ${x.seeded ? '' : `<button class="rv-tab-reviewitem-report" data-report="${escAttr(x.id)}" title="Report this review">⚠ Report</button>`}
             </div>
             <div class="rv-tab-reviewitem-text">${escHtml(x.text)}</div>
           </div>`;
@@ -10171,6 +10198,14 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   body.querySelectorAll('[data-report]').forEach(btn => {
     btn.onclick = () => openReportModal(btn.getAttribute('data-report'));
   });
+}
+
+function _overviewToneClass(headline) {
+  const h = String(headline || '').toLowerCase();
+  if (h.includes('highly') || h.includes('strongly')) return 'rv-tab-aggcard-badge--great';
+  if (h.includes('mostly positive')) return 'rv-tab-aggcard-badge--good';
+  if (h.includes('mixed')) return 'rv-tab-aggcard-badge--mixed';
+  return 'rv-tab-aggcard-badge--warn';
 }
 
 // Quality score for a single review (avg of teaching/marking/behavior)
