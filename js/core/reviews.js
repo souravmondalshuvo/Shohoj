@@ -113,7 +113,7 @@ export async function submitReview(payload) {
         initials: body.facultyInitials,
         courses:  body.courseCode ? [body.courseCode] : [],
       });
-      return { ok: true, updated: res.updated ?? false };
+      return { ok: true };
     }
     return { ok: false, error: (res && res.error) || 'Submission failed' };
   } catch (e) {
