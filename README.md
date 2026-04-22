@@ -71,7 +71,7 @@ Pseudonymous faculty ratings from real BRACU students — stored in Firestore, g
 
 - **5-dimension ratings** — Teaching Quality, Marking Fairness, Behavior & Attitude, Course Difficulty, Workload
 - **Pseudonymous to other users** — the review document body contains no user identifier. Each review's Firestore doc ID is derived from a salted SHA-256 of `uid + facultyInitials + courseCode`, so the same user's reviews for different courses don't share a visible hash
-- **One immutable review per user per faculty-course pair** — deterministic doc IDs enforce one public review slot per user and pair. Once submitted, the client cannot edit or overwrite it.
+- **One immutable review per user per faculty-course pair** — deterministic doc IDs enforce one public review slot per user and pair. Once submitted, the client cannot edit or overwrite it; duplicate attempts are rejected and the existing review is shown read-only.
 - **Per-course panel** — click the ⭐ on any planner course row to see aggregate ratings for every faculty who taught that course, plus sample review text
 - **Reviews directory** — search by course code or faculty initials to browse the review corpus (paginated)
 - **In-transcript rating** — rate your faculty directly from the course row in the Calculator tab, no separate flow
@@ -259,7 +259,7 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. The UI now treats duplicates as read-only instead of attempting edits. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase config is stored in `index.html` as `window._shohoj_firebase_config` rather than inside JS source files, keeping it out of the GitHub secret scanner's path. The API key is safe to expose as Firestore rules enforce all access control.
 
@@ -483,7 +483,7 @@ Additional notes on Repeat:
 ### Faculty Reviews
 
 - Reading and submitting reviews requires sign-in with a `@g.bracu.ac.bd` account — enforced both client-side and by Firestore security rules.
-- Reviews are **immutable once submitted**. There is no edit or delete flow from the client; this is deliberate to preserve review integrity. If a review needs to be removed (e.g. abuse), it has to be handled server-side by an admin.
+- Reviews are **immutable once submitted**. There is no edit or delete flow from the client; if you try to rate the same faculty-course pair again, Shohoj shows your existing review in read-only mode instead. If a review needs to be removed (e.g. abuse), it has to be handled server-side by an admin.
 - Faculty are keyed by **initials only** (2–6 uppercase letters). The full faculty directory with names/departments will be seeded over time via `scripts/seed_reviews.py` and the `facultyProfiles` collection.
 - The review corpus starts empty. A panel showing "no reviews yet" for a course is not a bug — it simply means nobody has rated any faculty for that course yet. Early users carry the cost of seeding.
 - Aggregates use simple averages across all reviews for a faculty-course pair. No recency weighting, no outlier filtering, no minimum-sample gating — this will be tuned once the corpus grows.
@@ -515,7 +515,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `shohoj_theme`            | localStorage | `"dark"` or `"light"`                                                  |
 | `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
-| `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp |
+| `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
 | `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
 | `facultyProfiles/{init}`  | Firestore    | Read-only faculty directory seeded by admin scripts                    |
 
