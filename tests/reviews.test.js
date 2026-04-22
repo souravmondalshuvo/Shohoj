@@ -5,6 +5,7 @@
 
 import {
   validateReview,
+  submitReview,
   reviewKeyHash,
   sha256Hex,
   buildReviewDoc,
@@ -335,6 +336,42 @@ test('same user for same faculty+course produces the same ID', async () => {
   const a = await buildReviewDoc(goodReview(), 'uid-1');
   const b = await buildReviewDoc(goodReview(), 'uid-1');
   expect(a.id).toBe(b.id);
+});
+
+test('same user cannot get a new doc ID by changing text or ratings', async () => {
+  const a = await buildReviewDoc(goodReview(), 'uid-1');
+  const b = await buildReviewDoc({
+    ...goodReview(),
+    text: 'Completely different note.',
+    ratings: { teaching: 1, marking: 1, behavior: 1, difficulty: 5, workload: 5 },
+  }, 'uid-1');
+  expect(a.id).toBe(b.id);
+});
+
+// ── SUBMIT REVIEW ────────────────────────────────────────────────────────────
+console.log('\nsubmitReview:');
+
+test('returns backend duplicate message when immutable review already exists', async () => {
+  const prevWindow = globalThis.window;
+  const stubWindow = prevWindow || {};
+  globalThis.window = stubWindow;
+
+  const prevHook = stubWindow._shohoj_submitReview;
+  const prevUidHook = stubWindow._shohoj_currentUid;
+  stubWindow._shohoj_currentUid = () => 'uid-1';
+  stubWindow._shohoj_submitReview = async () => ({
+    ok: false,
+    error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
+    code: 'already-exists',
+  });
+
+  const res = await submitReview(goodReview());
+  expect(res.ok).toBe(false);
+  expect(res.error).toMatch(/already submitted a review/i);
+
+  stubWindow._shohoj_submitReview = prevHook;
+  stubWindow._shohoj_currentUid = prevUidHook;
+  globalThis.window = prevWindow;
 });
 
 // ── AGGREGATE RATINGS ────────────────────────────────────────────────────────
