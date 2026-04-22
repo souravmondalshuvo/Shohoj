@@ -28,6 +28,10 @@ function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
 }
 
+function _isAuthReady() {
+  return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
+}
+
 // ── Route parser ─────────────────────────────────────────────────────────────
 function _parseHash() {
   const hash = window.location.hash || '';
@@ -64,6 +68,11 @@ export async function renderReviewsTab() {
   const root = document.getElementById('reviewsContent');
   if (!root) return;
 
+  if (!_isAuthReady()) {
+    root.innerHTML = _authLoadingState();
+    return;
+  }
+
   if (!_isSignedIn()) {
     root.innerHTML = _signInPrompt();
     return;
@@ -79,6 +88,15 @@ export async function renderReviewsTab() {
   } else {
     _renderDeptList(root);
   }
+}
+
+function _authLoadingState() {
+  return `
+    <div class="rv-tab-empty">
+      <div class="rv-tab-empty-icon">⏳</div>
+      <div class="rv-tab-empty-title">Checking your sign-in…</div>
+      <div class="rv-tab-empty-sub">If you already have an active Shohoj session, your reviews access will unlock automatically.</div>
+    </div>`;
 }
 
 function _signInPrompt() {
@@ -746,5 +764,14 @@ window.addEventListener('hashchange', () => {
     } else {
       renderReviewsTab();
     }
+  }
+});
+
+window.addEventListener('shohoj:auth-changed', () => {
+  const hash = window.location.hash || '';
+  const panel = document.getElementById('tabReviews');
+  const reviewsVisible = !!panel && panel.classList.contains('active');
+  if (reviewsVisible || hash.startsWith('#calculator/reviews')) {
+    renderReviewsTab();
   }
 });
