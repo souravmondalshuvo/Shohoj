@@ -2793,6 +2793,12 @@ input, select, textarea,
   text-transform: uppercase;
   border: 1px solid rgba(255,255,255,0.10);
 }
+.rv-tab-aggcard > .rv-tab-aggcard-badge {
+  display: flex;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
 .rv-tab-aggcard-badge::before {
   content: '';
   width: 8px;
@@ -2822,10 +2828,15 @@ input, select, textarea,
 }
 .rv-tab-aggcard-top {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.rv-tab-aggcard-top > div:first-child {
+  text-align: center;
 }
 .rv-tab-aggcard-name {
   font-family: 'Syne', sans-serif;
@@ -2833,6 +2844,7 @@ input, select, textarea,
   font-size: 18px;
   color: var(--text);
   letter-spacing: 0.5px;
+  text-align: center;
 }
 .rv-tab-aggcard-codebadge {
   display: inline-flex;
@@ -2856,16 +2868,19 @@ input, select, textarea,
 .rv-tab-aggcard-count {
   font-size: 11px;
   color: var(--text2);
+  text-align: center;
 }
 .rv-tab-aggcard-stars {
   margin: 4px 0 10px;
   font-size: 14px;
+  text-align: center;
 }
 .rv-tab-aggcard-email {
   margin-top: 4px;
   font-size: 12px;
   color: var(--text2);
   line-height: 1.5;
+  text-align: center;
 }
 .rv-tab-aggcard-grid {
   display: grid;
@@ -2962,10 +2977,7 @@ input, select, textarea,
   border-top: 1px solid rgba(255,255,255,0.06);
   border-right: 1px solid rgba(255,255,255,0.06);
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  text-align: left;
-}
-.rv-verdict * {
-  text-align: left;
+  text-align: center;
 }
 [data-theme="light"] .rv-verdict {
   background: rgba(0,0,0,0.02);
@@ -2981,6 +2993,8 @@ input, select, textarea,
 .rv-verdict-header {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 6px;
 }
@@ -3008,10 +3022,12 @@ input, select, textarea,
   color: var(--text2);
   line-height: 1.5;
   margin-bottom: 8px;
+  text-align: center;
 }
 .rv-verdict-tags {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -3028,6 +3044,7 @@ input, select, textarea,
   font-size: 10px;
   color: var(--text2);
   opacity: 0.6;
+  text-align: center;
 }
 
 /* Stars */
