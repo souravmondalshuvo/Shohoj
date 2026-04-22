@@ -16,6 +16,13 @@ const SEEDED_FACULTY_PROFILES = [
     dept: 'CSE',
     courses: ['CSE250'],
   },
+  {
+    initials: 'MSI',
+    name: 'Md. Saiful Islam',
+    email: 'md.saiful.islam@bracu.ac.bd',
+    dept: 'CSE',
+    courses: ['CSE110'],
+  },
 ];
 
 export function normalizeInitials(raw) {
