@@ -26,6 +26,7 @@ provider.setCustomParameters({ prompt: 'select_account' });
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
+let _authReady           = false;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
@@ -90,6 +91,15 @@ function getDataFingerprint(raw) {
 
 function clearCloudAppliedFlag() {
   try { sessionStorage.removeItem('shohoj_cloud_applied'); } catch(e) {}
+}
+
+function notifyAuthStateReady() {
+  _authReady = true;
+  try {
+    window.dispatchEvent(new CustomEvent('shohoj:auth-changed', {
+      detail: { signedIn: !!currentUser },
+    }));
+  } catch (_e) {}
 }
 
 function drainQueuedCloudResolvers() {
@@ -685,6 +695,7 @@ export async function signOutUser() {
 export function initAuth() {
   restoreSyncLabel();
   initOfflineDetection();
+  _authReady = false;
   setAuthBtnLoading(true);
 
   onAuthStateChanged(auth, async user => {
@@ -697,6 +708,7 @@ export function initAuth() {
     }
 
     currentUser = user;
+    notifyAuthStateReady();
     setAuthBtnLoading(false);
 
     if (user) {
@@ -780,6 +792,7 @@ export function initAuth() {
 
     } else {
       currentUser = null;
+      notifyAuthStateReady();
       stopRealtimeSync();
       clearCloudAppliedFlag();
       clearQueuedCloudSave(false);
@@ -875,6 +888,10 @@ window._shohoj_showToast = showToast;
 
 window._shohoj_currentUid = function() {
   return currentUser?.uid || null;
+};
+
+window._shohoj_isAuthReady = function() {
+  return _authReady;
 };
 
 window._shohoj_submitReview = async function({ id, data }) {
