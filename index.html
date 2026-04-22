@@ -9631,12 +9631,20 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       </div>
       <div class="rv-tab-aggcard-stars">${_starBar(overall)}</div>
       ${limited ? `<div class="rv-tab-limited-note">Limited data — take averages with a grain of salt.</div>` : ''}
-      <div class="rv-tab-aggcard-grid">
-        ${_dimCell('Teaching',   r.teaching)}
-        ${_dimCell('Marking',    r.marking)}
-        ${_dimCell('Behavior',   r.behavior)}
-        ${_dimCell('Difficulty', r.difficulty)}
-        ${_dimCell('Workload',   r.workload)}
+      <div class="rv-tab-dimgroup">
+        <div class="rv-tab-dimgroup-title">Faculty</div>
+        <div class="rv-tab-aggcard-grid">
+          ${_dimCell('Teaching', r.teaching)}
+          ${_dimCell('Marking',  r.marking)}
+          ${_dimCell('Behavior', r.behavior)}
+        </div>
+      </div>
+      <div class="rv-tab-dimgroup">
+        <div class="rv-tab-dimgroup-title">Course <span class="rv-tab-dimgroup-hint">· about the course, not the teacher</span></div>
+        <div class="rv-tab-aggcard-grid">
+          ${_dimCell('Difficulty', r.difficulty)}
+          ${_dimCell('Workload',   r.workload)}
+        </div>
       </div>
       ${_distributionHtml(scoped)}
       ${_ratePrompt(courseFilter)}
@@ -9741,15 +9749,15 @@ function _distributionHtml(scoped) {
     total++;
   }
   if (!total) return '';
-  const max = Math.max(...buckets, 1);
   const rows = [];
   for (let i = 4; i >= 0; i--) {
-    const pct = (buckets[i] / max) * 100;
+    const pct = (buckets[i] / total) * 100;
+    const share = buckets[i] ? `${Math.round(pct)}%` : '0%';
     rows.push(`
       <div class="rv-tab-dist-row">
         <span class="rv-tab-dist-label">${i + 1}★</span>
         <div class="rv-tab-dist-bar"><div class="rv-tab-dist-fill" style="width:${pct}%"></div></div>
-        <span class="rv-tab-dist-count">${buckets[i]}</span>
+        <span class="rv-tab-dist-count">${buckets[i]} <span class="rv-tab-dist-pct">${share}</span></span>
       </div>`);
   }
   return `<div class="rv-tab-distribution">
