@@ -2780,6 +2780,46 @@ input, select, textarea,
   background: rgba(46,204,113,0.04);
   margin-bottom: 14px;
 }
+.rv-tab-aggcard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.rv-tab-aggcard-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.rv-tab-aggcard-badge--great {
+  color: #2ECC71;
+  background: rgba(46,204,113,0.10);
+  border-color: rgba(46,204,113,0.24);
+}
+.rv-tab-aggcard-badge--good {
+  color: #A8D820;
+  background: rgba(168,216,32,0.10);
+  border-color: rgba(168,216,32,0.24);
+}
+.rv-tab-aggcard-badge--mixed {
+  color: #F0A500;
+  background: rgba(240,165,0,0.10);
+  border-color: rgba(240,165,0,0.24);
+}
+.rv-tab-aggcard-badge--warn {
+  color: #E67E22;
+  background: rgba(230,126,34,0.10);
+  border-color: rgba(230,126,34,0.24);
+}
 .rv-tab-aggcard-top {
   display: flex;
   align-items: baseline;
@@ -2794,6 +2834,19 @@ input, select, textarea,
   color: var(--text);
   letter-spacing: 0.5px;
 }
+.rv-tab-aggcard-codebadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  vertical-align: middle;
+}
 .rv-tab-aggcard-course {
   font-size: 13px;
   color: var(--text2);
@@ -2807,6 +2860,12 @@ input, select, textarea,
 .rv-tab-aggcard-stars {
   margin: 4px 0 10px;
   font-size: 14px;
+}
+.rv-tab-aggcard-email {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
 }
 .rv-tab-aggcard-grid {
   display: grid;
@@ -2856,6 +2915,41 @@ input, select, textarea,
   font-size: 20px;
   font-weight: 800;
   color: var(--text);
+}
+.rv-tab-overview {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border-left: 3px solid rgba(255,255,255,0.25);
+  border-top: 1px solid rgba(255,255,255,0.05);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+[data-theme="light"] .rv-tab-overview {
+  background: rgba(0,0,0,0.02);
+  border-top-color: rgba(0,0,0,0.05);
+  border-right-color: rgba(0,0,0,0.05);
+  border-bottom-color: rgba(0,0,0,0.05);
+}
+.rv-tab-overview-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+.rv-tab-overview-text {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+}
+.rv-tab-overview-basis {
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--text2);
+  opacity: 0.72;
 }
 
 /* AI Verdict card */
