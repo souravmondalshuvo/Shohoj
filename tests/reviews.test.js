@@ -9,6 +9,7 @@ import {
   reviewKeyHash,
   sha256Hex,
   buildReviewDoc,
+  buildReviewOverview,
   isKnownCourseCode,
   isValidReviewId,
   buildReviewReportId,
@@ -372,6 +373,32 @@ test('returns backend duplicate message when immutable review already exists', a
   stubWindow._shohoj_submitReview = prevHook;
   stubWindow._shohoj_currentUid = prevUidHook;
   globalThis.window = prevWindow;
+});
+
+// ── REVIEW OVERVIEW ──────────────────────────────────────────────────────────
+console.log('\nbuildReviewOverview:');
+
+test('builds a positive synthesized overview from review text and ratings', () => {
+  const overview = buildReviewOverview([
+    {
+      ratings: { teaching: 5, marking: 5, behavior: 5, difficulty: 2, workload: 3 },
+      text: 'Clear explanations, patient support, and organized notes.',
+    },
+    {
+      ratings: { teaching: 5, marking: 4, behavior: 5, difficulty: 2, workload: 2 },
+      text: 'Very helpful on Discord and fair with partial marks in quizzes.',
+    },
+  ], { facultyInitials: 'SDL', facultyName: 'Shadmin Sultana', courseCode: 'CSE250' });
+
+  expect(overview.headline).toBe('Highly recommended');
+  expect(overview.summary).toMatch(/Shadmin Sultana \(SDL\)/);
+  expect(overview.summary).toMatch(/CSE250/);
+  expect(overview.summary).toMatch(/clear explanations/i);
+  expect(overview.summary).toMatch(/patient, helpful/i);
+});
+
+test('returns null when no reviews exist for overview generation', () => {
+  expect(buildReviewOverview([], { facultyInitials: 'SDL', courseCode: 'CSE250' })).toBeNull();
 });
 
 // ── AGGREGATE RATINGS ────────────────────────────────────────────────────────
