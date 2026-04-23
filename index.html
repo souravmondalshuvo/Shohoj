@@ -10642,6 +10642,7 @@ function _verdictHtml(scoped, ratings) {
   return `
     <div class="rv-verdict ${escAttr(cls)}">
       <div class="rv-verdict-header">
+        <span class="rv-verdict-label">AI Verdict</span>
         <span class="rv-verdict-result">${escHtml(verdict)}</span>
       </div>
       <div class="rv-verdict-reason">${escHtml(reason)}</div>
@@ -10650,12 +10651,22 @@ function _verdictHtml(scoped, ratings) {
     </div>`;
 }
 
+function _dimScoreClass(value) {
+  if (typeof value !== 'number') return '';
+  if (value >= 4.2) return 'rv-tab-dimcell-value--great';
+  if (value >= 3.5) return 'rv-tab-dimcell-value--good';
+  if (value >= 2.8) return 'rv-tab-dimcell-value--mid';
+  if (value >= 2.0) return 'rv-tab-dimcell-value--warn';
+  return 'rv-tab-dimcell-value--bad';
+}
+
 function _dimCell(label, value) {
-  const v = (typeof value === 'number') ? value.toFixed(1) : '—';
+  const v   = (typeof value === 'number') ? value.toFixed(1) : '—';
+  const cls = _dimScoreClass(value);
   return `
     <div class="rv-tab-dimcell">
       <div class="rv-tab-dimcell-label">${label}</div>
-      <div class="rv-tab-dimcell-value">${v}</div>
+      <div class="rv-tab-dimcell-value ${cls}">${v}</div>
     </div>`;
 }
 
