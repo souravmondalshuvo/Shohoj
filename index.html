@@ -10225,10 +10225,6 @@ async function _renderCoursePage(root, courseCode) {
         <div class="rv-tab-course-stat-value">${totalReviews}</div>
         <div class="rv-tab-course-stat-label">Total reviews</div>
       </div>
-      <div class="rv-tab-course-stat">
-        <div class="rv-tab-course-stat-value">${knownNoReview.length}</div>
-        <div class="rv-tab-course-stat-label">Known faculty, no reviews yet</div>
-      </div>
     </div>
 
     ${reviewedFacultyCount ? `
@@ -10398,8 +10394,8 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       <div class="rv-tab-dimgroup">
         <div class="rv-tab-dimgroup-title">Course <span class="rv-tab-dimgroup-hint">· about the course, not the teacher</span></div>
         <div class="rv-tab-aggcard-grid">
-          ${_dimCell('Difficulty', r.difficulty)}
-          ${_dimCell('Workload',   r.workload)}
+          ${_dimCell('Difficulty', r.difficulty, true)}
+          ${_dimCell('Workload',   r.workload,   true)}
         </div>
       </div>
       ${overviewHtml}
@@ -10660,9 +10656,18 @@ function _dimScoreClass(value) {
   return 'rv-tab-dimcell-value--bad';
 }
 
-function _dimCell(label, value) {
+function _dimScoreClassInverse(value) {
+  if (typeof value !== 'number') return '';
+  if (value <= 1.8) return 'rv-tab-dimcell-value--great';
+  if (value <= 2.5) return 'rv-tab-dimcell-value--good';
+  if (value <= 3.2) return 'rv-tab-dimcell-value--mid';
+  if (value <= 4.0) return 'rv-tab-dimcell-value--warn';
+  return 'rv-tab-dimcell-value--bad';
+}
+
+function _dimCell(label, value, inverse = false) {
   const v   = (typeof value === 'number') ? value.toFixed(1) : '—';
-  const cls = _dimScoreClass(value);
+  const cls = inverse ? _dimScoreClassInverse(value) : _dimScoreClass(value);
   return `
     <div class="rv-tab-dimcell">
       <div class="rv-tab-dimcell-label">${label}</div>
