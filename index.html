@@ -10108,8 +10108,8 @@ async function _renderCourseList(root, dept) {
         <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
         <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
         ${count > 0
-          ? `<div class="rv-tab-coursecard-count">${count} review${count !== 1 ? 's' : ''}</div>`
-          : `<div class="rv-tab-coursecard-count rv-tab-muted">No reviews yet</div>`
+          ? `<div class="rv-tab-coursecard-count rv-tab-coursecard-count--reviews">${count} review${count !== 1 ? 's' : ''}</div>`
+          : `<div class="rv-tab-coursecard-count">No reviews yet</div>`
         }
       </div>`;
   };
@@ -10555,6 +10555,10 @@ function _facultyDirectoryRowHtml(g, courseScope = '') {
     ? 'Known in faculty directory · no reviews yet'
     : `${g.count} review${g.count !== 1 ? 's' : ''}${hasAgg ? ` · ${g.overall.toFixed(1)}/5 overall` : ' · aggregate hidden'}`;
 
+  const badgeClass = knownOnly
+    ? 'rv-tab-directory-badge'
+    : (hasAgg ? 'rv-tab-directory-badge rv-tab-directory-badge--green' : 'rv-tab-directory-badge rv-tab-directory-badge--gold');
+
   return `
     <div class="rv-tab-directory-row" data-faculty="${escAttr(g.facultyInitials)}" data-course="${escAttr(courseScope)}" role="button" tabindex="0">
       <div class="rv-tab-directory-main">
@@ -10563,7 +10567,7 @@ function _facultyDirectoryRowHtml(g, courseScope = '') {
         <div class="rv-tab-directory-meta">${escHtml(meta)}</div>
       </div>
       <div class="rv-tab-directory-side">
-        <span class="rv-tab-directory-badge">${escHtml(g.facultyInitials)}</span>
+        <span class="${escAttr(badgeClass)}">${escHtml(g.facultyInitials)}</span>
         ${knownOnly
           ? `<span class="rv-tab-directory-status rv-tab-directory-status-muted">No reviews yet</span>`
           : (hasAgg
@@ -10617,7 +10621,6 @@ function _verdictHtml(scoped, ratings) {
   return `
     <div class="rv-verdict ${escAttr(cls)}">
       <div class="rv-verdict-header">
-        <span class="rv-verdict-label">AI Verdict</span>
         <span class="rv-verdict-result">${escHtml(verdict)}</span>
       </div>
       <div class="rv-verdict-reason">${escHtml(reason)}</div>
