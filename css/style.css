@@ -4,6 +4,7 @@
       --green-dim:   #1a7a44;
       --green-glow:  rgba(46,204,113,0.15);
       --gold:        #F0A500;
+      --accent:      #2ECC71;
       --radius:      16px;
       --transition:  0.35s cubic-bezier(.4,0,.2,1);
     }
@@ -2995,7 +2996,7 @@ input, select, textarea,
   opacity: 0.72;
 }
 
-/* AI Verdict card */
+/* Verdict card */
 .rv-verdict {
   padding: 14px 16px;
   border-radius: 12px;
@@ -3005,7 +3006,7 @@ input, select, textarea,
   border-top: 1px solid rgba(255,255,255,0.06);
   border-right: 1px solid rgba(255,255,255,0.06);
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  text-align: center;
+  text-align: left;
 }
 [data-theme="light"] .rv-verdict {
   background: rgba(0,0,0,0.02);
@@ -3019,20 +3020,7 @@ input, select, textarea,
 .rv-verdict--warn   { border-left-color: #E67E22; }
 .rv-verdict--bad    { border-left-color: #E74C3C; }
 .rv-verdict-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
   margin-bottom: 6px;
-}
-.rv-verdict-label {
-  font-size: 9px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text2);
-  flex-shrink: 0;
 }
 .rv-verdict-result {
   font-family: 'Syne', sans-serif;
@@ -3050,18 +3038,18 @@ input, select, textarea,
   color: var(--text2);
   line-height: 1.5;
   margin-bottom: 8px;
-  text-align: center;
 }
 .rv-verdict-tags {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 6px;
   margin-bottom: 8px;
 }
 .rv-verdict-tag {
   font-size: 10px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   padding: 3px 8px;
   border-radius: 20px;
   background: rgba(240,165,0,0.12);
@@ -3072,7 +3060,6 @@ input, select, textarea,
   font-size: 10px;
   color: var(--text2);
   opacity: 0.6;
-  text-align: center;
 }
 
 /* Stars */
@@ -3154,7 +3141,7 @@ input, select, textarea,
   word-break: break-word;
 }
 .rv-tab-reviewitem-stars {
-  color: var(--accent);
+  color: #F0A500;
   font-size: 12px;
   letter-spacing: 1px;
 }
@@ -3217,7 +3204,7 @@ input, select, textarea,
 }
 .rv-tab-dist-fill {
   height: 100%;
-  background: var(--accent);
+  background: #2ECC71;
   border-radius: 5px;
   transition: width 0.3s ease;
 }
@@ -3426,7 +3413,11 @@ input, select, textarea,
 }
 .rv-tab-coursecard-count {
   font-size: 11px;
-  color: var(--text-muted, #aaa);
+  color: var(--text3);
+}
+.rv-tab-coursecard-count--reviews {
+  color: #2ECC71;
+  font-weight: 700;
 }
 
 /* Faculty name below initials */
@@ -3464,8 +3455,11 @@ input, select, textarea,
 }
 .rv-tab-course-stat-label {
   margin-top: 6px;
-  font-size: 11px;
-  color: var(--text-muted, #aaa);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
   line-height: 1.35;
 }
 .rv-tab-directory-list {
@@ -3543,10 +3537,21 @@ input, select, textarea,
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text);
+  font-family: 'Syne', sans-serif;
 }
 [data-theme="light"] .rv-tab-directory-badge {
   background: rgba(0,0,0,0.05);
   border-color: rgba(0,0,0,0.10);
+}
+.rv-tab-directory-badge--green {
+  color: #2ECC71;
+  background: rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.28);
+}
+.rv-tab-directory-badge--gold {
+  color: #F0A500;
+  background: rgba(240,165,0,0.10);
+  border-color: rgba(240,165,0,0.25);
 }
 .rv-tab-directory-score {
   font-size: 12px;
