@@ -9982,10 +9982,7 @@ function _renderDeptList(root) {
     const courses = _suggestCourses(q, 6);
     const faculty = suggestFaculty(q, 5);
 
-    // If input matches a course code exactly, also show a "search as faculty" fallback
-    const looksLikeInitials = /^[A-Z]{2,6}$/.test(q);
-
-    if (!courses.length && !faculty.length && !looksLikeInitials) {
+    if (!courses.length && !faculty.length) {
       hideSuggestions();
       return;
     }
@@ -10008,12 +10005,6 @@ function _renderDeptList(root) {
           <span class="rv-sug-code rv-sug-code--faculty">${escHtml(f.initials)}</span>
           ${f.name ? `<span class="rv-sug-name">${escHtml(f.name)}</span>` : ''}
         </div>`).join('');
-    } else if (looksLikeInitials && !faculty.length) {
-      html += `<div class="rv-sug-label">Faculty</div>`;
-      html += `<div class="rv-sug-item" data-href="#calculator/reviews/${escAttr(q)}" role="option" tabindex="-1">
-        <span class="rv-sug-code rv-sug-code--faculty">${escHtml(q)}</span>
-        <span class="rv-sug-name rv-sug-hint">Search by initials</span>
-      </div>`;
     }
 
     dropdown.innerHTML = html;
