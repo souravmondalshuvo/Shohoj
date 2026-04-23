@@ -2960,6 +2960,11 @@ input, select, textarea,
   font-weight: 800;
   color: var(--text);
 }
+.rv-tab-dimcell-value--great  { color: #2ECC71; }
+.rv-tab-dimcell-value--good   { color: #A8D820; }
+.rv-tab-dimcell-value--mid    { color: #F0A500; }
+.rv-tab-dimcell-value--warn   { color: #E67E22; }
+.rv-tab-dimcell-value--bad    { color: #E74C3C; }
 .rv-tab-overview {
   margin-top: 14px;
   padding: 14px 16px;
@@ -3006,7 +3011,7 @@ input, select, textarea,
   border-top: 1px solid rgba(255,255,255,0.06);
   border-right: 1px solid rgba(255,255,255,0.06);
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  text-align: left;
+  text-align: center;
 }
 [data-theme="light"] .rv-verdict {
   background: rgba(0,0,0,0.02);
@@ -3020,7 +3025,20 @@ input, select, textarea,
 .rv-verdict--warn   { border-left-color: #E67E22; }
 .rv-verdict--bad    { border-left-color: #E74C3C; }
 .rv-verdict-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 6px;
+}
+.rv-verdict-label {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text2);
+  flex-shrink: 0;
 }
 .rv-verdict-result {
   font-family: 'Syne', sans-serif;
@@ -3038,10 +3056,12 @@ input, select, textarea,
   color: var(--text2);
   line-height: 1.5;
   margin-bottom: 8px;
+  text-align: center;
 }
 .rv-verdict-tags {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -3060,6 +3080,7 @@ input, select, textarea,
   font-size: 10px;
   color: var(--text2);
   opacity: 0.6;
+  text-align: center;
 }
 
 /* Stars */
