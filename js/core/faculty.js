@@ -8,43 +8,7 @@
 // Shape: { initials, name, email, dept, courses:[], ratings:{teaching,marking,behavior,difficulty,workload}, reviewCount }
 const _profiles = new Map();
 
-const SEEDED_FACULTY_PROFILES = [
-  {
-    initials: 'SDL',
-    name: 'Shadmin Sultana',
-    email: 'shadmin.sultana@bracu.ac.bd',
-    dept: 'CSE',
-    courses: ['CSE250'],
-  },
-  {
-    initials: 'MSI',
-    name: 'Md. Saiful Islam',
-    email: 'md.saiful.islam@bracu.ac.bd',
-    dept: 'CSE',
-    courses: ['CSE110'],
-  },
-  {
-    initials: 'AVB',
-    name: 'Avinandan Banerjee',
-    email: 'avinandan@bracu.ac.bd',
-    dept: 'CSE',
-    courses: ['CSE111', 'CSE230', 'CSE420'],
-  },
-  {
-    initials: 'FIC',
-    name: 'Fatiha Ishrar Chowdhury',
-    email: 'fatiha.ishrar@bracu.ac.bd',
-    dept: 'CSE',
-    courses: ['CSE230', 'CSE260'],
-  },
-  {
-    initials: 'MTF',
-    name: 'Mahrin Tasfe',
-    email: 'mahrin.tasfe@bracu.ac.bd',
-    dept: 'CSE',
-    courses: ['CSE110', 'CSE220'],
-  },
-];
+const SEEDED_FACULTY_PROFILES = []; // injected by build3.py
 
 export function normalizeInitials(raw) {
   if (typeof raw !== 'string') return '';
