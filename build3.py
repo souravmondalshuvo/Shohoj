@@ -9,6 +9,7 @@ Usage:
     python3 build3.py
 """
 
+import json
 import re
 import os
 
@@ -99,6 +100,23 @@ function clearAllData() {
 window.clearAllData = clearAllData;
 ''')
     bundled_js = '\n'.join(js_parts)
+
+    # ── Inject faculty profiles from faculty_profiles.jsonl ───────────────────
+    profiles_path = 'faculty_profiles.jsonl'
+    if os.path.exists(profiles_path):
+        profiles = []
+        with open(profiles_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    profiles.append(json.loads(line))
+        profiles_js = json.dumps(profiles, ensure_ascii=False, separators=(', ', ': '))
+        placeholder = 'const SEEDED_FACULTY_PROFILES = []; // injected by build3.py'
+        replacement = f'const SEEDED_FACULTY_PROFILES = {profiles_js};'
+        bundled_js = bundled_js.replace(placeholder, replacement)
+        print(f'   Faculty profiles injected: {len(profiles)} from {profiles_path}')
+    else:
+        print(f'  ⚠ {profiles_path} not found — SEEDED_FACULTY_PROFILES will be empty')
 
     # ── Read firebase.js (kept as-is, will be inlined as type="module") ──────
     firebase_js = ''
