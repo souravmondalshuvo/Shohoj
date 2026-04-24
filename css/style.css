@@ -666,7 +666,7 @@ h1[data-reveal-hero].visible {
       html, body { overflow-x: hidden; max-width: 100%; }
       nav { padding: 0 1rem; height: 56px; }
       .nav-logo-text { font-size: 15px; } .nav-logo-mark { width: 28px; height: 28px; font-size: 12px; }
-      .nav-link { display: none; } .theme-toggle { width: 46px; height: 24px; }
+      .nav-right .nav-link { display: none !important; } .theme-toggle { width: 46px; height: 24px; }
       .toggle-pill { width: 18px; height: 18px; font-size: 11px; }
       [data-theme="dark"] .toggle-pill { transform: translateX(22px); }
       .hero { padding: 5rem 1.2rem 3rem; min-height: 100svh; }
@@ -704,8 +704,9 @@ h1[data-reveal-hero].visible {
       /* ── Playground solver stack on mobile ── */
       .pg-solver-inputs { flex-direction: column !important; }
       .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
-      /* ── Course row compact on small phones ── */
-      .course-row { grid-template-columns: 1fr 40px 78px 26px 84px; gap: 4px; padding: 7px 0.8rem; }
+      /* ── Course row stacks the title above compact controls on small phones ── */
+      .course-row:not(.course-header) { grid-template-columns: 44px minmax(72px, 1fr) 28px 84px; gap: 6px 4px; padding: 9px 10px; }
+      .course-row:not(.course-header) > .course-input-wrap { grid-column: 1 / -1; }
     }
     @media (min-width: 481px) and (max-width: 767px) {
       nav { padding: 0 1.4rem; height: 60px; }
@@ -1772,16 +1773,17 @@ input, select, textarea,
    #8  MOBILE COURSE ROW FIX
    ══════════════════════════════════════════════════════════ */
 @media (max-width: 580px) {
-  /* Course row: hide grade-letter col, keep grade-point input */
-  .course-row {
-    grid-template-columns: 1fr 54px 70px 24px 84px !important;
-    gap: 6px !important;
-    padding: 7px 10px !important;
+  .course-header {
+    display: none !important;
   }
-  /* Hide grade letter (4th col) — grade-point input (3rd) is the primary input */
-  .course-row > *:nth-child(4) { display: none !important; }
-  /* Also hide it in header row */
-  .course-row.course-header > *:nth-child(4) { display: none !important; }
+  .course-row:not(.course-header) {
+    grid-template-columns: 44px minmax(72px, 1fr) 28px 84px !important;
+    gap: 6px 4px !important;
+    padding: 9px 10px !important;
+  }
+  .course-row:not(.course-header) > .course-input-wrap {
+    grid-column: 1 / -1;
+  }
   /* Credits pill full width on mobile */
   .credits-static { min-width: 44px; font-size: 11px; }
   /* Semester head wraps gracefully */
@@ -2183,15 +2185,17 @@ input, select, textarea,
   }
 }
 
-/* ── FIX 2: Grade letters visible on mobile ──────────────
-   The ≤580px block above hides nth-child(4) which kills the
-   grade-letter column. Restore it and show only what fits. */
+/* ── FIX 2: Course rows remain readable on phones ─────────
+   Keep the course title full-width, then place credits,
+   grade point, grade, and actions on a compact second line. */
 @media (max-width: 580px) {
-  /* 5-col grid: name | credits | grade-point | grade-letter | remove */
-  .course-row {
-    grid-template-columns: 1fr 42px 68px 28px 84px !important;
-    gap: 4px !important;
-    padding: 7px 8px !important;
+  .course-row:not(.course-header) {
+    grid-template-columns: 44px minmax(72px, 1fr) 28px 84px !important;
+    gap: 6px 4px !important;
+    padding: 9px 10px !important;
+  }
+  .course-row:not(.course-header) > .course-input-wrap {
+    grid-column: 1 / -1;
   }
   /* Un-hide grade letter — was accidentally killed by nth-child(4) rule */
   .course-row > *:nth-child(4) {
@@ -3723,13 +3727,22 @@ input, select, textarea,
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 480px) {
   .calc-tabs {
-    padding: 8px 0.8rem 0;
-    gap: 2px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px 0.8rem;
+    gap: 6px;
   }
   .calc-tab {
+    min-width: 0;
+    border-radius: 10px;
     padding: 9px 8px;
     font-size: 11px;
     gap: 4px;
+  }
+  .calc-tab.active::after {
+    left: 12px;
+    right: 12px;
+    bottom: 0;
   }
   .calc-tab-icon {
     font-size: 13px;
