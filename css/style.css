@@ -2981,6 +2981,7 @@ input, select, textarea,
   border-top: 1px solid rgba(255,255,255,0.05);
   border-right: 1px solid rgba(255,255,255,0.05);
   border-bottom: 1px solid rgba(255,255,255,0.05);
+  text-align: center;
 }
 [data-theme="light"] .rv-tab-overview {
   background: rgba(0,0,0,0.02);
@@ -3043,27 +3044,23 @@ input, select, textarea,
 .rv-verdict--mixed  { border-left-color: #F0A500; }
 .rv-verdict--warn   { border-left-color: #E67E22; }
 .rv-verdict--bad    { border-left-color: #E74C3C; }
-.rv-verdict-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 6px;
-}
+.rv-verdict-header { display: none; }
 .rv-verdict-label {
-  font-size: 9px;
+  display: block;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.14em;
   color: var(--text2);
-  flex-shrink: 0;
+  margin-bottom: 6px;
 }
 .rv-verdict-result {
+  display: block;
   font-family: 'Syne', sans-serif;
   font-weight: 800;
-  font-size: 15px;
+  font-size: 20px;
   color: var(--text);
+  margin-bottom: 10px;
 }
 .rv-verdict--great  .rv-verdict-result { color: #2ECC71; }
 .rv-verdict--good   .rv-verdict-result { color: #A8D820; }
