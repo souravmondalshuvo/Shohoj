@@ -348,7 +348,7 @@
     .courses-table { width: 100%; }
     .course-row {
       display: grid;
-      grid-template-columns: 1fr 72px 96px 36px auto;
+      grid-template-columns: 1fr 72px 96px 36px 56px;
       gap: 8px;
       padding: 8px 1.2rem;
       align-items: center;
@@ -381,7 +381,7 @@
       grid-template-columns: 1fr 54px 96px 36px;
       gap: 8px;
       padding: 6px 1.2rem;
-      padding-right: calc(1.2rem + 24px + 8px);
+      padding-right: calc(1.2rem + 56px + 8px);
       border-bottom: 1px solid var(--border);
       background: transparent;
       align-items: center;
@@ -704,7 +704,7 @@ h1[data-reveal-hero].visible {
       .pg-solver-inputs { flex-direction: column !important; }
       .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
       /* ── Course row compact on small phones ── */
-      .course-row { grid-template-columns: 1fr 40px 78px 26px auto; gap: 4px; padding: 7px 0.8rem; }
+      .course-row { grid-template-columns: 1fr 40px 78px 26px 48px; gap: 4px; padding: 7px 0.8rem; }
     }
     @media (min-width: 481px) and (max-width: 767px) {
       nav { padding: 0 1.4rem; height: 60px; }
@@ -715,7 +715,7 @@ h1[data-reveal-hero].visible {
       .calc-header { padding: 1.2rem 1.5rem; flex-wrap: wrap; } .calc-body { padding: 1rem 1.2rem; }
       .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.2rem 1rem; }
       .tracker-stats { grid-template-columns: repeat(2, 1fr); }
-      .course-row { grid-template-columns: 1fr 44px 84px 30px auto; gap: 5px; padding: 7px 1rem; }
+      .course-row { grid-template-columns: 1fr 44px 84px 30px 50px; gap: 5px; padding: 7px 1rem; }
       /* ── Tablet: dept select + solver fixes ── */
       #deptSelect { width: 100% !important; max-width: 100% !important; }
       .simulator-row input { width: 130px; }
@@ -728,7 +728,7 @@ h1[data-reveal-hero].visible {
       section { padding: 4rem 2rem; max-width: 100%; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.3rem 1.8rem; } .calc-body { padding: 1.2rem 1.5rem; }
       .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.5rem 1.2rem; }
-      .course-row { grid-template-columns: 1fr 50px 90px 32px auto; gap: 6px; }
+      .course-row { grid-template-columns: 1fr 50px 90px 32px 52px; gap: 6px; }
     }
     @media (min-width: 1024px) and (max-width: 1279px) { section { max-width: 860px; } .hero h1 { font-size: clamp(4rem, 6vw, 5.5rem); } .features-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (min-width: 1280px) and (max-width: 1439px) { section { max-width: 920px; } .features-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -1771,7 +1771,7 @@ input, select, textarea,
 @media (max-width: 580px) {
   /* Course row: hide grade-letter col, keep grade-point input */
   .course-row {
-    grid-template-columns: 1fr 54px 70px 24px auto !important;
+    grid-template-columns: 1fr 54px 70px 24px 48px !important;
     gap: 6px !important;
     padding: 7px 10px !important;
   }
@@ -2186,7 +2186,7 @@ input, select, textarea,
 @media (max-width: 580px) {
   /* 5-col grid: name | credits | grade-point | grade-letter | remove */
   .course-row {
-    grid-template-columns: 1fr 42px 68px 28px auto !important;
+    grid-template-columns: 1fr 42px 68px 28px 48px !important;
     gap: 4px !important;
     padding: 7px 8px !important;
   }
