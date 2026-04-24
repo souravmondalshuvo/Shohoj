@@ -310,7 +310,13 @@ async function _renderCourseList(root, dept) {
         <div class="rv-tab-title">${escHtml(deptLabel)}</div>
         <div class="rv-tab-sub">Select a course to see which faculty have been reviewed for it.</div>
       </div>
-      <div id="_rvt_coursebody" class="rv-tab-loading">Loading…</div>
+      <div id="_rvt_coursebody">
+        <div class="rv-tab-skel-rows" aria-label="Loading courses">
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+        </div>
+      </div>
     </div>`;
 
   const body = root.querySelector('#_rvt_coursebody');
@@ -387,7 +393,13 @@ async function _renderCoursePage(root, courseCode) {
         <div class="rv-tab-title">${escHtml(courseCode)} — ${escHtml(courseName)}</div>
         <div class="rv-tab-sub">Browse the faculty directory for this course, ranked by the review signal Shohoj currently has.</div>
       </div>
-      <div id="_rvt_coursefacbody" class="rv-tab-loading">Loading…</div>
+      <div id="_rvt_coursefacbody">
+        <div class="rv-tab-skel-rows" aria-label="Loading faculty directory">
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+          <div class="rv-tab-skel rv-tab-skel-row"></div>
+        </div>
+      </div>
     </div>`;
 
   const body = root.querySelector('#_rvt_coursefacbody');
