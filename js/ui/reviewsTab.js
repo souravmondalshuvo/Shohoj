@@ -507,7 +507,20 @@ async function _renderFacultyPage(root, initials, courseFilter, token) {
              <span class="rv-tab-crumb-active">${escHtml(initials)}</span>`
         }
       </div>
-      <div id="_rvt_facbody" class="rv-tab-loading">Loading reviews…</div>
+      <div id="_rvt_facbody">
+        <div class="rv-tab-skel-wrap" aria-label="Loading faculty reviews">
+          <div class="rv-tab-skel rv-tab-skel-badge"></div>
+          <div class="rv-tab-skel rv-tab-skel-name"></div>
+          <div class="rv-tab-skel rv-tab-skel-email"></div>
+          <div class="rv-tab-skel rv-tab-skel-stars"></div>
+          <div class="rv-tab-skel-grid">
+            <div class="rv-tab-skel rv-tab-skel-cell"></div>
+            <div class="rv-tab-skel rv-tab-skel-cell"></div>
+            <div class="rv-tab-skel rv-tab-skel-cell"></div>
+          </div>
+          <div class="rv-tab-skel rv-tab-skel-overview"></div>
+        </div>
+      </div>
     </div>`;
 
   const body = root.querySelector('#_rvt_facbody');
