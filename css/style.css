@@ -3539,7 +3539,8 @@ input, select, textarea,
 
 .rv-tab-course-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(2, minmax(120px, 180px));
+  justify-content: center;
   gap: 10px;
   margin-bottom: 14px;
 }

@@ -842,7 +842,6 @@ function _facultyDirectoryRowHtml(g, courseScope = '') {
     <div class="rv-tab-directory-row" data-faculty="${escAttr(g.facultyInitials)}" data-course="${escAttr(courseScope)}" role="button" tabindex="0">
       <div class="rv-tab-directory-main">
         <div class="rv-tab-directory-name">${escHtml(primary)}</div>
-        ${name ? `<div class="rv-tab-directory-sub">${escHtml(g.facultyInitials)}</div>` : ''}
         <div class="rv-tab-directory-meta">${escHtml(meta)}</div>
       </div>
       <div class="rv-tab-directory-side">
