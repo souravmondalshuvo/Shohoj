@@ -10654,10 +10654,8 @@ function _verdictHtml(scoped, ratings) {
 
   return `
     <div class="rv-verdict ${escAttr(cls)}">
-      <div class="rv-verdict-header">
-        <span class="rv-verdict-label">AI Verdict</span>
-        <span class="rv-verdict-result">${escHtml(verdict)}</span>
-      </div>
+      <span class="rv-verdict-label">AI Verdict</span>
+      <span class="rv-verdict-result">${escHtml(verdict)}</span>
       <div class="rv-verdict-reason">${escHtml(reason)}</div>
       ${effortHtml}
       <div class="rv-verdict-basis">Based on ${scoped.length} review${scoped.length !== 1 ? 's' : ''} · Quality score ${qualityAvg.toFixed(2)}/5</div>
