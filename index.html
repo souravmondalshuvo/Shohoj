@@ -3567,8 +3567,7 @@ input, select, textarea,
 
 .rv-tab-course-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(120px, 180px));
-  justify-content: center;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -3577,6 +3576,7 @@ input, select, textarea,
   border-radius: 12px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
+  text-align: center;
 }
 [data-theme="light"] .rv-tab-course-stat {
   background: rgba(0,0,0,0.03);
