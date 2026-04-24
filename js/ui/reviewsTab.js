@@ -13,7 +13,7 @@ import {
   fetchRecentReviews, fetchReviewsForFaculty, fetchReviewsForCourse,
   aggregateByFaculty, aggregateRatings, isKnownCourseCode, buildReviewOverview,
 } from '../core/reviews.js';
-import { normalizeInitials, getFacultyProfile, upsertFacultyProfile, suggestFaculty, listKnownFaculty } from '../core/faculty.js';
+import { normalizeInitials, getFacultyProfile, hasFacultyProfile, upsertFacultyProfile, suggestFaculty, listKnownFaculty } from '../core/faculty.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { COURSE_DB, PREFIX_DEPT_MAP, DEPT_META, getCourseDept, getCoursePrefix } from '../core/catalog.js';
 
@@ -63,6 +63,12 @@ function _navigate(path) {
   }
 }
 
+// Monotonic token so in-flight async renders from a stale navigation can
+// detect that they were superseded and bail before overwriting the DOM.
+let _navToken = 0;
+function _bumpNav() { return ++_navToken; }
+function _isStaleNav(token) { return token !== _navToken; }
+
 // ── Public entry ─────────────────────────────────────────────────────────────
 export async function renderReviewsTab() {
   const root = document.getElementById('reviewsContent');
@@ -78,9 +84,10 @@ export async function renderReviewsTab() {
     return;
   }
 
+  const token = _bumpNav();
   const route = _parseHash();
   if (route.view === 'faculty') {
-    await _renderFacultyPage(root, route.initials, route.course);
+    await _renderFacultyPage(root, route.initials, route.course, token);
   } else if (route.view === 'courses') {
     await _renderCourseList(root, route.dept);
   } else if (route.view === 'course') {
@@ -483,12 +490,10 @@ async function _loadFacultyProfiles(initialsArr) {
 }
 
 // ── FACULTY PAGE ─────────────────────────────────────────────────────────────
-async function _renderFacultyPage(root, initials, courseFilter) {
-  await _loadFacultyProfiles([initials]);
-  const profile     = getFacultyProfile(initials);
-  const facultyName = profile?.name || '';
-  const facultyEmail = profile?.email || '';
-
+async function _renderFacultyPage(root, initials, courseFilter, token) {
+  // Paint the skeleton immediately so the click has visible feedback before
+  // any network round-trip. Breadcrumb only shows initials, so it's safe to
+  // render without awaiting the profile.
   root.innerHTML = `
     <div class="rv-tab">
       <div class="rv-tab-breadcrumb">
@@ -507,7 +512,18 @@ async function _renderFacultyPage(root, initials, courseFilter) {
 
   const body = root.querySelector('#_rvt_facbody');
 
+  // Skip the profile fetch when we already have it cached — makes re-opens
+  // the same faculty instant.
+  if (!hasFacultyProfile(initials)) {
+    await _loadFacultyProfiles([initials]);
+    if (_isStaleNav(token)) return;
+  }
+  const profile     = getFacultyProfile(initials);
+  const facultyName = profile?.name || '';
+  const facultyEmail = profile?.email || '';
+
   const { reviews, nextCursor } = await fetchReviewsForFaculty(initials, '', { pageSize: 200 });
+  if (_isStaleNav(token)) return;
 
   if (!reviews.length) {
     body.innerHTML = `
