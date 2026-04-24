@@ -2806,6 +2806,7 @@ input, select, textarea,
   height: 8px;
   border-radius: 50%;
   background: currentColor;
+  animation: pulse 2s infinite;
 }
 .rv-tab-aggcard-badge--great {
   color: #2ECC71;
