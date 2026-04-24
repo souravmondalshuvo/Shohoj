@@ -12,6 +12,9 @@ import { resetPlanner } from './planner.js';
 import { resetPlayground } from './playground.js';
 import { openReviewModal } from './reviews.js';
 import { normalizeInitials } from '../core/faculty.js';
+import { fetchReviewsForFaculty, aggregateRatings } from '../core/reviews.js';
+
+const _facultyCourseAggCache = new Map();
 
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
@@ -464,9 +467,12 @@ export function renderSemesters() {
         ${sem.courses.map((c, i) => {
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
           const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)') ? 'Retaken' : 'Repeated';
+          const _courseCode = getReviewableCourseCode(c.name);
           const canRate = !sem.summary && !!c.name.trim()
             && !!c.grade && c.grade !== 'I'
-            && !!getReviewableCourseCode(c.name);
+            && !!_courseCode;
+          const facInit = normalizeInitials(c.faculty || '');
+          const showChip = canRate && !!facInit;
           return `
         <div class="course-row${isRetaken ? ' retaken' : ''}">
           <div class="course-input-wrap" style="position:relative;">
@@ -512,7 +518,9 @@ export function renderSemesters() {
             };${c.credits === 0 && c.grade !== 'P' && c.grade !== 'F' ? 'visibility:hidden' : ''}"
           >${escHtml(c.grade) || '—'}</span>
           <div class="course-row-actions">
-            ${canRate ? `<button class="course-rate-btn" onclick="openRateForCourse(${sem.id},${i})" title="Rate this faculty">⭐</button>` : ''}
+            ${showChip
+              ? `<button class="course-faculty-chip" onclick="openRateForCourse(${sem.id},${i})" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
+              : (canRate ? `<button class="course-rate-pill" onclick="openRateForCourse(${sem.id},${i})" title="Rate this faculty">+ Rate</button>` : '')}
             <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
           </div>
         </div>`;
@@ -563,6 +571,7 @@ export function renderSemesters() {
   }
 
   container.innerHTML = html;
+  _populateFacultyChips();
 
   // ── DRAG-AND-DROP ────────────────────────────────────────────────────────
   if (_dragBindTimer) clearTimeout(_dragBindTimer);
@@ -756,6 +765,68 @@ export function openRateForCourse(semId, cIdx) {
     facultyInitials: c.faculty || '',
     courseCode,
     semester: sem.name || '',
+    onSubmitted: (payload) => {
+      const nextFac = normalizeInitials(payload && payload.facultyInitials);
+      if (!nextFac) return;
+      const sem2 = state.semesters.find(s => s.id === semId);
+      if (!sem2 || !sem2.courses[cIdx]) return;
+      sem2.courses[cIdx].faculty = nextFac;
+      _facultyCourseAggCache.delete(`${nextFac}|${courseCode}`);
+      saveState();
+      renderSemesters();
+    },
+  });
+}
+
+async function _populateFacultyChips() {
+  const chips = document.querySelectorAll('.course-faculty-chip[data-fac]');
+  if (!chips.length) return;
+  const byKey = new Map();
+  chips.forEach(el => {
+    const fac = el.getAttribute('data-fac') || '';
+    const cc  = el.getAttribute('data-ccode') || '';
+    if (!fac) return;
+    const key = `${fac}|${cc}`;
+    if (!byKey.has(key)) byKey.set(key, { fac, cc, els: [] });
+    byKey.get(key).els.push(el);
+  });
+
+  for (const [key, group] of byKey) {
+    const cached = _facultyCourseAggCache.get(key);
+    if (cached && cached.state === 'ready') {
+      _applyChipScore(group.els, cached.overall, cached.count);
+      continue;
+    }
+    if (cached && cached.state === 'loading') continue;
+    _facultyCourseAggCache.set(key, { state: 'loading' });
+    fetchReviewsForFaculty(group.fac, group.cc, { pageSize: 100 })
+      .then(({ reviews }) => {
+        const agg = aggregateRatings(reviews);
+        let overall = null;
+        let count = 0;
+        if (agg) {
+          count = agg.count;
+          const vals = ['teaching', 'marking', 'behavior']
+            .map(k => agg.ratings[k])
+            .filter(v => typeof v === 'number');
+          overall = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
+        }
+        _facultyCourseAggCache.set(key, { state: 'ready', overall, count });
+        const live = document.querySelectorAll(`.course-faculty-chip[data-fac="${CSS.escape(group.fac)}"][data-ccode="${CSS.escape(group.cc)}"]`);
+        _applyChipScore(live, overall, count);
+      })
+      .catch(() => {
+        _facultyCourseAggCache.delete(key);
+      });
+  }
+}
+
+function _applyChipScore(els, overall, count) {
+  const HIDE_UNDER = 3;
+  const txt = (overall === null || count < HIDE_UNDER) ? '–' : overall.toFixed(1);
+  els.forEach(el => {
+    const s = el.querySelector('[data-score]');
+    if (s) s.textContent = txt;
   });
 }
 
