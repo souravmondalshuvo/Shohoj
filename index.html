@@ -3530,10 +3530,13 @@ input, select, textarea,
   line-height: 1.35;
 }
 .rv-tab-directory-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-top: 10px;
+}
+@media (max-width: 560px) {
+  .rv-tab-directory-list { grid-template-columns: 1fr; }
 }
 .rv-tab-directory-row {
   display: flex;
@@ -3568,10 +3571,13 @@ input, select, textarea,
   flex: 1;
 }
 .rv-tab-directory-name {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .rv-tab-directory-sub {
   margin-top: 4px;
