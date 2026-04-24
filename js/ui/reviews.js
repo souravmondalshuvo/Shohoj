@@ -397,8 +397,12 @@ export async function openCourseReviewsPanel(courseCode, courseName = '') {
   }
 
   const loadingHtml = headerHtml + `
-    <div id="_cr_body" style="padding:28px 14px;text-align:center;color:var(--text3);font-size:12px;">
-      Loading reviews…
+    <div id="_cr_body">
+      <div class="rv-tab-skel-rows" aria-label="Loading course reviews">
+        <div class="rv-tab-skel rv-tab-skel-row"></div>
+        <div class="rv-tab-skel rv-tab-skel-row"></div>
+        <div class="rv-tab-skel rv-tab-skel-row"></div>
+      </div>
     </div>`;
   const { overlay, theme } = _buildOverlay(loadingHtml);
   const body = overlay.querySelector('#_cr_body');
