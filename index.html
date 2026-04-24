@@ -427,6 +427,7 @@
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.02em;
+      line-height: 1;
       padding: 3px 7px;
       border-radius: 999px;
       cursor: pointer;
@@ -438,15 +439,16 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .course-faculty-chip:hover { background: rgba(240,165,0,0.18); border-color: rgba(240,165,0,0.55); }
-    .course-faculty-chip .fac-init { letter-spacing: 0.04em; }
+    .course-faculty-chip .fac-init { letter-spacing: 0.04em; line-height: 1; }
     .course-faculty-chip .fac-score {
       font-weight: 600;
-      font-size: 10px;
+      font-size: 11px;
       opacity: 0.85;
+      line-height: 1;
       padding-left: 5px;
       border-left: 1px solid rgba(240,165,0,0.30);
     }
-    .course-faculty-chip .fac-score::after { content: '★'; margin-left: 2px; font-size: 9px; }
+    .course-faculty-chip .fac-score::after { content: '★'; margin-left: 2px; font-size: 9px; vertical-align: middle; }
     .btn-add-course { background: transparent; border: 1px dashed var(--border); border-radius: 8px; color: var(--text3); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 14px; cursor: pointer; transition: all 0.2s; width: 100%; text-align: left; }
     .btn-add-course:hover { border-color: var(--green); color: var(--green); }
 
@@ -874,14 +876,16 @@ h1[data-reveal-hero].visible {
       border-radius: 8px;
       color: var(--text);
       font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
-      padding: 7px 6px;
+      padding: 7px 4px;
       width: 100%;
+      min-width: 0;
       outline: none;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
       text-align: center;
+      text-align-last: center;
     }
     .pf-select:focus {
       border-color: rgba(46,204,113,0.55);
