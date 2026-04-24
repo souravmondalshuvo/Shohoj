@@ -10348,8 +10348,16 @@ async function _renderFacultyPage(root, initials, courseFilter) {
       <span class="rv-tab-aggcard-coursechip">${escHtml(heroCourseCode)}</span>
       ${heroCourseName ? `<span class="rv-tab-aggcard-coursename">${escHtml(heroCourseName)}</span>` : ''}
     </div>` : '';
+  const gmailLink = facultyEmail
+    ? `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(facultyEmail)}`
+    : '';
+  const emailTooltip = facultyEmail
+    ? `Send an email to ${(facultyName || initials)} (${initials})`
+    : '';
   const emailHtml = facultyEmail
-    ? `<div class="rv-tab-aggcard-email">${escHtml(facultyEmail)}</div>`
+    ? `<a href="${escAttr(gmailLink)}" target="_blank" rel="noopener noreferrer"
+          title="${escAttr(emailTooltip)}" class="rv-tab-aggcard-email rv-tab-aggcard-email--link"
+       >${escHtml(facultyEmail)}</a>`
     : '';
   const heroBadgeHtml = overview
     ? `<div class="rv-tab-aggcard-badge ${escAttr(_overviewToneClass(overview.headline))}">${escHtml(overview.headline)}</div>`
@@ -10359,7 +10367,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
     : '';
   const overviewHtml = overview ? `
     <div class="rv-tab-overview">
-      <div class="rv-tab-overview-label">Overall overview</div>
+      <div class="rv-tab-overview-label"><span class="rv-tab-overview-dot"></span>Overall Overview</div>
       <div class="rv-tab-overview-text">${escHtml(overview.summary)}</div>
       <div class="rv-tab-overview-basis">${escHtml(overview.basis)}</div>
     </div>` : '';
