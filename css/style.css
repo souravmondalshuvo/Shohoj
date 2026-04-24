@@ -320,7 +320,7 @@
     .courses-table { width: 100%; }
     .course-row {
       display: grid;
-      grid-template-columns: 1fr 72px 96px 36px 56px;
+      grid-template-columns: 1fr 72px 96px 36px 92px;
       gap: 8px;
       padding: 8px 1.2rem;
       align-items: center;
@@ -353,7 +353,7 @@
       grid-template-columns: 1fr 54px 96px 36px;
       gap: 8px;
       padding: 6px 1.2rem;
-      padding-right: calc(1.2rem + 56px + 8px);
+      padding-right: calc(1.2rem + 92px + 8px);
       border-bottom: 1px solid var(--border);
       background: transparent;
       align-items: center;
@@ -375,23 +375,50 @@
     .add-course-row { padding: 8px 1.2rem; }
 
     /* ── Course row actions (rate + remove) ─────────────────────────────── */
-    .course-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
-    .course-rate-btn {
+    .course-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }
+    .course-rate-pill {
       background: transparent;
-      border: none;
-      font-size: 14px;
+      border: 1px dashed rgba(46,204,113,0.45);
+      color: var(--green);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 4px 8px;
+      border-radius: 999px;
       cursor: pointer;
-      border-radius: 6px;
-      width: 26px;
-      height: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0.55;
-      transition: opacity 0.15s, background 0.15s;
-      padding: 0;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
-    .course-rate-btn:hover { opacity: 1; background: rgba(240,165,0,0.1); }
+    .course-rate-pill:hover { background: rgba(46,204,113,0.10); border-color: var(--green); }
+    .course-faculty-chip {
+      background: rgba(240,165,0,0.10);
+      border: 1px solid rgba(240,165,0,0.30);
+      color: #F0A500;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      padding: 3px 7px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      max-width: 100%;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .course-faculty-chip:hover { background: rgba(240,165,0,0.18); border-color: rgba(240,165,0,0.55); }
+    .course-faculty-chip .fac-init { letter-spacing: 0.04em; }
+    .course-faculty-chip .fac-score {
+      font-weight: 600;
+      font-size: 10px;
+      opacity: 0.85;
+      padding-left: 5px;
+      border-left: 1px solid rgba(240,165,0,0.30);
+    }
+    .course-faculty-chip .fac-score::after { content: '★'; margin-left: 2px; font-size: 9px; }
     .btn-add-course { background: transparent; border: 1px dashed var(--border); border-radius: 8px; color: var(--text3); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 7px 14px; cursor: pointer; transition: all 0.2s; width: 100%; text-align: left; }
     .btn-add-course:hover { border-color: var(--green); color: var(--green); }
 
@@ -676,7 +703,7 @@ h1[data-reveal-hero].visible {
       .pg-solver-inputs { flex-direction: column !important; }
       .pg-solver-input-group { min-width: 0 !important; width: 100% !important; flex: none !important; }
       /* ── Course row compact on small phones ── */
-      .course-row { grid-template-columns: 1fr 40px 78px 26px 48px; gap: 4px; padding: 7px 0.8rem; }
+      .course-row { grid-template-columns: 1fr 40px 78px 26px 84px; gap: 4px; padding: 7px 0.8rem; }
     }
     @media (min-width: 481px) and (max-width: 767px) {
       nav { padding: 0 1.4rem; height: 60px; }
@@ -687,7 +714,7 @@ h1[data-reveal-hero].visible {
       .calc-header { padding: 1.2rem 1.5rem; flex-wrap: wrap; } .calc-body { padding: 1rem 1.2rem; }
       .calc-footer { padding: 1rem 1.2rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.2rem 1rem; }
       .tracker-stats { grid-template-columns: repeat(2, 1fr); }
-      .course-row { grid-template-columns: 1fr 44px 84px 30px 50px; gap: 5px; padding: 7px 1rem; }
+      .course-row { grid-template-columns: 1fr 44px 84px 30px 86px; gap: 5px; padding: 7px 1rem; }
       /* ── Tablet: dept select + solver fixes ── */
       #deptSelect { width: 100% !important; max-width: 100% !important; }
       .simulator-row input { width: 130px; }
@@ -700,7 +727,7 @@ h1[data-reveal-hero].visible {
       section { padding: 4rem 2rem; max-width: 100%; } .features-grid { grid-template-columns: repeat(2, 1fr); }
       .calc-header { padding: 1.3rem 1.8rem; } .calc-body { padding: 1.2rem 1.5rem; }
       .calc-footer { padding: 1.2rem 1.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 1.5rem 1.2rem; }
-      .course-row { grid-template-columns: 1fr 50px 90px 32px 52px; gap: 6px; }
+      .course-row { grid-template-columns: 1fr 50px 90px 32px 88px; gap: 6px; }
     }
     @media (min-width: 1024px) and (max-width: 1279px) { section { max-width: 860px; } .hero h1 { font-size: clamp(4rem, 6vw, 5.5rem); } .features-grid { grid-template-columns: repeat(3, 1fr); } }
     @media (min-width: 1280px) and (max-width: 1439px) { section { max-width: 920px; } .features-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -1743,7 +1770,7 @@ input, select, textarea,
 @media (max-width: 580px) {
   /* Course row: hide grade-letter col, keep grade-point input */
   .course-row {
-    grid-template-columns: 1fr 54px 70px 24px 48px !important;
+    grid-template-columns: 1fr 54px 70px 24px 84px !important;
     gap: 6px !important;
     padding: 7px 10px !important;
   }
@@ -2158,7 +2185,7 @@ input, select, textarea,
 @media (max-width: 580px) {
   /* 5-col grid: name | credits | grade-point | grade-letter | remove */
   .course-row {
-    grid-template-columns: 1fr 42px 68px 28px 48px !important;
+    grid-template-columns: 1fr 42px 68px 28px 84px !important;
     gap: 4px !important;
     padding: 7px 8px !important;
   }
