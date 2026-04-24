@@ -2998,6 +2998,7 @@ input, select, textarea,
   margin-bottom: 8px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 .rv-tab-overview-dot {
