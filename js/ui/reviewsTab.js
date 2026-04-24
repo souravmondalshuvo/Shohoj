@@ -640,6 +640,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
   const reviewsHtml = scoped.length ? `
     <div class="rv-tab-reviewslist">
       <div class="rv-tab-reviewslist-title">What students say</div>
+      <div class="rv-tab-reviewslist-grid">
       ${scoped
         .filter(x => x.text && x.text.trim().length > 0)
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
@@ -661,6 +662,7 @@ async function _renderFacultyPage(root, initials, courseFilter) {
             <div class="rv-tab-reviewitem-text">${escHtml(x.text)}</div>
           </div>`;
         }).join('')}
+      </div>
       ${nextCursor ? `<div class="rv-tab-note">More reviews exist — refine by course to see them.</div>` : ''}
     </div>
   ` : '';
