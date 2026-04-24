@@ -17,7 +17,7 @@ import {
   removeSemester, addCourse, removeCourse,
   loadSampleData, onDeptSelect, onStartSemConfirm,
   showSummaryForm, hideSummaryForm, confirmSummaryForm,
-  onFacultyInput, onFacultyBlur, openRateForCourse
+  openRateForCourse
 } from './ui/render.js';
 
 import {
@@ -106,8 +106,6 @@ window.pickSuggestion    = pickSuggestion;
 window.autoDetectGrade   = autoDetectGrade;
 window.onPFChange        = onPFChange;
 window.onGradePointBlur  = onGradePointBlur;
-window.onFacultyInput    = onFacultyInput;
-window.onFacultyBlur     = onFacultyBlur;
 window.openRateForCourse = openRateForCourse;
 window.exportPDF         = exportPDF;
 window.hideImportModal   = hideImportModal;
