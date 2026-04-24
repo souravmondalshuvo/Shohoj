@@ -21,7 +21,7 @@ const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','SHSS','ARC'
 import { escHtml, escAttr } from '../core/helpers.js';
 import { openReviewModal, openReportModal } from './reviews.js';
 
-const LIMITED_DATA_THRESHOLD = 5;
+const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
 
 function _isSignedIn() {
