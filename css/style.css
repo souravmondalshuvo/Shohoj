@@ -3178,13 +3178,18 @@ input, select, textarea,
   gap: 8px;
 }
 .rv-tab-reviewslist-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  align-items: start;
+  column-count: 2;
+  column-gap: 8px;
+}
+.rv-tab-reviewslist-grid > .rv-tab-reviewitem {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  margin: 0 0 8px;
+  width: 100%;
 }
 @media (max-width: 560px) {
-  .rv-tab-reviewslist-grid { grid-template-columns: 1fr; }
+  .rv-tab-reviewslist-grid { column-count: 1; }
 }
 .rv-tab-reviewslist-title {
   font-family: 'Syne', sans-serif;
