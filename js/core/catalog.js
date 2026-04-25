@@ -1140,7 +1140,7 @@ export const DEPT_META = {
   ARC:   { label: 'Architecture',                          school: 'SAD'  },
   PHR:   { label: 'Pharmacy',                              school: 'Pharmacy'},
   LLB:   { label: 'Bachelor of Laws',                      school: 'Law'  },
-  GENED: { label: 'General Education',                     school: 'GENED'},
+  GENED: { label: 'General Education', displayCode: 'GenEd', school: 'GENED'},
 };
 
 // Returns the prefix portion of a course code (letters before the first digit).
