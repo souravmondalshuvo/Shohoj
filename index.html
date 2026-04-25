@@ -9894,7 +9894,7 @@ async function openReviewsDirectory() {
 //   #calculator/reviews/MAK                 → faculty page (all courses)
 //   #calculator/reviews/MAK/CSE220          → faculty page filtered to one course
 
-const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','SHSS','ARC','PHR','LAW','SGE'];
+const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GenEd'];
 const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
 
@@ -10209,7 +10209,7 @@ async function _renderCourseList(root, dept) {
     if (c) reviewCounts[c] = (reviewCounts[c] || 0) + 1;
   }
 
-  // Group by prefix for multi-prefix departments (e.g. MNS, BBA, SHSS)
+  // Group by prefix for multi-prefix departments (e.g. MNS, BBA, GenEd)
   const byPrefix = {};
   for (const code of courses) {
     const pfx = getCoursePrefix(code);
