@@ -17,7 +17,7 @@ import { normalizeInitials, getFacultyProfile, hasFacultyProfile, upsertFacultyP
 import { DEPARTMENTS } from '../core/departments.js';
 import { COURSE_DB, PREFIX_DEPT_MAP, DEPT_META, getCourseDept, getCoursePrefix } from '../core/catalog.js';
 
-const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','SHSS','ARC','PHR','LAW','SGE'];
+const DEPT_ORDER = ['CSE','EEE','ECE','MNS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GenEd'];
 import { escHtml, escAttr } from '../core/helpers.js';
 import { openReviewModal, openReportModal } from './reviews.js';
 
@@ -335,7 +335,7 @@ async function _renderCourseList(root, dept) {
     if (c) reviewCounts[c] = (reviewCounts[c] || 0) + 1;
   }
 
-  // Group by prefix for multi-prefix departments (e.g. MNS, BBA, SHSS)
+  // Group by prefix for multi-prefix departments (e.g. MNS, BBA, GenEd)
   const byPrefix = {};
   for (const code of courses) {
     const pfx = getCoursePrefix(code);
