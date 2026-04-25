@@ -1123,8 +1123,8 @@ export const PREFIX_DEPT_MAP = {
   PHB: 'PHR', PHR: 'PHR',                               // School of Pharmacy
   LAW: 'LLB',                                           // School of Law (LLB)
   // ── General Education Department (GenEd) ──────────────────────────────────
-  BNG: 'GenEd', EMB: 'GenEd', CST: 'GenEd', FRN: 'GenEd', DEV: 'GenEd',
-  POL: 'GenEd', PSY: 'GenEd', HUM: 'GenEd',
+  BNG: 'GENED', EMB: 'GENED', CST: 'GENED', FRN: 'GENED', DEV: 'GENED',
+  POL: 'GENED', PSY: 'GENED', HUM: 'GENED',
 };
 
 // Human-readable labels and school affiliation for each department code.
@@ -1140,7 +1140,7 @@ export const DEPT_META = {
   ARC:   { label: 'Architecture',                          school: 'SAD'  },
   PHR:   { label: 'Pharmacy',                              school: 'Pharmacy'},
   LLB:   { label: 'Bachelor of Laws',                      school: 'Law'  },
-  GenEd: { label: 'General Education',                     school: 'GenEd'},
+  GENED: { label: 'General Education',                     school: 'GENED'},
 };
 
 // Returns the prefix portion of a course code (letters before the first digit).
