@@ -10012,7 +10012,7 @@ function _renderDeptList(root) {
           if (!meta) return '';
           return `
             <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0">
-              <div class="rv-tab-deptcard-code">${escHtml(code)}</div>
+              <div class="rv-tab-deptcard-code">${escHtml(meta.displayCode || code)}</div>
               <div class="rv-tab-deptcard-label">${escHtml(meta.label)}</div>
             </div>`;
         }).join('')}
@@ -10178,7 +10178,7 @@ async function _renderCourseList(root, dept) {
       <div class="rv-tab-breadcrumb">
         <a href="#calculator/reviews" class="rv-tab-crumb">← All Departments</a>
         <span class="rv-tab-crumb-sep">›</span>
-        <span class="rv-tab-crumb-active">${escHtml(dept)}</span>
+        <span class="rv-tab-crumb-active">${escHtml(meta?.displayCode || dept)}</span>
       </div>
       <div class="rv-tab-header" style="margin-top:12px;">
         <div class="rv-tab-title">${escHtml(deptLabel)}</div>
@@ -10259,7 +10259,7 @@ async function _renderCoursePage(root, courseCode) {
         <a href="#calculator/reviews" class="rv-tab-crumb">← Departments</a>
         ${deptMeta ? `
           <span class="rv-tab-crumb-sep">›</span>
-          <a href="#calculator/reviews/dept/${escAttr(deptCode)}" class="rv-tab-crumb">${escHtml(deptCode)}</a>` : ''}
+          <a href="#calculator/reviews/dept/${escAttr(deptCode)}" class="rv-tab-crumb">${escHtml(deptMeta.displayCode || deptCode)}</a>` : ''}
         <span class="rv-tab-crumb-sep">›</span>
         <span class="rv-tab-crumb-active">${escHtml(courseCode)}</span>
       </div>
