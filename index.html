@@ -7343,39 +7343,41 @@ const PREFIX_DEPT_MAP = {
   ECE: 'ECE',                                           // Dept of ECE
   MAT: 'MNS', PHY: 'MNS', STA: 'MNS', ENV: 'MNS',     // Dept of Math &
   MIC: 'MNS', BCH: 'MNS', BTE: 'MNS', BIO: 'MNS',     //   Natural Sciences
-  APE: 'MNS', CHE: 'MNS',                               //   (MNS)
-  // ── School of Business ────────────────────────────────────────────────────
+  APE: 'MNS', CHE: 'MNS', GEO: 'MNS',                   //   (MNS) — GEO sits here at BRACU
+  // ── BRAC Business School (BBS) ────────────────────────────────────────────
   ACT: 'BBA', BUS: 'BBA', FIN: 'BBA', MGT: 'BBA',
   MKT: 'BBA', MIS: 'BBA', MSC: 'BBA',
-  // ── School of Humanities & Social Sciences (SHSS) ─────────────────────────
-  ENG: 'ENG',                                           // Dept of English
-  ECO: 'ECO',                                           // Dept of Economics
-  ANT: 'ANT',                                           // Dept of Anthropology
-  SOC: 'SHSS', POL: 'SHSS', PSY: 'SHSS',               // Shared SHSS depts
-  HST: 'SHSS', GEO: 'SHSS', HUM: 'SHSS',
+  // ── English & Humanities (ENH) — folded under ENG tile ────────────────────
+  ENG: 'ENG',
+  HST: 'ENG',
+  // ── Economics & Social Sciences (ESS) — folded under ECO tile ─────────────
+  ECO: 'ECO',
+  SOC: 'ECO',
+  // ── Anthropology ──────────────────────────────────────────────────────────
+  ANT: 'ANT',
   // ── Other schools ─────────────────────────────────────────────────────────
   ARC: 'ARC',                                           // School of Architecture
   PHB: 'PHR', PHR: 'PHR',                               // School of Pharmacy
-  LAW: 'LAW',                                           // School of Law
-  // ── School of General Education (SGE) ─────────────────────────────────────
-  BNG: 'SGE', EMB: 'SGE', CST: 'SGE', FRN: 'SGE', DEV: 'SGE',
+  LAW: 'LLB',                                           // School of Law (LLB)
+  // ── General Education Department (GenEd) ──────────────────────────────────
+  BNG: 'GenEd', EMB: 'GenEd', CST: 'GenEd', FRN: 'GenEd', DEV: 'GenEd',
+  POL: 'GenEd', PSY: 'GenEd', HUM: 'GenEd',
 };
 
 // Human-readable labels and school affiliation for each department code.
 const DEPT_META = {
-  CSE:  { label: 'Computer Science & Engineering',        school: 'SDS'  },
-  EEE:  { label: 'Electrical & Electronic Engineering',   school: 'SDS'  },
-  ECE:  { label: 'Electronic & Communication Engineering',school: 'SDS'  },
-  MNS:  { label: 'Mathematics & Natural Sciences',        school: 'SDS'  },
-  BBA:  { label: 'Business',                              school: 'SoBiz'},
-  ENG:  { label: 'English',                               school: 'SHSS' },
-  ECO:  { label: 'Economics',                             school: 'SHSS' },
-  ANT:  { label: 'Anthropology',                          school: 'SHSS' },
-  SHSS: { label: 'Humanities & Social Sciences',          school: 'SHSS' },
-  ARC:  { label: 'Architecture',                          school: 'SAD'  },
-  PHR:  { label: 'Pharmacy',                              school: 'Pharmacy'},
-  LAW:  { label: 'Law',                                   school: 'Law'  },
-  SGE:  { label: 'General Education',                     school: 'SGE'  },
+  CSE:   { label: 'Computer Science & Engineering',        school: 'SDS'  },
+  EEE:   { label: 'Electrical & Electronic Engineering',   school: 'SDS'  },
+  ECE:   { label: 'Electronic & Communication Engineering',school: 'SDS'  },
+  MNS:   { label: 'Mathematics & Natural Sciences',        school: 'SDS'  },
+  BBA:   { label: 'Business',                              school: 'BBS'  },
+  ENG:   { label: 'English & Humanities',                  school: 'ENH'  },
+  ECO:   { label: 'Economics & Social Sciences',           school: 'ESS'  },
+  ANT:   { label: 'Anthropology',                          school: 'ESS'  },
+  ARC:   { label: 'Architecture',                          school: 'SAD'  },
+  PHR:   { label: 'Pharmacy',                              school: 'Pharmacy'},
+  LLB:   { label: 'Bachelor of Laws',                      school: 'Law'  },
+  GenEd: { label: 'General Education',                     school: 'GenEd'},
 };
 
 // Returns the prefix portion of a course code (letters before the first digit).
@@ -7386,7 +7388,9 @@ function getCoursePrefix(code) {
 
 // Returns the owning department code for a course, or null if unknown.
 function getCourseDept(code) {
-  return PREFIX_DEPT_MAP[getCoursePrefix(code)] ?? null;
+  const upper = String(code).toUpperCase();
+  if (upper === 'CST333') return 'BBA';
+  return PREFIX_DEPT_MAP[getCoursePrefix(upper)] ?? null;
 }
 
 // ── js/core/calculator.js ───────────────────────────────────────
