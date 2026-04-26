@@ -33,6 +33,7 @@ JS_FILES = [
     'js/ui/tracker.js',
     'js/ui/reviews.js',
     'js/ui/reviewsTab.js',
+    'js/ui/difficultyMap.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
