@@ -3457,28 +3457,52 @@ input, select, textarea,
   margin-top: 16px;
 }
 .rv-tab-deptcard {
+  position: relative;
+  overflow: hidden;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px;
   padding: 14px 12px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
   text-align: center;
+}
+.rv-tab-deptcard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(46,204,113,0.16), transparent 48%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 [data-theme="light"] .rv-tab-deptcard {
   background: rgba(0,0,0,0.03);
   border-color: rgba(0,0,0,0.1);
 }
 .rv-tab-deptcard:hover {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.18);
+  background: rgba(46,204,113,0.08);
+  border-color: rgba(46,204,113,0.34);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.26), 0 0 0 1px rgba(46,204,113,0.08);
+  transform: translateY(-2px);
+}
+.rv-tab-deptcard:hover::before {
+  opacity: 1;
 }
 [data-theme="light"] .rv-tab-deptcard:hover {
-  background: rgba(0,0,0,0.07);
+  background: rgba(46,204,113,0.10);
+  box-shadow: 0 12px 24px rgba(46,204,113,0.14), 0 0 0 1px rgba(46,204,113,0.10);
 }
 .rv-tab-deptcard:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.rv-tab-deptcard > * {
+  position: relative;
 }
 .rv-tab-deptcard-code {
   font-size: 1.1rem;
@@ -3513,27 +3537,67 @@ input, select, textarea,
   margin-top: 4px;
 }
 .rv-tab-coursecard {
+  position: relative;
+  overflow: hidden;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px;
   padding: 12px 14px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+.rv-tab-coursecard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(46,204,113,0.20), transparent 34%),
+    linear-gradient(135deg, rgba(46,204,113,0.10), transparent 52%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
 }
 [data-theme="light"] .rv-tab-coursecard {
   background: rgba(0,0,0,0.03);
   border-color: rgba(0,0,0,0.1);
 }
 .rv-tab-coursecard:hover {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.18);
+  background: rgba(46,204,113,0.08);
+  border-color: rgba(46,204,113,0.34);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(46,204,113,0.08);
+  transform: translateY(-2px);
+}
+.rv-tab-coursecard:hover::before {
+  opacity: 1;
 }
 [data-theme="light"] .rv-tab-coursecard:hover {
-  background: rgba(0,0,0,0.07);
+  background: rgba(46,204,113,0.10);
+  box-shadow: 0 12px 24px rgba(46,204,113,0.14), 0 0 0 1px rgba(46,204,113,0.10);
 }
 .rv-tab-coursecard:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+.rv-tab-coursecard > * {
+  position: relative;
+}
+.rv-tab-coursecard:hover .rv-tab-coursecard-code,
+.rv-tab-deptcard:hover .rv-tab-deptcard-code {
+  color: #3EF08A;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rv-tab-coursecard,
+  .rv-tab-deptcard {
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  }
+  .rv-tab-coursecard:hover,
+  .rv-tab-deptcard:hover {
+    transform: none;
+  }
 }
 .rv-tab-coursecard-code {
   font-size: 13px;
