@@ -359,7 +359,7 @@ async function _renderCourseList(root, dept) {
         <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
         <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
         ${count > 0
-          ? `<div class="rv-tab-coursecard-count rv-tab-coursecard-count--reviews">${count} review${count !== 1 ? 's' : ''} · ${facCount} faculty</div>`
+          ? `<div class="rv-tab-coursecard-count rv-tab-coursecard-count--reviews"><span>${facCount} faculty</span><span>${count} review${count !== 1 ? 's' : ''}</span></div>`
           : `<div class="rv-tab-coursecard-count">No reviews yet</div>`
         }
       </div>`;
