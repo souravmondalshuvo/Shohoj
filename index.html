@@ -2497,13 +2497,29 @@ input, select, textarea,
   border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-radius: 14px;
+  border-radius: 50px;
   position: relative;
   z-index: 2;
 }
 [data-theme="light"] .calc-tabs {
   background: rgba(0,0,0,0.05);
   border-color: rgba(0,0,0,0.08);
+}
+
+/* Sliding active pill */
+.calc-tab-slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: 0;
+  background: rgba(46,204,113,0.15);
+  border-radius: 50px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  pointer-events: none;
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
 }
 
 .calc-tab {
@@ -2521,24 +2537,19 @@ input, select, textarea,
   font-weight: 600;
   letter-spacing: 0.2px;
   cursor: pointer;
-  border-radius: 10px;
-  transition: color 0.2s, background 0.2s;
+  border-radius: 50px;
+  transition: color 0.22s;
   position: relative;
+  z-index: 1;
   white-space: nowrap;
 }
 
 .calc-tab:hover {
   color: var(--text);
-  background: rgba(255,255,255,0.07);
-}
-[data-theme="light"] .calc-tab:hover {
-  background: rgba(0,0,0,0.05);
 }
 
 .calc-tab.active {
   color: var(--green);
-  background: rgba(46,204,113,0.13);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 
 .calc-tab.active::after {
@@ -3831,12 +3842,18 @@ input, select, textarea,
     grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 8px 0.8rem;
     gap: 4px;
+    border-radius: 16px;
   }
+  .calc-tab-slider { display: none; }
   .calc-tab {
     min-width: 0;
     padding: 8px 6px;
     font-size: 11px;
     gap: 3px;
+    border-radius: 12px;
+  }
+  .calc-tab.active {
+    background: rgba(46,204,113,0.15);
   }
   .calc-tab-icon {
     font-size: 13px;
