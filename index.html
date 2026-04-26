@@ -4364,6 +4364,10 @@ input, select, textarea,
           <span class="calc-tab-icon">⭐</span>
           <span>Reviews</span>
         </button>
+        <button class="calc-tab" data-tab="difficulty" onclick="switchCalcTab('difficulty')">
+          <span class="calc-tab-icon">🗺️</span>
+          <span>Difficulty</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -4452,6 +4456,15 @@ input, select, textarea,
         <div class="calc-body">
           <div id="reviewsContent">
             <!-- Rendered dynamically by reviewsTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 5: DIFFICULTY MAP ═══ -->
+      <div class="calc-tab-panel" id="tabDifficulty">
+        <div class="calc-body">
+          <div id="difficultyMapContent">
+            <!-- Rendered dynamically by difficultyMap.js -->
           </div>
         </div>
       </div>
