@@ -393,6 +393,14 @@ const TAB_MAP = {
 
 let _activeCalcTab = 'calculator';
 
+function _moveTabSlider(tabId) {
+  const slider = document.getElementById('calcTabSlider');
+  const btn    = document.querySelector(`.calc-tab[data-tab="${tabId}"]`);
+  if (!slider || !btn) return;
+  slider.style.left  = btn.offsetLeft + 'px';
+  slider.style.width = btn.offsetWidth + 'px';
+}
+
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
   _activeCalcTab = tabId;
@@ -401,6 +409,8 @@ function switchCalcTab(tabId) {
   document.querySelectorAll('.calc-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabId);
   });
+
+  _moveTabSlider(tabId);
 
   // Update panels
   Object.entries(TAB_MAP).forEach(([key, panelId]) => {
@@ -695,6 +705,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore active tab from session/URL hash
   const savedTab = restoreCalcTab();
   if (savedTab !== 'calculator') switchCalcTab(savedTab);
+  // Position slider on the initial active tab after layout settles
+  requestAnimationFrame(() => _moveTabSlider(_activeCalcTab));
 
   initReveal();
   initCursor();
