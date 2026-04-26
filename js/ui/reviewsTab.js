@@ -330,9 +330,14 @@ async function _renderCourseList(root, dept) {
 
   const recent = await fetchRecentReviews(200);
   const reviewCounts = {};
+  const facultySets = {};
   for (const r of recent) {
     const c = String(r.courseCode || '').toUpperCase();
-    if (c) reviewCounts[c] = (reviewCounts[c] || 0) + 1;
+    if (!c) continue;
+    reviewCounts[c] = (reviewCounts[c] || 0) + 1;
+    if (r.facultyInitials) {
+      (facultySets[c] = facultySets[c] || new Set()).add(String(r.facultyInitials).toUpperCase());
+    }
   }
 
   // Group by prefix for multi-prefix departments (e.g. MNS, BBA, GENED)
@@ -345,15 +350,16 @@ async function _renderCourseList(root, dept) {
   const isMultiPrefix = prefixes.length > 1;
 
   const courseCardHtml = code => {
-    const info  = COURSE_DB[code];
-    const name  = info ? info.name : code;
-    const count = reviewCounts[code] || 0;
+    const info       = COURSE_DB[code];
+    const name       = info ? info.name : code;
+    const count      = reviewCounts[code] || 0;
+    const facCount   = facultySets[code] ? facultySets[code].size : 0;
     return `
       <div class="rv-tab-coursecard" data-course="${escAttr(code)}" role="button" tabindex="0">
         <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
         <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
         ${count > 0
-          ? `<div class="rv-tab-coursecard-count rv-tab-coursecard-count--reviews">${count} review${count !== 1 ? 's' : ''}</div>`
+          ? `<div class="rv-tab-coursecard-count rv-tab-coursecard-count--reviews">${count} review${count !== 1 ? 's' : ''} · ${facCount} faculty</div>`
           : `<div class="rv-tab-coursecard-count">No reviews yet</div>`
         }
       </div>`;
