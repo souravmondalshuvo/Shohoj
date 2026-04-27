@@ -1873,7 +1873,7 @@ input, select, textarea,
   flex: 1;
   min-width: 120px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   background: transparent;
   cursor: pointer;
