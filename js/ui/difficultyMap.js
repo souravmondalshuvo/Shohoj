@@ -155,6 +155,16 @@ function _render(root, entries) {
   </div>`;
 }
 
+// ── Auth-change cache invalidation ────────────────────────────────────────────
+
+window.addEventListener('shohoj:auth-changed', () => {
+  _cache = null;
+  const root = document.getElementById('difficultyMapContent');
+  if (root && root.closest('[style*="display: none"]') === null && root.offsetParent !== null) {
+    renderDifficultyMapTab();
+  }
+});
+
 // ── Public entry ──────────────────────────────────────────────────────────────
 
 export async function renderDifficultyMapTab() {
