@@ -11364,7 +11364,11 @@ function _cardHtml(e) {
 function _render(root, entries) {
   const depts    = ['ALL', ...Array.from(new Set(entries.map(e => e.dept))).sort()];
   const filtered = _activeDept === 'ALL' ? entries : entries.filter(e => e.dept === _activeDept);
-  const sorted   = [...filtered].sort((a, b) => (b[_sortBy] ?? 0) - (a[_sortBy] ?? 0));
+  const sorted   = [...filtered].sort((a, b) =>
+    _sortBy === 'code'
+      ? a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' })
+      : (b[_sortBy] ?? 0) - (a[_sortBy] ?? 0)
+  );
   const total    = entries.reduce((s, e) => s + e.count, 0);
 
   const pillsHtml = depts.map(d => {
@@ -11375,6 +11379,7 @@ function _render(root, entries) {
 
   const sortHtml = `<div class="dm-sort">
     <span class="dm-sort-label">Sort</span>
+    <button class="dm-sort-btn${_sortBy === 'code'       ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('code')">Code</button>
     <button class="dm-sort-btn${_sortBy === 'difficulty' ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('difficulty')">Difficulty</button>
     <button class="dm-sort-btn${_sortBy === 'workload'   ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('workload')">Workload</button>
   </div>`;
