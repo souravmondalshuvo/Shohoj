@@ -287,7 +287,7 @@ Shohoj has been through a security audit and the following protections are in pl
 | Test suite & CI                     | ✅ Complete |
 | Semester Planner with Prerequisites | ✅ Complete |
 | Faculty Reviews (anonymous, 5-dim)  | ✅ Complete |
-| Course Difficulty Map               | 🔜 Planned  |
+| Course Difficulty Map               | ✅ Complete |
 | Advising Week Checklist             | 🔜 Planned  |
 | Freshman Survival Guide             | 🔜 Planned  |
 
