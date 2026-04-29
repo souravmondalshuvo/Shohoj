@@ -11503,7 +11503,26 @@ async function renderDifficultyMapTab() {
 
   if (_cache) { _render(root, _cache); return; }
 
-  root.innerHTML = '<div class="dm-loading">Loading…</div>';
+  const skelCard = `
+    <div class="dm-skel-card">
+      <div class="dm-skel-head">
+        <div class="dm-skel dm-skel-code"></div>
+        <div class="dm-skel dm-skel-tag"></div>
+      </div>
+      <div class="dm-skel dm-skel-name"></div>
+      <div class="dm-skel-bar-row">
+        <div class="dm-skel dm-skel-bar-label"></div>
+        <div class="dm-skel dm-skel-bar-track"></div>
+        <div class="dm-skel dm-skel-bar-val"></div>
+      </div>
+      <div class="dm-skel-bar-row">
+        <div class="dm-skel dm-skel-bar-label"></div>
+        <div class="dm-skel dm-skel-bar-track"></div>
+        <div class="dm-skel dm-skel-bar-val"></div>
+      </div>
+      <div class="dm-skel dm-skel-foot"></div>
+    </div>`;
+  root.innerHTML = `<div class="dm-grid">${skelCard.repeat(8)}</div>`;
   try {
     _cache = await _buildIndex();
     _render(root, _cache);
