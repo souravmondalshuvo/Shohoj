@@ -3465,7 +3465,7 @@ input, select, textarea,
     box-shadow 0.28s cubic-bezier(.34, 1.56, .64, 1),
     transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
   text-align: center;
-  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) both;
+  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) backwards;
   animation-delay: calc(var(--i, 0) * 22ms);
 }
 .rv-tab-deptcard::before {
@@ -3564,7 +3564,7 @@ input, select, textarea,
     border-color 0.22s ease,
     box-shadow 0.28s cubic-bezier(.34, 1.56, .64, 1),
     transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
-  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) both;
+  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) backwards;
   animation-delay: calc(var(--i, 0) * 18ms);
 }
 .rv-tab-coursecard::before {
