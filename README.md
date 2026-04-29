@@ -18,8 +18,8 @@
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
-  <img src="https://img.shields.io/badge/Courses-774%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-55%20passing-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
+  <img src="https://img.shields.io/badge/Tests-158%20passing-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -64,6 +64,16 @@ Plan your next semester with prerequisite-aware recommendations. Shohoj reads yo
 - **Credit load validation** — enforces the 9/12/15-credit BRACU policy and flags chairman-permission zones
 - **CGPA impact preview** — see the projected CGPA if your plan lands a given grade across the board
 - **Start Semester** — promote a finished plan directly into a running semester in the Calculator with one click
+
+### 🗺️ Course Difficulty Map (New)
+
+A bird's-eye view of how hard each course actually is, based on real student reviews. Aggregates difficulty and workload ratings across the whole review corpus and surfaces them as a sortable, filterable card grid.
+
+- **Aggregate scores** — every course shows mean difficulty and workload pulled from the live review corpus (minimum 3 reviews to appear)
+- **Difficulty tags** — courses are auto-labelled Moderate / Challenging / Hard based on their score, with color-coded bars
+- **Department filter** — pill-style toggles to narrow the grid to a single department or browse the full catalog
+- **Sort by code, difficulty, or workload** — flip between alphabetical course code, hardest-first, or heaviest-workload-first ordering
+- **One-click drill-down** — tapping a card jumps straight to the per-course review panel for that course
 
 ### ⭐ Faculty Reviews (New)
 
@@ -151,7 +161,7 @@ Visual timeline of your degree journey — credits earned vs total required, sem
 
 ### 🔍 Course Autocomplete
 
-Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **774 courses** across all **16 departments**. Credits auto-fill when you pick a course.
+Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **851 courses** across all **16 departments**. Credits auto-fill when you pick a course.
 
 <p align="center">
   <img src="assets/screenshots/autocomplete.png" alt="Course Autocomplete" width="700" />
@@ -224,7 +234,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Pharmacy                            | PHR  | 164     | Bi (Sp+Su) | 🟢 Full support |
 | Law                                 | LLB  | 135     | Bi (Sp+Fa) | 🟢 Full support |
 
-**Total: 774 courses in catalog** (including GED/common courses shared across departments)
+**Total: 851 courses in catalog** (including GED/common courses shared across departments)
 
 ---
 
@@ -238,7 +248,7 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js (zero dependencies)                           | 55 tests across calculator and parser logic            |
+| Testing     | Node.js (zero dependencies)                           | 158 tests across calculator, parser, planner, tracker, render, and reviews logic |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 | CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
@@ -357,6 +367,8 @@ Shohoj/
 │   │   ├── playground.js         CGPA Playground — Grade Changer & Reverse Solver
 │   │   ├── planner.js            Semester Planner — prereq checks, plan builder, tree view
 │   │   ├── reviews.js            Review modal, per-course panel, reviews directory
+│   │   ├── reviewsTab.js         Reviews tab — directory browse, faculty/course search
+│   │   ├── difficultyMap.js      Course Difficulty Map — aggregated difficulty + workload by course
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
@@ -369,8 +381,12 @@ Shohoj/
 │   └── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
 ├── firestore.rules               Firestore security rules (users, facultyReviews, facultyProfiles)
 ├── tests/
-│   ├── calculator.test.js        40 tests — GPA engine, retake/repeat policies, grade detection
-│   └── parser.test.js            15 tests — department detection, semester parsing, blob parser
+│   ├── calculator.test.js        55 tests — GPA engine, retake/repeat policies, grade detection
+│   ├── parser.test.js            24 tests — department detection, semester parsing, blob parser
+│   ├── planner.test.js           13 tests — prereq resolution, plan validation
+│   ├── render.test.js            7 tests — semester rendering and reorder
+│   ├── tracker.test.js           4 tests — degree progress and graduation estimate
+│   └── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                Runs full test suite on push and pull request
@@ -407,7 +423,7 @@ python3 -m http.server 8000
 
 ```bash
 npm test
-# Results: 55 passed, 0 failed, 55 total
+# Results: 158 passed, 0 failed, 158 total
 ```
 
 **Build the bundled version:**
@@ -528,7 +544,7 @@ Data is never sent to any server other than Firestore. There are no ads, no anal
 | CGPA Calculator                                 | ✅ Production-ready                                     |
 | PDF Transcript Import                           | ✅ Production-ready                                     |
 | PDF Grade Report Export                         | ✅ Production-ready                                     |
-| Course Autocomplete (774 courses)               | ✅ Production-ready                                     |
+| Course Autocomplete (851 courses)               | ✅ Production-ready                                     |
 | Cloud Sync (Firebase)                           | ✅ Production-ready                                     |
 | CGPA Playground (Grade Changer, Reverse Solver) | ✅ Production-ready                                     |
 | CGPA Goal Simulator                             | ✅ Production-ready                                     |
@@ -536,6 +552,7 @@ Data is never sent to any server other than Firestore. There are no ads, no anal
 | Degree Progress Tracker                         | ✅ Stable — graduation estimate is an approximation     |
 | Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
 | Faculty Reviews                                 | 🔶 Live — corpus seeding in progress                    |
+| Course Difficulty Map                           | 🔶 Live — aggregates grow with the review corpus        |
 
 ---
 
@@ -551,7 +568,7 @@ Shohoj is built for students, by students. Contributions are welcome.
    git checkout -b feature/your-feature-name
    ```
 3. **Make your changes** — follow the existing code style (vanilla JS, no frameworks in Phase 1)
-4. **Test** — run `npm test` and verify all 55 tests pass
+4. **Test** — run `npm test` and verify all 158 tests pass
 5. **Build** — run `python3 build3.py` to regenerate the bundled file
 6. **Submit a pull request** with a clear description of what you changed and why
 
