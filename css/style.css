@@ -4120,7 +4120,6 @@ input, select, textarea,
 }
 
 /* States */
-.dm-loading,
 .dm-empty {
   font-size: 13px;
   color: var(--text3);
@@ -4128,3 +4127,47 @@ input, select, textarea,
   text-align: center;
   grid-column: 1 / -1;
 }
+
+/* Skeleton */
+.dm-skel-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+[data-theme="light"] .dm-skel-card {
+  background: rgba(0,0,0,0.025);
+  border-color: rgba(0,0,0,0.05);
+}
+.dm-skel {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: rvSkelShimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+[data-theme="light"] .dm-skel {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.04) 0%,
+    rgba(0,0,0,0.09) 50%,
+    rgba(0,0,0,0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+.dm-skel-head { display: flex; align-items: center; justify-content: space-between; }
+.dm-skel-code { height: 16px; width: 68px; }
+.dm-skel-tag  { height: 16px; width: 54px; border-radius: 999px; }
+.dm-skel-name { height: 12px; width: 78%; }
+.dm-skel-bar-row { display: flex; align-items: center; gap: 8px; }
+.dm-skel-bar-label { height: 10px; width: 62px; flex-shrink: 0; }
+.dm-skel-bar-track { flex: 1; height: 5px; border-radius: 4px; }
+.dm-skel-bar-val   { height: 10px; width: 22px; flex-shrink: 0; }
+.dm-skel-foot { height: 10px; width: 45%; }
