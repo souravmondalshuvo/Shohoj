@@ -133,11 +133,11 @@ function _renderDeptList(root) {
         <div id="_rvt_suggestions" class="rv-tab-suggestions-dropdown" hidden></div>
       </div>
       <div class="rv-tab-deptgrid">
-        ${DEPT_ORDER.map(code => {
+        ${DEPT_ORDER.map((code, i) => {
           const meta = DEPT_META[code];
           if (!meta) return '';
           return `
-            <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0">
+            <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0" style="--i:${Math.min(i, 24)}">
               <div class="rv-tab-deptcard-code">${escHtml(meta.displayCode || code)}</div>
               <div class="rv-tab-deptcard-label">${escHtml(meta.label)}</div>
             </div>`;
@@ -349,13 +349,13 @@ async function _renderCourseList(root, dept) {
   const prefixes     = Object.keys(byPrefix).sort();
   const isMultiPrefix = prefixes.length > 1;
 
-  const courseCardHtml = code => {
+  const courseCardHtml = (code, i) => {
     const info       = COURSE_DB[code];
     const name       = info ? info.name : code;
     const count      = reviewCounts[code] || 0;
     const facCount   = facultySets[code] ? facultySets[code].size : 0;
     return `
-      <div class="rv-tab-coursecard" data-course="${escAttr(code)}" role="button" tabindex="0">
+      <div class="rv-tab-coursecard" data-course="${escAttr(code)}" role="button" tabindex="0" style="--i:${Math.min(i, 24)}">
         <div class="rv-tab-coursecard-code">${escHtml(code)}</div>
         <div class="rv-tab-coursecard-name">${escHtml(name)}</div>
         ${count > 0
@@ -368,7 +368,7 @@ async function _renderCourseList(root, dept) {
   body.innerHTML = prefixes.map(pfx => `
     ${isMultiPrefix ? `<div class="rv-tab-section-header">${escHtml(pfx)}</div>` : ''}
     <div class="rv-tab-coursegrid">
-      ${byPrefix[pfx].map(courseCardHtml).join('')}
+      ${byPrefix[pfx].map((code, i) => courseCardHtml(code, i)).join('')}
     </div>
   `).join('');
 
