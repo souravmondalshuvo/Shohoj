@@ -3455,15 +3455,18 @@ input, select, textarea,
   overflow: hidden;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 14px 12px;
   cursor: pointer;
+  will-change: transform;
   transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.28s cubic-bezier(.34, 1.56, .64, 1),
+    transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
   text-align: center;
+  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) both;
+  animation-delay: calc(var(--i, 0) * 22ms);
 }
 .rv-tab-deptcard::before {
   content: "";
@@ -3472,7 +3475,7 @@ input, select, textarea,
   background: linear-gradient(135deg, rgba(46,204,113,0.16), transparent 48%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.22s ease;
 }
 [data-theme="light"] .rv-tab-deptcard {
   background: rgba(0,0,0,0.03);
@@ -3480,16 +3483,24 @@ input, select, textarea,
 }
 .rv-tab-deptcard:hover {
   background: rgba(46,204,113,0.08);
-  border-color: rgba(46,204,113,0.34);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.26), 0 0 0 1px rgba(46,204,113,0.08);
-  transform: translateY(-2px);
+  border-color: rgba(46,204,113,0.38);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.30);
+  transform: translateY(-3px) scale(1.012);
+}
+.rv-tab-deptcard:active {
+  transform: translateY(-1px) scale(0.985);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s cubic-bezier(.4, 0, .2, 1);
 }
 .rv-tab-deptcard:hover::before {
   opacity: 1;
 }
 [data-theme="light"] .rv-tab-deptcard:hover {
   background: rgba(46,204,113,0.10);
-  box-shadow: 0 12px 24px rgba(46,204,113,0.14), 0 0 0 1px rgba(46,204,113,0.10);
+  box-shadow: 0 14px 28px rgba(46,204,113,0.16);
 }
 .rv-tab-deptcard:focus-visible {
   outline: 2px solid var(--accent);
@@ -3535,14 +3546,17 @@ input, select, textarea,
   overflow: hidden;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 13px 14px;
   cursor: pointer;
+  will-change: transform;
   transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.28s cubic-bezier(.34, 1.56, .64, 1),
+    transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
+  animation: rv-card-mount 0.42s cubic-bezier(.34, 1.32, .64, 1) both;
+  animation-delay: calc(var(--i, 0) * 18ms);
 }
 .rv-tab-coursecard::before {
   content: "";
@@ -3553,7 +3567,7 @@ input, select, textarea,
     linear-gradient(135deg, rgba(46,204,113,0.10), transparent 52%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.22s ease;
 }
 [data-theme="light"] .rv-tab-coursecard {
   background: rgba(0,0,0,0.03);
@@ -3561,19 +3575,26 @@ input, select, textarea,
 }
 .rv-tab-coursecard:hover {
   background: rgba(46,204,113,0.08);
-  border-color: rgba(46,204,113,0.34);
+  border-color: rgba(46,204,113,0.38);
   box-shadow:
-    0 8px 28px rgba(46,204,113,0.30),
-    0 2px 8px rgba(0,0,0,0.22),
-    0 0 0 1px rgba(46,204,113,0.12);
-  transform: translateY(-2px);
+    0 12px 32px rgba(46,204,113,0.32),
+    0 4px 12px rgba(0,0,0,0.24);
+  transform: translateY(-3px) scale(1.012);
+}
+.rv-tab-coursecard:active {
+  transform: translateY(-1px) scale(0.985);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.12s cubic-bezier(.4, 0, .2, 1);
 }
 .rv-tab-coursecard:hover::before {
   opacity: 1;
 }
 [data-theme="light"] .rv-tab-coursecard:hover {
   background: rgba(46,204,113,0.10);
-  box-shadow: 0 12px 24px rgba(46,204,113,0.14), 0 0 0 1px rgba(46,204,113,0.10);
+  box-shadow: 0 14px 28px rgba(46,204,113,0.16);
 }
 .rv-tab-coursecard:focus-visible {
   outline: 2px solid var(--accent);
@@ -3586,13 +3607,26 @@ input, select, textarea,
 .rv-tab-deptcard:hover .rv-tab-deptcard-code {
   color: #3EF08A;
 }
+@keyframes rv-card-mount {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .rv-tab-coursecard,
   .rv-tab-deptcard {
     transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    animation: none;
   }
   .rv-tab-coursecard:hover,
-  .rv-tab-deptcard:hover {
+  .rv-tab-deptcard:hover,
+  .rv-tab-coursecard:active,
+  .rv-tab-deptcard:active {
     transform: none;
   }
 }
