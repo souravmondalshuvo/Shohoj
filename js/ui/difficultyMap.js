@@ -6,8 +6,8 @@ import { fetchRecentReviews, aggregateRatings } from '../core/reviews.js';
 import { COURSE_DB, getCourseDept, getCoursePrefix } from '../core/catalog.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
-const MIN_REVIEWS  = 3;
-const FETCH_LIMIT  = 5000;
+const LOW_SAMPLE_UNDER = 3;
+const FETCH_LIMIT      = 5000;
 
 // ── Data layer ────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,6 @@ async function _buildIndex() {
   }
   const entries = [];
   for (const [code, revs] of byCourse) {
-    if (revs.length < MIN_REVIEWS) continue;
     const agg = aggregateRatings(revs);
     if (!agg) continue;
     const info = COURSE_DB[code] || { code, name: code, credits: null };
@@ -35,6 +34,7 @@ async function _buildIndex() {
       count:      revs.length,
       difficulty: agg.ratings.difficulty,
       workload:   agg.ratings.workload,
+      lowSample:  revs.length < LOW_SAMPLE_UNDER,
     });
   }
   return entries;
@@ -109,7 +109,7 @@ function _cardHtml(e) {
     <div class="dm-card-name">${escHtml(e.name)}</div>
     ${_barHtml(e.difficulty, 'Difficulty')}
     ${_barHtml(e.workload,   'Workload')}
-    <div class="dm-card-foot">${e.count} review${e.count !== 1 ? 's' : ''}</div>
+    <div class="dm-card-foot">${e.count} review${e.count !== 1 ? 's' : ''}${e.lowSample ? ' · limited sample' : ''}</div>
   </button>`;
 }
 
@@ -140,12 +140,12 @@ function _render(root, entries) {
 
   const gridHtml = sorted.length
     ? sorted.map(_cardHtml).join('')
-    : `<div class="dm-empty">No courses with enough reviews in this department yet.</div>`;
+    : `<div class="dm-empty">No reviewed courses in this department yet.</div>`;
 
   root.innerHTML = `<div class="dm-root">
     <div class="dm-header">
       <div class="dm-title">Course Difficulty Map</div>
-      <div class="dm-subtitle">Based on ${total} review${total !== 1 ? 's' : ''} · Courses with fewer than ${MIN_REVIEWS} reviews are hidden</div>
+      <div class="dm-subtitle">Based on ${total} review${total !== 1 ? 's' : ''} across ${entries.length} course${entries.length !== 1 ? 's' : ''} · Low-sample courses are marked limited</div>
     </div>
     <div class="dm-controls">
       <div class="dm-pills">${pillsHtml}</div>
