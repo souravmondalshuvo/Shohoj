@@ -10,6 +10,7 @@ Usage:
 """
 
 import json
+import hashlib
 import re
 import os
 
@@ -118,6 +119,48 @@ window.clearAllData = clearAllData;
         print(f'   Faculty profiles injected: {len(profiles)} from {profiles_path}')
     else:
         print(f'  ⚠ {profiles_path} not found — SEEDED_FACULTY_PROFILES will be empty')
+
+    # ── Inject seed reviews from input_reviews.jsonl ──────────────────────────
+    reviews_path = 'input_reviews.jsonl'
+    if os.path.exists(reviews_path):
+        reviews = []
+        with open(reviews_path, 'r', encoding='utf-8') as f:
+            for idx, line in enumerate(f, start=1):
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                initials = re.sub(r'[^A-Z]', '', str(row.get('facultyInitials', '')).upper())[:6]
+                course = str(row.get('courseCode', '')).strip().upper()
+                text = str(row.get('text') or '').strip()[:500]
+                source = str(row.get('sourceUrl') or '')
+                digest = hashlib.sha256(
+                    f'seeded-input-v1|{idx}|{initials}|{course}|{text}|{source}'.encode('utf-8')
+                ).hexdigest()
+                ratings = row.get('ratings') or {}
+                reviews.append({
+                    'id': f'{initials}_{course}_{digest}',
+                    'facultyInitials': initials,
+                    'courseCode': course,
+                    'semester': str(row.get('semester') or '').strip()[:40],
+                    'ratings': {
+                        'teaching':   round(ratings.get('teaching')),
+                        'marking':    round(ratings.get('marking')),
+                        'behavior':   round(ratings.get('behavior')),
+                        'difficulty': round(ratings.get('difficulty')),
+                        'workload':   round(ratings.get('workload')),
+                    },
+                    'text': text,
+                    'createdAt': 1775000000000 - idx,
+                    'seeded': True,
+                })
+        reviews_js = json.dumps(reviews, ensure_ascii=False, separators=(', ', ': '))
+        placeholder = 'const SEEDED_REVIEWS = []; // injected by build3.py'
+        replacement = f'const SEEDED_REVIEWS = {reviews_js};'
+        bundled_js = bundled_js.replace(placeholder, replacement)
+        print(f'   Seed reviews injected: {len(reviews)} from {reviews_path}')
+    else:
+        print(f'  ⚠ {reviews_path} not found — SEEDED_REVIEWS will be empty')
 
     # ── Read firebase.js (kept as-is, will be inlined as type="module") ──────
     firebase_js = ''
