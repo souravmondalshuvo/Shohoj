@@ -23,6 +23,7 @@ import { openReviewModal, openReportModal } from './reviews.js';
 
 const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
+const REVIEW_COUNT_SCAN_LIMIT = 1000;
 
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
@@ -165,7 +166,7 @@ async function _renderDeptList(root, token) {
   const dropdown = root.querySelector('#_rvt_suggestions');
   const stats = root.querySelector('#_rvt_stats');
 
-  fetchRecentReviews(1000).then(recent => {
+  fetchRecentReviews(REVIEW_COUNT_SCAN_LIMIT).then(recent => {
     if (_isStaleNav(token) || !stats) return;
     const reviewedFacultyCount = aggregateByFaculty(recent).length;
     const totalReviews = recent.length;
@@ -367,7 +368,7 @@ async function _renderCourseList(root, dept) {
 
   const courses = _getDeptCourses(dept);
 
-  const recent = await fetchRecentReviews(200);
+  const recent = await fetchRecentReviews(REVIEW_COUNT_SCAN_LIMIT);
   const reviewCounts = {};
   const facultySets = {};
   for (const r of recent) {
