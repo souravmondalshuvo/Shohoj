@@ -10680,6 +10680,7 @@ function _getDeptCourses(deptCode) {
 async function _renderCourseList(root, dept) {
   const meta      = DEPT_META[dept];
   const deptLabel = meta ? meta.label : dept;
+  const skeletonCount = meta ? Math.min(Math.max(_getDeptCourses(dept).length, 10), 24) : 12;
 
   root.innerHTML = `
     <div class="rv-tab">
@@ -10693,11 +10694,7 @@ async function _renderCourseList(root, dept) {
         <div class="rv-tab-sub">Select a course to see which faculty have been reviewed for it.</div>
       </div>
       <div id="_rvt_coursebody">
-        <div class="rv-tab-skel-rows" aria-label="Loading courses">
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-        </div>
+        ${_courseGridSkeletonHtml(skeletonCount)}
       </div>
     </div>`;
 
@@ -10758,6 +10755,21 @@ async function _renderCourseList(root, dept) {
     card.onclick = () => _navigate(`#calculator/reviews/course/${card.getAttribute('data-course')}`);
     card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') card.click(); };
   });
+}
+
+function _courseGridSkeletonHtml(count = 12) {
+  const cards = Array.from({ length: count }, () => `
+    <div class="rv-tab-coursecard rv-tab-coursecard--skeleton">
+      <div class="rv-tab-skel rv-tab-skel-course-code"></div>
+      <div class="rv-tab-skel rv-tab-skel-course-name"></div>
+      <div class="rv-tab-skel rv-tab-skel-course-name rv-tab-skel-course-name--short"></div>
+      <div class="rv-tab-skel rv-tab-skel-course-count"></div>
+    </div>`).join('');
+
+  return `
+    <div class="rv-tab-coursegrid rv-tab-coursegrid--skeleton" aria-label="Loading courses">
+      ${cards}
+    </div>`;
 }
 
 // ── COURSE PAGE (faculty for a course) ───────────────────────────────────────
