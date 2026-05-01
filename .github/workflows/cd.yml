@@ -34,8 +34,9 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy
+          mkdir -p _deploy/js/data
           cp shohoj.html _deploy/index.html
+          cp js/data/sections.json _deploy/js/data/sections.json
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
