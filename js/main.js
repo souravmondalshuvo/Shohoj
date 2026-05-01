@@ -54,6 +54,7 @@ import {
 import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
 import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
+import { renderAdvisingChecklist, toggleAdvisingCheck } from './ui/advising.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -389,6 +390,7 @@ const TAB_MAP = {
   playground: 'tabPlayground',
   reviews:    'tabReviews',
   difficulty: 'tabDifficulty',
+  advising:   'tabAdvising',
 };
 
 let _activeCalcTab = 'calculator';
@@ -445,6 +447,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'difficulty') {
     renderDifficultyMapTab();
   }
+  if (tabId === 'advising') {
+    renderAdvisingChecklist();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -465,6 +470,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/playground')      return 'playground';
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
+  if (hash === '#calculator/advising')        return 'advising';
 
   // Then check sessionStorage
   try {
@@ -476,6 +482,7 @@ function restoreCalcTab() {
 }
 
 window.switchCalcTab = switchCalcTab;
+window._shohoj_toggleAdvisingCheck = toggleAdvisingCheck;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
