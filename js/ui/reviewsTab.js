@@ -133,9 +133,9 @@ async function _renderDeptList(root, token) {
           <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
           <div class="rv-tab-course-stat-label">Total reviews</div>
         </div>
-        <div class="rv-tab-course-stat">
-          <div class="rv-tab-course-stat-value">${listKnownFaculty().length}</div>
-          <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+          <div class="rv-tab-course-stat-label">Courses covered</div>
         </div>
       </div>
       <div class="rv-tab-searchwrap">
@@ -170,7 +170,7 @@ async function _renderDeptList(root, token) {
     if (_isStaleNav(token) || !stats) return;
     const reviewedFacultyCount = aggregateByFaculty(recent).length;
     const totalReviews = recent.length;
-    const knownFacultyCount = listKnownFaculty().length;
+    const coursesCovered = new Set(recent.map(r => r.courseCode).filter(Boolean)).size;
     stats.innerHTML = `
       <div class="rv-tab-course-stat">
         <div class="rv-tab-course-stat-value">${reviewedFacultyCount}</div>
@@ -181,15 +181,15 @@ async function _renderDeptList(root, token) {
         <div class="rv-tab-course-stat-label">Total reviews</div>
       </div>
       <div class="rv-tab-course-stat">
-        <div class="rv-tab-course-stat-value">${knownFacultyCount}</div>
-        <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+        <div class="rv-tab-course-stat-value">${coursesCovered}</div>
+        <div class="rv-tab-course-stat-label">Courses covered</div>
       </div>`;
   }).catch(() => {
     if (_isStaleNav(token) || !stats) return;
     stats.innerHTML = `
-      <div class="rv-tab-course-stat">
-        <div class="rv-tab-course-stat-value">${listKnownFaculty().length}</div>
-        <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+      <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+        <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+        <div class="rv-tab-course-stat-label">Faculty with reviews</div>
       </div>`;
   });
 
