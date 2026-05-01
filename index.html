@@ -3642,6 +3642,9 @@ input, select, textarea,
   gap: 10px;
   margin-top: 4px;
 }
+.rv-tab-coursegrid--skeleton {
+  margin-top: 4px;
+}
 .rv-tab-coursecard {
   position: relative;
   overflow: hidden;
@@ -3710,6 +3713,29 @@ input, select, textarea,
 }
 .rv-tab-coursecard > * {
   position: relative;
+}
+.rv-tab-coursecard--skeleton {
+  min-height: 104px;
+  cursor: default;
+  pointer-events: none;
+}
+.rv-tab-skel-course-code {
+  width: 64px;
+  height: 18px;
+  margin-bottom: 9px;
+}
+.rv-tab-skel-course-name {
+  width: 88%;
+  height: 14px;
+  margin-bottom: 7px;
+}
+.rv-tab-skel-course-name--short {
+  width: 62%;
+}
+.rv-tab-skel-course-count {
+  width: 76%;
+  height: 13px;
+  margin-top: 12px;
 }
 .rv-tab-coursecard:hover .rv-tab-coursecard-code,
 .rv-tab-deptcard:hover .rv-tab-deptcard-code {
