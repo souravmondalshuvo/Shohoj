@@ -400,11 +400,7 @@ async function _renderCoursePage(root, courseCode) {
         <div class="rv-tab-sub">Browse the faculty directory for this course, ranked by the review signal Shohoj currently has.</div>
       </div>
       <div id="_rvt_coursefacbody">
-        <div class="rv-tab-skel-rows" aria-label="Loading faculty directory">
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-          <div class="rv-tab-skel rv-tab-skel-row"></div>
-        </div>
+        ${_courseDirectorySkeletonHtml()}
       </div>
     </div>`;
 
@@ -496,6 +492,43 @@ async function _renderCoursePage(root, courseCode) {
     };
     card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') card.click(); };
   });
+}
+
+function _courseDirectorySkeletonHtml() {
+  const rows = Array.from({ length: 6 }, () => `
+    <div class="rv-tab-directory-row rv-tab-directory-row--skeleton">
+      <div class="rv-tab-directory-main">
+        <div class="rv-tab-skel rv-tab-skel-dir-name"></div>
+        <div class="rv-tab-skel rv-tab-skel-dir-meta"></div>
+      </div>
+      <div class="rv-tab-directory-side">
+        <div class="rv-tab-skel rv-tab-skel-dir-badge"></div>
+        <div class="rv-tab-skel rv-tab-skel-dir-score"></div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="rv-tab-course-loading" aria-label="Loading faculty directory">
+      <div class="rv-tab-course-summary">
+        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+          <div class="rv-tab-skel rv-tab-skel-stat-label"></div>
+        </div>
+        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+          <div class="rv-tab-skel rv-tab-skel-stat-label"></div>
+        </div>
+      </div>
+      <div class="rv-tab-section-header rv-tab-section-header--skeleton">
+        <div class="rv-tab-skel rv-tab-skel-section-title"></div>
+      </div>
+      <div class="rv-tab-note rv-tab-note--skeleton">
+        <div class="rv-tab-skel rv-tab-skel-note-line"></div>
+      </div>
+      <div class="rv-tab-directory-list rv-tab-directory-list--skeleton">
+        ${rows}
+      </div>
+    </div>`;
 }
 
 // Fetch faculty profiles from Firestore and merge into local cache
