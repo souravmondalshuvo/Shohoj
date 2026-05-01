@@ -133,10 +133,6 @@ async function _renderDeptList(root, token) {
           <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
           <div class="rv-tab-course-stat-label">Total reviews</div>
         </div>
-        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
-          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
-          <div class="rv-tab-course-stat-label">Courses covered</div>
-        </div>
       </div>
       <div class="rv-tab-searchwrap">
         <div class="rv-tab-searchrow">
@@ -170,7 +166,6 @@ async function _renderDeptList(root, token) {
     if (_isStaleNav(token) || !stats) return;
     const reviewedFacultyCount = aggregateByFaculty(recent).length;
     const totalReviews = recent.length;
-    const coursesCovered = new Set(recent.map(r => r.courseCode).filter(Boolean)).size;
     stats.innerHTML = `
       <div class="rv-tab-course-stat">
         <div class="rv-tab-course-stat-value">${reviewedFacultyCount}</div>
@@ -179,10 +174,6 @@ async function _renderDeptList(root, token) {
       <div class="rv-tab-course-stat">
         <div class="rv-tab-course-stat-value">${totalReviews}</div>
         <div class="rv-tab-course-stat-label">Total reviews</div>
-      </div>
-      <div class="rv-tab-course-stat">
-        <div class="rv-tab-course-stat-value">${coursesCovered}</div>
-        <div class="rv-tab-course-stat-label">Courses covered</div>
       </div>`;
   }).catch(() => {
     if (_isStaleNav(token) || !stats) return;
