@@ -2714,6 +2714,70 @@ input, select, textarea,
   padding: 14px 2px;
 }
 .rv-tab-skel-row { height: 92px; border-radius: 12px; }
+.rv-tab-course-loading {
+  padding-top: 0;
+}
+.rv-tab-course-stat--skeleton {
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.rv-tab-skel-stat-value {
+  width: 48px;
+  height: 22px;
+}
+.rv-tab-skel-stat-label {
+  width: min(150px, 70%);
+  height: 10px;
+  margin-top: 10px;
+}
+.rv-tab-section-header--skeleton {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+}
+.rv-tab-skel-section-title {
+  width: 210px;
+  max-width: 56%;
+  height: 12px;
+}
+.rv-tab-note--skeleton {
+  padding: 22px 8px;
+  display: flex;
+  justify-content: center;
+}
+.rv-tab-skel-note-line {
+  width: min(680px, 84%);
+  height: 12px;
+}
+.rv-tab-directory-list--skeleton {
+  margin-top: 10px;
+}
+.rv-tab-directory-row--skeleton {
+  min-height: 76px;
+  cursor: default;
+  pointer-events: none;
+}
+.rv-tab-skel-dir-name {
+  width: min(260px, 72%);
+  height: 18px;
+}
+.rv-tab-skel-dir-meta {
+  width: min(210px, 64%);
+  height: 12px;
+  margin-top: 10px;
+}
+.rv-tab-skel-dir-badge {
+  width: 62px;
+  height: 25px;
+  border-radius: 999px;
+}
+.rv-tab-skel-dir-score {
+  width: 96px;
+  height: 15px;
+}
 .rv-tab-muted {
   color: var(--text3);
   font-size: 11px;
