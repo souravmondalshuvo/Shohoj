@@ -93,7 +93,7 @@ export async function renderReviewsTab() {
   } else if (route.view === 'course') {
     await _renderCoursePage(root, route.course);
   } else {
-    _renderDeptList(root);
+    await _renderDeptList(root, token);
   }
 }
 
@@ -116,12 +116,26 @@ function _signInPrompt() {
 }
 
 // ── DEPT LIST (root view) ─────────────────────────────────────────────────────
-function _renderDeptList(root) {
+async function _renderDeptList(root, token) {
   root.innerHTML = `
     <div class="rv-tab">
       <div class="rv-tab-header">
         <div class="rv-tab-title">⭐ Faculty Reviews</div>
         <div class="rv-tab-sub">Browse by department, or search directly by faculty initials or course code.</div>
+      </div>
+      <div class="rv-tab-course-summary" id="_rvt_stats" aria-label="Review corpus summary">
+        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+          <div class="rv-tab-course-stat-label">Faculty with reviews</div>
+        </div>
+        <div class="rv-tab-course-stat rv-tab-course-stat--skeleton">
+          <div class="rv-tab-skel rv-tab-skel-stat-value"></div>
+          <div class="rv-tab-course-stat-label">Total reviews</div>
+        </div>
+        <div class="rv-tab-course-stat">
+          <div class="rv-tab-course-stat-value">${listKnownFaculty().length}</div>
+          <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+        </div>
       </div>
       <div class="rv-tab-searchwrap">
         <div class="rv-tab-searchrow">
@@ -149,6 +163,34 @@ function _renderDeptList(root) {
   const input   = root.querySelector('#_rvt_q');
   const go      = root.querySelector('#_rvt_go');
   const dropdown = root.querySelector('#_rvt_suggestions');
+  const stats = root.querySelector('#_rvt_stats');
+
+  fetchRecentReviews(1000).then(recent => {
+    if (_isStaleNav(token) || !stats) return;
+    const reviewedFacultyCount = aggregateByFaculty(recent).length;
+    const totalReviews = recent.length;
+    const knownFacultyCount = listKnownFaculty().length;
+    stats.innerHTML = `
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${reviewedFacultyCount}</div>
+        <div class="rv-tab-course-stat-label">Faculty with reviews</div>
+      </div>
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${totalReviews}</div>
+        <div class="rv-tab-course-stat-label">Total reviews</div>
+      </div>
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${knownFacultyCount}</div>
+        <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+      </div>`;
+  }).catch(() => {
+    if (_isStaleNav(token) || !stats) return;
+    stats.innerHTML = `
+      <div class="rv-tab-course-stat">
+        <div class="rv-tab-course-stat-value">${listKnownFaculty().length}</div>
+        <div class="rv-tab-course-stat-label">Known faculty profiles</div>
+      </div>`;
+  });
 
   let activeIdx = -1;
 
