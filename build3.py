@@ -40,7 +40,6 @@ JS_FILES = [
     'js/ui/modals.js',
     'js/ui/playground.js',
     'js/ui/planner.js',
-    'js/ui/advising.js',
     # Animations
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
