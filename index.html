@@ -5810,7 +5810,7 @@ window._shohoj_fetchRecentReviews = async function(n = 50) {
   if (!currentUser) return [];
   try {
     const col = collection(db, 'facultyReviews');
-    const q = query(col, orderBy('createdAt', 'desc'), qLimit(Math.min(n, 200)));
+    const q = query(col, orderBy('createdAt', 'desc'), qLimit(Math.min(n, 1000)));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
