@@ -82,7 +82,7 @@ function _workloadLabel(v) {
 
 let _cache      = null;
 let _activeDept = 'ALL';
-let _sortBy     = 'difficulty';
+let _sortBy     = 'code';
 
 // ── HTML helpers ──────────────────────────────────────────────────────────────
 
