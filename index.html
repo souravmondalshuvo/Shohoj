@@ -4675,6 +4675,10 @@ input, select, textarea,
           <span class="calc-tab-icon">⭐</span>
           <span>Reviews</span>
         </button>
+        <button class="calc-tab" data-tab="advising" onclick="switchCalcTab('advising')">
+          <span class="calc-tab-icon">📋</span>
+          <span>Advising</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -4772,6 +4776,15 @@ input, select, textarea,
         <div class="calc-body">
           <div id="difficultyMapContent">
             <!-- Rendered dynamically by difficultyMap.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 6: ADVISING CHECKLIST ═══ -->
+      <div class="calc-tab-panel" id="tabAdvising">
+        <div class="calc-body">
+          <div id="advisingContent">
+            <!-- Rendered dynamically by advising.js -->
           </div>
         </div>
       </div>
@@ -15435,6 +15448,7 @@ const TAB_MAP = {
   playground: 'tabPlayground',
   reviews:    'tabReviews',
   difficulty: 'tabDifficulty',
+  advising:   'tabAdvising',
 };
 
 let _activeCalcTab = 'calculator';
@@ -15491,6 +15505,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'difficulty') {
     renderDifficultyMapTab();
   }
+  if (tabId === 'advising') {
+    renderAdvisingChecklist();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -15511,6 +15528,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/playground')      return 'playground';
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
+  if (hash === '#calculator/advising')        return 'advising';
 
   // Then check sessionStorage
   try {
@@ -15522,6 +15540,7 @@ function restoreCalcTab() {
 }
 
 window.switchCalcTab = switchCalcTab;
+window._shohoj_toggleAdvisingCheck = toggleAdvisingCheck;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
