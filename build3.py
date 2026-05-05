@@ -16,6 +16,8 @@ import os
 
 # ── File order matters: dependencies must come before dependents ──────────────
 JS_FILES = [
+    # QR data (window vars, must come first)
+    'js/qr-data.js',
     # Core (no dependencies)
     'js/core/grades.js',
     'js/core/helpers.js',
@@ -178,6 +180,9 @@ window.clearAllData = clearAllData;
     # ── Read HTML ─────────────────────────────────────────────────────────────
     with open(HTML_FILE, 'r', encoding='utf-8') as f:
         html = f.read()
+
+    # ── Strip dev-only QR data script tag (content is in the bundle) ─────────
+    html = html.replace('  <script src="js/qr-data.js"></script>\n', '')
 
     # ── Replace CSS link with inlined <style> ─────────────────────────────────
     html = re.sub(
