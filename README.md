@@ -355,7 +355,7 @@ Shohoj/
 │   │   ├── helpers.js            Semester utilities, escHtml/escAttr, sanitizers
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
-│   │   ├── catalog.js            Full BRACU course database (774 courses)
+│   │   ├── catalog.js            Full BRACU course database (851 courses)
 │   │   ├── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
 │   │   └── reviews.js            Review submission & fetch layer, aggregation helpers
