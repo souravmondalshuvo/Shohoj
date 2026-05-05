@@ -40,6 +40,8 @@
       appId:             '1:878391653144:web:172ccb90535dfd48d9a46d',
       measurementId:     'G-7DVX82DTF3',
     };
+    // Set to your Firebase UID to enable admin delete on the feedback board
+    window._shohoj_admin_uid = 'YOUR_FIREBASE_UID_HERE';
   </script>
 </head>
 <body>
@@ -481,26 +483,33 @@
     </div>
   </section>
 
+  <!-- Feedback modal -->
+  <div id="feedbackModal" onclick="if(event.target===this)closeFeedbackModal()" style="display:none;opacity:0;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);align-items:center;justify-content:center;transition:opacity 0.18s;">
+    <div id="feedbackModalCard" style="border:1px solid rgba(46,204,113,0.25);border-radius:20px;padding:28px 28px 24px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:85vh;overflow-y:auto;position:relative;">
+      <div id="feedbackModalContent"></div>
+    </div>
+  </div>
+
   <!-- Coffee modal -->
   <div id="coffeeModal" onclick="if(event.target===this)document.getElementById('coffeeModal').style.display='none'" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
     <div style="background:#0f1f14;border:1px solid rgba(46,204,113,0.25);border-radius:20px;padding:28px 28px 24px;max-width:320px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);text-align:center;position:relative;">
       <button onclick="document.getElementById('coffeeModal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;line-height:1;">×</button>
       <div style="font-size:28px;margin-bottom:6px;">☕</div>
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:16px;">Buy me a coffee</div>
-      <div id="qr-slider-track" style="position:relative;display:flex;background:rgba(255,255,255,0.08);border-radius:30px;padding:3px;margin-bottom:16px;user-select:none;">
-        <div id="qr-slider-pill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:#E2136E;border-radius:27px;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),background-color 0.3s ease;pointer-events:none;"></div>
-        <div onclick="switchCoffeeTab('bkash')" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:#fff;border-radius:27px;cursor:pointer;transition:color 0.2s;">bKash</div>
-        <div onclick="switchCoffeeTab('rocket')" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.45);border-radius:27px;cursor:pointer;transition:color 0.2s;">Rocket</div>
+      <div id="qr-slider-track" style="position:relative;display:flex;background:rgba(255,255,255,0.08);border-radius:30px;padding:3px;margin-bottom:16px;user-select:none;cursor:pointer;">
+        <div id="qr-slider-pill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:#E2136E;border-radius:27px;pointer-events:none;"></div>
+        <div class="coffee-label" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:#fff;border-radius:27px;transition:color 0.2s;pointer-events:none;">bKash</div>
+        <div class="coffee-label" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.45);border-radius:27px;transition:color 0.2s;pointer-events:none;">Rocket</div>
       </div>
       <div id="panel-bkash">
         <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Scan with bKash app to support</div>
         <div style="display:inline-block;background:rgba(226,19,110,0.08);border:2px solid rgba(226,19,110,0.35);border-radius:14px;padding:8px;margin:0 auto;"><img id="qr-img-bkash" src="" style="width:220px;height:220px;border-radius:12px;display:block;margin:0 auto;" /></div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:14px;">Even ৳10 means a lot <span style="color:#E2136E;">♥</span></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:14px;">Even ৳20 means a lot <span style="color:#E2136E;">♥</span></div>
       </div>
       <div id="panel-rocket" style="display:none;">
         <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Scan with Rocket app to support</div>
         <div style="display:inline-block;background:rgba(139,47,201,0.08);border:2px solid rgba(139,47,201,0.35);border-radius:14px;padding:8px;margin:0 auto;"><img id="qr-img-rocket" src="" style="width:220px;height:220px;border-radius:12px;display:block;margin:0 auto;" /></div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:14px;">Even ৳10 means a lot <span style="color:#8B2FC9;">♥</span></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.35);margin-top:14px;">Even ৳20 means a lot <span style="color:#8B2FC9;">♥</span></div>
       </div>
     </div>
   </div>
@@ -510,7 +519,7 @@
   <footer>
     <div class="footer-logo">Shohoj <span>সহজ</span></div>
     <p>University life, made simple. · Built by &copy; <a href="https://github.com/souravmondalshuvo" target="_blank">Sourav Mondal Shuvo</a> · BRAC University · 2026</p>
-    <p style="margin-top:10px;font-size:13px;"><a href="https://github.com/souravmondalshuvo/Shohoj/issues" target="_blank" style="color:var(--text3);text-decoration:none;">feedback</a><span style="color:var(--text3);margin:0 8px;">·</span><a href="#" onclick="event.preventDefault();var m=document.getElementById('coffeeModal');m.style.display='flex';" style="">☕ buy me a coffee</a></p>
+    <p style="margin-top:10px;font-size:13px;"><a href="#" onclick="event.preventDefault();openFeedbackModal();" style="color:var(--text3);text-decoration:none;">feedback</a><span style="color:var(--text3);margin:0 8px;">·</span><a href="#" onclick="event.preventDefault();var m=document.getElementById('coffeeModal');m.style.display='flex';" style="">☕ buy me a coffee</a></p>
   </footer>
 
   <!-- Firebase auth init — loaded as module so it can import from firebase.js -->
@@ -537,20 +546,99 @@
       }
       if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",_setQR); else _setQR();
     })();
+    // ── Coffee slider ──────────────────────────────────────────────────────────
+    var _coffeeActive = 'bkash';
+
     function switchCoffeeTab(tab) {
-      var colors = { bkash: '#E2136E', rocket: '#8B2FC9' };
-      // panels
-      document.getElementById('panel-bkash').style.display = tab === 'bkash' ? 'block' : 'none';
+      _coffeeActive = tab;
+      document.getElementById('panel-bkash').style.display  = tab === 'bkash'  ? 'block' : 'none';
       document.getElementById('panel-rocket').style.display = tab === 'rocket' ? 'block' : 'none';
-      // slider pill
-      var pill = document.getElementById('qr-slider-pill');
-      pill.style.background = colors[tab];
-      pill.style.transform = tab === 'rocket' ? 'translateX(100%)' : 'translateX(0)';
-      // labels
-      var labels = document.getElementById('qr-slider-track').querySelectorAll('div[onclick]');
-      labels[0].style.color = tab === 'bkash' ? '#fff' : 'rgba(255,255,255,0.45)';
+      var pill   = document.getElementById('qr-slider-pill');
+      var labels = document.getElementById('qr-slider-track').querySelectorAll('.coffee-label');
+      // force-clear transition so rAF re-enables it and triggers snap animation
+      pill.style.transition = 'none';
+      requestAnimationFrame(function() {
+        pill.style.transition = 'transform 0.3s cubic-bezier(0.4,0,0.2,1), background-color 0.3s ease';
+        pill.style.background = tab === 'bkash' ? '#E2136E' : '#8B2FC9';
+        pill.style.transform  = tab === 'rocket' ? 'translateX(100%)' : 'translateX(0)';
+      });
+      labels[0].style.color = tab === 'bkash'  ? '#fff' : 'rgba(255,255,255,0.45)';
       labels[1].style.color = tab === 'rocket' ? '#fff' : 'rgba(255,255,255,0.45)';
     }
+
+    // Draggable slider — color interpolates between bKash pink and Rocket purple
+    (function() {
+      var dragging = false, moved = false, startX = 0;
+
+      // Linearly interpolate between #E2136E (p=0) and #8B2FC9 (p=1)
+      function _lerp(p) {
+        return 'rgb(' + Math.round(226 - 87*p) + ',' +
+                        Math.round(19  + 28*p) + ',' +
+                        Math.round(110 + 91*p) + ')';
+      }
+
+      function _prog(clientX) {
+        var rect = document.getElementById('qr-slider-track').getBoundingClientRect();
+        return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      }
+
+      function _setLabels(tab) {
+        var labels = document.getElementById('qr-slider-track').querySelectorAll('.coffee-label');
+        labels[0].style.color = tab === 'bkash'  ? '#fff' : 'rgba(255,255,255,0.45)';
+        labels[1].style.color = tab === 'rocket' ? '#fff' : 'rgba(255,255,255,0.45)';
+      }
+
+      function _onStart(e) {
+        dragging = true; moved = false;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        document.addEventListener('mousemove', _onMove);
+        document.addEventListener('mouseup',   _onEnd);
+        document.addEventListener('touchmove', _onMove, { passive: false });
+        document.addEventListener('touchend',  _onEnd);
+      }
+
+      function _onMove(e) {
+        if (!dragging) return;
+        var cx = e.touches ? e.touches[0].clientX : e.clientX;
+        if (!moved && Math.abs(cx - startX) < 4) return;
+        moved = true;
+        if (e.cancelable) e.preventDefault();
+        var pill = document.getElementById('qr-slider-pill');
+        pill.style.transition = 'none';
+        var p   = _prog(cx);
+        pill.style.transform  = 'translateX(' + (p * 100) + '%)';
+        pill.style.background = _lerp(p);
+        var tab = p >= 0.5 ? 'rocket' : 'bkash';
+        if (tab !== _coffeeActive) {
+          _coffeeActive = tab;
+          document.getElementById('panel-bkash').style.display  = tab === 'bkash'  ? 'block' : 'none';
+          document.getElementById('panel-rocket').style.display = tab === 'rocket' ? 'block' : 'none';
+          _setLabels(tab);
+        }
+      }
+
+      function _onEnd(e) {
+        if (!dragging) return;
+        dragging = false;
+        document.removeEventListener('mousemove', _onMove);
+        document.removeEventListener('mouseup',   _onEnd);
+        document.removeEventListener('touchmove', _onMove);
+        document.removeEventListener('touchend',  _onEnd);
+        if (!moved) {
+          var cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
+          _coffeeActive = _prog(cx) >= 0.5 ? 'rocket' : 'bkash';
+        }
+        switchCoffeeTab(_coffeeActive);
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        var t = document.getElementById('qr-slider-track');
+        if (t) {
+          t.addEventListener('mousedown',  _onStart);
+          t.addEventListener('touchstart', _onStart, { passive: false });
+        }
+      });
+    })();
   </script>
   <script type="module" src="js/main.js"></script>
 </body>
