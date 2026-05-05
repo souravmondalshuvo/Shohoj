@@ -8,6 +8,12 @@ service cloud.firestore {
         && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$');
     }
 
+    function isAdmin() {
+      // Set to your Firebase UID (visible in Firebase console → Authentication)
+      return request.auth != null
+        && request.auth.uid == 'YOUR_FIREBASE_UID_HERE';
+    }
+
     function validRating(v) {
       return v is int && v >= 1 && v <= 5;
     }
@@ -107,6 +113,45 @@ service cloud.firestore {
     match /facultyProfiles/{initials} {
       allow read: if isBracuUser();
       allow write: if false;
+    }
+
+    // ── App feedback ─────────────────────────────────────────────────────
+    function validFeedbackType(t) {
+      return t == 'bug' || t == 'feature' || t == 'general';
+    }
+
+    function validFeedbackPayload(d) {
+      return d.keys().hasOnly(['type','text','context','anonymous','uid','createdAt'])
+        && d.keys().hasAll(['type','text','anonymous','createdAt'])
+        && validFeedbackType(d.type)
+        && d.text is string
+        && d.text.size() >= 3
+        && d.text.size() <= 500
+        && d.anonymous is bool
+        && d.createdAt == request.time
+        && (!('context' in d) || d.context is map)
+        && (!('uid' in d) || d.uid == request.auth.uid);
+    }
+
+    match /appFeedback/{feedbackId} {
+      allow read:   if isBracuUser();
+      allow create: if isBracuUser() && validFeedbackPayload(request.resource.data);
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+
+    match /appFeedbackUpvotes/{voteId} {
+      allow read:   if isBracuUser();
+      allow create: if isBracuUser()
+        && request.resource.data.keys().hasOnly(['feedbackId','uid','createdAt'])
+        && request.resource.data.keys().hasAll(['feedbackId','uid','createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.feedbackId is string
+        && request.resource.data.feedbackId.size() > 0
+        && request.resource.data.createdAt == request.time
+        && voteId == request.resource.data.feedbackId + '_' + request.auth.uid;
+      allow delete: if isBracuUser() && resource.data.uid == request.auth.uid;
+      allow update: if false;
     }
 
     // ── Catch-all: deny everything else ──────────────────────────────────
