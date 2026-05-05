@@ -54,6 +54,7 @@ import {
 import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
 import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
+import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -475,7 +476,9 @@ function restoreCalcTab() {
   return 'calculator';
 }
 
-window.switchCalcTab = switchCalcTab;
+window.switchCalcTab       = switchCalcTab;
+window.openFeedbackModal   = openFeedbackModal;
+window.closeFeedbackModal  = closeFeedbackModal;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
