@@ -8,7 +8,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
-         documentId }
+         documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -1159,3 +1159,89 @@ function showToast(msg, isError = false, isAuth = false) {
     setTimeout(() => { if (t.parentNode) document.body.removeChild(t); }, 300);
   }, 3500);
 }
+
+// ── App feedback hooks ────────────────────────────────────────────────────────
+window._shohoj_submitFeedback = async function({ type, text, context, anonymous, uid: submitterUid }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  const validTypes = ['bug', 'feature', 'general'];
+  if (!validTypes.includes(type)) return { ok: false, error: 'Invalid type' };
+  const trimmed = String(text || '').trim().slice(0, 500);
+  if (trimmed.length < 3) return { ok: false, error: 'Feedback too short' };
+  try {
+    const data = {
+      type,
+      text: trimmed,
+      context: (context && typeof context === 'object') ? context : {},
+      anonymous: !!anonymous,
+      createdAt: serverTimestamp(),
+    };
+    if (!anonymous && submitterUid === currentUser.uid) {
+      data.uid = currentUser.uid;
+    }
+    await addDoc(collection(db, 'appFeedback'), data);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] submitFeedback failed:', e);
+    return { ok: false, error: e.message || 'Submission failed' };
+  }
+};
+
+window._shohoj_fetchAllFeedback = async function() {
+  if (!currentUser) return [];
+  try {
+    const q = query(
+      collection(db, 'appFeedback'),
+      orderBy('createdAt', 'desc'),
+      qLimit(200),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchAllFeedback failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchAllUpvotes = async function() {
+  if (!currentUser) return [];
+  try {
+    const snap = await getDocs(collection(db, 'appFeedbackUpvotes'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchAllUpvotes failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_toggleUpvote = async function(feedbackId, currentlyUpvoted) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  const voteId = `${feedbackId}_${currentUser.uid}`;
+  try {
+    if (currentlyUpvoted) {
+      await deleteDoc(doc(db, 'appFeedbackUpvotes', voteId));
+    } else {
+      await setDoc(doc(db, 'appFeedbackUpvotes', voteId), {
+        feedbackId,
+        uid: currentUser.uid,
+        createdAt: serverTimestamp(),
+      });
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] toggleUpvote failed:', e);
+    return { ok: false, error: e.message || 'Failed' };
+  }
+};
+
+window._shohoj_adminDeleteFeedback = async function(feedbackId) {
+  if (!currentUser) return { ok: false };
+  const adminUid = window._shohoj_admin_uid;
+  if (!adminUid || currentUser.uid !== adminUid) return { ok: false, error: 'Unauthorized' };
+  try {
+    await deleteDoc(doc(db, 'appFeedback', feedbackId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] adminDeleteFeedback failed:', e);
+    return { ok: false, error: e.message || 'Failed' };
+  }
+};
