@@ -1,4 +1,6 @@
 .DS_Store
 .claude/
 shohoj-service-account.json
-*-service-account.jsonshohoj.html
+*-service-account.json
+shohoj.html
+assets/bkash-qr.jpeg
