@@ -487,9 +487,10 @@
       <button onclick="document.getElementById('coffeeModal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;line-height:1;">×</button>
       <div style="font-size:28px;margin-bottom:6px;">☕</div>
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:16px;">Buy me a coffee</div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;justify-content:center;">
-        <button id="tab-bkash" onclick="switchCoffeeTab('bkash')" style="padding:6px 18px;border-radius:20px;border:2px solid #E2136E;background:#E2136E;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">bKash</button>
-        <button id="tab-rocket" onclick="switchCoffeeTab('rocket')" style="padding:6px 18px;border-radius:20px;border:2px solid rgba(255,255,255,0.15);background:transparent;color:rgba(255,255,255,0.5);font-size:12px;font-weight:700;cursor:pointer;">Rocket</button>
+      <div id="qr-slider-track" style="position:relative;display:flex;background:rgba(255,255,255,0.08);border-radius:30px;padding:3px;margin-bottom:16px;user-select:none;">
+        <div id="qr-slider-pill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:#E2136E;border-radius:27px;transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),background-color 0.3s ease;pointer-events:none;"></div>
+        <div onclick="switchCoffeeTab('bkash')" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:#fff;border-radius:27px;cursor:pointer;transition:color 0.2s;">bKash</div>
+        <div onclick="switchCoffeeTab('rocket')" style="position:relative;z-index:1;flex:1;text-align:center;padding:7px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.45);border-radius:27px;cursor:pointer;transition:color 0.2s;">Rocket</div>
       </div>
       <div id="panel-bkash">
         <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:12px;">Scan with bKash app to support</div>
@@ -537,15 +538,18 @@
       if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",_setQR); else _setQR();
     })();
     function switchCoffeeTab(tab) {
-      var tabs = ['bkash','rocket'];
       var colors = { bkash: '#E2136E', rocket: '#8B2FC9' };
-      tabs.forEach(function(t) {
-        document.getElementById('panel-'+t).style.display = t === tab ? 'block' : 'none';
-        var btn = document.getElementById('tab-'+t);
-        btn.style.background = t === tab ? colors[t] : 'transparent';
-        btn.style.borderColor = t === tab ? colors[t] : 'rgba(255,255,255,0.15)';
-        btn.style.color = t === tab ? '#fff' : 'rgba(255,255,255,0.5)';
-      });
+      // panels
+      document.getElementById('panel-bkash').style.display = tab === 'bkash' ? 'block' : 'none';
+      document.getElementById('panel-rocket').style.display = tab === 'rocket' ? 'block' : 'none';
+      // slider pill
+      var pill = document.getElementById('qr-slider-pill');
+      pill.style.background = colors[tab];
+      pill.style.transform = tab === 'rocket' ? 'translateX(100%)' : 'translateX(0)';
+      // labels
+      var labels = document.getElementById('qr-slider-track').querySelectorAll('div[onclick]');
+      labels[0].style.color = tab === 'bkash' ? '#fff' : 'rgba(255,255,255,0.45)';
+      labels[1].style.color = tab === 'rocket' ? '#fff' : 'rgba(255,255,255,0.45)';
     }
   </script>
   <script type="module" src="js/main.js"></script>
