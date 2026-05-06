@@ -4512,24 +4512,37 @@ input, select, textarea,
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
 .papers-tab-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .papers-mod-btn,
-.papers-upload-btn {
+.papers-tab-head-actions .papers-upload-btn {
   min-width: 132px;
+  padding: 13px 28px;
+  border: none;
+  border-radius: var(--radius, 10px);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
   text-align: center;
   white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .papers-mod-btn {
   background: #f5b942;
-  border: none;
   color: #2a1c00;
-  padding: 13px 28px; border-radius: var(--radius, 10px);
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 600; font-size: 15px; line-height: 1; cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: 0 0 0 0 rgba(245,185,66,0.4);
 }
 .papers-mod-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(245,185,66,0.35);
+}
+.papers-tab-head-actions .papers-upload-btn {
+  background: var(--green);
+  color: #0b0f0d;
+  box-shadow: 0 0 0 0 rgba(46,204,113,0.4);
+}
+.papers-tab-head-actions .papers-upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(46,204,113,0.35);
 }
 
 .paper-modal--wide { max-width: 720px; }
