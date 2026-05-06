@@ -4510,6 +4510,14 @@ input, select, textarea,
 .paper-modal-error { color: #ff7676; font-size: 0.85rem; min-height: 1em; }
 
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
+#fbSubmitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(46,204,113,0.35);
+}
+#fbSubmitBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .papers-tab-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .papers-mod-btn,
 .papers-tab-head-actions .papers-upload-btn {
