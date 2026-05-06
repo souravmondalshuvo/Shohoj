@@ -12993,11 +12993,21 @@ function _toast(msg) {
   }
 }
 
+function _papersAuthLoadingState() {
+  return `
+    <div class="papers-empty papers-empty--loading">
+      <h3>📚 Past Papers & Notes</h3>
+      <p class="papers-tab-sub">Checking your sign-in…</p>
+      <div class="papers-list" aria-hidden="true">${_skeletonList(3)}</div>
+    </div>
+  `;
+}
+
 async function renderPapersTab() {
   const root = document.getElementById('papersContent');
   if (!root) return;
   if (!_isAuthReady()) {
-    root.innerHTML = '<div class="papers-empty"><p>Loading…</p></div>';
+    root.innerHTML = _papersAuthLoadingState();
     return;
   }
   if (!_isSignedIn()) {
@@ -13007,6 +13017,15 @@ async function renderPapersTab() {
   _renderShell();
   await _loadList();
 }
+
+window.addEventListener('shohoj:auth-changed', () => {
+  const panel = document.getElementById('tabPapers');
+  const papersVisible = !!panel && panel.classList.contains('active');
+  const hash = window.location.hash || '';
+  if (papersVisible || hash === '#calculator/papers') {
+    renderPapersTab();
+  }
+});
 
 // ── js/ui/render.js ─────────────────────────────────────────────
 const _facultyCourseAggCache = new Map();
