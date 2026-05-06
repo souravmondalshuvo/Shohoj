@@ -182,7 +182,9 @@ function _submitHtml(t, uid) {
     <button id="fbSubmitBtn" onclick="window._shohoj_doSubmit()" style="
       width:100%;padding:11px;border-radius:10px;border:none;
       background:${t.accent};color:#000;font-size:14px;font-weight:700;
-      cursor:pointer;font-family:inherit;transition:opacity 0.15s;
+      cursor:pointer;font-family:inherit;
+      transition:transform 0.2s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+      box-shadow:0 0 0 0 rgba(46,204,113,0.4);
     ">Send</button>
     <div id="fbMsg" style="text-align:center;font-size:13px;margin-top:10px;min-height:18px;color:${t.text2};"></div>
   `;
