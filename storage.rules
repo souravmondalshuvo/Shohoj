@@ -10,7 +10,7 @@ service firebase.storage {
     function isAdmin() {
       // Set this to your Firebase UID — must match isAdmin() in firestore.rules.
       return request.auth != null
-        && request.auth.uid == 'YOUR_FIREBASE_UID_HERE';
+        && request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2';
     }
 
     // Past papers & notes — uploaded files for the Phase 2 library.

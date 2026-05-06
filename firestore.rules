@@ -11,7 +11,7 @@ service cloud.firestore {
     function isAdmin() {
       // Set to your Firebase UID (visible in Firebase console → Authentication)
       return request.auth != null
-        && request.auth.uid == 'YOUR_FIREBASE_UID_HERE';
+        && request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2';
     }
 
     function validRating(v) {
