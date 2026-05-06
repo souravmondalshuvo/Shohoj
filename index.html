@@ -12502,6 +12502,32 @@ function _emptyList(message) {
   return `<div class="papers-empty-list">${escHtml(message)}</div>`;
 }
 
+function _skeletonCard() {
+  return `
+    <div class="paper-card paper-card--skeleton" aria-hidden="true">
+      <div class="paper-card-head">
+        <div class="paper-skel paper-skel-course"></div>
+        <div class="paper-skel paper-skel-type"></div>
+      </div>
+      <div class="paper-skel paper-skel-title"></div>
+      <div class="paper-skel paper-skel-title paper-skel-title--short"></div>
+      <div class="paper-card-meta">
+        <div class="paper-skel paper-skel-pill"></div>
+        <div class="paper-skel paper-skel-pill"></div>
+        <div class="paper-skel paper-skel-pill paper-skel-pill--sm"></div>
+      </div>
+      <div class="paper-card-actions">
+        <div class="paper-skel paper-skel-btn"></div>
+        <div class="paper-skel paper-skel-btn paper-skel-btn--sm"></div>
+      </div>
+    </div>
+  `;
+}
+
+function _skeletonList(count = 6) {
+  return Array.from({ length: count }, _skeletonCard).join('');
+}
+
 function _paperCard(p) {
   const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type || 'Paper';
   const semester = p.semester ? `<span class="paper-card-meta-pill">${escHtml(p.semester)}</span>` : '';
@@ -12755,7 +12781,7 @@ function _renderList() {
   if (!list) return;
 
   if (_state.loading) {
-    list.innerHTML = '<div class="papers-empty-list">Loading…</div>';
+    list.innerHTML = _skeletonList(6);
     return;
   }
 
