@@ -4476,6 +4476,54 @@ input, select, textarea,
 .paper-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 .paper-modal-error { color: #ff7676; font-size: 0.85rem; min-height: 1em; }
 
+/* ── Papers admin moderation panel ───────────────────────────────────────── */
+.papers-tab-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.papers-mod-btn {
+  background: rgba(255,196,0,0.10);
+  border: 1px solid rgba(255,196,0,0.45);
+  color: #ffce4d;
+  padding: 9px 14px; border-radius: 10px;
+  font-weight: 600; font-size: 0.92rem; cursor: pointer;
+}
+.papers-mod-btn:hover { background: rgba(255,196,0,0.18); }
+
+.paper-modal--wide { max-width: 720px; }
+.paper-mod-tabs {
+  display: flex; gap: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.10); margin: 6px 0 12px;
+}
+[data-theme="light"] .paper-mod-tabs { border-color: rgba(0,0,0,0.10); }
+.paper-mod-tab {
+  background: transparent; border: 0; color: inherit; cursor: pointer;
+  padding: 8px 12px; font-size: 0.9rem; opacity: 0.65;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.paper-mod-tab.active { opacity: 1; border-bottom-color: #6cb0ff; font-weight: 600; }
+
+.paper-mod-body { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.paper-mod-row {
+  display: flex; gap: 12px; padding: 10px;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+[data-theme="light"] .paper-mod-row { border-color: rgba(0,0,0,0.08); background: rgba(0,0,0,0.015); }
+.paper-mod-row-main { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.paper-mod-row-head { display: flex; gap: 8px; align-items: center; }
+.paper-mod-row-title { font-size: 0.95rem; font-weight: 500; word-break: break-word; }
+.paper-mod-row-meta  { font-size: 0.78rem; opacity: 0.65; }
+.paper-mod-row-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.paper-mod-row-actions button {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: inherit; padding: 6px 10px; border-radius: 6px;
+  font-size: 0.82rem; cursor: pointer; min-width: 86px;
+}
+[data-theme="light"] .paper-mod-row-actions button { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.12); }
+.paper-mod-row-actions button:hover { border-color: rgba(255,255,255,0.32); }
+.paper-mod-approve { background: rgba(60,200,120,0.14) !important; border-color: rgba(60,200,120,0.45) !important; color: #6cd992 !important; }
+.paper-mod-delete  { background: rgba(255,90,90,0.14)  !important; border-color: rgba(255,90,90,0.45)  !important; color: #ff7676 !important; }
+.paper-mod-row-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -5000,7 +5048,7 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
          documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -6317,6 +6365,82 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
   } catch (e) {
     console.error('[Shohoj] uploadPaper failed:', e);
     return { ok: false, error: e.message || 'Upload failed' };
+  }
+};
+
+function _isAdminUser() {
+  if (!currentUser) return false;
+  const adminUid = window._shohoj_admin_uid;
+  return !!adminUid && currentUser.uid === adminUid;
+}
+
+window._shohoj_isPaperAdmin = function() {
+  return _isAdminUser();
+};
+
+window._shohoj_fetchUnapprovedPapers = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(col, where('approved', '==', false), orderBy('createdAt', 'desc'), qLimit(100));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchUnapprovedPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchPaperReports = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const col = collection(db, 'paperReports');
+    const q = query(col, orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchPaperReports failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_approvePaper = async function(paperId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    await setDoc(doc(db, 'papers', paperId), { approved: true }, { merge: true });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] approvePaper failed:', e);
+    return { ok: false, error: e.message || 'Approve failed' };
+  }
+};
+
+window._shohoj_deletePaper = async function(paperId, storagePath) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    if (storagePath) {
+      try { await deleteObject(storageRef(storage, storagePath)); }
+      catch (e) { console.warn('[Shohoj] deletePaper: storage delete failed (continuing):', e); }
+    }
+    await deleteDoc(doc(db, 'papers', paperId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deletePaper failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deletePaperReport = async function(reportId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  try {
+    await deleteDoc(doc(db, 'paperReports', reportId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deletePaperReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
   }
 };
 
@@ -9265,6 +9389,42 @@ function paperTimestampMs(p) {
   if (typeof p.createdAt.toMillis === 'function') return p.createdAt.toMillis();
   if (p.createdAt.seconds) return p.createdAt.seconds * 1000;
   return 0;
+}
+
+// ── Admin helpers ────────────────────────────────────────────────────────────
+function isPaperAdmin() {
+  return typeof window._shohoj_isPaperAdmin === 'function' && window._shohoj_isPaperAdmin();
+}
+
+async function fetchUnapprovedPapers() {
+  if (typeof window._shohoj_fetchUnapprovedPapers !== 'function') return [];
+  return window._shohoj_fetchUnapprovedPapers();
+}
+
+async function fetchPaperReports() {
+  if (typeof window._shohoj_fetchPaperReports !== 'function') return [];
+  return window._shohoj_fetchPaperReports();
+}
+
+async function approvePaper(paperId) {
+  if (typeof window._shohoj_approvePaper !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_approvePaper(paperId);
+}
+
+async function deletePaper(paperId, storagePath) {
+  if (typeof window._shohoj_deletePaper !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deletePaper(paperId, storagePath);
+}
+
+async function deletePaperReport(reportId) {
+  if (typeof window._shohoj_deletePaperReport !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deletePaperReport(reportId);
 }
 
 // ── js/import/parser.js ─────────────────────────────────────────
@@ -12310,6 +12470,9 @@ function _paperCard(p) {
 function _renderShell() {
   const root = document.getElementById('papersContent');
   if (!root) return;
+  const adminBtn = isPaperAdmin()
+    ? '<button class="papers-mod-btn" id="papersModBtn" title="Moderation">🛡️ Moderate</button>'
+    : '';
   root.innerHTML = `
     <div class="papers-tab-shell">
       <header class="papers-tab-head">
@@ -12317,7 +12480,10 @@ function _renderShell() {
           <h3>📚 Past Papers & Notes</h3>
           <p class="papers-tab-sub">Browse student-uploaded papers, quizzes, and notes by course code.</p>
         </div>
-        <button class="btn-primary papers-upload-btn" id="papersUploadBtn">＋ Upload</button>
+        <div class="papers-tab-head-actions">
+          ${adminBtn}
+          <button class="btn-primary papers-upload-btn" id="papersUploadBtn">＋ Upload</button>
+        </div>
       </header>
 
       <div class="papers-tab-controls">
@@ -12344,8 +12510,148 @@ function _renderShell() {
   document.getElementById('papersSearchInput').addEventListener('input', _onSearchInput);
   document.getElementById('papersTypeFilter').addEventListener('change', _onTypeChange);
   document.getElementById('papersUploadBtn').addEventListener('click', _openUploadModal);
+  const modBtn = document.getElementById('papersModBtn');
+  if (modBtn) modBtn.addEventListener('click', _openModerationPanel);
   const list = document.getElementById('papersList');
   list.addEventListener('click', _onListClick);
+}
+
+// ── Admin moderation panel ───────────────────────────────────────────────────
+async function _openModerationPanel() {
+  if (!isPaperAdmin()) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'paper-modal-backdrop';
+  wrap.innerHTML = `
+    <div class="paper-modal paper-modal--wide">
+      <header class="paper-modal-head">
+        <h4>🛡️ Moderation</h4>
+        <button class="paper-modal-close" aria-label="Close">×</button>
+      </header>
+      <div class="paper-mod-tabs">
+        <button class="paper-mod-tab active" data-mod-tab="pending">Pending review</button>
+        <button class="paper-mod-tab" data-mod-tab="reports">Reports</button>
+      </div>
+      <div class="paper-mod-body" id="paperModBody">
+        <div class="papers-empty-list">Loading…</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  const body = wrap.querySelector('#paperModBody');
+  const tabs = wrap.querySelectorAll('.paper-mod-tab');
+  let activeTab = 'pending';
+
+  async function loadTab(name) {
+    activeTab = name;
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.modTab === name));
+    body.innerHTML = '<div class="papers-empty-list">Loading…</div>';
+    if (name === 'pending') {
+      const list = await fetchUnapprovedPapers();
+      body.innerHTML = list.length
+        ? list.map(_pendingPaperRow).join('')
+        : '<div class="papers-empty-list">No papers waiting for review.</div>';
+    } else {
+      const reports = await fetchPaperReports();
+      body.innerHTML = reports.length
+        ? reports.map(_reportRow).join('')
+        : '<div class="papers-empty-list">No reports.</div>';
+    }
+  }
+
+  body.addEventListener('click', async e => {
+    const approveBtn = e.target.closest('[data-mod-action="approve"]');
+    const deleteBtn  = e.target.closest('[data-mod-action="delete"]');
+    const dismissBtn = e.target.closest('[data-mod-action="dismiss"]');
+    const previewBtn = e.target.closest('[data-mod-action="preview"]');
+
+    if (previewBtn) {
+      const path = previewBtn.dataset.path;
+      if (!path) return;
+      previewBtn.disabled = true;
+      const url = await getPaperDownloadUrl(path);
+      previewBtn.disabled = false;
+      if (url) window.open(url, '_blank', 'noopener');
+      return;
+    }
+    if (approveBtn) {
+      const id = approveBtn.dataset.id;
+      approveBtn.disabled = true;
+      const res = await approvePaper(id);
+      if (!res.ok) { _toast(res.error || 'Approve failed'); approveBtn.disabled = false; return; }
+      _toast('Approved.');
+      await loadTab(activeTab);
+      // Refresh public list too
+      _loadList();
+      return;
+    }
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      const path = deleteBtn.dataset.path;
+      if (!confirm('Delete this paper and its file? This cannot be undone.')) return;
+      deleteBtn.disabled = true;
+      const res = await deletePaper(id, path);
+      if (!res.ok) { _toast(res.error || 'Delete failed'); deleteBtn.disabled = false; return; }
+      _toast('Deleted.');
+      await loadTab(activeTab);
+      _loadList();
+      return;
+    }
+    if (dismissBtn) {
+      const id = dismissBtn.dataset.id;
+      dismissBtn.disabled = true;
+      const res = await deletePaperReport(id);
+      if (!res.ok) { _toast(res.error || 'Dismiss failed'); dismissBtn.disabled = false; return; }
+      await loadTab(activeTab);
+      return;
+    }
+  });
+
+  tabs.forEach(t => t.addEventListener('click', () => loadTab(t.dataset.modTab)));
+  loadTab('pending');
+}
+
+function _pendingPaperRow(p) {
+  const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type;
+  const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
+  return `
+    <div class="paper-mod-row">
+      <div class="paper-mod-row-main">
+        <div class="paper-mod-row-head">
+          <span class="paper-card-course">${escHtml(p.courseCode)}</span>
+          <span class="paper-card-type">${escHtml(typeLabel)}</span>
+        </div>
+        <div class="paper-mod-row-title">${escHtml(p.title || 'Untitled')}</div>
+        <div class="paper-mod-row-meta">${meta}</div>
+      </div>
+      <div class="paper-mod-row-actions">
+        <button data-mod-action="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
+        <button data-mod-action="approve" data-id="${escAttr(p.id)}" class="paper-mod-approve">Approve</button>
+        <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" class="paper-mod-delete">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function _reportRow(r) {
+  return `
+    <div class="paper-mod-row">
+      <div class="paper-mod-row-main">
+        <div class="paper-mod-row-head">
+          <span class="paper-card-course">Paper ${escHtml(String(r.paperId).slice(0, 12))}…</span>
+        </div>
+        <div class="paper-mod-row-title">${escHtml(r.reason || '(no reason given)')}</div>
+        <div class="paper-mod-row-meta">Reporter: ${escHtml(String(r.reporterUid || '').slice(0, 8))}…</div>
+      </div>
+      <div class="paper-mod-row-actions">
+        <button data-mod-action="delete" data-id="${escAttr(r.paperId)}">Delete paper</button>
+        <button data-mod-action="dismiss" data-id="${escAttr(r.id)}">Dismiss</button>
+      </div>
+    </div>
+  `;
 }
 
 let _searchDebounce = null;
