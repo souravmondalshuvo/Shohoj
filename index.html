@@ -4511,17 +4511,26 @@ input, select, textarea,
 
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
 .papers-tab-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.papers-mod-btn,
+.papers-upload-btn {
+  min-width: 132px;
+  text-align: center;
+  white-space: nowrap;
+}
 .papers-mod-btn {
-  background: rgba(255,196,0,0.10);
-  border: 1px solid rgba(255,196,0,0.45);
-  color: #ffce4d;
-  padding: 12px 22px; border-radius: var(--radius, 10px);
+  background: #f5b942;
+  border: none;
+  color: #2a1c00;
+  padding: 13px 22px; border-radius: var(--radius, 10px);
   font-family: 'DM Sans', sans-serif;
   font-weight: 600; font-size: 15px; line-height: 1; cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 0 0 0 rgba(245,185,66,0.4);
 }
-.papers-mod-btn:hover { background: rgba(255,196,0,0.18); transform: translateY(-1px); }
+.papers-mod-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(245,185,66,0.35);
+}
 
 .paper-modal--wide { max-width: 720px; }
 .paper-mod-tabs {
