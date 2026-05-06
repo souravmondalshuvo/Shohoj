@@ -94,3 +94,39 @@ export function paperTimestampMs(p) {
   if (p.createdAt.seconds) return p.createdAt.seconds * 1000;
   return 0;
 }
+
+// ── Admin helpers ────────────────────────────────────────────────────────────
+export function isPaperAdmin() {
+  return typeof window._shohoj_isPaperAdmin === 'function' && window._shohoj_isPaperAdmin();
+}
+
+export async function fetchUnapprovedPapers() {
+  if (typeof window._shohoj_fetchUnapprovedPapers !== 'function') return [];
+  return window._shohoj_fetchUnapprovedPapers();
+}
+
+export async function fetchPaperReports() {
+  if (typeof window._shohoj_fetchPaperReports !== 'function') return [];
+  return window._shohoj_fetchPaperReports();
+}
+
+export async function approvePaper(paperId) {
+  if (typeof window._shohoj_approvePaper !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_approvePaper(paperId);
+}
+
+export async function deletePaper(paperId, storagePath) {
+  if (typeof window._shohoj_deletePaper !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deletePaper(paperId, storagePath);
+}
+
+export async function deletePaperReport(reportId) {
+  if (typeof window._shohoj_deletePaperReport !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deletePaperReport(reportId);
+}

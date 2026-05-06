@@ -6,6 +6,8 @@ import {
   fetchRecentPapers, fetchPapersByCourse, getPaperDownloadUrl,
   uploadPaper, reportPaper, isKnownCourseCode, normalizeCourseCode,
   PAPER_TYPE_LABELS, paperTimestampMs,
+  isPaperAdmin, fetchUnapprovedPapers, fetchPaperReports,
+  approvePaper, deletePaper, deletePaperReport,
 } from '../core/papers.js';
 import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, escAttr } from '../core/helpers.js';
@@ -80,6 +82,9 @@ function _paperCard(p) {
 function _renderShell() {
   const root = document.getElementById('papersContent');
   if (!root) return;
+  const adminBtn = isPaperAdmin()
+    ? '<button class="papers-mod-btn" id="papersModBtn" title="Moderation">🛡️ Moderate</button>'
+    : '';
   root.innerHTML = `
     <div class="papers-tab-shell">
       <header class="papers-tab-head">
@@ -87,7 +92,10 @@ function _renderShell() {
           <h3>📚 Past Papers & Notes</h3>
           <p class="papers-tab-sub">Browse student-uploaded papers, quizzes, and notes by course code.</p>
         </div>
-        <button class="btn-primary papers-upload-btn" id="papersUploadBtn">＋ Upload</button>
+        <div class="papers-tab-head-actions">
+          ${adminBtn}
+          <button class="btn-primary papers-upload-btn" id="papersUploadBtn">＋ Upload</button>
+        </div>
       </header>
 
       <div class="papers-tab-controls">
@@ -114,8 +122,148 @@ function _renderShell() {
   document.getElementById('papersSearchInput').addEventListener('input', _onSearchInput);
   document.getElementById('papersTypeFilter').addEventListener('change', _onTypeChange);
   document.getElementById('papersUploadBtn').addEventListener('click', _openUploadModal);
+  const modBtn = document.getElementById('papersModBtn');
+  if (modBtn) modBtn.addEventListener('click', _openModerationPanel);
   const list = document.getElementById('papersList');
   list.addEventListener('click', _onListClick);
+}
+
+// ── Admin moderation panel ───────────────────────────────────────────────────
+async function _openModerationPanel() {
+  if (!isPaperAdmin()) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'paper-modal-backdrop';
+  wrap.innerHTML = `
+    <div class="paper-modal paper-modal--wide">
+      <header class="paper-modal-head">
+        <h4>🛡️ Moderation</h4>
+        <button class="paper-modal-close" aria-label="Close">×</button>
+      </header>
+      <div class="paper-mod-tabs">
+        <button class="paper-mod-tab active" data-mod-tab="pending">Pending review</button>
+        <button class="paper-mod-tab" data-mod-tab="reports">Reports</button>
+      </div>
+      <div class="paper-mod-body" id="paperModBody">
+        <div class="papers-empty-list">Loading…</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  const body = wrap.querySelector('#paperModBody');
+  const tabs = wrap.querySelectorAll('.paper-mod-tab');
+  let activeTab = 'pending';
+
+  async function loadTab(name) {
+    activeTab = name;
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.modTab === name));
+    body.innerHTML = '<div class="papers-empty-list">Loading…</div>';
+    if (name === 'pending') {
+      const list = await fetchUnapprovedPapers();
+      body.innerHTML = list.length
+        ? list.map(_pendingPaperRow).join('')
+        : '<div class="papers-empty-list">No papers waiting for review.</div>';
+    } else {
+      const reports = await fetchPaperReports();
+      body.innerHTML = reports.length
+        ? reports.map(_reportRow).join('')
+        : '<div class="papers-empty-list">No reports.</div>';
+    }
+  }
+
+  body.addEventListener('click', async e => {
+    const approveBtn = e.target.closest('[data-mod-action="approve"]');
+    const deleteBtn  = e.target.closest('[data-mod-action="delete"]');
+    const dismissBtn = e.target.closest('[data-mod-action="dismiss"]');
+    const previewBtn = e.target.closest('[data-mod-action="preview"]');
+
+    if (previewBtn) {
+      const path = previewBtn.dataset.path;
+      if (!path) return;
+      previewBtn.disabled = true;
+      const url = await getPaperDownloadUrl(path);
+      previewBtn.disabled = false;
+      if (url) window.open(url, '_blank', 'noopener');
+      return;
+    }
+    if (approveBtn) {
+      const id = approveBtn.dataset.id;
+      approveBtn.disabled = true;
+      const res = await approvePaper(id);
+      if (!res.ok) { _toast(res.error || 'Approve failed'); approveBtn.disabled = false; return; }
+      _toast('Approved.');
+      await loadTab(activeTab);
+      // Refresh public list too
+      _loadList();
+      return;
+    }
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.id;
+      const path = deleteBtn.dataset.path;
+      if (!confirm('Delete this paper and its file? This cannot be undone.')) return;
+      deleteBtn.disabled = true;
+      const res = await deletePaper(id, path);
+      if (!res.ok) { _toast(res.error || 'Delete failed'); deleteBtn.disabled = false; return; }
+      _toast('Deleted.');
+      await loadTab(activeTab);
+      _loadList();
+      return;
+    }
+    if (dismissBtn) {
+      const id = dismissBtn.dataset.id;
+      dismissBtn.disabled = true;
+      const res = await deletePaperReport(id);
+      if (!res.ok) { _toast(res.error || 'Dismiss failed'); dismissBtn.disabled = false; return; }
+      await loadTab(activeTab);
+      return;
+    }
+  });
+
+  tabs.forEach(t => t.addEventListener('click', () => loadTab(t.dataset.modTab)));
+  loadTab('pending');
+}
+
+function _pendingPaperRow(p) {
+  const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type;
+  const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
+  return `
+    <div class="paper-mod-row">
+      <div class="paper-mod-row-main">
+        <div class="paper-mod-row-head">
+          <span class="paper-card-course">${escHtml(p.courseCode)}</span>
+          <span class="paper-card-type">${escHtml(typeLabel)}</span>
+        </div>
+        <div class="paper-mod-row-title">${escHtml(p.title || 'Untitled')}</div>
+        <div class="paper-mod-row-meta">${meta}</div>
+      </div>
+      <div class="paper-mod-row-actions">
+        <button data-mod-action="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
+        <button data-mod-action="approve" data-id="${escAttr(p.id)}" class="paper-mod-approve">Approve</button>
+        <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" class="paper-mod-delete">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+function _reportRow(r) {
+  return `
+    <div class="paper-mod-row">
+      <div class="paper-mod-row-main">
+        <div class="paper-mod-row-head">
+          <span class="paper-card-course">Paper ${escHtml(String(r.paperId).slice(0, 12))}…</span>
+        </div>
+        <div class="paper-mod-row-title">${escHtml(r.reason || '(no reason given)')}</div>
+        <div class="paper-mod-row-meta">Reporter: ${escHtml(String(r.reporterUid || '').slice(0, 8))}…</div>
+      </div>
+      <div class="paper-mod-row-actions">
+        <button data-mod-action="delete" data-id="${escAttr(r.paperId)}">Delete paper</button>
+        <button data-mod-action="dismiss" data-id="${escAttr(r.id)}">Dismiss</button>
+      </div>
+    </div>
+  `;
 }
 
 let _searchDebounce = null;

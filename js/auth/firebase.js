@@ -10,7 +10,7 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
          documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -1327,6 +1327,82 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
   } catch (e) {
     console.error('[Shohoj] uploadPaper failed:', e);
     return { ok: false, error: e.message || 'Upload failed' };
+  }
+};
+
+function _isAdminUser() {
+  if (!currentUser) return false;
+  const adminUid = window._shohoj_admin_uid;
+  return !!adminUid && currentUser.uid === adminUid;
+}
+
+window._shohoj_isPaperAdmin = function() {
+  return _isAdminUser();
+};
+
+window._shohoj_fetchUnapprovedPapers = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(col, where('approved', '==', false), orderBy('createdAt', 'desc'), qLimit(100));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchUnapprovedPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchPaperReports = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const col = collection(db, 'paperReports');
+    const q = query(col, orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchPaperReports failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_approvePaper = async function(paperId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    await setDoc(doc(db, 'papers', paperId), { approved: true }, { merge: true });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] approvePaper failed:', e);
+    return { ok: false, error: e.message || 'Approve failed' };
+  }
+};
+
+window._shohoj_deletePaper = async function(paperId, storagePath) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    if (storagePath) {
+      try { await deleteObject(storageRef(storage, storagePath)); }
+      catch (e) { console.warn('[Shohoj] deletePaper: storage delete failed (continuing):', e); }
+    }
+    await deleteDoc(doc(db, 'papers', paperId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deletePaper failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deletePaperReport = async function(reportId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  try {
+    await deleteDoc(doc(db, 'paperReports', reportId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deletePaperReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
   }
 };
 

@@ -211,11 +211,12 @@ service cloud.firestore {
     }
 
     match /paperReports/{reportId} {
-      allow read: if false;
+      allow read:   if isAdmin();
       allow create: if isBracuUser()
         && validPaperReportPayload(request.resource.data)
         && reportId == request.auth.uid + '_' + request.resource.data.paperId;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // ── Catch-all: deny everything else ──────────────────────────────────
