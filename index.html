@@ -4434,6 +4434,39 @@ input, select, textarea,
 .paper-card-report:hover { opacity: 1; border-color: rgba(255,90,90,0.55); color: #ff7676; }
 [data-theme="light"] .paper-card-report { border-color: rgba(0,0,0,0.14); }
 
+/* Skeleton cards */
+.paper-card--skeleton { pointer-events: none; }
+.paper-card--skeleton:hover { transform: none; border-color: rgba(255,255,255,0.10); }
+[data-theme="light"] .paper-card--skeleton:hover { border-color: rgba(0,0,0,0.10); }
+.paper-skel {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: rvSkelShimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+[data-theme="light"] .paper-skel {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.04) 0%,
+    rgba(0,0,0,0.09) 50%,
+    rgba(0,0,0,0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+.paper-skel-course { height: 14px; width: 72px; }
+.paper-skel-type   { height: 18px; width: 60px; border-radius: 999px; }
+.paper-skel-title  { height: 14px; width: 90%; }
+.paper-skel-title--short { width: 55%; }
+.paper-skel-pill   { height: 16px; width: 64px; border-radius: 999px; }
+.paper-skel-pill--sm { width: 44px; }
+.paper-skel-btn    { flex: 1; height: 32px; border-radius: 8px; }
+.paper-skel-btn--sm { flex: 0 0 72px; }
+
 /* Upload + report modal */
 .paper-modal-backdrop {
   position: fixed; inset: 0; z-index: 9999;
