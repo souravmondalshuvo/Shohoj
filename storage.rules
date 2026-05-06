@@ -7,11 +7,16 @@ service firebase.storage {
         && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$');
     }
 
+    function isAdmin() {
+      // Set this to your Firebase UID — must match isAdmin() in firestore.rules.
+      return request.auth != null
+        && request.auth.uid == 'YOUR_FIREBASE_UID_HERE';
+    }
+
     // Past papers & notes — uploaded files for the Phase 2 library.
     // Path: /papers/{courseCode}/{filename}
     // Reads gated to BRACU students; uploads capped at 10 MB and limited to
-    // PDFs and images. Updates/deletes from the client are blocked — admin
-    // moderates via the Firebase console.
+    // PDFs and images. Admin can delete files when rejecting paper docs.
     match /papers/{courseCode}/{filename} {
       allow read: if isBracuUser();
 
@@ -20,7 +25,8 @@ service firebase.storage {
         && request.resource.size <= 10 * 1024 * 1024
         && request.resource.contentType.matches('application/pdf|image/.*');
 
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // Catch-all: deny everything else.
