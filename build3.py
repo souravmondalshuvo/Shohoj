@@ -28,6 +28,7 @@ JS_FILES = [
     'js/core/calculator.js',
     'js/core/faculty.js',
     'js/core/reviews.js',
+    'js/core/papers.js',
     # Import
     'js/import/parser.js',
     # UI
@@ -37,6 +38,7 @@ JS_FILES = [
     'js/ui/reviews.js',
     'js/ui/reviewsTab.js',
     'js/ui/difficultyMap.js',
+    'js/ui/papersTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',

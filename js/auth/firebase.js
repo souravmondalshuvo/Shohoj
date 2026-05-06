@@ -10,6 +10,8 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
          documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const firebaseConfig = window._shohoj_firebase_config;
@@ -21,6 +23,7 @@ if (!firebaseConfig) {
 const app      = initializeApp(firebaseConfig);
 const auth     = getAuth(app);
 const db       = getFirestore(app);
+const storage  = getStorage(app);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -1230,6 +1233,118 @@ window._shohoj_toggleUpvote = async function(feedbackId, currentlyUpvoted) {
   } catch (e) {
     console.error('[Shohoj] toggleUpvote failed:', e);
     return { ok: false, error: e.message || 'Failed' };
+  }
+};
+
+// ── Past papers & notes library (Phase 2) ──────────────────────────────────
+window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 } = {}) {
+  if (!currentUser || !courseCode) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(
+      col,
+      where('courseCode', '==', String(courseCode).toUpperCase()),
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'),
+      qLimit(pageSize),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchPapersByCourse failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchRecentPapers = async function(n = 30) {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(col, where('approved', '==', true), orderBy('createdAt', 'desc'), qLimit(n));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchRecentPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchMyPapers = async function() {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(
+      col,
+      where('uploaderUid', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      qLimit(100),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchMyPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_paperDownloadUrl = async function(storagePath) {
+  if (!currentUser || !storagePath) return null;
+  try {
+    return await getDownloadURL(storageRef(storage, storagePath));
+  } catch (e) {
+    console.warn('[Shohoj] paperDownloadUrl failed:', e);
+    return null;
+  }
+};
+
+window._shohoj_uploadPaper = async function({ file, courseCode, type, title, semester, facultyInitials }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!file || !courseCode || !type || !title) return { ok: false, error: 'Missing fields' };
+  try {
+    const safeCourse = String(courseCode).toUpperCase();
+    const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const path = `papers/${safeCourse}/${filename}`;
+    const sRef = storageRef(storage, path);
+    await uploadBytes(sRef, file, { contentType: file.type });
+    const docData = {
+      courseCode: safeCourse,
+      type,
+      title: String(title).slice(0, 120),
+      storagePath: path,
+      fileSize: file.size,
+      mimeType: file.type,
+      uploaderUid: currentUser.uid,
+      downloads: 0,
+      flagCount: 0,
+      approved: false,
+      createdAt: serverTimestamp(),
+    };
+    if (semester) docData.semester = String(semester).slice(0, 40);
+    if (facultyInitials) docData.facultyInitials = String(facultyInitials).toUpperCase().slice(0, 6);
+    const added = await addDoc(collection(db, 'papers'), docData);
+    return { ok: true, id: added.id };
+  } catch (e) {
+    console.error('[Shohoj] uploadPaper failed:', e);
+    return { ok: false, error: e.message || 'Upload failed' };
+  }
+};
+
+window._shohoj_reportPaper = async function({ paperId, reason }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    const reportId = `${currentUser.uid}_${paperId}`;
+    await setDoc(doc(db, 'paperReports', reportId), {
+      paperId: String(paperId),
+      reason: String(reason || '').slice(0, 300),
+      reporterUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] reportPaper failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
   }
 };
 
