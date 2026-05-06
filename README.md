@@ -277,7 +277,7 @@ Shohoj has been through a security audit and the following protections are in pl
 
 ## Roadmap
 
-### Phase 1 — Academic Core _(Current)_
+### Phase 1 — Academic Core _(Complete)_
 
 | Feature                             | Status      |
 | ----------------------------------- | ----------- |
@@ -298,8 +298,6 @@ Shohoj has been through a security audit and the following protections are in pl
 | Semester Planner with Prerequisites | ✅ Complete |
 | Faculty Reviews (anonymous, 5-dim)  | ✅ Complete |
 | Course Difficulty Map               | ✅ Complete |
-| Advising Week Checklist             | 🔜 Planned  |
-| Freshman Survival Guide             | 🔜 Planned  |
 
 ### Phase 2 — Community Layer
 
