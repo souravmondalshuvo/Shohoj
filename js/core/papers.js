@@ -6,7 +6,7 @@
 
 import { COURSE_DB } from './catalog.js';
 
-const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+const PAPERS_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -24,7 +24,7 @@ export function normalizeCourseCode(raw) {
 
 export function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return PAPERS_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
 }
 
 export function isValidPaperType(t) {
