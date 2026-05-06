@@ -41,7 +41,7 @@ function _formatDate(p) {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function _signInPrompt() {
+function _papersSignInPrompt() {
   return `
     <div class="papers-empty">
       <h3>📚 Past Papers & Notes</h3>
@@ -518,7 +518,7 @@ export async function renderPapersTab() {
     return;
   }
   if (!_isSignedIn()) {
-    root.innerHTML = _signInPrompt();
+    root.innerHTML = _papersSignInPrompt();
     return;
   }
   _renderShell();
