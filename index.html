@@ -16212,7 +16212,7 @@ function _renderModal() {
     </div>
     <div style="display:flex;background:${t.inputBg};border-radius:30px;padding:3px;margin-bottom:20px;position:relative;">
       <div id="fbPill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:${t.accent};border-radius:27px;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);pointer-events:none;"></div>
-      <button id="fbTabSubmit" onclick="window._shohoj_fbTab('submit')" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#fff;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
+      <button id="fbTabSubmit" onclick="window._shohoj_fbTab('submit')" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#000;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
       <button id="fbTabBoard"  onclick="window._shohoj_fbTab('board')"  style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:${t.text2};cursor:pointer;border-radius:27px;font-family:inherit;">Board</button>
     </div>
     <div id="fbContent"></div>
@@ -16286,7 +16286,7 @@ function _submitHtml(t, uid) {
     </div>
     <button id="fbSubmitBtn" onclick="window._shohoj_doSubmit()" style="
       width:100%;padding:11px;border-radius:10px;border:none;
-      background:${t.accent};color:#fff;font-size:14px;font-weight:700;
+      background:${t.accent};color:#000;font-size:14px;font-weight:700;
       cursor:pointer;font-family:inherit;transition:opacity 0.15s;
     ">Send</button>
     <div id="fbMsg" style="text-align:center;font-size:13px;margin-top:10px;min-height:18px;color:${t.text2};"></div>
@@ -16300,7 +16300,7 @@ function _syncTypeButtons() {
     if (!btn) return;
     const on = v === _selType;
     btn.style.background   = on ? t.accent    : t.inputBg;
-    btn.style.color        = on ? '#fff'      : t.text2;
+    btn.style.color        = on ? '#000'      : t.text2;
     btn.style.borderColor  = on ? t.accent    : t.border;
   });
 }
@@ -16323,12 +16323,12 @@ function _syncTabPill() {
   const t = _t();
   if (_activeTab === 'submit') {
     pill.style.transform = 'translateX(0)';
-    btnSubmit.style.color = '#fff';
+    btnSubmit.style.color = '#000';
     btnBoard.style.color  = t.text2;
   } else {
     pill.style.transform = 'translateX(100%)';
     btnSubmit.style.color = t.text2;
-    btnBoard.style.color  = '#fff';
+    btnBoard.style.color  = '#000';
   }
 }
 
@@ -16390,7 +16390,7 @@ function _renderBoardContent() {
       padding:5px 11px;font-size:11px;font-weight:700;border-radius:20px;
       border:1px solid ${on ? t.accent : t.border};
       background:${on ? t.accent : t.inputBg};
-      color:${on ? '#fff' : t.text2};
+      color:${on ? '#000' : t.text2};
       cursor:pointer;font-family:inherit;transition:all 0.15s;
     ">${f === 'all' ? 'All' : f === 'bug' ? 'Bug' : f === 'feature' ? 'Feature' : 'General'}</button>`;
   }).join('');
