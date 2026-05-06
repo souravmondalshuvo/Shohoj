@@ -154,6 +154,70 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ── Past papers & notes library (Phase 2) ────────────────────────────
+    // Doc IDs are Firestore auto-IDs (multiple uploads per user/course are
+    // allowed). Uploads land with `approved: false` and become visible only
+    // after an admin flips the flag in the Firebase console. Clients filter
+    // public views with `where('approved','==',true)`.
+    function validPaperType(t) {
+      return t == 'midterm' || t == 'final' || t == 'quiz'
+          || t == 'notes'   || t == 'assignment';
+    }
+
+    function validPaperPayload(d) {
+      return d.keys().hasOnly(['courseCode','type','semester','facultyInitials','title','storagePath','fileSize','mimeType','uploaderUid','downloads','flagCount','approved','createdAt'])
+        && d.keys().hasAll(['courseCode','type','title','storagePath','fileSize','mimeType','uploaderUid','approved','createdAt'])
+        && validCourseCode(d.courseCode)
+        && validPaperType(d.type)
+        && d.title is string
+        && d.title.size() >= 3
+        && d.title.size() <= 120
+        && d.storagePath is string
+        && d.storagePath.matches('^papers/' + d.courseCode + '/[^/]+$')
+        && d.fileSize is int
+        && d.fileSize > 0
+        && d.fileSize <= 10485760
+        && d.mimeType is string
+        && d.mimeType.matches('application/pdf|image/.*')
+        && d.uploaderUid is string
+        && d.uploaderUid == request.auth.uid
+        && d.approved is bool
+        && d.approved == false
+        && d.createdAt == request.time
+        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40))
+        && (!('facultyInitials' in d) || (d.facultyInitials is string && d.facultyInitials.matches('^[A-Z]{2,6}$')))
+        && (!('downloads' in d) || (d.downloads is int && d.downloads == 0))
+        && (!('flagCount' in d) || (d.flagCount is int && d.flagCount == 0));
+    }
+
+    function validPaperReportPayload(d) {
+      return d.keys().hasOnly(['paperId','reason','reporterUid','createdAt'])
+        && d.keys().hasAll(['paperId','reason','reporterUid','createdAt'])
+        && d.paperId is string
+        && d.paperId.size() > 0
+        && exists(/databases/$(database)/documents/papers/$(d.paperId))
+        && d.reason is string
+        && d.reason.size() >= 3
+        && d.reason.size() <= 300
+        && d.reporterUid is string
+        && d.reporterUid == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    match /papers/{paperId} {
+      allow read:   if isBracuUser();
+      allow create: if isBracuUser() && validPaperPayload(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /paperReports/{reportId} {
+      allow read: if false;
+      allow create: if isBracuUser()
+        && validPaperReportPayload(request.resource.data)
+        && reportId == request.auth.uid + '_' + request.resource.data.paperId;
+      allow update, delete: if false;
+    }
+
     // ── Catch-all: deny everything else ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

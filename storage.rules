@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isBracuUser() {
+      return request.auth != null
+        && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$');
+    }
+
+    // Past papers & notes — uploaded files for the Phase 2 library.
+    // Path: /papers/{courseCode}/{filename}
+    // Reads gated to BRACU students; uploads capped at 10 MB and limited to
+    // PDFs and images. Updates/deletes from the client are blocked — admin
+    // moderates via the Firebase console.
+    match /papers/{courseCode}/{filename} {
+      allow read: if isBracuUser();
+
+      allow create: if isBracuUser()
+        && request.resource.size > 0
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/.*');
+
+      allow update, delete: if false;
+    }
+
+    // Catch-all: deny everything else.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
