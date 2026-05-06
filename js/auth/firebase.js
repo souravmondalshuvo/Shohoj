@@ -10,8 +10,6 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
          documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const firebaseConfig = window._shohoj_firebase_config;
@@ -23,7 +21,6 @@ if (!firebaseConfig) {
 const app      = initializeApp(firebaseConfig);
 const auth     = getAuth(app);
 const db       = getFirestore(app);
-const storage  = getStorage(app);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -1287,10 +1284,41 @@ window._shohoj_fetchMyPapers = async function() {
   }
 };
 
+// ── R2-backed paper storage (via Cloudflare Worker proxy) ─────────────────
+// The worker URL is set on `window._shohoj_papers_worker_url` from index.html.
+// The browser never talks to R2 directly — every request flows through the
+// Worker, which checks the Firebase ID token before allowing the operation.
+function _papersWorkerUrl() {
+  const u = window._shohoj_papers_worker_url;
+  return (typeof u === 'string' && u.startsWith('http')) ? u.replace(/\/$/, '') : null;
+}
+
+async function _idToken() {
+  if (!currentUser) return null;
+  try { return await currentUser.getIdToken(); } catch { return null; }
+}
+
 window._shohoj_paperDownloadUrl = async function(storagePath) {
   if (!currentUser || !storagePath) return null;
+  const base = _papersWorkerUrl();
+  if (!base) {
+    console.warn('[Shohoj] papers worker URL not configured');
+    return null;
+  }
+  const token = await _idToken();
+  if (!token) return null;
   try {
-    return await getDownloadURL(storageRef(storage, storagePath));
+    const res = await fetch(`${base}/download?path=${encodeURIComponent(storagePath)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      console.warn('[Shohoj] paperDownloadUrl: worker returned', res.status);
+      return null;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+    return url;
   } catch (e) {
     console.warn('[Shohoj] paperDownloadUrl failed:', e);
     return null;
@@ -1300,13 +1328,34 @@ window._shohoj_paperDownloadUrl = async function(storagePath) {
 window._shohoj_uploadPaper = async function({ file, courseCode, type, title, semester, facultyInitials }) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
   if (!file || !courseCode || !type || !title) return { ok: false, error: 'Missing fields' };
+  const base = _papersWorkerUrl();
+  if (!base) return { ok: false, error: 'Upload service not configured. Contact admin.' };
   try {
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
     const path = `papers/${safeCourse}/${filename}`;
-    const sRef = storageRef(storage, path);
-    await uploadBytes(sRef, file, { contentType: file.type });
+
+    const token = await _idToken();
+    if (!token) return { ok: false, error: 'Could not get auth token' };
+
+    const uploadRes = await fetch(
+      `${base}/upload?courseCode=${encodeURIComponent(safeCourse)}&filename=${encodeURIComponent(filename)}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      },
+    );
+    if (!uploadRes.ok) {
+      let msg = 'Upload failed';
+      try { msg = (await uploadRes.json()).error || msg; } catch {}
+      return { ok: false, error: msg };
+    }
+
     const docData = {
       courseCode: safeCourse,
       type,
@@ -1383,8 +1432,16 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
   if (!paperId) return { ok: false, error: 'Missing paper id' };
   try {
     if (storagePath) {
-      try { await deleteObject(storageRef(storage, storagePath)); }
-      catch (e) { console.warn('[Shohoj] deletePaper: storage delete failed (continuing):', e); }
+      const base = _papersWorkerUrl();
+      const token = await _idToken();
+      if (base && token) {
+        try {
+          await fetch(`${base}/file?path=${encodeURIComponent(storagePath)}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (e) { console.warn('[Shohoj] deletePaper: R2 delete failed (continuing):', e); }
+      }
     }
     await deleteDoc(doc(db, 'papers', paperId));
     return { ok: true };

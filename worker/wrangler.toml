@@ -1,0 +1,15 @@
+name = "shohoj-papers"
+main = "index.js"
+compatibility_date = "2025-09-01"
+
+# R2 bucket binding — create the bucket in the Cloudflare dashboard first.
+[[r2_buckets]]
+binding = "PAPERS_BUCKET"
+bucket_name = "shohoj-papers"
+
+# Plain-text env vars — safe to commit. Do NOT put secrets here; use
+# `wrangler secret put` for anything sensitive (we don't need any for now).
+[vars]
+FIREBASE_PROJECT_ID = "shohoj"
+ADMIN_UID = "LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2"
+ALLOWED_ORIGINS = "https://souravmondalshuvo.github.io,http://localhost:5173,http://127.0.0.1:5173"

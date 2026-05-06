@@ -1,0 +1,16 @@
+{
+  "name": "shohoj-papers-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}
