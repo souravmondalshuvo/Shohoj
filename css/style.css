@@ -4493,7 +4493,7 @@ input, select, textarea,
   background: #f5b942;
   border: none;
   color: #2a1c00;
-  padding: 13px 22px; border-radius: var(--radius, 10px);
+  padding: 13px 28px; border-radius: var(--radius, 10px);
   font-family: 'DM Sans', sans-serif;
   font-weight: 600; font-size: 15px; line-height: 1; cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
