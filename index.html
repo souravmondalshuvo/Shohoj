@@ -4343,6 +4343,139 @@ input, select, textarea,
 .dm-skel-foot { height: 10px; width: 45%; }
 
 
+/* ── Past Papers & Notes tab (Phase 2) ───────────────────────────────────── */
+.papers-tab-shell { padding: 4px 0 24px; }
+.papers-tab-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.papers-tab-head h3 { margin: 0 0 4px; font-size: 1.4rem; }
+.papers-tab-sub { margin: 0; opacity: 0.78; font-size: 0.92rem; }
+.papers-upload-btn { white-space: nowrap; }
+
+.papers-tab-controls {
+  display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+}
+.papers-search {
+  flex: 1; min-width: 220px;
+  padding: 10px 14px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04); color: inherit;
+  font-size: 0.95rem;
+}
+[data-theme="light"] .papers-search {
+  border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.03);
+}
+.papers-type-filter {
+  padding: 10px 14px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04); color: inherit;
+  font-size: 0.95rem;
+}
+[data-theme="light"] .papers-type-filter {
+  border-color: rgba(0,0,0,0.12); background: rgba(0,0,0,0.03);
+}
+
+.papers-list {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.papers-empty,
+.papers-empty-list {
+  padding: 40px 20px; text-align: center; opacity: 0.78;
+  border: 1px dashed rgba(255,255,255,0.14); border-radius: 12px;
+}
+[data-theme="light"] .papers-empty,
+[data-theme="light"] .papers-empty-list {
+  border-color: rgba(0,0,0,0.14);
+}
+.papers-empty h3 { margin: 0 0 8px; }
+.papers-empty p { margin: 0 0 14px; }
+
+.paper-card {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px; padding: 14px 14px 12px;
+  background: rgba(255,255,255,0.03);
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+[data-theme="light"] .paper-card {
+  border-color: rgba(0,0,0,0.10); background: rgba(0,0,0,0.02);
+}
+.paper-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.22);
+}
+.paper-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.paper-card-course { font-weight: 700; letter-spacing: 0.4px; font-size: 0.85rem; opacity: 0.92; }
+.paper-card-type {
+  font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
+  background: rgba(82,160,255,0.16); color: #6cb0ff;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.paper-card-title { margin: 2px 0 0; font-size: 0.98rem; line-height: 1.3; }
+.paper-card-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.paper-card-meta-pill {
+  font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); opacity: 0.88;
+}
+[data-theme="light"] .paper-card-meta-pill { background: rgba(0,0,0,0.05); }
+.paper-card-actions {
+  display: flex; gap: 8px; align-items: center; margin-top: 6px;
+}
+.paper-card-download { flex: 1; }
+.paper-card-report {
+  background: transparent; border: 1px solid rgba(255,255,255,0.14);
+  color: inherit; opacity: 0.7; padding: 6px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+}
+.paper-card-report:hover { opacity: 1; border-color: rgba(255,90,90,0.55); color: #ff7676; }
+[data-theme="light"] .paper-card-report { border-color: rgba(0,0,0,0.14); }
+
+/* Upload + report modal */
+.paper-modal-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.paper-modal {
+  width: 100%; max-width: 460px;
+  background: var(--bg-elev, #1a1c20); color: inherit;
+  border-radius: 14px; padding: 18px 18px 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+[data-theme="light"] .paper-modal { background: #fff; border-color: rgba(0,0,0,0.08); }
+.paper-modal-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.paper-modal-head h4 { margin: 0; }
+.paper-modal-close {
+  background: transparent; border: 0; color: inherit; cursor: pointer;
+  font-size: 1.4rem; line-height: 1; padding: 2px 6px; opacity: 0.7;
+}
+.paper-modal-close:hover { opacity: 1; }
+.paper-modal-form { display: flex; flex-direction: column; gap: 10px; }
+.paper-modal-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+.paper-modal-form input,
+.paper-modal-form select,
+.paper-modal-form textarea {
+  padding: 9px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04); color: inherit;
+  font-size: 0.92rem; font-family: inherit;
+}
+[data-theme="light"] .paper-modal-form input,
+[data-theme="light"] .paper-modal-form select,
+[data-theme="light"] .paper-modal-form textarea {
+  border-color: rgba(0,0,0,0.14); background: rgba(0,0,0,0.02);
+}
+.paper-modal-note { font-size: 0.78rem; opacity: 0.7; margin: 4px 0 0; }
+.paper-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.paper-modal-error { color: #ff7676; font-size: 0.85rem; min-height: 1em; }
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -4680,6 +4813,10 @@ input, select, textarea,
           <span class="calc-tab-icon">⭐</span>
           <span>Reviews</span>
         </button>
+        <button class="calc-tab" data-tab="papers" onclick="switchCalcTab('papers')">
+          <span class="calc-tab-icon">📚</span>
+          <span>Papers</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -4781,6 +4918,15 @@ input, select, textarea,
         </div>
       </div>
 
+      <!-- ═══ TAB 6: PAST PAPERS ═══ -->
+      <div class="calc-tab-panel" id="tabPapers">
+        <div class="calc-body">
+          <div id="papersContent">
+            <!-- Rendered dynamically by papersTab.js -->
+          </div>
+        </div>
+      </div>
+
 
       <!-- Footer (global — below tabs) -->
       <div class="calc-footer lg-panel">
@@ -4854,6 +5000,8 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
          collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
          documentId, addDoc }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const firebaseConfig = window._shohoj_firebase_config;
@@ -4865,6 +5013,7 @@ if (!firebaseConfig) {
 const app      = initializeApp(firebaseConfig);
 const auth     = getAuth(app);
 const db       = getFirestore(app);
+const storage  = getStorage(app);
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -6074,6 +6223,118 @@ window._shohoj_toggleUpvote = async function(feedbackId, currentlyUpvoted) {
   } catch (e) {
     console.error('[Shohoj] toggleUpvote failed:', e);
     return { ok: false, error: e.message || 'Failed' };
+  }
+};
+
+// ── Past papers & notes library (Phase 2) ──────────────────────────────────
+window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 } = {}) {
+  if (!currentUser || !courseCode) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(
+      col,
+      where('courseCode', '==', String(courseCode).toUpperCase()),
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'),
+      qLimit(pageSize),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchPapersByCourse failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchRecentPapers = async function(n = 30) {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(col, where('approved', '==', true), orderBy('createdAt', 'desc'), qLimit(n));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchRecentPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchMyPapers = async function() {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'papers');
+    const q = query(
+      col,
+      where('uploaderUid', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      qLimit(100),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchMyPapers failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_paperDownloadUrl = async function(storagePath) {
+  if (!currentUser || !storagePath) return null;
+  try {
+    return await getDownloadURL(storageRef(storage, storagePath));
+  } catch (e) {
+    console.warn('[Shohoj] paperDownloadUrl failed:', e);
+    return null;
+  }
+};
+
+window._shohoj_uploadPaper = async function({ file, courseCode, type, title, semester, facultyInitials }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!file || !courseCode || !type || !title) return { ok: false, error: 'Missing fields' };
+  try {
+    const safeCourse = String(courseCode).toUpperCase();
+    const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const path = `papers/${safeCourse}/${filename}`;
+    const sRef = storageRef(storage, path);
+    await uploadBytes(sRef, file, { contentType: file.type });
+    const docData = {
+      courseCode: safeCourse,
+      type,
+      title: String(title).slice(0, 120),
+      storagePath: path,
+      fileSize: file.size,
+      mimeType: file.type,
+      uploaderUid: currentUser.uid,
+      downloads: 0,
+      flagCount: 0,
+      approved: false,
+      createdAt: serverTimestamp(),
+    };
+    if (semester) docData.semester = String(semester).slice(0, 40);
+    if (facultyInitials) docData.facultyInitials = String(facultyInitials).toUpperCase().slice(0, 6);
+    const added = await addDoc(collection(db, 'papers'), docData);
+    return { ok: true, id: added.id };
+  } catch (e) {
+    console.error('[Shohoj] uploadPaper failed:', e);
+    return { ok: false, error: e.message || 'Upload failed' };
+  }
+};
+
+window._shohoj_reportPaper = async function({ paperId, reason }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    const reportId = `${currentUser.uid}_${paperId}`;
+    await setDoc(doc(db, 'paperReports', reportId), {
+      paperId: String(paperId),
+      reason: String(reason || '').slice(0, 300),
+      reporterUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] reportPaper failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
   }
 };
 
@@ -8908,6 +9169,102 @@ function aggregateRatings(reviews) {
     avg[k] = counts[k] ? totals[k] / counts[k] : null;
   }
   return { ratings: avg, count: reviews.length };
+}
+
+// ── js/core/papers.js ───────────────────────────────────────────
+// ── js/core/papers.js ─────────────────────────────────────────────────────────
+// Pure data layer for the past papers & notes library. Wraps the Firestore +
+// Storage hooks that firebase.js exposes on window._shohoj_* so the rest of
+// the bundled code can browse, upload, and report papers without touching
+// Firebase directly.
+
+const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const PAPER_TYPE_LABELS = {
+  midterm:    'Midterm',
+  final:      'Final',
+  quiz:       'Quiz',
+  notes:      'Notes',
+  assignment: 'Assignment',
+};
+
+function normalizeCourseCode(raw) {
+  return String(raw || '').toUpperCase().trim();
+}
+
+function isKnownCourseCode(raw) {
+  const code = normalizeCourseCode(raw);
+  return COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+}
+
+function isValidPaperType(t) {
+  return PAPER_TYPES.includes(String(t || '').toLowerCase());
+}
+
+function validatePaperUpload({ file, courseCode, type, title }) {
+  if (!file) return 'File is required';
+  if (file.size <= 0) return 'File is empty';
+  if (file.size > MAX_FILE_SIZE) return 'File must be 10 MB or smaller';
+  if (!/^application\/pdf$|^image\//.test(file.type || '')) return 'Only PDFs and images are allowed';
+  const code = normalizeCourseCode(courseCode);
+  if (!isKnownCourseCode(code)) return 'Unknown course code';
+  if (!isValidPaperType(type)) return 'Invalid paper type';
+  const cleanTitle = String(title || '').trim();
+  if (cleanTitle.length < 3) return 'Title must be at least 3 characters';
+  if (cleanTitle.length > 120) return 'Title must be 120 characters or less';
+  return null;
+}
+
+async function fetchPapersByCourse(courseCode) {
+  if (typeof window._shohoj_fetchPapersByCourse !== 'function') return [];
+  const code = normalizeCourseCode(courseCode);
+  if (!isKnownCourseCode(code)) return [];
+  return window._shohoj_fetchPapersByCourse(code);
+}
+
+async function fetchRecentPapers(n = 30) {
+  if (typeof window._shohoj_fetchRecentPapers !== 'function') return [];
+  return window._shohoj_fetchRecentPapers(n);
+}
+
+async function fetchMyPapers() {
+  if (typeof window._shohoj_fetchMyPapers !== 'function') return [];
+  return window._shohoj_fetchMyPapers();
+}
+
+async function getPaperDownloadUrl(storagePath) {
+  if (typeof window._shohoj_paperDownloadUrl !== 'function') return null;
+  return window._shohoj_paperDownloadUrl(storagePath);
+}
+
+async function uploadPaper(payload) {
+  if (typeof window._shohoj_uploadPaper !== 'function') {
+    return { ok: false, error: 'Upload unavailable' };
+  }
+  const err = validatePaperUpload(payload);
+  if (err) return { ok: false, error: err };
+  return window._shohoj_uploadPaper({
+    ...payload,
+    courseCode: normalizeCourseCode(payload.courseCode),
+    type: String(payload.type).toLowerCase(),
+    title: String(payload.title).trim(),
+  });
+}
+
+async function reportPaper(paperId, reason) {
+  if (typeof window._shohoj_reportPaper !== 'function') {
+    return { ok: false, error: 'Reporting unavailable' };
+  }
+  return window._shohoj_reportPaper({ paperId, reason });
+}
+
+function paperTimestampMs(p) {
+  if (!p || !p.createdAt) return 0;
+  if (typeof p.createdAt.toMillis === 'function') return p.createdAt.toMillis();
+  if (p.createdAt.seconds) return p.createdAt.seconds * 1000;
+  return 0;
 }
 
 // ── js/import/parser.js ─────────────────────────────────────────
@@ -11876,6 +12233,352 @@ async function renderDifficultyMapTab() {
     root.innerHTML = '<div class="dm-empty">Failed to load data.</div>';
     console.error('[difficultyMap]', err);
   }
+}
+
+// ── js/ui/papersTab.js ──────────────────────────────────────────
+// ── js/ui/papersTab.js ────────────────────────────────────────────────────────
+// Past Papers & Notes browse tab. Course-code search + filtered list of
+// approved papers. Upload and reporting flows hang off this view.
+
+function _isSignedIn() {
+  return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+}
+
+function _isAuthReady() {
+  return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
+}
+
+let _state = {
+  query: '',
+  type: 'all',
+  papers: [],
+  loading: false,
+};
+
+function _formatBytes(n) {
+  if (!n || n <= 0) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function _formatDate(p) {
+  const ms = paperTimestampMs(p);
+  if (!ms) return '';
+  const d = new Date(ms);
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function _signInPrompt() {
+  return `
+    <div class="papers-empty">
+      <h3>📚 Past Papers & Notes</h3>
+      <p>Sign in with your BRACU email to browse and share past papers, quizzes, and notes.</p>
+      <button class="btn-primary" onclick="window._shohoj_signIn && window._shohoj_signIn()">Sign in with Google</button>
+    </div>
+  `;
+}
+
+function _emptyList(message) {
+  return `<div class="papers-empty-list">${escHtml(message)}</div>`;
+}
+
+function _paperCard(p) {
+  const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type || 'Paper';
+  const semester = p.semester ? `<span class="paper-card-meta-pill">${escHtml(p.semester)}</span>` : '';
+  const faculty = p.facultyInitials ? `<span class="paper-card-meta-pill">${escHtml(p.facultyInitials)}</span>` : '';
+  const size = _formatBytes(p.fileSize);
+  const sizePill = size ? `<span class="paper-card-meta-pill">${escHtml(size)}</span>` : '';
+  const date = _formatDate(p);
+  const datePill = date ? `<span class="paper-card-meta-pill">${escHtml(date)}</span>` : '';
+  return `
+    <article class="paper-card" data-paper-id="${escAttr(p.id)}">
+      <header class="paper-card-head">
+        <div class="paper-card-course">${escHtml(p.courseCode || '')}</div>
+        <div class="paper-card-type">${escHtml(typeLabel)}</div>
+      </header>
+      <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
+      <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
+      <div class="paper-card-actions">
+        <button class="btn-secondary paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
+        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper">⚑ Report</button>
+      </div>
+    </article>
+  `;
+}
+
+function _renderShell() {
+  const root = document.getElementById('papersContent');
+  if (!root) return;
+  root.innerHTML = `
+    <div class="papers-tab-shell">
+      <header class="papers-tab-head">
+        <div>
+          <h3>📚 Past Papers & Notes</h3>
+          <p class="papers-tab-sub">Browse student-uploaded papers, quizzes, and notes by course code.</p>
+        </div>
+        <button class="btn-primary papers-upload-btn" id="papersUploadBtn">＋ Upload</button>
+      </header>
+
+      <div class="papers-tab-controls">
+        <input
+          type="text"
+          id="papersSearchInput"
+          class="papers-search"
+          placeholder="Search by course code (e.g. CSE220, MAT110)…"
+          autocomplete="off"
+        />
+        <select id="papersTypeFilter" class="papers-type-filter">
+          <option value="all">All types</option>
+          <option value="midterm">Midterm</option>
+          <option value="final">Final</option>
+          <option value="quiz">Quiz</option>
+          <option value="notes">Notes</option>
+          <option value="assignment">Assignment</option>
+        </select>
+      </div>
+
+      <div class="papers-list" id="papersList"></div>
+    </div>
+  `;
+  document.getElementById('papersSearchInput').addEventListener('input', _onSearchInput);
+  document.getElementById('papersTypeFilter').addEventListener('change', _onTypeChange);
+  document.getElementById('papersUploadBtn').addEventListener('click', _openUploadModal);
+  const list = document.getElementById('papersList');
+  list.addEventListener('click', _onListClick);
+}
+
+let _searchDebounce = null;
+function _onSearchInput(e) {
+  _state.query = String(e.target.value || '').toUpperCase().trim();
+  clearTimeout(_searchDebounce);
+  _searchDebounce = setTimeout(_loadList, 250);
+}
+
+function _onTypeChange(e) {
+  _state.type = e.target.value;
+  _renderList();
+}
+
+async function _onListClick(e) {
+  const dl = e.target.closest('.paper-card-download');
+  if (dl) {
+    const path = dl.dataset.path;
+    if (!path) return;
+    dl.disabled = true;
+    dl.textContent = 'Loading…';
+    const url = await getPaperDownloadUrl(path);
+    dl.disabled = false;
+    dl.textContent = '⬇ Download';
+    if (!url) {
+      _toast('Could not fetch download link.');
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+    return;
+  }
+  const rep = e.target.closest('.paper-card-report');
+  if (rep) {
+    const paperId = rep.dataset.id;
+    if (!paperId) return;
+    _openReportModal(paperId);
+  }
+}
+
+function _renderList() {
+  const list = document.getElementById('papersList');
+  if (!list) return;
+
+  if (_state.loading) {
+    list.innerHTML = '<div class="papers-empty-list">Loading…</div>';
+    return;
+  }
+
+  const filtered = _state.type === 'all'
+    ? _state.papers
+    : _state.papers.filter(p => p.type === _state.type);
+
+  if (!filtered.length) {
+    if (_state.query) {
+      list.innerHTML = _emptyList(`No papers found for ${_state.query}. Be the first to upload one!`);
+    } else {
+      list.innerHTML = _emptyList('No papers yet. Upload yours to get the library started.');
+    }
+    return;
+  }
+
+  list.innerHTML = filtered.map(_paperCard).join('');
+}
+
+async function _loadList() {
+  _state.loading = true;
+  _renderList();
+  if (_state.query && isKnownCourseCode(_state.query)) {
+    _state.papers = await fetchPapersByCourse(_state.query);
+  } else if (_state.query) {
+    _state.papers = [];
+  } else {
+    _state.papers = await fetchRecentPapers(30);
+  }
+  _state.loading = false;
+  _renderList();
+}
+
+// ── Upload modal ─────────────────────────────────────────────────────────────
+function _openUploadModal() {
+  if (!_isSignedIn()) {
+    _toast('Sign in to upload papers.');
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'paper-modal-backdrop';
+  wrap.innerHTML = `
+    <div class="paper-modal">
+      <header class="paper-modal-head">
+        <h4>Upload a paper</h4>
+        <button class="paper-modal-close" aria-label="Close">×</button>
+      </header>
+      <form class="paper-modal-form" id="paperUploadForm">
+        <label>
+          <span>Course code</span>
+          <input name="courseCode" placeholder="e.g. CSE220" maxlength="8" required />
+        </label>
+        <label>
+          <span>Type</span>
+          <select name="type" required>
+            <option value="midterm">Midterm</option>
+            <option value="final">Final</option>
+            <option value="quiz">Quiz</option>
+            <option value="notes">Notes</option>
+            <option value="assignment">Assignment</option>
+          </select>
+        </label>
+        <label>
+          <span>Title</span>
+          <input name="title" placeholder="e.g. CSE220 Midterm Spring 2024" maxlength="120" required />
+        </label>
+        <label>
+          <span>Semester (optional)</span>
+          <input name="semester" placeholder="e.g. Spring2024" maxlength="40" />
+        </label>
+        <label>
+          <span>Faculty initials (optional)</span>
+          <input name="facultyInitials" placeholder="e.g. MAK" maxlength="6" />
+        </label>
+        <label>
+          <span>File (PDF or image, max 10 MB)</span>
+          <input name="file" type="file" accept="application/pdf,image/*" required />
+        </label>
+        <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
+        <div class="paper-modal-actions">
+          <button type="button" class="btn-secondary paper-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Upload</button>
+        </div>
+        <div class="paper-modal-error" id="paperUploadError"></div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  wrap.querySelector('#paperUploadForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const file = fd.get('file');
+    const errBox = wrap.querySelector('#paperUploadError');
+    errBox.textContent = '';
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading…';
+    const res = await uploadPaper({
+      file,
+      courseCode: fd.get('courseCode'),
+      type: fd.get('type'),
+      title: fd.get('title'),
+      semester: fd.get('semester'),
+      facultyInitials: fd.get('facultyInitials'),
+    });
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Upload';
+    if (!res.ok) {
+      errBox.textContent = res.error || 'Upload failed';
+      return;
+    }
+    close();
+    _toast('Uploaded — pending admin review.');
+  });
+}
+
+// ── Report modal ─────────────────────────────────────────────────────────────
+function _openReportModal(paperId) {
+  if (!_isSignedIn()) {
+    _toast('Sign in to report papers.');
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'paper-modal-backdrop';
+  wrap.innerHTML = `
+    <div class="paper-modal">
+      <header class="paper-modal-head">
+        <h4>Report this paper</h4>
+        <button class="paper-modal-close" aria-label="Close">×</button>
+      </header>
+      <form class="paper-modal-form" id="paperReportForm">
+        <label>
+          <span>Reason (3–300 chars)</span>
+          <textarea name="reason" rows="4" minlength="3" maxlength="300" required></textarea>
+        </label>
+        <div class="paper-modal-actions">
+          <button type="button" class="btn-secondary paper-modal-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Submit report</button>
+        </div>
+        <div class="paper-modal-error" id="paperReportError"></div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  wrap.querySelector('#paperReportForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const errBox = wrap.querySelector('#paperReportError');
+    errBox.textContent = '';
+    const res = await reportPaper(paperId, fd.get('reason'));
+    if (!res.ok) {
+      errBox.textContent = res.error || 'Report failed';
+      return;
+    }
+    close();
+    _toast('Report submitted — thank you.');
+  });
+}
+
+function _toast(msg) {
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast(msg);
+  } else {
+    alert(msg);
+  }
+}
+
+async function renderPapersTab() {
+  const root = document.getElementById('papersContent');
+  if (!root) return;
+  if (!_isAuthReady()) {
+    root.innerHTML = '<div class="papers-empty"><p>Loading…</p></div>';
+    return;
+  }
+  if (!_isSignedIn()) {
+    root.innerHTML = _signInPrompt();
+    return;
+  }
+  _renderShell();
+  await _loadList();
 }
 
 // ── js/ui/render.js ─────────────────────────────────────────────
@@ -16106,6 +16809,7 @@ const TAB_MAP = {
   playground: 'tabPlayground',
   reviews:    'tabReviews',
   difficulty: 'tabDifficulty',
+  papers:     'tabPapers',
 };
 
 let _activeCalcTab = 'calculator';
@@ -16162,6 +16866,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'difficulty') {
     renderDifficultyMapTab();
   }
+  if (tabId === 'papers') {
+    renderPapersTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -16182,6 +16889,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/playground')      return 'playground';
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
+  if (hash === '#calculator/papers')          return 'papers';
 
   // Then check sessionStorage
   try {
