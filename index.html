@@ -362,6 +362,10 @@
           <span class="calc-tab-icon">⭐</span>
           <span>Reviews</span>
         </button>
+        <button class="calc-tab" data-tab="papers" onclick="switchCalcTab('papers')">
+          <span class="calc-tab-icon">📚</span>
+          <span>Papers</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -459,6 +463,15 @@
         <div class="calc-body">
           <div id="difficultyMapContent">
             <!-- Rendered dynamically by difficultyMap.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 6: PAST PAPERS ═══ -->
+      <div class="calc-tab-panel" id="tabPapers">
+        <div class="calc-body">
+          <div id="papersContent">
+            <!-- Rendered dynamically by papersTab.js -->
           </div>
         </div>
       </div>

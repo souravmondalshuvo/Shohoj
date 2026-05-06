@@ -54,6 +54,7 @@ import {
 import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
 import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
+import { renderPapersTab } from './ui/papersTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -390,6 +391,7 @@ const TAB_MAP = {
   playground: 'tabPlayground',
   reviews:    'tabReviews',
   difficulty: 'tabDifficulty',
+  papers:     'tabPapers',
 };
 
 let _activeCalcTab = 'calculator';
@@ -446,6 +448,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'difficulty') {
     renderDifficultyMapTab();
   }
+  if (tabId === 'papers') {
+    renderPapersTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -466,6 +471,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/playground')      return 'playground';
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
+  if (hash === '#calculator/papers')          return 'papers';
 
   // Then check sessionStorage
   try {
