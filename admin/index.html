@@ -4520,9 +4520,6 @@ body.admin-mode { overflow-y: auto; }
 /* Dedicated admin page: solid background, hide decorative bleed-through. */
 body[data-page="admin"] { background: #0b0f0d; }
 body[data-page="admin"] #scroll-progress,
-body[data-page="admin"] #cursor-dot,
-body[data-page="admin"] #cursor-ring,
-body[data-page="admin"] #cursor-glow,
 body[data-page="admin"] #dot-matrix,
 body[data-page="admin"] .orb { display: none !important; }
 [data-theme="light"] body[data-page="admin"] { background: #fafafa; }
@@ -4889,6 +4886,11 @@ body[data-page="admin"] .orb { display: none !important; }
   </script>
 </head>
 <body data-page="admin">
+  <!-- CUSTOM CURSOR -->
+  <div id="cursor-dot"></div>
+  <div id="cursor-ring"></div>
+  <div id="cursor-glow"></div>
+
   <div id="adminPageHost">
     <div class="admin-bootstrap">
       <div class="admin-bootstrap-spinner"></div>
@@ -9198,6 +9200,81 @@ window.addEventListener('shohoj:auth-changed', () => {
   }
 });
 
+// ── js/animations/cursor.js ─────────────────────────────────────
+function initCursor() {
+  const dot        = document.getElementById('cursor-dot');
+  const ring       = document.getElementById('cursor-ring');
+  const cursorGlow = document.getElementById('cursor-glow');
+  const body       = document.body;
+
+  let mX = window.innerWidth / 2,  mY = window.innerHeight / 2;
+  let dX = mX, dY = mY;
+  let rX = mX, rY = mY;
+  let gX = mX, gY = mY;
+
+  document.addEventListener('mousemove', e => { mX = e.clientX; mY = e.clientY; }, { passive: true });
+
+  // Use event delegation for hover state so dynamically added buttons/links
+  // (semester actions, add/remove course, etc.) also trigger cursor-hover
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('a, button, .feature-card, .nav-logo');
+    if (el) body.classList.add('cursor-hover');
+  });
+  document.addEventListener('mouseout', e => {
+    const el = e.target.closest('a, button, .feature-card, .nav-logo');
+    if (el) body.classList.remove('cursor-hover');
+  });
+  document.querySelectorAll('select, textarea').forEach(el => {
+    el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
+    el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
+  });
+  document.addEventListener('mouseover', e => {
+    if (e.target.matches('.pf-select')) body.classList.add('cursor-text');
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.matches('.pf-select')) body.classList.remove('cursor-text');
+  });
+  document.addEventListener('mouseover', e => {
+    if (e.target.matches('input, textarea')) body.classList.add('cursor-text');
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.matches('input, textarea')) body.classList.remove('cursor-text');
+  });
+  document.addEventListener('mousedown', () => body.classList.add('cursor-click'));
+  document.addEventListener('mouseup',   () => body.classList.remove('cursor-click'));
+  document.addEventListener('mouseleave', () => {
+    dot.style.opacity = '0'; ring.style.opacity = '0'; cursorGlow.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', () => {
+    dot.style.opacity = ''; ring.style.opacity = ''; cursorGlow.style.opacity = '';
+  });
+
+  function animateCursor() {
+    dX += (mX - dX) * 0.85; dY += (mY - dY) * 0.85;
+    rX += (mX - rX) * 0.14; rY += (mY - rY) * 0.14;
+    gX += (mX - gX) * 0.07; gY += (mY - gY) * 0.07;
+    dot.style.transform        = `translate(${dX}px, ${dY}px) translate(-50%, -50%)`;
+    ring.style.transform       = `translate(${rX}px, ${rY}px) translate(-50%, -50%)`;
+    cursorGlow.style.transform = `translate(${gX}px, ${gY}px) translate(-50%, -50%)`;
+    requestAnimationFrame(animateCursor);
+  }
+  animateCursor();
+
+  document.querySelectorAll('.magnetic').forEach(el => {
+    el.addEventListener('mousemove', e => {
+      if (document.body.classList.contains('modal-open')) return;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width  / 2;
+      const cy = rect.top  + rect.height / 2;
+      el.style.transform = `translate(${(e.clientX - cx) * 0.35}px, ${(e.clientY - cy) * 0.35}px)`;
+    });
+    el.addEventListener('mouseleave', () => {
+      if (document.body.classList.contains('modal-open')) return;
+      el.style.transform = 'translate(0,0)';
+    });
+  });
+}
+
 // ── js/admin-entry.js ───────────────────────────────────────────
 // ── js/admin-entry.js ─────────────────────────────────────────────────────────
 // Entry point for the dedicated /admin/ page. Waits for Firebase auth to
@@ -9276,7 +9353,10 @@ function _aentry_route() {
   openAdminDashboard({ host: 'adminPageHost', dedicated: true });
 }
 
-document.addEventListener('DOMContentLoaded', _aentry_route);
+document.addEventListener('DOMContentLoaded', () => {
+  initCursor();
+  _aentry_route();
+});
 window.addEventListener('shohoj:auth-changed', _aentry_route);
 
 </script>
