@@ -1063,7 +1063,14 @@ function setSyncIndicator(status) {
 }
 
 // ── Auth UI ───────────────────────────────────────────────────────────────────
+function _toggleAdminNavBtn() {
+  const btn = document.getElementById('adminNavBtn');
+  if (!btn) return;
+  btn.classList.toggle('is-admin', _isAdminUser());
+}
+
 function updateAuthUI(user) {
+  _toggleAdminNavBtn();
   const btn = document.getElementById('authBtn');
   if (!btn) return;
 
@@ -1395,6 +1402,10 @@ window._shohoj_isPaperAdmin = function() {
   return _isAdminUser();
 };
 
+window._shohoj_isAdmin = function() {
+  return _isAdminUser();
+};
+
 window._shohoj_fetchUnapprovedPapers = async function() {
   if (!_isAdminUser()) return [];
   try {
@@ -1465,6 +1476,31 @@ window._shohoj_deletePaperReport = async function(reportId) {
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deletePaperReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_fetchReviewReports = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const col = collection(db, 'reviewReports');
+    const q = query(col, orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchReviewReports failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_deleteReviewReport = async function(reportId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  try {
+    await deleteDoc(doc(db, 'reviewReports', reportId));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteReviewReport failed:', e);
     return { ok: false, error: e.message || 'Delete failed' };
   }
 };
