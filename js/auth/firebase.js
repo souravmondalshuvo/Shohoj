@@ -1550,6 +1550,14 @@ window._shohoj_fetchAdminStats = async function() {
   _bump(papersRecent,   'papers');
   _bump(feedbackRecent, 'feedback');
 
+  // Filter seeded reviews from analytics so the chart reflects real activity.
+  const reviewsRecentReal = reviewsRecent.filter(r => r.seeded !== true);
+  const reviewsAllReal    = reviewsAll.filter(r => r.seeded !== true);
+
+  // Re-bucket reviews using the real-only set (papers + feedback already real).
+  Object.values(buckets).forEach(b => { b.reviews = 0; });
+  _bump(reviewsRecentReal, 'reviews');
+
   // Top faculty (by review count) and top courses (by paper count).
   const facultyMap = new Map();
   reviewsAll.forEach(r => {
