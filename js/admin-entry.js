@@ -9,6 +9,7 @@
 // with similarly-named helpers in other UI modules (papersTab, feedback).
 
 import { openAdminDashboard } from './ui/adminDashboard.js';
+import { initCursor } from './animations/cursor.js';
 
 function _aentry_onAdminPage() {
   return document.body && document.body.dataset && document.body.dataset.page === 'admin';
@@ -77,5 +78,8 @@ function _aentry_route() {
   openAdminDashboard({ host: 'adminPageHost', dedicated: true });
 }
 
-document.addEventListener('DOMContentLoaded', _aentry_route);
+document.addEventListener('DOMContentLoaded', () => {
+  initCursor();
+  _aentry_route();
+});
 window.addEventListener('shohoj:auth-changed', _aentry_route);
