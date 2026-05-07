@@ -3,7 +3,9 @@
 build3.py — Shohoj Bundle Builder
 Reads all JS source files, strips ES module import/export syntax,
 inlines CSS, inlines firebase.js as a <script type="module"> block,
-and produces a single self-contained shohoj.html.
+and produces self-contained HTML files:
+    shohoj.html         — main site (from index.html)
+    admin.html          — admin dashboard (from admin/index.html)
 
 Usage:
     python3 build3.py
@@ -50,17 +52,36 @@ JS_FILES = [
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
     'js/animations/reveal.js',
-    # Entry point (last)
+    # Entry points (last)
     'js/main.js',
+    'js/admin-entry.js',
 ]
 
 # firebase.js uses CDN ES module imports — it must stay as type="module"
 # so it cannot be bundled with the regular JS. It is inlined separately.
 FIREBASE_FILE = 'js/auth/firebase.js'
 
-CSS_FILE    = 'css/style.css'
-HTML_FILE   = 'index.html'
-OUTPUT_FILE = 'shohoj.html'
+CSS_FILE = 'css/style.css'
+
+# (template_path, output_path, css_link_pattern, main_script_pattern)
+PAGES = [
+    {
+        'template': 'index.html',
+        'output': 'shohoj.html',
+        'css_pattern': r'<link\s+[^>]*href=["\']css/style\.css["\'][^>]*/?>',
+        'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']js/main\.js["\'][^>]*>\s*</script>',
+        'qr_strip': '  <script src="js/qr-data.js"></script>\n',
+    },
+    {
+        'template': 'admin/index.html',
+        'output': 'admin.html',
+        'css_pattern': r'<link\s+[^>]*href=["\']\.\./css/style\.css["\'][^>]*/?>',
+        # Admin page loads two module scripts — firebase.js (kept as module)
+        # and admin-entry.js (which needs the bundled JS instead).
+        'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']\.\./js/admin-entry\.js["\'][^>]*>\s*</script>',
+        'qr_strip': None,
+    },
+]
 
 
 def strip_imports_exports(code):
@@ -81,8 +102,7 @@ def strip_imports_exports(code):
     return code
 
 
-def build():
-    # ── Read and bundle main JS ───────────────────────────────────────────────
+def build_bundled_js():
     js_parts = []
     for path in JS_FILES:
         if not os.path.exists(path):
@@ -168,43 +188,26 @@ window.clearAllData = clearAllData;
     else:
         print(f'  ⚠ {reviews_path} not found — SEEDED_REVIEWS will be empty')
 
-    # ── Read firebase.js (kept as-is, will be inlined as type="module") ──────
-    firebase_js = ''
-    if os.path.exists(FIREBASE_FILE):
-        with open(FIREBASE_FILE, 'r', encoding='utf-8') as f:
-            firebase_js = f.read()
-        print(f'   Firebase module: {FIREBASE_FILE}')
-    else:
-        print(f'  ⚠ Firebase file not found: {FIREBASE_FILE}')
+    return bundled_js
 
-    # ── Read CSS ──────────────────────────────────────────────────────────────
-    with open(CSS_FILE, 'r', encoding='utf-8') as f:
-        css = f.read()
 
-    # ── Read HTML ─────────────────────────────────────────────────────────────
-    with open(HTML_FILE, 'r', encoding='utf-8') as f:
+def render_page(template_path, output_path, css, firebase_js, bundled_js,
+                css_pattern, main_pattern, qr_strip):
+    with open(template_path, 'r', encoding='utf-8') as f:
         html = f.read()
 
-    # ── Strip dev-only QR data script tag (content is in the bundle) ─────────
-    html = html.replace('  <script src="js/qr-data.js"></script>\n', '')
+    if qr_strip:
+        html = html.replace(qr_strip, '')
 
-    # ── Replace CSS link with inlined <style> ─────────────────────────────────
-    html = re.sub(
-        r'<link\s+[^>]*href=["\']css/style\.css["\'][^>]*/?>',
-        lambda _m: f'<style>\n{css}\n</style>',
-        html
-    )
+    html = re.sub(css_pattern, lambda _m: f'<style>\n{css}\n</style>', html)
 
-    # ── Add gstatic.com to CSP connect-src for Firebase SDK module fetches ────
+    # Allow gstatic.com in CSP connect-src for Firebase SDK module fetches.
     html = re.sub(
         r'(connect-src\s+)(?!https://www\.gstatic\.com)',
         r'\1https://www.gstatic.com ',
         html
     )
 
-    # ── Replace the Firebase module import script with inlined version ────────
-    # Strategy: find the comment marker, then find the NEXT <script type="module">
-    # block after it and replace it. This is more robust than a single large regex.
     firebase_init_block = (
         '<!-- Firebase auth init — inlined by build3.py -->\n'
         '  <script type="module">\n'
@@ -216,7 +219,6 @@ window.clearAllData = clearAllData;
         + '  </script>'
     )
 
-    # Find the firebase comment + script block and replace as a unit
     firebase_block_pattern = re.compile(
         r'<!--[^>]*[Ff]irebase[^>]*-->\s*'
         r'<script\s+type=["\']module["\'][^>]*>[\s\S]*?</script>',
@@ -225,37 +227,57 @@ window.clearAllData = clearAllData;
     match = firebase_block_pattern.search(html)
     if match:
         html = html[:match.start()] + firebase_init_block + html[match.end():]
-        print('   Firebase block: replaced via comment anchor')
     else:
-        # Fallback: replace any <script type="module"> that imports firebase.js
         html = re.sub(
-            r'<script\s+type=["\']module["\']\s*>[\s\S]*?firebase\.js[\s\S]*?</script>',
+            r'<script\s+type=["\']module["\']\s+src=["\'](?:\.\./)?js/auth/firebase\.js["\'][^>]*>\s*</script>',
             firebase_init_block,
             html
         )
-        print('   Firebase block: replaced via fallback pattern')
 
-    # ── Replace main.js module script with bundled <script> ───────────────────
-    html = re.sub(
-        r'<script\s+type=["\']module["\']\s+src=["\']js/main\.js["\'][^>]*>\s*</script>',
-        lambda _m: f'<script>\n{bundled_js}\n</script>',
-        html
-    )
+    # Replace the page entry-point module script with the bundled non-module JS.
+    html = re.sub(main_pattern, lambda _m: f'<script>\n{bundled_js}\n</script>', html)
 
-    # ── Sanity check: make sure no export/import keywords leaked into output ──
-    # Check the non-module script content only
+    # Sanity check: no leaked export keywords outside module scripts.
     non_module = re.sub(r'<script\s+type=["\']module["\'][\s\S]*?</script>', '', html)
     if re.search(r'\bexport\s+(function|const|let|var|class|default|\{)', non_module):
-        print('  ⚠ WARNING: "export" keyword found outside module scripts — check build output!')
-    else:
-        print('   Sanity check: no export leaks detected ✓')
+        print(f'  ⚠ WARNING: "export" keyword leaked into {output_path}!')
 
-    # ── Write output ──────────────────────────────────────────────────────────
-    with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html)
 
-    size_kb = os.path.getsize(OUTPUT_FILE) / 1024
-    print(f'✅ Built {OUTPUT_FILE} ({size_kb:.0f} KB)')
+    size_kb = os.path.getsize(output_path) / 1024
+    print(f'✅ Built {output_path} ({size_kb:.0f} KB)')
+
+
+def build():
+    bundled_js = build_bundled_js()
+
+    firebase_js = ''
+    if os.path.exists(FIREBASE_FILE):
+        with open(FIREBASE_FILE, 'r', encoding='utf-8') as f:
+            firebase_js = f.read()
+        print(f'   Firebase module: {FIREBASE_FILE}')
+    else:
+        print(f'  ⚠ Firebase file not found: {FIREBASE_FILE}')
+
+    with open(CSS_FILE, 'r', encoding='utf-8') as f:
+        css = f.read()
+
+    for page in PAGES:
+        if not os.path.exists(page['template']):
+            print(f'  ⚠ Skipping missing template: {page["template"]}')
+            continue
+        render_page(
+            template_path=page['template'],
+            output_path=page['output'],
+            css=css,
+            firebase_js=firebase_js,
+            bundled_js=bundled_js,
+            css_pattern=page['css_pattern'],
+            main_pattern=page['main_pattern'],
+            qr_strip=page['qr_strip'],
+        )
+
     print(f'   JS files bundled: {len(JS_FILES)}')
     print(f'   CSS inlined from: {CSS_FILE}')
     print(f'   Firebase inlined: {FIREBASE_FILE}')
