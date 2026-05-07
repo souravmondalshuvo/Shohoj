@@ -13444,6 +13444,7 @@ window.addEventListener('shohoj:auth-changed', () => {
 // Charts via Chart.js loaded from CDN in index.html.
 
 let _open = false;
+let _dedicated = false;
 const _charts = {};
 
 function _adminCheck() {
@@ -13467,7 +13468,8 @@ function _adminFormatDate(ts) {
   });
 }
 
-function _shellHtml() {
+function _shellHtml(opts = {}) {
+  const closeLabel = opts.dedicated ? '← Back to Shohoj' : '← Back';
   return `
     <div class="admin-page" id="adminPage" role="main">
       <header class="admin-page-head">
@@ -13477,7 +13479,7 @@ function _shellHtml() {
         </div>
         <div class="admin-page-head-actions">
           <button id="adminRefreshBtn" class="admin-btn-ghost" title="Reload everything">↻ Refresh</button>
-          <button id="adminCloseBtn"   class="admin-btn-ghost" title="Back to site">← Back</button>
+          <button id="adminCloseBtn"   class="admin-btn-ghost" title="Back to site">${closeLabel}</button>
         </div>
       </header>
 
@@ -13913,59 +13915,57 @@ async function _onAction(e) {
   }
 }
 
-function openAdminDashboard() {
+function openAdminDashboard(opts = {}) {
   if (_open) return;
   if (!_adminCheck()) {
     _adminToast('Admin only.');
     return;
   }
   _open = true;
+  _dedicated = !!opts.dedicated;
 
-  const wrap = document.createElement('div');
-  wrap.id = 'adminPageRoot';
-  wrap.innerHTML = _shellHtml();
-  document.body.appendChild(wrap);
-  document.body.classList.add('admin-mode');
+  let mount;
+  if (opts.host) {
+    mount = document.getElementById(opts.host);
+    if (!mount) return;
+    mount.innerHTML = _shellHtml({ dedicated: _dedicated });
+  } else {
+    mount = document.createElement('div');
+    mount.id = 'adminPageRoot';
+    mount.innerHTML = _shellHtml({ dedicated: false });
+    document.body.appendChild(mount);
+    document.body.classList.add('admin-mode');
+  }
   window.scrollTo(0, 0);
 
-  document.getElementById('adminCloseBtn').addEventListener('click', closeAdminDashboard);
-  document.getElementById('adminRefreshBtn').addEventListener('click', _refreshAll);
+  const closeBtn   = document.getElementById('adminCloseBtn');
+  const refreshBtn = document.getElementById('adminRefreshBtn');
+  if (closeBtn)   closeBtn.addEventListener('click', closeAdminDashboard);
+  if (refreshBtn) refreshBtn.addEventListener('click', _refreshAll);
   document.getElementById('adminPage').addEventListener('click', _onAction);
 
   _refreshAll();
-
-  if (window.location.hash !== '#admin' && history.replaceState) {
-    history.replaceState(null, '', '#admin');
-  }
 }
 
 function closeAdminDashboard() {
   _open = false;
   Object.keys(_charts).forEach(_destroyChart);
+  if (_dedicated) {
+    // On the dedicated /admin/ page, "close" returns to the main site.
+    window.location.href = '../';
+    return;
+  }
   const root = document.getElementById('adminPageRoot');
   if (root) root.remove();
   document.body.classList.remove('admin-mode');
-  if (window.location.hash === '#admin' && history.replaceState) {
-    history.replaceState(null, '', '#calculator');
-  }
 }
 
 window._shohoj_openAdminDashboard = openAdminDashboard;
 window._shohoj_closeAdminDashboard = closeAdminDashboard;
 
-window.addEventListener('hashchange', () => {
-  if (window.location.hash === '#admin' && _adminCheck() && !_open) {
-    openAdminDashboard();
-  } else if (window.location.hash !== '#admin' && _open) {
-    closeAdminDashboard();
-  }
-});
-
 window.addEventListener('shohoj:auth-changed', () => {
-  if (window.location.hash === '#admin' && _adminCheck() && !_open) {
-    openAdminDashboard();
-  }
-  if (_open && !_adminCheck()) {
+  // If the admin signs out while open on the dedicated page, send them home.
+  if (_open && _dedicated && !_adminCheck()) {
     closeAdminDashboard();
   }
 });
