@@ -6762,6 +6762,113 @@ window._shohoj_fetchReviewReports = async function() {
   }
 };
 
+window._shohoj_fetchAdminStats = async function() {
+  if (!_isAdminUser()) return null;
+  const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const sinceTs = new Date(since);
+
+  const _toMs = (ts) => {
+    if (!ts) return 0;
+    if (typeof ts === 'object' && ts.toMillis) return ts.toMillis();
+    return Number(ts) || 0;
+  };
+
+  // Pull recent (last 30d) + a larger sample for top-N aggregation.
+  const [reviewsRecent, papersRecent, feedbackRecent,
+         reviewsAll, papersAll, feedbackAll,
+         paperReports, reviewReports, pendingPapers] = await Promise.all([
+    getDocs(query(collection(db, 'facultyReviews'),
+                  where('createdAt', '>=', sinceTs), orderBy('createdAt', 'desc'),
+                  qLimit(1000))).then(s => s.docs.map(d => d.data())).catch(() => []),
+    getDocs(query(collection(db, 'papers'),
+                  where('createdAt', '>=', sinceTs), orderBy('createdAt', 'desc'),
+                  qLimit(1000))).then(s => s.docs.map(d => d.data())).catch(() => []),
+    getDocs(query(collection(db, 'appFeedback'),
+                  where('createdAt', '>=', sinceTs), orderBy('createdAt', 'desc'),
+                  qLimit(1000))).then(s => s.docs.map(d => d.data())).catch(() => []),
+    getDocs(query(collection(db, 'facultyReviews'),
+                  orderBy('createdAt', 'desc'), qLimit(1000)))
+      .then(s => s.docs.map(d => d.data())).catch(() => []),
+    getDocs(query(collection(db, 'papers'),
+                  orderBy('createdAt', 'desc'), qLimit(1000)))
+      .then(s => s.docs.map(d => d.data())).catch(() => []),
+    getDocs(query(collection(db, 'appFeedback'),
+                  orderBy('createdAt', 'desc'), qLimit(1000)))
+      .then(s => s.docs.map(d => d.data())).catch(() => []),
+    window._shohoj_fetchPaperReports(),
+    window._shohoj_fetchReviewReports(),
+    window._shohoj_fetchUnapprovedPapers(),
+  ]);
+
+  // Build 30-day daily buckets (UTC date key). Pre-fill with zeros.
+  const buckets = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    buckets[key] = { date: key, reviews: 0, papers: 0, feedback: 0 };
+  }
+  const _bump = (rows, kind) => {
+    rows.forEach(r => {
+      const ms = _toMs(r.createdAt);
+      if (!ms) return;
+      const key = new Date(ms).toISOString().slice(0, 10);
+      if (buckets[key]) buckets[key][kind]++;
+    });
+  };
+  _bump(reviewsRecent,  'reviews');
+  _bump(papersRecent,   'papers');
+  _bump(feedbackRecent, 'feedback');
+
+  // Top faculty (by review count) and top courses (by paper count).
+  const facultyMap = new Map();
+  reviewsAll.forEach(r => {
+    const k = r.facultyInitials || '?';
+    facultyMap.set(k, (facultyMap.get(k) || 0) + 1);
+  });
+  const topFaculty = [...facultyMap.entries()]
+    .map(([initials, count]) => ({ initials, count }))
+    .sort((a, b) => b.count - a.count).slice(0, 5);
+
+  const courseMap = new Map();
+  papersAll.forEach(p => {
+    const k = p.courseCode || '?';
+    courseMap.set(k, (courseMap.get(k) || 0) + 1);
+  });
+  const topCourses = [...courseMap.entries()]
+    .map(([code, count]) => ({ code, count }))
+    .sort((a, b) => b.count - a.count).slice(0, 5);
+
+  // Type breakdowns.
+  const paperTypes = {};
+  papersAll.forEach(p => {
+    const t = p.type || 'other';
+    paperTypes[t] = (paperTypes[t] || 0) + 1;
+  });
+  const feedbackTypes = {};
+  feedbackAll.forEach(f => {
+    const t = f.type || 'general';
+    feedbackTypes[t] = (feedbackTypes[t] || 0) + 1;
+  });
+
+  const approvedPapers = papersAll.filter(p => p.approved === true).length;
+
+  return {
+    counts: {
+      reviews:        reviewsAll.length,
+      papers:         approvedPapers,
+      pendingPapers:  pendingPapers.length,
+      feedback:       feedbackAll.length,
+      paperReports:   paperReports.length,
+      reviewReports:  reviewReports.length,
+    },
+    activity: Object.values(buckets),
+    topFaculty,
+    topCourses,
+    paperTypes,
+    feedbackTypes,
+  };
+};
+
 window._shohoj_deleteReviewReport = async function(reportId) {
   if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
   if (!reportId) return { ok: false, error: 'Missing report id' };
