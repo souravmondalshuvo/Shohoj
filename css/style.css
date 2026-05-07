@@ -4590,6 +4590,12 @@ body[data-page="admin"] .orb { display: none !important; }
   height: 220px;
 }
 .admin-chart-card--wide .admin-chart-canvas-wrap { height: 280px; }
+.admin-chart-skel {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  pointer-events: none;
+}
 
 /* Moderation sections */
 .admin-mod-section {
