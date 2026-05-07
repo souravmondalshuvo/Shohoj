@@ -5,13 +5,15 @@ service cloud.firestore {
     // ── Helpers ──────────────────────────────────────────────────────────
     function isBracuUser() {
       return request.auth != null
-        && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$');
+        && (request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
+            || request.auth.token.email == 'admin.shohoj@gmail.com');
     }
 
     function isAdmin() {
-      // Set to your Firebase UID (visible in Firebase console → Authentication)
+      // Admin can be either the original Firebase UID or the dedicated admin email.
       return request.auth != null
-        && request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2';
+        && (request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2'
+            || request.auth.token.email == 'admin.shohoj@gmail.com');
     }
 
     function validRating(v) {
