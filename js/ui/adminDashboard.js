@@ -309,7 +309,11 @@ function _renderActivityChart(activity) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: _chartTextColor() } } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: _chartTextColor() } },
+        tooltip: { mode: 'index', intersect: false },
+      },
       scales: {
         x: { ticks: { color: _chartTextColor(), maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: _chartGridColor() } },
         y: { beginAtZero: true, ticks: { color: _chartTextColor(), precision: 0 }, grid: { color: _chartGridColor() } },
