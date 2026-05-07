@@ -4520,13 +4520,24 @@ body.admin-mode > .hero { display: none !important; }
 body.admin-mode { overflow-y: auto; }
 #adminPageRoot { position: relative; z-index: 100; }
 
+/* Dedicated admin page: solid background, hide decorative bleed-through. */
+body[data-page="admin"] { background: #0b0f0d; }
+body[data-page="admin"] #scroll-progress,
+body[data-page="admin"] #cursor-dot,
+body[data-page="admin"] #cursor-ring,
+body[data-page="admin"] #cursor-glow,
+body[data-page="admin"] #dot-matrix,
+body[data-page="admin"] .orb { display: none !important; }
+[data-theme="light"] body[data-page="admin"] { background: #fafafa; }
+
 .admin-page {
   min-height: 100vh;
-  background: var(--bg, #0b0f0d);
+  background: transparent;
   color: var(--text, #e6eae8);
   padding: 28px 32px 60px;
   display: flex; flex-direction: column; gap: 24px;
   max-width: 1240px; margin: 0 auto;
+  position: relative; z-index: 1;
 }
 [data-theme="light"] .admin-page {
   background: #fafafa;
@@ -4564,10 +4575,16 @@ body.admin-mode { overflow-y: auto; }
 
 .admin-page-body { display: flex; flex-direction: column; gap: 28px; }
 
-/* Stats cards */
+/* Stats cards — force 6-up on wide screens, wrap evenly otherwise. */
 .admin-stats-grid {
   display: grid; gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
+}
+@media (max-width: 1024px) {
+  .admin-stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .admin-stat-card {
   background: rgba(255,255,255,0.03);
@@ -4715,7 +4732,7 @@ body.admin-mode { overflow-y: auto; }
 .admin-skel-line--md { width: 85%; }
 .admin-skel-line--sm { width: 30%; height: 10px; }
 
-/* Header admin button — only visible when admin */
+/* Header admin link — only visible when admin */
 #adminNavBtn {
   display: none;
   align-items: center; gap: 6px;
@@ -4726,11 +4743,57 @@ body.admin-mode { overflow-y: auto; }
   border-radius: 100px;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px; font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 #adminNavBtn:hover { background: rgba(245,185,66,0.22); }
 #adminNavBtn.is-admin { display: inline-flex; }
+
+/* Admin page bootstrap (auth-resolving) state */
+.admin-bootstrap {
+  min-height: 80vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; opacity: 0.75;
+  font-size: 0.95rem;
+}
+.admin-bootstrap p { margin: 0; }
+.admin-bootstrap-spinner {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: #f5b942;
+  animation: adminSpin 0.8s linear infinite;
+}
+@keyframes adminSpin { to { transform: rotate(360deg); } }
+
+/* Admin sign-in / forbidden gate */
+.admin-gate {
+  min-height: 80vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+}
+.admin-gate-card {
+  max-width: 420px; width: 100%;
+  text-align: center;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 36px 28px;
+  display: flex; flex-direction: column; gap: 14px; align-items: center;
+}
+[data-theme="light"] .admin-gate-card {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+}
+.admin-gate-icon { font-size: 2.4rem; line-height: 1; }
+.admin-gate-card h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+.admin-gate-card p { margin: 0; opacity: 0.78; font-size: 0.95rem; line-height: 1.5; }
+.admin-gate-card .btn-primary { margin-top: 6px; }
+.admin-gate-note { font-size: 0.82rem !important; opacity: 0.6 !important; margin-top: 6px !important; }
+.admin-gate-note a { color: inherit; text-decoration: underline; }
+.admin-gate-back { display: inline-block; margin-top: 6px; }
 
 #fbSubmitBtn:hover:not(:disabled) {
   transform: translateY(-2px);
