@@ -4495,9 +4495,6 @@ body.admin-mode { overflow-y: auto; }
 /* Dedicated admin page: solid background, hide decorative bleed-through. */
 body[data-page="admin"] { background: #0b0f0d; }
 body[data-page="admin"] #scroll-progress,
-body[data-page="admin"] #cursor-dot,
-body[data-page="admin"] #cursor-ring,
-body[data-page="admin"] #cursor-glow,
 body[data-page="admin"] #dot-matrix,
 body[data-page="admin"] .orb { display: none !important; }
 [data-theme="light"] body[data-page="admin"] { background: #fafafa; }

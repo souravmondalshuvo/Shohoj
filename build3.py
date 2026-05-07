@@ -64,6 +64,7 @@ ADMIN_JS_FILES = [
     'js/core/catalog.js',
     'js/core/papers.js',
     'js/ui/adminDashboard.js',
+    'js/animations/cursor.js',
     'js/admin-entry.js',
 ]
 
