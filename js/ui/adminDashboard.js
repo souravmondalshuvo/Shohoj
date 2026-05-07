@@ -1,15 +1,18 @@
 // ── js/ui/adminDashboard.js ──────────────────────────────────────────────────
-// Admin/moderator hub. Single overlay surface for triaging:
+// Full-page admin/moderator dashboard. Hides the regular site shell and
+// renders a dedicated page with stats, charts, and triage queues for:
 //   • Pending paper uploads (approve / delete)
 //   • Reports — paper + review (delete reported item or dismiss report)
 //   • Feedback (delete)
 //
 // Reuses the global window._shohoj_* admin helpers from firebase.js.
+// Charts via Chart.js loaded from CDN in index.html.
 
 import { escHtml, escAttr } from '../core/helpers.js';
 import { getPaperDownloadUrl } from '../core/papers.js';
 
 let _open = false;
+const _charts = {};
 
 function _adminCheck() {
   return typeof window._shohoj_isAdmin === 'function' && window._shohoj_isAdmin();
@@ -34,58 +37,106 @@ function _adminFormatDate(ts) {
 
 function _shellHtml() {
   return `
-    <div class="admin-dash-backdrop" id="adminDashBackdrop">
-      <div class="admin-dash" role="dialog" aria-label="Admin dashboard">
-        <header class="admin-dash-head">
-          <div>
-            <h2>🛡️ Moderation</h2>
-            <p class="admin-dash-sub">Triage pending uploads, reports, and feedback.</p>
-          </div>
-          <button class="admin-dash-close" id="adminDashClose" aria-label="Close">×</button>
-        </header>
-
-        <div class="admin-dash-body">
-          <section class="admin-dash-section" data-section="papers">
-            <div class="admin-dash-section-head">
-              <h3>📄 Pending papers</h3>
-              <span class="admin-dash-count" id="adminCountPapers">…</span>
-            </div>
-            <div class="admin-dash-list" id="adminListPapers">
-              ${_skeletonRows(2)}
-            </div>
-          </section>
-
-          <section class="admin-dash-section" data-section="paperReports">
-            <div class="admin-dash-section-head">
-              <h3>⚑ Paper reports</h3>
-              <span class="admin-dash-count" id="adminCountPaperReports">…</span>
-            </div>
-            <div class="admin-dash-list" id="adminListPaperReports">
-              ${_skeletonRows(2)}
-            </div>
-          </section>
-
-          <section class="admin-dash-section" data-section="reviewReports">
-            <div class="admin-dash-section-head">
-              <h3>⚑ Review reports</h3>
-              <span class="admin-dash-count" id="adminCountReviewReports">…</span>
-            </div>
-            <div class="admin-dash-list" id="adminListReviewReports">
-              ${_skeletonRows(2)}
-            </div>
-          </section>
-
-          <section class="admin-dash-section" data-section="feedback">
-            <div class="admin-dash-section-head">
-              <h3>💬 Feedback</h3>
-              <span class="admin-dash-count" id="adminCountFeedback">…</span>
-            </div>
-            <div class="admin-dash-list" id="adminListFeedback">
-              ${_skeletonRows(3)}
-            </div>
-          </section>
+    <div class="admin-page" id="adminPage" role="main">
+      <header class="admin-page-head">
+        <div class="admin-page-head-text">
+          <h1>🛡️ Moderation Dashboard</h1>
+          <p>Stats, activity, and triage queues — all in one place.</p>
         </div>
+        <div class="admin-page-head-actions">
+          <button id="adminRefreshBtn" class="admin-btn-ghost" title="Reload everything">↻ Refresh</button>
+          <button id="adminCloseBtn"   class="admin-btn-ghost" title="Back to site">← Back</button>
+        </div>
+      </header>
+
+      <div class="admin-page-body">
+
+        <!-- Stats cards -->
+        <section class="admin-stats-grid" id="adminStatsGrid">
+          ${_statCardSkeleton('Total reviews')}
+          ${_statCardSkeleton('Approved papers')}
+          ${_statCardSkeleton('Pending papers')}
+          ${_statCardSkeleton('Feedback items')}
+          ${_statCardSkeleton('Paper reports')}
+          ${_statCardSkeleton('Review reports')}
+        </section>
+
+        <!-- Charts -->
+        <section class="admin-charts-grid">
+          <div class="admin-chart-card admin-chart-card--wide">
+            <h3>Activity (last 30 days)</h3>
+            <div class="admin-chart-canvas-wrap"><canvas id="adminActivityChart"></canvas></div>
+          </div>
+          <div class="admin-chart-card">
+            <h3>Top faculty by reviews</h3>
+            <div class="admin-chart-canvas-wrap"><canvas id="adminTopFacultyChart"></canvas></div>
+          </div>
+          <div class="admin-chart-card">
+            <h3>Top courses by uploads</h3>
+            <div class="admin-chart-canvas-wrap"><canvas id="adminTopCoursesChart"></canvas></div>
+          </div>
+          <div class="admin-chart-card">
+            <h3>Paper types</h3>
+            <div class="admin-chart-canvas-wrap"><canvas id="adminPaperTypesChart"></canvas></div>
+          </div>
+          <div class="admin-chart-card">
+            <h3>Feedback breakdown</h3>
+            <div class="admin-chart-canvas-wrap"><canvas id="adminFeedbackTypesChart"></canvas></div>
+          </div>
+        </section>
+
+        <!-- Moderation queues -->
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
+            <h2>📄 Pending papers</h2>
+            <span class="admin-dash-count" id="adminCountPapers">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListPapers">${_skeletonRows(2)}</div>
+        </section>
+
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
+            <h2>⚑ Paper reports</h2>
+            <span class="admin-dash-count" id="adminCountPaperReports">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListPaperReports">${_skeletonRows(2)}</div>
+        </section>
+
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
+            <h2>⚑ Review reports</h2>
+            <span class="admin-dash-count" id="adminCountReviewReports">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListReviewReports">${_skeletonRows(2)}</div>
+        </section>
+
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
+            <h2>💬 Feedback</h2>
+            <span class="admin-dash-count" id="adminCountFeedback">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListFeedback">${_skeletonRows(3)}</div>
+        </section>
+
       </div>
+    </div>
+  `;
+}
+
+function _statCardSkeleton(label) {
+  return `
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">${escHtml(label)}</div>
+      <div class="admin-stat-value"><span class="admin-skel admin-skel-line admin-skel-line--lg"></span></div>
+    </div>
+  `;
+}
+
+function _statCard(label, value) {
+  return `
+    <div class="admin-stat-card">
+      <div class="admin-stat-label">${escHtml(label)}</div>
+      <div class="admin-stat-value">${escHtml(String(value))}</div>
     </div>
   `;
 }
@@ -215,7 +266,145 @@ async function _loadFeedback() {
   list.innerHTML = items.length ? items.map(_feedbackRow).join('') : _emptyHtml('No feedback.');
 }
 
+function _isLight() {
+  return document.documentElement.getAttribute('data-theme') === 'light';
+}
+
+function _chartTextColor() {
+  return _isLight() ? '#1a1c1e' : 'rgba(255,255,255,0.85)';
+}
+
+function _chartGridColor() {
+  return _isLight() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+}
+
+function _ensureChartLib() {
+  return typeof window.Chart === 'function' || typeof window.Chart === 'object';
+}
+
+function _destroyChart(key) {
+  if (_charts[key]) {
+    _charts[key].destroy();
+    _charts[key] = null;
+  }
+}
+
+function _renderActivityChart(activity) {
+  const canvas = document.getElementById('adminActivityChart');
+  if (!canvas || !_ensureChartLib()) return;
+  _destroyChart('activity');
+  const labels = activity.map(d => d.date.slice(5)); // MM-DD
+  _charts.activity = new window.Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Reviews',  data: activity.map(d => d.reviews),  borderColor: '#2ECC71', backgroundColor: 'rgba(46,204,113,0.18)', tension: 0.35, fill: true },
+        { label: 'Papers',   data: activity.map(d => d.papers),   borderColor: '#52a0ff', backgroundColor: 'rgba(82,160,255,0.16)', tension: 0.35, fill: true },
+        { label: 'Feedback', data: activity.map(d => d.feedback), borderColor: '#f5b942', backgroundColor: 'rgba(245,185,66,0.16)', tension: 0.35, fill: true },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: _chartTextColor() } } },
+      scales: {
+        x: { ticks: { color: _chartTextColor(), maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, grid: { color: _chartGridColor() } },
+        y: { beginAtZero: true, ticks: { color: _chartTextColor(), precision: 0 }, grid: { color: _chartGridColor() } },
+      },
+    },
+  });
+}
+
+function _renderBarChart(canvasId, key, labels, values, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !_ensureChartLib()) return;
+  _destroyChart(key);
+  _charts[key] = new window.Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: color, borderRadius: 6 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: _chartTextColor(), precision: 0 }, grid: { color: _chartGridColor() } },
+        y: { ticks: { color: _chartTextColor() }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+function _renderDoughnut(canvasId, key, labels, values, palette) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !_ensureChartLib()) return;
+  _destroyChart(key);
+  _charts[key] = new window.Chart(canvas, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: 'transparent', borderWidth: 0 }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: _chartTextColor(), padding: 12 } } },
+    },
+  });
+}
+
+async function _loadStatsAndCharts() {
+  const stats = await window._shohoj_fetchAdminStats?.();
+  if (!stats) return;
+
+  const grid = document.getElementById('adminStatsGrid');
+  if (grid) {
+    grid.innerHTML =
+      _statCard('Total reviews',   stats.counts.reviews) +
+      _statCard('Approved papers', stats.counts.papers) +
+      _statCard('Pending papers',  stats.counts.pendingPapers) +
+      _statCard('Feedback items',  stats.counts.feedback) +
+      _statCard('Paper reports',   stats.counts.paperReports) +
+      _statCard('Review reports',  stats.counts.reviewReports);
+  }
+
+  // Wait briefly for Chart.js if it's still loading.
+  if (!_ensureChartLib()) {
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  _renderActivityChart(stats.activity);
+
+  _renderBarChart(
+    'adminTopFacultyChart', 'topFaculty',
+    stats.topFaculty.map(f => f.initials),
+    stats.topFaculty.map(f => f.count),
+    '#2ECC71',
+  );
+  _renderBarChart(
+    'adminTopCoursesChart', 'topCourses',
+    stats.topCourses.map(c => c.code),
+    stats.topCourses.map(c => c.count),
+    '#52a0ff',
+  );
+
+  const ptKeys = Object.keys(stats.paperTypes);
+  _renderDoughnut(
+    'adminPaperTypesChart', 'paperTypes',
+    ptKeys,
+    ptKeys.map(k => stats.paperTypes[k]),
+    ['#2ECC71', '#52a0ff', '#f5b942', '#ff7676', '#a78bfa'],
+  );
+
+  const ftKeys = Object.keys(stats.feedbackTypes);
+  _renderDoughnut(
+    'adminFeedbackTypesChart', 'feedbackTypes',
+    ftKeys,
+    ftKeys.map(k => stats.feedbackTypes[k]),
+    ['#ff7676', '#52a0ff', '#a0a0a0'],
+  );
+}
+
 function _refreshAll() {
+  _loadStatsAndCharts();
   _loadPapers();
   _loadPaperReports();
   _loadReviewReports();
@@ -242,6 +431,7 @@ async function _onAction(e) {
       if (!res?.ok) return _adminToast(res?.error || 'Approve failed');
       _adminToast('Approved.');
       _loadPapers();
+      _loadStatsAndCharts();
       return;
     }
     if (act === 'delete-paper') {
@@ -250,6 +440,7 @@ async function _onAction(e) {
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
       _adminToast('Deleted.');
       _loadPapers();
+      _loadStatsAndCharts();
       return;
     }
     if (act === 'delete-paper-by-report') {
@@ -259,18 +450,21 @@ async function _onAction(e) {
       _adminToast('Paper deleted.');
       _loadPapers();
       _loadPaperReports();
+      _loadStatsAndCharts();
       return;
     }
     if (act === 'dismiss-paper-report') {
       const res = await window._shohoj_deletePaperReport?.(btn.dataset.id);
       if (!res?.ok) return _adminToast(res?.error || 'Dismiss failed');
       _loadPaperReports();
+      _loadStatsAndCharts();
       return;
     }
     if (act === 'dismiss-review-report') {
       const res = await window._shohoj_deleteReviewReport?.(btn.dataset.id);
       if (!res?.ok) return _adminToast(res?.error || 'Dismiss failed');
       _loadReviewReports();
+      _loadStatsAndCharts();
       return;
     }
     if (act === 'delete-feedback') {
@@ -279,6 +473,7 @@ async function _onAction(e) {
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
       _adminToast('Deleted.');
       _loadFeedback();
+      _loadStatsAndCharts();
       return;
     }
   } finally {
@@ -293,26 +488,31 @@ export function openAdminDashboard() {
     return;
   }
   _open = true;
+
   const wrap = document.createElement('div');
-  wrap.id = 'adminDashRoot';
+  wrap.id = 'adminPageRoot';
   wrap.innerHTML = _shellHtml();
   document.body.appendChild(wrap);
-  document.body.classList.add('modal-open');
+  document.body.classList.add('admin-mode');
+  window.scrollTo(0, 0);
 
-  const backdrop = document.getElementById('adminDashBackdrop');
-  document.getElementById('adminDashClose').addEventListener('click', closeAdminDashboard);
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeAdminDashboard(); });
-  backdrop.addEventListener('click', _onAction);
+  document.getElementById('adminCloseBtn').addEventListener('click', closeAdminDashboard);
+  document.getElementById('adminRefreshBtn').addEventListener('click', _refreshAll);
+  document.getElementById('adminPage').addEventListener('click', _onAction);
 
   _refreshAll();
+
+  if (window.location.hash !== '#admin' && history.replaceState) {
+    history.replaceState(null, '', '#admin');
+  }
 }
 
 export function closeAdminDashboard() {
   _open = false;
-  const root = document.getElementById('adminDashRoot');
+  Object.keys(_charts).forEach(_destroyChart);
+  const root = document.getElementById('adminPageRoot');
   if (root) root.remove();
-  document.body.classList.remove('modal-open');
-  // Strip #admin from URL if present, fall back to #calculator
+  document.body.classList.remove('admin-mode');
   if (window.location.hash === '#admin' && history.replaceState) {
     history.replaceState(null, '', '#calculator');
   }
@@ -322,17 +522,17 @@ window._shohoj_openAdminDashboard = openAdminDashboard;
 window._shohoj_closeAdminDashboard = closeAdminDashboard;
 
 window.addEventListener('hashchange', () => {
-  if (window.location.hash === '#admin' && _adminCheck()) {
+  if (window.location.hash === '#admin' && _adminCheck() && !_open) {
     openAdminDashboard();
+  } else if (window.location.hash !== '#admin' && _open) {
+    closeAdminDashboard();
   }
 });
 
 window.addEventListener('shohoj:auth-changed', () => {
-  // If we navigated to #admin while signed out and admin auth just resolved, open it.
   if (window.location.hash === '#admin' && _adminCheck() && !_open) {
     openAdminDashboard();
   }
-  // If admin signs out while open, close.
   if (_open && !_adminCheck()) {
     closeAdminDashboard();
   }
