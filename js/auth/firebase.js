@@ -700,7 +700,7 @@ export function initAuth() {
 
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
-    if (user && !user.email?.endsWith('@g.bracu.ac.bd')) {
+    if (user && !user.email?.endsWith('@g.bracu.ac.bd') && user.email !== window._shohoj_admin_email) {
       await signOut(auth);
       setAuthBtnLoading(false);
       showToast('⚠ Only BRACU G-Suite accounts are supported', true, true);
@@ -888,6 +888,10 @@ window._shohoj_showToast = showToast;
 
 window._shohoj_currentUid = function() {
   return currentUser?.uid || null;
+};
+
+window._shohoj_currentEmail = function() {
+  return currentUser?.email || null;
 };
 
 window._shohoj_isAuthReady = function() {
@@ -1381,8 +1385,10 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
 
 function _isAdminUser() {
   if (!currentUser) return false;
-  const adminUid = window._shohoj_admin_uid;
-  return !!adminUid && currentUser.uid === adminUid;
+  const adminUid   = window._shohoj_admin_uid;
+  const adminEmail = window._shohoj_admin_email;
+  return (!!adminUid && currentUser.uid === adminUid)
+      || (!!adminEmail && currentUser.email === adminEmail);
 }
 
 window._shohoj_isPaperAdmin = function() {
@@ -1483,8 +1489,7 @@ window._shohoj_reportPaper = async function({ paperId, reason }) {
 
 window._shohoj_adminDeleteFeedback = async function(feedbackId) {
   if (!currentUser) return { ok: false };
-  const adminUid = window._shohoj_admin_uid;
-  if (!adminUid || currentUser.uid !== adminUid) return { ok: false, error: 'Unauthorized' };
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
   try {
     await deleteDoc(doc(db, 'appFeedback', feedbackId));
     return { ok: true };
