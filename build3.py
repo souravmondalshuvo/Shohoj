@@ -60,6 +60,7 @@ MAIN_JS_FILES = [
 # spinner doesn't sit there parsing megabytes of irrelevant code.
 ADMIN_JS_FILES = [
     'js/core/helpers.js',
+    'js/core/departments.js',
     'js/core/catalog.js',
     'js/core/papers.js',
     'js/ui/adminDashboard.js',
