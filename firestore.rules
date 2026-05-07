@@ -6,14 +6,14 @@ service cloud.firestore {
     function isBracuUser() {
       return request.auth != null
         && (request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
-            || request.auth.token.email == 'admin.shohoj@gmail.com');
+            || request.auth.token.email == 'souravmondal033@gmail.com');
     }
 
     function isAdmin() {
       // Admin can be either the original Firebase UID or the dedicated admin email.
       return request.auth != null
         && (request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2'
-            || request.auth.token.email == 'admin.shohoj@gmail.com');
+            || request.auth.token.email == 'souravmondal033@gmail.com');
     }
 
     function validRating(v) {
