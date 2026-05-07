@@ -12,7 +12,7 @@ import { getPaperDownloadUrl } from '../core/papers.js';
 let _open = false;
 
 function _adminCheck() {
-  return typeof window._shohoj_adminCheck === 'function' && window._shohoj_adminCheck();
+  return typeof window._shohoj_isAdmin === 'function' && window._shohoj_isAdmin();
 }
 
 function _adminToast(msg) {
