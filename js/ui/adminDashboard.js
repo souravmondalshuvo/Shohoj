@@ -67,23 +67,23 @@ function _shellHtml(opts = {}) {
         <section class="admin-charts-grid">
           <div class="admin-chart-card admin-chart-card--wide">
             <h3>Activity (last 30 days)</h3>
-            <div class="admin-chart-canvas-wrap"><canvas id="adminActivityChart"></canvas></div>
+            ${_chartCanvasWrap('adminActivityChart')}
           </div>
           <div class="admin-chart-card">
             <h3>Top faculty by reviews</h3>
-            <div class="admin-chart-canvas-wrap"><canvas id="adminTopFacultyChart"></canvas></div>
+            ${_chartCanvasWrap('adminTopFacultyChart')}
           </div>
           <div class="admin-chart-card">
             <h3>Top courses by uploads</h3>
-            <div class="admin-chart-canvas-wrap"><canvas id="adminTopCoursesChart"></canvas></div>
+            ${_chartCanvasWrap('adminTopCoursesChart')}
           </div>
           <div class="admin-chart-card">
             <h3>Paper types</h3>
-            <div class="admin-chart-canvas-wrap"><canvas id="adminPaperTypesChart"></canvas></div>
+            ${_chartCanvasWrap('adminPaperTypesChart')}
           </div>
           <div class="admin-chart-card">
             <h3>Feedback breakdown</h3>
-            <div class="admin-chart-canvas-wrap"><canvas id="adminFeedbackTypesChart"></canvas></div>
+            ${_chartCanvasWrap('adminFeedbackTypesChart')}
           </div>
         </section>
 
@@ -151,6 +151,24 @@ function _skeletonRows(n) {
       <div class="admin-skel admin-skel-line admin-skel-line--sm"></div>
     </div>
   `).join('');
+}
+
+function _chartCanvasWrap(canvasId) {
+  return `
+    <div class="admin-chart-canvas-wrap">
+      <div class="admin-chart-skel admin-skel" data-skel-for="${escAttr(canvasId)}"></div>
+      <canvas id="${escAttr(canvasId)}"></canvas>
+    </div>
+  `;
+}
+
+function _clearChartSkeleton(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  if (!wrap) return;
+  const skel = wrap.querySelector('.admin-chart-skel');
+  if (skel) skel.remove();
 }
 
 function _emptyHtml(msg) {
@@ -295,6 +313,7 @@ function _renderActivityChart(activity) {
   const canvas = document.getElementById('adminActivityChart');
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart('activity');
+  _clearChartSkeleton('adminActivityChart');
   const labels = activity.map(d => d.date.slice(5)); // MM-DD
   _charts.activity = new window.Chart(canvas, {
     type: 'line',
@@ -326,6 +345,7 @@ function _renderBarChart(canvasId, key, labels, values, color) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart(key);
+  _clearChartSkeleton(canvasId);
   _charts[key] = new window.Chart(canvas, {
     type: 'bar',
     data: { labels, datasets: [{ data: values, backgroundColor: color, borderRadius: 6 }] },
@@ -346,6 +366,7 @@ function _renderDoughnut(canvasId, key, labels, values, palette) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart(key);
+  _clearChartSkeleton(canvasId);
   _charts[key] = new window.Chart(canvas, {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: 'transparent', borderWidth: 0 }] },
