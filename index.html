@@ -18507,6 +18507,8 @@ function recalc() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Skip calculator init on pages that don't host it (e.g., the admin page).
+  if (!document.getElementById('targetCgpa')) return;
   document.getElementById('targetCgpa').addEventListener('input', recalc);
   document.getElementById('creditsRemaining').addEventListener('input', recalc);
   document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
