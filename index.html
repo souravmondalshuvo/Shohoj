@@ -89,6 +89,8 @@
     <div class="nav-right">
       <a href="#features" class="nav-link magnetic">Features</a>
       <a href="#calculator" class="nav-link magnetic">CGPA Calc</a>
+      <!-- Admin button — toggled visible by firebase.js when user is admin -->
+      <button id="adminNavBtn" class="magnetic" aria-label="Open admin dashboard" title="Moderation dashboard" onclick="window._shohoj_openAdminDashboard && window._shohoj_openAdminDashboard()">🛡️ Admin</button>
       <!-- Auth button -->
       <button id="authBtn" class="magnetic" aria-label="Sign in with Google" title="Sign in to sync your data" style="
         display:flex;align-items:center;gap:7px;
