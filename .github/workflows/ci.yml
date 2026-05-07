@@ -34,18 +34,20 @@ jobs:
       - name: Verify built bundle
         run: |
           test -s shohoj.html
+          test -s admin.html
           # Fail if bare ES module syntax leaked into the non-module bundle
           # (firebase.js is kept as type="module"; other bundled JS must not be).
           python3 - <<'PY'
           import re, sys
-          html = open('shohoj.html', encoding='utf-8').read()
-          # Strip all <script type="module">…</script> blocks
-          stripped = re.sub(
-              r'<script\s+type=["\']module["\'][\s\S]*?</script>',
-              '', html, flags=re.IGNORECASE,
-          )
-          if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
-              print('ERROR: bare ES module syntax leaked into bundled output', file=sys.stderr)
-              sys.exit(1)
-          print('bundle OK')
+          for path in ('shohoj.html', 'admin.html'):
+              html = open(path, encoding='utf-8').read()
+              # Strip all <script type="module">…</script> blocks
+              stripped = re.sub(
+                  r'<script\s+type=["\']module["\'][\s\S]*?</script>',
+                  '', html, flags=re.IGNORECASE,
+              )
+              if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
+                  print(f'ERROR: bare ES module syntax leaked into {path}', file=sys.stderr)
+                  sys.exit(1)
+          print('bundles OK')
           PY
