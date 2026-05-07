@@ -17,7 +17,7 @@ import re
 import os
 
 # ── File order matters: dependencies must come before dependents ──────────────
-JS_FILES = [
+MAIN_JS_FILES = [
     # QR data (window vars, must come first)
     'js/qr-data.js',
     # Core (no dependencies)
@@ -41,7 +41,6 @@ JS_FILES = [
     'js/ui/reviewsTab.js',
     'js/ui/difficultyMap.js',
     'js/ui/papersTab.js',
-    'js/ui/adminDashboard.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
@@ -52,8 +51,18 @@ JS_FILES = [
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
     'js/animations/reveal.js',
-    # Entry points (last)
+    # Entry point (last)
     'js/main.js',
+]
+
+# Admin page bundles only the dashboard + its direct deps. Skipping seeded
+# reviews and unused UI modules keeps admin.html ~10× smaller, so the auth
+# spinner doesn't sit there parsing megabytes of irrelevant code.
+ADMIN_JS_FILES = [
+    'js/core/helpers.js',
+    'js/core/catalog.js',
+    'js/core/papers.js',
+    'js/ui/adminDashboard.js',
     'js/admin-entry.js',
 ]
 
@@ -68,6 +77,8 @@ PAGES = [
     {
         'template': 'index.html',
         'output': 'shohoj.html',
+        'js_files': MAIN_JS_FILES,
+        'inject_seeds': True,
         'css_pattern': r'<link\s+[^>]*href=["\']css/style\.css["\'][^>]*/?>',
         'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']js/main\.js["\'][^>]*>\s*</script>',
         'qr_strip': '  <script src="js/qr-data.js"></script>\n',
@@ -75,6 +86,8 @@ PAGES = [
     {
         'template': 'admin/index.html',
         'output': 'admin.html',
+        'js_files': ADMIN_JS_FILES,
+        'inject_seeds': False,
         'css_pattern': r'<link\s+[^>]*href=["\']\.\./css/style\.css["\'][^>]*/?>',
         # Admin page loads two module scripts — firebase.js (kept as module)
         # and admin-entry.js (which needs the bundled JS instead).
@@ -102,9 +115,9 @@ def strip_imports_exports(code):
     return code
 
 
-def build_bundled_js():
+def build_bundled_js(js_files, inject_seeds=True, include_clear_all_data=True):
     js_parts = []
-    for path in JS_FILES:
+    for path in js_files:
         if not os.path.exists(path):
             print(f'  ⚠ Skipping missing file: {path}')
             continue
@@ -115,7 +128,8 @@ def build_bundled_js():
         js_parts.append(stripped.strip())
         js_parts.append('')
 
-    js_parts.append('''// ── clearAllData (appended by build3.py) ─────────────────────────────────
+    if include_clear_all_data:
+        js_parts.append('''// ── clearAllData (appended by build3.py) ─────────────────────────────────
 function clearAllData() {
   clearState();
   state.semesters = [];
@@ -128,6 +142,9 @@ function clearAllData() {
 window.clearAllData = clearAllData;
 ''')
     bundled_js = '\n'.join(js_parts)
+
+    if not inject_seeds:
+        return bundled_js
 
     # ── Inject faculty profiles from faculty_profiles.jsonl ───────────────────
     profiles_path = 'faculty_profiles.jsonl'
@@ -250,8 +267,6 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
 
 
 def build():
-    bundled_js = build_bundled_js()
-
     firebase_js = ''
     if os.path.exists(FIREBASE_FILE):
         with open(FIREBASE_FILE, 'r', encoding='utf-8') as f:
@@ -267,6 +282,11 @@ def build():
         if not os.path.exists(page['template']):
             print(f'  ⚠ Skipping missing template: {page["template"]}')
             continue
+        bundled_js = build_bundled_js(
+            page['js_files'],
+            inject_seeds=page['inject_seeds'],
+            include_clear_all_data=page['inject_seeds'],  # admin doesn't need clearAllData either
+        )
         render_page(
             template_path=page['template'],
             output_path=page['output'],
@@ -278,7 +298,7 @@ def build():
             qr_strip=page['qr_strip'],
         )
 
-    print(f'   JS files bundled: {len(JS_FILES)}')
+    print(f'   Main JS files: {len(MAIN_JS_FILES)} · Admin JS files: {len(ADMIN_JS_FILES)}')
     print(f'   CSS inlined from: {CSS_FILE}')
     print(f'   Firebase inlined: {FIREBASE_FILE}')
 
