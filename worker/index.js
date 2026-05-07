@@ -14,7 +14,7 @@ import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 const FIREBASE_JWKS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
-const ADMIN_EMAIL = 'admin.shohoj@gmail.com';
+const ADMIN_EMAIL = 'souravmondal033@gmail.com';
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\//;
 
