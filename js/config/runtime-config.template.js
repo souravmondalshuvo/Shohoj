@@ -12,3 +12,4 @@ window._shohoj_firebase_config = {
   measurementId:     '__GA_MEASUREMENT_ID__',
 };
 window._shohoj_papers_worker_url = '__PAPERS_WORKER_URL__';
+window._shohoj_recaptcha_v3_site_key = '__RECAPTCHA_V3_SITE_KEY__';
