@@ -3,17 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Helpers ──────────────────────────────────────────────────────────
+    function isAdmin() {
+      // Admins are tagged with a custom claim set via scripts/set_admin_claim.js;
+      // see PROJECT_README for setup. UID/email are no longer trusted here.
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     function isBracuUser() {
       return request.auth != null
         && (request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
-            || request.auth.token.email == 'souravmondal033@gmail.com');
-    }
-
-    function isAdmin() {
-      // Admin can be either the original Firebase UID or the dedicated admin email.
-      return request.auth != null
-        && (request.auth.uid == 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2'
-            || request.auth.token.email == 'souravmondal033@gmail.com');
+            || isAdmin());
     }
 
     function validRating(v) {
