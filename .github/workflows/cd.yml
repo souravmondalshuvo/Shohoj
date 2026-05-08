@@ -29,6 +29,30 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Generate runtime config
+        env:
+          FIREBASE_API_KEY:            ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN:        ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID:         ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET:     ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID:             ${{ secrets.FIREBASE_APP_ID }}
+          GA_MEASUREMENT_ID:           ${{ secrets.GA_MEASUREMENT_ID }}
+          PAPERS_WORKER_URL:           ${{ secrets.PAPERS_WORKER_URL }}
+        run: |
+          cp js/config/runtime-config.template.js js/config/runtime-config.js
+          for key in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID \
+                     FIREBASE_STORAGE_BUCKET FIREBASE_MESSAGING_SENDER_ID \
+                     FIREBASE_APP_ID GA_MEASUREMENT_ID PAPERS_WORKER_URL; do
+            value="${!key}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing secret $key"
+              exit 1
+            fi
+            # Use a delimiter unlikely to appear in any value.
+            sed -i "s|__${key}__|${value}|g" js/config/runtime-config.js
+          done
+
       - name: Build
         run: python3 build3.py
 
