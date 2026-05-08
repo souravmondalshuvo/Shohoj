@@ -7,3 +7,6 @@ admin.html
 assets/bkash-qr.jpeg
 assets/rocket-qr.jpeg
 assets/rocket-qr.png
+.env
+.env.local
+.env.*.local
