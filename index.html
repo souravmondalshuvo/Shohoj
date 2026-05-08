@@ -30,23 +30,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
-  <!-- Firebase config — stored here so the API key stays out of JS files -->
+  <!-- Public runtime config (Firebase web config + papers worker URL).
+       Generated from .env locally and from GitHub Actions secrets in CI;
+       gitignored so values stay sourced from one place. -->
+  <script src="js/config/runtime-config.js"></script>
   <script>
-    window._shohoj_firebase_config = {
-      apiKey:            'AIzaSyA4cz0TPyvqgeZicrsX5bEgxIJuGlour54',
-      authDomain:        'shohoj.firebaseapp.com',
-      projectId:         'shohoj',
-      storageBucket:     'shohoj.firebasestorage.app',
-      messagingSenderId: '878391653144',
-      appId:             '1:878391653144:web:172ccb90535dfd48d9a46d',
-      measurementId:     'G-7DVX82DTF3',
-    };
     // Set to your Firebase UID to enable admin delete on the feedback board
     window._shohoj_admin_uid = 'LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2';
     // Dedicated admin email — works from any device via Google sign-in.
     window._shohoj_admin_email = 'souravmondal033@gmail.com';
-    // Cloudflare Worker URL for the past papers proxy.
-    window._shohoj_papers_worker_url = 'https://shohoj-papers.souravmondal033.workers.dev';
   </script>
 </head>
 <body>
