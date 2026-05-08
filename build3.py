@@ -18,6 +18,8 @@ import os
 
 # ── File order matters: dependencies must come before dependents ──────────────
 MAIN_JS_FILES = [
+    # Public runtime config (window vars; generated from env, must come first)
+    'js/config/runtime-config.js',
     # QR data (window vars, must come first)
     'js/qr-data.js',
     # Core (no dependencies)
@@ -59,6 +61,7 @@ MAIN_JS_FILES = [
 # reviews and unused UI modules keeps admin.html ~10× smaller, so the auth
 # spinner doesn't sit there parsing megabytes of irrelevant code.
 ADMIN_JS_FILES = [
+    'js/config/runtime-config.js',
     'js/core/helpers.js',
     'js/core/departments.js',
     'js/core/catalog.js',
@@ -217,6 +220,14 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
 
     if qr_strip:
         html = html.replace(qr_strip, '')
+
+    # Strip the <script src="...runtime-config.js"> tag from the template;
+    # its window assignments are already bundled into the main JS payload.
+    html = re.sub(
+        r'\s*<script\s+src=["\'](?:\.\./)?js/config/runtime-config\.js["\'][^>]*>\s*</script>\s*',
+        '\n  ',
+        html,
+    )
 
     html = re.sub(css_pattern, lambda _m: f'<style>\n{css}\n</style>', html)
 
