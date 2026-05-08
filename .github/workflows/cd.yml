@@ -39,11 +39,13 @@ jobs:
           FIREBASE_APP_ID:             ${{ secrets.FIREBASE_APP_ID }}
           GA_MEASUREMENT_ID:           ${{ secrets.GA_MEASUREMENT_ID }}
           PAPERS_WORKER_URL:           ${{ secrets.PAPERS_WORKER_URL }}
+          RECAPTCHA_V3_SITE_KEY:       ${{ secrets.RECAPTCHA_V3_SITE_KEY }}
         run: |
           cp js/config/runtime-config.template.js js/config/runtime-config.js
           for key in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID \
                      FIREBASE_STORAGE_BUCKET FIREBASE_MESSAGING_SENDER_ID \
-                     FIREBASE_APP_ID GA_MEASUREMENT_ID PAPERS_WORKER_URL; do
+                     FIREBASE_APP_ID GA_MEASUREMENT_ID PAPERS_WORKER_URL \
+                     RECAPTCHA_V3_SITE_KEY; do
             value="${!key}"
             if [ -z "$value" ]; then
               echo "::error::Missing secret $key"
