@@ -1,0 +1,79 @@
+# Security
+
+This document describes how Shohoj protects user data and what its threat model looks like.
+
+## Authentication
+
+- **Google sign-in only.** Email/password flows are not supported, so there is no password to phish, leak, or rotate.
+- **BRACU domain gate.** The frontend rejects any account whose email is not `@g.bracu.ac.bd` (the only exception is the admin gmail, which carries an `admin: true` custom claim).
+- **30-day session expiry.** Sessions are auto-terminated after 30 days; the user signs in again.
+- **Firestore enforces the same checks** in security rules so a forged client cannot bypass them.
+
+## Authorization
+
+Firestore rules in `firestore.rules` are the trust boundary. Important guarantees:
+
+- A user can read/write **only** their own `users/{uid}` document.
+- Faculty reviews are **append-only**; no client can update or delete an existing review (even the author).
+- Review reports and admin moderation collections are admin-only.
+- Paper uploads must start with `approved: false`; only admins can flip the flag.
+- Admin status is granted via a Firebase custom claim (`admin: true`) and set out-of-band via `scripts/set_admin_claim.js`. UID and email are no longer trusted by rules.
+
+The rules suite (`tests/firestore.rules.test.js`) runs in CI against the Firestore emulator and asserts these guarantees.
+
+## App Check
+
+Firestore is fronted by Firebase App Check using reCAPTCHA v3. Every Firestore call from the browser carries an attestation token; scripted abuse without a real browser session is rejected. App Check runs in **monitor** mode while we watch real traffic, then flips to **enforce**.
+
+## XSS prevention
+
+- All user-sourced strings (course titles, semester labels, transcript-imported data, error messages) are escaped via `escHtml()` and `escAttr()` in `js/core/helpers.js` before any `innerHTML` insertion.
+- The transcript import flow does not serialize parsed PDF data into `onclick` attributes; it stores it in a JS-side slot.
+- `sanitizeRestoredState()` strips legacy HTML from anything restored from localStorage on load.
+
+## CDN integrity
+
+Both jsPDF and pdf.js load from cdnjs with `integrity="sha384-..."` and `crossorigin="anonymous"`, so a compromised CDN cannot inject altered code without breaking the hash check.
+
+## Content Security Policy
+
+`index.html` and `admin/index.html` ship a strict CSP that whitelists only the Google/Firebase/cdnjs origins Shohoj actually needs. Currently `'unsafe-inline'` is allowed for `script-src` and `style-src` because the codebase still uses inline event handlers; tightening this is tracked as a future hardening.
+
+## Faculty review pseudonymity
+
+Reviews are pseudonymous to other users:
+
+- The review document body contains no UID or email.
+- The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, so the same user's reviews for different courses produce different hashes — third-party readers cannot trivially group all of one user's reviews together.
+
+What pseudonymity does **not** cover:
+
+- Firebase project administrators (and anyone with admin SDK access) can audit Firestore logs and correlate writes back to the authenticated session. "Anonymous to the public" ≠ "anonymous to the service operator".
+- A determined adversary who already knows your UID can reconstruct your hash for any (faculty, course) pair.
+
+Stronger guarantees would require moving review writes behind a Cloud Function. Tracked as a future hardening.
+
+## Past-paper uploads
+
+Files go through a Cloudflare Worker (`worker/index.js`) before landing in R2:
+
+- Verifies a Firebase ID token against Google's JWKS.
+- Rejects non-BRACU emails (admin gmail allowed).
+- Validates `papers/{COURSE_CODE}/{filename}` path format.
+- Caps uploads at 10 MB.
+- Restricts MIME to PDF + images.
+- Origin-locked CORS.
+
+## Public Firebase config
+
+The Firebase web config (API key, project ID, etc.) is public by design — Firebase apps must ship it to the browser. It does not grant access on its own; access is gated by Firestore rules + App Check. The config lives in `js/config/runtime-config.js`, which is gitignored and generated from `.env` (locally) or GitHub Actions secrets (CI).
+
+## What is *not* in scope
+
+- **Server-side rate limiting.** App Check + Firestore rules cover most abuse, but per-user write quotas would need a Cloud Function. Currently relying on App Check.
+- **Anonymity from project admins.** As above, server-operator-level anonymity requires a backend rewrite.
+- **Section availability and time conflict checks** in the planner (these are correctness, not security).
+
+## Reporting an issue
+
+Open a GitHub issue with the `security` label, or email `souravmondal033@gmail.com`. Please don't disclose security issues publicly until they're patched.
