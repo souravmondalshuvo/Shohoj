@@ -221,6 +221,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Admin audit logs ─────────────────────────────────────────────────
+    // Append-only record of moderation actions. Admins can read, authors
+    // can create their own entries (adminUid must match their token), and
+    // nothing can be updated or deleted from the client — even by admins.
+    function validAdminLogAction(a) {
+      return a == 'approve_paper'
+          || a == 'delete_paper'
+          || a == 'delete_paper_report'
+          || a == 'delete_review_report'
+          || a == 'delete_feedback';
+    }
+
+    function validAdminLogPayload(d) {
+      return d.keys().hasOnly(['action','adminUid','targetType','targetId','meta','createdAt'])
+        && d.keys().hasAll(['action','adminUid','targetType','targetId','createdAt'])
+        && validAdminLogAction(d.action)
+        && d.adminUid is string
+        && d.adminUid == request.auth.uid
+        && d.targetType is string
+        && d.targetType.size() <= 40
+        && d.targetId is string
+        && d.targetId.size() > 0
+        && d.targetId.size() <= 200
+        && (!('meta' in d) || (d.meta is map && d.meta.size() <= 16))
+        && d.createdAt == request.time;
+    }
+
+    match /adminLogs/{logId} {
+      allow read:   if isAdmin();
+      allow create: if isAdmin() && validAdminLogPayload(request.resource.data);
+      allow update, delete: if false;
+    }
+
     // ── Catch-all: deny everything else ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
