@@ -271,6 +271,75 @@ async function run() {
     await assertFails(setDoc(doc(db, 'adminLogs', 'log8'), adminLogDoc({ adminUid: 'someone_else' })));
   });
 
+  // ── App feedback ────────────────────────────────────────────────────
+  function feedbackDoc(extra = {}) {
+    return {
+      type: 'bug',
+      text: 'something is broken',
+      anonymous: false,
+      uid: BRACU_UID,
+      createdAt: serverTimestamp(),
+      ...extra,
+    };
+  }
+
+  await test('Valid feedback create by BRACU user succeeds', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb1'), feedbackDoc()));
+  });
+
+  await test('Feedback with text > 500 chars is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb2'),
+      feedbackDoc({ text: 'x'.repeat(501) })));
+  });
+
+  await test('Feedback with invalid type is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb3'),
+      feedbackDoc({ type: 'spam' })));
+  });
+
+  await test('Feedback delete by non-admin is denied', async () => {
+    const writer = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(writer, 'appFeedback', 'fb4'), feedbackDoc()));
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(deleteDoc(doc(other, 'appFeedback', 'fb4')));
+  });
+
+  await test('Feedback delete by admin succeeds', async () => {
+    const writer = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(writer, 'appFeedback', 'fb5'), feedbackDoc()));
+    const adminDb = adminCtx().firestore();
+    await assertSucceeds(deleteDoc(doc(adminDb, 'appFeedback', 'fb5')));
+  });
+
+  // ── Paper reports ───────────────────────────────────────────────────
+  await test('Paper report with mismatched reportId format is rejected', async () => {
+    const db = bracuCtx().firestore();
+    // Rules require reportId == "{uid}_{paperId}"; using a random ID should fail.
+    await assertFails(setDoc(doc(db, 'paperReports', 'random_report_id'), {
+      paperId: 'some_paper',
+      reason: 'bad content',
+      reporterUid: BRACU_UID,
+      createdAt: serverTimestamp(),
+    }));
+  });
+
+  // ── Faculty profiles ────────────────────────────────────────────────
+  await test('facultyProfiles read by BRACU user is allowed', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(getDoc(doc(db, 'facultyProfiles', 'AAA')));
+  });
+
+  await test('facultyProfiles write by admin is denied', async () => {
+    const db = adminCtx().firestore();
+    await assertFails(setDoc(doc(db, 'facultyProfiles', 'AAA'), {
+      name: 'Test',
+      department: 'CSE',
+    }));
+  });
+
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
