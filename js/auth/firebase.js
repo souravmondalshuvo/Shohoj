@@ -4,6 +4,8 @@
 //           real-time sync, offline detection, sync persistence, data deletion
 
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeAppCheck, ReCaptchaV3Provider }
+                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
                                    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
@@ -19,6 +21,22 @@ if (!firebaseConfig) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 const app      = initializeApp(firebaseConfig);
+
+// App Check — attest every Firestore call as coming from this site, not a
+// scraping script. Skipped silently if no site key is set so dev/preview can
+// still run; production deploys always inject the key via runtime-config.js.
+const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
+if (appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn('[Shohoj] App Check init failed:', err?.message || err);
+  }
+}
+
 const auth     = getAuth(app);
 const db       = getFirestore(app);
 const provider = new GoogleAuthProvider();
