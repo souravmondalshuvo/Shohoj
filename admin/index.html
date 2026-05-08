@@ -4731,6 +4731,12 @@ body[data-page="admin"] .orb { display: none !important; }
 .admin-skel-line--lg { width: 60%; height: 14px; }
 .admin-skel-line--md { width: 85%; }
 .admin-skel-line--sm { width: 30%; height: 10px; }
+.admin-stat-value-skel {
+  display: block;
+  width: 55%;
+  height: 28px;
+  border-radius: 6px;
+}
 
 /* Header admin link — only visible when admin */
 #adminNavBtn {
@@ -8797,7 +8803,7 @@ function _statCardSkeleton(label) {
   return `
     <div class="admin-stat-card">
       <div class="admin-stat-label">${escHtml(label)}</div>
-      <div class="admin-stat-value"><span class="admin-skel admin-skel-line admin-skel-line--lg"></span></div>
+      <div class="admin-stat-value"><span class="admin-skel admin-stat-value-skel"></span></div>
     </div>
   `;
 }
