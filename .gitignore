@@ -11,3 +11,4 @@ assets/rocket-qr.png
 .env.local
 .env.*.local
 js/config/runtime-config.js
+node_modules/
