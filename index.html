@@ -6096,13 +6096,20 @@ export function initAuth() {
 
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
-    if (user && !user.email?.endsWith('@g.bracu.ac.bd') && user.email !== window._shohoj_admin_email) {
-      await signOut(auth);
-      setAuthBtnLoading(false);
-      showToast('⚠ Only BRACU G-Suite accounts are supported', true, true);
-      return;
+    let tokenClaims = null;
+    if (user) {
+      const tokenResult = await user.getIdTokenResult().catch(() => null);
+      tokenClaims = tokenResult?.claims || null;
+      const isBracuEmail = user.email?.endsWith('@g.bracu.ac.bd');
+      if (!isBracuEmail && tokenClaims?.admin !== true) {
+        await signOut(auth);
+        setAuthBtnLoading(false);
+        showToast('⚠ Only BRACU G-Suite accounts are supported', true, true);
+        return;
+      }
     }
 
+    _isAdminCached = tokenClaims?.admin === true;
     currentUser = user;
     notifyAuthStateReady();
     setAuthBtnLoading(false);
@@ -6786,12 +6793,12 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
   }
 };
 
+// Cached admin flag — refreshed from the ID token on every auth-state change
+// (see onAuthStateChanged below) so isAdmin checks stay synchronous.
+let _isAdminCached = false;
+
 function _isAdminUser() {
-  if (!currentUser) return false;
-  const adminUid   = window._shohoj_admin_uid;
-  const adminEmail = window._shohoj_admin_email;
-  return (!!adminUid && currentUser.uid === adminUid)
-      || (!!adminEmail && currentUser.email === adminEmail);
+  return !!currentUser && _isAdminCached === true;
 }
 
 window._shohoj_isPaperAdmin = function() {
