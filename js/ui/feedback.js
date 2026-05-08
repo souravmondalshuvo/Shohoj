@@ -39,11 +39,7 @@ function _t() {
 }
 
 function _isAdmin() {
-  const uid   = window._shohoj_currentUid?.();
-  const email = window._shohoj_currentEmail?.();
-  if (!uid && !email) return false;
-  return (!!window._shohoj_admin_uid   && window._shohoj_admin_uid   === uid)
-      || (!!window._shohoj_admin_email && window._shohoj_admin_email === email);
+  return window._shohoj_isAdmin?.() === true;
 }
 
 function _captureContext() {
