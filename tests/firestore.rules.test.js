@@ -213,6 +213,64 @@ async function run() {
     await assertFails(setDoc(doc(db, 'someUnknownCollection', 'x'), { hello: 'world' }));
   });
 
+  // ── Admin audit logs ────────────────────────────────────────────────
+  function adminLogDoc(extra = {}) {
+    return {
+      action: 'approve_paper',
+      adminUid: ADMIN_UID,
+      targetType: 'paper',
+      targetId: 'paper_xyz',
+      createdAt: serverTimestamp(),
+      ...extra,
+    };
+  }
+
+  await test('Admin can create valid adminLog entry', async () => {
+    const db = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log1'), adminLogDoc()));
+  });
+
+  await test('Non-admin cannot create adminLog entry', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'adminLogs', 'log2'), adminLogDoc({ adminUid: BRACU_UID })));
+  });
+
+  await test('Admin can read adminLogs', async () => {
+    const writer = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(writer, 'adminLogs', 'log3'), adminLogDoc()));
+    const reader = adminCtx().firestore();
+    await assertSucceeds(getDoc(doc(reader, 'adminLogs', 'log3')));
+  });
+
+  await test('Non-admin cannot read adminLogs', async () => {
+    const writer = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(writer, 'adminLogs', 'log4'), adminLogDoc()));
+    const reader = bracuCtx().firestore();
+    await assertFails(getDoc(doc(reader, 'adminLogs', 'log4')));
+  });
+
+  await test('adminLog with invalid action is rejected', async () => {
+    const db = adminCtx().firestore();
+    await assertFails(setDoc(doc(db, 'adminLogs', 'log5'), adminLogDoc({ action: 'arbitrary_thing' })));
+  });
+
+  await test('adminLog update is denied', async () => {
+    const db = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log6'), adminLogDoc()));
+    await assertFails(updateDoc(doc(db, 'adminLogs', 'log6'), { action: 'delete_paper' }));
+  });
+
+  await test('adminLog delete is denied (even by admin)', async () => {
+    const db = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log7'), adminLogDoc()));
+    await assertFails(deleteDoc(doc(db, 'adminLogs', 'log7')));
+  });
+
+  await test('adminLog with mismatched adminUid is rejected', async () => {
+    const db = adminCtx().firestore();
+    await assertFails(setDoc(doc(db, 'adminLogs', 'log8'), adminLogDoc({ adminUid: 'someone_else' })));
+  });
+
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
