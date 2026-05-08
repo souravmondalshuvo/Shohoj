@@ -68,11 +68,21 @@ Files go through a Cloudflare Worker (`worker/index.js`) before landing in R2:
 
 The Firebase web config (API key, project ID, etc.) is public by design — Firebase apps must ship it to the browser. It does not grant access on its own; access is gated by Firestore rules + App Check. The config lives in `js/config/runtime-config.js`, which is gitignored and generated from `.env` (locally) or GitHub Actions secrets (CI).
 
+## Rate limiting
+
+Two layers are in place:
+
+1. **Firebase App Check (reCAPTCHA v3).** Every Firestore call carries an attestation token. Scripted clients without a real browser session are rejected. This is the primary line of defense against automated abuse.
+2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, max 500 chars in review text, max 10 MB on paper uploads, and a strict MIME allowlist on file uploads.
+
+What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per day"). Pure Firestore rules can't aggregate writes across documents, so this would need a Cloud Function. App Check covers the realistic abuse model for this project; revisit if the corpus grows enough that App Check alone is insufficient.
+
 ## What is *not* in scope
 
-- **Server-side rate limiting.** App Check + Firestore rules cover most abuse, but per-user write quotas would need a Cloud Function. Currently relying on App Check.
+- **Per-user write quotas.** See "Rate limiting" above.
 - **Anonymity from project admins.** As above, server-operator-level anonymity requires a backend rewrite.
 - **Section availability and time conflict checks** in the planner (these are correctness, not security).
+- **Splitting `firebase.js` into services.** The file is ~1700 lines, which is a maintainability concern, not a security one. Tracked as a future refactor.
 
 ## Reporting an issue
 
