@@ -6847,11 +6847,33 @@ window._shohoj_fetchPaperReports = async function() {
   }
 };
 
+// Append-only audit trail of admin moderation actions. Writes are best-effort
+// and never block the calling action — if rules reject the log, the moderation
+// action still happened and we just emit a console warning.
+async function _writeAdminLog(action, targetType, targetId, meta) {
+  if (!_isAdminUser() || !currentUser) return;
+  if (!targetId) return;
+  try {
+    const payload = {
+      action,
+      adminUid: currentUser.uid,
+      targetType,
+      targetId: String(targetId),
+      createdAt: serverTimestamp(),
+    };
+    if (meta && typeof meta === 'object') payload.meta = meta;
+    await addDoc(collection(db, 'adminLogs'), payload);
+  } catch (e) {
+    console.warn('[Shohoj] adminLog write failed:', e?.message || e);
+  }
+}
+
 window._shohoj_approvePaper = async function(paperId) {
   if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
   if (!paperId) return { ok: false, error: 'Missing paper id' };
   try {
     await setDoc(doc(db, 'papers', paperId), { approved: true }, { merge: true });
+    _writeAdminLog('approve_paper', 'paper', paperId);
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] approvePaper failed:', e);
@@ -6876,6 +6898,7 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
       }
     }
     await deleteDoc(doc(db, 'papers', paperId));
+    _writeAdminLog('delete_paper', 'paper', paperId, storagePath ? { storagePath } : null);
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deletePaper failed:', e);
@@ -6888,6 +6911,7 @@ window._shohoj_deletePaperReport = async function(reportId) {
   if (!reportId) return { ok: false, error: 'Missing report id' };
   try {
     await deleteDoc(doc(db, 'paperReports', reportId));
+    _writeAdminLog('delete_paper_report', 'paperReport', reportId);
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deletePaperReport failed:', e);
@@ -7028,6 +7052,7 @@ window._shohoj_deleteReviewReport = async function(reportId) {
   if (!reportId) return { ok: false, error: 'Missing report id' };
   try {
     await deleteDoc(doc(db, 'reviewReports', reportId));
+    _writeAdminLog('delete_review_report', 'reviewReport', reportId);
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deleteReviewReport failed:', e);
@@ -7058,6 +7083,7 @@ window._shohoj_adminDeleteFeedback = async function(feedbackId) {
   if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
   try {
     await deleteDoc(doc(db, 'appFeedback', feedbackId));
+    _writeAdminLog('delete_feedback', 'feedback', feedbackId);
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] adminDeleteFeedback failed:', e);
