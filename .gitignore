@@ -2,6 +2,9 @@
 .claude/
 shohoj-service-account.json
 *-service-account.json
+*-firebase-adminsdk-*.json
+firestore-debug.log
+firebase-debug.log
 shohoj.html
 admin.html
 assets/bkash-qr.jpeg
