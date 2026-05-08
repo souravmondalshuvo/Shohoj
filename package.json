@@ -12,12 +12,16 @@
     "test:render": "node tests/render.test.js",
     "test:planner": "node tests/planner.test.js",
     "test:reviews": "node tests/reviews.test.js",
+    "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
     "set:admin": "node scripts/set_admin_claim.js"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
-    "firebase-admin": "^12.0.0"
+    "@firebase/rules-unit-testing": "^4.0.0",
+    "firebase": "^11.0.0",
+    "firebase-admin": "^12.0.0",
+    "firebase-tools": "^13.0.0"
   }
 }
