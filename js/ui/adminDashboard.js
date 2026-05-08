@@ -129,7 +129,7 @@ function _statCardSkeleton(label) {
   return `
     <div class="admin-stat-card">
       <div class="admin-stat-label">${escHtml(label)}</div>
-      <div class="admin-stat-value"><span class="admin-skel admin-skel-line admin-skel-line--lg"></span></div>
+      <div class="admin-stat-value"><span class="admin-skel admin-stat-value-skel"></span></div>
     </div>
   `;
 }
