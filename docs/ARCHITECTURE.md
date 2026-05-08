@@ -105,6 +105,15 @@ Cross-module calls use `window._shohoj_*` because the Phase-1 build is non-modul
 3. Local edits update the state object → debounced write to Firestore + localStorage.
 4. Remote changes from another device come through the snapshot listener and rebuild the UI.
 
+## Sync model
+
+The cloud sync is **last-write-wins with same-tab suppression**:
+
+- Every local edit fingerprints the data and writes through with a short debounce.
+- The Firestore snapshot listener compares incoming data fingerprints to the local one. If they match, nothing happens. If they differ AND the change didn't originate in this tab (`_localWriteAt` grace window), the listener overwrites localStorage and reloads the page with a toast.
+- This is good enough for one user across devices: phone edits propagate to laptop within seconds.
+- It is **not** a CRDT — two simultaneous edits from two devices will resolve to whichever Firestore commit arrives last. For an app where the user is always the same person, this hasn't been a problem in practice. If real conflicts surface, the next iteration is to chunk the user document into sub-collections (e.g. `users/{uid}/semesters/{semesterId}`) so device-level edits target different documents.
+
 ## Build pipeline
 
 `build3.py` reads each JS file in dependency order, strips `import`/`export` syntax, inlines into a single `<script>` block, inlines CSS, keeps `firebase.js` as a separate `<script type="module">` (because it imports from CDN), and writes self-contained `shohoj.html` and `admin.html`. Those go to GitHub Pages.
