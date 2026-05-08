@@ -30,6 +30,16 @@
 
 ---
 
+## Documentation
+
+| Doc | What's in it |
+|-----|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Tech stack, source layout, build pipeline, data flow |
+| [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
+
+---
+
 ## What is Shohoj?
 
 **Shohoj (সহজ)** means _"simple"_ in Bengali.
