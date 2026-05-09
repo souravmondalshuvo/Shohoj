@@ -1,5 +1,15 @@
 // ── js/ui/feedback.js ─────────────────────────────────────────────────────────
 import { escHtml, confirmDestructive } from '../core/helpers.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('fb:close',      () => closeFeedbackModal());
+registerAction('fb:tab',        el => window._shohoj_fbTab?.(el.dataset.tab));
+registerAction('fb:selectType', el => window._shohoj_fbSelectType?.(el.dataset.type));
+registerAction('fb:toggleAnon', () => window._shohoj_fbToggleAnon?.());
+registerAction('fb:submit',     () => window._shohoj_doSubmit?.());
+registerAction('fb:filter',     el => window._shohoj_fbFilter?.(el.dataset.filter));
+registerAction('fb:adminDel',   el => window._shohoj_fbAdminDel?.(el.dataset.id));
+registerAction('fb:upvote',     el => window._shohoj_fbUpvote?.(el.dataset.id));
 
 // ── Module state ──────────────────────────────────────────────────────────────
 let _activeTab   = 'submit';
@@ -101,12 +111,12 @@ function _renderModal() {
   content.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:${t.text};">Feedback</div>
-      <button onclick="closeFeedbackModal()" style="background:none;border:none;color:${t.text3};font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">×</button>
+      <button data-action="fb:close" style="background:none;border:none;color:${t.text3};font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">×</button>
     </div>
     <div style="display:flex;background:${t.inputBg};border-radius:30px;padding:3px;margin-bottom:20px;position:relative;">
       <div id="fbPill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:${t.accent};border-radius:27px;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);pointer-events:none;"></div>
-      <button id="fbTabSubmit" onclick="window._shohoj_fbTab('submit')" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#000;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
-      <button id="fbTabBoard"  onclick="window._shohoj_fbTab('board')"  style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:${t.text2};cursor:pointer;border-radius:27px;font-family:inherit;">Board</button>
+      <button id="fbTabSubmit" data-action="fb:tab" data-tab="submit" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#000;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
+      <button id="fbTabBoard"  data-action="fb:tab" data-tab="board"  style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:${t.text2};cursor:pointer;border-radius:27px;font-family:inherit;">Board</button>
     </div>
     <div id="fbContent"></div>
   `;
@@ -153,7 +163,7 @@ function _submitHtml(t, uid) {
       <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.text3};margin-bottom:8px;">Type</div>
       <div style="display:flex;gap:6px;">
         ${[['bug','Bug'],['feature','Feature'],['general','General']].map(([v,l]) => `
-          <button id="fbType_${v}" onclick="window._shohoj_fbSelectType('${v}')" style="
+          <button id="fbType_${v}" data-action="fb:selectType" data-type="${v}" style="
             flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:20px;
             border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};
             cursor:pointer;font-family:inherit;transition:all 0.15s;
@@ -172,12 +182,12 @@ function _submitHtml(t, uid) {
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
       <div style="font-size:13px;color:${t.text2};">Submit anonymously</div>
-      <div onclick="window._shohoj_fbToggleAnon()" style="cursor:pointer;position:relative;width:38px;height:22px;flex-shrink:0;">
+      <div data-action="fb:toggleAnon" style="cursor:pointer;position:relative;width:38px;height:22px;flex-shrink:0;">
         <div id="fbAnonTrack" style="position:absolute;inset:0;border-radius:22px;background:${t.accent};transition:background 0.2s;"></div>
         <div id="fbAnonPill" style="position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform 0.2s;transform:translateX(16px);"></div>
       </div>
     </div>
-    <button id="fbSubmitBtn" onclick="window._shohoj_doSubmit()" style="
+    <button id="fbSubmitBtn" data-action="fb:submit" style="
       width:100%;padding:11px;border-radius:10px;border:none;
       background:${t.accent};color:#000;font-size:14px;font-weight:700;
       cursor:pointer;font-family:inherit;
@@ -281,7 +291,7 @@ function _renderBoardContent() {
 
   const filterBtns = ['all','bug','feature','general'].map(f => {
     const on = _boardFilter === f;
-    return `<button onclick="window._shohoj_fbFilter('${f}')" style="
+    return `<button data-action="fb:filter" data-filter="${f}" style="
       padding:5px 11px;font-size:11px;font-weight:700;border-radius:20px;
       border:1px solid ${on ? t.accent : t.border};
       background:${on ? t.accent : t.inputBg};
@@ -300,14 +310,14 @@ function _renderBoardContent() {
         const count  = _upvoteCounts[item.id] || 0;
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
-          ? `<button onclick="window._shohoj_fbAdminDel('${item.id}')" title="Delete"
+          ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
                style="background:none;border:none;cursor:pointer;color:rgba(231,76,60,0.45);
                       font-size:16px;padding:0 2px;line-height:1;transition:color 0.15s;
                       margin-left:4px;">×</button>`
           : '';
         return `
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid ${t.border};">
-            <div onclick="window._shohoj_fbUpvote('${item.id}')"
+            <div data-action="fb:upvote" data-id="${item.id}"
                  style="display:flex;flex-direction:column;align-items:center;gap:2px;
                         min-width:34px;cursor:pointer;
                         color:${voted ? t.accent : t.text3};
