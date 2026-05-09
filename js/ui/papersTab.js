@@ -10,7 +10,7 @@ import {
   approvePaper, deletePaper, deletePaperReport,
 } from '../core/papers.js';
 import { COURSE_DB } from '../core/catalog.js';
-import { escHtml, escAttr } from '../core/helpers.js';
+import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
@@ -229,7 +229,7 @@ async function _openModerationPanel() {
     if (deleteBtn) {
       const id = deleteBtn.dataset.id;
       const path = deleteBtn.dataset.path;
-      if (!confirm('Delete this paper and its file? This cannot be undone.')) return;
+      if (!confirmDestructive('Delete this paper and its R2 file?', deleteBtn.dataset.label || 'this paper')) return;
       deleteBtn.disabled = true;
       const res = await deletePaper(id, path);
       if (!res.ok) { _toast(res.error || 'Delete failed'); deleteBtn.disabled = false; return; }
@@ -255,6 +255,7 @@ async function _openModerationPanel() {
 function _pendingPaperRow(p) {
   const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type;
   const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
+  const label = [p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — ');
   return `
     <div class="paper-mod-row">
       <div class="paper-mod-row-main">
@@ -268,7 +269,7 @@ function _pendingPaperRow(p) {
       <div class="paper-mod-row-actions">
         <button data-mod-action="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
         <button data-mod-action="approve" data-id="${escAttr(p.id)}" class="paper-mod-approve">Approve</button>
-        <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" class="paper-mod-delete">Delete</button>
+        <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="paper-mod-delete">Delete</button>
       </div>
     </div>
   `;
