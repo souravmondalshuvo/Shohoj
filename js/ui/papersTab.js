@@ -11,6 +11,9 @@ import {
 } from '../core/papers.js';
 import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('papers:signin', () => window._shohoj_signIn && window._shohoj_signIn());
 
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
@@ -46,7 +49,7 @@ function _papersSignInPrompt() {
     <div class="papers-empty">
       <h3>📚 Past Papers & Notes</h3>
       <p>Sign in with your BRACU email to browse and share past papers, quizzes, and notes.</p>
-      <button class="btn-primary" onclick="window._shohoj_signIn && window._shohoj_signIn()">Sign in with Google</button>
+      <button class="btn-primary" data-action="papers:signin">Sign in with Google</button>
     </div>
   `;
 }
