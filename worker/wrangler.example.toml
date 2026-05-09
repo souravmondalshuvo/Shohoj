@@ -1,0 +1,26 @@
+# Cloudflare Worker config — copy to wrangler.toml and adjust the values
+# for your own deployment. The committed wrangler.toml in this repo points
+# at the production "shohoj-papers" bucket and BRACU project; fork users
+# should not reuse those names.
+#
+# Run from the worker/ directory:
+#   wrangler deploy
+#   wrangler tail   (live logs)
+
+name = "shohoj-papers"
+main = "index.js"
+compatibility_date = "2026-05-01"
+
+# R2 bucket binding — create the bucket in the Cloudflare dashboard first.
+[[r2_buckets]]
+binding = "PAPERS_BUCKET"
+bucket_name = "shohoj-papers"
+
+# Plain-text env vars — safe to commit. Do NOT put secrets here; use
+# `wrangler secret put` for anything sensitive.
+#
+# Admin authorization is enforced via the Firebase `admin` custom claim
+# (see scripts/set_admin_claim.js). No ADMIN_UID or ADMIN_EMAIL is needed.
+[vars]
+FIREBASE_PROJECT_ID = "your-firebase-project-id"
+ALLOWED_ORIGINS = "https://your-username.github.io,http://localhost:8000"
