@@ -26,8 +26,20 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Set up Java (firebase emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run tests
         run: npm test
+
+      - name: Run Firestore rules tests
+        run: npm run test:rules
 
       - name: Generate runtime config
         env:
