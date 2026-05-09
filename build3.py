@@ -25,6 +25,7 @@ MAIN_JS_FILES = [
     # Core (no dependencies)
     'js/core/grades.js',
     'js/core/helpers.js',
+    'js/core/dispatch.js',
     'js/core/state.js',
     'js/core/departments.js',
     # Core (with dependencies)
@@ -63,6 +64,7 @@ MAIN_JS_FILES = [
 ADMIN_JS_FILES = [
     'js/config/runtime-config.js',
     'js/core/helpers.js',
+    'js/core/dispatch.js',
     'js/core/departments.js',
     'js/core/catalog.js',
     'js/core/papers.js',
