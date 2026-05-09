@@ -1,20 +1,18 @@
 // ── Shohoj papers Worker ─────────────────────────────────────────────────────
 // Auth-proxy in front of an R2 bucket. Every request must carry a Firebase ID
-// token belonging to a BRACU student (email matches *@g.bracu.ac.bd). Uploads
-// are size-capped (10 MB) and MIME-restricted (PDF + images). Admin UID can
-// delete files.
+// token belonging to a BRACU student (email matches *@g.bracu.ac.bd) or an
+// admin (custom claim `admin === true`). Uploads are size-capped (10 MB) and
+// MIME-restricted (PDF + images). Only admins can delete files.
 //
 // Bindings (configured in wrangler.toml):
 //   PAPERS_BUCKET         — R2 bucket binding
 //   FIREBASE_PROJECT_ID   — string env var (e.g. "shohoj")
-//   ADMIN_UID             — string env var, the Firebase UID allowed to delete
 //   ALLOWED_ORIGINS       — comma-separated CORS origins (e.g. "https://souravmondalshuvo.github.io,http://localhost:5173")
 
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 const FIREBASE_JWKS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
-const ADMIN_EMAIL = 'souravmondal033@gmail.com';
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\//;
 
@@ -31,7 +29,9 @@ async function verifyFirebaseToken(token, env) {
     issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
     audience: env.FIREBASE_PROJECT_ID,
   });
-  if (!payload.email || (!BRACU_EMAIL_RE.test(payload.email) && payload.email !== ADMIN_EMAIL)) {
+  const isBracu = !!payload.email && BRACU_EMAIL_RE.test(payload.email);
+  const isAdmin = payload.admin === true;
+  if (!isBracu && !isAdmin) {
     throw new Error('Email not in BRACU domain');
   }
   return payload;
@@ -140,9 +140,7 @@ async function handleDelete(request, env, origin) {
     return jsonResponse({ error: 'Invalid path' }, { status: 400 }, env, origin);
   }
   const claims = await readAuth(request, env);
-  const isAdminUid   = env.ADMIN_UID   && claims.user_id === env.ADMIN_UID;
-  const isAdminEmail = claims.email    === ADMIN_EMAIL;
-  if (!isAdminUid && !isAdminEmail) {
+  if (claims.admin !== true) {
     return jsonResponse({ error: 'Forbidden' }, { status: 403 }, env, origin);
   }
   await env.PAPERS_BUCKET.delete(path);
