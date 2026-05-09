@@ -26,10 +26,14 @@ function _dispatch(event) {
   if (typeof fn === 'function') fn(el, event);
 }
 
-['click', 'change', 'input'].forEach(type => {
-  document.addEventListener(type, _dispatch);
-});
+if (typeof document !== 'undefined') {
+  ['click', 'change', 'input'].forEach(type => {
+    document.addEventListener(type, _dispatch);
+  });
+}
 
 // Expose globally so modules can register without importing (e.g. firebase.js
 // is a separate module script that does not consume the bundle's exports).
-window._shohoj_registerAction = registerAction;
+if (typeof window !== 'undefined') {
+  window._shohoj_registerAction = registerAction;
+}
