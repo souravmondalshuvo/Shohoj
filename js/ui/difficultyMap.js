@@ -5,6 +5,11 @@
 import { fetchRecentReviews, aggregateRatings } from '../core/reviews.js';
 import { COURSE_DB, getCourseDept, getCoursePrefix } from '../core/catalog.js';
 import { escHtml, escAttr } from '../core/helpers.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('dm:goToCourse', el => window._dm_goToCourse?.(el.dataset.code));
+registerAction('dm:setDept',    el => window._dm_setDept?.(el.dataset.dept));
+registerAction('dm:setSort',    el => window._dm_setSort?.(el.dataset.sort));
 
 const LOW_SAMPLE_UNDER = 3;
 const FETCH_LIMIT      = 5000;
@@ -101,7 +106,7 @@ function _barHtml(val, label) {
 function _cardHtml(e) {
   const cls  = _scoreClass(e.difficulty);
   const tag  = _diffLabel(e.difficulty);
-  return `<button class="dm-card" onclick="window._dm_goToCourse('${escAttr(e.code)}')" title="${escAttr(e.name)}">
+  return `<button class="dm-card" data-action="dm:goToCourse" data-code="${escAttr(e.code)}" title="${escAttr(e.name)}">
     <div class="dm-card-head">
       <span class="dm-card-code">${escHtml(e.code)}</span>
       <span class="dm-card-tag dm-card-tag--${cls}">${escHtml(tag)}</span>
@@ -128,14 +133,14 @@ function _render(root, entries) {
   const pillsHtml = depts.map(d => {
     const active = d === _activeDept ? ' dm-pill--active' : '';
     const label  = d === 'ALL' ? 'All' : d;
-    return `<button class="dm-pill${active}" onclick="window._dm_setDept('${escAttr(d)}')">${escHtml(label)}</button>`;
+    return `<button class="dm-pill${active}" data-action="dm:setDept" data-dept="${escAttr(d)}">${escHtml(label)}</button>`;
   }).join('');
 
   const sortHtml = `<div class="dm-sort">
     <span class="dm-sort-label">Sort</span>
-    <button class="dm-sort-btn${_sortBy === 'code'       ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('code')">Code</button>
-    <button class="dm-sort-btn${_sortBy === 'difficulty' ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('difficulty')">Difficulty</button>
-    <button class="dm-sort-btn${_sortBy === 'workload'   ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('workload')">Workload</button>
+    <button class="dm-sort-btn${_sortBy === 'code'       ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="code">Code</button>
+    <button class="dm-sort-btn${_sortBy === 'difficulty' ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="difficulty">Difficulty</button>
+    <button class="dm-sort-btn${_sortBy === 'workload'   ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="workload">Workload</button>
   </div>`;
 
   const gridHtml = sorted.length
