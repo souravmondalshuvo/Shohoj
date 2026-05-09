@@ -8,6 +8,10 @@ import { escHtml } from '../core/helpers.js';
 import { resetPlayground } from './playground.js';
 import { resetPlanner } from './planner.js';
 import { estimateSummaryCompletedSemesters } from './tracker.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('modals:hideImport', () => hideImportModal());
+registerAction('modals:applyImport', () => applyImport());
 
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -217,7 +221,7 @@ export async function importTranscriptPDF(inputEl) {
           <div style="font-size:13px;color:${getModalTheme().text2};margin-bottom:16px">
             No semesters were detected. Make sure this is a BRACU official grade sheet PDF.
           </div>
-          <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
+          <button data-action="modals:hideImport" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
         </div>`);
       return;
     }
@@ -255,13 +259,13 @@ export async function importTranscriptPDF(inputEl) {
       </div>
       ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${escHtml(parsed.detectedDept)}</strong></div>` : ''}
       <div style="display:flex;gap:10px">
-        <button onclick="applyImport()"
+        <button data-action="modals:applyImport"
           onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(46,204,113,0.35)'"
           onmouseleave="this.style.background='#1DB954';this.style.transform='';this.style.boxShadow=''"
           style="flex:1;background:#1DB954;color:#0b0f0d;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s">
           ✅ Import Now
         </button>
-        <button onclick="hideImportModal()"
+        <button data-action="modals:hideImport"
           onmouseenter="this.style.background='${t2.cancelHover}'"
           onmouseleave="this.style.background='${t2.cancelBg}'"
           style="background:${t2.cancelBg};color:${t2.cancelText};border:1px solid ${t2.cancelBorder};border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
@@ -275,7 +279,7 @@ export async function importTranscriptPDF(inputEl) {
         <div style="font-size:32px;margin-bottom:12px">❌</div>
         <div style="font-size:15px;font-weight:700;color:${getModalTheme().text};margin-bottom:8px">Import failed</div>
         <div style="font-size:12px;color:${getModalTheme().text2};margin-bottom:16px">${escHtml(err.message)}</div>
-        <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
+        <button data-action="modals:hideImport" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
       </div>`);
   } finally {
     if (btn) { btn.textContent = origText; btn.disabled = false; }
