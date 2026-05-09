@@ -269,6 +269,39 @@ Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prev
 
 **Phase 2+** will migrate to React.js, Tailwind CSS, and Vercel as the platform scales beyond academic tools.
 
+### Architecture at a glance
+
+```
+Browser
+  │
+  │ loads runtime-config.js (Firebase web config, generated from secrets)
+  ▼
+GitHub Pages — bundled HTML/CSS/JS (shohoj.html, admin/index.html)
+  │
+  │ Firebase Auth (BRACU @g.bracu.ac.bd sign-in)
+  │ App Check (reCAPTCHA v3)
+  ▼
+Firestore (rules-enforced)
+  ├── users/{uid}            — semesters, grades, settings
+  ├── facultyReviews/{hash}  — pseudonymous, append-only reviews
+  ├── reviewReports/{...}    — moderation queue (admin-read)
+  ├── papers/{paperId}       — past-paper metadata
+  ├── paperReports/{...}     — paper moderation queue
+  ├── feedback/{id}          — feedback board
+  ├── facultyProfiles/{init} — admin-seeded faculty directory
+  └── adminLogs/{id}         — admin action audit trail
+
+Cloudflare Worker (auth-proxy, BRACU email + admin claim)
+  └── R2 — past-paper PDFs and images
+
+Firebase custom claim `admin: true`
+  ├── set out-of-band via scripts/set_admin_claim.js
+  ├── read by Firestore rules
+  └── read by the Worker for delete authorization
+```
+
+For a deeper breakdown see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); for what to set up to deploy, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ---
 
 ## Security
