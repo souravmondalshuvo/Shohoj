@@ -37,6 +37,7 @@
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Tech stack, source layout, build pipeline, data flow |
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CD pipeline, local dev, Worker deploy, admin claim |
 
 ---
 
