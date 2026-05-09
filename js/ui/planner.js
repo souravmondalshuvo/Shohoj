@@ -10,6 +10,18 @@ import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { getCurrentTotals } from './playground.js';
 import { addRunningSemester } from './render.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('pl:impactGrade',   el => onPlannerImpactGrade(el.value));
+registerAction('pl:openReviews',   el => window.openCourseReviews?.(el.dataset.code, el.dataset.name));
+registerAction('pl:viewPrereq',    el => viewPrereqTree(el.dataset.code || ''));
+registerAction('pl:remove',        el => removeFromPlan(el.dataset.code));
+registerAction('pl:promote',       () => promoteToRunning());
+registerAction('pl:clear',         () => clearPlan());
+registerAction('pl:filter',        el => onPlannerFilter(el.dataset.mode));
+registerAction('pl:add',           el => addToPlan(el.dataset.code));
+registerAction('pl:browseReviews', () => window.switchCalcTab?.('reviews'));
+registerAction('pl:search',        el => onPlannerSearch(el.value));
 
 // ── Local planner state ─────────────────────────────────────────────────────
 const plan = {
@@ -286,7 +298,7 @@ function renderImpactPreview(totalCredits) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 12px;border-radius:8px;background:rgba(86,180,233,0.05);border:1px solid rgba(86,180,233,0.15);flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);">
         <span>If all planned courses earn</span>
-        <select onchange="onPlannerImpactGrade(this.value)" style="
+        <select data-action="pl:impactGrade" style="
           padding:3px 8px;border-radius:6px;border:1px solid var(--border);
           background:var(--glass);color:var(--text);
           font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
@@ -556,9 +568,9 @@ export function renderPlanner() {
           ${warnText}
         </div>
         <span style="font-size:12px;color:var(--text2);flex-shrink:0;">${c.credits} cr</span>
-        <button onclick="openCourseReviews('${escAttr(code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0;" title="See faculty reviews">\u2b50</button>
-        <button onclick="viewPrereqTree('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
-        <button onclick="removeFromPlan('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;" title="Remove">\u00d7</button>
+        <button data-action="pl:openReviews" data-code="${escAttr(code)}" data-name="${escAttr(c.name)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0;" title="See faculty reviews">\u2b50</button>
+        <button data-action="pl:viewPrereq" data-code="${escAttr(code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
+        <button data-action="pl:remove" data-code="${escAttr(code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;" title="Remove">\u00d7</button>
       </div>`;
     }).join('');
 
@@ -574,7 +586,7 @@ export function renderPlanner() {
     const canPromote = validation.issues.length === 0;
     const promoteLabel = hasRunning ? 'Replace Running Semester' : 'Start Semester \u2192';
     const promoteBtn = `
-      <button onclick="promoteToRunning()" ${canPromote ? '' : 'disabled'} style="
+      <button data-action="pl:promote" ${canPromote ? '' : 'disabled'} style="
         width:100%;margin-top:10px;padding:10px 14px;border-radius:10px;
         background:${canPromote ? 'rgba(46,204,113,0.12)' : 'rgba(115,115,115,0.08)'};
         border:1px solid ${canPromote ? 'rgba(46,204,113,0.35)' : 'var(--border)'};
@@ -590,7 +602,7 @@ export function renderPlanner() {
       <div style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Your plan (${plan.courses.length} course${plan.courses.length !== 1 ? 's' : ''})</span>
-          <button onclick="clearPlan()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">Clear all</button>
+          <button data-action="pl:clear" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">Clear all</button>
         </div>
         ${planRows}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.15);">
@@ -624,7 +636,7 @@ export function renderPlanner() {
         <div style="padding:12px 14px;border-radius:10px;background:rgba(86,180,233,0.06);border:1px solid rgba(86,180,233,0.18);margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span style="font-size:12px;font-weight:700;color:#56B4E9;">Prerequisite chain for ${escHtml(plan.viewingPrereqs)}</span>
-            <button onclick="viewPrereqTree('')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">\u00d7</button>
+            <button data-action="pl:viewPrereq" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">\u00d7</button>
           </div>
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${escHtml(courseName)}</div>
           ${tree.children.length > 0
@@ -637,7 +649,7 @@ export function renderPlanner() {
   // ── Filter tabs ───────────────────────────────────────────────────────
   const filterBtn = (mode, label, count) => {
     const active = _filterMode === mode;
-    return `<button onclick="onPlannerFilter('${mode}')" style="
+    return `<button data-action="pl:filter" data-mode="${mode}" style="
       padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;
       font-family:'DM Sans',sans-serif;cursor:pointer;
       border:1px solid ${active ? 'rgba(46,204,113,0.35)' : 'var(--border)'};
@@ -672,10 +684,10 @@ export function renderPlanner() {
       <span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(46,204,113,0.10);border-radius:4px;padding:1px 6px;flex-shrink:0;">${escHtml(c.code)}</span>
       <span style="font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.name)}${softWarn}</span>
       <span style="font-size:11px;color:var(--text3);flex-shrink:0;">${c.credits} cr</span>
-      <button onclick="openCourseReviews('${escAttr(c.code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="See faculty reviews for this course">\u2b50</button>
-      <button onclick="viewPrereqTree('${escAttr(c.code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
+      <button data-action="pl:openReviews" data-code="${escAttr(c.code)}" data-name="${escAttr(c.name)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="See faculty reviews for this course">\u2b50</button>
+      <button data-action="pl:viewPrereq" data-code="${escAttr(c.code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
       ${!isLocked
-        ? `<button onclick="addToPlan('${escAttr(c.code)}')" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.25);color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;font-family:'DM Sans',sans-serif;">+ Add</button>`
+        ? `<button data-action="pl:add" data-code="${escAttr(c.code)}" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.25);color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;font-family:'DM Sans',sans-serif;">+ Add</button>`
         : `<span style="font-size:10px;color:var(--text3);flex-shrink:0;min-width:50px;text-align:right;">Locked</span>`
       }
     </div>`;
@@ -690,14 +702,14 @@ export function renderPlanner() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Available courses</span>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="switchCalcTab('reviews')" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
+          <button data-action="pl:browseReviews" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
           <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
         </div>
       </div>
       <input type="text" placeholder="Search by course code or name..."
         id="plannerSearchInput"
         value="${escAttr(_searchQuery)}"
-        oninput="onPlannerSearch(this.value)"
+        data-action="pl:search"
         style="
           width:100%;padding:8px 12px;margin-bottom:8px;
           background:var(--input-bg);border:1px solid var(--border);
