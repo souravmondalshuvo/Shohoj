@@ -1,5 +1,5 @@
 // ── js/ui/feedback.js ─────────────────────────────────────────────────────────
-import { escHtml } from '../core/helpers.js';
+import { escHtml, confirmDestructive } from '../core/helpers.js';
 
 // ── Module state ──────────────────────────────────────────────────────────────
 let _activeTab   = 'submit';
@@ -431,7 +431,12 @@ window._shohoj_fbUpvote = async function(feedbackId) {
 
 window._shohoj_fbAdminDel = async function(feedbackId) {
   if (!_isAdmin() || !window._shohoj_adminDeleteFeedback) return;
-  if (!confirm('Delete this feedback entry?')) return;
+  const item = _boardItems.find(i => i.id === feedbackId);
+  const snippet = item ? String(item.text || '').slice(0, 60) : '';
+  const label = item
+    ? `${(item.type || 'general').toUpperCase()}: ${snippet}${(item.text || '').length > 60 ? '…' : ''}`
+    : 'this feedback';
+  if (!confirmDestructive('Delete this feedback entry?', label)) return;
   const res = await window._shohoj_adminDeleteFeedback(feedbackId);
   if (res?.ok) {
     _boardItems = _boardItems.filter(i => i.id !== feedbackId);
