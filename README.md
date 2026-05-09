@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-158%20passing-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-158%20unit%20%2B%20rules-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -258,7 +258,7 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js (zero dependencies)                           | 158 tests across calculator, parser, planner, tracker, render, and reviews logic |
+| Testing     | Node.js + `@firebase/rules-unit-testing`              | 158 unit tests across calculator, parser, planner, tracker, render, and reviews logic, plus Firestore rules tests against the Firebase emulator |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 | CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
@@ -281,7 +281,7 @@ Shohoj has been through a security audit and the following protections are in pl
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
 - **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable** once written — no client-side updates or deletes. The UI now treats duplicates as read-only instead of attempting edits. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
-- **Firebase config exposure** — the Firebase config is stored in `index.html` as `window._shohoj_firebase_config` rather than inside JS source files, keeping it out of the GitHub secret scanner's path. The API key is safe to expose as Firestore rules enforce all access control.
+- **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
 
 ---
 
@@ -397,8 +397,8 @@ Shohoj/
 │   └── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                Runs full test suite on push and pull request
-│       └── cd.yml                Builds and deploys to GitHub Pages on push to main
+│       ├── ci.yml                Runs unit tests + Firestore rules tests on push and pull request
+│       └── cd.yml                Runs unit tests + Firestore rules tests, then builds and deploys to GitHub Pages on push to main
 ├── index.html                    Main HTML shell
 ├── package.json                  Test runner scripts (no dependencies)
 ├── README.md
@@ -432,6 +432,9 @@ python3 -m http.server 8000
 ```bash
 npm test
 # Results: 158 passed, 0 failed, 158 total
+
+npm run test:rules
+# Firestore rules tests against the Firebase emulator (requires Java 17+)
 ```
 
 **Build the bundled version:**
@@ -443,7 +446,7 @@ python3 build3.py
 
 > **Note:** You don't need to run the build manually before pushing — the CD pipeline does it automatically on every push to `main`. Run it locally only if you want to preview the bundled output.
 
-> **Cloud sync:** requires a Firebase project. The live site uses the production Firebase config already embedded in `index.html`. For local development, cloud sync features will work as long as `localhost` is added as an authorized domain in your Firebase console.
+> **Cloud sync:** requires a Firebase project. The live site loads its config from `js/config/runtime-config.js`, which is generated at build time from GitHub Actions secrets and is gitignored. For local development, copy `.env.example` to `.env.local`, fill in your Firebase web config, run `npm run config:local` to generate `runtime-config.js`, and make sure `localhost` is added as an authorized domain in your Firebase console.
 
 ---
 
@@ -576,7 +579,7 @@ Shohoj is built for students, by students. Contributions are welcome.
    git checkout -b feature/your-feature-name
    ```
 3. **Make your changes** — follow the existing code style (vanilla JS, no frameworks in Phase 1)
-4. **Test** — run `npm test` and verify all 158 tests pass
+4. **Test** — run `npm test` to verify all 158 unit tests pass, and `npm run test:rules` to verify Firestore rules tests pass
 5. **Build** — run `python3 build3.py` to regenerate the bundled file
 6. **Submit a pull request** with a clear description of what you changed and why
 
