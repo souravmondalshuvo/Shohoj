@@ -13,7 +13,8 @@
     "test:planner": "node tests/planner.test.js",
     "test:reviews": "node tests/reviews.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
-    "set:admin": "node scripts/set_admin_claim.js"
+    "set:admin": "node scripts/set_admin_claim.js",
+    "config:local": "node scripts/generate_runtime_config.js"
   },
   "engines": {
     "node": ">=18"
