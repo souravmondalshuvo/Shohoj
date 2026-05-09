@@ -876,7 +876,7 @@ function showNudgeBanner(show) {
   `;
   banner.innerHTML = `
     <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button onclick="window._shohoj_signIn()" style="
+    <button data-action="auth:signin" style="
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 16px;border-radius:8px;
       background:rgba(255,255,255,0.07);
@@ -902,6 +902,13 @@ function showNudgeBanner(show) {
 }
 
 window._shohoj_signIn = signInWithGoogle;
+
+// firebase.js executes before the bundled main module in dev mode, so the
+// dispatcher's registerAction may not exist yet at top-level. Defer to
+// DOMContentLoaded — by then all module scripts have run.
+document.addEventListener('DOMContentLoaded', () => {
+  window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
+});
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
