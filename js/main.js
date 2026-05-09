@@ -2,6 +2,7 @@
 import { GRADES, detectGrade } from './core/grades.js';
 import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
+import './core/dispatch.js'; // installs delegated event listeners + registerAction
 import {
   calcSemGPA, getRetakenKeys, autoDetectGrade,
   onPFChange, getSemCreditWarning, onGradePointBlur
