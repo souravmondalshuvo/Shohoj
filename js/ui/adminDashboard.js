@@ -8,7 +8,7 @@
 // Reuses the global window._shohoj_* admin helpers from firebase.js.
 // Charts via Chart.js loaded from CDN in index.html.
 
-import { escHtml, escAttr } from '../core/helpers.js';
+import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 import { getPaperDownloadUrl } from '../core/papers.js';
 
 let _open = false;
@@ -177,6 +177,7 @@ function _emptyHtml(msg) {
 
 function _paperRow(p) {
   const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
+  const label = [p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — ');
   return `
     <div class="admin-dash-row" data-id="${escAttr(p.id)}">
       <div class="admin-dash-row-main">
@@ -190,7 +191,7 @@ function _paperRow(p) {
       <div class="admin-dash-row-actions">
         <button data-act="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
         <button data-act="approve" data-id="${escAttr(p.id)}" class="admin-dash-btn--ok">Approve</button>
-        <button data-act="delete-paper" data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" class="admin-dash-btn--danger">Delete</button>
+        <button data-act="delete-paper" data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="admin-dash-btn--danger">Delete</button>
       </div>
     </div>
   `;
@@ -234,6 +235,8 @@ function _reviewReportRow(r) {
 function _feedbackRow(f) {
   const tag = (f.type || 'general').toUpperCase();
   const author = f.anonymous ? 'anonymous' : (f.uid ? `uid ${String(f.uid).slice(0, 8)}…` : '—');
+  const snippet = String(f.text || '').slice(0, 60);
+  const label = `${tag}: ${snippet}${(f.text || '').length > 60 ? '…' : ''}`;
   return `
     <div class="admin-dash-row" data-id="${escAttr(f.id)}">
       <div class="admin-dash-row-main">
@@ -244,7 +247,7 @@ function _feedbackRow(f) {
         <div class="admin-dash-row-meta">${escHtml(author)} · ${escHtml(_adminFormatDate(f.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
-        <button data-act="delete-feedback" data-id="${escAttr(f.id)}" class="admin-dash-btn--danger">Delete</button>
+        <button data-act="delete-feedback" data-id="${escAttr(f.id)}" data-label="${escAttr(label)}" class="admin-dash-btn--danger">Delete</button>
       </div>
     </div>
   `;
@@ -462,7 +465,7 @@ async function _onAction(e) {
       return;
     }
     if (act === 'delete-paper') {
-      if (!confirm('Delete this paper and its file? This cannot be undone.')) return;
+      if (!confirmDestructive('Delete this paper and its R2 file?', btn.dataset.label || 'this paper')) return;
       const res = await window._shohoj_deletePaper?.(btn.dataset.id, btn.dataset.path);
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
       _adminToast('Deleted.');
@@ -471,7 +474,8 @@ async function _onAction(e) {
       return;
     }
     if (act === 'delete-paper-by-report') {
-      if (!confirm('Delete the reported paper? This cannot be undone.')) return;
+      const target = `paper ${String(btn.dataset.paperId || '').slice(0, 12)}…`;
+      if (!confirmDestructive('Delete the reported paper and its R2 file?', target)) return;
       const res = await window._shohoj_deletePaper?.(btn.dataset.paperId);
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
       _adminToast('Paper deleted.');
@@ -495,7 +499,7 @@ async function _onAction(e) {
       return;
     }
     if (act === 'delete-feedback') {
-      if (!confirm('Delete this feedback?')) return;
+      if (!confirmDestructive('Delete this feedback entry?', btn.dataset.label || 'this feedback')) return;
       const res = await window._shohoj_adminDeleteFeedback?.(btn.dataset.id);
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
       _adminToast('Deleted.');
