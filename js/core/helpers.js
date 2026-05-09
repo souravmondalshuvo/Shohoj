@@ -17,6 +17,23 @@ export function escAttr(s) {
   return escHtml(s);
 }
 
+/**
+ * Strong confirmation for destructive admin actions. Names the target,
+ * spells out that the action is permanent, and requires the operator to
+ * type DELETE so an accidental Enter-press on a focused button is not
+ * enough to wipe data.
+ *
+ * Returns true if the user typed DELETE exactly, false otherwise (cancel,
+ * empty, wrong text). Pass `label` to identify the target ("CSE220 Final
+ * 2024"); omit it for items without a useful name.
+ */
+export function confirmDestructive(action, label) {
+  const head = label ? `${action}\n\nTarget: ${label}` : action;
+  const body = '\n\nThis cannot be undone.\n\nType DELETE to confirm.';
+  const typed = window.prompt(head + body);
+  return typed === 'DELETE';
+}
+
 export function ordinalSup(n) {
   const s = ['th','st','nd','rd'];
   const v = n % 100;
