@@ -5023,8 +5023,8 @@ body[data-page="admin"] .orb { display: none !important; }
   <div id="suggestions-portal"></div>
 
   <!-- Import Transcript Modal -->
-  <div id="importModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-    <div id="importModalCard" style="background:#0f1f14;border:1px solid rgba(46,204,113,0.25);border-radius:16px;padding:28px 32px;max-width:480px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:85vh;overflow-y:auto;overflow-x:hidden;position:relative;z-index:10000;">
+  <div id="importModal" class="shohoj-modal-backdrop">
+    <div id="importModalCard" class="shohoj-modal-card shohoj-modal-card--md">
       <div id="importModalContent"></div>
     </div>
   </div>
@@ -5194,22 +5194,7 @@ body[data-page="admin"] .orb { display: none !important; }
 
             <!-- Step 1: Department -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <select id="deptSelect" style="
-                background:var(--input-bg);
-                backdrop-filter:blur(8px);
-                border:1px solid var(--border);
-                border-radius:10px;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath d=%27M3 4.5L6 7.5L9 4.5%27 stroke=%27%238aab90%27 stroke-width=%271.5%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 fill=%27none%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;
-                color:var(--text);
-                font-family:'DM Sans',sans-serif;
-                font-size:13px;
-                font-weight:500;
-                padding:6px 10px;
-                outline:none;
-                cursor:pointer;
-                transition:border-color 0.2s;
-                max-width:420px;
-                height:36px;box-sizing:border-box;
-              ">
+              <select id="deptSelect" class="start-form-select start-form-select--dept">
                 <option value="" disabled selected>— Select your department —</option>
                 <option value="ANT">B.S.S. in Anthropology (ANT)</option>
                 <option value="ARC">B.Arch. in Architecture (ARC)</option>
@@ -5228,48 +5213,24 @@ body[data-page="admin"] .orb { display: none !important; }
                 <option value="PHR">B.Sc. in Pharmacy (PHR)</option>
                 <option value="PHY">B.Sc. in Physics (PHY)</option>
               </select>
-              <div id="deptCredits" style="
-                display:none;align-items:center;gap:5px;
-                background:rgba(46,204,113,0.10);
-                border:1px solid rgba(46,204,113,0.28);
-                border-radius:10px;padding:5px 11px;
-                height:36px;box-sizing:border-box;
-              ">
+              <div id="deptCredits" class="dept-credits-badge">
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="flex-shrink:0;opacity:0.85;">
                   <circle cx="6" cy="6" r="5" stroke="#2ECC71" stroke-width="1.5"/>
                   <path d="M6 3.5v3M6 8v.8" stroke="#2ECC71" stroke-width="1.5" stroke-linecap="round"/>
                 </svg>
-                <span id="deptCreditsText" style="font-size:12px;font-weight:600;color:var(--green);letter-spacing:0.3px;white-space:nowrap;">136 Total Credits</span>
+                <span id="deptCreditsText" class="dept-credits-text">136 Total Credits</span>
               </div>
             </div>
 
             <!-- Step 2: Starting semester (appears after dept chosen) -->
             <div id="startSemRow" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-              <select id="startSeason" style="
-                background:var(--input-bg);
-                border:1px solid var(--border);
-                border-radius:10px;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath d=%27M3 4.5L6 7.5L9 4.5%27 stroke=%27%238aab90%27 stroke-width=%271.5%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 fill=%27none%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;color:var(--text);
-                font-family:'DM Sans',sans-serif;
-                font-size:13px;font-weight:500;
-                padding:6px 10px;outline:none;cursor:pointer;
-                transition:border-color 0.2s;
-                height:36px;box-sizing:border-box;
-              ">
+              <select id="startSeason" class="start-form-select">
                 <option value="" disabled selected>— Season —</option>
                 <option value="Spring">Spring</option>
                 <option value="Summer">Summer</option>
                 <option value="Fall">Fall</option>
               </select>
-              <select id="startYear" style="
-                background:var(--input-bg);
-                border:1px solid var(--border);
-                border-radius:10px;-webkit-appearance:none;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath d=%27M3 4.5L6 7.5L9 4.5%27 stroke=%27%238aab90%27 stroke-width=%271.5%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 fill=%27none%27/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;color:var(--text);
-                font-family:'DM Sans',sans-serif;
-                font-size:13px;font-weight:500;
-                padding:6px 10px;outline:none;cursor:pointer;
-                transition:border-color 0.2s;
-                height:36px;box-sizing:border-box;
-              ">
+              <select id="startYear" class="start-form-select">
                 <option value="" disabled selected>— Year —</option>
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
@@ -5279,15 +5240,7 @@ body[data-page="admin"] .orb { display: none !important; }
                 <option value="2025">2025</option>
                 <option value="2026">2026</option>
               </select>
-              <button id="startSemConfirmBtn" style="
-                background:var(--green);color:#0b0f0d;
-                font-family:'DM Sans',sans-serif;
-                font-size:13px;font-weight:600;
-                padding:6px 14px;border:none;
-                border-radius:10px;cursor:pointer;
-                transition:opacity 0.2s;
-                height:36px;box-sizing:border-box;
-              ">Let's go →</button>
+              <button id="startSemConfirmBtn" class="start-form-confirm">Let's go →</button>
             </div>
 
           </div>
@@ -5457,16 +5410,16 @@ body[data-page="admin"] .orb { display: none !important; }
   </section>
 
   <!-- Feedback modal -->
-  <div id="feedbackModal" style="display:none;opacity:0;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);align-items:center;justify-content:center;transition:opacity 0.18s;">
-    <div id="feedbackModalCard" style="border:1px solid rgba(46,204,113,0.25);border-radius:20px;padding:28px 28px 24px;max-width:440px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:85vh;overflow-y:auto;position:relative;">
+  <div id="feedbackModal" class="shohoj-modal-backdrop shohoj-modal-backdrop--strong shohoj-modal-backdrop--fade">
+    <div id="feedbackModalCard" class="shohoj-modal-card shohoj-modal-card--feedback">
       <div id="feedbackModalContent"></div>
     </div>
   </div>
 
   <!-- Coffee modal -->
-  <div id="coffeeModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-    <div style="background:#0f1f14;border:1px solid rgba(46,204,113,0.25);border-radius:20px;padding:28px 28px 24px;max-width:320px;width:90%;box-shadow:0 24px 80px rgba(0,0,0,0.6);text-align:center;position:relative;">
-      <button id="coffeeModalClose" style="position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:20px;cursor:pointer;line-height:1;">×</button>
+  <div id="coffeeModal" class="shohoj-modal-backdrop shohoj-modal-backdrop--strong">
+    <div class="shohoj-modal-card shohoj-modal-card--sm">
+      <button id="coffeeModalClose" class="shohoj-modal-close-x">×</button>
       <div style="font-size:28px;margin-bottom:6px;">☕</div>
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:#fff;margin-bottom:16px;">Buy me a coffee</div>
       <div id="qr-slider-track" style="position:relative;display:flex;background:rgba(255,255,255,0.08);border-radius:30px;padding:3px;margin-bottom:16px;user-select:none;cursor:pointer;">
