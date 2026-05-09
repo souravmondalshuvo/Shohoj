@@ -2,6 +2,13 @@ import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('sim:importTranscript', () => {
+  document.getElementById('transcriptFileInput')?.click();
+});
+registerAction('sim:addSemester', () => window.addSemester?.());
+registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
 
 const _retakeChecked = new Set();
 
@@ -197,14 +204,14 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
             You're using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake &amp; Repeat Strategy</strong>, <strong>Grade Changer</strong>, and <strong>Reverse Solver</strong>, import your transcript or add your past semester courses with grades.
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-            <button onclick="document.getElementById('transcriptFileInput').click()" style="
+            <button data-action="sim:importTranscript" style="
               padding:7px 14px;border-radius:8px;
               background:rgba(86,180,233,0.12);border:1px solid rgba(86,180,233,0.3);
               color:#56B4E9;font-size:12px;font-weight:600;cursor:pointer;
               font-family:'DM Sans',sans-serif;
               transition:background 0.2s,border-color 0.2s;
             ">📄 Import Transcript</button>
-            <button onclick="addSemester()" style="
+            <button data-action="sim:addSemester" style="
               padding:7px 14px;border-radius:8px;
               background:rgba(46,204,113,0.10);border:1px solid rgba(46,204,113,0.25);
               color:#2ECC71;font-size:12px;font-weight:600;cursor:pointer;
@@ -296,7 +303,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     const rowBg = checked ? 'background:rgba(29,185,84,0.07);' : '';
     const safeKey = escAttr(c.key);
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
-                onclick="window._toggleRetake('${safeKey}')">
+                data-action="sim:toggleRetake" data-key="${safeKey}">
       <td style="padding:6px 8px;font-size:12px">${chk}</td>
       <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(c.name)}">${escHtml(c.name)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${escHtml(c.sem)}</td>
