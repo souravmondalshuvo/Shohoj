@@ -100,10 +100,13 @@ Cross-module calls use `window._shohoj_*` because the Phase-1 build is non-modul
 
 ## Data flow
 
-1. User signs in with `@g.bracu.ac.bd` Google account.
-2. firebase.js receives the auth state, reads the ID token (carries `admin: true` claim if granted), and starts a Firestore snapshot listener on `users/{uid}`.
-3. Local edits update the state object → debounced write to Firestore + localStorage.
-4. Remote changes from another device come through the snapshot listener and rebuild the UI.
+1. Browser loads `runtime-config.js` (generated from `.env.local` locally or GitHub Actions secrets in CI), then the bundled `shohoj.html`.
+2. Firebase App Check obtains a reCAPTCHA v3 attestation. Every Firestore call is gated by App Check.
+3. User signs in with `@g.bracu.ac.bd` Google account. firebase.js receives the auth state, reads the ID token (carries `admin: true` claim if granted), and starts a Firestore snapshot listener on `users/{uid}`.
+4. Local edits update the state object → debounced write to Firestore + localStorage.
+5. Remote changes from another device come through the snapshot listener and rebuild the UI.
+6. Past-paper uploads/downloads go through the Cloudflare Worker, which verifies the Firebase ID token (BRACU email or `admin: true`) before touching R2. Paper metadata is in Firestore (`papers/{paperId}`); the file body is in R2.
+7. Admin actions (approve/delete papers, dismiss reports, delete feedback) are written to `adminLogs/{id}` for auditability.
 
 ## Sync model
 
@@ -119,3 +122,9 @@ The cloud sync is **last-write-wins with same-tab suppression**:
 `build3.py` reads each JS file in dependency order, strips `import`/`export` syntax, inlines into a single `<script>` block, inlines CSS, keeps `firebase.js` as a separate `<script type="module">` (because it imports from CDN), and writes self-contained `shohoj.html` and `admin.html`. Those go to GitHub Pages.
 
 The `runtime-config.js` file is generated fresh from `.env` (locally) or GitHub Actions secrets (in CI) before every build, so the bundled HTML carries Firebase config without it sitting in source.
+
+## See also
+
+- [SECURITY.md](SECURITY.md) — auth, authorization, App Check, threat model
+- [PRIVACY.md](PRIVACY.md) — what's collected, where it lives, how to delete it
+- [DEPLOYMENT.md](DEPLOYMENT.md) — required secrets, CD pipeline, local dev, Worker deploy, admin claim grant/revoke
