@@ -18120,6 +18120,61 @@ function recalc() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+function _wireInlineReplacements() {
+  const on = (id, ev, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(ev, fn);
+  };
+
+  // Department / start-semester pickers (replaces inline onchange on selects).
+  on('deptSelect', 'change', () => onDeptSelect());
+  on('startSeason', 'change', () => { renderSemesters(); recalc(); });
+  on('startYear',   'change', () => { renderSemesters(); recalc(); });
+  on('startSemConfirmBtn', 'click', () => onStartSemConfirm());
+
+  // Calculator tab strip (replaces inline onclick on each .calc-tab button).
+  document.querySelectorAll('.calc-tab[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchCalcTab(btn.dataset.tab));
+  });
+
+  // Transcript import / export / clear-data buttons.
+  on('importPdfBtn', 'click', () => {
+    document.getElementById('transcriptFileInput')?.click();
+  });
+  on('transcriptFileInput', 'change', e => importTranscriptPDF(e.target));
+  on('exportPdfBtn',  'click', () => exportPDF());
+  on('clearDataBtn',  'click', () => window.handleClearData());
+
+  // Modal backdrop closes — click on the backdrop only, not the inner card.
+  const closeOnBackdrop = (modalId, closer) => {
+    const m = document.getElementById(modalId);
+    if (!m) return;
+    m.addEventListener('click', e => { if (e.target === m) closer(); });
+  };
+  closeOnBackdrop('importModal',   () => hideImportModal());
+  closeOnBackdrop('feedbackModal', () => closeFeedbackModal());
+  closeOnBackdrop('coffeeModal',   () => {
+    const m = document.getElementById('coffeeModal');
+    if (m) m.style.display = 'none';
+  });
+
+  // Coffee modal close (×) + footer feedback / coffee links.
+  on('coffeeModalClose', 'click', () => {
+    const m = document.getElementById('coffeeModal');
+    if (m) m.style.display = 'none';
+  });
+  document.querySelectorAll('.js-open-feedback').forEach(a => {
+    a.addEventListener('click', e => { e.preventDefault(); openFeedbackModal(); });
+  });
+  document.querySelectorAll('.js-open-coffee').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const m = document.getElementById('coffeeModal');
+      if (m) m.style.display = 'flex';
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Skip calculator init on pages that don't host it (e.g., the admin page).
   if (!document.getElementById('targetCgpa')) return;
@@ -18127,6 +18182,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('creditsRemaining').addEventListener('input', recalc);
   document.getElementById('addSemesterBtn').addEventListener('click', () => addSemester());
   document.getElementById('addRunningSemBtn').addEventListener('click', () => addRunningSemester());
+
+  _wireInlineReplacements();
 
   initSuggestionsScrollHandler();
 
