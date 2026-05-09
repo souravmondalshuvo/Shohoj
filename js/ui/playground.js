@@ -2,6 +2,14 @@ import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('pg:removeChange',     el => removePlaygroundChange(el.dataset.key));
+registerAction('pg:clearChanges',     () => clearPlaygroundChanges());
+registerAction('pg:addChange',        () => addPlaygroundChange());
+registerAction('pg:solverTarget',     el => onSolverTargetChange(el.value));
+registerAction('pg:solverCourse',     el => onSolverCourseChange(el.value));
+registerAction('pg:switchTab',        el => switchPlaygroundTab(el.dataset.tab));
 
 // ── Local playground state ──────────────────────────────────────────────────
 const pg = {
@@ -209,13 +217,13 @@ function renderGradeChanger(courses, totals) {
           <span style="color:${gradeColor(ch.newGrade)};font-weight:700">${escHtml(ch.newGrade)}</span>
         </div>
         <div class="pg-change-impact" style="color:${ch.impact >= 0 ? '#2ECC71' : '#e74c3c'}">${ch.impact >= 0 ? '+' : ''}${ch.impact.toFixed(3)}</div>
-        <button class="pg-change-remove" onclick="removePlaygroundChange('${escAttr(ch.key)}')" title="Remove">×</button>
+        <button class="pg-change-remove" data-action="pg:removeChange" data-key="${escAttr(ch.key)}" title="Remove">×</button>
       </div>`).join('');
 
     changesHtml = `
       <div class="pg-changes-header">
         <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Changes (${changeDetails.length})</span>
-        <button class="pg-clear-btn" onclick="clearPlaygroundChanges()">Clear all</button>
+        <button class="pg-clear-btn" data-action="pg:clearChanges">Clear all</button>
       </div>
       <div class="pg-changes-list">${rows}</div>`;
   }
@@ -237,7 +245,7 @@ function renderGradeChanger(courses, totals) {
         <option value="" disabled selected>New grade</option>
         ${gradeOpts}
       </select>
-      <button class="pg-add-btn" onclick="addPlaygroundChange()">Add</button>
+      <button class="pg-add-btn" data-action="pg:addChange">Add</button>
     </div>` : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px">All courses have been modified</div>`;
 
   return `${heroHtml}${changesHtml}${pickerHtml}`;
@@ -368,11 +376,11 @@ function renderReverseSolver(courses, totals) {
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
           placeholder="e.g. 3.00" value="${escAttr(effectiveTarget)}"
-          oninput="onSolverTargetChange(this.value)" />
+          data-action="pg:solverTarget" />
       </div>
       <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
         <label class="pg-solver-label">Course</label>
-        <select class="pg-solver-course-select" onchange="onSolverCourseChange(this.value)">
+        <select class="pg-solver-course-select" data-action="pg:solverCourse">
           <option value="" disabled ${!pg.solverKey ? 'selected' : ''}>Pick a course</option>
           ${courseOpts}
         </select>
@@ -413,7 +421,7 @@ export function renderPlayground(force) {
 
   const tabsHtml = tabs.map(t => `
     <button class="pg-tab${pg.activeTab === t.id ? ' pg-tab-active' : ''}"
-      onclick="switchPlaygroundTab('${t.id}')">
+      data-action="pg:switchTab" data-tab="${t.id}">
       <span class="pg-tab-label">${t.label}</span>
       <span class="pg-tab-desc">${t.desc}</span>
     </button>`).join('');
