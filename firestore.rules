@@ -131,7 +131,7 @@ service cloud.firestore {
         && d.text.size() <= 500
         && d.anonymous is bool
         && d.createdAt == request.time
-        && (!('context' in d) || d.context is map)
+        && (!('context' in d) || (d.context is map && d.context.size() <= 8))
         && (!('uid' in d) || d.uid == request.auth.uid);
     }
 
