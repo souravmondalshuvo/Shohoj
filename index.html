@@ -4581,6 +4581,16 @@ body[data-page="admin"] .orb { display: none !important; }
 [data-theme="light"] .admin-btn-ghost:hover {
   background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.2);
 }
+.admin-btn-ghost:disabled {
+  cursor: not-allowed; opacity: 0.6;
+}
+.admin-btn-ghost--loading {
+  animation: admin-refresh-pulse 1.4s ease-in-out infinite;
+}
+@keyframes admin-refresh-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
 
 .admin-page-body { display: flex; flex-direction: column; gap: 28px; }
 

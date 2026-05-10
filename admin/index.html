@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-l898LrVxwGJQEg9QCYoN9XmWGiBARlbNBDyDnwi9ZSc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-uyZy07jaiFr2RkXwkqDsGGFTjQIhL768859SntEsIeE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -4578,6 +4578,16 @@ body[data-page="admin"] .orb { display: none !important; }
 [data-theme="light"] .admin-btn-ghost:hover {
   background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.2);
 }
+.admin-btn-ghost:disabled {
+  cursor: not-allowed; opacity: 0.6;
+}
+.admin-btn-ghost--loading {
+  animation: admin-refresh-pulse 1.4s ease-in-out infinite;
+}
+@keyframes admin-refresh-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
 
 .admin-page-body { display: flex; flex-direction: column; gap: 28px; }
 
@@ -9094,6 +9104,17 @@ function _clearChartSkeleton(canvasId) {
   if (skel) skel.remove();
 }
 
+function _restoreChartSkeleton(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  if (!wrap || wrap.querySelector('.admin-chart-skel')) return;
+  const skel = document.createElement('div');
+  skel.className = 'admin-chart-skel admin-skel';
+  skel.dataset.skelFor = canvasId;
+  wrap.insertBefore(skel, canvas);
+}
+
 function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
 }
@@ -9180,6 +9201,8 @@ async function _loadPapers() {
   const list = document.getElementById('adminListPapers');
   const count = document.getElementById('adminCountPapers');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchUnapprovedPapers?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_paperRow).join('') : _emptyHtml('No pending uploads.');
@@ -9189,6 +9212,8 @@ async function _loadPaperReports() {
   const list = document.getElementById('adminListPaperReports');
   const count = document.getElementById('adminCountPaperReports');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchPaperReports?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_paperReportRow).join('') : _emptyHtml('No paper reports.');
@@ -9198,6 +9223,8 @@ async function _loadReviewReports() {
   const list = document.getElementById('adminListReviewReports');
   const count = document.getElementById('adminCountReviewReports');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchReviewReports?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_reviewReportRow).join('') : _emptyHtml('No review reports.');
@@ -9207,6 +9234,8 @@ async function _loadFeedback() {
   const list = document.getElementById('adminListFeedback');
   const count = document.getElementById('adminCountFeedback');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(3);
   const items = await window._shohoj_fetchAllFeedback?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_feedbackRow).join('') : _emptyHtml('No feedback.');
@@ -9305,10 +9334,30 @@ function _renderDoughnut(canvasId, key, labels, values, palette) {
 }
 
 async function _loadStatsAndCharts() {
+  const grid = document.getElementById('adminStatsGrid');
+  if (grid) {
+    grid.innerHTML =
+      _statCardSkeleton('Total reviews') +
+      _statCardSkeleton('Approved papers') +
+      _statCardSkeleton('Pending papers') +
+      _statCardSkeleton('Feedback items') +
+      _statCardSkeleton('Paper reports') +
+      _statCardSkeleton('Review reports');
+  }
+  ['adminActivityChart','adminTopFacultyChart','adminTopCoursesChart',
+   'adminPaperTypesChart','adminFeedbackTypesChart'].forEach(id => {
+    const key = {
+      adminActivityChart:'activity', adminTopFacultyChart:'topFaculty',
+      adminTopCoursesChart:'topCourses', adminPaperTypesChart:'paperTypes',
+      adminFeedbackTypesChart:'feedbackTypes',
+    }[id];
+    _destroyChart(key);
+    _restoreChartSkeleton(id);
+  });
+
   const stats = await window._shohoj_fetchAdminStats?.();
   if (!stats) return;
 
-  const grid = document.getElementById('adminStatsGrid');
   if (grid) {
     grid.innerHTML =
       _statCard('Total reviews',   stats.counts.reviews) +
@@ -9356,12 +9405,29 @@ async function _loadStatsAndCharts() {
   );
 }
 
-function _refreshAll() {
-  _loadStatsAndCharts();
-  _loadPapers();
-  _loadPaperReports();
-  _loadReviewReports();
-  _loadFeedback();
+async function _refreshAll() {
+  const btn = document.getElementById('adminRefreshBtn');
+  const prevLabel = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('admin-btn-ghost--loading');
+    btn.textContent = '↻ Refreshing…';
+  }
+  try {
+    await Promise.all([
+      _loadStatsAndCharts(),
+      _loadPapers(),
+      _loadPaperReports(),
+      _loadReviewReports(),
+      _loadFeedback(),
+    ]);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('admin-btn-ghost--loading');
+      btn.textContent = prevLabel;
+    }
+  }
 }
 
 async function _onAction(e) {
