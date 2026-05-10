@@ -86,4 +86,4 @@ What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per d
 
 ## Reporting an issue
 
-Open a GitHub issue with the `security` label, or email `souravmondal033@gmail.com`. Please don't disclose security issues publicly until they're patched.
+Open a GitHub issue with the `security` label, or email `admin.shohoj@gmail.com`. Please don't disclose security issues publicly until they're patched.
