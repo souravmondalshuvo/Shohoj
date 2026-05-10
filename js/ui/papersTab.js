@@ -12,6 +12,7 @@ import {
 import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import { openPreviewModal } from './previewModal.js';
 
 registerAction('papers:signin', () => window._shohoj_signIn && window._shohoj_signIn());
 
@@ -101,6 +102,7 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
+        <button class="btn-primary paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">👁 Preview</button>
         <button class="btn-secondary paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
         <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper">⚑ Report</button>
       </div>
@@ -310,6 +312,22 @@ function _onTypeChange(e) {
 }
 
 async function _onListClick(e) {
+  const pv = e.target.closest('.paper-card-preview');
+  if (pv) {
+    const path = pv.dataset.path;
+    if (!path) return;
+    pv.disabled = true;
+    pv.textContent = 'Loading…';
+    const url = await getPaperDownloadUrl(path);
+    pv.disabled = false;
+    pv.textContent = '👁 Preview';
+    if (!url) {
+      _toast('Could not load preview.');
+      return;
+    }
+    openPreviewModal({ url, title: pv.dataset.title || 'Preview', path });
+    return;
+  }
   const dl = e.target.closest('.paper-card-download');
   if (dl) {
     const path = dl.dataset.path;
