@@ -16,6 +16,6 @@ bucket_name = "shohoj-papers"
 [vars]
 FIREBASE_PROJECT_ID = "shohoj"
 ALLOWED_ORIGINS = "https://souravmondalshuvo.github.io,http://localhost:5173,http://127.0.0.1:5173"
-ADMIN_EMAIL = "souravmondal033@gmail.com"
+ADMIN_EMAIL = "admin.shohoj@gmail.com"
 ADMIN_MODERATION_URL = "https://souravmondalshuvo.github.io/Shohoj/admin/"
 EMAIL_FROM = "Shohoj <onboarding@resend.dev>"
