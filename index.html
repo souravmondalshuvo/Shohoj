@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ytvCAIS7LLecRtzUXbLu9SH7ToqikoDVmJ+7xf2tHjM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ISJAlmCUtbG9sWi/D8HrE7ebqzeCTAAcbaeLH2lXZfo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4429,10 +4429,17 @@ input, select, textarea,
 .paper-card-preview,
 .paper-card-download {
   flex: 1 1 0; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem;
+  line-height: 1;
   padding: 8px 12px; border-radius: 8px; cursor: pointer;
   white-space: nowrap;
   transition: transform 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+}
+.paper-card-icon {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  display: inline-block;
 }
 .paper-card-preview {
   background: var(--green); color: #0b0f0d; border: 1px solid var(--green);
@@ -4451,9 +4458,11 @@ input, select, textarea,
 [data-theme="light"] .paper-card-download { border-color: rgba(0,0,0,0.18); }
 .paper-card-report {
   flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid rgba(255,255,255,0.14);
   color: inherit; opacity: 0.7; padding: 8px 10px;
   border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+  line-height: 1;
 }
 .paper-card-report:hover { opacity: 1; border-color: rgba(255,90,90,0.55); color: #ff7676; }
 [data-theme="light"] .paper-card-report { border-color: rgba(0,0,0,0.14); }
@@ -13404,6 +13413,13 @@ function _skeletonList(count = 6) {
   return Array.from({ length: count }, _skeletonCard).join('');
 }
 
+const _ICON_EYE = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _ICON_DOWNLOAD = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+const _ICON_FLAG = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+
+const _LBL_PREVIEW  = `${_ICON_EYE}<span>Preview</span>`;
+const _LBL_DOWNLOAD = `${_ICON_DOWNLOAD}<span>Download</span>`;
+
 function _paperCard(p) {
   const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type || 'Paper';
   const semester = p.semester ? `<span class="paper-card-meta-pill">${escHtml(p.semester)}</span>` : '';
@@ -13421,9 +13437,9 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
-        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">👁 Preview</button>
-        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
-        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">⚑</button>
+        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
+        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">${_LBL_DOWNLOAD}</button>
+        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">${_ICON_FLAG}</button>
       </div>
     </article>
   `;
@@ -13636,10 +13652,10 @@ async function _onListClick(e) {
     const path = pv.dataset.path;
     if (!path) return;
     pv.disabled = true;
-    pv.textContent = 'Loading…';
+    pv.innerHTML = '<span>Loading…</span>';
     const url = await getPaperDownloadUrl(path);
     pv.disabled = false;
-    pv.textContent = '👁 Preview';
+    pv.innerHTML = _LBL_PREVIEW;
     if (!url) {
       _toast('Could not load preview.');
       return;
@@ -13652,10 +13668,10 @@ async function _onListClick(e) {
     const path = dl.dataset.path;
     if (!path) return;
     dl.disabled = true;
-    dl.textContent = 'Loading…';
+    dl.innerHTML = '<span>Loading…</span>';
     const url = await getPaperDownloadUrl(path);
     dl.disabled = false;
-    dl.textContent = '⬇ Download';
+    dl.innerHTML = _LBL_DOWNLOAD;
     if (!url) {
       _toast('Could not fetch download link.');
       return;
