@@ -8,10 +8,14 @@ binding = "PAPERS_BUCKET"
 bucket_name = "shohoj-papers"
 
 # Plain-text env vars — safe to commit. Do NOT put secrets here; use
-# `wrangler secret put` for anything sensitive (we don't need any for now).
+# `wrangler secret put` for anything sensitive (RESEND_API_KEY is set
+# that way for the upload-notification email flow).
 #
 # Admin authorization is enforced via the Firebase `admin` custom claim
-# (see scripts/set_admin_claim.js). No ADMIN_UID or ADMIN_EMAIL is needed.
+# (see scripts/set_admin_claim.js).
 [vars]
 FIREBASE_PROJECT_ID = "shohoj"
 ALLOWED_ORIGINS = "https://souravmondalshuvo.github.io,http://localhost:5173,http://127.0.0.1:5173"
+ADMIN_EMAIL = "admin.shohoj@gmail.com"
+ADMIN_MODERATION_URL = "https://souravmondalshuvo.github.io/Shohoj/admin/"
+EMAIL_FROM = "Shohoj <onboarding@resend.dev>"
