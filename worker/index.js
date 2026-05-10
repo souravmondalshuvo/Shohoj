@@ -11,7 +11,6 @@
 
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
-const FIREBASE_JWKS_URL = 'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com';
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\//;
@@ -24,29 +23,38 @@ function getJwks() {
   return _jwks;
 }
 
+export class AuthError extends Error {}
+
 async function verifyFirebaseToken(token, env) {
-  const { payload } = await jwtVerify(token, getJwks(), {
-    issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
-    audience: env.FIREBASE_PROJECT_ID,
-  });
+  let payload;
+  try {
+    ({ payload } = await jwtVerify(token, getJwks(), {
+      issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
+      audience: env.FIREBASE_PROJECT_ID,
+    }));
+  } catch (e) {
+    throw new AuthError(e?.message || 'Token verification failed');
+  }
   const isBracu = !!payload.email && BRACU_EMAIL_RE.test(payload.email);
   const isAdmin = payload.admin === true;
   if (!isBracu && !isAdmin) {
-    throw new Error('Email not in BRACU domain');
+    throw new AuthError('Email not in BRACU domain');
   }
   return payload;
 }
 
-function corsHeaders(env, origin) {
+export function corsHeaders(env, origin) {
   const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-  const allowOrigin = allowed.includes(origin) ? origin : (allowed[0] || '*');
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
+  const headers = {
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
+  if (allowed.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+  return headers;
 }
 
 function jsonResponse(body, init = {}, env, origin) {
@@ -60,23 +68,23 @@ function jsonResponse(body, init = {}, env, origin) {
   });
 }
 
-function isValidStoragePath(p) {
+export function isValidStoragePath(p) {
   return typeof p === 'string'
     && /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/.test(p);
 }
 
-function isValidCourseCode(c) {
+export function isValidCourseCode(c) {
   return typeof c === 'string' && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c);
 }
 
-function safeFilename(name) {
+export function safeFilename(name) {
   return String(name || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
 }
 
 async function readAuth(request, env) {
   const auth = request.headers.get('Authorization') || '';
   const m = auth.match(/^Bearer (.+)$/);
-  if (!m) throw new Error('Missing bearer token');
+  if (!m) throw new AuthError('Missing bearer token');
   return verifyFirebaseToken(m[1], env);
 }
 
@@ -168,9 +176,14 @@ export default {
       }
       return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
     } catch (e) {
-      const msg = e && e.message ? e.message : 'Server error';
-      const status = /token|email|domain|bearer/i.test(msg) ? 401 : 500;
-      return jsonResponse({ error: msg }, { status }, env, origin);
+      const isAuthErr = e instanceof AuthError;
+      console.error('worker error:', e?.message || e);
+      return jsonResponse(
+        { error: isAuthErr ? 'Unauthorized' : 'Server error' },
+        { status: isAuthErr ? 401 : 500 },
+        env,
+        origin,
+      );
     }
   },
 };
