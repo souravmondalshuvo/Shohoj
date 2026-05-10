@@ -10,6 +10,7 @@
 
 import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 import { getPaperDownloadUrl } from '../core/papers.js';
+import { openPreviewModal } from './previewModal.js';
 
 let _open = false;
 let _dedicated = false;
@@ -186,57 +187,6 @@ function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
 }
 
-function _openPreviewModal({ url, title, path }) {
-  const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path || '');
-  const wrap = document.createElement('div');
-  wrap.className = 'admin-preview-backdrop';
-  const body = isImage
-    ? `<img class="admin-preview-img" src="${escAttr(url)}" alt="${escAttr(title)}">`
-    : `<iframe class="admin-preview-iframe" src="${escAttr(url)}" title="${escAttr(title)}"></iframe>`;
-  wrap.innerHTML = `
-    <div class="admin-preview-modal" role="dialog" aria-modal="true" aria-label="${escAttr(title)}">
-      <header class="admin-preview-head">
-        <div class="admin-preview-title">${escHtml(title)}</div>
-        <div class="admin-preview-head-actions">
-          <a class="admin-preview-newtab" href="${escAttr(url)}" target="_blank" rel="noopener">Open in new tab ↗</a>
-          <button type="button" class="admin-preview-close" aria-label="Close">×</button>
-        </div>
-      </header>
-      <div class="admin-preview-body">${body}</div>
-    </div>
-  `;
-  document.body.appendChild(wrap);
-  const close = () => {
-    wrap.remove();
-    document.removeEventListener('keydown', onKey);
-  };
-  const onKey = e => { if (e.key === 'Escape') close(); };
-  wrap.querySelector('.admin-preview-close').addEventListener('click', close);
-  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
-  document.addEventListener('keydown', onKey);
-
-  // The custom cursor (cursor.js) tracks `document.addEventListener('mousemove')`
-  // on the parent. Mouse events inside an iframe stay inside the iframe document,
-  // so without forwarding the cursor freezes the moment the pointer enters the
-  // PDF area. blob: URLs are same-origin, so we can listen inside the iframe and
-  // dispatch a synthetic mousemove on the parent with iframe-relative coords.
-  const iframe = wrap.querySelector('.admin-preview-iframe');
-  if (iframe) {
-    iframe.addEventListener('load', () => {
-      try {
-        const doc = iframe.contentDocument;
-        if (!doc) return;
-        doc.addEventListener('mousemove', e => {
-          const rect = iframe.getBoundingClientRect();
-          document.dispatchEvent(new MouseEvent('mousemove', {
-            clientX: rect.left + e.clientX,
-            clientY: rect.top + e.clientY,
-          }));
-        }, { passive: true });
-      } catch { /* cross-origin iframe — nothing we can do */ }
-    });
-  }
-}
 
 function _paperRow(p) {
   const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
@@ -567,7 +517,7 @@ async function _onAction(e) {
         _adminToast('Could not load preview.');
         return;
       }
-      _openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
+      openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
       return;
     }
     if (act === 'approve') {
