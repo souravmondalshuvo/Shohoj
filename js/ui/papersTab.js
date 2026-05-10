@@ -374,23 +374,36 @@ async function _loadList() {
 }
 
 // ── Upload modal ─────────────────────────────────────────────────────────────
+// Module-level draft. Survives modal close/reopen (intentional: an accidental
+// dismiss should not nuke the user's work). Cleared only on successful upload
+// or full page refresh — File objects can't be persisted to localStorage and
+// the only sensible discard hatch is the explicit "Clear draft" button below.
+let _uploadDraft = null;
+
+function _draftHasContent(d) {
+  if (!d) return false;
+  return !!(d.courseCode || d.title || d.semester || d.facultyInitials || d.file);
+}
+
 function _openUploadModal() {
   if (!_isSignedIn()) {
     _toast('Sign in to upload papers.');
     return;
   }
+  const draft = _uploadDraft || {};
   const wrap = document.createElement('div');
   wrap.className = 'paper-modal-backdrop';
   wrap.innerHTML = `
     <div class="paper-modal">
       <header class="paper-modal-head">
         <h4>Upload a paper</h4>
+        <button type="button" class="paper-modal-clear-draft" id="paperUploadClearDraft" hidden>Clear draft</button>
         <button class="paper-modal-close" aria-label="Close">×</button>
       </header>
       <form class="paper-modal-form" id="paperUploadForm">
         <label>
           <span>Course code</span>
-          <input name="courseCode" placeholder="e.g. CSE220" maxlength="8" required />
+          <input name="courseCode" placeholder="e.g. CSE220" maxlength="8" required value="${escAttr(draft.courseCode || '')}" />
         </label>
         <label>
           <span>Type</span>
@@ -405,19 +418,19 @@ function _openUploadModal() {
         </label>
         <label>
           <span>Title</span>
-          <input name="title" placeholder="e.g. CSE220 Midterm Spring 2024" maxlength="120" required />
+          <input name="title" placeholder="e.g. CSE220 Midterm Spring 2024" maxlength="120" required value="${escAttr(draft.title || '')}" />
         </label>
         <label>
           <span>Semester (optional)</span>
-          <input name="semester" placeholder="e.g. Spring2024" maxlength="40" />
+          <input name="semester" placeholder="e.g. Spring2024" maxlength="40" value="${escAttr(draft.semester || '')}" />
         </label>
         <label>
           <span>Faculty initials (optional)</span>
-          <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" />
+          <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" value="${escAttr(draft.facultyInitials || '')}" />
         </label>
         <label>
           <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" required />
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" />
           <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
@@ -430,23 +443,30 @@ function _openUploadModal() {
     </div>
   `;
   document.body.appendChild(wrap);
-  const close = () => wrap.remove();
-  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
-  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
-  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
 
+  const form     = wrap.querySelector('#paperUploadForm');
+  const typeSel  = form.elements.type;
   const fileInput = wrap.querySelector('#paperUploadFile');
   const fileInfo  = wrap.querySelector('#paperUploadFileInfo');
   const errBoxEl  = wrap.querySelector('#paperUploadError');
   const submitEl  = wrap.querySelector('#paperUploadSubmit');
-  fileInput.addEventListener('change', () => {
+  const clearBtn  = wrap.querySelector('#paperUploadClearDraft');
+
+  if (draft.type) typeSel.value = draft.type;
+
+  // Browsers forbid programmatic population of <input type="file">, so when a
+  // draft already has a File we display it ourselves and read from the in-memory
+  // draft at submit time. The native input is only consulted for new picks.
+  function _renderFileState() {
     fileInfo.textContent = '';
     fileInfo.classList.remove('paper-modal-file-info--error');
-    errBoxEl.textContent = '';
     submitEl.disabled = false;
-    const f = fileInput.files && fileInput.files[0];
+    const picked = fileInput.files && fileInput.files[0];
+    const f = picked || (_uploadDraft && _uploadDraft.file);
     if (!f) return;
     const sizeStr = _formatBytes(f.size);
+    const restored = !picked && _uploadDraft && _uploadDraft.file;
+    const restoredHint = restored ? ' (still selected from earlier)' : '';
     if (f.size <= 0) {
       fileInfo.textContent = `${f.name} — file is empty`;
       fileInfo.classList.add('paper-modal-file-info--error');
@@ -466,32 +486,84 @@ function _openUploadModal() {
       submitEl.disabled = true;
       return;
     }
-    fileInfo.textContent = `${f.name} — ${sizeStr}`;
+    fileInfo.textContent = `${f.name} — ${sizeStr}${restoredHint}`;
+  }
+
+  function _refreshClearBtn() {
+    clearBtn.hidden = !_draftHasContent(_uploadDraft);
+  }
+
+  function _saveDraft() {
+    _uploadDraft = _uploadDraft || {};
+    _uploadDraft.courseCode      = form.elements.courseCode.value;
+    _uploadDraft.type            = form.elements.type.value;
+    _uploadDraft.title           = form.elements.title.value;
+    _uploadDraft.semester        = form.elements.semester.value;
+    _uploadDraft.facultyInitials = form.elements.facultyInitials.value;
+    _refreshClearBtn();
+  }
+
+  _renderFileState();
+  _refreshClearBtn();
+
+  ['courseCode','title','semester','facultyInitials'].forEach(name => {
+    form.elements[name].addEventListener('input', _saveDraft);
+  });
+  typeSel.addEventListener('change', _saveDraft);
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) {
+      _uploadDraft = _uploadDraft || {};
+      _uploadDraft.file = f;
+      _saveDraft();
+    }
+    errBoxEl.textContent = '';
+    _renderFileState();
   });
 
-  wrap.querySelector('#paperUploadForm').addEventListener('submit', async e => {
+  clearBtn.addEventListener('click', () => {
+    _uploadDraft = null;
+    form.reset();
+    typeSel.value = 'midterm';
+    fileInput.value = '';
+    errBoxEl.textContent = '';
+    _renderFileState();
+    _refreshClearBtn();
+  });
+
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const file = fd.get('file');
-    const errBox = wrap.querySelector('#paperUploadError');
-    errBox.textContent = '';
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading…';
-    const res = await uploadPaper({
-      file,
-      courseCode: fd.get('courseCode'),
-      type: fd.get('type'),
-      title: fd.get('title'),
-      semester: fd.get('semester'),
-      facultyInitials: fd.get('facultyInitials'),
-    });
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Upload';
-    if (!res.ok) {
-      errBox.textContent = res.error || 'Upload failed';
+    _saveDraft();
+    const picked = fileInput.files && fileInput.files[0];
+    const file = picked || (_uploadDraft && _uploadDraft.file);
+    errBoxEl.textContent = '';
+    if (!file) {
+      errBoxEl.textContent = 'Please choose a file.';
       return;
     }
+    submitEl.disabled = true;
+    submitEl.textContent = 'Uploading…';
+    const res = await uploadPaper({
+      file,
+      courseCode:      _uploadDraft.courseCode,
+      type:            _uploadDraft.type,
+      title:           _uploadDraft.title,
+      semester:        _uploadDraft.semester,
+      facultyInitials: _uploadDraft.facultyInitials,
+    });
+    submitEl.disabled = false;
+    submitEl.textContent = 'Upload';
+    if (!res.ok) {
+      errBoxEl.textContent = res.error || 'Upload failed';
+      return;
+    }
+    _uploadDraft = null;
     close();
     _toast('Uploaded — pending admin review.');
   });
