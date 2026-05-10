@@ -13,6 +13,22 @@ import { resetPlayground } from './playground.js';
 import { openReviewModal } from './reviews.js';
 import { normalizeInitials } from '../core/faculty.js';
 import { fetchReviewsForFaculty, aggregateRatings } from '../core/reviews.js';
+import { registerAction } from '../core/dispatch.js';
+
+registerAction('render:editSummary',     el => showSummaryForm(Number(el.dataset.semId)));
+registerAction('render:removeSemester',  el => removeSemester(Number(el.dataset.semId)));
+registerAction('render:hideSummaryForm', () => hideSummaryForm());
+registerAction('render:confirmSummary',  () => confirmSummaryForm());
+registerAction('render:clearBorder',     el => { el.style.borderColor = ''; });
+registerAction('render:courseInput',     (el, ev) => window.onCourseInput?.(ev, Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:pfChange',        el => window.onPFChange?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value));
+registerAction('render:autoDetectGrade', el => window.autoDetectGrade?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value, el));
+registerAction('render:rateCourse',      el => openRateForCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:removeCourse',    el => removeCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:addCourse',       el => addCourse(Number(el.dataset.semId)));
+registerAction('render:addSemester',     () => addSemester());
+registerAction('render:showSummaryForm', () => showSummaryForm());
+registerAction('render:loadSample',      () => loadSampleData());
 
 const _facultyCourseAggCache = new Map();
 
@@ -217,8 +233,8 @@ function renderSummaryBlock(sem) {
         </span>
       </div>
       <div class="semester-actions">
-        <button class="btn-icon" onclick="window._shohoj_editSummary(${sem.id})">Edit</button>
-        <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+        <button class="btn-icon" data-action="render:editSummary" data-sem-id="${sem.id}">Edit</button>
+        <button class="btn-icon danger" data-action="render:removeSemester" data-sem-id="${sem.id}">Remove</button>
       </div>
     </div>
     <div style="padding:10px 1.2rem;font-size:12px;color:var(--text3);font-style:italic;">
@@ -246,7 +262,7 @@ function renderSummaryForm() {
         <span class="semester-label" style="color:var(--green)">${title}</span>
       </div>
       <div class="semester-actions">
-        <button class="btn-icon danger" onclick="window._shohoj_hideSummaryForm()">Cancel</button>
+        <button class="btn-icon danger" data-action="render:hideSummaryForm">Cancel</button>
       </div>
     </div>
     <div style="padding:1rem 1.2rem;display:flex;flex-direction:column;gap:12px;">
@@ -271,7 +287,7 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
@@ -292,7 +308,7 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
@@ -313,13 +329,13 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
 
         <button
-          onclick="window._shohoj_confirmSummaryForm()"
+          data-action="render:confirmSummary"
           style="
             background:var(--green);color:#0b0f0d;
             font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
@@ -454,7 +470,7 @@ export function renderSemesters() {
           })()}
         </div>
         <div class="semester-actions">
-          <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+          <button class="btn-icon danger" data-action="render:removeSemester" data-sem-id="${sem.id}">Remove</button>
         </div>
       </div>
       <div class="courses-table">
@@ -480,7 +496,7 @@ export function renderSemesters() {
               id="course-input-${sem.id}-${i}"
               value="${escAttr(c.name)}"
               autocomplete="off" autocorrect="off" spellcheck="false"
-              oninput="onCourseInput(event,${sem.id},${i})"
+              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}"
               onkeydown="onCourseKey(event,${sem.id},${i})"
               onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
@@ -494,14 +510,14 @@ export function renderSemesters() {
           ${c.credits === 0 && c.name.trim() !== ''
             ? c.grade === 'F(NT)'
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
-              : `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
+              : `<select class="pf-select" data-action="render:pfChange" data-sem-id="${sem.id}" data-idx="${i}">
                 <option value="" disabled ${!c.grade ? 'selected' : ''}>Pass / Fail</option>
                 <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P - Pass</option>
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
-                oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
+                data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
                 onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
           }
@@ -519,22 +535,22 @@ export function renderSemesters() {
           >${escHtml(c.grade) || '—'}</span>
           <div class="course-row-actions">
             ${showChip
-              ? `<button class="course-faculty-chip" onclick="openRateForCourse(${sem.id},${i})" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
-              : (canRate ? `<button class="course-rate-pill" onclick="openRateForCourse(${sem.id},${i})" title="Rate this faculty">+ Rate</button>` : '')}
-            <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
+              ? `<button class="course-faculty-chip" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
+              : (canRate ? `<button class="course-rate-pill" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" title="Rate this faculty">+ Rate</button>` : '')}
+            <button class="btn-remove-course" data-action="render:removeCourse" data-sem-id="${sem.id}" data-idx="${i}">×</button>
           </div>
         </div>`;
         }).join('')}
       </div>
       <div class="add-course-row">
-        <button class="btn-add-course" onclick="addCourse(${sem.id})">+ Add course</button>
+        <button class="btn-add-course" data-action="render:addCourse" data-sem-id="${sem.id}">+ Add course</button>
       </div>
     </div>`;
   }).join('');
 
   // ── Inline "Add Semester" button after last semester block ────────────────
   if (state.semesters.some(s => s.summary) && state.semesters.filter(s => !s.summary).length > 0) {
-    html += `<button class="btn-add-course" onclick="addSemester()" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
+    html += `<button class="btn-add-course" data-action="render:addSemester" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
   }
 
   // ── EMPTY STATE ──────────────────────────────────────────────────────────
@@ -552,7 +568,7 @@ export function renderSemesters() {
       : '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department &amp; semester set</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">3</span><span>Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to auto-fill</span></div></div>';
 
     const cgpaBtn = (_semDone && !hasSummaryBlock)
-      ? `<button class="btn-sample-ghost" onclick="window._shohoj_showSummaryForm()" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
+      ? `<button class="btn-sample-ghost" data-action="render:showSummaryForm" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
       : '';
 
     html += `
@@ -562,8 +578,8 @@ export function renderSemesters() {
         <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, import your transcript, or start from your current CGPA.'}</div>
         ${_emptyHint}
         <div class="empty-state-actions">
-          <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
-          ${_semDone ? '<button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>' : ''}
+          <button class="btn-sample" data-action="render:loadSample">✨ Load sample data</button>
+          ${_semDone ? '<button class="btn-sample-ghost" data-action="render:addSemester">+ Add semester</button>' : ''}
           ${cgpaBtn}
         </div>
         ${_semDone ? '<div class="empty-arrow">← use the buttons above too &nbsp;↑</div>' : ''}
