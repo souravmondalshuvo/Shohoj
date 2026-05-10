@@ -214,6 +214,28 @@ function _openPreviewModal({ url, title, path }) {
   wrap.querySelector('.admin-preview-close').addEventListener('click', close);
   wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
   document.addEventListener('keydown', onKey);
+
+  // The custom cursor (cursor.js) tracks `document.addEventListener('mousemove')`
+  // on the parent. Mouse events inside an iframe stay inside the iframe document,
+  // so without forwarding the cursor freezes the moment the pointer enters the
+  // PDF area. blob: URLs are same-origin, so we can listen inside the iframe and
+  // dispatch a synthetic mousemove on the parent with iframe-relative coords.
+  const iframe = wrap.querySelector('.admin-preview-iframe');
+  if (iframe) {
+    iframe.addEventListener('load', () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (!doc) return;
+        doc.addEventListener('mousemove', e => {
+          const rect = iframe.getBoundingClientRect();
+          document.dispatchEvent(new MouseEvent('mousemove', {
+            clientX: rect.left + e.clientX,
+            clientY: rect.top + e.clientY,
+          }));
+        }, { passive: true });
+      } catch { /* cross-origin iframe — nothing we can do */ }
+    });
+  }
 }
 
 function _paperRow(p) {
