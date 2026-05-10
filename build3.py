@@ -11,10 +11,11 @@ Usage:
     python3 build3.py
 """
 
-import json
+import base64
 import hashlib
-import re
+import json
 import os
+import re
 
 # ── File order matters: dependencies must come before dependents ──────────────
 MAIN_JS_FILES = [
@@ -215,6 +216,64 @@ window.clearAllData = clearAllData;
     return bundled_js
 
 
+_INLINE_SCRIPT_RE = re.compile(
+    r'<script\b([^>]*)>([\s\S]*?)</script>',
+    re.IGNORECASE,
+)
+_HAS_SRC_RE = re.compile(r'\bsrc\s*=', re.IGNORECASE)
+
+
+def harden_script_csp(html, output_path):
+    """Replace 'unsafe-inline' in CSP script-src with SHA-256 hashes."""
+    hashes = []
+    seen = set()
+    for m in _INLINE_SCRIPT_RE.finditer(html):
+        attrs, body = m.group(1), m.group(2)
+        if _HAS_SRC_RE.search(attrs):
+            continue
+        if not body.strip():
+            continue
+        digest = hashlib.sha256(body.encode('utf-8')).digest()
+        token = "'sha256-" + base64.b64encode(digest).decode('ascii') + "'"
+        if token in seen:
+            continue
+        seen.add(token)
+        hashes.append(token)
+
+    if not hashes:
+        return html
+
+    csp_re = re.compile(
+        r'(<meta\s+http-equiv=["\']Content-Security-Policy["\']\s+content=")([^"]*)(")',
+        re.IGNORECASE,
+    )
+    match = csp_re.search(html)
+    if not match:
+        print(f'  ⚠ {output_path}: no CSP meta tag found, skipping hash injection')
+        return html
+
+    policy = match.group(2)
+    directives = [d.strip() for d in policy.split(';') if d.strip()]
+    new_directives = []
+    patched = False
+    for d in directives:
+        parts = d.split()
+        if parts and parts[0].lower() == 'script-src':
+            kept = [p for p in parts[1:] if p != "'unsafe-inline'"]
+            new_directives.append(' '.join(['script-src', *kept, *hashes]))
+            patched = True
+        else:
+            new_directives.append(d)
+    if not patched:
+        print(f'  ⚠ {output_path}: CSP has no script-src directive, skipping')
+        return html
+
+    new_policy = '; '.join(new_directives) + ';'
+    new_meta = match.group(1) + new_policy + match.group(3)
+    print(f'   CSP script-src hardened: {len(hashes)} hash(es), unsafe-inline dropped')
+    return html[:match.start()] + new_meta + html[match.end():]
+
+
 def render_page(template_path, output_path, css, firebase_js, bundled_js,
                 css_pattern, main_pattern, qr_strip):
     with open(template_path, 'r', encoding='utf-8') as f:
@@ -273,6 +332,12 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
     non_module = re.sub(r'<script\s+type=["\']module["\'][\s\S]*?</script>', '', html)
     if re.search(r'\bexport\s+(function|const|let|var|class|default|\{)', non_module):
         print(f'  ⚠ WARNING: "export" keyword leaked into {output_path}!')
+
+    # Harden CSP: replace 'unsafe-inline' in script-src with SHA-256 hashes of
+    # every inline <script> we just baked into the page. Style-src keeps
+    # 'unsafe-inline' since templates use inline style="..." attributes that
+    # would otherwise need 'unsafe-hashes' + per-attribute hashing.
+    html = harden_script_csp(html, output_path)
 
     with open(output_path, 'w', encoding='utf-8') as f:
         f.write(html)
