@@ -187,7 +187,7 @@ service cloud.firestore {
         && d.approved == false
         && d.createdAt == request.time
         && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40))
-        && (!('facultyInitials' in d) || (d.facultyInitials is string && d.facultyInitials.matches('^[A-Z]{2,6}$')))
+        && (!('facultyInitials' in d) || (d.facultyInitials is string && d.facultyInitials.matches('^[A-Z]{2,6}(, ?[A-Z]{2,6})*$')))
         && (!('downloads' in d) || (d.downloads is int && d.downloads == 0))
         && (!('flagCount' in d) || (d.flagCount is int && d.flagCount == 0));
     }
