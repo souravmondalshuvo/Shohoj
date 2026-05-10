@@ -171,6 +171,17 @@ function _clearChartSkeleton(canvasId) {
   if (skel) skel.remove();
 }
 
+function _restoreChartSkeleton(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  if (!wrap || wrap.querySelector('.admin-chart-skel')) return;
+  const skel = document.createElement('div');
+  skel.className = 'admin-chart-skel admin-skel';
+  skel.dataset.skelFor = canvasId;
+  wrap.insertBefore(skel, canvas);
+}
+
 function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
 }
@@ -257,6 +268,8 @@ async function _loadPapers() {
   const list = document.getElementById('adminListPapers');
   const count = document.getElementById('adminCountPapers');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchUnapprovedPapers?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_paperRow).join('') : _emptyHtml('No pending uploads.');
@@ -266,6 +279,8 @@ async function _loadPaperReports() {
   const list = document.getElementById('adminListPaperReports');
   const count = document.getElementById('adminCountPaperReports');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchPaperReports?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_paperReportRow).join('') : _emptyHtml('No paper reports.');
@@ -275,6 +290,8 @@ async function _loadReviewReports() {
   const list = document.getElementById('adminListReviewReports');
   const count = document.getElementById('adminCountReviewReports');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchReviewReports?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_reviewReportRow).join('') : _emptyHtml('No review reports.');
@@ -284,6 +301,8 @@ async function _loadFeedback() {
   const list = document.getElementById('adminListFeedback');
   const count = document.getElementById('adminCountFeedback');
   if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(3);
   const items = await window._shohoj_fetchAllFeedback?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_feedbackRow).join('') : _emptyHtml('No feedback.');
@@ -382,10 +401,30 @@ function _renderDoughnut(canvasId, key, labels, values, palette) {
 }
 
 async function _loadStatsAndCharts() {
+  const grid = document.getElementById('adminStatsGrid');
+  if (grid) {
+    grid.innerHTML =
+      _statCardSkeleton('Total reviews') +
+      _statCardSkeleton('Approved papers') +
+      _statCardSkeleton('Pending papers') +
+      _statCardSkeleton('Feedback items') +
+      _statCardSkeleton('Paper reports') +
+      _statCardSkeleton('Review reports');
+  }
+  ['adminActivityChart','adminTopFacultyChart','adminTopCoursesChart',
+   'adminPaperTypesChart','adminFeedbackTypesChart'].forEach(id => {
+    const key = {
+      adminActivityChart:'activity', adminTopFacultyChart:'topFaculty',
+      adminTopCoursesChart:'topCourses', adminPaperTypesChart:'paperTypes',
+      adminFeedbackTypesChart:'feedbackTypes',
+    }[id];
+    _destroyChart(key);
+    _restoreChartSkeleton(id);
+  });
+
   const stats = await window._shohoj_fetchAdminStats?.();
   if (!stats) return;
 
-  const grid = document.getElementById('adminStatsGrid');
   if (grid) {
     grid.innerHTML =
       _statCard('Total reviews',   stats.counts.reviews) +
@@ -433,12 +472,29 @@ async function _loadStatsAndCharts() {
   );
 }
 
-function _refreshAll() {
-  _loadStatsAndCharts();
-  _loadPapers();
-  _loadPaperReports();
-  _loadReviewReports();
-  _loadFeedback();
+async function _refreshAll() {
+  const btn = document.getElementById('adminRefreshBtn');
+  const prevLabel = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('admin-btn-ghost--loading');
+    btn.textContent = '↻ Refreshing…';
+  }
+  try {
+    await Promise.all([
+      _loadStatsAndCharts(),
+      _loadPapers(),
+      _loadPaperReports(),
+      _loadReviewReports(),
+      _loadFeedback(),
+    ]);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('admin-btn-ghost--loading');
+      btn.textContent = prevLabel;
+    }
+  }
 }
 
 async function _onAction(e) {
