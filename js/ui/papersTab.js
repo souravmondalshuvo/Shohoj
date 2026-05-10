@@ -85,6 +85,13 @@ function _skeletonList(count = 6) {
   return Array.from({ length: count }, _skeletonCard).join('');
 }
 
+const _ICON_EYE = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const _ICON_DOWNLOAD = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+const _ICON_FLAG = `<svg class="paper-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+
+const _LBL_PREVIEW  = `${_ICON_EYE}<span>Preview</span>`;
+const _LBL_DOWNLOAD = `${_ICON_DOWNLOAD}<span>Download</span>`;
+
 function _paperCard(p) {
   const typeLabel = PAPER_TYPE_LABELS[p.type] || p.type || 'Paper';
   const semester = p.semester ? `<span class="paper-card-meta-pill">${escHtml(p.semester)}</span>` : '';
@@ -102,9 +109,9 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
-        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">👁 Preview</button>
-        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
-        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">⚑</button>
+        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
+        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">${_LBL_DOWNLOAD}</button>
+        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">${_ICON_FLAG}</button>
       </div>
     </article>
   `;
@@ -317,10 +324,10 @@ async function _onListClick(e) {
     const path = pv.dataset.path;
     if (!path) return;
     pv.disabled = true;
-    pv.textContent = 'Loading…';
+    pv.innerHTML = '<span>Loading…</span>';
     const url = await getPaperDownloadUrl(path);
     pv.disabled = false;
-    pv.textContent = '👁 Preview';
+    pv.innerHTML = _LBL_PREVIEW;
     if (!url) {
       _toast('Could not load preview.');
       return;
@@ -333,10 +340,10 @@ async function _onListClick(e) {
     const path = dl.dataset.path;
     if (!path) return;
     dl.disabled = true;
-    dl.textContent = 'Loading…';
+    dl.innerHTML = '<span>Loading…</span>';
     const url = await getPaperDownloadUrl(path);
     dl.disabled = false;
-    dl.textContent = '⬇ Download';
+    dl.innerHTML = _LBL_DOWNLOAD;
     if (!url) {
       _toast('Could not fetch download link.');
       return;
