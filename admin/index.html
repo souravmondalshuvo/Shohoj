@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-Ne1CVoTJUh0vBRgPic1HPcqR0yy0jwDh8r2iMvdauG8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-1T/Xtyx6+zmWWAlYKROXNeP1W7dhQokLUXpu5By0xow='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -9201,6 +9201,28 @@ function _openPreviewModal({ url, title, path }) {
   wrap.querySelector('.admin-preview-close').addEventListener('click', close);
   wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
   document.addEventListener('keydown', onKey);
+
+  // The custom cursor (cursor.js) tracks `document.addEventListener('mousemove')`
+  // on the parent. Mouse events inside an iframe stay inside the iframe document,
+  // so without forwarding the cursor freezes the moment the pointer enters the
+  // PDF area. blob: URLs are same-origin, so we can listen inside the iframe and
+  // dispatch a synthetic mousemove on the parent with iframe-relative coords.
+  const iframe = wrap.querySelector('.admin-preview-iframe');
+  if (iframe) {
+    iframe.addEventListener('load', () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (!doc) return;
+        doc.addEventListener('mousemove', e => {
+          const rect = iframe.getBoundingClientRect();
+          document.dispatchEvent(new MouseEvent('mousemove', {
+            clientX: rect.left + e.clientX,
+            clientY: rect.top + e.clientY,
+          }));
+        }, { passive: true });
+      } catch { /* cross-origin iframe — nothing we can do */ }
+    });
+  }
 }
 
 function _paperRow(p) {
