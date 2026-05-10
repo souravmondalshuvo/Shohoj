@@ -314,6 +314,22 @@ async function run() {
     await assertSucceeds(deleteDoc(doc(adminDb, 'appFeedback', 'fb5')));
   });
 
+  await test('Feedback with context map of 8 keys is accepted', async () => {
+    const db = bracuCtx().firestore();
+    const context = {};
+    for (let i = 0; i < 8; i++) context[`k${i}`] = `v${i}`;
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb6'),
+      feedbackDoc({ context })));
+  });
+
+  await test('Feedback with context map of 9 keys is rejected', async () => {
+    const db = bracuCtx().firestore();
+    const context = {};
+    for (let i = 0; i < 9; i++) context[`k${i}`] = `v${i}`;
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb7'),
+      feedbackDoc({ context })));
+  });
+
   // ── Paper reports ───────────────────────────────────────────────────
   await test('Paper report with mismatched reportId format is rejected', async () => {
     const db = bracuCtx().firestore();
