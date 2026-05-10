@@ -186,6 +186,36 @@ function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
 }
 
+function _openPreviewModal({ url, title, path }) {
+  const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path || '');
+  const wrap = document.createElement('div');
+  wrap.className = 'admin-preview-backdrop';
+  const body = isImage
+    ? `<img class="admin-preview-img" src="${escAttr(url)}" alt="${escAttr(title)}">`
+    : `<iframe class="admin-preview-iframe" src="${escAttr(url)}" title="${escAttr(title)}"></iframe>`;
+  wrap.innerHTML = `
+    <div class="admin-preview-modal" role="dialog" aria-modal="true" aria-label="${escAttr(title)}">
+      <header class="admin-preview-head">
+        <div class="admin-preview-title">${escHtml(title)}</div>
+        <div class="admin-preview-head-actions">
+          <a class="admin-preview-newtab" href="${escAttr(url)}" target="_blank" rel="noopener">Open in new tab ↗</a>
+          <button type="button" class="admin-preview-close" aria-label="Close">×</button>
+        </div>
+      </header>
+      <div class="admin-preview-body">${body}</div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const close = () => {
+    wrap.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  wrap.querySelector('.admin-preview-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  document.addEventListener('keydown', onKey);
+}
+
 function _paperRow(p) {
   const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
   const label = [p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — ');
@@ -200,7 +230,7 @@ function _paperRow(p) {
         <div class="admin-dash-row-meta">${meta}${meta ? ' · ' : ''}${escHtml(_adminFormatDate(p.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
-        <button data-act="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
+        <button data-act="preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr(label)}">Preview</button>
         <button data-act="approve" data-id="${escAttr(p.id)}" class="admin-dash-btn--ok">Approve</button>
         <button data-act="delete-paper" data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="admin-dash-btn--danger">Delete</button>
       </div>
@@ -508,8 +538,14 @@ async function _onAction(e) {
     if (act === 'preview') {
       const path = btn.dataset.path;
       if (!path) return;
+      btn.textContent = 'Loading…';
       const url = await getPaperDownloadUrl(path);
-      if (url) window.open(url, '_blank', 'noopener');
+      btn.textContent = 'Preview';
+      if (!url) {
+        _adminToast('Could not load preview.');
+        return;
+      }
+      _openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
       return;
     }
     if (act === 'approve') {
