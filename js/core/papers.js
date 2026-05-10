@@ -7,8 +7,8 @@
 import { COURSE_DB } from './catalog.js';
 
 const PAPERS_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
-const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment'];
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab'];
+export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export const PAPER_TYPE_LABELS = {
   midterm:    'Midterm',
@@ -16,6 +16,7 @@ export const PAPER_TYPE_LABELS = {
   quiz:       'Quiz',
   notes:      'Notes',
   assignment: 'Assignment',
+  lab:        'Lab Report',
 };
 
 export function normalizeCourseCode(raw) {
