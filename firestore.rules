@@ -163,7 +163,8 @@ service cloud.firestore {
     // public views with `where('approved','==',true)`.
     function validPaperType(t) {
       return t == 'midterm' || t == 'final' || t == 'quiz'
-          || t == 'notes'   || t == 'assignment' || t == 'lab';
+          || t == 'notes'   || t == 'assignment' || t == 'lab'
+          || t == 'lab-quiz';
     }
 
     function validPaperPayload(d) {
