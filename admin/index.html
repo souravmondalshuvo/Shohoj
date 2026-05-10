@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-1T/Xtyx6+zmWWAlYKROXNeP1W7dhQokLUXpu5By0xow='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-JhAwG5OPovoyT9QJnpSocd8vxcWgGmGy5vF3jGczyBI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -8987,6 +8987,68 @@ async function deletePaperReport(reportId) {
   return window._shohoj_deletePaperReport(reportId);
 }
 
+// ── js/ui/previewModal.js ───────────────────────────────────────
+// ── js/ui/previewModal.js ─────────────────────────────────────────────────────
+// Shared inline preview modal for paper PDFs and images. Used by both the admin
+// moderation queue and the public Papers tab.
+//
+// PDFs render in an <iframe>, images in an <img>. The "Open in new tab" link is
+// kept as a fallback for browsers that won't render PDFs inline (mobile Safari).
+// The modal closes on × / backdrop click / Escape.
+//
+// Cursor.js tracks parent-document mousemove events, so iframe-internal mouse
+// movement would otherwise freeze the custom cursor at the iframe edge. blob:
+// URLs are same-origin, so we forward mousemove from iframe.contentDocument
+// back to the parent with iframe-relative coords translated to viewport coords.
+
+function openPreviewModal({ url, title, path }) {
+  const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path || '');
+  const wrap = document.createElement('div');
+  wrap.className = 'admin-preview-backdrop';
+  const body = isImage
+    ? `<img class="admin-preview-img" src="${escAttr(url)}" alt="${escAttr(title)}">`
+    : `<iframe class="admin-preview-iframe" src="${escAttr(url)}" title="${escAttr(title)}"></iframe>`;
+  wrap.innerHTML = `
+    <div class="admin-preview-modal" role="dialog" aria-modal="true" aria-label="${escAttr(title)}">
+      <header class="admin-preview-head">
+        <div class="admin-preview-title">${escHtml(title)}</div>
+        <div class="admin-preview-head-actions">
+          <a class="admin-preview-newtab" href="${escAttr(url)}" target="_blank" rel="noopener">Open in new tab ↗</a>
+          <button type="button" class="admin-preview-close" aria-label="Close">×</button>
+        </div>
+      </header>
+      <div class="admin-preview-body">${body}</div>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+
+  const close = () => {
+    wrap.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  wrap.querySelector('.admin-preview-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  document.addEventListener('keydown', onKey);
+
+  const iframe = wrap.querySelector('.admin-preview-iframe');
+  if (iframe) {
+    iframe.addEventListener('load', () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (!doc) return;
+        doc.addEventListener('mousemove', e => {
+          const rect = iframe.getBoundingClientRect();
+          document.dispatchEvent(new MouseEvent('mousemove', {
+            clientX: rect.left + e.clientX,
+            clientY: rect.top + e.clientY,
+          }));
+        }, { passive: true });
+      } catch { /* cross-origin iframe — nothing we can do */ }
+    });
+  }
+}
+
 // ── js/ui/adminDashboard.js ─────────────────────────────────────
 // ── js/ui/adminDashboard.js ──────────────────────────────────────────────────
 // Full-page admin/moderator dashboard. Hides the regular site shell and
@@ -9173,57 +9235,6 @@ function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
 }
 
-function _openPreviewModal({ url, title, path }) {
-  const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path || '');
-  const wrap = document.createElement('div');
-  wrap.className = 'admin-preview-backdrop';
-  const body = isImage
-    ? `<img class="admin-preview-img" src="${escAttr(url)}" alt="${escAttr(title)}">`
-    : `<iframe class="admin-preview-iframe" src="${escAttr(url)}" title="${escAttr(title)}"></iframe>`;
-  wrap.innerHTML = `
-    <div class="admin-preview-modal" role="dialog" aria-modal="true" aria-label="${escAttr(title)}">
-      <header class="admin-preview-head">
-        <div class="admin-preview-title">${escHtml(title)}</div>
-        <div class="admin-preview-head-actions">
-          <a class="admin-preview-newtab" href="${escAttr(url)}" target="_blank" rel="noopener">Open in new tab ↗</a>
-          <button type="button" class="admin-preview-close" aria-label="Close">×</button>
-        </div>
-      </header>
-      <div class="admin-preview-body">${body}</div>
-    </div>
-  `;
-  document.body.appendChild(wrap);
-  const close = () => {
-    wrap.remove();
-    document.removeEventListener('keydown', onKey);
-  };
-  const onKey = e => { if (e.key === 'Escape') close(); };
-  wrap.querySelector('.admin-preview-close').addEventListener('click', close);
-  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
-  document.addEventListener('keydown', onKey);
-
-  // The custom cursor (cursor.js) tracks `document.addEventListener('mousemove')`
-  // on the parent. Mouse events inside an iframe stay inside the iframe document,
-  // so without forwarding the cursor freezes the moment the pointer enters the
-  // PDF area. blob: URLs are same-origin, so we can listen inside the iframe and
-  // dispatch a synthetic mousemove on the parent with iframe-relative coords.
-  const iframe = wrap.querySelector('.admin-preview-iframe');
-  if (iframe) {
-    iframe.addEventListener('load', () => {
-      try {
-        const doc = iframe.contentDocument;
-        if (!doc) return;
-        doc.addEventListener('mousemove', e => {
-          const rect = iframe.getBoundingClientRect();
-          document.dispatchEvent(new MouseEvent('mousemove', {
-            clientX: rect.left + e.clientX,
-            clientY: rect.top + e.clientY,
-          }));
-        }, { passive: true });
-      } catch { /* cross-origin iframe — nothing we can do */ }
-    });
-  }
-}
 
 function _paperRow(p) {
   const meta = [p.semester, p.facultyInitials].filter(Boolean).map(escHtml).join(' · ');
@@ -9554,7 +9565,7 @@ async function _onAction(e) {
         _adminToast('Could not load preview.');
         return;
       }
-      _openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
+      openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
       return;
     }
     if (act === 'approve') {
