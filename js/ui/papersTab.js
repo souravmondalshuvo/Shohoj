@@ -102,9 +102,9 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
-        <button class="btn-primary paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">👁 Preview</button>
-        <button class="btn-secondary paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
-        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper">⚑ Report</button>
+        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">👁 Preview</button>
+        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">⬇ Download</button>
+        <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">⚑</button>
       </div>
     </article>
   `;
