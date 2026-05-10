@@ -5,7 +5,7 @@
 import {
   fetchRecentPapers, fetchPapersByCourse, getPaperDownloadUrl,
   uploadPaper, reportPaper, isKnownCourseCode, normalizeCourseCode,
-  PAPER_TYPE_LABELS, paperTimestampMs,
+  PAPER_TYPE_LABELS, paperTimestampMs, MAX_FILE_SIZE,
   isPaperAdmin, fetchUnapprovedPapers, fetchPaperReports,
   approvePaper, deletePaper, deletePaperReport,
 } from '../core/papers.js';
@@ -142,6 +142,7 @@ function _renderShell() {
           <option value="quiz">Quiz</option>
           <option value="notes">Notes</option>
           <option value="assignment">Assignment</option>
+          <option value="lab">Lab Report</option>
         </select>
       </div>
 
@@ -399,6 +400,7 @@ function _openUploadModal() {
             <option value="quiz">Quiz</option>
             <option value="notes">Notes</option>
             <option value="assignment">Assignment</option>
+            <option value="lab">Lab Report</option>
           </select>
         </label>
         <label>
@@ -415,12 +417,13 @@ function _openUploadModal() {
         </label>
         <label>
           <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" type="file" accept="application/pdf,image/*" required />
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" required />
+          <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
         <div class="paper-modal-actions">
           <button type="button" class="btn-secondary paper-modal-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Upload</button>
+          <button type="submit" class="btn-primary" id="paperUploadSubmit">Upload</button>
         </div>
         <div class="paper-modal-error" id="paperUploadError"></div>
       </form>
@@ -431,6 +434,41 @@ function _openUploadModal() {
   wrap.querySelector('.paper-modal-close').addEventListener('click', close);
   wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
   wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  const fileInput = wrap.querySelector('#paperUploadFile');
+  const fileInfo  = wrap.querySelector('#paperUploadFileInfo');
+  const errBoxEl  = wrap.querySelector('#paperUploadError');
+  const submitEl  = wrap.querySelector('#paperUploadSubmit');
+  fileInput.addEventListener('change', () => {
+    fileInfo.textContent = '';
+    fileInfo.classList.remove('paper-modal-file-info--error');
+    errBoxEl.textContent = '';
+    submitEl.disabled = false;
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const sizeStr = _formatBytes(f.size);
+    if (f.size <= 0) {
+      fileInfo.textContent = `${f.name} — file is empty`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      const limitMb = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+      fileInfo.textContent = `${f.name} — ${sizeStr}. Too large. Limit is ${limitMb} MB. Try compressing the PDF (e.g. macOS Preview → Export → Reduce File Size).`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    if (!/^application\/pdf$|^image\//.test(f.type || '')) {
+      fileInfo.textContent = `${f.name} — only PDFs and images are allowed.`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    fileInfo.textContent = `${f.name} — ${sizeStr}`;
+  });
+
   wrap.querySelector('#paperUploadForm').addEventListener('submit', async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
