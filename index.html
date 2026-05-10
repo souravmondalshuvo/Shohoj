@@ -6328,7 +6328,7 @@ function showNudgeBanner(show) {
   `;
   banner.innerHTML = `
     <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button onclick="window._shohoj_signIn()" style="
+    <button data-action="auth:signin" style="
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 16px;border-radius:8px;
       background:rgba(255,255,255,0.07);
@@ -6354,6 +6354,13 @@ function showNudgeBanner(show) {
 }
 
 window._shohoj_signIn = signInWithGoogle;
+
+// firebase.js executes before the bundled main module in dev mode, so the
+// dispatcher's registerAction may not exist yet at top-level. Defer to
+// DOMContentLoaded — by then all module scripts have run.
+document.addEventListener('DOMContentLoaded', () => {
+  window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
+});
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
@@ -7485,6 +7492,47 @@ function getStartSeason() {
 function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
+}
+
+// ── js/core/dispatch.js ─────────────────────────────────────────
+// ── ACTION DISPATCH ───────────────────────────────────────────────────────────
+// Replaces inline onclick/onchange/oninput attributes with delegated listeners
+// resolved from a single data-action attribute plus a registry of handlers.
+// This lets the bundled HTML drop 'unsafe-inline' from script-src in CSP.
+//
+// Usage from a module's template literal:
+//   <button data-action="addCourse" data-sem-id="${sem.id}">+ Add</button>
+//
+// And from the module's top-level code (runs once at module load):
+//   registerAction('addCourse', (el) => addCourse(Number(el.dataset.semId)));
+//
+// The handler receives (element, event). The event type is whichever of
+// click / change / input fired — each element should declare a data-action
+// for exactly one event type.
+
+const _actions = Object.create(null);
+
+function registerAction(name, handler) {
+  _actions[name] = handler;
+}
+
+function _dispatch(event) {
+  const el = event.target.closest('[data-action]');
+  if (!el) return;
+  const fn = _actions[el.dataset.action];
+  if (typeof fn === 'function') fn(el, event);
+}
+
+if (typeof document !== 'undefined') {
+  ['click', 'change', 'input'].forEach(type => {
+    document.addEventListener(type, _dispatch);
+  });
+}
+
+// Expose globally so modules can register without importing (e.g. firebase.js
+// is a separate module script that does not consume the bundle's exports).
+if (typeof window !== 'undefined') {
+  window._shohoj_registerAction = registerAction;
 }
 
 // ── js/core/state.js ────────────────────────────────────────────
@@ -12904,6 +12952,10 @@ window.addEventListener('shohoj:auth-changed', () => {
 // Course Difficulty Map tab — aggregates difficulty + workload ratings across
 // all seeded and user-submitted reviews, grouped by course.
 
+registerAction('dm:goToCourse', el => window._dm_goToCourse?.(el.dataset.code));
+registerAction('dm:setDept',    el => window._dm_setDept?.(el.dataset.dept));
+registerAction('dm:setSort',    el => window._dm_setSort?.(el.dataset.sort));
+
 const LOW_SAMPLE_UNDER = 3;
 const FETCH_LIMIT      = 5000;
 
@@ -12999,7 +13051,7 @@ function _barHtml(val, label) {
 function _cardHtml(e) {
   const cls  = _scoreClass(e.difficulty);
   const tag  = _diffLabel(e.difficulty);
-  return `<button class="dm-card" onclick="window._dm_goToCourse('${escAttr(e.code)}')" title="${escAttr(e.name)}">
+  return `<button class="dm-card" data-action="dm:goToCourse" data-code="${escAttr(e.code)}" title="${escAttr(e.name)}">
     <div class="dm-card-head">
       <span class="dm-card-code">${escHtml(e.code)}</span>
       <span class="dm-card-tag dm-card-tag--${cls}">${escHtml(tag)}</span>
@@ -13026,14 +13078,14 @@ function _render(root, entries) {
   const pillsHtml = depts.map(d => {
     const active = d === _activeDept ? ' dm-pill--active' : '';
     const label  = d === 'ALL' ? 'All' : d;
-    return `<button class="dm-pill${active}" onclick="window._dm_setDept('${escAttr(d)}')">${escHtml(label)}</button>`;
+    return `<button class="dm-pill${active}" data-action="dm:setDept" data-dept="${escAttr(d)}">${escHtml(label)}</button>`;
   }).join('');
 
   const sortHtml = `<div class="dm-sort">
     <span class="dm-sort-label">Sort</span>
-    <button class="dm-sort-btn${_sortBy === 'code'       ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('code')">Code</button>
-    <button class="dm-sort-btn${_sortBy === 'difficulty' ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('difficulty')">Difficulty</button>
-    <button class="dm-sort-btn${_sortBy === 'workload'   ? ' dm-sort-btn--active' : ''}" onclick="window._dm_setSort('workload')">Workload</button>
+    <button class="dm-sort-btn${_sortBy === 'code'       ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="code">Code</button>
+    <button class="dm-sort-btn${_sortBy === 'difficulty' ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="difficulty">Difficulty</button>
+    <button class="dm-sort-btn${_sortBy === 'workload'   ? ' dm-sort-btn--active' : ''}" data-action="dm:setSort" data-sort="workload">Workload</button>
   </div>`;
 
   const gridHtml = sorted.length
@@ -13112,6 +13164,8 @@ async function renderDifficultyMapTab() {
 // Past Papers & Notes browse tab. Course-code search + filtered list of
 // approved papers. Upload and reporting flows hang off this view.
 
+registerAction('papers:signin', () => window._shohoj_signIn && window._shohoj_signIn());
+
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
 }
@@ -13146,7 +13200,7 @@ function _papersSignInPrompt() {
     <div class="papers-empty">
       <h3>📚 Past Papers & Notes</h3>
       <p>Sign in with your BRACU email to browse and share past papers, quizzes, and notes.</p>
-      <button class="btn-primary" onclick="window._shohoj_signIn && window._shohoj_signIn()">Sign in with Google</button>
+      <button class="btn-primary" data-action="papers:signin">Sign in with Google</button>
     </div>
   `;
 }
@@ -13646,6 +13700,21 @@ window.addEventListener('shohoj:auth-changed', () => {
 });
 
 // ── js/ui/render.js ─────────────────────────────────────────────
+registerAction('render:editSummary',     el => showSummaryForm(Number(el.dataset.semId)));
+registerAction('render:removeSemester',  el => removeSemester(Number(el.dataset.semId)));
+registerAction('render:hideSummaryForm', () => hideSummaryForm());
+registerAction('render:confirmSummary',  () => confirmSummaryForm());
+registerAction('render:clearBorder',     el => { el.style.borderColor = ''; });
+registerAction('render:courseInput',     (el, ev) => window.onCourseInput?.(ev, Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:pfChange',        el => window.onPFChange?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value));
+registerAction('render:autoDetectGrade', el => window.autoDetectGrade?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value, el));
+registerAction('render:rateCourse',      el => openRateForCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:removeCourse',    el => removeCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
+registerAction('render:addCourse',       el => addCourse(Number(el.dataset.semId)));
+registerAction('render:addSemester',     () => addSemester());
+registerAction('render:showSummaryForm', () => showSummaryForm());
+registerAction('render:loadSample',      () => loadSampleData());
+
 const _facultyCourseAggCache = new Map();
 
 // ── Summary block form state ─────────────────────────────────────────────────
@@ -13849,8 +13918,8 @@ function renderSummaryBlock(sem) {
         </span>
       </div>
       <div class="semester-actions">
-        <button class="btn-icon" onclick="window._shohoj_editSummary(${sem.id})">Edit</button>
-        <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+        <button class="btn-icon" data-action="render:editSummary" data-sem-id="${sem.id}">Edit</button>
+        <button class="btn-icon danger" data-action="render:removeSemester" data-sem-id="${sem.id}">Remove</button>
       </div>
     </div>
     <div style="padding:10px 1.2rem;font-size:12px;color:var(--text3);font-style:italic;">
@@ -13878,7 +13947,7 @@ function renderSummaryForm() {
         <span class="semester-label" style="color:var(--green)">${title}</span>
       </div>
       <div class="semester-actions">
-        <button class="btn-icon danger" onclick="window._shohoj_hideSummaryForm()">Cancel</button>
+        <button class="btn-icon danger" data-action="render:hideSummaryForm">Cancel</button>
       </div>
     </div>
     <div style="padding:1rem 1.2rem;display:flex;flex-direction:column;gap:12px;">
@@ -13903,7 +13972,7 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
@@ -13924,7 +13993,7 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
@@ -13945,13 +14014,13 @@ function renderSummaryForm() {
               padding:9px 12px;outline:none;width:100%;
               -moz-appearance:textfield;
             "
-            oninput="this.style.borderColor=''"
+            data-action="render:clearBorder"
             onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
           />
         </div>
 
         <button
-          onclick="window._shohoj_confirmSummaryForm()"
+          data-action="render:confirmSummary"
           style="
             background:var(--green);color:#0b0f0d;
             font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
@@ -14086,7 +14155,7 @@ function renderSemesters() {
           })()}
         </div>
         <div class="semester-actions">
-          <button class="btn-icon danger" onclick="removeSemester(${sem.id})">Remove</button>
+          <button class="btn-icon danger" data-action="render:removeSemester" data-sem-id="${sem.id}">Remove</button>
         </div>
       </div>
       <div class="courses-table">
@@ -14112,7 +14181,7 @@ function renderSemesters() {
               id="course-input-${sem.id}-${i}"
               value="${escAttr(c.name)}"
               autocomplete="off" autocorrect="off" spellcheck="false"
-              oninput="onCourseInput(event,${sem.id},${i})"
+              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}"
               onkeydown="onCourseKey(event,${sem.id},${i})"
               onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
@@ -14126,14 +14195,14 @@ function renderSemesters() {
           ${c.credits === 0 && c.name.trim() !== ''
             ? c.grade === 'F(NT)'
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
-              : `<select class="pf-select" onchange="onPFChange(${sem.id},${i},this.value)">
+              : `<select class="pf-select" data-action="render:pfChange" data-sem-id="${sem.id}" data-idx="${i}">
                 <option value="" disabled ${!c.grade ? 'selected' : ''}>Pass / Fail</option>
                 <option value="P" ${c.grade === 'P' ? 'selected' : ''}>P - Pass</option>
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
-                oninput="autoDetectGrade(${sem.id},${i},this.value,this)"
+                data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
                 onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
           }
@@ -14151,22 +14220,22 @@ function renderSemesters() {
           >${escHtml(c.grade) || '—'}</span>
           <div class="course-row-actions">
             ${showChip
-              ? `<button class="course-faculty-chip" onclick="openRateForCourse(${sem.id},${i})" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
-              : (canRate ? `<button class="course-rate-pill" onclick="openRateForCourse(${sem.id},${i})" title="Rate this faculty">+ Rate</button>` : '')}
-            <button class="btn-remove-course" onclick="removeCourse(${sem.id},${i})">×</button>
+              ? `<button class="course-faculty-chip" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
+              : (canRate ? `<button class="course-rate-pill" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" title="Rate this faculty">+ Rate</button>` : '')}
+            <button class="btn-remove-course" data-action="render:removeCourse" data-sem-id="${sem.id}" data-idx="${i}">×</button>
           </div>
         </div>`;
         }).join('')}
       </div>
       <div class="add-course-row">
-        <button class="btn-add-course" onclick="addCourse(${sem.id})">+ Add course</button>
+        <button class="btn-add-course" data-action="render:addCourse" data-sem-id="${sem.id}">+ Add course</button>
       </div>
     </div>`;
   }).join('');
 
   // ── Inline "Add Semester" button after last semester block ────────────────
   if (state.semesters.some(s => s.summary) && state.semesters.filter(s => !s.summary).length > 0) {
-    html += `<button class="btn-add-course" onclick="addSemester()" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
+    html += `<button class="btn-add-course" data-action="render:addSemester" style="width:100%;margin-top:4px;padding:10px;font-size:13px;font-weight:600;border-radius:10px;">+ Add Semester</button>`;
   }
 
   // ── EMPTY STATE ──────────────────────────────────────────────────────────
@@ -14184,7 +14253,7 @@ function renderSemesters() {
       : '<div class="empty-state-steps"><div class="empty-state-step" style="opacity:0.45"><span class="empty-state-step-num done">✓</span><span>Department &amp; semester set</span></div><div class="empty-state-step"><span class="empty-state-step-num active" style="background:var(--green);color:#0b0f0d">3</span><span>Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to auto-fill</span></div></div>';
 
     const cgpaBtn = (_semDone && !hasSummaryBlock)
-      ? `<button class="btn-sample-ghost" onclick="window._shohoj_showSummaryForm()" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
+      ? `<button class="btn-sample-ghost" data-action="render:showSummaryForm" style="border-color:rgba(46,204,113,0.4);color:var(--green);">📊 Start from CGPA</button>`
       : '';
 
     html += `
@@ -14194,8 +14263,8 @@ function renderSemesters() {
         <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, import your transcript, or start from your current CGPA.'}</div>
         ${_emptyHint}
         <div class="empty-state-actions">
-          <button class="btn-sample" onclick="loadSampleData()">✨ Load sample data</button>
-          ${_semDone ? '<button class="btn-sample-ghost" onclick="addSemester()">+ Add semester</button>' : ''}
+          <button class="btn-sample" data-action="render:loadSample">✨ Load sample data</button>
+          ${_semDone ? '<button class="btn-sample-ghost" data-action="render:addSemester">+ Add semester</button>' : ''}
           ${cgpaBtn}
         </div>
         ${_semDone ? '<div class="empty-arrow">← use the buttons above too &nbsp;↑</div>' : ''}
@@ -14594,6 +14663,12 @@ function onStartSemConfirm() {
 }
 
 // ── js/ui/simulator.js ──────────────────────────────────────────
+registerAction('sim:importTranscript', () => {
+  document.getElementById('transcriptFileInput')?.click();
+});
+registerAction('sim:addSemester', () => window.addSemester?.());
+registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
+
 const _retakeChecked = new Set();
 
 function clearRetakeSelections() {
@@ -14788,14 +14863,14 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
             You're using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake &amp; Repeat Strategy</strong>, <strong>Grade Changer</strong>, and <strong>Reverse Solver</strong>, import your transcript or add your past semester courses with grades.
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-            <button onclick="document.getElementById('transcriptFileInput').click()" style="
+            <button data-action="sim:importTranscript" style="
               padding:7px 14px;border-radius:8px;
               background:rgba(86,180,233,0.12);border:1px solid rgba(86,180,233,0.3);
               color:#56B4E9;font-size:12px;font-weight:600;cursor:pointer;
               font-family:'DM Sans',sans-serif;
               transition:background 0.2s,border-color 0.2s;
             ">📄 Import Transcript</button>
-            <button onclick="addSemester()" style="
+            <button data-action="sim:addSemester" style="
               padding:7px 14px;border-radius:8px;
               background:rgba(46,204,113,0.10);border:1px solid rgba(46,204,113,0.25);
               color:#2ECC71;font-size:12px;font-weight:600;cursor:pointer;
@@ -14887,7 +14962,7 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
     const rowBg = checked ? 'background:rgba(29,185,84,0.07);' : '';
     const safeKey = escAttr(c.key);
     return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;${rowBg}"
-                onclick="window._toggleRetake('${safeKey}')">
+                data-action="sim:toggleRetake" data-key="${safeKey}">
       <td style="padding:6px 8px;font-size:12px">${chk}</td>
       <td style="padding:6px 8px;color:var(--text);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(c.name)}">${escHtml(c.name)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${escHtml(c.sem)}</td>
@@ -14979,6 +15054,9 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
 }
 
 // ── js/ui/modals.js ─────────────────────────────────────────────
+registerAction('modals:hideImport', () => hideImportModal());
+registerAction('modals:applyImport', () => applyImport());
+
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
   if (isDark) {
@@ -15187,7 +15265,7 @@ async function importTranscriptPDF(inputEl) {
           <div style="font-size:13px;color:${getModalTheme().text2};margin-bottom:16px">
             No semesters were detected. Make sure this is a BRACU official grade sheet PDF.
           </div>
-          <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
+          <button data-action="modals:hideImport" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
         </div>`);
       return;
     }
@@ -15225,13 +15303,13 @@ async function importTranscriptPDF(inputEl) {
       </div>
       ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${escHtml(parsed.detectedDept)}</strong></div>` : ''}
       <div style="display:flex;gap:10px">
-        <button onclick="applyImport()"
+        <button data-action="modals:applyImport"
           onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(46,204,113,0.35)'"
           onmouseleave="this.style.background='#1DB954';this.style.transform='';this.style.boxShadow=''"
           style="flex:1;background:#1DB954;color:#0b0f0d;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s">
           ✅ Import Now
         </button>
-        <button onclick="hideImportModal()"
+        <button data-action="modals:hideImport"
           onmouseenter="this.style.background='${t2.cancelHover}'"
           onmouseleave="this.style.background='${t2.cancelBg}'"
           style="background:${t2.cancelBg};color:${t2.cancelText};border:1px solid ${t2.cancelBorder};border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
@@ -15245,7 +15323,7 @@ async function importTranscriptPDF(inputEl) {
         <div style="font-size:32px;margin-bottom:12px">❌</div>
         <div style="font-size:15px;font-weight:700;color:${getModalTheme().text};margin-bottom:8px">Import failed</div>
         <div style="font-size:12px;color:${getModalTheme().text2};margin-bottom:16px">${escHtml(err.message)}</div>
-        <button onclick="hideImportModal()" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
+        <button data-action="modals:hideImport" style="background:var(--green);color:#0b0f0d;border:none;border-radius:8px;padding:8px 20px;font-weight:700;cursor:pointer;">Close</button>
       </div>`);
   } finally {
     if (btn) { btn.textContent = origText; btn.disabled = false; }
@@ -15612,6 +15690,13 @@ function exportPDF() {
 }
 
 // ── js/ui/playground.js ─────────────────────────────────────────
+registerAction('pg:removeChange',     el => removePlaygroundChange(el.dataset.key));
+registerAction('pg:clearChanges',     () => clearPlaygroundChanges());
+registerAction('pg:addChange',        () => addPlaygroundChange());
+registerAction('pg:solverTarget',     el => onSolverTargetChange(el.value));
+registerAction('pg:solverCourse',     el => onSolverCourseChange(el.value));
+registerAction('pg:switchTab',        el => switchPlaygroundTab(el.dataset.tab));
+
 // ── Local playground state ──────────────────────────────────────────────────
 const pg = {
   activeTab: 'changer',
@@ -15818,13 +15903,13 @@ function renderGradeChanger(courses, totals) {
           <span style="color:${gradeColor(ch.newGrade)};font-weight:700">${escHtml(ch.newGrade)}</span>
         </div>
         <div class="pg-change-impact" style="color:${ch.impact >= 0 ? '#2ECC71' : '#e74c3c'}">${ch.impact >= 0 ? '+' : ''}${ch.impact.toFixed(3)}</div>
-        <button class="pg-change-remove" onclick="removePlaygroundChange('${escAttr(ch.key)}')" title="Remove">×</button>
+        <button class="pg-change-remove" data-action="pg:removeChange" data-key="${escAttr(ch.key)}" title="Remove">×</button>
       </div>`).join('');
 
     changesHtml = `
       <div class="pg-changes-header">
         <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text3)">Changes (${changeDetails.length})</span>
-        <button class="pg-clear-btn" onclick="clearPlaygroundChanges()">Clear all</button>
+        <button class="pg-clear-btn" data-action="pg:clearChanges">Clear all</button>
       </div>
       <div class="pg-changes-list">${rows}</div>`;
   }
@@ -15846,7 +15931,7 @@ function renderGradeChanger(courses, totals) {
         <option value="" disabled selected>New grade</option>
         ${gradeOpts}
       </select>
-      <button class="pg-add-btn" onclick="addPlaygroundChange()">Add</button>
+      <button class="pg-add-btn" data-action="pg:addChange">Add</button>
     </div>` : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px">All courses have been modified</div>`;
 
   return `${heroHtml}${changesHtml}${pickerHtml}`;
@@ -15977,11 +16062,11 @@ function renderReverseSolver(courses, totals) {
         <label class="pg-solver-label">Target CGPA</label>
         <input type="number" class="pg-solver-target" min="0" max="4" step="0.01"
           placeholder="e.g. 3.00" value="${escAttr(effectiveTarget)}"
-          oninput="onSolverTargetChange(this.value)" />
+          data-action="pg:solverTarget" />
       </div>
       <div class="pg-solver-input-group" style="flex:1 1 0;min-width:0">
         <label class="pg-solver-label">Course</label>
-        <select class="pg-solver-course-select" onchange="onSolverCourseChange(this.value)">
+        <select class="pg-solver-course-select" data-action="pg:solverCourse">
           <option value="" disabled ${!pg.solverKey ? 'selected' : ''}>Pick a course</option>
           ${courseOpts}
         </select>
@@ -16022,7 +16107,7 @@ function renderPlayground(force) {
 
   const tabsHtml = tabs.map(t => `
     <button class="pg-tab${pg.activeTab === t.id ? ' pg-tab-active' : ''}"
-      onclick="switchPlaygroundTab('${t.id}')">
+      data-action="pg:switchTab" data-tab="${t.id}">
       <span class="pg-tab-label">${t.label}</span>
       <span class="pg-tab-desc">${t.desc}</span>
     </button>`).join('');
@@ -16053,6 +16138,17 @@ function renderPlayground(force) {
 // ── js/ui/planner.js ──────────────────────────────────────────────────────────
 // Semester Planner: prerequisite checking, course recommendations,
 // plan building, credit validation, and prereq tree visualization.
+
+registerAction('pl:impactGrade',   el => onPlannerImpactGrade(el.value));
+registerAction('pl:openReviews',   el => window.openCourseReviews?.(el.dataset.code, el.dataset.name));
+registerAction('pl:viewPrereq',    el => viewPrereqTree(el.dataset.code || ''));
+registerAction('pl:remove',        el => removeFromPlan(el.dataset.code));
+registerAction('pl:promote',       () => promoteToRunning());
+registerAction('pl:clear',         () => clearPlan());
+registerAction('pl:filter',        el => onPlannerFilter(el.dataset.mode));
+registerAction('pl:add',           el => addToPlan(el.dataset.code));
+registerAction('pl:browseReviews', () => window.switchCalcTab?.('reviews'));
+registerAction('pl:search',        el => onPlannerSearch(el.value));
 
 // ── Local planner state ─────────────────────────────────────────────────────
 const plan = {
@@ -16329,7 +16425,7 @@ function renderImpactPreview(totalCredits) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 12px;border-radius:8px;background:rgba(86,180,233,0.05);border:1px solid rgba(86,180,233,0.15);flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);">
         <span>If all planned courses earn</span>
-        <select onchange="onPlannerImpactGrade(this.value)" style="
+        <select data-action="pl:impactGrade" style="
           padding:3px 8px;border-radius:6px;border:1px solid var(--border);
           background:var(--glass);color:var(--text);
           font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
@@ -16599,9 +16695,9 @@ function renderPlanner() {
           ${warnText}
         </div>
         <span style="font-size:12px;color:var(--text2);flex-shrink:0;">${c.credits} cr</span>
-        <button onclick="openCourseReviews('${escAttr(code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0;" title="See faculty reviews">\u2b50</button>
-        <button onclick="viewPrereqTree('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
-        <button onclick="removeFromPlan('${escAttr(code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;" title="Remove">\u00d7</button>
+        <button data-action="pl:openReviews" data-code="${escAttr(code)}" data-name="${escAttr(c.name)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px;flex-shrink:0;" title="See faculty reviews">\u2b50</button>
+        <button data-action="pl:viewPrereq" data-code="${escAttr(code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
+        <button data-action="pl:remove" data-code="${escAttr(code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px;flex-shrink:0;" title="Remove">\u00d7</button>
       </div>`;
     }).join('');
 
@@ -16617,7 +16713,7 @@ function renderPlanner() {
     const canPromote = validation.issues.length === 0;
     const promoteLabel = hasRunning ? 'Replace Running Semester' : 'Start Semester \u2192';
     const promoteBtn = `
-      <button onclick="promoteToRunning()" ${canPromote ? '' : 'disabled'} style="
+      <button data-action="pl:promote" ${canPromote ? '' : 'disabled'} style="
         width:100%;margin-top:10px;padding:10px 14px;border-radius:10px;
         background:${canPromote ? 'rgba(46,204,113,0.12)' : 'rgba(115,115,115,0.08)'};
         border:1px solid ${canPromote ? 'rgba(46,204,113,0.35)' : 'var(--border)'};
@@ -16633,7 +16729,7 @@ function renderPlanner() {
       <div style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
           <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Your plan (${plan.courses.length} course${plan.courses.length !== 1 ? 's' : ''})</span>
-          <button onclick="clearPlan()" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">Clear all</button>
+          <button data-action="pl:clear" style="font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;text-decoration:underline;font-family:'DM Sans',sans-serif;">Clear all</button>
         </div>
         ${planRows}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:8px 12px;border-radius:8px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.15);">
@@ -16667,7 +16763,7 @@ function renderPlanner() {
         <div style="padding:12px 14px;border-radius:10px;background:rgba(86,180,233,0.06);border:1px solid rgba(86,180,233,0.18);margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <span style="font-size:12px;font-weight:700;color:#56B4E9;">Prerequisite chain for ${escHtml(plan.viewingPrereqs)}</span>
-            <button onclick="viewPrereqTree('')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">\u00d7</button>
+            <button data-action="pl:viewPrereq" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">\u00d7</button>
           </div>
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${escHtml(courseName)}</div>
           ${tree.children.length > 0
@@ -16680,7 +16776,7 @@ function renderPlanner() {
   // ── Filter tabs ───────────────────────────────────────────────────────
   const filterBtn = (mode, label, count) => {
     const active = _filterMode === mode;
-    return `<button onclick="onPlannerFilter('${mode}')" style="
+    return `<button data-action="pl:filter" data-mode="${mode}" style="
       padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;
       font-family:'DM Sans',sans-serif;cursor:pointer;
       border:1px solid ${active ? 'rgba(46,204,113,0.35)' : 'var(--border)'};
@@ -16715,10 +16811,10 @@ function renderPlanner() {
       <span style="font-size:11px;font-weight:700;color:var(--green);background:rgba(46,204,113,0.10);border-radius:4px;padding:1px 6px;flex-shrink:0;">${escHtml(c.code)}</span>
       <span style="font-size:12px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(c.name)}${softWarn}</span>
       <span style="font-size:11px;color:var(--text3);flex-shrink:0;">${c.credits} cr</span>
-      <button onclick="openCourseReviews('${escAttr(c.code)}', '${escAttr(c.name)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="See faculty reviews for this course">\u2b50</button>
-      <button onclick="viewPrereqTree('${escAttr(c.code)}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
+      <button data-action="pl:openReviews" data-code="${escAttr(c.code)}" data-name="${escAttr(c.name)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="See faculty reviews for this course">\u2b50</button>
+      <button data-action="pl:viewPrereq" data-code="${escAttr(c.code)}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px;flex-shrink:0;" title="View prerequisites">\ud83d\udd17</button>
       ${!isLocked
-        ? `<button onclick="addToPlan('${escAttr(c.code)}')" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.25);color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;font-family:'DM Sans',sans-serif;">+ Add</button>`
+        ? `<button data-action="pl:add" data-code="${escAttr(c.code)}" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.25);color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;font-family:'DM Sans',sans-serif;">+ Add</button>`
         : `<span style="font-size:10px;color:var(--text3);flex-shrink:0;min-width:50px;text-align:right;">Locked</span>`
       }
     </div>`;
@@ -16733,14 +16829,14 @@ function renderPlanner() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);">Available courses</span>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button onclick="switchCalcTab('reviews')" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
+          <button data-action="pl:browseReviews" style="background:none;border:none;color:#2ECC71;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif;text-decoration:underline;padding:0;" title="Browse faculty reviews">\u2b50 Browse Reviews</button>
           <span style="font-size:11px;color:var(--text3);">${filtered.length} found</span>
         </div>
       </div>
       <input type="text" placeholder="Search by course code or name..."
         id="plannerSearchInput"
         value="${escAttr(_searchQuery)}"
-        oninput="onPlannerSearch(this.value)"
+        data-action="pl:search"
         style="
           width:100%;padding:8px 12px;margin-bottom:8px;
           background:var(--input-bg);border:1px solid var(--border);
@@ -16805,6 +16901,15 @@ function _updatePlannerBadge() {
 
 // ── js/ui/feedback.js ───────────────────────────────────────────
 // ── js/ui/feedback.js ─────────────────────────────────────────────────────────
+registerAction('fb:close',      () => closeFeedbackModal());
+registerAction('fb:tab',        el => window._shohoj_fbTab?.(el.dataset.tab));
+registerAction('fb:selectType', el => window._shohoj_fbSelectType?.(el.dataset.type));
+registerAction('fb:toggleAnon', () => window._shohoj_fbToggleAnon?.());
+registerAction('fb:submit',     () => window._shohoj_doSubmit?.());
+registerAction('fb:filter',     el => window._shohoj_fbFilter?.(el.dataset.filter));
+registerAction('fb:adminDel',   el => window._shohoj_fbAdminDel?.(el.dataset.id));
+registerAction('fb:upvote',     el => window._shohoj_fbUpvote?.(el.dataset.id));
+
 // ── Module state ──────────────────────────────────────────────────────────────
 let _activeTab   = 'submit';
 let _selType     = 'general';
@@ -16905,12 +17010,12 @@ function _renderModal() {
   content.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
       <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:${t.text};">Feedback</div>
-      <button onclick="closeFeedbackModal()" style="background:none;border:none;color:${t.text3};font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">×</button>
+      <button data-action="fb:close" style="background:none;border:none;color:${t.text3};font-size:22px;cursor:pointer;line-height:1;padding:0 2px;">×</button>
     </div>
     <div style="display:flex;background:${t.inputBg};border-radius:30px;padding:3px;margin-bottom:20px;position:relative;">
       <div id="fbPill" style="position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);background:${t.accent};border-radius:27px;transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);pointer-events:none;"></div>
-      <button id="fbTabSubmit" onclick="window._shohoj_fbTab('submit')" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#000;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
-      <button id="fbTabBoard"  onclick="window._shohoj_fbTab('board')"  style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:${t.text2};cursor:pointer;border-radius:27px;font-family:inherit;">Board</button>
+      <button id="fbTabSubmit" data-action="fb:tab" data-tab="submit" style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:#000;cursor:pointer;border-radius:27px;font-family:inherit;">Submit</button>
+      <button id="fbTabBoard"  data-action="fb:tab" data-tab="board"  style="position:relative;z-index:1;flex:1;padding:7px 0;font-size:12px;font-weight:700;border:none;background:transparent;color:${t.text2};cursor:pointer;border-radius:27px;font-family:inherit;">Board</button>
     </div>
     <div id="fbContent"></div>
   `;
@@ -16957,7 +17062,7 @@ function _submitHtml(t, uid) {
       <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${t.text3};margin-bottom:8px;">Type</div>
       <div style="display:flex;gap:6px;">
         ${[['bug','Bug'],['feature','Feature'],['general','General']].map(([v,l]) => `
-          <button id="fbType_${v}" onclick="window._shohoj_fbSelectType('${v}')" style="
+          <button id="fbType_${v}" data-action="fb:selectType" data-type="${v}" style="
             flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:20px;
             border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};
             cursor:pointer;font-family:inherit;transition:all 0.15s;
@@ -16976,12 +17081,12 @@ function _submitHtml(t, uid) {
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
       <div style="font-size:13px;color:${t.text2};">Submit anonymously</div>
-      <div onclick="window._shohoj_fbToggleAnon()" style="cursor:pointer;position:relative;width:38px;height:22px;flex-shrink:0;">
+      <div data-action="fb:toggleAnon" style="cursor:pointer;position:relative;width:38px;height:22px;flex-shrink:0;">
         <div id="fbAnonTrack" style="position:absolute;inset:0;border-radius:22px;background:${t.accent};transition:background 0.2s;"></div>
         <div id="fbAnonPill" style="position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform 0.2s;transform:translateX(16px);"></div>
       </div>
     </div>
-    <button id="fbSubmitBtn" onclick="window._shohoj_doSubmit()" style="
+    <button id="fbSubmitBtn" data-action="fb:submit" style="
       width:100%;padding:11px;border-radius:10px;border:none;
       background:${t.accent};color:#000;font-size:14px;font-weight:700;
       cursor:pointer;font-family:inherit;
@@ -17085,7 +17190,7 @@ function _renderBoardContent() {
 
   const filterBtns = ['all','bug','feature','general'].map(f => {
     const on = _boardFilter === f;
-    return `<button onclick="window._shohoj_fbFilter('${f}')" style="
+    return `<button data-action="fb:filter" data-filter="${f}" style="
       padding:5px 11px;font-size:11px;font-weight:700;border-radius:20px;
       border:1px solid ${on ? t.accent : t.border};
       background:${on ? t.accent : t.inputBg};
@@ -17104,14 +17209,14 @@ function _renderBoardContent() {
         const count  = _upvoteCounts[item.id] || 0;
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
-          ? `<button onclick="window._shohoj_fbAdminDel('${item.id}')" title="Delete"
+          ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
                style="background:none;border:none;cursor:pointer;color:rgba(231,76,60,0.45);
                       font-size:16px;padding:0 2px;line-height:1;transition:color 0.15s;
                       margin-left:4px;">×</button>`
           : '';
         return `
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid ${t.border};">
-            <div onclick="window._shohoj_fbUpvote('${item.id}')"
+            <div data-action="fb:upvote" data-id="${item.id}"
                  style="display:flex;flex-direction:column;align-items:center;gap:2px;
                         min-width:34px;cursor:pointer;
                         color:${voted ? t.accent : t.text3};
@@ -17548,6 +17653,7 @@ function initReveal() {
 
 // ── js/main.js ──────────────────────────────────────────────────
 // ── IMPORTS ──────────────────────────────────────────────────────────────────
+// installs delegated event listeners + registerAction
 // ── INTERNAL HELPERS (used by modules via window._shohoj_*) ──────────────────
 function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 

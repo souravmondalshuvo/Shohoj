@@ -5890,7 +5890,7 @@ function showNudgeBanner(show) {
   `;
   banner.innerHTML = `
     <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button onclick="window._shohoj_signIn()" style="
+    <button data-action="auth:signin" style="
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 16px;border-radius:8px;
       background:rgba(255,255,255,0.07);
@@ -5916,6 +5916,13 @@ function showNudgeBanner(show) {
 }
 
 window._shohoj_signIn = signInWithGoogle;
+
+// firebase.js executes before the bundled main module in dev mode, so the
+// dispatcher's registerAction may not exist yet at top-level. Defer to
+// DOMContentLoaded — by then all module scripts have run.
+document.addEventListener('DOMContentLoaded', () => {
+  window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
+});
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
@@ -6902,6 +6909,47 @@ function getStartSeason() {
 function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
+}
+
+// ── js/core/dispatch.js ─────────────────────────────────────────
+// ── ACTION DISPATCH ───────────────────────────────────────────────────────────
+// Replaces inline onclick/onchange/oninput attributes with delegated listeners
+// resolved from a single data-action attribute plus a registry of handlers.
+// This lets the bundled HTML drop 'unsafe-inline' from script-src in CSP.
+//
+// Usage from a module's template literal:
+//   <button data-action="addCourse" data-sem-id="${sem.id}">+ Add</button>
+//
+// And from the module's top-level code (runs once at module load):
+//   registerAction('addCourse', (el) => addCourse(Number(el.dataset.semId)));
+//
+// The handler receives (element, event). The event type is whichever of
+// click / change / input fired — each element should declare a data-action
+// for exactly one event type.
+
+const _actions = Object.create(null);
+
+function registerAction(name, handler) {
+  _actions[name] = handler;
+}
+
+function _dispatch(event) {
+  const el = event.target.closest('[data-action]');
+  if (!el) return;
+  const fn = _actions[el.dataset.action];
+  if (typeof fn === 'function') fn(el, event);
+}
+
+if (typeof document !== 'undefined') {
+  ['click', 'change', 'input'].forEach(type => {
+    document.addEventListener(type, _dispatch);
+  });
+}
+
+// Expose globally so modules can register without importing (e.g. firebase.js
+// is a separate module script that does not consume the bundle's exports).
+if (typeof window !== 'undefined') {
+  window._shohoj_registerAction = registerAction;
 }
 
 // ── js/core/departments.js ──────────────────────────────────────
