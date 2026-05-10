@@ -1413,7 +1413,7 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
       createdAt: serverTimestamp(),
     };
     if (semester) docData.semester = String(semester).slice(0, 40);
-    if (facultyInitials) docData.facultyInitials = String(facultyInitials).toUpperCase().slice(0, 6);
+    if (facultyInitials) docData.facultyInitials = String(facultyInitials).toUpperCase().slice(0, 20);
     const added = await addDoc(collection(db, 'papers'), docData);
     return { ok: true, id: added.id };
   } catch (e) {
