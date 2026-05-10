@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-LCX+IR+cqlJyIsN8V9uANjVMGLZvTOVHZ35uN/03Fa0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-KyagSfHZPmDMe73XqhZO5whZTb+BB62PMG+w4gWmOss='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-LCX+IR+cqlJyIsN8V9uANjVMGLZvTOVHZ35uN/03Fa0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-bwdjrb9foHM3KoUOXHvd57w7yoaBIcwuHNRvx79HWr0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4508,6 +4508,8 @@ input, select, textarea,
 .paper-modal-note { font-size: 0.78rem; opacity: 0.7; margin: 4px 0 0; }
 .paper-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 .paper-modal-error { color: #ff7676; font-size: 0.85rem; min-height: 1em; }
+.paper-modal-file-info { display: block; font-size: 0.78rem; opacity: 0.75; margin-top: 4px; }
+.paper-modal-file-info--error { color: #ff7676; opacity: 1; }
 
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
 /* ── Admin dashboard (full-page) ─────────────────────────────────────────── */
@@ -10063,7 +10065,7 @@ function aggregateRatings(reviews) {
 // Firebase directly.
 
 const PAPERS_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
-const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment'];
+const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const PAPER_TYPE_LABELS = {
@@ -10072,6 +10074,7 @@ const PAPER_TYPE_LABELS = {
   quiz:       'Quiz',
   notes:      'Notes',
   assignment: 'Assignment',
+  lab:        'Lab Report',
 };
 
 function normalizeCourseCode(raw) {
@@ -13293,6 +13296,7 @@ function _renderShell() {
           <option value="quiz">Quiz</option>
           <option value="notes">Notes</option>
           <option value="assignment">Assignment</option>
+          <option value="lab">Lab Report</option>
         </select>
       </div>
 
@@ -13550,6 +13554,7 @@ function _openUploadModal() {
             <option value="quiz">Quiz</option>
             <option value="notes">Notes</option>
             <option value="assignment">Assignment</option>
+            <option value="lab">Lab Report</option>
           </select>
         </label>
         <label>
@@ -13566,12 +13571,13 @@ function _openUploadModal() {
         </label>
         <label>
           <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" type="file" accept="application/pdf,image/*" required />
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" required />
+          <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
         <div class="paper-modal-actions">
           <button type="button" class="btn-secondary paper-modal-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Upload</button>
+          <button type="submit" class="btn-primary" id="paperUploadSubmit">Upload</button>
         </div>
         <div class="paper-modal-error" id="paperUploadError"></div>
       </form>
@@ -13582,6 +13588,41 @@ function _openUploadModal() {
   wrap.querySelector('.paper-modal-close').addEventListener('click', close);
   wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
   wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  const fileInput = wrap.querySelector('#paperUploadFile');
+  const fileInfo  = wrap.querySelector('#paperUploadFileInfo');
+  const errBoxEl  = wrap.querySelector('#paperUploadError');
+  const submitEl  = wrap.querySelector('#paperUploadSubmit');
+  fileInput.addEventListener('change', () => {
+    fileInfo.textContent = '';
+    fileInfo.classList.remove('paper-modal-file-info--error');
+    errBoxEl.textContent = '';
+    submitEl.disabled = false;
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const sizeStr = _formatBytes(f.size);
+    if (f.size <= 0) {
+      fileInfo.textContent = `${f.name} — file is empty`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    if (f.size > MAX_FILE_SIZE) {
+      const limitMb = (MAX_FILE_SIZE / (1024 * 1024)).toFixed(0);
+      fileInfo.textContent = `${f.name} — ${sizeStr}. Too large. Limit is ${limitMb} MB. Try compressing the PDF (e.g. macOS Preview → Export → Reduce File Size).`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    if (!/^application\/pdf$|^image\//.test(f.type || '')) {
+      fileInfo.textContent = `${f.name} — only PDFs and images are allowed.`;
+      fileInfo.classList.add('paper-modal-file-info--error');
+      submitEl.disabled = true;
+      return;
+    }
+    fileInfo.textContent = `${f.name} — ${sizeStr}`;
+  });
+
   wrap.querySelector('#paperUploadForm').addEventListener('submit', async e => {
     e.preventDefault();
     const fd = new FormData(e.target);
