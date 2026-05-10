@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-xa6EDESh5Q8rz0KlLCpCeYLTaGAKEMMDwgAkLWJErbw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Xl+2gFgQU6JThmsT+6gLIVxQxeQ81yN43baK/rtrKDY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Tp00U6hqizRgTD6uHsgBs90fq5lElTk5Ua3iw9XDASk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com; img-src 'self' data: https://*.googleusercontent.com; frame-src https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4510,6 +4510,12 @@ input, select, textarea,
 .paper-modal-error { color: #ff7676; font-size: 0.85rem; min-height: 1em; }
 .paper-modal-file-info { display: block; font-size: 0.78rem; opacity: 0.75; margin-top: 4px; }
 .paper-modal-file-info--error { color: #ff7676; opacity: 1; }
+.paper-modal-clear-draft {
+  background: transparent; border: none; color: #ff9e9e; cursor: pointer;
+  font-size: 0.78rem; padding: 2px 8px; margin-right: 6px;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.paper-modal-clear-draft:hover { color: #ff7676; }
 
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
 /* ── Admin dashboard (full-page) ─────────────────────────────────────────── */
@@ -13534,23 +13540,36 @@ async function _loadList() {
 }
 
 // ── Upload modal ─────────────────────────────────────────────────────────────
+// Module-level draft. Survives modal close/reopen (intentional: an accidental
+// dismiss should not nuke the user's work). Cleared only on successful upload
+// or full page refresh — File objects can't be persisted to localStorage and
+// the only sensible discard hatch is the explicit "Clear draft" button below.
+let _uploadDraft = null;
+
+function _draftHasContent(d) {
+  if (!d) return false;
+  return !!(d.courseCode || d.title || d.semester || d.facultyInitials || d.file);
+}
+
 function _openUploadModal() {
   if (!_isSignedIn()) {
     _toast('Sign in to upload papers.');
     return;
   }
+  const draft = _uploadDraft || {};
   const wrap = document.createElement('div');
   wrap.className = 'paper-modal-backdrop';
   wrap.innerHTML = `
     <div class="paper-modal">
       <header class="paper-modal-head">
         <h4>Upload a paper</h4>
+        <button type="button" class="paper-modal-clear-draft" id="paperUploadClearDraft" hidden>Clear draft</button>
         <button class="paper-modal-close" aria-label="Close">×</button>
       </header>
       <form class="paper-modal-form" id="paperUploadForm">
         <label>
           <span>Course code</span>
-          <input name="courseCode" placeholder="e.g. CSE220" maxlength="8" required />
+          <input name="courseCode" placeholder="e.g. CSE220" maxlength="8" required value="${escAttr(draft.courseCode || '')}" />
         </label>
         <label>
           <span>Type</span>
@@ -13565,19 +13584,19 @@ function _openUploadModal() {
         </label>
         <label>
           <span>Title</span>
-          <input name="title" placeholder="e.g. CSE220 Midterm Spring 2024" maxlength="120" required />
+          <input name="title" placeholder="e.g. CSE220 Midterm Spring 2024" maxlength="120" required value="${escAttr(draft.title || '')}" />
         </label>
         <label>
           <span>Semester (optional)</span>
-          <input name="semester" placeholder="e.g. Spring2024" maxlength="40" />
+          <input name="semester" placeholder="e.g. Spring2024" maxlength="40" value="${escAttr(draft.semester || '')}" />
         </label>
         <label>
           <span>Faculty initials (optional)</span>
-          <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" />
+          <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" value="${escAttr(draft.facultyInitials || '')}" />
         </label>
         <label>
           <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" required />
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" />
           <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
@@ -13590,23 +13609,30 @@ function _openUploadModal() {
     </div>
   `;
   document.body.appendChild(wrap);
-  const close = () => wrap.remove();
-  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
-  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
-  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
 
+  const form     = wrap.querySelector('#paperUploadForm');
+  const typeSel  = form.elements.type;
   const fileInput = wrap.querySelector('#paperUploadFile');
   const fileInfo  = wrap.querySelector('#paperUploadFileInfo');
   const errBoxEl  = wrap.querySelector('#paperUploadError');
   const submitEl  = wrap.querySelector('#paperUploadSubmit');
-  fileInput.addEventListener('change', () => {
+  const clearBtn  = wrap.querySelector('#paperUploadClearDraft');
+
+  if (draft.type) typeSel.value = draft.type;
+
+  // Browsers forbid programmatic population of <input type="file">, so when a
+  // draft already has a File we display it ourselves and read from the in-memory
+  // draft at submit time. The native input is only consulted for new picks.
+  function _renderFileState() {
     fileInfo.textContent = '';
     fileInfo.classList.remove('paper-modal-file-info--error');
-    errBoxEl.textContent = '';
     submitEl.disabled = false;
-    const f = fileInput.files && fileInput.files[0];
+    const picked = fileInput.files && fileInput.files[0];
+    const f = picked || (_uploadDraft && _uploadDraft.file);
     if (!f) return;
     const sizeStr = _formatBytes(f.size);
+    const restored = !picked && _uploadDraft && _uploadDraft.file;
+    const restoredHint = restored ? ' (still selected from earlier)' : '';
     if (f.size <= 0) {
       fileInfo.textContent = `${f.name} — file is empty`;
       fileInfo.classList.add('paper-modal-file-info--error');
@@ -13626,32 +13652,84 @@ function _openUploadModal() {
       submitEl.disabled = true;
       return;
     }
-    fileInfo.textContent = `${f.name} — ${sizeStr}`;
+    fileInfo.textContent = `${f.name} — ${sizeStr}${restoredHint}`;
+  }
+
+  function _refreshClearBtn() {
+    clearBtn.hidden = !_draftHasContent(_uploadDraft);
+  }
+
+  function _saveDraft() {
+    _uploadDraft = _uploadDraft || {};
+    _uploadDraft.courseCode      = form.elements.courseCode.value;
+    _uploadDraft.type            = form.elements.type.value;
+    _uploadDraft.title           = form.elements.title.value;
+    _uploadDraft.semester        = form.elements.semester.value;
+    _uploadDraft.facultyInitials = form.elements.facultyInitials.value;
+    _refreshClearBtn();
+  }
+
+  _renderFileState();
+  _refreshClearBtn();
+
+  ['courseCode','title','semester','facultyInitials'].forEach(name => {
+    form.elements[name].addEventListener('input', _saveDraft);
+  });
+  typeSel.addEventListener('change', _saveDraft);
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (f) {
+      _uploadDraft = _uploadDraft || {};
+      _uploadDraft.file = f;
+      _saveDraft();
+    }
+    errBoxEl.textContent = '';
+    _renderFileState();
   });
 
-  wrap.querySelector('#paperUploadForm').addEventListener('submit', async e => {
+  clearBtn.addEventListener('click', () => {
+    _uploadDraft = null;
+    form.reset();
+    typeSel.value = 'midterm';
+    fileInput.value = '';
+    errBoxEl.textContent = '';
+    _renderFileState();
+    _refreshClearBtn();
+  });
+
+  const close = () => wrap.remove();
+  wrap.querySelector('.paper-modal-close').addEventListener('click', close);
+  wrap.querySelector('.paper-modal-cancel').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const file = fd.get('file');
-    const errBox = wrap.querySelector('#paperUploadError');
-    errBox.textContent = '';
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Uploading…';
-    const res = await uploadPaper({
-      file,
-      courseCode: fd.get('courseCode'),
-      type: fd.get('type'),
-      title: fd.get('title'),
-      semester: fd.get('semester'),
-      facultyInitials: fd.get('facultyInitials'),
-    });
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Upload';
-    if (!res.ok) {
-      errBox.textContent = res.error || 'Upload failed';
+    _saveDraft();
+    const picked = fileInput.files && fileInput.files[0];
+    const file = picked || (_uploadDraft && _uploadDraft.file);
+    errBoxEl.textContent = '';
+    if (!file) {
+      errBoxEl.textContent = 'Please choose a file.';
       return;
     }
+    submitEl.disabled = true;
+    submitEl.textContent = 'Uploading…';
+    const res = await uploadPaper({
+      file,
+      courseCode:      _uploadDraft.courseCode,
+      type:            _uploadDraft.type,
+      title:           _uploadDraft.title,
+      semester:        _uploadDraft.semester,
+      facultyInitials: _uploadDraft.facultyInitials,
+    });
+    submitEl.disabled = false;
+    submitEl.textContent = 'Upload';
+    if (!res.ok) {
+      errBoxEl.textContent = res.error || 'Upload failed';
+      return;
+    }
+    _uploadDraft = null;
     close();
     _toast('Uploaded — pending admin review.');
   });
