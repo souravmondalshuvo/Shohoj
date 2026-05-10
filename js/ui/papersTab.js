@@ -152,6 +152,7 @@ function _renderShell() {
           <option value="notes">Notes</option>
           <option value="assignment">Assignment</option>
           <option value="lab">Lab Report</option>
+          <option value="lab-quiz">Lab Quiz</option>
         </select>
       </div>
 
@@ -439,6 +440,7 @@ function _openUploadModal() {
             <option value="notes">Notes</option>
             <option value="assignment">Assignment</option>
             <option value="lab">Lab Report</option>
+            <option value="lab-quiz">Lab Quiz</option>
           </select>
         </label>
         <label>
