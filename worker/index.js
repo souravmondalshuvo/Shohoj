@@ -121,11 +121,22 @@ async function handleUpload(request, env, origin, ctx) {
 
   // Fire-and-forget admin notification. Wrapped in ctx.waitUntil so the
   // upload response returns immediately even if Resend is slow / down.
-  // Failures are logged but never fail the upload.
+  // Failures are logged but never fail the upload. The metadata fields
+  // (title, type, semester, facultyInitials) come from URL params the
+  // client passes alongside the upload — the worker only uses them for
+  // the email; the authoritative copy lives in the Firestore doc the
+  // client writes after this response returns.
   const notifyPromise = notifyAdminOfUpload(env, {
-    courseCode, path, fileSize: body.byteLength, contentType,
-    uploaderEmail: claims?.email || '(unknown)',
-    uploaderUid: claims?.user_id || claims?.sub || '(unknown)',
+    courseCode,
+    path,
+    fileSize: body.byteLength,
+    contentType,
+    title:           (url.searchParams.get('title') || '').slice(0, 120),
+    type:            (url.searchParams.get('type') || '').slice(0, 20),
+    semester:        (url.searchParams.get('semester') || '').slice(0, 40),
+    facultyInitials: (url.searchParams.get('facultyInitials') || '').slice(0, 20),
+    uploaderEmail:   claims?.email || '(unknown)',
+    uploaderUid:     claims?.user_id || claims?.sub || '(unknown)',
   }).catch(err => console.error('admin notify failed:', err?.message || err));
   if (ctx && typeof ctx.waitUntil === 'function') {
     ctx.waitUntil(notifyPromise);
@@ -139,19 +150,39 @@ async function notifyAdminOfUpload(env, info) {
   const sizeMb = (info.fileSize / (1024 * 1024)).toFixed(2);
   const modUrl = env.ADMIN_MODERATION_URL || '';
   const from = env.EMAIL_FROM || 'Shohoj <onboarding@resend.dev>';
-  const subject = `[Shohoj] New paper pending review: ${info.courseCode}`;
+  const typeLabel = info.type ? info.type.charAt(0).toUpperCase() + info.type.slice(1) : '';
+  const titleStr  = info.title || '(untitled)';
+  const subject = `[Shohoj] New ${info.type || 'paper'} pending review: ${info.courseCode}${info.title ? ' — ' + info.title : ''}`;
+
+  const row = (label, value, mono = false) => value
+    ? `<tr><td style="padding:6px 16px 6px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td><td style="padding:6px 0;${mono ? 'font-family:ui-monospace,monospace;font-size:13px;' : 'font-weight:500;'}">${escapeHtml(value)}</td></tr>`
+    : '';
+
   const html = `
-    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; line-height: 1.5;">
-      <h2 style="margin:0 0 12px;color:#0b0f0d;">📚 New paper uploaded</h2>
-      <p style="margin:0 0 16px;color:#444;">A student just uploaded a new paper to Shohoj. It's waiting for admin review.</p>
-      <table style="border-collapse:collapse;font-size:14px;color:#222;">
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Course</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(info.courseCode)}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Storage path</td><td style="padding:4px 0;font-family:ui-monospace,monospace;font-size:13px;">${escapeHtml(info.path)}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">File size</td><td style="padding:4px 0;">${sizeMb} MB · ${escapeHtml(info.contentType)}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#666;">Uploader</td><td style="padding:4px 0;">${escapeHtml(info.uploaderEmail)}<br><span style="font-family:ui-monospace,monospace;font-size:12px;color:#888;">${escapeHtml(info.uploaderUid)}</span></td></tr>
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; line-height: 1.5; color:#222;">
+      <h2 style="margin:0 0 8px;color:#0b0f0d;">📚 New paper pending review</h2>
+      <p style="margin:0 0 20px;color:#555;">A student just uploaded a paper to Shohoj. Review it and approve or delete from the admin dashboard.</p>
+
+      <div style="background:#f6f8f7;border:1px solid #e3e8e6;border-radius:10px;padding:14px 18px;margin-bottom:18px;">
+        <div style="font-size:11px;color:#666;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(info.courseCode)}${typeLabel ? ' · ' + escapeHtml(typeLabel) : ''}</div>
+        <div style="font-size:17px;font-weight:600;color:#0b0f0d;">${escapeHtml(titleStr)}</div>
+      </div>
+
+      <table style="border-collapse:collapse;font-size:14px;width:100%;">
+        ${row('Course code',       info.courseCode)}
+        ${row('Paper type',        typeLabel || info.type)}
+        ${row('Title',             info.title)}
+        ${row('Semester',          info.semester)}
+        ${row('Faculty initials',  info.facultyInitials)}
+        ${row('File size',         `${sizeMb} MB`)}
+        ${row('MIME type',         info.contentType, true)}
+        ${row('Storage path',      info.path, true)}
+        ${row('Uploader email',    info.uploaderEmail)}
+        ${row('Uploader UID',      info.uploaderUid, true)}
       </table>
-      ${modUrl ? `<p style="margin:20px 0 0;"><a href="${escapeHtml(modUrl)}" style="display:inline-block;background:#2ECC71;color:#0b0f0d;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">Open admin dashboard →</a></p>` : ''}
-      <p style="margin:24px 0 0;color:#888;font-size:12px;">You're getting this because you're listed as the admin for Shohoj.</p>
+
+      ${modUrl ? `<p style="margin:24px 0 0;"><a href="${escapeHtml(modUrl)}" style="display:inline-block;background:#2ECC71;color:#0b0f0d;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Open admin dashboard →</a></p>` : ''}
+      <p style="margin:28px 0 0;color:#999;font-size:12px;">You're getting this because admin.shohoj@gmail.com is listed as the admin for Shohoj.</p>
     </div>
   `;
   const res = await fetch('https://api.resend.com/emails', {

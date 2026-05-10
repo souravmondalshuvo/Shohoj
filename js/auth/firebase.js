@@ -1382,8 +1382,20 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
     const token = await _idToken();
     if (!token) return { ok: false, error: 'Could not get auth token' };
 
+    // Extra metadata is passed as URL params so the worker can include them in
+    // the admin notification email. The worker doesn't store them — the
+    // authoritative copy lives in the Firestore doc written below.
+    const params = new URLSearchParams({
+      courseCode: safeCourse,
+      filename,
+      title: String(title || '').slice(0, 120),
+      type: String(type || ''),
+    });
+    if (semester)        params.set('semester', String(semester).slice(0, 40));
+    if (facultyInitials) params.set('facultyInitials', String(facultyInitials).toUpperCase().slice(0, 20));
+
     const uploadRes = await fetch(
-      `${base}/upload?courseCode=${encodeURIComponent(safeCourse)}&filename=${encodeURIComponent(filename)}`,
+      `${base}/upload?${params.toString()}`,
       {
         method: 'POST',
         headers: {
