@@ -88,7 +88,7 @@ async function readAuth(request, env) {
   return verifyFirebaseToken(m[1], env);
 }
 
-async function handleUpload(request, env, origin) {
+async function handleUpload(request, env, origin, ctx) {
   const url = new URL(request.url);
   const courseCode = url.searchParams.get('courseCode') || '';
   const rawName = url.searchParams.get('filename') || '';
@@ -108,7 +108,7 @@ async function handleUpload(request, env, origin) {
     return jsonResponse({ error: 'Only PDFs and images are allowed' }, { status: 415 }, env, origin);
   }
 
-  await readAuth(request, env);
+  const claims = await readAuth(request, env);
 
   const path = `papers/${courseCode}/${filename}`;
   const body = await request.arrayBuffer();
@@ -118,7 +118,65 @@ async function handleUpload(request, env, origin) {
   await env.PAPERS_BUCKET.put(path, body, {
     httpMetadata: { contentType },
   });
+
+  // Fire-and-forget admin notification. Wrapped in ctx.waitUntil so the
+  // upload response returns immediately even if Resend is slow / down.
+  // Failures are logged but never fail the upload.
+  const notifyPromise = notifyAdminOfUpload(env, {
+    courseCode, path, fileSize: body.byteLength, contentType,
+    uploaderEmail: claims?.email || '(unknown)',
+    uploaderUid: claims?.user_id || claims?.sub || '(unknown)',
+  }).catch(err => console.error('admin notify failed:', err?.message || err));
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(notifyPromise);
+  }
+
   return jsonResponse({ ok: true, path }, { status: 200 }, env, origin);
+}
+
+async function notifyAdminOfUpload(env, info) {
+  if (!env.RESEND_API_KEY || !env.ADMIN_EMAIL) return;
+  const sizeMb = (info.fileSize / (1024 * 1024)).toFixed(2);
+  const modUrl = env.ADMIN_MODERATION_URL || '';
+  const from = env.EMAIL_FROM || 'Shohoj <onboarding@resend.dev>';
+  const subject = `[Shohoj] New paper pending review: ${info.courseCode}`;
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 560px; line-height: 1.5;">
+      <h2 style="margin:0 0 12px;color:#0b0f0d;">📚 New paper uploaded</h2>
+      <p style="margin:0 0 16px;color:#444;">A student just uploaded a new paper to Shohoj. It's waiting for admin review.</p>
+      <table style="border-collapse:collapse;font-size:14px;color:#222;">
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Course</td><td style="padding:4px 0;font-weight:600;">${escapeHtml(info.courseCode)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Storage path</td><td style="padding:4px 0;font-family:ui-monospace,monospace;font-size:13px;">${escapeHtml(info.path)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">File size</td><td style="padding:4px 0;">${sizeMb} MB · ${escapeHtml(info.contentType)}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#666;">Uploader</td><td style="padding:4px 0;">${escapeHtml(info.uploaderEmail)}<br><span style="font-family:ui-monospace,monospace;font-size:12px;color:#888;">${escapeHtml(info.uploaderUid)}</span></td></tr>
+      </table>
+      ${modUrl ? `<p style="margin:20px 0 0;"><a href="${escapeHtml(modUrl)}" style="display:inline-block;background:#2ECC71;color:#0b0f0d;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">Open admin dashboard →</a></p>` : ''}
+      <p style="margin:24px 0 0;color:#888;font-size:12px;">You're getting this because you're listed as the admin for Shohoj.</p>
+    </div>
+  `;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [env.ADMIN_EMAIL],
+      subject,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Resend ${res.status}: ${body.slice(0, 200)}`);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }
 
 async function handleDownload(request, env, origin) {
@@ -156,7 +214,7 @@ async function handleDelete(request, env, origin) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
 
     if (request.method === 'OPTIONS') {
@@ -166,7 +224,7 @@ export default {
     const url = new URL(request.url);
     try {
       if (request.method === 'POST' && url.pathname === '/upload') {
-        return await handleUpload(request, env, origin);
+        return await handleUpload(request, env, origin, ctx);
       }
       if (request.method === 'GET' && url.pathname === '/download') {
         return await handleDownload(request, env, origin);
