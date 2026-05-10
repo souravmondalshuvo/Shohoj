@@ -413,7 +413,7 @@ function _openUploadModal() {
         </label>
         <label>
           <span>Faculty initials (optional)</span>
-          <input name="facultyInitials" placeholder="e.g. MAK" maxlength="6" />
+          <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" />
         </label>
         <label>
           <span>File (PDF or image, max 10 MB)</span>
