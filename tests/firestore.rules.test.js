@@ -11,11 +11,12 @@
  *   4.  Valid faculty review create succeeds
  *   5.  Invalid review payload (missing field) is rejected
  *   6.  facultyReviews update is denied
- *   7.  facultyReviews delete is denied
- *   8.  Non-admin cannot read /reviewReports
- *   9.  Admin can read /reviewReports
- *  10. Paper upload must start with approved:false
- *  11. Unknown collection root is denied
+ *   7.  facultyReviews delete is denied for students
+ *   8.  Admin can delete /facultyReviews for moderation
+ *   9.  Non-admin cannot read /reviewReports
+ *  10. Admin can read /reviewReports
+ *  11. Paper upload must start with approved:false
+ *  12. Unknown collection root is denied
  */
 
 import {
@@ -166,6 +167,15 @@ async function run() {
     await assertFails(deleteDoc(doc(db, 'facultyReviews', id)));
   });
 
+  await test('facultyReviews delete by admin succeeds', async () => {
+    const writerDb = bracuCtx().firestore();
+    const hash = 'e'.repeat(64);
+    const id = reviewId('AAA', 'CSE110', hash);
+    await assertSucceeds(setDoc(doc(writerDb, 'facultyReviews', id), validReviewDoc()));
+    const adminDb = adminCtx().firestore();
+    await assertSucceeds(deleteDoc(doc(adminDb, 'facultyReviews', id)));
+  });
+
   await test('Non-admin cannot read /reviewReports', async () => {
     const db = bracuCtx().firestore();
     await assertFails(getDoc(doc(db, 'reviewReports', `${BRACU_UID}_AAA_CSE110_${'a'.repeat(64)}`)));
@@ -252,6 +262,15 @@ async function run() {
   await test('adminLog with invalid action is rejected', async () => {
     const db = adminCtx().firestore();
     await assertFails(setDoc(doc(db, 'adminLogs', 'log5'), adminLogDoc({ action: 'arbitrary_thing' })));
+  });
+
+  await test('adminLog accepts delete_review action', async () => {
+    const db = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log_delete_review'), adminLogDoc({
+      action: 'delete_review',
+      targetType: 'review',
+      targetId: reviewId('AAA', 'CSE110', 'f'.repeat(64)),
+    })));
   });
 
   await test('adminLog update is denied', async () => {
