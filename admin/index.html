@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-D7t2spq2qd4vE7IftxiYKCookbPIkvAMfLF+B/0RQ/Y=' 'sha256-/y/qne/dreTR1tYuc8EIYLsOYon5YdEjeH483v43a4A='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-D7t2spq2qd4vE7IftxiYKCookbPIkvAMfLF+B/0RQ/Y=' 'sha256-vZz4wdfI5FhXvTHSdvnhy3lERKufdPfK9r30Fdg0FJs='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -9368,6 +9368,7 @@ function _paperRow(p) {
 }
 
 function _paperReportRow(r) {
+  const target = `paper ${String(r.paperId || '').slice(0, 12)}...`;
   return `
     <div class="admin-dash-row" data-id="${escAttr(r.id)}">
       <div class="admin-dash-row-main">
@@ -9378,7 +9379,7 @@ function _paperReportRow(r) {
         <div class="admin-dash-row-meta">${escHtml(_adminFormatDate(r.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
-        <button data-act="delete-paper-by-report" data-paper-id="${escAttr(r.paperId)}" class="admin-dash-btn--danger">Delete paper</button>
+        <button data-act="delete-paper-by-report" data-id="${escAttr(r.id)}" data-paper-id="${escAttr(r.paperId)}" data-label="${escAttr(target)}" class="admin-dash-btn--danger">Delete paper</button>
         <button data-act="dismiss-paper-report" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -9386,6 +9387,7 @@ function _paperReportRow(r) {
 }
 
 function _reviewReportRow(r) {
+  const target = `review ${String(r.reviewId || '').slice(0, 18)}...`;
   return `
     <div class="admin-dash-row" data-id="${escAttr(r.id)}">
       <div class="admin-dash-row-main">
@@ -9396,6 +9398,7 @@ function _reviewReportRow(r) {
         <div class="admin-dash-row-meta">${escHtml(_adminFormatDate(r.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
+        <button data-act="delete-review-by-report" data-id="${escAttr(r.id)}" data-review-id="${escAttr(r.reviewId)}" data-label="${escAttr(target)}" class="admin-dash-btn--danger">Delete review</button>
         <button data-act="dismiss-review-report" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -9695,13 +9698,21 @@ async function _onAction(e) {
       return;
     }
     if (act === 'delete-paper-by-report') {
-      const target = `paper ${String(btn.dataset.paperId || '').slice(0, 12)}…`;
-      if (!confirmDestructive('Delete the reported paper and its R2 file?', target)) return;
-      const res = await window._shohoj_deletePaper?.(btn.dataset.paperId);
+      if (!confirmDestructive('Delete the reported paper, its R2 file, and this report?', btn.dataset.label)) return;
+      const res = await window._shohoj_deletePaperByReport?.(btn.dataset.id, btn.dataset.paperId);
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
-      _adminToast('Paper deleted.');
+      _adminToast(res.missingPaper ? 'Report dismissed; paper was already gone.' : 'Paper and report deleted.');
       _loadPapers();
       _loadPaperReports();
+      _loadStatsAndCharts();
+      return;
+    }
+    if (act === 'delete-review-by-report') {
+      if (!confirmDestructive('Delete the reported review and this report?', btn.dataset.label)) return;
+      const res = await window._shohoj_deleteReviewByReport?.(btn.dataset.id, btn.dataset.reviewId);
+      if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
+      _adminToast(res.missingReview ? 'Report dismissed; review was already gone.' : 'Review and report deleted.');
+      _loadReviewReports();
       _loadStatsAndCharts();
       return;
     }
