@@ -27,7 +27,7 @@ Cloud sync is opt-in. If you don't sign in, your data lives only in localStorage
 
 ## Faculty reviews
 
-Reviews are visible to all signed-in BRACU students. Once submitted, a review is **immutable** — there is no edit or delete flow from the client. If something needs to be removed (abuse, mistake, regret), file a report via the in-app "Report" action and an admin will handle it.
+Reviews are visible to all signed-in BRACU students. Once submitted, a review is **immutable for students** — there is no edit or self-delete flow from the client. If something needs to be removed (abuse, mistake, regret), file a report via the in-app "Report" action and an admin-claim moderator can remove it.
 
 The review body contains no UID or email. Other users cannot trivially link reviews back to you. Project administrators can, however; see [SECURITY.md](SECURITY.md#what-pseudonymity-does-not-cover) for the threat model.
 
