@@ -106,7 +106,7 @@ Cross-module calls use `window._shohoj_*` because the Phase-1 build is non-modul
 4. Local edits update the state object → debounced write to Firestore + localStorage.
 5. Remote changes from another device come through the snapshot listener and rebuild the UI.
 6. Past-paper uploads/downloads go through the Cloudflare Worker, which verifies the Firebase ID token (BRACU email or `admin: true`) before touching R2. Paper metadata is in Firestore (`papers/{paperId}`); the file body is in R2.
-7. Admin actions (approve/delete papers, dismiss reports, delete feedback) are written to `adminLogs/{id}` for auditability.
+7. Admin actions (approve/delete papers, delete reported reviews, dismiss reports, delete feedback) are written to `adminLogs/{id}` for auditability.
 
 ## Sync model
 
