@@ -211,6 +211,7 @@ function _paperRow(p) {
 }
 
 function _paperReportRow(r) {
+  const target = `paper ${String(r.paperId || '').slice(0, 12)}...`;
   return `
     <div class="admin-dash-row" data-id="${escAttr(r.id)}">
       <div class="admin-dash-row-main">
@@ -221,7 +222,7 @@ function _paperReportRow(r) {
         <div class="admin-dash-row-meta">${escHtml(_adminFormatDate(r.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
-        <button data-act="delete-paper-by-report" data-paper-id="${escAttr(r.paperId)}" class="admin-dash-btn--danger">Delete paper</button>
+        <button data-act="delete-paper-by-report" data-id="${escAttr(r.id)}" data-paper-id="${escAttr(r.paperId)}" data-label="${escAttr(target)}" class="admin-dash-btn--danger">Delete paper</button>
         <button data-act="dismiss-paper-report" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -229,6 +230,7 @@ function _paperReportRow(r) {
 }
 
 function _reviewReportRow(r) {
+  const target = `review ${String(r.reviewId || '').slice(0, 18)}...`;
   return `
     <div class="admin-dash-row" data-id="${escAttr(r.id)}">
       <div class="admin-dash-row-main">
@@ -239,6 +241,7 @@ function _reviewReportRow(r) {
         <div class="admin-dash-row-meta">${escHtml(_adminFormatDate(r.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
+        <button data-act="delete-review-by-report" data-id="${escAttr(r.id)}" data-review-id="${escAttr(r.reviewId)}" data-label="${escAttr(target)}" class="admin-dash-btn--danger">Delete review</button>
         <button data-act="dismiss-review-report" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -538,13 +541,21 @@ async function _onAction(e) {
       return;
     }
     if (act === 'delete-paper-by-report') {
-      const target = `paper ${String(btn.dataset.paperId || '').slice(0, 12)}…`;
-      if (!confirmDestructive('Delete the reported paper and its R2 file?', target)) return;
-      const res = await window._shohoj_deletePaper?.(btn.dataset.paperId);
+      if (!confirmDestructive('Delete the reported paper, its R2 file, and this report?', btn.dataset.label)) return;
+      const res = await window._shohoj_deletePaperByReport?.(btn.dataset.id, btn.dataset.paperId);
       if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
-      _adminToast('Paper deleted.');
+      _adminToast(res.missingPaper ? 'Report dismissed; paper was already gone.' : 'Paper and report deleted.');
       _loadPapers();
       _loadPaperReports();
+      _loadStatsAndCharts();
+      return;
+    }
+    if (act === 'delete-review-by-report') {
+      if (!confirmDestructive('Delete the reported review and this report?', btn.dataset.label)) return;
+      const res = await window._shohoj_deleteReviewByReport?.(btn.dataset.id, btn.dataset.reviewId);
+      if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
+      _adminToast(res.missingReview ? 'Report dismissed; review was already gone.' : 'Review and report deleted.');
+      _loadReviewReports();
       _loadStatsAndCharts();
       return;
     }
