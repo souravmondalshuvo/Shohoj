@@ -1517,13 +1517,21 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
     if (storagePath) {
       const base = _papersWorkerUrl();
       const token = await _idToken();
-      if (base && token) {
-        try {
-          await fetch(`${base}/file?path=${encodeURIComponent(storagePath)}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        } catch (e) { console.warn('[Shohoj] deletePaper: R2 delete failed (continuing):', e); }
+      if (!base) return { ok: false, error: 'Delete service not configured' };
+      if (!token) return { ok: false, error: 'Could not get auth token' };
+      try {
+        const res = await fetch(`${base}/file?path=${encodeURIComponent(storagePath)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          let msg = `R2 delete failed (${res.status})`;
+          try { msg = (await res.json()).error || msg; } catch {}
+          throw new Error(msg);
+        }
+      } catch (e) {
+        console.warn('[Shohoj] deletePaper: R2 delete failed:', e);
+        return { ok: false, error: e.message || 'File delete failed' };
       }
     }
     await deleteDoc(doc(db, 'papers', paperId));
@@ -1531,6 +1539,34 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deletePaper failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deletePaperByReport = async function(reportId, paperId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  if (!paperId) return { ok: false, error: 'Missing paper id' };
+  try {
+    const paperRef = doc(db, 'papers', paperId);
+    const paperSnap = await getDoc(paperRef);
+    if (!paperSnap.exists()) {
+      const reportRes = await window._shohoj_deletePaperReport(reportId);
+      if (!reportRes?.ok) return reportRes;
+      return { ok: true, missingPaper: true };
+    }
+
+    const storagePath = paperSnap.data()?.storagePath || '';
+    const deleteRes = await window._shohoj_deletePaper(paperId, storagePath);
+    if (!deleteRes?.ok) return deleteRes;
+
+    const reportRes = await window._shohoj_deletePaperReport(reportId);
+    if (!reportRes?.ok) {
+      return { ok: false, error: reportRes.error || 'Paper deleted, but report dismissal failed' };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deletePaperByReport failed:', e);
     return { ok: false, error: e.message || 'Delete failed' };
   }
 };
@@ -1628,7 +1664,7 @@ window._shohoj_fetchAdminStats = async function() {
 
   // Top faculty (by review count) and top courses (by paper count).
   const facultyMap = new Map();
-  reviewsAll.forEach(r => {
+  reviewsAllReal.forEach(r => {
     const k = r.facultyInitials || '?';
     facultyMap.set(k, (facultyMap.get(k) || 0) + 1);
   });
@@ -1661,7 +1697,7 @@ window._shohoj_fetchAdminStats = async function() {
 
   return {
     counts: {
-      reviews:        reviewsAll.length,
+      reviews:        reviewsAllReal.length,
       papers:         approvedPapers,
       pendingPapers:  pendingPapers.length,
       feedback:       feedbackAll.length,
@@ -1685,6 +1721,33 @@ window._shohoj_deleteReviewReport = async function(reportId) {
     return { ok: true };
   } catch (e) {
     console.error('[Shohoj] deleteReviewReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deleteReviewByReport = async function(reportId, reviewId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  if (!reviewId) return { ok: false, error: 'Missing review id' };
+  try {
+    const reviewRef = doc(db, 'facultyReviews', reviewId);
+    const reviewSnap = await getDoc(reviewRef);
+    if (!reviewSnap.exists()) {
+      const reportRes = await window._shohoj_deleteReviewReport(reportId);
+      if (!reportRes?.ok) return reportRes;
+      return { ok: true, missingReview: true };
+    }
+
+    await deleteDoc(reviewRef);
+    _writeAdminLog('delete_review', 'review', reviewId, { reportId });
+
+    const reportRes = await window._shohoj_deleteReviewReport(reportId);
+    if (!reportRes?.ok) {
+      return { ok: false, error: reportRes.error || 'Review deleted, but report dismissal failed' };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteReviewByReport failed:', e);
     return { ok: false, error: e.message || 'Delete failed' };
   }
 };
