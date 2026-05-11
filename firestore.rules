@@ -91,9 +91,10 @@ service cloud.firestore {
         && reviewId.split('_')[0] == request.resource.data.facultyInitials
         && reviewId.split('_')[1] == request.resource.data.courseCode;
 
-      // Client reviews are append-only. This narrows the abuse window for
-      // deterministic doc IDs and keeps public review content tamper-evident.
-      allow update, delete: if false;
+      // Student reviews are append-only. Admins may delete abusive content
+      // through the moderation dashboard; client-side edits remain forbidden.
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // ── Review reports (abuse flagging) ──────────────────────────────────
@@ -229,6 +230,7 @@ service cloud.firestore {
     function validAdminLogAction(a) {
       return a == 'approve_paper'
           || a == 'delete_paper'
+          || a == 'delete_review'
           || a == 'delete_paper_report'
           || a == 'delete_review_report'
           || a == 'delete_feedback';
