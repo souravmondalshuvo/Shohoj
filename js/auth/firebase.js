@@ -1527,7 +1527,11 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
         if (!res.ok) {
           let msg = `R2 delete failed (${res.status})`;
           try { msg = (await res.json()).error || msg; } catch {}
-          throw new Error(msg);
+          if (res.status === 404) {
+            console.warn('[Shohoj] deletePaper: R2 file already missing:', storagePath);
+          } else {
+            throw new Error(msg);
+          }
         }
       } catch (e) {
         console.warn('[Shohoj] deletePaper: R2 delete failed:', e);
