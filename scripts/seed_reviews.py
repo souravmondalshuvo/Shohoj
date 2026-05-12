@@ -7,12 +7,12 @@ Pipeline this script is meant to slot into:
     raw Facebook / Reddit posts
         │
         ▼  (LLM: extract structured review per post)
-    input_reviews.jsonl
+    data/input_reviews.jsonl
         │
         ▼  this script (validate + write to facultyReviews)
     Firestore `facultyReviews` collection
 
-Each line of input_reviews.jsonl must be a JSON object matching the
+Each line of data/input_reviews.jsonl must be a JSON object matching the
 shape that firestore.rules accepts for `facultyReviews`:
 
     {
@@ -35,11 +35,11 @@ out later if we decide to (today they're shown as regular reviews).
 
 Usage:
     # Dry-run validation only:
-    python3 scripts/seed_reviews.py input_reviews.jsonl --dry-run
+    python3 scripts/seed_reviews.py data/input_reviews.jsonl --dry-run
 
     # Actual write (requires GOOGLE_APPLICATION_CREDENTIALS):
     export GOOGLE_APPLICATION_CREDENTIALS=./shohoj-service-account.json
-    python3 scripts/seed_reviews.py input_reviews.jsonl
+    python3 scripts/seed_reviews.py data/input_reviews.jsonl
 
 Dependencies:
     pip install firebase-admin
@@ -175,7 +175,7 @@ def write_to_firestore(docs, batch_size=400):
 
 def main():
     ap = argparse.ArgumentParser(description='Seed facultyReviews from a JSONL file.')
-    ap.add_argument('input', type=Path, help='Path to input_reviews.jsonl')
+    ap.add_argument('input', type=Path, help='Path to data/input_reviews.jsonl')
     ap.add_argument('--dry-run', action='store_true',
                     help='Validate and print — do not write to Firestore.')
     args = ap.parse_args()
