@@ -70,8 +70,10 @@ Shohoj/
 │   │   ├── dotmatrix.js           Spring-physics canvas background
 │   │   └── reveal.js              IntersectionObserver scroll reveal
 │   └── import/parser.js           BRACU transcript PDF parser
+├── data/                          Seed JSONL datasets injected by build3.py
 ├── scripts/
 │   ├── set_admin_claim.js         Grant/revoke Firebase admin custom claim
+│   ├── seed_faculty.py            Bulk-import faculty profiles
 │   └── seed_reviews.py            Bulk-import LLM-processed reviews
 ├── tests/
 │   ├── calculator.test.js
