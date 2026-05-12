@@ -2,17 +2,17 @@
 """
 seed_faculty.py — bulk-import faculty profiles into Firestore.
 
-Reads faculty_profiles.jsonl and writes each profile to the
+Reads data/faculty_profiles.jsonl and writes each profile to the
 `facultyProfiles` Firestore collection. Uses the faculty's initials
 as the deterministic document ID.
 
 Usage:
     # Dry-run validation only:
-    python3 scripts/seed_faculty.py faculty_profiles.jsonl --dry-run
+    python3 scripts/seed_faculty.py data/faculty_profiles.jsonl --dry-run
 
     # Actual write (requires GOOGLE_APPLICATION_CREDENTIALS):
     export GOOGLE_APPLICATION_CREDENTIALS=./shohoj-service-account.json
-    python3 scripts/seed_faculty.py faculty_profiles.jsonl
+    python3 scripts/seed_faculty.py data/faculty_profiles.jsonl
 
 Dependencies:
     pip install firebase-admin
@@ -118,7 +118,7 @@ def write_to_firestore(docs, batch_size=400):
 
 def main():
     ap = argparse.ArgumentParser(description='Seed facultyProfiles from a JSONL file.')
-    ap.add_argument('input', type=Path, help='Path to faculty_profiles.jsonl')
+    ap.add_argument('input', type=Path, help='Path to data/faculty_profiles.jsonl')
     ap.add_argument('--dry-run', action='store_true',
                     help='Validate and print — do not write to Firestore.')
     args = ap.parse_args()
