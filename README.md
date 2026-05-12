@@ -388,6 +388,9 @@ Shohoj/
 │   └── screenshots/
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism, auth UI
+├── data/
+│   ├── faculty_profiles.jsonl    Seed faculty directory injected by build3.py
+│   └── input_reviews.jsonl       Seed faculty reviews injected by build3.py
 ├── js/
 │   ├── main.js                   Entry point — wires all modules together
 │   ├── auth/
@@ -420,6 +423,7 @@ Shohoj/
 │   └── import/
 │       └── parser.js             BRACU transcript PDF parser (dual-strategy)
 ├── scripts/
+│   ├── seed_faculty.py           Bulk-import faculty profiles into Firestore
 │   └── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
 ├── firestore.rules               Firestore security rules (users, facultyReviews, facultyProfiles)
 ├── tests/
