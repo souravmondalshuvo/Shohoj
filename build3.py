@@ -17,6 +17,14 @@ import json
 import os
 import re
 
+DATA_DIR = 'data'
+
+def first_existing_path(*paths):
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return paths[0]
+
 # ── File order matters: dependencies must come before dependents ──────────────
 MAIN_JS_FILES = [
     # Public runtime config (window vars; generated from env, must come first)
@@ -156,8 +164,11 @@ window.clearAllData = clearAllData;
     if not inject_seeds:
         return bundled_js
 
-    # ── Inject faculty profiles from faculty_profiles.jsonl ───────────────────
-    profiles_path = 'faculty_profiles.jsonl'
+    # ── Inject faculty profiles from data/faculty_profiles.jsonl ──────────────
+    profiles_path = first_existing_path(
+        os.path.join(DATA_DIR, 'faculty_profiles.jsonl'),
+        'faculty_profiles.jsonl',
+    )
     if os.path.exists(profiles_path):
         profiles = []
         with open(profiles_path, 'r', encoding='utf-8') as f:
@@ -173,8 +184,11 @@ window.clearAllData = clearAllData;
     else:
         print(f'  ⚠ {profiles_path} not found — SEEDED_FACULTY_PROFILES will be empty')
 
-    # ── Inject seed reviews from input_reviews.jsonl ──────────────────────────
-    reviews_path = 'input_reviews.jsonl'
+    # ── Inject seed reviews from data/input_reviews.jsonl ─────────────────────
+    reviews_path = first_existing_path(
+        os.path.join(DATA_DIR, 'input_reviews.jsonl'),
+        'input_reviews.jsonl',
+    )
     if os.path.exists(reviews_path):
         reviews = []
         with open(reviews_path, 'r', encoding='utf-8') as f:
