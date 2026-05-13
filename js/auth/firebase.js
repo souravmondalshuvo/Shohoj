@@ -1248,7 +1248,12 @@ window._shohoj_fetchAllFeedback = async function() {
 window._shohoj_fetchAllUpvotes = async function() {
   if (!currentUser) return [];
   try {
-    const snap = await getDocs(collection(db, 'appFeedbackUpvotes'));
+    const q = query(
+      collection(db, 'appFeedbackUpvotes'),
+      where('uid', '==', currentUser.uid),
+      qLimit(500),
+    );
+    const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchAllUpvotes failed:', e);
@@ -1377,7 +1382,7 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
-    const path = `papers/${safeCourse}/${filename}`;
+    const fallbackPath = `papers/${safeCourse}/${filename}`;
 
     const token = await _idToken();
     if (!token) return { ok: false, error: 'Could not get auth token' };
@@ -1410,6 +1415,11 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
       try { msg = (await uploadRes.json()).error || msg; } catch {}
       return { ok: false, error: msg };
     }
+    let uploadPayload = {};
+    try { uploadPayload = await uploadRes.json(); } catch {}
+    const path = typeof uploadPayload.path === 'string' && uploadPayload.path.startsWith(`papers/${safeCourse}/`)
+      ? uploadPayload.path
+      : fallbackPath;
 
     const docData = {
       courseCode: safeCourse,
