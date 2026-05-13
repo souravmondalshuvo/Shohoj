@@ -4727,6 +4727,22 @@ body[data-page="admin"] .orb { display: none !important; }
   height: 220px;
 }
 .admin-chart-card--wide .admin-chart-canvas-wrap { height: 280px; }
+.admin-chart-empty {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(255,255,255,0.6);
+  border: 1px dashed rgba(255,255,255,0.12);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  padding: 18px;
+}
+[data-theme="light"] .admin-chart-empty {
+  color: rgba(0,0,0,0.55);
+  border-color: rgba(0,0,0,0.12);
+}
 .admin-chart-skel {
   position: absolute;
   inset: 0;
@@ -5100,7 +5116,6 @@ body[data-page="admin"] .orb { display: none !important; }
   letter-spacing: 0.3px;
   white-space: nowrap;
 }
-
 
 </style>
   <!-- CDN dependencies -->
