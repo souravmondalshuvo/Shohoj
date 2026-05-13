@@ -18,7 +18,6 @@ let _anonymous   = true;
 let _submitting  = false;
 let _boardLoaded = false;
 let _boardItems  = [];          // [{ id, type, text, context, anonymous, uid?, createdAt }]
-let _upvoteCounts = {};         // { feedbackId: number }
 let _myUpvotes   = new Set();   // feedbackIds upvoted by current user
 let _boardFilter = 'all';
 
@@ -252,12 +251,10 @@ async function _loadBoard() {
       window._shohoj_fetchAllUpvotes?.()  ?? [],
     ]);
     _boardItems   = items || [];
-    _upvoteCounts = {};
     _myUpvotes    = new Set();
     for (const uv of (allUpvotes || [])) {
       if (!uv.feedbackId) continue;
-      _upvoteCounts[uv.feedbackId] = (_upvoteCounts[uv.feedbackId] || 0) + 1;
-      if (uv.uid === uid) _myUpvotes.add(uv.feedbackId);
+      if (!uv.uid || uv.uid === uid) _myUpvotes.add(uv.feedbackId);
     }
     _boardLoaded = true;
   } catch (e) {
@@ -284,10 +281,7 @@ function _renderBoardContent() {
     ? _boardItems
     : _boardItems.filter(i => i.type === _boardFilter);
 
-  const sorted = [...filtered].sort((a, b) => {
-    const diff = (_upvoteCounts[b.id] || 0) - (_upvoteCounts[a.id] || 0);
-    return diff !== 0 ? diff : _tsMs(b.createdAt) - _tsMs(a.createdAt);
-  });
+  const sorted = [...filtered].sort((a, b) => _tsMs(b.createdAt) - _tsMs(a.createdAt));
 
   const filterBtns = ['all','bug','feature','general'].map(f => {
     const on = _boardFilter === f;
@@ -307,7 +301,6 @@ function _renderBoardContent() {
         No feedback yet${_boardFilter !== 'all' ? ' in this category' : ''}.
        </div>`
     : sorted.map(item => {
-        const count  = _upvoteCounts[item.id] || 0;
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
           ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
@@ -323,7 +316,6 @@ function _renderBoardContent() {
                         color:${voted ? t.accent : t.text3};
                         transition:color 0.15s;user-select:none;">
               <span style="font-size:13px;">${voted ? '▲' : '△'}</span>
-              <span style="font-size:11px;font-weight:700;">${count}</span>
             </div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
@@ -419,10 +411,8 @@ window._shohoj_fbUpvote = async function(feedbackId) {
   const wasUpvoted = _myUpvotes.has(feedbackId);
   if (wasUpvoted) {
     _myUpvotes.delete(feedbackId);
-    _upvoteCounts[feedbackId] = Math.max(0, (_upvoteCounts[feedbackId] || 0) - 1);
   } else {
     _myUpvotes.add(feedbackId);
-    _upvoteCounts[feedbackId] = (_upvoteCounts[feedbackId] || 0) + 1;
   }
   _renderBoardContent();
 
@@ -430,10 +420,8 @@ window._shohoj_fbUpvote = async function(feedbackId) {
   if (!res?.ok) {
     if (wasUpvoted) {
       _myUpvotes.add(feedbackId);
-      _upvoteCounts[feedbackId]++;
     } else {
       _myUpvotes.delete(feedbackId);
-      _upvoteCounts[feedbackId] = Math.max(0, (_upvoteCounts[feedbackId] || 1) - 1);
     }
     _renderBoardContent();
   }
@@ -450,7 +438,6 @@ window._shohoj_fbAdminDel = async function(feedbackId) {
   const res = await window._shohoj_adminDeleteFeedback(feedbackId);
   if (res?.ok) {
     _boardItems = _boardItems.filter(i => i.id !== feedbackId);
-    delete _upvoteCounts[feedbackId];
     _myUpvotes.delete(feedbackId);
     _renderBoardContent();
   }
