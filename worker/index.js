@@ -13,7 +13,9 @@ import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_MIME_RE = /^application\/pdf$|^image\//;
+const ALLOWED_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
+const LEGACY_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/;
+const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
 
 let _jwks = null;
 function getJwks() {
@@ -70,7 +72,7 @@ function jsonResponse(body, init = {}, env, origin) {
 
 export function isValidStoragePath(p) {
   return typeof p === 'string'
-    && /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/.test(p);
+    && (LEGACY_STORAGE_PATH_RE.test(p) || OWNED_STORAGE_PATH_RE.test(p));
 }
 
 export function isValidCourseCode(c) {
@@ -79,6 +81,10 @@ export function isValidCourseCode(c) {
 
 export function safeFilename(name) {
   return String(name || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
+}
+
+function safePathSegment(value) {
+  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 128);
 }
 
 async function readAuth(request, env) {
@@ -110,11 +116,15 @@ async function handleUpload(request, env, origin, ctx) {
 
   const claims = await readAuth(request, env);
 
-  const path = `papers/${courseCode}/${filename}`;
   const body = await request.arrayBuffer();
   if (body.byteLength > MAX_UPLOAD_BYTES) {
     return jsonResponse({ error: 'File larger than 10 MB' }, { status: 413 }, env, origin);
   }
+  const ownerSegment = safePathSegment(claims?.user_id || claims?.sub);
+  if (!ownerSegment) {
+    return jsonResponse({ error: 'Invalid auth token' }, { status: 401 }, env, origin);
+  }
+  const path = `papers/${courseCode}/${ownerSegment}/${filename}`;
   await env.PAPERS_BUCKET.put(path, body, {
     httpMetadata: { contentType },
   });
