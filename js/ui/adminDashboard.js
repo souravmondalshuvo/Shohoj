@@ -16,6 +16,48 @@ let _open = false;
 let _dedicated = false;
 const _charts = {};
 
+const ADMIN_STAT_DEFS = [
+  ['Total reviews', 'reviews'],
+  ['Approved papers', 'papers'],
+  ['Pending papers', 'pendingPapers'],
+  ['Feedback items', 'feedback'],
+  ['Paper reports', 'paperReports'],
+  ['Review reports', 'reviewReports'],
+];
+
+const EMPTY_ADMIN_STATS = {
+  counts: {
+    reviews: 0,
+    papers: 0,
+    pendingPapers: 0,
+    feedback: 0,
+    paperReports: 0,
+    reviewReports: 0,
+  },
+  activity: [],
+  topFaculty: [],
+  topCourses: [],
+  paperTypes: {},
+  feedbackTypes: {},
+};
+
+function _nonNegativeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+function _stringLabel(value, fallback = '?') {
+  const s = String(value ?? '').trim();
+  return s || fallback;
+}
+
+function _normalizeBreakdown(obj) {
+  if (!obj || typeof obj !== 'object') return {};
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [_stringLabel(key), _nonNegativeNumber(value)]),
+  );
+}
+
 function _adminCheck() {
   return typeof window._shohoj_isAdmin === 'function' && window._shohoj_isAdmin();
 }
@@ -35,6 +77,54 @@ function _adminFormatDate(ts) {
   return new Date(ms).toLocaleString(undefined, {
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
+}
+
+export function normalizeAdminStats(stats) {
+  const src = stats && typeof stats === 'object' ? stats : {};
+  const srcCounts = src.counts && typeof src.counts === 'object' ? src.counts : {};
+  const counts = { ...EMPTY_ADMIN_STATS.counts };
+  Object.keys(counts).forEach(key => {
+    counts[key] = _nonNegativeNumber(srcCounts[key]);
+  });
+
+  return {
+    counts,
+    activity: Array.isArray(src.activity)
+      ? src.activity
+        .filter(row => row && typeof row.date === 'string')
+        .map(row => ({
+          date: row.date,
+          reviews: _nonNegativeNumber(row.reviews),
+          papers: _nonNegativeNumber(row.papers),
+          feedback: _nonNegativeNumber(row.feedback),
+        }))
+      : [],
+    topFaculty: Array.isArray(src.topFaculty)
+      ? src.topFaculty.map(row => ({
+        initials: _stringLabel(row?.initials),
+        count: _nonNegativeNumber(row?.count),
+      }))
+      : [],
+    topCourses: Array.isArray(src.topCourses)
+      ? src.topCourses.map(row => ({
+        code: _stringLabel(row?.code),
+        count: _nonNegativeNumber(row?.count),
+      }))
+      : [],
+    paperTypes: _normalizeBreakdown(src.paperTypes),
+    feedbackTypes: _normalizeBreakdown(src.feedbackTypes),
+  };
+}
+
+function _statsSkeletonHtml() {
+  return ADMIN_STAT_DEFS.map(([label]) => _statCardSkeleton(label)).join('');
+}
+
+export function buildAdminStatsHtml(stats) {
+  const normalized = normalizeAdminStats(stats);
+  return ADMIN_STAT_DEFS
+    .map(([label, key]) => _statCard(label, normalized.counts[key]))
+    .join('');
 }
 
 function _shellHtml(opts = {}) {
@@ -177,6 +267,9 @@ function _restoreChartSkeleton(canvasId) {
   if (!canvas) return;
   const wrap = canvas.parentElement;
   if (!wrap || wrap.querySelector('.admin-chart-skel')) return;
+  const msg = wrap.querySelector('.admin-chart-empty');
+  if (msg) msg.remove();
+  canvas.hidden = false;
   const skel = document.createElement('div');
   skel.className = 'admin-chart-skel admin-skel';
   skel.dataset.skelFor = canvasId;
@@ -185,6 +278,36 @@ function _restoreChartSkeleton(canvasId) {
 
 function _emptyHtml(msg) {
   return `<div class="admin-dash-empty">${escHtml(msg)}</div>`;
+}
+
+function _setChartEmpty(canvasId, msg) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  _clearChartSkeleton(canvasId);
+  const wrap = canvas.parentElement;
+  if (!wrap) return;
+  canvas.hidden = true;
+  let el = wrap.querySelector('.admin-chart-empty');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'admin-chart-empty';
+    wrap.appendChild(el);
+  }
+  el.textContent = msg;
+}
+
+function _clearChartEmpty(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const wrap = canvas.parentElement;
+  const el = wrap?.querySelector('.admin-chart-empty');
+  if (el) el.remove();
+  canvas.hidden = false;
+}
+
+function _setAllChartsEmpty(msg) {
+  ['adminActivityChart', 'adminTopFacultyChart', 'adminTopCoursesChart',
+   'adminPaperTypesChart', 'adminFeedbackTypesChart'].forEach(id => _setChartEmpty(id, msg));
 }
 
 
@@ -340,7 +463,12 @@ function _renderActivityChart(activity) {
   const canvas = document.getElementById('adminActivityChart');
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart('activity');
+  if (!Array.isArray(activity) || !activity.some(d => d.reviews || d.papers || d.feedback)) {
+    _setChartEmpty('adminActivityChart', 'No recent activity yet.');
+    return;
+  }
   _clearChartSkeleton('adminActivityChart');
+  _clearChartEmpty('adminActivityChart');
   const labels = activity.map(d => d.date.slice(5)); // MM-DD
   _charts.activity = new window.Chart(canvas, {
     type: 'line',
@@ -372,7 +500,12 @@ function _renderBarChart(canvasId, key, labels, values, color) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart(key);
+  if (!labels.length || !values.some(v => Number(v) > 0)) {
+    _setChartEmpty(canvasId, 'No data yet.');
+    return;
+  }
   _clearChartSkeleton(canvasId);
+  _clearChartEmpty(canvasId);
   _charts[key] = new window.Chart(canvas, {
     type: 'bar',
     data: { labels, datasets: [{ data: values, backgroundColor: color, borderRadius: 6 }] },
@@ -393,7 +526,12 @@ function _renderDoughnut(canvasId, key, labels, values, palette) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || !_ensureChartLib()) return;
   _destroyChart(key);
+  if (!labels.length || !values.some(v => Number(v) > 0)) {
+    _setChartEmpty(canvasId, 'No data yet.');
+    return;
+  }
   _clearChartSkeleton(canvasId);
+  _clearChartEmpty(canvasId);
   _charts[key] = new window.Chart(canvas, {
     type: 'doughnut',
     data: { labels, datasets: [{ data: values, backgroundColor: palette, borderColor: 'transparent', borderWidth: 0 }] },
@@ -408,13 +546,7 @@ function _renderDoughnut(canvasId, key, labels, values, palette) {
 async function _loadStatsAndCharts() {
   const grid = document.getElementById('adminStatsGrid');
   if (grid) {
-    grid.innerHTML =
-      _statCardSkeleton('Total reviews') +
-      _statCardSkeleton('Approved papers') +
-      _statCardSkeleton('Pending papers') +
-      _statCardSkeleton('Feedback items') +
-      _statCardSkeleton('Paper reports') +
-      _statCardSkeleton('Review reports');
+    grid.innerHTML = _statsSkeletonHtml();
   }
   ['adminActivityChart','adminTopFacultyChart','adminTopCoursesChart',
    'adminPaperTypesChart','adminFeedbackTypesChart'].forEach(id => {
@@ -427,22 +559,31 @@ async function _loadStatsAndCharts() {
     _restoreChartSkeleton(id);
   });
 
-  const stats = await window._shohoj_fetchAdminStats?.();
-  if (!stats) return;
+  let stats;
+  try {
+    stats = await window._shohoj_fetchAdminStats?.();
+  } catch (e) {
+    console.warn('[Shohoj] admin stats failed:', e);
+  }
+  if (!stats) {
+    if (grid) grid.innerHTML = _emptyHtml('Could not load dashboard stats.');
+    _setAllChartsEmpty('Could not load chart data.');
+    return;
+  }
+  stats = normalizeAdminStats(stats);
 
   if (grid) {
-    grid.innerHTML =
-      _statCard('Total reviews',   stats.counts.reviews) +
-      _statCard('Approved papers', stats.counts.papers) +
-      _statCard('Pending papers',  stats.counts.pendingPapers) +
-      _statCard('Feedback items',  stats.counts.feedback) +
-      _statCard('Paper reports',   stats.counts.paperReports) +
-      _statCard('Review reports',  stats.counts.reviewReports);
+    grid.innerHTML = buildAdminStatsHtml(stats);
   }
 
   // Wait briefly for Chart.js if it's still loading.
   if (!_ensureChartLib()) {
     await new Promise(r => setTimeout(r, 600));
+  }
+
+  if (!_ensureChartLib()) {
+    _setAllChartsEmpty('Charts could not load.');
+    return;
   }
 
   _renderActivityChart(stats.activity);
