@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-p9G2xvgnkNtQTE7yrAHqnJk5S4tzXX3Kgu3ZSC64lR4=' 'sha256-mIr/P8itEm+ps+29IpHP9KHBLMgSMHexJv+ejWkdHK0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-mIr/P8itEm+ps+29IpHP9KHBLMgSMHexJv+ejWkdHK0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6386,7 +6386,12 @@ window._shohoj_fetchAllFeedback = async function() {
 window._shohoj_fetchAllUpvotes = async function() {
   if (!currentUser) return [];
   try {
-    const snap = await getDocs(collection(db, 'appFeedbackUpvotes'));
+    const q = query(
+      collection(db, 'appFeedbackUpvotes'),
+      where('uid', '==', currentUser.uid),
+      qLimit(500),
+    );
+    const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchAllUpvotes failed:', e);
@@ -6515,7 +6520,7 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
-    const path = `papers/${safeCourse}/${filename}`;
+    const fallbackPath = `papers/${safeCourse}/${filename}`;
 
     const token = await _idToken();
     if (!token) return { ok: false, error: 'Could not get auth token' };
@@ -6548,6 +6553,11 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
       try { msg = (await uploadRes.json()).error || msg; } catch {}
       return { ok: false, error: msg };
     }
+    let uploadPayload = {};
+    try { uploadPayload = await uploadRes.json(); } catch {}
+    const path = typeof uploadPayload.path === 'string' && uploadPayload.path.startsWith(`papers/${safeCourse}/`)
+      ? uploadPayload.path
+      : fallbackPath;
 
     const docData = {
       courseCode: safeCourse,
