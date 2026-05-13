@@ -8,6 +8,7 @@ import { COURSE_DB } from './catalog.js';
 
 const PAPERS_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz'];
+const ALLOWED_PAPER_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export const PAPER_TYPE_LABELS = {
@@ -37,7 +38,7 @@ export function validatePaperUpload({ file, courseCode, type, title }) {
   if (!file) return 'File is required';
   if (file.size <= 0) return 'File is empty';
   if (file.size > MAX_FILE_SIZE) return 'File must be 10 MB or smaller';
-  if (!/^application\/pdf$|^image\//.test(file.type || '')) return 'Only PDFs and images are allowed';
+  if (!ALLOWED_PAPER_MIME_RE.test(file.type || '')) return 'Only PDFs, PNG, JPEG, WebP, and GIF images are allowed';
   const code = normalizeCourseCode(courseCode);
   if (!isKnownCourseCode(code)) return 'Unknown course code';
   if (!isValidPaperType(type)) return 'Invalid paper type';
