@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-zipHemJvlpUE4AfHg79I7Xy/EYvIFfIPCfoHYDo+WDk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-5lhw+UOJx3xLIFpn0ItgFEBO7GjVRTw3H1H9q17wn9U='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17336,7 +17336,6 @@ let _anonymous   = true;
 let _submitting  = false;
 let _boardLoaded = false;
 let _boardItems  = [];          // [{ id, type, text, context, anonymous, uid?, createdAt }]
-let _upvoteCounts = {};         // { feedbackId: number }
 let _myUpvotes   = new Set();   // feedbackIds upvoted by current user
 let _boardFilter = 'all';
 
@@ -17570,12 +17569,10 @@ async function _loadBoard() {
       window._shohoj_fetchAllUpvotes?.()  ?? [],
     ]);
     _boardItems   = items || [];
-    _upvoteCounts = {};
     _myUpvotes    = new Set();
     for (const uv of (allUpvotes || [])) {
       if (!uv.feedbackId) continue;
-      _upvoteCounts[uv.feedbackId] = (_upvoteCounts[uv.feedbackId] || 0) + 1;
-      if (uv.uid === uid) _myUpvotes.add(uv.feedbackId);
+      if (!uv.uid || uv.uid === uid) _myUpvotes.add(uv.feedbackId);
     }
     _boardLoaded = true;
   } catch (e) {
@@ -17602,10 +17599,7 @@ function _renderBoardContent() {
     ? _boardItems
     : _boardItems.filter(i => i.type === _boardFilter);
 
-  const sorted = [...filtered].sort((a, b) => {
-    const diff = (_upvoteCounts[b.id] || 0) - (_upvoteCounts[a.id] || 0);
-    return diff !== 0 ? diff : _tsMs(b.createdAt) - _tsMs(a.createdAt);
-  });
+  const sorted = [...filtered].sort((a, b) => _tsMs(b.createdAt) - _tsMs(a.createdAt));
 
   const filterBtns = ['all','bug','feature','general'].map(f => {
     const on = _boardFilter === f;
@@ -17625,7 +17619,6 @@ function _renderBoardContent() {
         No feedback yet${_boardFilter !== 'all' ? ' in this category' : ''}.
        </div>`
     : sorted.map(item => {
-        const count  = _upvoteCounts[item.id] || 0;
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
           ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
@@ -17641,7 +17634,6 @@ function _renderBoardContent() {
                         color:${voted ? t.accent : t.text3};
                         transition:color 0.15s;user-select:none;">
               <span style="font-size:13px;">${voted ? '▲' : '△'}</span>
-              <span style="font-size:11px;font-weight:700;">${count}</span>
             </div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
@@ -17737,10 +17729,8 @@ window._shohoj_fbUpvote = async function(feedbackId) {
   const wasUpvoted = _myUpvotes.has(feedbackId);
   if (wasUpvoted) {
     _myUpvotes.delete(feedbackId);
-    _upvoteCounts[feedbackId] = Math.max(0, (_upvoteCounts[feedbackId] || 0) - 1);
   } else {
     _myUpvotes.add(feedbackId);
-    _upvoteCounts[feedbackId] = (_upvoteCounts[feedbackId] || 0) + 1;
   }
   _renderBoardContent();
 
@@ -17748,10 +17738,8 @@ window._shohoj_fbUpvote = async function(feedbackId) {
   if (!res?.ok) {
     if (wasUpvoted) {
       _myUpvotes.add(feedbackId);
-      _upvoteCounts[feedbackId]++;
     } else {
       _myUpvotes.delete(feedbackId);
-      _upvoteCounts[feedbackId] = Math.max(0, (_upvoteCounts[feedbackId] || 1) - 1);
     }
     _renderBoardContent();
   }
@@ -17768,7 +17756,6 @@ window._shohoj_fbAdminDel = async function(feedbackId) {
   const res = await window._shohoj_adminDeleteFeedback(feedbackId);
   if (res?.ok) {
     _boardItems = _boardItems.filter(i => i.id !== feedbackId);
-    delete _upvoteCounts[feedbackId];
     _myUpvotes.delete(feedbackId);
     _renderBoardContent();
   }
