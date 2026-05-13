@@ -144,7 +144,7 @@ service cloud.firestore {
     }
 
     match /appFeedbackUpvotes/{voteId} {
-      allow read:   if isBracuUser();
+      allow read:   if isAdmin() || (isBracuUser() && resource.data.uid == request.auth.uid);
       allow create: if isBracuUser()
         && request.resource.data.keys().hasOnly(['feedbackId','uid','createdAt'])
         && request.resource.data.keys().hasAll(['feedbackId','uid','createdAt'])
@@ -168,6 +168,24 @@ service cloud.firestore {
           || t == 'lab-quiz';
     }
 
+    function validPaperMime(m) {
+      return m == 'application/pdf'
+          || m == 'image/png'
+          || m == 'image/jpeg'
+          || m == 'image/webp'
+          || m == 'image/gif';
+    }
+
+    function validLegacyPaperStoragePath(d) {
+      return d.storagePath is string
+        && d.storagePath.matches('^papers/' + d.courseCode + '/[A-Za-z0-9._-]+$');
+    }
+
+    function validOwnedPaperStoragePath(d) {
+      return d.storagePath is string
+        && d.storagePath.matches('^papers/' + d.courseCode + '/' + d.uploaderUid + '/[A-Za-z0-9._-]+$');
+    }
+
     function validPaperPayload(d) {
       return d.keys().hasOnly(['courseCode','type','semester','facultyInitials','title','storagePath','fileSize','mimeType','uploaderUid','downloads','flagCount','approved','createdAt'])
         && d.keys().hasAll(['courseCode','type','title','storagePath','fileSize','mimeType','uploaderUid','approved','createdAt'])
@@ -176,13 +194,12 @@ service cloud.firestore {
         && d.title is string
         && d.title.size() >= 3
         && d.title.size() <= 120
-        && d.storagePath is string
-        && d.storagePath.matches('^papers/' + d.courseCode + '/[^/]+$')
+        && (validOwnedPaperStoragePath(d) || validLegacyPaperStoragePath(d))
         && d.fileSize is int
         && d.fileSize > 0
         && d.fileSize <= 10485760
         && d.mimeType is string
-        && d.mimeType.matches('application/pdf|image/.*')
+        && validPaperMime(d.mimeType)
         && d.uploaderUid is string
         && d.uploaderUid == request.auth.uid
         && d.approved is bool
@@ -209,7 +226,10 @@ service cloud.firestore {
     }
 
     match /papers/{paperId} {
-      allow read:   if isBracuUser();
+      allow read:   if isAdmin()
+                    || (isBracuUser()
+                        && (resource.data.approved == true
+                            || resource.data.uploaderUid == request.auth.uid));
       allow create: if isBracuUser() && validPaperPayload(request.resource.data);
       allow update, delete: if isAdmin();
     }
