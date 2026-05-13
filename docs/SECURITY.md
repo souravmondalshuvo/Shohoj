@@ -5,7 +5,7 @@ This document describes how Shohoj protects user data and what its threat model 
 ## Authentication
 
 - **Google sign-in only.** Email/password flows are not supported, so there is no password to phish, leak, or rotate.
-- **BRACU domain gate.** The frontend rejects any account whose email is not `@g.bracu.ac.bd` (the only exception is the admin gmail, which carries an `admin: true` custom claim).
+- **BRACU domain gate.** The frontend rejects any account whose email is not `@g.bracu.ac.bd` unless the Firebase ID token carries the `admin: true` custom claim.
 - **30-day session expiry.** Sessions are auto-terminated after 30 days; the user signs in again.
 - **Firestore enforces the same checks** in security rules so a forged client cannot bypass them.
 
@@ -15,8 +15,11 @@ Firestore rules in `firestore.rules` are the trust boundary. Important guarantee
 
 - A user can read/write **only** their own `users/{uid}` document.
 - Faculty reviews are **append-only**; no client can update or delete an existing review (even the author).
-- Review reports and admin moderation collections are admin-only.
+- Review reports, paper reports, admin logs, and moderation reads are admin-only.
 - Paper uploads must start with `approved: false`; only admins can flip the flag.
+- Pending paper metadata is readable only by the uploader or an admin; other BRACU users see papers only after approval.
+- New paper metadata must use an owner-scoped storage path: `papers/{COURSE_CODE}/{UPLOADER_UID}/{filename}`.
+- Feedback upvote documents are readable only by the voter or an admin.
 - Admin status is granted via a Firebase custom claim (`admin: true`) and set out-of-band via `scripts/set_admin_claim.js`. UID and email are no longer trusted by rules.
 
 The rules suite (`tests/firestore.rules.test.js`) runs in CI against the Firestore emulator and asserts these guarantees.
@@ -33,11 +36,11 @@ Firestore is fronted by Firebase App Check using reCAPTCHA v3. Every Firestore c
 
 ## CDN integrity
 
-Both jsPDF and pdf.js load from cdnjs with `integrity="sha384-..."` and `crossorigin="anonymous"`, so a compromised CDN cannot inject altered code without breaking the hash check.
+jsPDF, pdf.js, and Chart.js load from cdnjs with `integrity` and `crossorigin="anonymous"`, so a compromised CDN cannot inject altered code without breaking the hash check.
 
 ## Content Security Policy
 
-`index.html` and `admin/index.html` ship a strict CSP that whitelists only the Google/Firebase/cdnjs origins Shohoj actually needs. Currently `'unsafe-inline'` is allowed for `script-src` and `style-src` because the codebase still uses inline event handlers; tightening this is tracked as a future hardening.
+`index.html` and `admin/index.html` ship a strict CSP that whitelists only the Google/Firebase/cdnjs/Worker origins Shohoj actually needs. Currently `'unsafe-inline'` is allowed for `script-src` and `style-src` because the app still has inline bootstrapping scripts and inline style-heavy rendering; tightening this is tracked as a future hardening.
 
 ## Faculty review pseudonymity
 
@@ -58,11 +61,15 @@ Stronger guarantees would require moving review writes behind a Cloud Function. 
 Files go through a Cloudflare Worker (`worker/index.js`) before landing in R2:
 
 - Verifies a Firebase ID token against Google's JWKS.
-- Rejects non-BRACU emails (admin gmail allowed).
-- Validates `papers/{COURSE_CODE}/{filename}` path format.
+- Rejects non-BRACU emails unless the token carries `admin: true`.
+- Stores new uploads under `papers/{COURSE_CODE}/{UPLOADER_UID}/{filename}`.
+- Accepts legacy `papers/{COURSE_CODE}/{filename}` paths for download/delete only, so older files remain accessible.
 - Caps uploads at 10 MB.
-- Restricts MIME to PDF + images.
+- Restricts MIME to PDF, PNG, JPEG, WebP, and GIF. SVG and other active formats are rejected.
 - Origin-locked CORS.
+
+Firestore separately validates paper metadata so a client cannot create a paper
+document that points at another user's owner-scoped R2 object.
 
 ## Public Firebase config
 
@@ -73,7 +80,7 @@ The Firebase web config (API key, project ID, etc.) is public by design — Fire
 Two layers are in place:
 
 1. **Firebase App Check (reCAPTCHA v3).** Every Firestore call carries an attestation token. Scripted clients without a real browser session are rejected. This is the primary line of defense against automated abuse.
-2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, max 500 chars in review text, max 10 MB on paper uploads, and a strict MIME allowlist on file uploads.
+2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, private per-user feedback upvote reads, approved/uploader/admin paper visibility, max 500 chars in review text, max 10 MB on paper uploads, owner-scoped paper paths, and a strict MIME allowlist on file uploads.
 
 What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per day"). Pure Firestore rules can't aggregate writes across documents, so this would need a Cloud Function. App Check covers the realistic abuse model for this project; revisit if the corpus grows enough that App Check alone is insufficient.
 
