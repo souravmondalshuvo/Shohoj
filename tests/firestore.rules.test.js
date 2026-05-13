@@ -16,7 +16,10 @@
  *   9.  Non-admin cannot read /reviewReports
  *  10. Admin can read /reviewReports
  *  11. Paper upload must start with approved:false
- *  12. Unknown collection root is denied
+ *  12. Pending papers are visible only to uploader/admin
+ *  13. Paper storage paths must be owner-scoped and SVG uploads are rejected
+ *  14. Feedback upvotes are readable only by owner/admin
+ *  15. Unknown collection root is denied
  */
 
 import {
@@ -100,6 +103,32 @@ function validReviewDoc(extra = {}) {
       workload: 3,
     },
     text: 'Solid lectures.',
+    createdAt: serverTimestamp(),
+    ...extra,
+  };
+}
+
+function paperDoc(extra = {}) {
+  const uploaderUid = extra.uploaderUid || BRACU_UID;
+  const courseCode = extra.courseCode || 'CSE110';
+  return {
+    courseCode,
+    type: 'final',
+    title: 'CSE110 Final 2024',
+    storagePath: `papers/${courseCode}/${uploaderUid}/final-2024.pdf`,
+    fileSize: 1024,
+    mimeType: 'application/pdf',
+    uploaderUid,
+    approved: false,
+    createdAt: serverTimestamp(),
+    ...extra,
+  };
+}
+
+function upvoteDoc(extra = {}) {
+  return {
+    feedbackId: 'fb_private',
+    uid: BRACU_UID,
     createdAt: serverTimestamp(),
     ...extra,
   };
@@ -189,33 +218,65 @@ async function run() {
   await test('Paper upload with approved:true is rejected', async () => {
     const db = bracuCtx().firestore();
     const id = 'paper_attempt_1';
-    await assertFails(setDoc(doc(db, 'papers', id), {
-      courseCode: 'CSE110',
-      type: 'final',
-      title: 'CSE110 Final 2024',
-      storagePath: 'papers/CSE110/final-2024.pdf',
-      fileSize: 1024,
-      mimeType: 'application/pdf',
-      uploaderUid: BRACU_UID,
-      approved: true,
-      createdAt: serverTimestamp(),
-    }));
+    await assertFails(setDoc(doc(db, 'papers', id), paperDoc({ approved: true })));
   });
 
   await test('Paper upload with approved:false succeeds', async () => {
     const db = bracuCtx().firestore();
     const id = 'paper_attempt_2';
-    await assertSucceeds(setDoc(doc(db, 'papers', id), {
-      courseCode: 'CSE110',
-      type: 'final',
-      title: 'CSE110 Final 2024',
-      storagePath: 'papers/CSE110/final-2024.pdf',
-      fileSize: 1024,
-      mimeType: 'application/pdf',
-      uploaderUid: BRACU_UID,
-      approved: false,
-      createdAt: serverTimestamp(),
-    }));
+    await assertSucceeds(setDoc(doc(db, 'papers', id), paperDoc()));
+  });
+
+  await test('BRACU user can read approved paper from another uploader', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'papers', 'paper_approved'), paperDoc({
+        uploaderUid: OTHER_BRACU_UID,
+        storagePath: `papers/CSE110/${OTHER_BRACU_UID}/final-2024.pdf`,
+        approved: true,
+      }));
+    });
+    const db = bracuCtx().firestore();
+    await assertSucceeds(getDoc(doc(db, 'papers', 'paper_approved')));
+  });
+
+  await test('BRACU user cannot read unapproved paper from another uploader', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'papers', 'paper_pending_other'), paperDoc({
+        uploaderUid: OTHER_BRACU_UID,
+        storagePath: `papers/CSE110/${OTHER_BRACU_UID}/final-2024.pdf`,
+      }));
+    });
+    const db = bracuCtx().firestore();
+    await assertFails(getDoc(doc(db, 'papers', 'paper_pending_other')));
+  });
+
+  await test('Uploader can read own unapproved paper', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'papers', 'paper_pending_own'), paperDoc()));
+    await assertSucceeds(getDoc(doc(db, 'papers', 'paper_pending_own')));
+  });
+
+  await test('Admin can read unapproved paper', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'papers', 'paper_pending_admin'), paperDoc());
+    });
+    const db = adminCtx().firestore();
+    await assertSucceeds(getDoc(doc(db, 'papers', 'paper_pending_admin')));
+  });
+
+  await test('Paper upload with SVG MIME is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'papers', 'paper_svg'), paperDoc({
+      storagePath: `papers/CSE110/${BRACU_UID}/vector.svg`,
+      mimeType: 'image/svg+xml',
+    })));
+  });
+
+  await test('Paper upload with another user storage path is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'papers', 'paper_wrong_owner_path'), paperDoc({
+      storagePath: `papers/CSE110/${OTHER_BRACU_UID}/final-2024.pdf`,
+    })));
   });
 
   await test('Unknown collection at root is denied', async () => {
@@ -347,6 +408,32 @@ async function run() {
     for (let i = 0; i < 9; i++) context[`k${i}`] = `v${i}`;
     await assertFails(setDoc(doc(db, 'appFeedback', 'fb7'),
       feedbackDoc({ context })));
+  });
+
+  await test('User can read own feedback upvote', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'appFeedbackUpvotes', `fb_private_${BRACU_UID}`), upvoteDoc()));
+    await assertSucceeds(getDoc(doc(db, 'appFeedbackUpvotes', `fb_private_${BRACU_UID}`)));
+  });
+
+  await test('Non-admin cannot read another user feedback upvote', async () => {
+    const writer = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    const voteId = `fb_private_${OTHER_BRACU_UID}`;
+    await assertSucceeds(setDoc(doc(writer, 'appFeedbackUpvotes', voteId), upvoteDoc({
+      uid: OTHER_BRACU_UID,
+    })));
+    const reader = bracuCtx().firestore();
+    await assertFails(getDoc(doc(reader, 'appFeedbackUpvotes', voteId)));
+  });
+
+  await test('Admin can read another user feedback upvote', async () => {
+    const writer = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    const voteId = `fb_private_${OTHER_BRACU_UID}`;
+    await assertSucceeds(setDoc(doc(writer, 'appFeedbackUpvotes', voteId), upvoteDoc({
+      uid: OTHER_BRACU_UID,
+    })));
+    const reader = adminCtx().firestore();
+    await assertSucceeds(getDoc(doc(reader, 'appFeedbackUpvotes', voteId)));
   });
 
   // ── Paper reports ───────────────────────────────────────────────────
