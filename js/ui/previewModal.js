@@ -14,7 +14,7 @@
 import { escHtml, escAttr } from '../core/helpers.js';
 
 export function openPreviewModal({ url, title, path }) {
-  const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(path || '');
+  const isImage = /\.(png|jpe?g|gif|webp)$/i.test(path || '');
   const wrap = document.createElement('div');
   wrap.className = 'admin-preview-backdrop';
   const body = isImage
