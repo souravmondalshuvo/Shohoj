@@ -13,13 +13,13 @@
 
 <p align="center">
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  <img src="https://img.shields.io/badge/Status-Phase%201%20Live-2ECC71?style=flat-square" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-Phase%202%20Live-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-158%20unit%20%2B%20rules-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-189%20unit%20%2B%2041%20rules-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -109,6 +109,35 @@ Because Shohoj is a client-only app (no Cloud Functions today), the review write
 - ⚠️ A determined adversary who already knows your UID could reconstruct your review hash for any (faculty, course) pair.
 
 For stronger guarantees we would need to move review writes behind a Cloud Function that strips the caller's identity before committing — tracked as a future hardening.
+
+### 📚 Past Papers & Notes (New)
+
+BRACU-only resource sharing for course papers, notes, assignments, lab reports, and quizzes.
+
+- **Course-code browsing** — search by catalog course code or browse recent approved uploads
+- **Moderated uploads** — uploads start as `approved: false` and only become public after admin review
+- **Secure file proxy** — file bodies live in Cloudflare R2 and are accessed only through a Firebase-token-verified Worker
+- **Owner-scoped storage paths** — new uploads are stored under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, and Firestore rules reject metadata that points at another user's upload path
+- **Strict file allowlist** — uploads are capped at 10 MB and restricted to PDF, PNG, JPEG, WebP, or GIF
+- **Report flow** — every paper can be reported once per user for admin review
+
+### 💬 Feedback Board (New)
+
+In-app product feedback for bugs, feature ideas, and general comments.
+
+- **BRACU-gated feedback** — only signed-in BRACU users can submit or view feedback
+- **Anonymous option** — feedback can omit the public UID field while still being rules-gated by the authenticated session
+- **Private upvote state** — upvote documents are readable only by the voter or admins, so the UI shows your own vote state rather than exposing global voter data
+- **Admin cleanup** — admin-claim moderators can remove abusive or duplicate feedback
+
+### 🛡️ Admin Dashboard (New)
+
+A separate admin shell at `/admin/` for moderation and audit work.
+
+- **Custom-claim access** — only Firebase users with `admin: true` can open the dashboard or perform admin actions
+- **Moderation queues** — pending papers, paper reports, review reports, and feedback are handled in one place
+- **Safe file deletion** — reported-paper deletion resolves the paper metadata first, then deletes both the R2 object and Firestore metadata
+- **Audit logs** — admin actions are written to immutable `adminLogs` documents
 
 ### ☁ Cloud Sync
 
@@ -257,13 +286,15 @@ Shohoj is built to feel like a real product, not a student project.
 | Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/) v3.11.174 | Reading BRACU transcript PDFs                          |
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
+| Charts      | [Chart.js](https://www.chartjs.org/) v4.4.0           | Admin dashboard and analytics visualizations           |
+| Files       | Cloudflare Worker + R2                                | Auth-gated past-paper upload, download, and delete     |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js + `@firebase/rules-unit-testing`              | 158 unit tests across calculator, parser, planner, tracker, render, and reviews logic, plus Firestore rules tests against the Firebase emulator |
+| Testing     | Node.js + `@firebase/rules-unit-testing`              | 189 unit tests across app logic and Worker validation, plus 41 Firestore rules tests against the Firebase emulator |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 | CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
-Both CDN scripts are loaded with **SRI integrity hashes** (`sha384-...`) to prevent supply-chain tampering.
+CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering.
 
 **Deployment pipeline:** every push to `main` triggers CI (tests) followed by CD (build + deploy). If tests fail, the live site is never touched. The built `shohoj.html` is deployed to the `gh-pages` branch as `index.html` and served by GitHub Pages.
 
@@ -287,12 +318,14 @@ Firestore (rules-enforced)
   ├── reviewReports/{...}    — moderation queue (admin-read)
   ├── papers/{paperId}       — past-paper metadata
   ├── paperReports/{...}     — paper moderation queue
-  ├── feedback/{id}          — feedback board
+  ├── appFeedback/{id}       — feedback board
+  ├── appFeedbackUpvotes/{feedbackId_uid}
+  │                          — private per-user upvote state
   ├── facultyProfiles/{init} — admin-seeded faculty directory
   └── adminLogs/{id}         — admin action audit trail
 
 Cloudflare Worker (auth-proxy, BRACU email + admin claim)
-  └── R2 — past-paper PDFs and images
+  └── R2 — past-paper PDFs and raster images
 
 Firebase custom claim `admin: true`
   ├── set out-of-band via scripts/set_admin_claim.js
@@ -311,9 +344,10 @@ Shohoj has been through a security audit and the following protections are in pl
 - **XSS prevention** — all user-sourced strings (course names, semester labels, PDF-imported data, error messages) are escaped via `escHtml()` and `escAttr()` helpers in `helpers.js` before any `innerHTML` insertion.
 - **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
-- **CDN subresource integrity** — both `jsPDF` and `pdf.js` are loaded with `integrity="sha384-..."` and `crossorigin="anonymous"` attributes in `index.html`.
+- **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable for students** once written — no client-side updates, and only admin-claim moderators can delete abusive reviews. The UI now treats duplicates as read-only instead of attempting edits. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable for students** once written — no client-side updates, and only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is readable only when approved, owned by the uploader, or accessed by an admin. Paper creates must use owner-scoped storage paths and an approved MIME type. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
 
@@ -343,9 +377,16 @@ Shohoj has been through a security audit and the following protections are in pl
 | Faculty Reviews (anonymous, 5-dim)  | ✅ Complete |
 | Course Difficulty Map               | ✅ Complete |
 
-### Phase 2 — Community Layer
+### Phase 2 — Community Layer _(Partially Live)_
 
-Review corpus seeding, past papers & notes library, interview experience board, study group finder. Faculty reviews shipped with Phase 1; Phase 2 focuses on growing the review corpus and layering resource-sharing on top.
+| Feature                            | Status      |
+| ---------------------------------- | ----------- |
+| Review corpus growth               | 🔶 Ongoing  |
+| Past Papers & Notes library        | ✅ Live     |
+| Feedback board                     | ✅ Live     |
+| Admin moderation dashboard         | ✅ Live     |
+| Interview experience board         | ⏳ Planned  |
+| Study group finder                 | ⏳ Planned  |
 
 ### Phase 3 — Campus Life
 
@@ -386,15 +427,21 @@ Shohoj/
 ├── assets/
 │   ├── shohoj-logo.png
 │   └── screenshots/
+├── admin/
+│   └── index.html                Admin shell source
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism, auth UI
 ├── data/
 │   ├── faculty_profiles.jsonl    Seed faculty directory injected by build3.py
 │   └── input_reviews.jsonl       Seed faculty reviews injected by build3.py
 ├── js/
+│   ├── admin-entry.js            Entry point for the admin bundle
 │   ├── main.js                   Entry point — wires all modules together
 │   ├── auth/
 │   │   └── firebase.js           Firebase Auth + Firestore cloud sync
+│   ├── config/
+│   │   ├── runtime-config.template.js
+│   │   └── runtime-config.js     Generated locally/CI, gitignored
 │   ├── core/
 │   │   ├── grades.js             BRACU grading scale & grade detection
 │   │   ├── helpers.js            Semester utilities, escHtml/escAttr, sanitizers
@@ -402,7 +449,9 @@ Shohoj/
 │   │   ├── departments.js        16 department definitions with preset semesters
 │   │   ├── catalog.js            Full BRACU course database (851 courses)
 │   │   ├── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
+│   │   ├── dispatch.js           Delegated UI action registry
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
+│   │   ├── papers.js             Past-paper validation and storage hooks
 │   │   └── reviews.js            Review submission & fetch layer, aggregation helpers
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder, faculty input
@@ -414,6 +463,10 @@ Shohoj/
 │   │   ├── reviews.js            Review modal, per-course panel, reviews directory
 │   │   ├── reviewsTab.js         Reviews tab — directory browse, faculty/course search
 │   │   ├── difficultyMap.js      Course Difficulty Map — aggregated difficulty + workload by course
+│   │   ├── papersTab.js          Past Papers & Notes browse/upload/report UI
+│   │   ├── previewModal.js       Shared paper preview modal
+│   │   ├── feedback.js           Feedback modal and board
+│   │   ├── adminDashboard.js     Admin moderation dashboard
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
 │   ├── animations/
@@ -423,25 +476,37 @@ Shohoj/
 │   └── import/
 │       └── parser.js             BRACU transcript PDF parser (dual-strategy)
 ├── scripts/
+│   ├── generate_runtime_config.js Generate local runtime-config.js
+│   ├── rename_faculty_initials.py  Faculty seed-data maintenance helper
 │   ├── seed_faculty.py           Bulk-import faculty profiles into Firestore
-│   └── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
-├── firestore.rules               Firestore security rules (users, facultyReviews, facultyProfiles)
+│   ├── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
+│   └── set_admin_claim.js        Grant/revoke Firebase admin custom claim
+├── worker/
+│   ├── index.js                  Cloudflare Worker for R2 paper files
+│   ├── test/worker.test.js       Worker validation tests
+│   └── wrangler.toml             Worker deploy config
+├── firestore.rules               Firestore security rules
+├── firestore.indexes.json        Required Firestore composite indexes
+├── firebase.json                 Firestore emulator config
 ├── tests/
 │   ├── calculator.test.js        55 tests — GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            24 tests — department detection, semester parsing, blob parser
 │   ├── planner.test.js           13 tests — prereq resolution, plan validation
 │   ├── render.test.js            7 tests — semester rendering and reorder
 │   ├── tracker.test.js           4 tests — degree progress and graduation estimate
-│   └── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
+│   ├── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
+│   ├── adminDashboard.test.js    3 tests — admin stat rendering helpers
+│   └── firestore.rules.test.js   41 tests — emulator-driven security rules checks
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                Runs unit tests + Firestore rules tests on push and pull request
-│       └── cd.yml                Runs unit tests + Firestore rules tests, then builds and deploys to GitHub Pages on push to main
+│       ├── cd.yml                Builds and deploys GitHub Pages on push to main
+│       └── deploy-worker.yml     Tests and deploys the Cloudflare Worker
 ├── index.html                    Main HTML shell
-├── package.json                  Test runner scripts (no dependencies)
+├── package.json                  Test runner and local config scripts
 ├── README.md
 ├── LICENSE
-└── build3.py                     Build script — bundles into single shohoj.html
+└── build3.py                     Build script — outputs shohoj.html and admin.html
 ```
 
 ---
@@ -469,17 +534,17 @@ python3 -m http.server 8000
 
 ```bash
 npm test
-# Results: 158 passed, 0 failed, 158 total
+# Results: 189 passed, 0 failed, 189 total
 
 npm run test:rules
-# Firestore rules tests against the Firebase emulator (requires Java 17+)
+# 41 Firestore rules tests against the Firebase emulator (requires Java 17+)
 ```
 
 **Build the bundled version:**
 
 ```bash
 python3 build3.py
-# Outputs shohoj.html — single file, ready to deploy
+# Outputs shohoj.html and admin.html — ready to deploy
 ```
 
 > **Note:** You don't need to run the build manually before pushing — the CD pipeline does it automatically on every push to `main`. Run it locally only if you want to preview the bundled output.
@@ -553,6 +618,14 @@ Additional notes on Repeat:
 - The review corpus starts empty. A panel showing "no reviews yet" for a course is not a bug — it simply means nobody has rated any faculty for that course yet. Early users carry the cost of seeding.
 - Aggregates use simple averages across all reviews for a faculty-course pair. No recency weighting, no outlier filtering, no minimum-sample gating — this will be tuned once the corpus grows.
 
+### Past Papers & Notes
+
+- Uploading and downloading files requires sign-in with a `@g.bracu.ac.bd` account. Admins use the same Firebase custom claim as the dashboard.
+- New files are stored in Cloudflare R2 through the Worker under `papers/{COURSE}/{UPLOADER_UID}/{filename}`. Older two-segment paths remain readable/deletable for backward compatibility, but new Firestore metadata must use the owner-scoped path.
+- Only PDF, PNG, JPEG, WebP, and GIF files are accepted. SVG and other active or executable formats are rejected.
+- Pending paper metadata is visible only to the uploader and admins. Other students can read paper metadata only after approval.
+- File previews are best-effort. If a browser cannot render a PDF inline, use "Open in new tab."
+
 ### Degree Progress Tracker
 
 - Graduation estimate assumes your **current credit-per-semester pace** remains constant. One unusually light or heavy semester will skew the estimate temporarily.
@@ -583,8 +656,14 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
 | `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
 | `facultyProfiles/{init}`  | Firestore    | Read-only faculty directory seeded by admin scripts                    |
+| `papers/{paperId}`        | Firestore    | Paper metadata — public only after approval; pending docs are uploader/admin only |
+| `paperReports/{uid_paperId}` | Firestore | Admin-only paper reports, deduplicated per user per paper              |
+| `appFeedback/{id}`        | Firestore    | Feedback board entries                                                  |
+| `appFeedbackUpvotes/{feedbackId_uid}` | Firestore | Private per-user upvote state, readable by owner/admin only       |
+| `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
+| Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 
-Data is never sent to any server other than Firestore. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
+Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
 ### What's Production-Ready
 
@@ -602,6 +681,9 @@ Data is never sent to any server other than Firestore. There are no ads, no anal
 | Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
 | Faculty Reviews                                 | 🔶 Live — corpus seeding in progress                    |
 | Course Difficulty Map                           | 🔶 Live — aggregates grow with the review corpus        |
+| Past Papers & Notes                             | 🔶 Live — moderated community library                   |
+| Feedback Board                                  | ✅ Production-ready                                     |
+| Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
 
 ---
 
@@ -616,8 +698,8 @@ Shohoj is built for students, by students. Contributions are welcome.
    ```bash
    git checkout -b feature/your-feature-name
    ```
-3. **Make your changes** — follow the existing code style (vanilla JS, no frameworks in Phase 1)
-4. **Test** — run `npm test` to verify all 158 unit tests pass, and `npm run test:rules` to verify Firestore rules tests pass
+3. **Make your changes** — follow the existing code style (vanilla JS, no frontend framework)
+4. **Test** — run `npm test` to verify all 189 unit tests pass, and `npm run test:rules` to verify Firestore rules tests pass
 5. **Build** — run `python3 build3.py` to regenerate the bundled file
 6. **Submit a pull request** with a clear description of what you changed and why
 
@@ -631,11 +713,11 @@ Shohoj is built for students, by students. Contributions are welcome.
 
 ### Code Guidelines
 
-- Phase 1 is **vanilla HTML/CSS/JS** — no frameworks, no build tools beyond `build3.py`
+- Shohoj is **vanilla HTML/CSS/JS** — no frontend framework, no bundler beyond `build3.py`
 - All cross-module calls use `window._shohoj_*` to avoid circular imports
-- Functions called from HTML `onclick`/`onchange` are assigned to `window.*` in `main.js`
+- UI actions should use delegated `data-action` handlers registered through `js/core/dispatch.js`
 - **Escape all user-sourced strings** with `escHtml()` / `escAttr()` from `helpers.js` before any `innerHTML` insertion — do not bypass this for convenience
-- **All new logic must have tests** in `tests/calculator.test.js` or `tests/parser.test.js`
+- **All new logic must have tests** in the nearest relevant test file, or a new focused test file if the feature needs one
 - Test locally with `npm test` before submitting a pull request
 - Check that **jsPDF export** doesn't break — only ASCII characters in helvetica font strings
 
