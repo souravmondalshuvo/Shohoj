@@ -300,7 +300,6 @@ function _reportRow(r) {
         <div class="paper-mod-row-meta">Reporter: ${escHtml(String(r.reporterUid || '').slice(0, 8))}…</div>
       </div>
       <div class="paper-mod-row-actions">
-        <button data-mod-action="delete" data-id="${escAttr(r.paperId)}">Delete paper</button>
         <button data-mod-action="dismiss" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -456,8 +455,8 @@ function _openUploadModal() {
           <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" value="${escAttr(draft.facultyInitials || '')}" />
         </label>
         <label>
-          <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" />
+          <span>File (PDF, PNG, JPEG, WebP, or GIF, max 10 MB)</span>
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/png,image/jpeg,image/webp,image/gif" />
           <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
