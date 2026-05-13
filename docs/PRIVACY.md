@@ -65,7 +65,7 @@ Admins cannot read your `users/{uid}` document — Firestore rules forbid it. Th
 You have two options:
 
 1. **In-app deletion.** From the sign-out modal, choose "Delete cloud data". This removes your `users/{uid}` document. Reviews, feedback, reports, and paper uploads stay unless separately moderated or manually purged, because they live outside the private user document.
-2. **Email request.** Email `souravmondal033@gmail.com` and we will manually purge your reviews, feedback, reports, paper uploads, and any other identifiable records where practical. Allow up to 7 days.
+2. **Email request.** Email `admin.shohoj@gmail.com` and we will manually purge your reviews, feedback, reports, paper uploads, and any other identifiable records where practical. Allow up to 7 days.
 
 LocalStorage data is yours — clear it from your browser settings whenever you want. No round-trip needed.
 
