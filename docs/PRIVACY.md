@@ -79,4 +79,4 @@ If we change what we collect, this file gets updated and the change goes through
 
 ## Contact
 
-Privacy questions: `souravmondal033@gmail.com`.
+Privacy questions: `admin.shohoj@gmail.com`.
