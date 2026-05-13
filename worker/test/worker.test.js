@@ -85,6 +85,8 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assert(isValidStoragePath('papers/CSE110/midterm-fall24.pdf'));
     assert(isValidStoragePath('papers/MAT215/quiz_1.png'));
     assert(isValidStoragePath('papers/CSE470L/final.PDF'));
+    assert(isValidStoragePath('papers/CSE110/bracu_user/midterm-fall24.pdf'));
+    assert(isValidStoragePath('papers/CSE470L/firebaseUid_123/final.PDF'));
   });
 
   await test('isValidStoragePath rejects traversal and bad shapes', () => {
@@ -93,6 +95,7 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assert(!isValidStoragePath('papers/cse110/file.pdf'));
     assert(!isValidStoragePath('other/CSE110/file.pdf'));
     assert(!isValidStoragePath('papers/CSE110/file with space.pdf'));
+    assert(!isValidStoragePath('papers/CSE110/bracu/user/midterm.pdf'));
     assert(!isValidStoragePath(''));
     assert(!isValidStoragePath(null));
     assert(!isValidStoragePath({ path: 'papers/CSE110/x.pdf' }));
@@ -202,6 +205,16 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     const res = await worker.fetch(
       req('POST', '/upload?courseCode=CSE110&filename=midterm.exe', {
         headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': '100' },
+      }),
+      ENV,
+    );
+    assertEq(res.status, 415);
+  });
+
+  await test('upload with SVG MIME → 415', async () => {
+    const res = await worker.fetch(
+      req('POST', '/upload?courseCode=CSE110&filename=diagram.svg', {
+        headers: { 'Content-Type': 'image/svg+xml', 'Content-Length': '100' },
       }),
       ENV,
     );
