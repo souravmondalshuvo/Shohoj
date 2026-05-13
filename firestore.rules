@@ -176,14 +176,13 @@ service cloud.firestore {
           || m == 'image/gif';
     }
 
-    function validLegacyPaperStoragePath(d) {
-      return d.storagePath is string
-        && d.storagePath.matches('^papers/' + d.courseCode + '/[A-Za-z0-9._-]+$');
-    }
-
     function validOwnedPaperStoragePath(d) {
       return d.storagePath is string
-        && d.storagePath.matches('^papers/' + d.courseCode + '/' + d.uploaderUid + '/[A-Za-z0-9._-]+$');
+        && d.storagePath.split('/').size() == 4
+        && d.storagePath.split('/')[0] == 'papers'
+        && d.storagePath.split('/')[1] == d.courseCode
+        && d.storagePath.split('/')[2] == d.uploaderUid
+        && d.storagePath.split('/')[3].matches('^[A-Za-z0-9._-]+$');
     }
 
     function validPaperPayload(d) {
@@ -194,7 +193,7 @@ service cloud.firestore {
         && d.title is string
         && d.title.size() >= 3
         && d.title.size() <= 120
-        && (validOwnedPaperStoragePath(d) || validLegacyPaperStoragePath(d))
+        && validOwnedPaperStoragePath(d)
         && d.fileSize is int
         && d.fileSize > 0
         && d.fileSize <= 10485760
