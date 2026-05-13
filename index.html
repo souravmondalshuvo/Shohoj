@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ZyhlfEnP6tibXsO2KiJmVLW2dGMDh058B8Xdw539VBg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-CqDrkDBfgLA0xPbMLVLbv9jj8B7eWG5eX16kvocixck='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13734,7 +13734,6 @@ function _reportRow(r) {
         <div class="paper-mod-row-meta">Reporter: ${escHtml(String(r.reporterUid || '').slice(0, 8))}…</div>
       </div>
       <div class="paper-mod-row-actions">
-        <button data-mod-action="delete" data-id="${escAttr(r.paperId)}">Delete paper</button>
         <button data-mod-action="dismiss" data-id="${escAttr(r.id)}">Dismiss</button>
       </div>
     </div>
@@ -13890,8 +13889,8 @@ function _openUploadModal() {
           <input name="facultyInitials" placeholder="e.g. MAK or MOM, ASH" maxlength="20" value="${escAttr(draft.facultyInitials || '')}" />
         </label>
         <label>
-          <span>File (PDF or image, max 10 MB)</span>
-          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/*" />
+          <span>File (PDF, PNG, JPEG, WebP, or GIF, max 10 MB)</span>
+          <input name="file" id="paperUploadFile" type="file" accept="application/pdf,image/png,image/jpeg,image/webp,image/gif" />
           <span class="paper-modal-file-info" id="paperUploadFileInfo"></span>
         </label>
         <p class="paper-modal-note">By uploading, you confirm you have rights to share this content. Uploads are reviewed before going public.</p>
