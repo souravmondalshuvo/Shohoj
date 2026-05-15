@@ -8,6 +8,13 @@ on:
       - '.github/workflows/deploy-worker.yml'
   workflow_dispatch:
 
+# Only the latest commit's worker state matters; cancel any in-flight deploy
+# when a newer commit lands to avoid racing `wrangler deploy` calls and to
+# stop wasting CI minutes on intermediate states.
+concurrency:
+  group: worker-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Deploy Cloudflare Worker
