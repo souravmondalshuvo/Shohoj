@@ -65,9 +65,9 @@ export async function fetchMyPapers() {
   return window._shohoj_fetchMyPapers();
 }
 
-export async function getPaperDownloadUrl(storagePath) {
+export async function getPaperDownloadUrl(paperId) {
   if (typeof window._shohoj_paperDownloadUrl !== 'function') return null;
-  return window._shohoj_paperDownloadUrl(storagePath);
+  return window._shohoj_paperDownloadUrl(paperId);
 }
 
 export async function uploadPaper(payload) {
