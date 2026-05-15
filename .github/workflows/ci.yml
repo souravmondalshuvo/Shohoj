@@ -49,17 +49,51 @@ jobs:
           test -s admin.html
           # Fail if bare ES module syntax leaked into the non-module bundle
           # (firebase.js is kept as type="module"; other bundled JS must not be).
+          # Also fail if 'unsafe-inline' is still present in the script-src
+          # CSP directive — build3.py is supposed to replace it with sha256
+          # hashes of every inline <script>. If it's still there, CSP can't
+          # block injected inline scripts and we lose XSS protection.
+          # Finally fail if `frame-ancestors` is missing — browser clickjacking
+          # protection.
           python3 - <<'PY'
           import re, sys
+          ok = True
           for path in ('shohoj.html', 'admin.html'):
               html = open(path, encoding='utf-8').read()
-              # Strip all <script type="module">…</script> blocks
               stripped = re.sub(
                   r'<script\s+type=["\']module["\'][\s\S]*?</script>',
                   '', html, flags=re.IGNORECASE,
               )
               if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
                   print(f'ERROR: bare ES module syntax leaked into {path}', file=sys.stderr)
-                  sys.exit(1)
+                  ok = False
+              # CSP content uses single quotes for keywords like 'self' /
+              # 'unsafe-inline'; capture the whole double-quoted attribute
+              # value so the inner singles don't terminate the match.
+              csp_m = re.search(
+                  r'<meta\s+http-equiv=["\']Content-Security-Policy["\']\s+content="([^"]*)"',
+                  html, flags=re.IGNORECASE,
+              )
+              if not csp_m:
+                  print(f'ERROR: no CSP meta tag in {path}', file=sys.stderr)
+                  ok = False
+                  continue
+              csp = csp_m.group(1)
+              # Find script-src directive
+              script_src_m = re.search(r'(?:^|;)\s*script-src\s+([^;]+)', csp, flags=re.IGNORECASE)
+              if not script_src_m:
+                  print(f'ERROR: no script-src directive in {path} CSP', file=sys.stderr)
+                  ok = False
+              elif "'unsafe-inline'" in script_src_m.group(1):
+                  print(f'ERROR: script-src in {path} still contains \'unsafe-inline\' '
+                        '(build3.py harden_script_csp should have replaced it with hashes)',
+                        file=sys.stderr)
+                  ok = False
+              if not re.search(r'frame-ancestors\b', csp, flags=re.IGNORECASE):
+                  print(f'ERROR: CSP in {path} is missing frame-ancestors '
+                        '(needed to block clickjacking)', file=sys.stderr)
+                  ok = False
+          if not ok:
+              sys.exit(1)
           print('bundles OK')
           PY
