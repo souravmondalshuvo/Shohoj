@@ -115,6 +115,22 @@ PAGES = [
 ]
 
 
+def js_safe_json(obj):
+    """JSON-encode for embedding inside an inline <script> tag.
+
+    json.dumps does NOT escape forward slashes, so a string containing
+    "</script>" would close the script element early. Also escape U+2028 /
+    U+2029 since JS treats them as line terminators (legal in JSON, illegal
+    in JS string literals pre-ES2019; many embedders still trip over them).
+    """
+    return (
+        json.dumps(obj, ensure_ascii=False, separators=(', ', ': '))
+        .replace('</', '<\\/')
+        .replace(' ', '\\u2028')
+        .replace(' ', '\\u2029')
+    )
+
+
 def strip_imports_exports(code):
     """Remove ES module import/export statements from JS source."""
     code = re.sub(
@@ -176,7 +192,7 @@ window.clearAllData = clearAllData;
                 line = line.strip()
                 if line:
                     profiles.append(json.loads(line))
-        profiles_js = json.dumps(profiles, ensure_ascii=False, separators=(', ', ': '))
+        profiles_js = js_safe_json(profiles)
         placeholder = 'const SEEDED_FACULTY_PROFILES = []; // injected by build3.py'
         replacement = f'const SEEDED_FACULTY_PROFILES = {profiles_js};'
         bundled_js = bundled_js.replace(placeholder, replacement)
@@ -221,7 +237,7 @@ window.clearAllData = clearAllData;
                     'createdAt': 1775000000000 - idx,
                     'seeded': True,
                 })
-        reviews_js = json.dumps(reviews, ensure_ascii=False, separators=(', ', ': '))
+        reviews_js = js_safe_json(reviews)
         placeholder = 'const SEEDED_REVIEWS = []; // injected by build3.py'
         replacement = f'const SEEDED_REVIEWS = {reviews_js};'
         bundled_js = bundled_js.replace(placeholder, replacement)
