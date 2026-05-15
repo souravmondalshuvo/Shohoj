@@ -8,7 +8,7 @@
     "dev": "wrangler dev"
   },
   "dependencies": {
-    "jose": "^5.9.6"
+    "jose": "^6.0.0"
   },
   "devDependencies": {
     "wrangler": "^3.78.0"
