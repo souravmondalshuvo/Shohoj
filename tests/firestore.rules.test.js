@@ -148,60 +148,99 @@ async function run() {
 
   await test('BRACU user can write and read own /users/{uid}', async () => {
     const db = bracuCtx().firestore();
-    await assertSucceeds(setDoc(doc(db, 'users', BRACU_UID), { semesters: [] }));
+    await assertSucceeds(setDoc(doc(db, 'users', BRACU_UID), {
+      data: JSON.stringify({ semesters: [] }),
+      updatedAt: serverTimestamp(),
+    }));
     await assertSucceeds(getDoc(doc(db, 'users', BRACU_UID)));
   });
 
   await test('BRACU user cannot read another user\'s /users/{uid}', async () => {
     const owner = bracuCtx().firestore();
-    await assertSucceeds(setDoc(doc(owner, 'users', BRACU_UID), { semesters: [] }));
+    await assertSucceeds(setDoc(doc(owner, 'users', BRACU_UID), {
+      data: JSON.stringify({ semesters: [] }),
+      updatedAt: serverTimestamp(),
+    }));
     const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
     await assertFails(getDoc(doc(other, 'users', BRACU_UID)));
   });
 
   await test('Non-BRACU, non-admin user cannot touch /users/{uid}', async () => {
     const db = outsiderCtx().firestore();
-    await assertFails(setDoc(doc(db, 'users', OUTSIDE_UID), { semesters: [] }));
+    await assertFails(setDoc(doc(db, 'users', OUTSIDE_UID), {
+      data: JSON.stringify({ semesters: [] }),
+      updatedAt: serverTimestamp(),
+    }));
   });
 
-  await test('Valid faculty review create succeeds', async () => {
+  await test('users/{uid} write with extra field is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'users', BRACU_UID), {
+      data: JSON.stringify({}),
+      updatedAt: serverTimestamp(),
+      extraField: 'nope',
+    }));
+  });
+
+  await test('users/{uid} write with non-string data is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'users', BRACU_UID), {
+      data: { not: 'a string' },
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
+  await test('users/{uid} write over 500 KB is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'users', BRACU_UID), {
+      data: 'x'.repeat(500001),
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
+  await test('Client cannot create facultyReviews (worker-mediated only)', async () => {
+    // Server-side path now goes through worker/index.js POST /reviews using a
+    // service account. Direct client writes — even with a well-formed payload —
+    // must fail so the canonical sha256 doc-id guarantee can't be subverted.
     const db = bracuCtx().firestore();
     const hash = 'a'.repeat(64);
     const id = reviewId('AAA', 'CSE110', hash);
-    await assertSucceeds(setDoc(doc(db, 'facultyReviews', id), validReviewDoc()));
+    await assertFails(setDoc(doc(db, 'facultyReviews', id), validReviewDoc()));
   });
 
-  await test('Review missing required field is rejected', async () => {
-    const db = bracuCtx().firestore();
-    const hash = 'b'.repeat(64);
-    const id = reviewId('AAA', 'CSE110', hash);
-    const bad = validReviewDoc();
-    delete bad.ratings;
-    await assertFails(setDoc(doc(db, 'facultyReviews', id), bad));
-  });
-
-  await test('facultyReviews update is denied', async () => {
+  await test('Client cannot update facultyReviews', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const hash = 'c'.repeat(64);
+      const id = reviewId('AAA', 'CSE110', hash);
+      await setDoc(doc(context.firestore(), 'facultyReviews', id), validReviewDoc());
+    });
     const db = bracuCtx().firestore();
     const hash = 'c'.repeat(64);
     const id = reviewId('AAA', 'CSE110', hash);
-    await assertSucceeds(setDoc(doc(db, 'facultyReviews', id), validReviewDoc()));
     await assertFails(updateDoc(doc(db, 'facultyReviews', id), { text: 'edited' }));
   });
 
-  await test('facultyReviews delete is denied (even by author)', async () => {
+  await test('Client cannot delete facultyReviews (even author)', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const hash = 'd'.repeat(64);
+      const id = reviewId('AAA', 'CSE110', hash);
+      await setDoc(doc(context.firestore(), 'facultyReviews', id), validReviewDoc());
+    });
     const db = bracuCtx().firestore();
     const hash = 'd'.repeat(64);
     const id = reviewId('AAA', 'CSE110', hash);
-    await assertSucceeds(setDoc(doc(db, 'facultyReviews', id), validReviewDoc()));
     await assertFails(deleteDoc(doc(db, 'facultyReviews', id)));
   });
 
   await test('facultyReviews delete by admin succeeds', async () => {
-    const writerDb = bracuCtx().firestore();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const hash = 'e'.repeat(64);
+      const id = reviewId('AAA', 'CSE110', hash);
+      await setDoc(doc(context.firestore(), 'facultyReviews', id), validReviewDoc());
+    });
+    const adminDb = adminCtx().firestore();
     const hash = 'e'.repeat(64);
     const id = reviewId('AAA', 'CSE110', hash);
-    await assertSucceeds(setDoc(doc(writerDb, 'facultyReviews', id), validReviewDoc()));
-    const adminDb = adminCtx().firestore();
     await assertSucceeds(deleteDoc(doc(adminDb, 'facultyReviews', id)));
   });
 
