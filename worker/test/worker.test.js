@@ -3,11 +3,10 @@
  * Tests for the papers Worker. Run with:
  *   npm run test:worker
  *
- * Covers pure validators, CORS, route dispatch, and the validation
- * gates that run before Firebase token verification. Auth-success
- * paths are not exercised (would require live JWKS) — instead we
- * confirm that missing/malformed tokens reach the AuthError → 401
- * branch as expected.
+ * Covers pure validators, CORS, route dispatch, origin enforcement, and the
+ * fact that auth now runs before any request-shape validation. Auth-success
+ * paths are not exercised (would require live JWKS) — instead we confirm that
+ * missing/malformed tokens reach the AuthError → 401 branch as expected.
  */
 
 import worker, {
@@ -16,6 +15,7 @@ import worker, {
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
+  validateReviewPayload,
 } from '../index.js';
 
 let passed = 0;
@@ -81,24 +81,25 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assert(!isValidCourseCode('../etc'));
   });
 
-  await test('isValidStoragePath accepts well-formed paper paths', () => {
-    assert(isValidStoragePath('papers/CSE110/midterm-fall24.pdf'));
-    assert(isValidStoragePath('papers/MAT215/quiz_1.png'));
-    assert(isValidStoragePath('papers/CSE470L/final.PDF'));
+  await test('isValidStoragePath accepts only owner-scoped paper paths', () => {
     assert(isValidStoragePath('papers/CSE110/bracu_user/midterm-fall24.pdf'));
     assert(isValidStoragePath('papers/CSE470L/firebaseUid_123/final.PDF'));
+    // Legacy two-segment paths (no owner UID) are no longer accepted: they
+    // can't be authoritatively associated with an uploader.
+    assert(!isValidStoragePath('papers/CSE110/midterm-fall24.pdf'));
+    assert(!isValidStoragePath('papers/MAT215/quiz_1.png'));
+    assert(!isValidStoragePath('papers/CSE470L/final.PDF'));
   });
 
   await test('isValidStoragePath rejects traversal and bad shapes', () => {
-    assert(!isValidStoragePath('papers/CSE110/../etc/passwd'));
+    assert(!isValidStoragePath('papers/CSE110/uid/../etc/passwd'));
     assert(!isValidStoragePath('papers/CSE110/sub/dir/file.pdf'));
-    assert(!isValidStoragePath('papers/cse110/file.pdf'));
-    assert(!isValidStoragePath('other/CSE110/file.pdf'));
-    assert(!isValidStoragePath('papers/CSE110/file with space.pdf'));
-    assert(!isValidStoragePath('papers/CSE110/bracu/user/midterm.pdf'));
+    assert(!isValidStoragePath('papers/cse110/uid/file.pdf'));
+    assert(!isValidStoragePath('other/CSE110/uid/file.pdf'));
+    assert(!isValidStoragePath('papers/CSE110/uid/file with space.pdf'));
     assert(!isValidStoragePath(''));
     assert(!isValidStoragePath(null));
-    assert(!isValidStoragePath({ path: 'papers/CSE110/x.pdf' }));
+    assert(!isValidStoragePath({ path: 'papers/CSE110/uid/x.pdf' }));
   });
 
   await test('safeFilename strips disallowed chars and caps at 80', () => {
@@ -112,6 +113,73 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assertEq(safeFilename(undefined), '');
     const long = 'a'.repeat(200) + '.pdf';
     assertEq(safeFilename(long).length, 80);
+  });
+
+  console.log('\nReview payload validation:');
+
+  function basePayload(extra = {}) {
+    return {
+      facultyInitials: 'AAA',
+      courseCode: 'CSE110',
+      semester: 'Spring 2026',
+      text: 'Solid lectures.',
+      ratings: { teaching: 4, marking: 4, behavior: 5, difficulty: 3, workload: 3 },
+      ...extra,
+    };
+  }
+
+  await test('validateReviewPayload accepts a well-formed payload', () => {
+    const r = validateReviewPayload(basePayload());
+    assert(!r.error, r.error);
+    assertEq(r.value.facultyInitials, 'AAA');
+    assertEq(r.value.courseCode, 'CSE110');
+    assertEq(r.value.ratings.teaching, 4);
+  });
+
+  await test('validateReviewPayload normalizes case', () => {
+    const r = validateReviewPayload(basePayload({
+      facultyInitials: 'aaa',
+      courseCode: 'cse110',
+    }));
+    assert(!r.error);
+    assertEq(r.value.facultyInitials, 'AAA');
+    assertEq(r.value.courseCode, 'CSE110');
+  });
+
+  await test('validateReviewPayload rejects bad faculty initials', () => {
+    assert(validateReviewPayload(basePayload({ facultyInitials: 'A' })).error);
+    assert(validateReviewPayload(basePayload({ facultyInitials: 'TOOLONGNAME' })).error);
+    assert(validateReviewPayload(basePayload({ facultyInitials: 'A1B' })).error);
+  });
+
+  await test('validateReviewPayload rejects bad course code', () => {
+    assert(validateReviewPayload(basePayload({ courseCode: '110' })).error);
+    assert(validateReviewPayload(basePayload({ courseCode: 'CSE' })).error);
+  });
+
+  await test('validateReviewPayload rejects out-of-range ratings', () => {
+    assert(validateReviewPayload(basePayload({
+      ratings: { teaching: 0, marking: 4, behavior: 5, difficulty: 3, workload: 3 },
+    })).error);
+    assert(validateReviewPayload(basePayload({
+      ratings: { teaching: 6, marking: 4, behavior: 5, difficulty: 3, workload: 3 },
+    })).error);
+  });
+
+  await test('validateReviewPayload rejects missing rating dimension', () => {
+    assert(validateReviewPayload(basePayload({
+      ratings: { teaching: 4, marking: 4, behavior: 5, difficulty: 3 },
+    })).error);
+  });
+
+  await test('validateReviewPayload truncates long text/semester', () => {
+    const r = validateReviewPayload(basePayload({
+      text: 'x'.repeat(1000),
+      semester: 'y'.repeat(80),
+    }));
+    assert(!r.error);
+    assertEq(r.value.text.length, 500);
+    assertEq(r.value.semester.length, 40);
   });
 
   console.log('\nCORS:');
@@ -159,69 +227,52 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assertEq(res.status, 404);
   });
 
-  console.log('\nUpload validation:');
+  console.log('\nOrigin enforcement (writes from disallowed browser origin):');
 
-  await test('upload with invalid courseCode → 400', async () => {
-    const res = await worker.fetch(
-      req('POST', '/upload?courseCode=bad&filename=test.pdf'),
-      ENV,
-    );
-    assertEq(res.status, 400);
-    const body = await res.json();
-    assertEq(body.error, 'Invalid course code');
-  });
-
-  await test('upload with too-short filename → 400', async () => {
-    const res = await worker.fetch(
-      req('POST', '/upload?courseCode=CSE110&filename=ab'),
-      ENV,
-    );
-    assertEq(res.status, 400);
-    const body = await res.json();
-    assertEq(body.error, 'Invalid filename');
-  });
-
-  await test('upload with missing Content-Length → 413', async () => {
+  await test('POST /upload from disallowed Origin → 403', async () => {
     const res = await worker.fetch(
       req('POST', '/upload?courseCode=CSE110&filename=midterm.pdf', {
-        headers: { 'Content-Type': 'application/pdf' },
+        origin: DISALLOWED_ORIGIN,
+        headers: { 'Content-Type': 'application/pdf', 'Content-Length': '100' },
       }),
       ENV,
     );
-    assertEq(res.status, 413);
+    assertEq(res.status, 403);
   });
 
-  await test('upload over 10 MB → 413', async () => {
+  await test('POST /reviews from disallowed Origin → 403', async () => {
     const res = await worker.fetch(
-      req('POST', '/upload?courseCode=CSE110&filename=midterm.pdf', {
-        headers: { 'Content-Type': 'application/pdf', 'Content-Length': String(11 * 1024 * 1024) },
+      req('POST', '/reviews', {
+        origin: DISALLOWED_ORIGIN,
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
       }),
       ENV,
     );
-    assertEq(res.status, 413);
+    assertEq(res.status, 403);
   });
 
-  await test('upload with disallowed MIME → 415', async () => {
+  await test('DELETE /file from disallowed Origin → 403', async () => {
     const res = await worker.fetch(
-      req('POST', '/upload?courseCode=CSE110&filename=midterm.exe', {
-        headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': '100' },
+      req('DELETE', '/file?path=papers/CSE110/uid/x.pdf', {
+        origin: DISALLOWED_ORIGIN,
       }),
       ENV,
     );
-    assertEq(res.status, 415);
+    assertEq(res.status, 403);
   });
 
-  await test('upload with SVG MIME → 415', async () => {
+  await test('GET /download from disallowed Origin → 403', async () => {
     const res = await worker.fetch(
-      req('POST', '/upload?courseCode=CSE110&filename=diagram.svg', {
-        headers: { 'Content-Type': 'image/svg+xml', 'Content-Length': '100' },
-      }),
+      req('GET', '/download?paperId=abc', { origin: DISALLOWED_ORIGIN }),
       ENV,
     );
-    assertEq(res.status, 415);
+    assertEq(res.status, 403);
   });
 
-  await test('upload allows PDF through validation, fails at auth → 401', async () => {
+  console.log('\nUpload (auth runs before payload validation):');
+
+  await test('upload without auth → 401 (auth-first)', async () => {
     const res = await worker.fetch(
       req('POST', '/upload?courseCode=CSE110&filename=midterm.pdf', {
         headers: { 'Content-Type': 'application/pdf', 'Content-Length': '100' },
@@ -231,16 +282,6 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assertEq(res.status, 401);
     const body = await res.json();
     assertEq(body.error, 'Unauthorized');
-  });
-
-  await test('upload allows image/png through validation, fails at auth → 401', async () => {
-    const res = await worker.fetch(
-      req('POST', '/upload?courseCode=CSE110&filename=quiz1.png', {
-        headers: { 'Content-Type': 'image/png', 'Content-Length': '100' },
-      }),
-      ENV,
-    );
-    assertEq(res.status, 401);
   });
 
   await test('upload with malformed bearer → 401', async () => {
@@ -257,42 +298,48 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assertEq(res.status, 401);
   });
 
-  console.log('\nDownload validation:');
-
-  await test('download with invalid path → 400', async () => {
+  await test('upload with bad courseCode without auth → 401 (still auth-first)', async () => {
+    // Important: payload-shape errors must NOT leak before authentication.
     const res = await worker.fetch(
-      req('GET', '/download?path=../etc/passwd'),
-      ENV,
-    );
-    assertEq(res.status, 400);
-  });
-
-  await test('download with no path → 400', async () => {
-    const res = await worker.fetch(req('GET', '/download'), ENV);
-    assertEq(res.status, 400);
-  });
-
-  await test('download with valid path but no auth → 401', async () => {
-    const res = await worker.fetch(
-      req('GET', '/download?path=papers/CSE110/midterm.pdf'),
+      req('POST', '/upload?courseCode=bad&filename=test.pdf'),
       ENV,
     );
     assertEq(res.status, 401);
   });
 
-  console.log('\nDelete validation:');
+  console.log('\nDownload validation:');
 
-  await test('delete with invalid path → 400', async () => {
+  await test('download with no auth → 401', async () => {
     const res = await worker.fetch(
-      req('DELETE', '/file?path=other/CSE110/x.pdf'),
+      req('GET', '/download?paperId=abc'),
       ENV,
     );
-    assertEq(res.status, 400);
+    assertEq(res.status, 401);
   });
 
-  await test('delete with valid path but no auth → 401', async () => {
+  await test('download with no paperId reaches auth first → 401', async () => {
+    const res = await worker.fetch(req('GET', '/download'), ENV);
+    assertEq(res.status, 401);
+  });
+
+  console.log('\nDelete validation:');
+
+  await test('delete without auth → 401', async () => {
     const res = await worker.fetch(
-      req('DELETE', '/file?path=papers/CSE110/midterm.pdf'),
+      req('DELETE', '/file?path=papers/CSE110/uid/midterm.pdf'),
+      ENV,
+    );
+    assertEq(res.status, 401);
+  });
+
+  console.log('\nReviews dispatch:');
+
+  await test('POST /reviews without auth → 401', async () => {
+    const res = await worker.fetch(
+      req('POST', '/reviews', {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(basePayload()),
+      }),
       ENV,
     );
     assertEq(res.status, 401);
@@ -308,10 +355,11 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
 
   await test('error response includes CORS headers for allowed origin', async () => {
     const res = await worker.fetch(
-      req('GET', '/download?path=bad', { origin: ALLOWED_ORIGIN }),
+      req('GET', '/download', { origin: ALLOWED_ORIGIN }),
       ENV,
     );
-    assertEq(res.status, 400);
+    // Auth-first ⇒ 401 (no token). CORS still echoed for allowed origin.
+    assertEq(res.status, 401);
     assertEq(res.headers.get('Access-Control-Allow-Origin'), ALLOWED_ORIGIN);
   });
 
