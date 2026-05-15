@@ -66,34 +66,37 @@ service cloud.firestore {
     }
 
     // ── User data: scoped to own UID, BRACU domain only ──────────────────
-    match /users/{uid} {
-      allow read, write, delete: if isBracuUser() && request.auth.uid == uid;
+    // Doc shape is constrained to {data: <serialized JSON string>, updatedAt}
+    // and capped at 500 KB to bound storage abuse by individual users.
+    function validUserDocPayload(d) {
+      return d.keys().hasOnly(['data', 'updatedAt'])
+        && 'data' in d
+        && d.data is string
+        && d.data.size() <= 500000
+        && (!('updatedAt' in d) || d.updatedAt == request.time);
     }
 
-    // ── Faculty reviews: BRACU students can submit & read ────────────────
+    match /users/{uid} {
+      allow read, delete: if isBracuUser() && request.auth.uid == uid;
+      allow create, update: if isBracuUser()
+        && request.auth.uid == uid
+        && validUserDocPayload(request.resource.data);
+    }
+
+    // ── Faculty reviews: BRACU students can read; writes go via the Worker ──
     // Each review doc uses a DETERMINISTIC ID:
     //   {facultyInitials}_{courseCode}_{64-char lowercase hex}
     // where the hex suffix = sha256(uid + '|' + facultyInitials + '|' + courseCode).
-    // This enforces one review per (user, faculty, course) without storing the
-    // uid anywhere in the doc body.
     //
-    // Trust model: the client computes the hash, so a determined adversary
-    // who knows a victim's uid could pre-claim that victim's review slot
-    // before they submit. That attack still requires obtaining the target's
-    // Firebase uid (not just their email). For stronger guarantees, move
-    // review creation behind a trusted backend / Cloud Function.
+    // The Cloudflare Worker (worker/index.js POST /reviews) is the ONLY
+    // writer — it computes the hash server-side using the verified Firebase
+    // uid and writes via the Firestore REST API with a service-account OAuth
+    // token, which bypasses these rules. Client-side creates are denied so
+    // that the deterministic-ID guarantee can't be subverted by spamming
+    // arbitrary hex suffixes.
     match /facultyReviews/{reviewId} {
       allow read: if isBracuUser();
-
-      allow create: if isBracuUser()
-        && validReviewId(reviewId)
-        && validReviewPayload(request.resource.data)
-        && reviewId.split('_')[0] == request.resource.data.facultyInitials
-        && reviewId.split('_')[1] == request.resource.data.courseCode;
-
-      // Student reviews are append-only. Admins may delete abusive content
-      // through the moderation dashboard; client-side edits remain forbidden.
-      allow update: if false;
+      allow create, update: if false;
       allow delete: if isAdmin();
     }
 
