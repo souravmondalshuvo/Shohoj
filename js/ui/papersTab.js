@@ -109,8 +109,8 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
-        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
-        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">${_LBL_DOWNLOAD}</button>
+        <button class="paper-card-preview" data-paper-id="${escAttr(p.id || '')}" data-mime="${escAttr(p.mimeType || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
+        <button class="paper-card-download" data-paper-id="${escAttr(p.id || '')}">${_LBL_DOWNLOAD}</button>
         <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">${_ICON_FLAG}</button>
       </div>
     </article>
@@ -221,10 +221,10 @@ async function _openModerationPanel() {
     const previewBtn = e.target.closest('[data-mod-action="preview"]');
 
     if (previewBtn) {
-      const path = previewBtn.dataset.path;
-      if (!path) return;
+      const paperId = previewBtn.dataset.id;
+      if (!paperId) return;
       previewBtn.disabled = true;
-      const url = await getPaperDownloadUrl(path);
+      const url = await getPaperDownloadUrl(paperId);
       previewBtn.disabled = false;
       if (url) window.open(url, '_blank', 'noopener');
       return;
@@ -281,7 +281,7 @@ function _pendingPaperRow(p) {
         <div class="paper-mod-row-meta">${meta}</div>
       </div>
       <div class="paper-mod-row-actions">
-        <button data-mod-action="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
+        <button data-mod-action="preview" data-id="${escAttr(p.id || '')}">Preview</button>
         <button data-mod-action="approve" data-id="${escAttr(p.id)}" class="paper-mod-approve">Approve</button>
         <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="paper-mod-delete">Delete</button>
       </div>
@@ -321,27 +321,27 @@ function _onTypeChange(e) {
 async function _onListClick(e) {
   const pv = e.target.closest('.paper-card-preview');
   if (pv) {
-    const path = pv.dataset.path;
-    if (!path) return;
+    const paperId = pv.dataset.paperId;
+    if (!paperId) return;
     pv.disabled = true;
     pv.innerHTML = '<span>Loading…</span>';
-    const url = await getPaperDownloadUrl(path);
+    const url = await getPaperDownloadUrl(paperId);
     pv.disabled = false;
     pv.innerHTML = _LBL_PREVIEW;
     if (!url) {
       _toast('Could not load preview.');
       return;
     }
-    openPreviewModal({ url, title: pv.dataset.title || 'Preview', path });
+    openPreviewModal({ url, title: pv.dataset.title || 'Preview', mimeType: pv.dataset.mime });
     return;
   }
   const dl = e.target.closest('.paper-card-download');
   if (dl) {
-    const path = dl.dataset.path;
-    if (!path) return;
+    const paperId = dl.dataset.paperId;
+    if (!paperId) return;
     dl.disabled = true;
     dl.innerHTML = '<span>Loading…</span>';
-    const url = await getPaperDownloadUrl(path);
+    const url = await getPaperDownloadUrl(paperId);
     dl.disabled = false;
     dl.innerHTML = _LBL_DOWNLOAD;
     if (!url) {
