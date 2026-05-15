@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-1//61Ejyg4DQuTB0FPazkbNz6XHMvMe04o2JyvPT6dw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-UeNSjqQbR9bWW+xQ2GX/+Sbf3mGI50S4MiR6xx5hkdo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13581,8 +13581,8 @@ function _paperCard(p) {
       <h4 class="paper-card-title">${escHtml(p.title || 'Untitled')}</h4>
       <div class="paper-card-meta">${semester}${faculty}${sizePill}${datePill}</div>
       <div class="paper-card-actions">
-        <button class="paper-card-preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
-        <button class="paper-card-download" data-path="${escAttr(p.storagePath || '')}">${_LBL_DOWNLOAD}</button>
+        <button class="paper-card-preview" data-paper-id="${escAttr(p.id || '')}" data-mime="${escAttr(p.mimeType || '')}" data-title="${escAttr([p.courseCode, p.title || 'Untitled'].filter(Boolean).join(' — '))}">${_LBL_PREVIEW}</button>
+        <button class="paper-card-download" data-paper-id="${escAttr(p.id || '')}">${_LBL_DOWNLOAD}</button>
         <button class="paper-card-report" data-id="${escAttr(p.id)}" title="Report this paper" aria-label="Report this paper">${_ICON_FLAG}</button>
       </div>
     </article>
@@ -13693,10 +13693,10 @@ async function _openModerationPanel() {
     const previewBtn = e.target.closest('[data-mod-action="preview"]');
 
     if (previewBtn) {
-      const path = previewBtn.dataset.path;
-      if (!path) return;
+      const paperId = previewBtn.dataset.id;
+      if (!paperId) return;
       previewBtn.disabled = true;
-      const url = await getPaperDownloadUrl(path);
+      const url = await getPaperDownloadUrl(paperId);
       previewBtn.disabled = false;
       if (url) window.open(url, '_blank', 'noopener');
       return;
@@ -13753,7 +13753,7 @@ function _pendingPaperRow(p) {
         <div class="paper-mod-row-meta">${meta}</div>
       </div>
       <div class="paper-mod-row-actions">
-        <button data-mod-action="preview" data-path="${escAttr(p.storagePath || '')}">Preview</button>
+        <button data-mod-action="preview" data-id="${escAttr(p.id || '')}">Preview</button>
         <button data-mod-action="approve" data-id="${escAttr(p.id)}" class="paper-mod-approve">Approve</button>
         <button data-mod-action="delete"  data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="paper-mod-delete">Delete</button>
       </div>
@@ -13793,27 +13793,27 @@ function _onTypeChange(e) {
 async function _onListClick(e) {
   const pv = e.target.closest('.paper-card-preview');
   if (pv) {
-    const path = pv.dataset.path;
-    if (!path) return;
+    const paperId = pv.dataset.paperId;
+    if (!paperId) return;
     pv.disabled = true;
     pv.innerHTML = '<span>Loading…</span>';
-    const url = await getPaperDownloadUrl(path);
+    const url = await getPaperDownloadUrl(paperId);
     pv.disabled = false;
     pv.innerHTML = _LBL_PREVIEW;
     if (!url) {
       _toast('Could not load preview.');
       return;
     }
-    openPreviewModal({ url, title: pv.dataset.title || 'Preview', path });
+    openPreviewModal({ url, title: pv.dataset.title || 'Preview', mimeType: pv.dataset.mime });
     return;
   }
   const dl = e.target.closest('.paper-card-download');
   if (dl) {
-    const path = dl.dataset.path;
-    if (!path) return;
+    const paperId = dl.dataset.paperId;
+    if (!paperId) return;
     dl.disabled = true;
     dl.innerHTML = '<span>Loading…</span>';
-    const url = await getPaperDownloadUrl(path);
+    const url = await getPaperDownloadUrl(paperId);
     dl.disabled = false;
     dl.innerHTML = _LBL_DOWNLOAD;
     if (!url) {
