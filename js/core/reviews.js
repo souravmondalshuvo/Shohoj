@@ -129,7 +129,9 @@ export async function buildReviewDoc(payload, uid) {
   return { id, body };
 }
 
-// Submit a review via the firebase.js hook. Returns { ok, error? }.
+// Submit a review via the firebase.js hook (which POSTs to the Worker, where
+// the canonical sha256-based doc ID is computed using the verified Firebase
+// uid). Returns { ok, error? }.
 export async function submitReview(payload) {
   const err = validateReview(payload);
   if (err) return { ok: false, error: err };
@@ -143,16 +145,29 @@ export async function submitReview(payload) {
   if (!uid) return { ok: false, error: 'Sign in to submit a review' };
 
   try {
-    const { id, body } = await buildReviewDoc(payload, uid);
-    const res = await hook({ id, data: body });
+    const facultyInitials = normalizeInitials(payload.facultyInitials);
+    const courseCode      = normalizeCourseCode(payload.courseCode);
+    const res = await hook({
+      facultyInitials,
+      courseCode,
+      semester: payload.semester ? String(payload.semester).slice(0, 40) : '',
+      text:     payload.text     ? String(payload.text).slice(0, 500)    : '',
+      ratings: {
+        teaching:   Math.round(payload.ratings.teaching),
+        marking:    Math.round(payload.ratings.marking),
+        behavior:   Math.round(payload.ratings.behavior),
+        difficulty: Math.round(payload.ratings.difficulty),
+        workload:   Math.round(payload.ratings.workload),
+      },
+    });
     if (res && res.ok) {
       upsertFacultyProfile({
-        initials: body.facultyInitials,
-        courses:  body.courseCode ? [body.courseCode] : [],
+        initials: facultyInitials,
+        courses:  courseCode ? [courseCode] : [],
       });
       return { ok: true };
     }
-    return { ok: false, error: (res && res.error) || 'Submission failed' };
+    return { ok: false, error: (res && res.error) || 'Submission failed', code: res?.code };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
     return { ok: false, error: e.message || 'Submission failed' };
