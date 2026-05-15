@@ -13,8 +13,10 @@
 
 import { escHtml, escAttr } from '../core/helpers.js';
 
-export function openPreviewModal({ url, title, path }) {
-  const isImage = /\.(png|jpe?g|gif|webp)$/i.test(path || '');
+export function openPreviewModal({ url, title, mimeType, path }) {
+  const isImage = mimeType
+    ? /^image\//i.test(mimeType)
+    : /\.(png|jpe?g|gif|webp)$/i.test(path || '');
   const wrap = document.createElement('div');
   wrap.className = 'admin-preview-backdrop';
   const body = isImage
