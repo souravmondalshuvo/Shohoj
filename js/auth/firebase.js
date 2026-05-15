@@ -930,30 +930,47 @@ window._shohoj_isAuthReady = function() {
   return _authReady;
 };
 
-window._shohoj_submitReview = async function({ id, data }) {
+// Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
+// service-account identity. Firestore rules deny all client creates on
+// `facultyReviews`, so the canonical sha256(uid|initials|course) ID can't be
+// subverted by clients posting under arbitrary hex suffixes.
+window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
-  if (!id || typeof id !== 'string') return { ok: false, error: 'Invalid review id' };
+  const base = _papersWorkerUrl();
+  if (!base) return { ok: false, error: 'Review service not configured' };
+  const token = await _idToken();
+  if (!token) return { ok: false, error: 'Could not get auth token' };
   try {
-    const ref = doc(db, 'facultyReviews', id);
-    const existing = await getDoc(ref);
-    if (existing.exists()) {
+    const res = await fetch(`${base}/reviews`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        facultyInitials: payload?.facultyInitials,
+        courseCode:      payload?.courseCode,
+        semester:        payload?.semester || '',
+        text:            payload?.text     || '',
+        ratings:         payload?.ratings,
+      }),
+    });
+    if (res.status === 409) {
       return {
         ok: false,
-        error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
         code: 'already-exists',
+        error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
       };
     }
-    await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-    return { ok: true };
+    if (!res.ok) {
+      let msg = 'Submission failed';
+      try { msg = (await res.json()).error || msg; } catch {}
+      return { ok: false, error: msg };
+    }
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, id: data.id || null };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
-    if (e.code === 'permission-denied') {
-      return {
-        ok: false,
-        error: 'Review could not be submitted. Make sure the course is valid.',
-        code: e.code,
-      };
-    }
     return { ok: false, error: e.message || 'Submission failed' };
   }
 };
@@ -1346,8 +1363,14 @@ async function _idToken() {
   try { return await currentUser.getIdToken(); } catch { return null; }
 }
 
-window._shohoj_paperDownloadUrl = async function(storagePath) {
-  if (!currentUser || !storagePath) return null;
+// Download is keyed on the Firestore paper id, not the raw storage path. The
+// worker re-fetches the paper doc using the caller's own ID token, so
+// Firestore rules enforce that the requester is allowed to read it
+// (approved == true OR uploaderUid == self OR admin). This closes the
+// path-guessing bypass where an attacker who guessed a storagePath could
+// download an unapproved file directly.
+window._shohoj_paperDownloadUrl = async function(paperId) {
+  if (!currentUser || !paperId) return null;
   const base = _papersWorkerUrl();
   if (!base) {
     console.warn('[Shohoj] papers worker URL not configured');
@@ -1356,7 +1379,7 @@ window._shohoj_paperDownloadUrl = async function(storagePath) {
   const token = await _idToken();
   if (!token) return null;
   try {
-    const res = await fetch(`${base}/download?path=${encodeURIComponent(storagePath)}`, {
+    const res = await fetch(`${base}/download?paperId=${encodeURIComponent(paperId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
