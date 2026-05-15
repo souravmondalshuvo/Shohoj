@@ -325,7 +325,7 @@ function _paperRow(p) {
         <div class="admin-dash-row-meta">${meta}${meta ? ' · ' : ''}${escHtml(_adminFormatDate(p.createdAt))}</div>
       </div>
       <div class="admin-dash-row-actions">
-        <button data-act="preview" data-path="${escAttr(p.storagePath || '')}" data-title="${escAttr(label)}">Preview</button>
+        <button data-act="preview" data-paper-id="${escAttr(p.id || '')}" data-mime="${escAttr(p.mimeType || '')}" data-title="${escAttr(label)}">Preview</button>
         <button data-act="approve" data-id="${escAttr(p.id)}" class="admin-dash-btn--ok">Approve</button>
         <button data-act="delete-paper" data-id="${escAttr(p.id)}" data-path="${escAttr(p.storagePath || '')}" data-label="${escAttr(label)}" class="admin-dash-btn--danger">Delete</button>
       </div>
@@ -652,16 +652,16 @@ async function _onAction(e) {
 
   try {
     if (act === 'preview') {
-      const path = btn.dataset.path;
-      if (!path) return;
+      const paperId = btn.dataset.paperId;
+      if (!paperId) return;
       btn.textContent = 'Loading…';
-      const url = await getPaperDownloadUrl(path);
+      const url = await getPaperDownloadUrl(paperId);
       btn.textContent = 'Preview';
       if (!url) {
         _adminToast('Could not load preview.');
         return;
       }
-      openPreviewModal({ url, title: btn.dataset.title || 'Preview', path });
+      openPreviewModal({ url, title: btn.dataset.title || 'Preview', mimeType: btn.dataset.mime });
       return;
     }
     if (act === 'approve') {
