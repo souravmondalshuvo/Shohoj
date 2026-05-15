@@ -6,6 +6,8 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-15
+
 ### Security
 - Drop `'unsafe-inline'` from `script-src` in the built `shohoj.html` and
   `admin.html`. `build3.py` now computes SHA-256 hashes of every inlined
@@ -29,5 +31,6 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 Initial tagged snapshot. Refer to git history for the changes that
 landed before the changelog existed.
 
-[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.1.0-alpha...HEAD
+[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.1.0-alpha...v0.2.0
 [0.1.0-alpha]: https://github.com/souravmondalshuvo/Shohoj/releases/tag/v0.1.0-alpha
