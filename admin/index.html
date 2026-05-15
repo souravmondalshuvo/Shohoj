@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-gRpbMW2n76z1Y9t+noc1CU2vV+v30Z2QU6tkNfK45G0=' 'sha256-uZER12mpBMPGVVvv0D7NEDsZEy2XXbTGxQmXWYMjjP4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-uZER12mpBMPGVVvv0D7NEDsZEy2XXbTGxQmXWYMjjP4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6068,30 +6068,47 @@ window._shohoj_isAuthReady = function() {
   return _authReady;
 };
 
-window._shohoj_submitReview = async function({ id, data }) {
+// Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
+// service-account identity. Firestore rules deny all client creates on
+// `facultyReviews`, so the canonical sha256(uid|initials|course) ID can't be
+// subverted by clients posting under arbitrary hex suffixes.
+window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
-  if (!id || typeof id !== 'string') return { ok: false, error: 'Invalid review id' };
+  const base = _papersWorkerUrl();
+  if (!base) return { ok: false, error: 'Review service not configured' };
+  const token = await _idToken();
+  if (!token) return { ok: false, error: 'Could not get auth token' };
   try {
-    const ref = doc(db, 'facultyReviews', id);
-    const existing = await getDoc(ref);
-    if (existing.exists()) {
+    const res = await fetch(`${base}/reviews`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        facultyInitials: payload?.facultyInitials,
+        courseCode:      payload?.courseCode,
+        semester:        payload?.semester || '',
+        text:            payload?.text     || '',
+        ratings:         payload?.ratings,
+      }),
+    });
+    if (res.status === 409) {
       return {
         ok: false,
-        error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
         code: 'already-exists',
+        error: 'You have already submitted a review for this faculty-course pair. Reviews cannot be edited from the client.',
       };
     }
-    await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-    return { ok: true };
+    if (!res.ok) {
+      let msg = 'Submission failed';
+      try { msg = (await res.json()).error || msg; } catch {}
+      return { ok: false, error: msg };
+    }
+    const data = await res.json().catch(() => ({}));
+    return { ok: true, id: data.id || null };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
-    if (e.code === 'permission-denied') {
-      return {
-        ok: false,
-        error: 'Review could not be submitted. Make sure the course is valid.',
-        code: e.code,
-      };
-    }
     return { ok: false, error: e.message || 'Submission failed' };
   }
 };
@@ -6484,8 +6501,14 @@ async function _idToken() {
   try { return await currentUser.getIdToken(); } catch { return null; }
 }
 
-window._shohoj_paperDownloadUrl = async function(storagePath) {
-  if (!currentUser || !storagePath) return null;
+// Download is keyed on the Firestore paper id, not the raw storage path. The
+// worker re-fetches the paper doc using the caller's own ID token, so
+// Firestore rules enforce that the requester is allowed to read it
+// (approved == true OR uploaderUid == self OR admin). This closes the
+// path-guessing bypass where an attacker who guessed a storagePath could
+// download an unapproved file directly.
+window._shohoj_paperDownloadUrl = async function(paperId) {
+  if (!currentUser || !paperId) return null;
   const base = _papersWorkerUrl();
   if (!base) {
     console.warn('[Shohoj] papers worker URL not configured');
@@ -6494,7 +6517,7 @@ window._shohoj_paperDownloadUrl = async function(storagePath) {
   const token = await _idToken();
   if (!token) return null;
   try {
-    const res = await fetch(`${base}/download?path=${encodeURIComponent(storagePath)}`, {
+    const res = await fetch(`${base}/download?paperId=${encodeURIComponent(paperId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) {
