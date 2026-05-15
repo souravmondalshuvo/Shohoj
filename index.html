@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-5WaBlTevnciyTunZ6WO55MUHc656YPybcUviF1DYBm4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-1//61Ejyg4DQuTB0FPazkbNz6XHMvMe04o2JyvPT6dw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com;">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10067,7 +10067,9 @@ async function buildReviewDoc(payload, uid) {
   return { id, body };
 }
 
-// Submit a review via the firebase.js hook. Returns { ok, error? }.
+// Submit a review via the firebase.js hook (which POSTs to the Worker, where
+// the canonical sha256-based doc ID is computed using the verified Firebase
+// uid). Returns { ok, error? }.
 async function submitReview(payload) {
   const err = validateReview(payload);
   if (err) return { ok: false, error: err };
@@ -10081,16 +10083,29 @@ async function submitReview(payload) {
   if (!uid) return { ok: false, error: 'Sign in to submit a review' };
 
   try {
-    const { id, body } = await buildReviewDoc(payload, uid);
-    const res = await hook({ id, data: body });
+    const facultyInitials = normalizeInitials(payload.facultyInitials);
+    const courseCode      = normalizeCourseCode(payload.courseCode);
+    const res = await hook({
+      facultyInitials,
+      courseCode,
+      semester: payload.semester ? String(payload.semester).slice(0, 40) : '',
+      text:     payload.text     ? String(payload.text).slice(0, 500)    : '',
+      ratings: {
+        teaching:   Math.round(payload.ratings.teaching),
+        marking:    Math.round(payload.ratings.marking),
+        behavior:   Math.round(payload.ratings.behavior),
+        difficulty: Math.round(payload.ratings.difficulty),
+        workload:   Math.round(payload.ratings.workload),
+      },
+    });
     if (res && res.ok) {
       upsertFacultyProfile({
-        initials: body.facultyInitials,
-        courses:  body.courseCode ? [body.courseCode] : [],
+        initials: facultyInitials,
+        courses:  courseCode ? [courseCode] : [],
       });
       return { ok: true };
     }
-    return { ok: false, error: (res && res.error) || 'Submission failed' };
+    return { ok: false, error: (res && res.error) || 'Submission failed', code: res?.code };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
     return { ok: false, error: e.message || 'Submission failed' };
