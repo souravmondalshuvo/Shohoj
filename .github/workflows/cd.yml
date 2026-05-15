@@ -4,6 +4,14 @@ on:
   push:
     branches: [main, master]
 
+# Serialize gh-pages publishes — concurrent runs from a burst of commits race
+# each other on `git push origin gh-pages` and the losers fail. Cancelling
+# in-progress runs is correct here: we only ever want the latest commit's
+# bundle on Pages.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
