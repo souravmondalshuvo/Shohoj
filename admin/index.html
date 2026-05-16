@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-qoeKb2eeXd8suHRr2zfq33bMcd/6i7wV+9Eh4GtyW7Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ej7YuzHbBZNIdtLFYFGcqCYsOaJBELLf+Lq8UV2XnKY=' 'sha256-E0MXFk1zukGrQZo3JqEYx4yfga8Pn6y9LGn2fjuhVes='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -9186,7 +9186,20 @@ function openPreviewModal({ url, title, mimeType, path }) {
   `;
   document.body.appendChild(wrap);
 
+  // Custom cursor handoff: browsers route mousemove into the iframe once the
+  // pointer crosses its boundary, so the parent's custom cursor freezes. The
+  // mousemove-forwarding hack below only works for HTML iframes; Chrome's
+  // built-in PDF viewer runs in a privileged context the parent can't reach.
+  // So we hide the custom cursor while the pointer is over the iframe and
+  // let the native cursor take over for PDF scrolling / selection, then
+  // restore it on leave.
+  const cursorEls = document.querySelectorAll('#cursor-dot, #cursor-ring, #cursor-glow');
+  const setCursorVisible = (visible) => {
+    cursorEls.forEach(el => { el.style.opacity = visible ? '' : '0'; });
+  };
+
   const close = () => {
+    setCursorVisible(true);
     wrap.remove();
     document.removeEventListener('keydown', onKey);
   };
@@ -9197,6 +9210,8 @@ function openPreviewModal({ url, title, mimeType, path }) {
 
   const iframe = wrap.querySelector('.admin-preview-iframe');
   if (iframe) {
+    iframe.addEventListener('mouseenter', () => setCursorVisible(false));
+    iframe.addEventListener('mouseleave', () => setCursorVisible(true));
     iframe.addEventListener('load', () => {
       try {
         const doc = iframe.contentDocument;
