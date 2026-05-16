@@ -466,7 +466,9 @@ async function handleDownload(request, env, origin) {
   const originErr = requireBrowserOriginAllowed(request, env, origin);
   if (originErr) return originErr;
 
-  const { claims, token } = await readAuth(request, env);
+  const { claims } = await readAuth(request, env);
+  const callerUid = claims?.user_id || claims?.sub;
+  const isAdmin  = claims?.admin === true;
 
   const url = new URL(request.url);
   const paperId = url.searchParams.get('paperId') || '';
@@ -474,25 +476,39 @@ async function handleDownload(request, env, origin) {
     return jsonResponse({ error: 'Invalid paperId' }, { status: 400 }, env, origin);
   }
 
-  // Re-fetch the paper doc using the caller's own Firebase ID token, so
-  // Firestore rules enforce read permission (approved == true OR uploaderUid
-  // == self OR admin). If they can't read it, neither can we.
+  // Fetch the paper doc via the service account so the call is independent
+  // of how Firebase ID tokens interact with Firestore REST and any App Check
+  // enforcement turned on for the project. The worker re-enforces the read
+  // rule against the verified ID-token claims:
+  //   admin claim || uploaderUid == self || approved == true
+  let accessToken;
+  try {
+    accessToken = await getServiceAccountAccessToken(env);
+  } catch (e) {
+    console.error('SA token fetch failed:', e?.message || e);
+    return jsonResponse({ error: 'Service unavailable' }, { status: 503 }, env, origin);
+  }
   const docRes = await fetch(
     `${firestoreDocsBase(env)}/papers/${encodeURIComponent(paperId)}`,
-    { headers: { Authorization: `Bearer ${token}` } },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
   );
   if (docRes.status === 404) {
     return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
   }
-  if (docRes.status === 403) {
-    return jsonResponse({ error: 'Forbidden' }, { status: 403 }, env, origin);
-  }
   if (!docRes.ok) {
-    console.error('Firestore doc fetch failed:', docRes.status, await docRes.text().catch(() => ''));
+    const txt = await docRes.text().catch(() => '');
+    console.error('Firestore doc fetch failed:', docRes.status, txt.slice(0, 200));
     return jsonResponse({ error: 'Lookup failed' }, { status: 502 }, env, origin);
   }
   const docJson = await docRes.json();
   const fields = fromFirestoreFields(docJson?.fields || {});
+
+  const approved    = fields.approved === true;
+  const uploaderUid = String(fields.uploaderUid || '');
+  if (!isAdmin && !approved && uploaderUid !== callerUid) {
+    return jsonResponse({ error: 'Forbidden' }, { status: 403 }, env, origin);
+  }
+
   const storagePath = fields.storagePath;
   if (!isValidStoragePath(storagePath)) {
     return jsonResponse({ error: 'Bad storage path' }, { status: 500 }, env, origin);
