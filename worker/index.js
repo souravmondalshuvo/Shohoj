@@ -525,12 +525,21 @@ async function handleDownload(request, env, origin) {
   if (!obj) {
     return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
   }
+  // Prefer the mimeType stored in the Firestore doc (authoritative — set by
+  // the uploading client). Pre-migration R2 objects often lack the metadata
+  // entry, in which case `obj.httpMetadata.contentType` is undefined and the
+  // browser receives a typeless blob — that's what makes the preview iframe
+  // render blank.
+  const fallbackType = String(fields.mimeType || '').match(/^(?:application\/pdf|image\/(?:png|jpeg|webp|gif))$/)
+    ? fields.mimeType
+    : (obj.httpMetadata?.contentType || 'application/octet-stream');
   const headers = new Headers(corsHeaders(env, origin));
-  if (obj.httpMetadata?.contentType) {
-    headers.set('Content-Type', obj.httpMetadata.contentType);
-  }
+  headers.set('Content-Type', fallbackType);
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'private, max-age=300');
+  // `inline` keeps the browser rendering in-place (iframe/<embed>) rather
+  // than triggering a download dialog.
+  headers.set('Content-Disposition', 'inline');
   return new Response(obj.body, { status: 200, headers });
 }
 
