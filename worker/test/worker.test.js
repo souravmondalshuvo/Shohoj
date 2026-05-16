@@ -81,14 +81,14 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assert(!isValidCourseCode('../etc'));
   });
 
-  await test('isValidStoragePath accepts only owner-scoped paper paths', () => {
+  await test('isValidStoragePath accepts owner-scoped and legacy paper paths', () => {
+    // Owner-scoped (current upload format)
     assert(isValidStoragePath('papers/CSE110/bracu_user/midterm-fall24.pdf'));
     assert(isValidStoragePath('papers/CSE470L/firebaseUid_123/final.PDF'));
-    // Legacy two-segment paths (no owner UID) are no longer accepted: they
-    // can't be authoritatively associated with an uploader.
-    assert(!isValidStoragePath('papers/CSE110/midterm-fall24.pdf'));
-    assert(!isValidStoragePath('papers/MAT215/quiz_1.png'));
-    assert(!isValidStoragePath('papers/CSE470L/final.PDF'));
+    // Legacy two-segment (still in R2 from pre-migration uploads — read-only)
+    assert(isValidStoragePath('papers/CSE110/midterm-fall24.pdf'));
+    assert(isValidStoragePath('papers/MAT215/quiz_1.png'));
+    assert(isValidStoragePath('papers/CSE470L/final.PDF'));
   });
 
   await test('isValidStoragePath rejects traversal and bad shapes', () => {
