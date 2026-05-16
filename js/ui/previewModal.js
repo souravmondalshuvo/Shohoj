@@ -36,20 +36,7 @@ export function openPreviewModal({ url, title, mimeType, path }) {
   `;
   document.body.appendChild(wrap);
 
-  // Custom cursor handoff: browsers route mousemove into the iframe once the
-  // pointer crosses its boundary, so the parent's custom cursor freezes. The
-  // mousemove-forwarding hack below only works for HTML iframes; Chrome's
-  // built-in PDF viewer runs in a privileged context the parent can't reach.
-  // So we hide the custom cursor while the pointer is over the iframe and
-  // let the native cursor take over for PDF scrolling / selection, then
-  // restore it on leave.
-  const cursorEls = document.querySelectorAll('#cursor-dot, #cursor-ring, #cursor-glow');
-  const setCursorVisible = (visible) => {
-    cursorEls.forEach(el => { el.style.opacity = visible ? '' : '0'; });
-  };
-
   const close = () => {
-    setCursorVisible(true);
     wrap.remove();
     document.removeEventListener('keydown', onKey);
   };
@@ -60,8 +47,6 @@ export function openPreviewModal({ url, title, mimeType, path }) {
 
   const iframe = wrap.querySelector('.admin-preview-iframe');
   if (iframe) {
-    iframe.addEventListener('mouseenter', () => setCursorVisible(false));
-    iframe.addEventListener('mouseleave', () => setCursorVisible(true));
     iframe.addEventListener('load', () => {
       try {
         const doc = iframe.contentDocument;
