@@ -33,7 +33,12 @@ import { jwtVerify, createRemoteJWKSet, SignJWT, importPKCS8 } from 'jose';
 const BRACU_EMAIL_RE      = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES    = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE     = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
-const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
+const OWNED_STORAGE_PATH_RE  = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
+// Legacy paths (no uploader segment) still exist in R2 from earlier uploads.
+// Reads/deletes must accept them so already-uploaded papers stay accessible.
+// NEW uploads always use the owned form (handleUpload constructs that path
+// explicitly), so this regex is read-only legacy support, not a write surface.
+const LEGACY_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/;
 const PAPER_ID_RE         = /^[A-Za-z0-9_-]{1,200}$/;
 const REVIEW_INITIALS_RE  = /^[A-Z]{2,6}$/;
 const REVIEW_COURSE_RE    = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
@@ -109,7 +114,8 @@ function jsonResponse(body, init = {}, env, origin) {
 }
 
 export function isValidStoragePath(p) {
-  return typeof p === 'string' && OWNED_STORAGE_PATH_RE.test(p);
+  return typeof p === 'string'
+    && (OWNED_STORAGE_PATH_RE.test(p) || LEGACY_STORAGE_PATH_RE.test(p));
 }
 
 export function isValidCourseCode(c) {
@@ -497,7 +503,7 @@ async function handleDownload(request, env, origin) {
   }
   if (!docRes.ok) {
     const txt = await docRes.text().catch(() => '');
-    console.error('Firestore doc fetch failed:', docRes.status, txt.slice(0, 200));
+    console.error('download: Firestore doc fetch failed:', docRes.status, txt.slice(0, 200));
     return jsonResponse({ error: 'Lookup failed' }, { status: 502 }, env, origin);
   }
   const docJson = await docRes.json();
@@ -511,6 +517,7 @@ async function handleDownload(request, env, origin) {
 
   const storagePath = fields.storagePath;
   if (!isValidStoragePath(storagePath)) {
+    console.error('download: bad storagePath in doc:', storagePath);
     return jsonResponse({ error: 'Bad storage path' }, { status: 500 }, env, origin);
   }
 
