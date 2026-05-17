@@ -4658,6 +4658,40 @@ body[data-page="admin"] .orb { display: none !important; }
   max-width: 100%; max-height: 100%; object-fit: contain;
 }
 
+/* ── PDF.js preview variant ─────────────────────────────────────────────────
+   In-document canvas rendering, so the JS custom cursor tracks normally
+   across the PDF area (unlike <iframe> + browser PDF viewer). */
+.admin-preview-body--pdfjs { background: #1a1a1a; padding: 0; }
+.admin-preview-pdfjs-pages {
+  width: 100%; height: 100%; overflow: auto;
+  display: flex; flex-direction: column; gap: 16px; align-items: center;
+  padding: 20px;
+}
+.admin-preview-pdfjs-page {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  max-width: 100%; height: auto;
+}
+.admin-preview-toolbar {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-right: 12px;
+}
+.admin-preview-page-indicator,
+.admin-preview-zoom-indicator {
+  font-size: 13px; opacity: 0.75; padding: 0 6px; min-width: 48px; text-align: center;
+}
+.admin-preview-zoom-btn {
+  width: 28px; height: 28px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: transparent; color: inherit;
+  font-size: 16px; line-height: 1; padding: 0;
+}
+.admin-preview-zoom-btn:hover { background: rgba(255,255,255,0.08); }
+.admin-preview-pdfjs-error {
+  color: #fff; padding: 24px; text-align: center; opacity: 0.8;
+}
+.admin-preview-pdfjs-error a { color: var(--green); }
+
 .admin-page-body { display: flex; flex-direction: column; gap: 28px; }
 
 /* Stats cards — force 6-up on wide screens, wrap evenly otherwise. */
