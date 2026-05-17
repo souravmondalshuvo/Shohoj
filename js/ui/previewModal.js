@@ -12,8 +12,27 @@
 // back to the parent with iframe-relative coords translated to viewport coords.
 
 import { escHtml, escAttr } from '../core/helpers.js';
+import { openPreviewModalPdfjs } from './previewModalPdfjs.js';
 
-export function openPreviewModal({ url, title, mimeType, path }) {
+// Feature-flagged router: when localStorage.shohoj_pdfjs_preview === '1' and
+// the file is a PDF, render via PDF.js inside the parent document so the JS
+// custom cursor tracks normally. Otherwise fall back to the legacy <iframe>
+// modal (which gives the browser's native PDF toolbar but freezes the custom
+// cursor over the iframe area).
+export function openPreviewModal(opts) {
+  const usePdfjs = (() => {
+    try { return localStorage.getItem('shohoj_pdfjs_preview') === '1'; } catch { return false; }
+  })();
+  if (usePdfjs && opts && opts.mimeType === 'application/pdf') {
+    return openPreviewModalPdfjs(opts).catch(err => {
+      console.warn('[Shohoj] pdfjs preview failed, falling back to iframe:', err);
+      return _openPreviewModalIframe(opts);
+    });
+  }
+  return _openPreviewModalIframe(opts);
+}
+
+function _openPreviewModalIframe({ url, title, mimeType, path }) {
   const isImage = mimeType
     ? /^image\//i.test(mimeType)
     : /\.(png|jpe?g|gif|webp)$/i.test(path || '');
