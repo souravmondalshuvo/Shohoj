@@ -43,6 +43,7 @@ const PAPER_ID_RE         = /^[A-Za-z0-9_-]{1,200}$/;
 const REVIEW_INITIALS_RE  = /^[A-Z]{2,6}$/;
 const REVIEW_COURSE_RE    = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const REVIEW_TYPE_KEYS    = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
+const PAPER_TYPES         = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
 
 let _jwks = null;
 function getJwks() {
@@ -54,6 +55,15 @@ function getJwks() {
 
 export class AuthError extends Error {}
 
+export function isAllowedFirebasePayload(payload) {
+  const isAdmin = payload?.admin === true;
+  const isVerifiedBracuGoogleUser = !!payload?.email
+    && payload.email_verified === true
+    && payload.firebase?.sign_in_provider === 'google.com'
+    && BRACU_EMAIL_RE.test(payload.email);
+  return isAdmin || isVerifiedBracuGoogleUser;
+}
+
 async function verifyFirebaseToken(token, env) {
   let payload;
   try {
@@ -64,10 +74,8 @@ async function verifyFirebaseToken(token, env) {
   } catch (e) {
     throw new AuthError(e?.message || 'Token verification failed');
   }
-  const isBracu = !!payload.email && BRACU_EMAIL_RE.test(payload.email);
-  const isAdmin = payload.admin === true;
-  if (!isBracu && !isAdmin) {
-    throw new AuthError('Email not in BRACU domain');
+  if (!isAllowedFirebasePayload(payload)) {
+    throw new AuthError('Verified BRACU Google account required');
   }
   return payload;
 }
@@ -128,6 +136,20 @@ export function safeFilename(name) {
 
 function safePathSegment(value) {
   return String(value || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 128);
+}
+
+function cleanPaperType(value) {
+  const type = String(value || '').toLowerCase().trim();
+  return PAPER_TYPES.has(type) ? type : '';
+}
+
+function cleanOptionalSemester(value) {
+  return String(value || '').trim().slice(0, 40);
+}
+
+function cleanOptionalFacultyInitials(value) {
+  const initials = String(value || '').toUpperCase().trim().slice(0, 40);
+  return /^[A-Z]{2,6}(, ?[A-Z]{2,6})*$/.test(initials) ? initials : '';
 }
 
 // Strip control chars (incl. CR/LF) and clamp length. Used for any uploader-
@@ -326,7 +348,8 @@ async function handleUpload(request, env, origin, ctx) {
   // course codes, MIME types, or filenames.
   const { claims } = await readAuth(request, env);
 
-  const ownerSegment = safePathSegment(claims?.user_id || claims?.sub);
+  const uploaderUid = String(claims?.user_id || claims?.sub || '');
+  const ownerSegment = safePathSegment(uploaderUid);
   if (!ownerSegment) {
     return jsonResponse({ error: 'Invalid auth token' }, { status: 401 }, env, origin);
   }
@@ -353,6 +376,16 @@ async function handleUpload(request, env, origin, ctx) {
   if (!ALLOWED_MIME_RE.test(contentType)) {
     return jsonResponse({ error: 'Only PDFs and images are allowed' }, { status: 415 }, env, origin);
   }
+  const paperType = cleanPaperType(url.searchParams.get('type'));
+  if (!paperType) {
+    return jsonResponse({ error: 'Invalid paper type' }, { status: 400 }, env, origin);
+  }
+  const title = String(url.searchParams.get('title') || '').trim().slice(0, 120);
+  if (title.length < 3) {
+    return jsonResponse({ error: 'Invalid title' }, { status: 400 }, env, origin);
+  }
+  const semester = cleanOptionalSemester(url.searchParams.get('semester'));
+  const facultyInitials = cleanOptionalFacultyInitials(url.searchParams.get('facultyInitials'));
 
   const body = await request.arrayBuffer();
   if (body.byteLength > MAX_UPLOAD_BYTES) {
@@ -374,30 +407,73 @@ async function handleUpload(request, env, origin, ctx) {
     httpMetadata: { contentType },
   });
 
+  const paperDoc = {
+    courseCode,
+    type: paperType,
+    title,
+    storagePath: path,
+    fileSize: body.byteLength,
+    mimeType: contentType,
+    uploaderUid,
+    downloads: 0,
+    flagCount: 0,
+    approved: false,
+    createdAt: new Date(),
+  };
+  if (semester) paperDoc.semester = semester;
+  if (facultyInitials) paperDoc.facultyInitials = facultyInitials;
+
+  let paperId = null;
+  try {
+    const accessToken = await getServiceAccountAccessToken(env);
+    const docRes = await fetch(`${firestoreDocsBase(env)}/papers`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: toFirestoreFields(paperDoc) }),
+    });
+    if (!docRes.ok) {
+      const txt = await docRes.text().catch(() => '');
+      throw new Error(`Firestore paper create failed: ${docRes.status} ${txt.slice(0, 200)}`);
+    }
+    const docJson = await docRes.json();
+    paperId = String(docJson?.name || '').split('/').pop() || null;
+    if (!paperId) throw new Error('Firestore paper create returned no document id');
+  } catch (e) {
+    console.error('paper metadata create failed; deleting uploaded object:', e?.message || e);
+    try {
+      await env.PAPERS_BUCKET.delete(path);
+    } catch (deleteErr) {
+      console.error('uploaded object cleanup failed:', deleteErr?.message || deleteErr);
+    }
+    return jsonResponse({ error: 'Upload metadata could not be saved' }, { status: 502 }, env, origin);
+  }
+
   // Fire-and-forget admin notification. Wrapped in ctx.waitUntil so the
   // upload response returns immediately even if Resend is slow / down.
   // Failures are logged but never fail the upload. The metadata fields
-  // (title, type, semester, facultyInitials) come from URL params the
-  // client passes alongside the upload — the worker only uses them for
-  // the email; the authoritative copy lives in the Firestore doc the
-  // client writes after this response returns.
+  // (title, type, semester, facultyInitials) come from the metadata validated
+  // above; the Worker also writes the authoritative Firestore paper doc before
+  // returning, so R2 objects are not orphaned if metadata persistence fails.
   const notifyPromise = notifyAdminOfUpload(env, {
     courseCode,
     path,
     fileSize: body.byteLength,
     contentType,
-    title:           sanitizeHeaderValue(url.searchParams.get('title') || '', 120),
-    type:            sanitizeHeaderValue(url.searchParams.get('type') || '', 20),
-    semester:        sanitizeHeaderValue(url.searchParams.get('semester') || '', 40),
-    facultyInitials: sanitizeHeaderValue(url.searchParams.get('facultyInitials') || '', 20),
+    title:           sanitizeHeaderValue(title, 120),
+    type:            sanitizeHeaderValue(paperType, 20),
+    semester:        sanitizeHeaderValue(semester, 40),
+    facultyInitials: sanitizeHeaderValue(facultyInitials, 20),
     uploaderEmail:   claims?.email || '(unknown)',
-    uploaderUid:     claims?.user_id || claims?.sub || '(unknown)',
+    uploaderUid:     uploaderUid || '(unknown)',
   }).catch(err => console.error('admin notify failed:', err?.message || err));
   if (ctx && typeof ctx.waitUntil === 'function') {
     ctx.waitUntil(notifyPromise);
   }
 
-  return jsonResponse({ ok: true, path }, { status: 200 }, env, origin);
+  return jsonResponse({ ok: true, id: paperId, path }, { status: 200 }, env, origin);
 }
 
 async function notifyAdminOfUpload(env, info) {
