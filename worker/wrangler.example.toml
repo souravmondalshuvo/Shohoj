@@ -29,7 +29,7 @@ simple = { limit = 30, period = 60 }
 #   wrangler secret put RESEND_API_KEY
 #   wrangler secret put SERVICE_ACCOUNT_JSON
 #     # Paste the full Firebase service-account JSON when prompted.
-#     # Used by the worker to mint OAuth tokens for the /reviews write path.
+#     # Used by the worker to mint OAuth tokens for /upload metadata and /reviews writes.
 #
 # Admin authorization is enforced via the Firebase `admin` custom claim
 # (see scripts/set_admin_claim.js). No ADMIN_UID or ADMIN_EMAIL is needed.
