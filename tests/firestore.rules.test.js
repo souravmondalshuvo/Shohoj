@@ -7,7 +7,7 @@
  * What the suite verifies:
  *   1.  BRACU user can read/write own /users/{uid} doc
  *   2.  BRACU user cannot read/write another user's doc
- *   3.  Non-BRACU user (no admin claim) cannot touch /users/{uid}
+ *   3.  Non-BRACU / unverified / non-Google users cannot touch /users/{uid}
  *   4.  Valid faculty review create succeeds
  *   5.  Invalid review payload (missing field) is rejected
  *   6.  facultyReviews update is denied
@@ -15,7 +15,7 @@
  *   8.  Admin can delete /facultyReviews for moderation
  *   9.  Non-admin cannot read /reviewReports
  *  10. Admin can read /reviewReports
- *  11. Paper upload must start with approved:false
+ *  11. Paper metadata writes are Worker-mediated only
  *  12. Pending papers are visible only to uploader/admin
  *  13. Paper storage paths must be owner-scoped and SVG uploads are rejected
  *  14. Feedback upvotes are readable only by owner/admin
@@ -70,7 +70,11 @@ async function test(name, fn) {
 }
 
 function bracuCtx(uid = BRACU_UID, email = BRACU_EMAIL) {
-  return testEnv.authenticatedContext(uid, { email, email_verified: true });
+  return testEnv.authenticatedContext(uid, {
+    email,
+    email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  });
 }
 function adminCtx() {
   return testEnv.authenticatedContext(ADMIN_UID, {
@@ -83,6 +87,21 @@ function outsiderCtx() {
   return testEnv.authenticatedContext(OUTSIDE_UID, {
     email: OUTSIDE_EMAIL,
     email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  });
+}
+function unverifiedBracuCtx() {
+  return testEnv.authenticatedContext('unverified_bracu', {
+    email: 'unverified@g.bracu.ac.bd',
+    email_verified: false,
+    firebase: { sign_in_provider: 'google.com' },
+  });
+}
+function passwordBracuCtx() {
+  return testEnv.authenticatedContext('password_bracu', {
+    email: 'password@g.bracu.ac.bd',
+    email_verified: true,
+    firebase: { sign_in_provider: 'password' },
   });
 }
 
@@ -173,6 +192,22 @@ async function run() {
     }));
   });
 
+  await test('Unverified BRACU email cannot touch /users/{uid}', async () => {
+    const db = unverifiedBracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'users', 'unverified_bracu'), {
+      data: JSON.stringify({ semesters: [] }),
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
+  await test('Non-Google BRACU email cannot touch /users/{uid}', async () => {
+    const db = passwordBracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'users', 'password_bracu'), {
+      data: JSON.stringify({ semesters: [] }),
+      updatedAt: serverTimestamp(),
+    }));
+  });
+
   await test('users/{uid} write with extra field is rejected', async () => {
     const db = bracuCtx().firestore();
     await assertFails(setDoc(doc(db, 'users', BRACU_UID), {
@@ -254,16 +289,16 @@ async function run() {
     await assertSucceeds(getDoc(doc(db, 'reviewReports', `${ADMIN_UID}_anything`)));
   });
 
-  await test('Paper upload with approved:true is rejected', async () => {
+  await test('Client cannot create paper metadata with approved:true', async () => {
     const db = bracuCtx().firestore();
     const id = 'paper_attempt_1';
     await assertFails(setDoc(doc(db, 'papers', id), paperDoc({ approved: true })));
   });
 
-  await test('Paper upload with approved:false succeeds', async () => {
+  await test('Client cannot create paper metadata directly (worker-mediated only)', async () => {
     const db = bracuCtx().firestore();
     const id = 'paper_attempt_2';
-    await assertSucceeds(setDoc(doc(db, 'papers', id), paperDoc()));
+    await assertFails(setDoc(doc(db, 'papers', id), paperDoc()));
   });
 
   await test('BRACU user can read approved paper from another uploader', async () => {
@@ -290,8 +325,10 @@ async function run() {
   });
 
   await test('Uploader can read own unapproved paper', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'papers', 'paper_pending_own'), paperDoc());
+    });
     const db = bracuCtx().firestore();
-    await assertSucceeds(setDoc(doc(db, 'papers', 'paper_pending_own'), paperDoc()));
     await assertSucceeds(getDoc(doc(db, 'papers', 'paper_pending_own')));
   });
 
@@ -303,7 +340,7 @@ async function run() {
     await assertSucceeds(getDoc(doc(db, 'papers', 'paper_pending_admin')));
   });
 
-  await test('Paper upload with SVG MIME is rejected', async () => {
+  await test('Client paper metadata create with SVG MIME is rejected', async () => {
     const db = bracuCtx().firestore();
     await assertFails(setDoc(doc(db, 'papers', 'paper_svg'), paperDoc({
       storagePath: `papers/CSE110/${BRACU_UID}/vector.svg`,
@@ -311,7 +348,7 @@ async function run() {
     })));
   });
 
-  await test('Paper upload with another user storage path is rejected', async () => {
+  await test('Client paper metadata create with another user storage path is rejected', async () => {
     const db = bracuCtx().firestore();
     await assertFails(setDoc(doc(db, 'papers', 'paper_wrong_owner_path'), paperDoc({
       storagePath: `papers/CSE110/${OTHER_BRACU_UID}/final-2024.pdf`,
