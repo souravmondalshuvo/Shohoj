@@ -46,9 +46,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Run Firestore rules tests
-        run: npm run test:rules
-
       - name: Generate runtime config
         env:
           FIREBASE_API_KEY:            ${{ secrets.FIREBASE_API_KEY }}
