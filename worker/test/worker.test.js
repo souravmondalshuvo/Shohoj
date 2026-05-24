@@ -12,6 +12,7 @@
 import worker, {
   AuthError,
   corsHeaders,
+  isAllowedFirebasePayload,
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
@@ -113,6 +114,41 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
     assertEq(safeFilename(undefined), '');
     const long = 'a'.repeat(200) + '.pdf';
     assertEq(safeFilename(long).length, 80);
+  });
+
+  console.log('\nAuth payload policy:');
+
+  await test('verified BRACU Google account is allowed', () => {
+    assert(isAllowedFirebasePayload({
+      email: 'student@g.bracu.ac.bd',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
+    }));
+  });
+
+  await test('unverified BRACU email is rejected', () => {
+    assert(!isAllowedFirebasePayload({
+      email: 'student@g.bracu.ac.bd',
+      email_verified: false,
+      firebase: { sign_in_provider: 'google.com' },
+    }));
+  });
+
+  await test('non-Google BRACU email is rejected', () => {
+    assert(!isAllowedFirebasePayload({
+      email: 'student@g.bracu.ac.bd',
+      email_verified: true,
+      firebase: { sign_in_provider: 'password' },
+    }));
+  });
+
+  await test('admin claim bypasses BRACU Google policy', () => {
+    assert(isAllowedFirebasePayload({
+      email: 'admin@example.com',
+      email_verified: false,
+      admin: true,
+      firebase: { sign_in_provider: 'password' },
+    }));
   });
 
   console.log('\nReview payload validation:');
