@@ -6,13 +6,22 @@ service cloud.firestore {
     function isAdmin() {
       // Admins are tagged with a custom claim set via scripts/set_admin_claim.js;
       // see PROJECT_README for setup. UID/email are no longer trusted here.
-      return request.auth != null && request.auth.token.admin == true;
+      return request.auth != null
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
+    }
+
+    function isVerifiedBracuGoogleUser() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email is string
+        && request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
+        && request.auth.token.firebase is map
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     function isBracuUser() {
-      return request.auth != null
-        && (request.auth.token.email.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
-            || isAdmin());
+      return isAdmin() || isVerifiedBracuGoogleUser();
     }
 
     function validRating(v) {
@@ -232,7 +241,7 @@ service cloud.firestore {
                     || (isBracuUser()
                         && (resource.data.approved == true
                             || resource.data.uploaderUid == request.auth.uid));
-      allow create: if isBracuUser() && validPaperPayload(request.resource.data);
+      allow create: if false;
       allow update, delete: if isAdmin();
     }
 
