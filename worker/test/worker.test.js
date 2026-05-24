@@ -3,14 +3,15 @@
  * Tests for the papers Worker. Run with:
  *   npm run test:worker
  *
- * Covers pure validators, CORS, route dispatch, origin enforcement, and the
- * fact that auth now runs before any request-shape validation. Auth-success
- * paths are not exercised (would require live JWKS) — instead we confirm that
- * missing/malformed tokens reach the AuthError → 401 branch as expected.
+ * Covers pure validators, CORS, route dispatch, origin enforcement, auth-first
+ * failures, and the full upload success path with mocked JWKS/OAuth/Firestore
+ * calls so the test stays offline.
  */
 
+import { exportJWK, exportPKCS8, generateKeyPair, SignJWT } from 'jose';
 import worker, {
   AuthError,
+  __setTestJwksForTests,
   corsHeaders,
   isAllowedFirebasePayload,
   isValidCourseCode,
@@ -58,6 +59,54 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
   const h = new Headers(headers);
   if (origin) h.set('Origin', origin);
   return new Request(`https://worker.local${path}`, { method, headers: h, body });
+}
+
+function json(data, init = {}) {
+  return new Response(JSON.stringify(data), {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+  });
+}
+
+async function withMockedFetch(handler, fn) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = handler;
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+async function makeFirebaseToken(claims) {
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = await exportJWK(publicKey);
+  jwk.kid = 'test-firebase-key';
+  jwk.alg = 'RS256';
+  jwk.use = 'sig';
+
+  const token = await new SignJWT(claims)
+    .setProtectedHeader({ alg: 'RS256', kid: jwk.kid })
+    .setIssuer(`https://securetoken.google.com/${ENV.FIREBASE_PROJECT_ID}`)
+    .setAudience(ENV.FIREBASE_PROJECT_ID)
+    .setSubject(claims.user_id || claims.sub)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(privateKey);
+
+  return { token, jwk };
+}
+
+async function makeServiceAccountJson() {
+  const { privateKey } = await generateKeyPair('RS256');
+  return JSON.stringify({
+    client_email: 'worker-test@shohoj-test.iam.gserviceaccount.com',
+    private_key: await exportPKCS8(privateKey),
+    token_uri: 'https://oauth2.googleapis.com/token',
+  });
 }
 
 (async function run() {
@@ -341,6 +390,87 @@ function req(method, path, { origin = ALLOWED_ORIGIN, headers = {}, body = null 
       ENV,
     );
     assertEq(res.status, 401);
+  });
+
+  await test('upload success writes R2 object and Firestore metadata', async () => {
+    const claims = {
+      user_id: 'uid_123',
+      email: 'student@g.bracu.ac.bd',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
+    };
+    const { token, jwk } = await makeFirebaseToken(claims);
+    const puts = [];
+    const firestoreCreates = [];
+    const expectedFirestoreUrl = `https://firestore.googleapis.com/v1/projects/${ENV.FIREBASE_PROJECT_ID}/databases/(default)/documents/papers`;
+    const mockFetch = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return json({ access_token: 'service-account-token', expires_in: 3600 });
+      }
+      if (url === expectedFirestoreUrl) {
+        assertEq(init.method, 'POST');
+        assertEq(init.headers.Authorization, 'Bearer service-account-token');
+        const body = JSON.parse(init.body);
+        firestoreCreates.push(body);
+        return json({ name: `${expectedFirestoreUrl}/paper_abc123` });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    const env = {
+      ...ENV,
+      SERVICE_ACCOUNT_JSON: await makeServiceAccountJson(),
+      PAPERS_BUCKET: {
+        async put(path, body, options) {
+          puts.push({ path, byteLength: body.byteLength, contentType: options?.httpMetadata?.contentType });
+        },
+        async delete() { throw new Error('delete should not run on success'); },
+      },
+    };
+
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      await withMockedFetch(mockFetch, async () => {
+        const body = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37]);
+        const res = await worker.fetch(
+          req('POST', '/upload?courseCode=CSE110&filename=midterm.pdf&type=midterm&title=Midterm%202024&semester=Spring%202024&facultyInitials=ABC', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/pdf',
+              'Content-Length': String(body.byteLength),
+            },
+            body,
+          }),
+          env,
+          { waitUntil(promise) { promise.catch(() => {}); } },
+        );
+
+        assertEq(res.status, 200);
+        const responseBody = await res.json();
+        assertEq(responseBody.ok, true);
+        assertEq(responseBody.id, 'paper_abc123');
+        assertEq(responseBody.path, 'papers/CSE110/uid_123/midterm.pdf');
+      });
+    } finally {
+      __setTestJwksForTests(null);
+    }
+
+    assertEq(puts.length, 1);
+    assertEq(puts[0].path, 'papers/CSE110/uid_123/midterm.pdf');
+    assertEq(puts[0].byteLength, 8);
+    assertEq(puts[0].contentType, 'application/pdf');
+    assertEq(firestoreCreates.length, 1);
+    const fields = firestoreCreates[0].fields;
+    assertEq(fields.courseCode.stringValue, 'CSE110');
+    assertEq(fields.type.stringValue, 'midterm');
+    assertEq(fields.title.stringValue, 'Midterm 2024');
+    assertEq(fields.storagePath.stringValue, 'papers/CSE110/uid_123/midterm.pdf');
+    assertEq(fields.uploaderUid.stringValue, 'uid_123');
+    assertEq(fields.approved.booleanValue, false);
+    assertEq(fields.fileSize.integerValue, '8');
+    assertEq(fields.mimeType.stringValue, 'application/pdf');
+    assertEq(fields.semester.stringValue, 'Spring 2024');
+    assertEq(fields.facultyInitials.stringValue, 'ABC');
   });
 
   console.log('\nDownload validation:');
