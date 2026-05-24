@@ -15,18 +15,26 @@ import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimesta
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const firebaseConfig = window._shohoj_firebase_config;
-if (!firebaseConfig) {
-  console.error('[Shohoj] Firebase config missing — auth will not work.');
+const firebaseAvailable = !!(
+  firebaseConfig
+  && typeof firebaseConfig === 'object'
+  && firebaseConfig.apiKey
+  && firebaseConfig.projectId
+  && !String(firebaseConfig.apiKey).startsWith('__')
+  && !String(firebaseConfig.projectId).startsWith('__')
+);
+if (!firebaseAvailable) {
+  console.error('[Shohoj] Firebase config missing or incomplete — auth will not work.');
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-const app      = initializeApp(firebaseConfig);
+const app      = firebaseAvailable ? initializeApp(firebaseConfig) : null;
 
 // App Check — attest every Firestore call as coming from this site, not a
 // scraping script. Skipped silently if no site key is set so dev/preview can
 // still run; production deploys always inject the key via runtime-config.js.
 const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
-if (appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
+if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   try {
     initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(appCheckSiteKey),
@@ -37,8 +45,8 @@ if (appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   }
 }
 
-const auth     = getAuth(app);
-const db       = getFirestore(app);
+const auth     = app ? getAuth(app) : null;
+const db       = app ? getFirestore(app) : null;
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -681,6 +689,10 @@ function showMigrationModal(localSems, cloudSems) {
 
 // ── Sign in ───────────────────────────────────────────────────────────────────
 export async function signInWithGoogle() {
+  if (!auth) {
+    showToast('⚠ Sign-in is not configured on this build', true, true);
+    return;
+  }
   const proceed = await showSignInModal();
   if (!proceed) return;
   setAuthBtnLoading(true);
@@ -697,6 +709,7 @@ export async function signInWithGoogle() {
 
 // ── Sign out ──────────────────────────────────────────────────────────────────
 export async function signOutUser() {
+  if (!auth) return;
   try {
     try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
     clearCloudAppliedFlag();
@@ -716,17 +729,31 @@ export function initAuth() {
   _authReady = false;
   setAuthBtnLoading(true);
 
+  if (!auth || !db) {
+    currentUser = null;
+    _isAdminCached = false;
+    notifyAuthStateReady();
+    setAuthBtnLoading(false);
+    updateAuthUI(null);
+    showNudgeBanner(false);
+    return;
+  }
+
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
     let tokenClaims = null;
     if (user) {
-      const tokenResult = await user.getIdTokenResult().catch(() => null);
+      const tokenResult = await user.getIdTokenResult(true).catch(() => null);
       tokenClaims = tokenResult?.claims || null;
-      const isBracuEmail = user.email?.endsWith('@g.bracu.ac.bd');
-      if (!isBracuEmail && tokenClaims?.admin !== true) {
+      const isBracuEmail = user.email?.toLowerCase().endsWith('@g.bracu.ac.bd');
+      const isVerifiedEmail = user.emailVerified === true || tokenClaims?.email_verified === true;
+      const signInProvider = tokenClaims?.firebase?.sign_in_provider || '';
+      const isGoogleProvider = signInProvider === 'google.com';
+      const isAllowedBracuUser = isBracuEmail && isVerifiedEmail && isGoogleProvider;
+      if (!isAllowedBracuUser && tokenClaims?.admin !== true) {
         await signOut(auth);
         setAuthBtnLoading(false);
-        showToast('⚠ Only BRACU G-Suite accounts are supported', true, true);
+        showToast('⚠ Only verified BRACU Google accounts are supported', true, true);
         return;
       }
     }
@@ -1405,7 +1432,6 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
-    const fallbackPath = `papers/${safeCourse}/${filename}`;
 
     const token = await _idToken();
     if (!token) return { ok: false, error: 'Could not get auth token' };
@@ -1438,29 +1464,9 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
       try { msg = (await uploadRes.json()).error || msg; } catch {}
       return { ok: false, error: msg };
     }
-    let uploadPayload = {};
-    try { uploadPayload = await uploadRes.json(); } catch {}
-    const path = typeof uploadPayload.path === 'string' && uploadPayload.path.startsWith(`papers/${safeCourse}/`)
-      ? uploadPayload.path
-      : fallbackPath;
-
-    const docData = {
-      courseCode: safeCourse,
-      type,
-      title: String(title).slice(0, 120),
-      storagePath: path,
-      fileSize: file.size,
-      mimeType: file.type,
-      uploaderUid: currentUser.uid,
-      downloads: 0,
-      flagCount: 0,
-      approved: false,
-      createdAt: serverTimestamp(),
-    };
-    if (semester) docData.semester = String(semester).slice(0, 40);
-    if (facultyInitials) docData.facultyInitials = String(facultyInitials).toUpperCase().slice(0, 20);
-    const added = await addDoc(collection(db, 'papers'), docData);
-    return { ok: true, id: added.id };
+    const uploadPayload = await uploadRes.json().catch(() => ({}));
+    if (!uploadPayload?.id) return { ok: false, error: 'Upload metadata was not saved' };
+    return { ok: true, id: uploadPayload.id };
   } catch (e) {
     console.error('[Shohoj] uploadPaper failed:', e);
     return { ok: false, error: e.message || 'Upload failed' };
