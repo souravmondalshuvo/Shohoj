@@ -56,12 +56,11 @@ In CD this is a `cp` + `sed` loop in `.github/workflows/cd.yml` that replaces ev
 1. **Checkout** the repo.
 2. **Set up** Node 20, Python 3, Java 17 (Java is needed for the Firebase emulator).
 3. **`npm ci`** — install pinned dev dependencies.
-4. **`npm test`** — run the 189 unit tests. Failure aborts the deploy.
-5. **`npm run test:rules`** — run 41 Firestore rules tests against the emulator. Failure aborts the deploy.
-6. **Generate runtime-config.js** from secrets.
-7. **`python3 build3.py`** — bundle into `shohoj.html` and `admin.html`.
-8. **Stage** `_deploy/` (`shohoj.html` → `index.html`, `admin.html` → `admin/index.html`).
-9. **`peaceiris/actions-gh-pages`** publishes `_deploy/` to the `gh-pages` branch.
+4. **`npm test`** — run unit tests and Firestore rules tests. Failure aborts the deploy.
+5. **Generate runtime-config.js** from secrets.
+6. **`python3 build3.py`** — bundle into `shohoj.html` and `admin.html`.
+7. **Stage** `_deploy/` (`shohoj.html` → `index.html`, `admin.html` → `admin/index.html`).
+8. **`peaceiris/actions-gh-pages`** publishes `_deploy/` to the `gh-pages` branch.
 
 GitHub Pages serves whatever is on `gh-pages`. There is no manual deploy step.
 
@@ -89,8 +88,8 @@ For local cloud sync to work, add `localhost` (and `127.0.0.1` if you use it) as
 To run the same test suite CI runs:
 
 ```bash
-npm test                # 189 unit tests
-npm run test:rules      # 41 Firestore rules tests (needs Java 17+ for the emulator)
+npm test                # unit tests plus Firestore rules tests
+npm run test:rules      # rules-only check (needs Java 17+ for the emulator)
 ```
 
 To preview the bundled output:
