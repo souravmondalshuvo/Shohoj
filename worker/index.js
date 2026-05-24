@@ -26,9 +26,10 @@
 //   RESEND_API_KEY          for upload notifications
 //   SERVICE_ACCOUNT_JSON    Firebase service-account JSON, used to mint
 //                           OAuth2 access tokens that authorize the
-//                           Firestore REST writes for /reviews
+//                           Firestore REST writes for /upload metadata and
+//                           /reviews
 
-import { jwtVerify, createRemoteJWKSet, SignJWT, importPKCS8 } from 'jose';
+import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
 
 const BRACU_EMAIL_RE      = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES    = 10 * 1024 * 1024;
@@ -46,9 +47,22 @@ const REVIEW_TYPE_KEYS    = ['teaching', 'marking', 'behavior', 'difficulty', 'w
 const PAPER_TYPES         = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
 
 let _jwks = null;
+let _jwksSource = null;
+let _testJwks = null;
+
+export function __setTestJwksForTests(jwks) {
+  _testJwks = jwks || null;
+  _jwks = null;
+  _jwksSource = null;
+}
+
 function getJwks() {
-  if (!_jwks) {
-    _jwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
+  const source = _testJwks || 'firebase';
+  if (!_jwks || _jwksSource !== source) {
+    _jwksSource = source;
+    _jwks = _testJwks
+      ? createLocalJWKSet(_testJwks)
+      : createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
   }
   return _jwks;
 }
@@ -204,11 +218,12 @@ function mimeMatches(declared, sniffed) {
   return false;
 }
 
-// ── Service-account auth (for /reviews server-mediated writes) ───────────────
+// ── Service-account auth (for server-mediated Firestore writes) ──────────────
 // Mints a short-lived OAuth2 access token from the SERVICE_ACCOUNT_JSON secret
 // and caches it across invocations within a single isolate. The token grants
 // the worker the `datastore` scope, which is sufficient to call the Firestore
-// REST API as a privileged identity (bypassing rules).
+// REST API as a privileged identity (bypassing rules) for /upload metadata and
+// /reviews writes.
 let _saTokenCache = { token: null, expiresAt: 0 };
 
 async function getServiceAccountAccessToken(env) {
