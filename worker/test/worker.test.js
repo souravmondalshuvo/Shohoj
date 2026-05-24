@@ -101,7 +101,7 @@ async function makeFirebaseToken(claims) {
 }
 
 async function makeServiceAccountJson() {
-  const { privateKey } = await generateKeyPair('RS256');
+  const { privateKey } = await generateKeyPair('RS256', { extractable: true });
   return JSON.stringify({
     client_email: 'worker-test@shohoj-test.iam.gserviceaccount.com',
     private_key: await exportPKCS8(privateKey),
