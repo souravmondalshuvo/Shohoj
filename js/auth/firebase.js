@@ -1436,9 +1436,9 @@ window._shohoj_uploadPaper = async function({ file, courseCode, type, title, sem
     const token = await _idToken();
     if (!token) return { ok: false, error: 'Could not get auth token' };
 
-    // Extra metadata is passed as URL params so the worker can include them in
-    // the admin notification email. The worker doesn't store them — the
-    // authoritative copy lives in the Firestore doc written below.
+    // Extra metadata is passed as URL params so the Worker can validate the
+    // upload, write the authoritative Firestore paper doc, and include the
+    // fields in the admin notification email.
     const params = new URLSearchParams({
       courseCode: safeCourse,
       filename,
