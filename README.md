@@ -290,7 +290,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Files       | Cloudflare Worker + R2                                | Auth-gated past-paper upload, download, and delete     |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js + `@firebase/rules-unit-testing`              | 189 unit tests across app logic and Worker validation, plus 41 Firestore rules tests against the Firebase emulator |
+| Testing     | Node.js + `@firebase/rules-unit-testing`              | Unit tests across app logic and Worker validation, plus Firestore rules tests against the Firebase emulator |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 | CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
@@ -346,7 +346,7 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable for students** once written — no client-side updates, and only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is readable only when approved, owned by the uploader, or accessed by an admin. Paper creates must use owner-scoped storage paths and an approved MIME type. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable for students** once written — no client-side updates, and only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
@@ -534,10 +534,10 @@ python3 -m http.server 8000
 
 ```bash
 npm test
-# Results: 189 passed, 0 failed, 189 total
+# Runs app, Worker, and Firestore rules tests
 
 npm run test:rules
-# 41 Firestore rules tests against the Firebase emulator (requires Java 17+)
+# Runs only Firestore rules tests (requires Java 17+)
 ```
 
 **Build the bundled version:**
@@ -621,7 +621,7 @@ Additional notes on Repeat:
 ### Past Papers & Notes
 
 - Uploading and downloading files requires sign-in with a `@g.bracu.ac.bd` account. Admins use the same Firebase custom claim as the dashboard.
-- New files are stored in Cloudflare R2 through the Worker under `papers/{COURSE}/{UPLOADER_UID}/{filename}`. Older two-segment paths remain readable/deletable for backward compatibility, but new Firestore metadata must use the owner-scoped path.
+- New files are stored in Cloudflare R2 through the Worker under `papers/{COURSE}/{UPLOADER_UID}/{filename}`. Older two-segment paths remain readable/deletable for backward compatibility. Firestore metadata is written by the Worker after upload validation succeeds.
 - Only PDF, PNG, JPEG, WebP, and GIF files are accepted. SVG and other active or executable formats are rejected.
 - Pending paper metadata is visible only to the uploader and admins. Other students can read paper metadata only after approval.
 - File previews are best-effort. If a browser cannot render a PDF inline, use "Open in new tab."
@@ -699,7 +699,7 @@ Shohoj is built for students, by students. Contributions are welcome.
    git checkout -b feature/your-feature-name
    ```
 3. **Make your changes** — follow the existing code style (vanilla JS, no frontend framework)
-4. **Test** — run `npm test` to verify all 189 unit tests pass, and `npm run test:rules` to verify Firestore rules tests pass
+4. **Test** — run `npm test` to verify the unit and Firestore rules tests pass
 5. **Build** — run `python3 build3.py` to regenerate the bundled file
 6. **Submit a pull request** with a clear description of what you changed and why
 
