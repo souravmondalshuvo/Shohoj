@@ -171,56 +171,9 @@ service cloud.firestore {
 
     // ── Past papers & notes library (Phase 2) ────────────────────────────
     // Doc IDs are Firestore auto-IDs (multiple uploads per user/course are
-    // allowed). Uploads land with `approved: false` and become visible only
-    // after an admin flips the flag in the Firebase console. Clients filter
-    // public views with `where('approved','==',true)`.
-    function validPaperType(t) {
-      return t == 'midterm' || t == 'final' || t == 'quiz'
-          || t == 'notes'   || t == 'assignment' || t == 'lab'
-          || t == 'lab-quiz';
-    }
-
-    function validPaperMime(m) {
-      return m == 'application/pdf'
-          || m == 'image/png'
-          || m == 'image/jpeg'
-          || m == 'image/webp'
-          || m == 'image/gif';
-    }
-
-    function validOwnedPaperStoragePath(d) {
-      return d.storagePath is string
-        && d.storagePath.split('/').size() == 4
-        && d.storagePath.split('/')[0] == 'papers'
-        && d.storagePath.split('/')[1] == d.courseCode
-        && d.storagePath.split('/')[2] == d.uploaderUid
-        && d.storagePath.split('/')[3].matches('^[A-Za-z0-9._-]+$');
-    }
-
-    function validPaperPayload(d) {
-      return d.keys().hasOnly(['courseCode','type','semester','facultyInitials','title','storagePath','fileSize','mimeType','uploaderUid','downloads','flagCount','approved','createdAt'])
-        && d.keys().hasAll(['courseCode','type','title','storagePath','fileSize','mimeType','uploaderUid','approved','createdAt'])
-        && validCourseCode(d.courseCode)
-        && validPaperType(d.type)
-        && d.title is string
-        && d.title.size() >= 3
-        && d.title.size() <= 120
-        && validOwnedPaperStoragePath(d)
-        && d.fileSize is int
-        && d.fileSize > 0
-        && d.fileSize <= 10485760
-        && d.mimeType is string
-        && validPaperMime(d.mimeType)
-        && d.uploaderUid is string
-        && d.uploaderUid == request.auth.uid
-        && d.approved is bool
-        && d.approved == false
-        && d.createdAt == request.time
-        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40))
-        && (!('facultyInitials' in d) || (d.facultyInitials is string && d.facultyInitials.matches('^[A-Z]{2,6}(, ?[A-Z]{2,6})*$')))
-        && (!('downloads' in d) || (d.downloads is int && d.downloads == 0))
-        && (!('flagCount' in d) || (d.flagCount is int && d.flagCount == 0));
-    }
+    // allowed). Clients cannot create metadata directly; the Cloudflare Worker
+    // validates the upload, stores the file in R2, writes the Firestore doc via
+    // a service account, and initializes each upload with `approved: false`.
 
     function validPaperReportPayload(d) {
       return d.keys().hasOnly(['paperId','reason','reporterUid','createdAt'])
