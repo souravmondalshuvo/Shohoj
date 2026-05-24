@@ -16,9 +16,9 @@ Firestore rules in `firestore.rules` are the trust boundary. Important guarantee
 - A user can read/write **only** their own `users/{uid}` document.
 - Faculty reviews are **append-only**; no client can update or delete an existing review (even the author).
 - Review reports, paper reports, admin logs, and moderation reads are admin-only.
-- Paper uploads must start with `approved: false`; only admins can flip the flag.
+- Paper upload metadata is created only by the Cloudflare Worker and starts with `approved: false`; only admins can flip the flag.
 - Pending paper metadata is readable only by the uploader or an admin; other BRACU users see papers only after approval.
-- New paper metadata must use an owner-scoped storage path: `papers/{COURSE_CODE}/{UPLOADER_UID}/{filename}`.
+- New paper files must use an owner-scoped storage path: `papers/{COURSE_CODE}/{UPLOADER_UID}/{filename}`.
 - Feedback upvote documents are readable only by the voter or an admin.
 - Admin status is granted via a Firebase custom claim (`admin: true`) and set out-of-band via `scripts/set_admin_claim.js`. UID and email are no longer trusted by rules.
 
@@ -66,10 +66,13 @@ Files go through a Cloudflare Worker (`worker/index.js`) before landing in R2:
 - Accepts legacy `papers/{COURSE_CODE}/{filename}` paths for download/delete only, so older files remain accessible.
 - Caps uploads at 10 MB.
 - Restricts MIME to PDF, PNG, JPEG, WebP, and GIF. SVG and other active formats are rejected.
+- Sniffs file magic bytes so the body must match the declared MIME type.
+- Writes the Firestore paper metadata via a service account only after the R2 write succeeds, and deletes the R2 object if metadata creation fails.
 - Origin-locked CORS.
 
-Firestore separately validates paper metadata so a client cannot create a paper
-document that points at another user's owner-scoped R2 object.
+Firestore denies direct client creates for paper metadata. Clients can read
+pending metadata only when they uploaded it, and other BRACU users see papers
+only after an admin approves them.
 
 ## Public Firebase config
 
@@ -80,7 +83,7 @@ The Firebase web config (API key, project ID, etc.) is public by design — Fire
 Two layers are in place:
 
 1. **Firebase App Check (reCAPTCHA v3).** Every Firestore call carries an attestation token. Scripted clients without a real browser session are rejected. This is the primary line of defense against automated abuse.
-2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, private per-user feedback upvote reads, approved/uploader/admin paper visibility, max 500 chars in review text, max 10 MB on paper uploads, owner-scoped paper paths, and a strict MIME allowlist on file uploads.
+2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, private per-user feedback upvote reads, approved/uploader/admin paper visibility, and max 500 chars in review text. The Worker enforces paper upload size, owner-scoped paths, MIME allow-listing, and metadata creation.
 
 What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per day"). Pure Firestore rules can't aggregate writes across documents, so this would need a Cloud Function. App Check covers the realistic abuse model for this project; revisit if the corpus grows enough that App Check alone is insufficient.
 
