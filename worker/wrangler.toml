@@ -21,7 +21,7 @@ simple = { limit = 30, period = 60 }
 # Plain-text env vars — safe to commit. Do NOT put secrets here; use
 # `wrangler secret put` for anything sensitive:
 #   wrangler secret put RESEND_API_KEY
-#   wrangler secret put SERVICE_ACCOUNT_JSON   # Firebase service-account JSON, used for /reviews writes
+#   wrangler secret put SERVICE_ACCOUNT_JSON   # Firebase service-account JSON, used for /upload metadata and /reviews writes
 #
 # Admin authorization is enforced via the Firebase `admin` custom claim
 # (see scripts/set_admin_claim.js).
