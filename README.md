@@ -467,7 +467,13 @@ Shohoj/
 │   ├── admin-entry.js            Entry point for the admin bundle
 │   ├── main.js                   Entry point — wires all modules together
 │   ├── auth/
-│   │   └── firebase.js           Firebase Auth + Firestore cloud sync
+│   │   ├── firebase-init.js      Firebase SDK imports, config, App Check, Auth, Firestore
+│   │   ├── firebase.js           Auth orchestration, Firestore sync, admin/paper hooks
+│   │   ├── auth-service.js       Auth UI helpers and avatar safety checks
+│   │   ├── user-sync-service.js  Stored-state parsing and sync fingerprint helpers
+│   │   ├── review-service.js     Review identity window hooks
+│   │   ├── paper-service.js      Papers Worker URL and ID token helpers
+│   │   └── admin-service.js      Admin access window hooks
 │   ├── config/
 │   │   ├── runtime-config.template.js
 │   │   └── runtime-config.js     Generated locally/CI, gitignored
@@ -521,18 +527,24 @@ Shohoj/
 │   ├── calculator.test.js        55 tests — GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            24 tests — department detection, semester parsing, blob parser
 │   ├── planner.test.js           13 tests — prereq resolution, plan validation
-│   ├── render.test.js            7 tests — semester rendering and reorder
+│   ├── render.test.js            8 tests — semester rendering, reorder, recruiter demo fixture
 │   ├── tracker.test.js           4 tests — degree progress and graduation estimate
 │   ├── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
 │   ├── adminDashboard.test.js    3 tests — admin stat rendering helpers
-│   └── firestore.rules.test.js   41 tests — emulator-driven security rules checks
+│   └── firestore.rules.test.js   45 tests — emulator-driven security rules checks
+├── e2e/
+│   └── shohoj.spec.js            Playwright E2E tests for demo, CGPA, planner, mobile, export/import
+├── src/
+│   └── core/grades.ts            TypeScript foundation for the future migration
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                Runs unit tests + Firestore rules tests on push and pull request
 │       ├── cd.yml                Builds and deploys GitHub Pages on push to main
 │       └── deploy-worker.yml     Tests and deploys the Cloudflare Worker
 ├── index.html                    Main HTML shell
-├── package.json                  Test runner and local config scripts
+├── playwright.config.js          Local Playwright web-server and browser config
+├── tsconfig.json                 Strict no-emit TypeScript check config
+├── package.json                  Unit, rules, E2E, typecheck, and local config scripts
 ├── README.md
 ├── LICENSE
 └── build3.py                     Build script — outputs shohoj.html and admin.html
