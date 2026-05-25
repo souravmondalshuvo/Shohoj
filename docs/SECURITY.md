@@ -40,7 +40,7 @@ jsPDF, pdf.js, and Chart.js load from cdnjs with `integrity` and `crossorigin="a
 
 ## Content Security Policy
 
-`index.html` and `admin/index.html` ship a strict CSP that whitelists only the Google/Firebase/cdnjs/Worker origins Shohoj actually needs. Currently `'unsafe-inline'` is allowed for `script-src` and `style-src` because the app still has inline bootstrapping scripts and inline style-heavy rendering; tightening this is tracked as a future hardening.
+`index.html` and `admin/index.html` define a CSP that whitelists only the Google/Firebase/cdnjs/Worker origins Shohoj actually needs. During the production build, `build3.py` replaces `script-src 'unsafe-inline'` with SHA-256 hashes for the inlined scripts in `shohoj.html` and `admin.html`. `style-src 'unsafe-inline'` remains because the templates still rely on inline `style="..."` attributes; tightening that is tracked as future hardening.
 
 ## Faculty review pseudonymity
 
@@ -54,7 +54,7 @@ What pseudonymity does **not** cover:
 - Firebase project administrators (and anyone with admin SDK access) can audit Firestore logs and correlate writes back to the authenticated session. "Anonymous to the public" ≠ "anonymous to the service operator".
 - A determined adversary who already knows your UID can reconstruct your hash for any (faculty, course) pair.
 
-Stronger guarantees would require moving review writes behind a Cloud Function. Tracked as a future hardening.
+Review submissions are already mediated by the Cloudflare Worker (`POST /reviews`), which verifies the Firebase ID token and writes the Firestore review document through a service account. The public review body still contains no UID or email. Stronger operator-level anonymity would require a more advanced backend design with blind tokens or another unlinkable submission protocol.
 
 ## Past-paper uploads
 
@@ -92,7 +92,6 @@ What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per d
 - **Per-user write quotas.** See "Rate limiting" above.
 - **Anonymity from project admins.** As above, server-operator-level anonymity requires a backend rewrite.
 - **Section availability and time conflict checks** in the planner (these are correctness, not security).
-- **Splitting `firebase.js` into services.** The file is ~1700 lines, which is a maintainability concern, not a security one. Tracked as a future refactor.
 
 ## Reporting an issue
 
