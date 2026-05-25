@@ -35,6 +35,7 @@ function expect(actual) {
     getCurrentSemesterForDeptSeasons,
     findCurrentSemesterIdForSummaryView,
     getReviewableCourseCode,
+    getRecruiterDemoSemesters,
   } = await import('../js/ui/render.js');
 
   console.log('\nRender semester calendar logic:');
@@ -77,6 +78,15 @@ function expect(actual) {
   test('rejects non-catalog or malformed course labels for reviews', () => {
     expect(getReviewableCourseCode('Made Up Course (CSE999)')).toEqual('');
     expect(getReviewableCourseCode('Custom elective')).toEqual('');
+  });
+
+  test('recruiter demo includes the expected public sample courses', () => {
+    const codes = getRecruiterDemoSemesters()
+      .flatMap(sem => sem.courses)
+      .map(course => course.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/)?.[1])
+      .filter(Boolean);
+
+    expect(codes).toEqual(['CSE110', 'ENG101', 'PHY111', 'CSE111', 'CSE220', 'MAT110']);
   });
 
   console.log('\n──────────────────────────────────────────────────');
