@@ -3,52 +3,34 @@
 // Features: Google Sign-In, Sign-Out, cloud save/load, migration modal,
 //           real-time sync, offline detection, sync persistence, data deletion
 
-import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
-         collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
-         documentId, addDoc }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-// ── Config ────────────────────────────────────────────────────────────────────
-const firebaseConfig = window._shohoj_firebase_config;
-const firebaseAvailable = !!(
-  firebaseConfig
-  && typeof firebaseConfig === 'object'
-  && firebaseConfig.apiKey
-  && firebaseConfig.projectId
-  && !String(firebaseConfig.apiKey).startsWith('__')
-  && !String(firebaseConfig.projectId).startsWith('__')
-);
-if (!firebaseAvailable) {
-  console.error('[Shohoj] Firebase config missing or incomplete — auth will not work.');
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-const app      = firebaseAvailable ? initializeApp(firebaseConfig) : null;
-
-// App Check — attest every Firestore call as coming from this site, not a
-// scraping script. Skipped silently if no site key is set so dev/preview can
-// still run; production deploys always inject the key via runtime-config.js.
-const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
-if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
-  try {
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(appCheckSiteKey),
-      isTokenAutoRefreshEnabled: true,
-    });
-  } catch (err) {
-    console.warn('[Shohoj] App Check init failed:', err?.message || err);
-  }
-}
-
-const auth     = app ? getAuth(app) : null;
-const db       = app ? getFirestore(app) : null;
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: 'select_account' });
+import {
+  addDoc,
+  auth,
+  collection,
+  db,
+  deleteDoc,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  onAuthStateChanged,
+  onSnapshot,
+  orderBy,
+  provider,
+  qLimit,
+  query,
+  serverTimestamp,
+  setDoc,
+  signInWithPopup,
+  signOut,
+  startAfter,
+  where,
+} from './firebase-init.js';
+import { installAdminAccessHooks } from './admin-service.js';
+import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
+import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
+import { installReviewIdentityHooks } from './review-service.js';
+import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
@@ -75,44 +57,6 @@ const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
-}
-
-// Only allow Google-hosted avatar URLs. Anything else (including data:/http:)
-// is rejected and we fall back to a generated initial.
-function isSafeAvatarUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== 'https:') return false;
-    return /(^|\.)googleusercontent\.com$/i.test(u.hostname);
-  } catch (_e) {
-    return false;
-  }
-}
-
-function parseStoredState(raw, source = 'storage') {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn(`[Shohoj] Ignoring invalid ${source} state:`, e);
-    return null;
-  }
-}
-
-// ── Canonical data fingerprint ────────────────────────────────────────────────
-// Only compare the fields that actually represent user data — ignore metadata
-// fields like updatedAt that Firestore injects and that will always differ.
-function getDataFingerprint(raw) {
-  if (!raw) return '';
-  try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    // Strip server-side metadata before comparing
-    const { updatedAt, _serverTimestamp, ...dataOnly } = parsed;
-    return JSON.stringify(dataOnly);
-  } catch (e) {
-    return typeof raw === 'string' ? raw : JSON.stringify(raw);
-  }
 }
 
 function clearCloudAppliedFlag() {
@@ -770,7 +714,7 @@ export function initAuth() {
       const now = Date.now();
       if (!sessionStart || isNaN(sessionStart)) {
         try { localStorage.setItem(SESSION_START_KEY, String(now)); } catch(e) {}
-        const firstName = user.displayName?.split(' ')[0] || 'you';
+        const firstName = firstDisplayName(user.displayName);
         showToast(`Welcome to Shohoj, ${firstName} `, false, true);
       } else if (now - sessionStart > SESSION_MAX_MS) {
         try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
@@ -945,17 +889,10 @@ window._shohoj_showToast = showToast;
 // Expose a thin Firestore bridge so the bundled code (js/core/reviews.js) can
 // submit and fetch reviews without importing Firebase itself.
 
-window._shohoj_currentUid = function() {
-  return currentUser?.uid || null;
-};
-
-window._shohoj_currentEmail = function() {
-  return currentUser?.email || null;
-};
-
-window._shohoj_isAuthReady = function() {
-  return _authReady;
-};
+installReviewIdentityHooks({
+  getCurrentUser: () => currentUser,
+  isAuthReady: () => _authReady,
+});
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
 // service-account identity. Firestore rules deny all client creates on
@@ -963,9 +900,9 @@ window._shohoj_isAuthReady = function() {
 // subverted by clients posting under arbitrary hex suffixes.
 window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) return { ok: false, error: 'Review service not configured' };
-  const token = await _idToken();
+  const token = await getCurrentUserIdToken(currentUser);
   if (!token) return { ok: false, error: 'Could not get auth token' };
   try {
     const res = await fetch(`${base}/reviews`, {
@@ -1377,19 +1314,6 @@ window._shohoj_fetchMyPapers = async function() {
 };
 
 // ── R2-backed paper storage (via Cloudflare Worker proxy) ─────────────────
-// The worker URL is set on `window._shohoj_papers_worker_url` from index.html.
-// The browser never talks to R2 directly — every request flows through the
-// Worker, which checks the Firebase ID token before allowing the operation.
-function _papersWorkerUrl() {
-  const u = window._shohoj_papers_worker_url;
-  return (typeof u === 'string' && u.startsWith('http')) ? u.replace(/\/$/, '') : null;
-}
-
-async function _idToken() {
-  if (!currentUser) return null;
-  try { return await currentUser.getIdToken(); } catch { return null; }
-}
-
 // Download is keyed on the Firestore paper id, not the raw storage path. The
 // worker re-fetches the paper doc using the caller's own ID token, so
 // Firestore rules enforce that the requester is allowed to read it
@@ -1398,12 +1322,12 @@ async function _idToken() {
 // download an unapproved file directly.
 window._shohoj_paperDownloadUrl = async function(paperId) {
   if (!currentUser || !paperId) return null;
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) {
     console.warn('[Shohoj] papers worker URL not configured');
     return null;
   }
-  const token = await _idToken();
+  const token = await getCurrentUserIdToken(currentUser);
   if (!token) return null;
   try {
     const res = await fetch(`${base}/download?paperId=${encodeURIComponent(paperId)}`, {
@@ -1426,14 +1350,14 @@ window._shohoj_paperDownloadUrl = async function(paperId) {
 window._shohoj_uploadPaper = async function({ file, courseCode, type, title, semester, facultyInitials }) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
   if (!file || !courseCode || !type || !title) return { ok: false, error: 'Missing fields' };
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) return { ok: false, error: 'Upload service not configured. Contact admin.' };
   try {
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
 
-    const token = await _idToken();
+    const token = await getCurrentUserIdToken(currentUser);
     if (!token) return { ok: false, error: 'Could not get auth token' };
 
     // Extra metadata is passed as URL params so the Worker can validate the
@@ -1481,13 +1405,7 @@ function _isAdminUser() {
   return !!currentUser && _isAdminCached === true;
 }
 
-window._shohoj_isPaperAdmin = function() {
-  return _isAdminUser();
-};
-
-window._shohoj_isAdmin = function() {
-  return _isAdminUser();
-};
+installAdminAccessHooks({ isAdminUser: _isAdminUser });
 
 window._shohoj_fetchUnapprovedPapers = async function() {
   if (!_isAdminUser()) return [];
@@ -1554,8 +1472,8 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
   if (!paperId) return { ok: false, error: 'Missing paper id' };
   try {
     if (storagePath) {
-      const base = _papersWorkerUrl();
-      const token = await _idToken();
+      const base = getPapersWorkerUrl();
+      const token = await getCurrentUserIdToken(currentUser);
       if (!base) return { ok: false, error: 'Delete service not configured' };
       if (!token) return { ok: false, error: 'Could not get auth token' };
       try {
