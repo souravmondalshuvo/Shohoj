@@ -15,7 +15,8 @@ assets/rocket-qr.png
 .env.*.local
 js/config/runtime-config.js
 node_modules/
+playwright-report/
+test-results/
 
 # Scraped CONNECT section data — input artifact, re-fetched as needed.
 bracu-section.json
-
