@@ -35,4 +35,4 @@ Shohoj pushed me through product thinking, security rules, testing, deployment a
 
 ## Next Steps
 
-Demo mode polish, E2E tests, React/TypeScript migration, BRACU beta testing.
+Screenshots and a short demo video, BRACU beta testing, more real faculty reviews and past papers, transcript-import validation across more real grade sheets, and the v0.4 TypeScript logic migration.
