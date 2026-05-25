@@ -363,7 +363,7 @@ export function applyImport() {
 }
 
 export function exportPDF() {
-  const { jsPDF } = window.jspdf;
+  const jsPDF = window.jspdf?.jsPDF;
   if (!jsPDF) { alert('PDF library not loaded. Please check your connection.'); return; }
   if (!state.semesters.length) { alert('No data to export.'); return; }
 
