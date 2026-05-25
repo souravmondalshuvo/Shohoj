@@ -86,9 +86,18 @@ ADMIN_JS_FILES = [
     'js/admin-entry.js',
 ]
 
-# firebase.js uses CDN ES module imports — it must stay as type="module"
-# so it cannot be bundled with the regular JS. It is inlined separately.
-FIREBASE_FILE = 'js/auth/firebase.js'
+# Firebase auth uses CDN ES module imports, so it must stay as type="module"
+# and cannot be bundled with the regular JS. Local auth helpers are inlined
+# before firebase.js so the deploy output stays self-contained.
+FIREBASE_JS_FILES = [
+    'js/auth/firebase-init.js',
+    'js/auth/admin-service.js',
+    'js/auth/auth-service.js',
+    'js/auth/paper-service.js',
+    'js/auth/review-service.js',
+    'js/auth/user-sync-service.js',
+    'js/auth/firebase.js',
+]
 
 CSS_FILE = 'css/style.css'
 
@@ -149,6 +158,39 @@ def strip_imports_exports(code):
     )
     code = re.sub(r'export\s*\{[^}]*\};?\s*', '', code, flags=re.DOTALL)
     return code
+
+
+def strip_local_imports_exports(code):
+    """Remove local module imports/exports while keeping CDN imports intact."""
+    code = re.sub(
+        r'import\s*\{[^}]*\}\s*from\s*[\'"]\.[^\'"]+[\'"];?\s*',
+        '', code, flags=re.DOTALL
+    )
+    code = re.sub(r'import\s+\w+\s+from\s*[\'"]\.[^\'"]+[\'"];?\s*', '', code)
+    code = re.sub(r'import\s*[\'"]\.[^\'"]+[\'"];?\s*', '', code)
+    code = re.sub(r'\bexport\s+(async\s+function|function|const|let|var|class)\b', r'\1', code)
+    code = re.sub(r'\bexport\s+default\s+', '', code)
+    code = re.sub(
+        r'export\s*\{[^}]*\}\s*from\s*[\'"][^\'"]+[\'"];?\s*',
+        '', code, flags=re.DOTALL
+    )
+    code = re.sub(r'export\s*\{[^}]*\};?\s*', '', code, flags=re.DOTALL)
+    return code
+
+
+def build_firebase_module(js_files):
+    js_parts = []
+    for path in js_files:
+        if not os.path.exists(path):
+            print(f'  ⚠ Skipping missing Firebase file: {path}')
+            continue
+        with open(path, 'r', encoding='utf-8') as f:
+            raw = f.read()
+        stripped = strip_local_imports_exports(raw)
+        js_parts.append(f'// ── {path} {"─" * (60 - len(path))}')
+        js_parts.append(stripped.strip())
+        js_parts.append('')
+    return '\n'.join(js_parts)
 
 
 def build_bundled_js(js_files, inject_seeds=True, include_clear_all_data=True):
@@ -381,13 +423,8 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
 
 
 def build():
-    firebase_js = ''
-    if os.path.exists(FIREBASE_FILE):
-        with open(FIREBASE_FILE, 'r', encoding='utf-8') as f:
-            firebase_js = f.read()
-        print(f'   Firebase module: {FIREBASE_FILE}')
-    else:
-        print(f'  ⚠ Firebase file not found: {FIREBASE_FILE}')
+    firebase_js = build_firebase_module(FIREBASE_JS_FILES)
+    print(f'   Firebase module files: {len(FIREBASE_JS_FILES)}')
 
     with open(CSS_FILE, 'r', encoding='utf-8') as f:
         css = f.read()
@@ -414,7 +451,7 @@ def build():
 
     print(f'   Main JS files: {len(MAIN_JS_FILES)} · Admin JS files: {len(ADMIN_JS_FILES)}')
     print(f'   CSS inlined from: {CSS_FILE}')
-    print(f'   Firebase inlined: {FIREBASE_FILE}')
+    print(f'   Firebase inlined: {", ".join(FIREBASE_JS_FILES)}')
 
 
 if __name__ == '__main__':
