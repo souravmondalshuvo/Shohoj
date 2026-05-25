@@ -1,6 +1,6 @@
 {
   "name": "shohoj",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "BRACU academic tools platform",
   "private": true,
   "type": "module",
@@ -15,6 +15,8 @@
     "test:admin": "node tests/adminDashboard.test.js",
     "test:worker": "node worker/test/worker.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
     "set:admin": "node scripts/set_admin_claim.js",
     "config:local": "node scripts/generate_runtime_config.js"
   },
@@ -23,8 +25,10 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
+    "@playwright/test": "^1.60.0",
     "firebase": "^12.0.0",
     "firebase-admin": "^13.0.0",
-    "firebase-tools": "^15.0.0"
+    "firebase-tools": "^15.0.0",
+    "typescript": "^6.0.3"
   }
 }
