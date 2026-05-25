@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ULhH0jtCGkQzfbQ1UqtrKk+lRg0mqKOlRSz/Vnll6XQ=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-JFvVXhsN0NR5DQn6OhK4mr1Vo48sYF4UW8iXSqR9ZmU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-O/ag2PoKhA2O0aMj48OttaRcW1leNgGlfdWWAYD3VqY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4598,6 +4598,100 @@ input, select, textarea,
   background: rgba(255,118,118,0.08);
 }
 
+/* ── Mobile product polish: avoid page-level horizontal scroll ───────────── */
+@media (max-width: 640px) {
+  body {
+    min-width: 0;
+  }
+
+  nav {
+    gap: 8px;
+  }
+
+  .nav-right {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  #authBtn {
+    max-width: 128px;
+    overflow: hidden;
+  }
+
+  #authLabel,
+  .auth-name,
+  .auth-email {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .calc-tabs {
+    justify-content: flex-start;
+    overflow-x: auto;
+    margin: 10px 0.8rem 12px;
+    border-radius: 16px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calc-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .calc-tab {
+    flex: 0 0 auto;
+    min-width: 108px;
+    scroll-snap-align: start;
+  }
+
+  .calc-tab-slider {
+    display: none;
+  }
+
+  .footer-btn-group {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+
+  .footer-btn-group button {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 132px;
+  }
+
+  .course-suggestions {
+    left: 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-height: 52vh;
+    overflow-y: auto;
+  }
+
+  .shohoj-modal-card,
+  .paper-modal,
+  .admin-preview-modal {
+    max-height: calc(100svh - 24px);
+    overflow-y: auto;
+  }
+
+  .papers-tab-head,
+  .papers-tab-controls,
+  .paper-card-actions,
+  .paper-modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .papers-upload-btn,
+  .papers-search,
+  .papers-type-filter,
+  .paper-card-preview,
+  .paper-card-download,
+  .paper-card-report {
+    width: 100%;
+  }
+}
+
 /* ── Papers admin moderation panel ───────────────────────────────────────── */
 /* ── Admin dashboard (full-page) ─────────────────────────────────────────── */
 body.admin-mode > nav,
@@ -5672,23 +5766,37 @@ body[data-page="admin"] .orb { display: none !important; }
 
   <!-- Firebase auth init — inlined by build3.py -->
   <script type="module">
-// ── js/auth/firebase.js ───────────────────────────────────────────────────────
-// Firebase Authentication + Firestore cloud sync for Shohoj
-// Features: Google Sign-In, Sign-Out, cloud save/load, migration modal,
-//           real-time sync, offline detection, sync persistence, data deletion
+// ── js/auth/firebase-init.js ────────────────────────────────────
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  getFirestore,
+  limit as qLimit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  startAfter,
+  where,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, serverTimestamp,
-         collection, query, where, getDocs, orderBy, limit as qLimit, startAfter,
-         documentId, addDoc }
-                                   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-// ── Config ────────────────────────────────────────────────────────────────────
 const firebaseConfig = window._shohoj_firebase_config;
+
 const firebaseAvailable = !!(
   firebaseConfig
   && typeof firebaseConfig === 'object'
@@ -5697,16 +5805,13 @@ const firebaseAvailable = !!(
   && !String(firebaseConfig.apiKey).startsWith('__')
   && !String(firebaseConfig.projectId).startsWith('__')
 );
+
 if (!firebaseAvailable) {
   console.error('[Shohoj] Firebase config missing or incomplete — auth will not work.');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-const app      = firebaseAvailable ? initializeApp(firebaseConfig) : null;
+const app = firebaseAvailable ? initializeApp(firebaseConfig) : null;
 
-// App Check — attest every Firestore call as coming from this site, not a
-// scraping script. Skipped silently if no site key is set so dev/preview can
-// still run; production deploys always inject the key via runtime-config.js.
 const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
 if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   try {
@@ -5719,13 +5824,99 @@ if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   }
 }
 
-const auth     = app ? getAuth(app) : null;
-const db       = app ? getFirestore(app) : null;
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
+
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
+// ── js/auth/admin-service.js ────────────────────────────────────
+function installAdminAccessHooks({ isAdminUser }) {
+  window._shohoj_isPaperAdmin = function() {
+    return isAdminUser();
+  };
+
+  window._shohoj_isAdmin = function() {
+    return isAdminUser();
+  };
+}
+
+// ── js/auth/auth-service.js ─────────────────────────────────────
+function isSafeAvatarUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') return false;
+    return /(^|\.)googleusercontent\.com$/i.test(u.hostname);
+  } catch (_e) {
+    return false;
+  }
+}
+
+function firstDisplayName(displayName) {
+  return String(displayName || '').split(' ')[0] || 'you';
+}
+
+// ── js/auth/paper-service.js ────────────────────────────────────
+function getPapersWorkerUrl() {
+  const u = window._shohoj_papers_worker_url;
+  return (typeof u === 'string' && u.startsWith('http')) ? u.replace(/\/$/, '') : null;
+}
+
+async function getCurrentUserIdToken(currentUser) {
+  if (!currentUser) return null;
+  try {
+    return await currentUser.getIdToken();
+  } catch (_e) {
+    return null;
+  }
+}
+
+// ── js/auth/review-service.js ───────────────────────────────────
+function installReviewIdentityHooks({ getCurrentUser, isAuthReady }) {
+  window._shohoj_currentUid = function() {
+    return getCurrentUser()?.uid || null;
+  };
+
+  window._shohoj_currentEmail = function() {
+    return getCurrentUser()?.email || null;
+  };
+
+  window._shohoj_isAuthReady = function() {
+    return isAuthReady();
+  };
+}
+
+// ── js/auth/user-sync-service.js ────────────────────────────────
+function parseStoredState(raw, source = 'storage') {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn(`[Shohoj] Ignoring invalid ${source} state:`, e);
+    return null;
+  }
+}
+
+function getDataFingerprint(raw) {
+  if (!raw) return '';
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const { updatedAt, _serverTimestamp, ...dataOnly } = parsed;
+    return JSON.stringify(dataOnly);
+  } catch (_e) {
+    return typeof raw === 'string' ? raw : JSON.stringify(raw);
+  }
+}
+
+// ── js/auth/firebase.js ─────────────────────────────────────────
+// ── js/auth/firebase.js ───────────────────────────────────────────────────────
+// Firebase Authentication + Firestore cloud sync for Shohoj
+// Features: Google Sign-In, Sign-Out, cloud save/load, migration modal,
+//           real-time sync, offline detection, sync persistence, data deletion
+
 // ── State ─────────────────────────────────────────────────────────────────────
-export let currentUser    = null;
+let currentUser    = null;
 let _authReady           = false;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
@@ -5749,44 +5940,6 @@ const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
-}
-
-// Only allow Google-hosted avatar URLs. Anything else (including data:/http:)
-// is rejected and we fall back to a generated initial.
-function isSafeAvatarUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== 'https:') return false;
-    return /(^|\.)googleusercontent\.com$/i.test(u.hostname);
-  } catch (_e) {
-    return false;
-  }
-}
-
-function parseStoredState(raw, source = 'storage') {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    console.warn(`[Shohoj] Ignoring invalid ${source} state:`, e);
-    return null;
-  }
-}
-
-// ── Canonical data fingerprint ────────────────────────────────────────────────
-// Only compare the fields that actually represent user data — ignore metadata
-// fields like updatedAt that Firestore injects and that will always differ.
-function getDataFingerprint(raw) {
-  if (!raw) return '';
-  try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    // Strip server-side metadata before comparing
-    const { updatedAt, _serverTimestamp, ...dataOnly } = parsed;
-    return JSON.stringify(dataOnly);
-  } catch (e) {
-    return typeof raw === 'string' ? raw : JSON.stringify(raw);
-  }
 }
 
 function clearCloudAppliedFlag() {
@@ -5839,7 +5992,7 @@ async function persistCloudState(stateSnap) {
 }
 
 // ── Save to cloud ─────────────────────────────────────────────────────────────
-export function saveToCloud(stateSnap, options = {}) {
+function saveToCloud(stateSnap, options = {}) {
   if (!currentUser) return Promise.resolve(false);
 
   const { immediate = false } = options;
@@ -5963,7 +6116,7 @@ function stopRealtimeSync() {
 }
 
 // ── Account data deletion ─────────────────────────────────────────────────────
-export async function deleteCloudDataSilent() {
+async function deleteCloudDataSilent() {
   if (!currentUser) return true;
   try {
     stopRealtimeSync();
@@ -5977,7 +6130,7 @@ export async function deleteCloudDataSilent() {
   }
 }
 
-export async function deleteCloudData() {
+async function deleteCloudData() {
   if (!currentUser) return;
   const confirmed = await showConfirmModal({
     icon:          '🗑️',
@@ -6362,7 +6515,7 @@ function showMigrationModal(localSems, cloudSems) {
 }
 
 // ── Sign in ───────────────────────────────────────────────────────────────────
-export async function signInWithGoogle() {
+async function signInWithGoogle() {
   if (!auth) {
     showToast('⚠ Sign-in is not configured on this build', true, true);
     return;
@@ -6382,7 +6535,7 @@ export async function signInWithGoogle() {
 }
 
 // ── Sign out ──────────────────────────────────────────────────────────────────
-export async function signOutUser() {
+async function signOutUser() {
   if (!auth) return;
   try {
     try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
@@ -6397,7 +6550,7 @@ export async function signOutUser() {
 }
 
 // ── Init auth ─────────────────────────────────────────────────────────────────
-export function initAuth() {
+function initAuth() {
   restoreSyncLabel();
   initOfflineDetection();
   _authReady = false;
@@ -6444,7 +6597,7 @@ export function initAuth() {
       const now = Date.now();
       if (!sessionStart || isNaN(sessionStart)) {
         try { localStorage.setItem(SESSION_START_KEY, String(now)); } catch(e) {}
-        const firstName = user.displayName?.split(' ')[0] || 'you';
+        const firstName = firstDisplayName(user.displayName);
         showToast(`Welcome to Shohoj, ${firstName} `, false, true);
       } else if (now - sessionStart > SESSION_MAX_MS) {
         try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
@@ -6619,17 +6772,10 @@ window._shohoj_showToast = showToast;
 // Expose a thin Firestore bridge so the bundled code (js/core/reviews.js) can
 // submit and fetch reviews without importing Firebase itself.
 
-window._shohoj_currentUid = function() {
-  return currentUser?.uid || null;
-};
-
-window._shohoj_currentEmail = function() {
-  return currentUser?.email || null;
-};
-
-window._shohoj_isAuthReady = function() {
-  return _authReady;
-};
+installReviewIdentityHooks({
+  getCurrentUser: () => currentUser,
+  isAuthReady: () => _authReady,
+});
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
 // service-account identity. Firestore rules deny all client creates on
@@ -6637,9 +6783,9 @@ window._shohoj_isAuthReady = function() {
 // subverted by clients posting under arbitrary hex suffixes.
 window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) return { ok: false, error: 'Review service not configured' };
-  const token = await _idToken();
+  const token = await getCurrentUserIdToken(currentUser);
   if (!token) return { ok: false, error: 'Could not get auth token' };
   try {
     const res = await fetch(`${base}/reviews`, {
@@ -7051,19 +7197,6 @@ window._shohoj_fetchMyPapers = async function() {
 };
 
 // ── R2-backed paper storage (via Cloudflare Worker proxy) ─────────────────
-// The worker URL is set on `window._shohoj_papers_worker_url` from index.html.
-// The browser never talks to R2 directly — every request flows through the
-// Worker, which checks the Firebase ID token before allowing the operation.
-function _papersWorkerUrl() {
-  const u = window._shohoj_papers_worker_url;
-  return (typeof u === 'string' && u.startsWith('http')) ? u.replace(/\/$/, '') : null;
-}
-
-async function _idToken() {
-  if (!currentUser) return null;
-  try { return await currentUser.getIdToken(); } catch { return null; }
-}
-
 // Download is keyed on the Firestore paper id, not the raw storage path. The
 // worker re-fetches the paper doc using the caller's own ID token, so
 // Firestore rules enforce that the requester is allowed to read it
@@ -7072,12 +7205,12 @@ async function _idToken() {
 // download an unapproved file directly.
 window._shohoj_paperDownloadUrl = async function(paperId) {
   if (!currentUser || !paperId) return null;
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) {
     console.warn('[Shohoj] papers worker URL not configured');
     return null;
   }
-  const token = await _idToken();
+  const token = await getCurrentUserIdToken(currentUser);
   if (!token) return null;
   try {
     const res = await fetch(`${base}/download?paperId=${encodeURIComponent(paperId)}`, {
@@ -7100,14 +7233,14 @@ window._shohoj_paperDownloadUrl = async function(paperId) {
 window._shohoj_uploadPaper = async function({ file, courseCode, type, title, semester, facultyInitials }) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
   if (!file || !courseCode || !type || !title) return { ok: false, error: 'Missing fields' };
-  const base = _papersWorkerUrl();
+  const base = getPapersWorkerUrl();
   if (!base) return { ok: false, error: 'Upload service not configured. Contact admin.' };
   try {
     const safeCourse = String(courseCode).toUpperCase();
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}.${ext}`;
 
-    const token = await _idToken();
+    const token = await getCurrentUserIdToken(currentUser);
     if (!token) return { ok: false, error: 'Could not get auth token' };
 
     // Extra metadata is passed as URL params so the Worker can validate the
@@ -7155,13 +7288,7 @@ function _isAdminUser() {
   return !!currentUser && _isAdminCached === true;
 }
 
-window._shohoj_isPaperAdmin = function() {
-  return _isAdminUser();
-};
-
-window._shohoj_isAdmin = function() {
-  return _isAdminUser();
-};
+installAdminAccessHooks({ isAdminUser: _isAdminUser });
 
 window._shohoj_fetchUnapprovedPapers = async function() {
   if (!_isAdminUser()) return [];
@@ -7228,8 +7355,8 @@ window._shohoj_deletePaper = async function(paperId, storagePath) {
   if (!paperId) return { ok: false, error: 'Missing paper id' };
   try {
     if (storagePath) {
-      const base = _papersWorkerUrl();
-      const token = await _idToken();
+      const base = getPapersWorkerUrl();
+      const token = await getCurrentUserIdToken(currentUser);
       if (!base) return { ok: false, error: 'Delete service not configured' };
       if (!token) return { ok: false, error: 'Could not get auth token' };
       try {
@@ -16119,7 +16246,7 @@ function applyImport() {
 }
 
 function exportPDF() {
-  const { jsPDF } = window.jspdf;
+  const jsPDF = window.jspdf?.jsPDF;
   if (!jsPDF) { alert('PDF library not loaded. Please check your connection.'); return; }
   if (!state.semesters.length) { alert('No data to export.'); return; }
 
