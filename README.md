@@ -30,14 +30,43 @@
 
 ---
 
+## Recruiter Demo Path
+
+1. Open the [live site](https://souravmondalshuvo.github.io/Shohoj)
+2. Click "Try Demo Mode"
+3. Check CGPA Calculator
+4. Open Semester Planner
+5. View Degree Progress
+6. Explore Faculty Reviews / Past Papers
+7. Review Architecture, Security, and Deployment docs
+
+## My Role
+
+Solo developer responsible for frontend, Firebase authentication, Firestore database structure, security rules, Cloudflare Worker integration, CI/CD, testing, documentation, and product design.
+
+---
+
 ## Documentation
 
 | Doc | What's in it |
 |-----|-------------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Tech stack, source layout, build pipeline, data flow |
+| [docs/CASE_STUDY.md](docs/CASE_STUDY.md) | Problem, solution, engineering challenges, decisions, next steps |
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CD pipeline, local dev, Worker deploy, admin claim |
+
+---
+
+## Product Screenshots
+
+| Calculator | Transcript Import |
+|------------|-------------------|
+| ![CGPA calculator](assets/screenshots/calculator.png) | ![Transcript import](assets/screenshots/transcript-import.png) |
+
+| Course Search | Trend Chart |
+|---------------|-------------|
+| ![Course autocomplete](assets/screenshots/autocomplete.png) | ![Trend chart](assets/screenshots/trend-chart.png) |
 
 ---
 
