@@ -13,13 +13,13 @@
 
 <p align="center">
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  <img src="https://img.shields.io/badge/Status-Phase%202%20Live-2ECC71?style=flat-square" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-v0.3%20Recruiter%20Demo-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-189%20unit%20%2B%2041%20rules-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-200%20unit%2Fworker%20%2B%2045%20rules%20%2B%207%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -55,6 +55,8 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CD pipeline, local dev, Worker deploy, admin claim |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and notable changes |
+| [v0.3.0 release notes](docs/RELEASE_NOTES_v0.3.0.md) | Recruiter Demo Release summary and verification |
 
 ---
 
@@ -130,14 +132,14 @@ Pseudonymous faculty ratings from real BRACU students — stored in Firestore, g
 
 #### Anonymity — what we do and don't claim
 
-Because Shohoj is a client-only app (no Cloud Functions today), the review write happens from the browser. That means:
+Review submissions go through the Cloudflare Worker (`POST /reviews`) before the Firestore document is written. That means:
 
 - ✅ Your raw Firebase UID and email are **never** written into the review document.
 - ✅ Reviews for different (faculty, course) pairs produce different hashes, so a third party who reads the collection **cannot trivially group all of your reviews together** by looking at a single field.
 - ⚠️ Firebase **project administrators** (and anyone with admin SDK access) can audit Firestore logs and in principle correlate a write back to the authenticated session. "Anonymous to the public" ≠ "anonymous to the service operator."
 - ⚠️ A determined adversary who already knows your UID could reconstruct your review hash for any (faculty, course) pair.
 
-For stronger guarantees we would need to move review writes behind a Cloud Function that strips the caller's identity before committing — tracked as a future hardening.
+The Worker strips identity fields from the public review body before committing. Stronger operator-level anonymity would require a more advanced backend design with blind tokens or another unlinkable submission protocol.
 
 ### 📚 Past Papers & Notes (New)
 
@@ -316,10 +318,10 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/) v3.11.174 | Reading BRACU transcript PDFs                          |
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
 | Charts      | [Chart.js](https://www.chartjs.org/) v4.4.0           | Admin dashboard and analytics visualizations           |
-| Files       | Cloudflare Worker + R2                                | Auth-gated past-paper upload, download, and delete     |
+| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete and server-mediated review writes |
 | Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js + `@firebase/rules-unit-testing`              | Unit tests across app logic and Worker validation, plus Firestore rules tests against the Firebase emulator |
+| Testing     | Node.js + Playwright + `@firebase/rules-unit-testing` | Unit tests across app logic and Worker validation, browser E2E tests, plus Firestore rules tests against the Firebase emulator |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
 | CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
 
@@ -327,7 +329,7 @@ CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...
 
 **Deployment pipeline:** every push to `main` triggers CI (tests) followed by CD (build + deploy). If tests fail, the live site is never touched. The built `shohoj.html` is deployed to the `gh-pages` branch as `index.html` and served by GitHub Pages.
 
-**Phase 2+** will migrate to React.js, Tailwind CSS, and Vercel as the platform scales beyond academic tools.
+The React/Vite migration is planned after the v0.4 TypeScript logic migration, so the current vanilla JS app stays stable while pure academic logic is typed first.
 
 ### Architecture at a glance
 
@@ -341,7 +343,7 @@ GitHub Pages — bundled HTML/CSS/JS (shohoj.html, admin/index.html)
   │ Firebase Auth (BRACU @g.bracu.ac.bd sign-in)
   │ App Check (reCAPTCHA v3)
   ▼
-Firestore (rules-enforced)
+Firestore (rules-enforced for browser clients)
   ├── users/{uid}            — semesters, grades, settings
   ├── facultyReviews/{hash}  — pseudonymous, append-only reviews
   ├── reviewReports/{...}    — moderation queue (admin-read)
@@ -354,6 +356,7 @@ Firestore (rules-enforced)
   └── adminLogs/{id}         — admin action audit trail
 
 Cloudflare Worker (auth-proxy, BRACU email + admin claim)
+  ├── POST /reviews — service-account review writes
   └── R2 — past-paper PDFs and raster images
 
 Firebase custom claim `admin: true`
@@ -375,7 +378,7 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) accept creates from BRACU accounts only, require server timestamps, are readable by BRACU accounts, and are **immutable for students** once written — no client-side updates, and only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
