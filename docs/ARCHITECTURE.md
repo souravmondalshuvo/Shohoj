@@ -43,7 +43,14 @@ Shohoj/
 │   ├── config/
 │   │   ├── runtime-config.template.js   __PLACEHOLDER__ tokens replaced at build
 │   │   └── runtime-config.js     (gitignored) Generated from .env.local / GH secrets
-│   ├── auth/firebase.js           Firebase init, Google sign-in, sync, App Check
+│   ├── auth/
+│   │   ├── firebase-init.js       Firebase SDK imports, config, App Check, Auth, Firestore
+│   │   ├── firebase.js            Auth orchestration, Firestore sync, admin/paper hooks
+│   │   ├── auth-service.js        Auth UI helpers and avatar safety checks
+│   │   ├── user-sync-service.js   Stored-state parsing and sync fingerprint helpers
+│   │   ├── review-service.js      Review identity window hooks
+│   │   ├── paper-service.js       Papers Worker URL and ID token helpers
+│   │   └── admin-service.js       Admin access window hooks
 │   ├── core/
 │   │   ├── grades.js              BRACU grading scale
 │   │   ├── helpers.js             escHtml, escAttr, sanitizers
@@ -92,6 +99,10 @@ Shohoj/
 │   ├── reviews.test.js
 │   ├── adminDashboard.test.js
 │   └── firestore.rules.test.js    Emulator-driven security rules tests
+├── e2e/
+│   └── shohoj.spec.js             Playwright E2E coverage for core public flows
+├── src/
+│   └── core/grades.ts             TypeScript foundation for logic migration
 ├── worker/                        Cloudflare Worker for past-paper uploads
 │   └── test/worker.test.js        Worker validation tests
 ├── firestore.rules                Firestore security rules
@@ -104,17 +115,17 @@ Shohoj/
 
 - **core/** — pure logic, no DOM, no Firebase. Tested directly with Node.
 - **ui/** — DOM rendering. Calls into core/ for logic.
-- **auth/firebase.js** — only file that touches Firebase SDK. Exposes hooks via `window._shohoj_*` so other modules don't import Firebase directly.
+- **auth/** — Firebase SDK setup, auth UI helpers, cloud sync helpers, review/paper/admin hooks. Browser-facing code still exposes hooks via `window._shohoj_*` so other modules don't import Firebase directly.
 - **animations/** — visual sugar, isolated from app state.
 - **import/** — PDF parsing, isolated.
 
-Cross-module calls use `window._shohoj_*` where direct imports would create circular dependencies or cross-bundle coupling. UI event handlers use delegated `data-action` callbacks via `js/core/dispatch.js`. Most ES module imports are stripped by `build3.py`; `firebase.js` remains a real module because it imports Firebase SDKs from CDN.
+Cross-module calls use `window._shohoj_*` where direct imports would create circular dependencies or cross-bundle coupling. UI event handlers use delegated `data-action` callbacks via `js/core/dispatch.js`. Most ES module imports are stripped by `build3.py`; the auth bundle remains a real module because `firebase-init.js` imports Firebase SDKs from CDN.
 
 ## Data flow
 
 1. Browser loads `runtime-config.js` (generated from `.env.local` locally or GitHub Actions secrets in CI), then the bundled `shohoj.html`.
 2. Firebase App Check obtains a reCAPTCHA v3 attestation. Every Firestore call is gated by App Check.
-3. User signs in with `@g.bracu.ac.bd` Google account. firebase.js receives the auth state, reads the ID token (carries `admin: true` claim if granted), and starts a Firestore snapshot listener on `users/{uid}`.
+3. User signs in with `@g.bracu.ac.bd` Google account. The auth module receives the auth state, reads the ID token (carries `admin: true` claim if granted), and starts a Firestore snapshot listener on `users/{uid}`.
 4. Local edits update the state object → debounced write to Firestore + localStorage.
 5. Remote changes from another device come through the snapshot listener and rebuild the UI.
 6. Past-paper uploads/downloads go through the Cloudflare Worker, which verifies the Firebase ID token (BRACU email or `admin: true`) before touching R2. New uploads are stored under `papers/{COURSE}/{UPLOADER_UID}/{filename}` and restricted to PDF/PNG/JPEG/WebP/GIF. Paper metadata is in Firestore (`papers/{paperId}`); the file body is in R2.
@@ -131,7 +142,7 @@ The cloud sync is **last-write-wins with same-tab suppression**:
 
 ## Build pipeline
 
-`build3.py` reads each JS file in dependency order, strips `import`/`export` syntax, inlines into a single `<script>` block, inlines CSS, keeps `firebase.js` as a separate `<script type="module">` (because it imports from CDN), and writes self-contained `shohoj.html` and `admin.html`. CD deploys those as `index.html` and `admin/index.html` on GitHub Pages.
+`build3.py` reads each JS file in dependency order, strips `import`/`export` syntax, inlines into a single `<script>` block, inlines CSS, builds the auth helper files plus `firebase.js` into a separate `<script type="module">` (because `firebase-init.js` imports from CDN), and writes self-contained `shohoj.html` and `admin.html`. CD deploys those as `index.html` and `admin/index.html` on GitHub Pages.
 
 The `runtime-config.js` file is generated fresh from `.env.local` (locally) or GitHub Actions secrets (in CI) before every build, so the bundled HTML carries Firebase config without it sitting in source.
 
