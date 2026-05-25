@@ -473,6 +473,78 @@ async function makeServiceAccountJson() {
     assertEq(fields.facultyInitials.stringValue, 'ABC');
   });
 
+  await test('upload metadata failure deletes uploaded R2 object', async () => {
+    const claims = {
+      user_id: 'uid_cleanup',
+      email: 'student@g.bracu.ac.bd',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
+    };
+    const { token, jwk } = await makeFirebaseToken(claims);
+    const puts = [];
+    const deletes = [];
+    const firestoreCreates = [];
+    const expectedFirestoreUrl = `https://firestore.googleapis.com/v1/projects/${ENV.FIREBASE_PROJECT_ID}/databases/(default)/documents/papers`;
+    const mockFetch = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url === 'https://oauth2.googleapis.com/token') {
+        return json({ access_token: 'service-account-token', expires_in: 3600 });
+      }
+      if (url === expectedFirestoreUrl) {
+        assertEq(init.method, 'POST');
+        firestoreCreates.push(JSON.parse(init.body));
+        return new Response('firestore unavailable', { status: 503 });
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    const env = {
+      ...ENV,
+      SERVICE_ACCOUNT_JSON: await makeServiceAccountJson(),
+      PAPERS_BUCKET: {
+        async put(path, body, options) {
+          puts.push({ path, byteLength: body.byteLength, contentType: options?.httpMetadata?.contentType });
+        },
+        async delete(path) {
+          deletes.push(path);
+        },
+      },
+    };
+
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      await withMockedFetch(mockFetch, async () => {
+        const body = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37]);
+        const res = await worker.fetch(
+          req('POST', '/upload?courseCode=CSE111&filename=cleanup.pdf&type=final&title=Cleanup%20Final', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/pdf',
+              'Content-Length': String(body.byteLength),
+            },
+            body,
+          }),
+          env,
+          { waitUntil(promise) { promise.catch(() => {}); } },
+        );
+
+        assertEq(res.status, 502);
+        const responseBody = await res.json();
+        assertEq(responseBody.error, 'Upload metadata could not be saved');
+      });
+    } finally {
+      __setTestJwksForTests(null);
+    }
+
+    assertEq(puts.length, 1);
+    assertEq(puts[0].path, 'papers/CSE111/uid_cleanup/cleanup.pdf');
+    assertEq(puts[0].byteLength, 8);
+    assertEq(puts[0].contentType, 'application/pdf');
+    assertEq(firestoreCreates.length, 1);
+    assertEq(firestoreCreates[0].fields.storagePath.stringValue, 'papers/CSE111/uid_cleanup/cleanup.pdf');
+    assertEq(deletes.length, 1);
+    assertEq(deletes[0], 'papers/CSE111/uid_cleanup/cleanup.pdf');
+  });
+
   console.log('\nDownload validation:');
 
   await test('download with no auth → 401', async () => {
