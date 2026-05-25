@@ -8,7 +8,7 @@ import {
   countSemesters, getStartSeason, getStartYear,
   escHtml, escAttr, getCurrentSeason, SEASON_ORDER, ordinalSup
 } from '../core/helpers.js';
-import { resetPlanner } from './planner.js';
+import { resetPlanner, setPlanCourses } from './planner.js';
 import { resetPlayground } from './playground.js';
 import { openReviewModal } from './reviews.js';
 import { normalizeInitials } from '../core/faculty.js';
@@ -31,6 +31,23 @@ registerAction('render:showSummaryForm', () => showSummaryForm());
 registerAction('render:loadSample',      () => loadSampleData());
 
 const _facultyCourseAggCache = new Map();
+
+const DEMO_PLAN_COURSES = ['CSE221', 'MAT120', 'PHY112'];
+
+export function getRecruiterDemoSemesters() {
+  return [
+    { name: 'Fall 2024', courses: [
+      { name: 'Programming Language I (CSE110)',   credits: 3, grade: 'A-', gradePoint: 3.7, faculty: 'ABC' },
+      { name: 'Fundamentals of English (ENG101)',  credits: 3, grade: 'A',  gradePoint: 4.0, faculty: 'XYZ' },
+      { name: 'Principles of Physics I (PHY111)',  credits: 3, grade: 'B+', gradePoint: 3.3, faculty: 'PHY' },
+    ]},
+    { name: 'Spring 2025', courses: [
+      { name: 'Programming Language II (CSE111)',  credits: 3, grade: 'B+', gradePoint: 3.3, faculty: 'DEF' },
+      { name: 'Data Structures (CSE220)',          credits: 3, grade: 'A-', gradePoint: 3.7, faculty: 'GHI' },
+      { name: 'Differential Calculus (MAT110)',    credits: 3, grade: 'B',  gradePoint: 3.0, faculty: 'MAT' },
+    ]},
+  ];
+}
 
 // ── Summary block form state ─────────────────────────────────────────────────
 let _summaryFormVisible = false;
@@ -578,7 +595,7 @@ export function renderSemesters() {
         <div class="empty-state-sub">${!_deptDone ? 'Complete the 3 quick steps below to start tracking your CGPA.' : !_semDone ? 'One more step before you can add semesters.' : 'Add your first semester, import your transcript, or start from your current CGPA.'}</div>
         ${_emptyHint}
         <div class="empty-state-actions">
-          <button class="btn-sample" data-action="render:loadSample">✨ Load sample data</button>
+          <button class="btn-sample" data-action="render:loadSample">Try Demo Mode</button>
           ${_semDone ? '<button class="btn-sample-ghost" data-action="render:addSemester">+ Add semester</button>' : ''}
           ${cgpaBtn}
         </div>
@@ -857,25 +874,13 @@ export function removeCourse(semId, cIdx) {
 
 export function loadSampleData() {
   if (state.semesters.length > 0 &&
-      !confirm('This will replace your current data. Continue?')) return;
+      !confirm('This will replace your current data with demo data. Continue?')) return false;
   state.semesters = [];
   state.semesterCounter = 0;
   resetPlanner();
+  setPlanCourses(DEMO_PLAN_COURSES);
   resetPlayground();
-  const sample = [
-    { name: 'Fall 2024', courses: [
-      { name: 'Programming Language I (CSE110)',   credits: 3, grade: 'B+', gradePoint: 3.3 },
-      { name: 'Fundamentals of English (ENG101)',  credits: 3, grade: 'A-', gradePoint: 3.7 },
-      { name: 'Remedial Mathematics (MAT092)',     credits: 0, grade: 'P',  gradePoint: 'P' },
-      { name: 'Principles of Physics I (PHY111)', credits: 3, grade: 'B',  gradePoint: 3.0 },
-    ]},
-    { name: 'Spring 2025', courses: [
-      { name: 'Programming Language II (CSE111)',  credits: 3, grade: 'B-', gradePoint: 2.7 },
-      { name: 'Discrete Mathematics (CSE230)',     credits: 3, grade: 'B+', gradePoint: 3.3 },
-      { name: 'Differential Calculus (MAT110)',    credits: 3, grade: 'A',  gradePoint: 4.0 },
-      { name: 'Principles of Physics II (PHY112)', credits: 3, grade: 'B',  gradePoint: 3.0 },
-    ]},
-  ];
+  const sample = getRecruiterDemoSemesters();
   sample.forEach(s => {
     const id = state.semesterCounter++;
     state.semesters.push({ id, name: s.name, courses: s.courses });
@@ -898,6 +903,10 @@ export function loadSampleData() {
   renderSemesters();
   window._shohoj_recalc();
   saveState();
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast('Demo mode loaded. Explore CGPA, planner, and degree progress.');
+  }
+  return true;
 }
 
 export function onDeptSelect() {
