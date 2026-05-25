@@ -266,6 +266,46 @@
     .section-title { font-family: 'Syne', sans-serif; font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -1px; margin-bottom: 1rem; }
     .section-desc { color: var(--text2); font-size: 1rem; line-height: 1.7; max-width: 560px; margin-bottom: 2.5rem; }
 
+    .onboarding-choice-band {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: -0.8rem 0 1.5rem;
+      padding: 18px 20px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(46,204,113,0.09), rgba(52,152,219,0.06));
+    }
+    .onboarding-choice-copy {
+      min-width: 220px;
+    }
+    .onboarding-choice-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .onboarding-choice-sub {
+      font-size: 0.88rem;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+    .onboarding-choice-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .onboarding-choice-actions .btn-primary,
+    .onboarding-choice-actions .btn-secondary {
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
     .features-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -682,6 +722,10 @@ h1[data-reveal-hero].visible {
       .stat-num { font-size: 1.4rem; }
       .stat-label { font-size: 10px; }
       section { padding: 3rem 1.2rem; } .section-title { font-size: 1.6rem; letter-spacing: -0.5px; }
+      .onboarding-choice-band { flex-direction: column; align-items: stretch; padding: 16px 0; background: transparent; }
+      .onboarding-choice-copy { min-width: 0; }
+      .onboarding-choice-actions { flex-direction: column; align-items: stretch; }
+      .onboarding-choice-actions .btn-primary, .onboarding-choice-actions .btn-secondary { max-width: none; width: 100%; }
       .features-grid { grid-template-columns: 1fr; } .feature-card { padding: 1.4rem; }
       .calc-wrapper { border-radius: 14px; }
       .calc-header { padding: 1rem 1.2rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
@@ -690,7 +734,7 @@ h1[data-reveal-hero].visible {
       .calc-footer-stats { gap: 0.8rem; } .cgpa-meter, .simulator-box, .degree-tracker, .playground-box { margin: 0 0.8rem 0.8rem; padding: 1rem; }
       .simulator-row { flex-direction: column; align-items: flex-start; }
       .simulator-row input { width: 100% !important; }
-      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
+      .credits-static { font-size: 12px; height: 34px; } .btn-add-semester, .btn-running-sem, .btn-import-pdf, .btn-export-pdf, .btn-clear-data, #footerDemoBtn { width: 100%; text-align: center; font-size: 12px; padding: 8px 12px; } .footer-btn-group { width: 100%; flex-direction: column; }
       .semester-head { padding: 0.7rem 1rem; }
       footer { padding: 2rem 1.2rem; }
       .orb-1 { width: 280px; height: 280px; } .orb-2 { width: 220px; height: 220px; } .orb-3 { width: 180px; height: 180px; }
