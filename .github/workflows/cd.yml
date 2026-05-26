@@ -3,6 +3,7 @@ name: CD
 on:
   push:
     branches: [main, master]
+  workflow_dispatch:
 
 # Serialize gh-pages publishes — concurrent runs from a burst of commits race
 # each other on `git push origin gh-pages` and the losers fail. Cancelling
