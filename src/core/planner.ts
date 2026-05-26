@@ -341,3 +341,10 @@ export function projectCgpa(
     delta: current !== null && projected !== null ? projected - current : null,
   };
 }
+
+export const plannerCoreGetCompletedCodes = getCompletedCodes;
+export const plannerCoreCheckPrereqs = checkPrereqs;
+export const plannerCoreGetAvailableCourses = getAvailableCourses;
+export const plannerCoreValidatePlan = validatePlan;
+export const plannerCoreGetPrereqChain = getPrereqChain;
+export const plannerCoreProjectCgpa = projectCgpa;
