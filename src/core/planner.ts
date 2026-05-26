@@ -87,7 +87,7 @@ const COMMON_PREFIXES = [
   'GEO',
 ] as const;
 
-export function getCompletedCodes(
+function plannerCoreGetCompletedCodesImpl(
   semesters: readonly SemesterEntry[],
   retakenKeys: ReadonlySet<string> = new Set(),
 ): Set<CourseCode> {
@@ -109,7 +109,7 @@ export function getCompletedCodes(
   return completed;
 }
 
-export function getInProgressCodes(semesters: readonly SemesterEntry[]): Set<CourseCode> {
+function plannerCoreGetInProgressCodesImpl(semesters: readonly SemesterEntry[]): Set<CourseCode> {
   const codes = new Set<CourseCode>();
 
   for (const semester of semesters) {
@@ -125,7 +125,7 @@ export function getInProgressCodes(semesters: readonly SemesterEntry[]): Set<Cou
   return codes;
 }
 
-export function getScheduledCodes(semesters: readonly SemesterEntry[]): Set<CourseCode> {
+function plannerCoreGetScheduledCodesImpl(semesters: readonly SemesterEntry[]): Set<CourseCode> {
   const codes = new Set<CourseCode>();
 
   for (const semester of semesters) {
@@ -141,7 +141,7 @@ export function getScheduledCodes(semesters: readonly SemesterEntry[]): Set<Cour
   return codes;
 }
 
-export function checkPrereqs(code: CourseCode, completed: ReadonlySet<CourseCode>, prerequisites: PrerequisiteMap): PrereqCheck {
+function plannerCoreCheckPrereqsImpl(code: CourseCode, completed: ReadonlySet<CourseCode>, prerequisites: PrerequisiteMap): PrereqCheck {
   const prereq = prerequisites[code];
   if (!prereq) return { canTake: true, missingHp: [], missingSp: [], hasData: false };
 
@@ -156,7 +156,7 @@ export function checkPrereqs(code: CourseCode, completed: ReadonlySet<CourseCode
   };
 }
 
-export function buildUnlockCountMap(prerequisites: PrerequisiteMap): Record<CourseCode, number> {
+function plannerCoreBuildUnlockCountMapImpl(prerequisites: PrerequisiteMap): Record<CourseCode, number> {
   const counts: Record<CourseCode, number> = Object.create(null);
 
   for (const code of Object.keys(prerequisites)) {
@@ -169,7 +169,7 @@ export function buildUnlockCountMap(prerequisites: PrerequisiteMap): Record<Cour
   return counts;
 }
 
-export function isRelevantToDept(code: CourseCode, deptCode?: string): boolean {
+function plannerCoreIsRelevantToDeptImpl(code: CourseCode, deptCode?: string): boolean {
   if (!deptCode) return true;
 
   const prefix = code.replace(/\d.*/, '');
@@ -181,14 +181,14 @@ export function isRelevantToDept(code: CourseCode, deptCode?: string): boolean {
   return false;
 }
 
-export function getAvailableCourses(
+function plannerCoreGetAvailableCoursesImpl(
   input: PlannerEngineInput,
   options: AvailableCourseOptions = {},
 ): PlannedCourse[] {
-  const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-  const inProgress = getInProgressCodes(input.semesters);
-  const scheduled = getScheduledCodes(input.semesters);
-  const unlockCounts = buildUnlockCountMap(input.prerequisites);
+  const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+  const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
+  const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+  const unlockCounts = plannerCoreBuildUnlockCountMapImpl(input.prerequisites);
   const planSet = new Set(input.planCourses);
 
   let results: PlannedCourse[] = [];
@@ -200,7 +200,7 @@ export function getAvailableCourses(
     if (planSet.has(course.code)) continue;
     if (course.credits === 0) continue;
 
-    const check = checkPrereqs(course.code, completed, input.prerequisites);
+    const check = plannerCoreCheckPrereqsImpl(course.code, completed, input.prerequisites);
 
     results.push({
       ...course,
@@ -208,7 +208,7 @@ export function getAvailableCourses(
       missingHp: check.missingHp,
       missingSp: check.missingSp,
       hasPrereqData: check.hasData,
-      isRelevant: isRelevantToDept(course.code, input.currentDept),
+      isRelevant: plannerCoreIsRelevantToDeptImpl(course.code, input.currentDept),
       unlockCount: unlockCounts[course.code] ?? 0,
     });
   }
@@ -240,10 +240,10 @@ export function getAvailableCourses(
   return typeof options.limit === 'number' ? results.slice(0, options.limit) : results;
 }
 
-export function validatePlan(input: PlannerEngineInput): PlanValidation {
-  const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-  const scheduled = getScheduledCodes(input.semesters);
-  const inProgress = getInProgressCodes(input.semesters);
+function plannerCoreValidatePlanImpl(input: PlannerEngineInput): PlanValidation {
+  const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+  const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+  const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
 
   const totalCredits = input.planCourses.reduce((sum, code) => {
     const course = input.courseCatalog[code];
@@ -264,7 +264,7 @@ export function validatePlan(input: PlannerEngineInput): PlanValidation {
   }
 
   for (const code of input.planCourses) {
-    const check = checkPrereqs(code, completed, input.prerequisites);
+    const check = plannerCoreCheckPrereqsImpl(code, completed, input.prerequisites);
     if (!check.canTake) {
       issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
     }
@@ -286,7 +286,7 @@ export function validatePlan(input: PlannerEngineInput): PlanValidation {
   return { totalCredits, issues, warnings };
 }
 
-export function getPrereqChain(
+function plannerCoreGetPrereqChainImpl(
   code: CourseCode,
   completed: ReadonlySet<CourseCode>,
   courseCatalog: CourseCatalog,
@@ -307,7 +307,7 @@ export function getPrereqChain(
 
   const allPrereqs = [...(prereq.hp ?? []), ...(prereq.sp ?? [])];
   for (const item of allPrereqs) {
-    const child = getPrereqChain(item, completed, courseCatalog, prerequisites, depth + 1);
+    const child = plannerCoreGetPrereqChainImpl(item, completed, courseCatalog, prerequisites, depth + 1);
     if (!child) continue;
     child.isSoft = (prereq.sp ?? []).includes(item);
     node.children.push(child);
@@ -316,7 +316,7 @@ export function getPrereqChain(
   return node;
 }
 
-export function projectCgpa(
+function plannerCoreProjectCgpaImpl(
   currentPoints: number,
   currentCredits: number,
   plannedCredits: number,
@@ -342,9 +342,22 @@ export function projectCgpa(
   };
 }
 
-export const plannerCoreGetCompletedCodes = getCompletedCodes;
-export const plannerCoreCheckPrereqs = checkPrereqs;
-export const plannerCoreGetAvailableCourses = getAvailableCourses;
-export const plannerCoreValidatePlan = validatePlan;
-export const plannerCoreGetPrereqChain = getPrereqChain;
-export const plannerCoreProjectCgpa = projectCgpa;
+export const plannerCoreGetCompletedCodes = plannerCoreGetCompletedCodesImpl;
+export const plannerCoreCheckPrereqs = plannerCoreCheckPrereqsImpl;
+export const plannerCoreGetAvailableCourses = plannerCoreGetAvailableCoursesImpl;
+export const plannerCoreValidatePlan = plannerCoreValidatePlanImpl;
+export const plannerCoreGetPrereqChain = plannerCoreGetPrereqChainImpl;
+export const plannerCoreProjectCgpa = plannerCoreProjectCgpaImpl;
+
+export {
+  plannerCoreGetCompletedCodesImpl as getCompletedCodes,
+  plannerCoreGetInProgressCodesImpl as getInProgressCodes,
+  plannerCoreGetScheduledCodesImpl as getScheduledCodes,
+  plannerCoreCheckPrereqsImpl as checkPrereqs,
+  plannerCoreBuildUnlockCountMapImpl as buildUnlockCountMap,
+  plannerCoreIsRelevantToDeptImpl as isRelevantToDept,
+  plannerCoreGetAvailableCoursesImpl as getAvailableCourses,
+  plannerCoreValidatePlanImpl as validatePlan,
+  plannerCoreGetPrereqChainImpl as getPrereqChain,
+  plannerCoreProjectCgpaImpl as projectCgpa,
+};
