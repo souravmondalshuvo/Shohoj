@@ -254,32 +254,32 @@ export function validatePlan(input: PlannerEngineInput): PlanValidation {
   const warnings: string[] = [];
 
   if (totalCredits > 0 && totalCredits < 9) {
-    issues.push(`${totalCredits} credits - below 9-credit minimum`);
+    issues.push(`${totalCredits} credits \u2014 below 9-credit minimum`);
   }
   if (totalCredits > 15) {
-    issues.push(`${totalCredits} credits - exceeds 15-credit maximum`);
+    issues.push(`${totalCredits} credits \u2014 exceeds 15-credit maximum`);
   }
   if (totalCredits > 12 && totalCredits <= 15) {
-    warnings.push(`${totalCredits} credits - requires chairman's permission`);
+    warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
   }
 
   for (const code of input.planCourses) {
     const check = checkPrereqs(code, completed, input.prerequisites);
     if (!check.canTake) {
-      issues.push(`${code} - missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
+      issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
     }
     if (check.missingSp.length > 0) {
-      warnings.push(`${code} - recommended: ${check.missingSp.join(', ')}`);
+      warnings.push(`${code} \u2014 recommended: ${check.missingSp.join(', ')}`);
     }
   }
 
   for (const code of input.planCourses) {
     if (completed.has(code)) {
-      warnings.push(`${code} - you've already passed this course`);
+      warnings.push(`${code} \u2014 you\u2019ve already passed this course`);
     } else if (inProgress.has(code)) {
-      warnings.push(`${code} - already in your running semester`);
+      warnings.push(`${code} \u2014 already in your running semester`);
     } else if (scheduled.has(code)) {
-      warnings.push(`${code} - already scheduled in another semester`);
+      warnings.push(`${code} \u2014 already scheduled in another semester`);
     }
   }
 
