@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-IRVJlMnd3oUYDjOAbEtWV6SGW3nqRn2pqSlKBKdoWnA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-oRP1NnXdkMBT24yLsptzKeRBPf5O1MsglmWq0Wb00Po='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9812,13 +9812,232 @@ function getCourseDept(code) {
   return PREFIX_DEPT_MAP[getCoursePrefix(upper)] ?? null;
 }
 
+// ── js/core/gpa-core.js ─────────────────────────────────────────
+// Generated from src/core/gpa.ts for the vanilla JS runtime.
+// Update src/core/gpa.ts first, then regenerate this file.
+const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
+function isGradeLetter(grade) {
+    return Object.prototype.hasOwnProperty.call(GRADES, grade);
+}
+function gradePointFor(grade) {
+    return isGradeLetter(grade) ? GRADES[grade] : undefined;
+}
+function calcSemesterGpa(semester) {
+    let points = 0;
+    let credits = 0;
+    for (const course of semester.courses) {
+        const gp = gradePointFor(course.grade);
+        if (gp === undefined || !course.credits)
+            continue;
+        if (course.grade === 'P' || course.grade === 'I')
+            continue;
+        if (course.grade === 'F(NT)') {
+            credits += course.credits;
+            continue;
+        }
+        if (gp === null)
+            continue;
+        points += gp * course.credits;
+        credits += course.credits;
+    }
+    return credits > 0 ? points / credits : null;
+}
+function usesBestGradePolicy(options = {}) {
+    const season = options.startSeason || 'Fall';
+    const year = typeof options.startYear === 'number'
+        ? options.startYear
+        : Number.parseInt(options.startYear || '2024', 10);
+    if (!season || Number.isNaN(year))
+        return false;
+    const seasonIndex = GPA_SEASON_ORDER.indexOf(season);
+    if (year < 2024)
+        return true;
+    if (year === 2024 && seasonIndex === 0)
+        return true;
+    if (year === 2024 && seasonIndex === 1)
+        return true;
+    if (year === 2024 && seasonIndex === 2)
+        return false;
+    return false;
+}
+function getCourseCode(courseName) {
+    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
+    return match ? match[1] : null;
+}
+function getCourseIdentity(courseName) {
+    const code = getCourseCode(courseName);
+    if (code)
+        return code;
+    return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
+}
+function getRetakenKeys(semesters, options = {}) {
+    const bestGrade = typeof options.bestGrade === 'boolean'
+        ? options.bestGrade
+        : usesBestGradePolicy(options);
+    const attempts = [];
+    for (const semester of semesters) {
+        if (semester.running || semester.summary)
+            continue;
+        semester.courses.forEach((course, index) => {
+            if (!course.name.trim())
+                return;
+            const gp = course.grade && course.grade !== 'F(NT)'
+                ? gradePointFor(course.grade) ?? -1
+                : -1;
+            attempts.push({
+                semId: semester.id,
+                index,
+                key: `${semester.id}-${index}`,
+                groupKey: getCourseIdentity(course.name),
+                gradePoint: gp,
+            });
+        });
+    }
+    const groups = new Map();
+    for (const attempt of attempts) {
+        const group = groups.get(attempt.groupKey) ?? [];
+        group.push(attempt);
+        groups.set(attempt.groupKey, group);
+    }
+    const retakenKeys = new Set();
+    for (const group of groups.values()) {
+        if (group.length < 2)
+            continue;
+        if (bestGrade) {
+            const best = group.reduce((a, b) => (a.gradePoint >= b.gradePoint ? a : b));
+            for (const attempt of group) {
+                if (attempt.key !== best.key)
+                    retakenKeys.add(attempt.key);
+            }
+            continue;
+        }
+        for (const attempt of group.slice(0, -1)) {
+            retakenKeys.add(attempt.key);
+        }
+    }
+    return retakenKeys;
+}
+function calculateCgpaTotals(semesters, options = {}) {
+    const includeRunning = options.includeRunning ?? true;
+    const includeSummary = options.includeSummary ?? true;
+    const retakenKeys = getRetakenKeys(semesters, options);
+    let points = 0;
+    let attemptedCredits = 0;
+    let earnedCredits = 0;
+    let cgpaCredits = 0;
+    if (includeSummary) {
+        const summaryBlock = semesters.find(semester => semester.summary);
+        if (summaryBlock?.summaryCGPA !== undefined && summaryBlock.summaryCredits !== undefined) {
+            points += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+            cgpaCredits += summaryBlock.summaryCredits;
+            attemptedCredits += summaryBlock.summaryAttempted ?? summaryBlock.summaryCredits;
+            earnedCredits += summaryBlock.summaryCredits;
+        }
+    }
+    for (const semester of semesters) {
+        if (semester.summary)
+            continue;
+        if (semester.running && !includeRunning)
+            continue;
+        semester.courses.forEach((course, index) => {
+            const gp = gradePointFor(course.grade);
+            if (gp === undefined || !course.credits)
+                return;
+            if (course.grade === 'P' || course.grade === 'I')
+                return;
+            const isRetaken = retakenKeys.has(`${semester.id}-${index}`);
+            if (!semester.running)
+                attemptedCredits += course.credits;
+            if (!isRetaken && gp !== null) {
+                points += gp * course.credits;
+                cgpaCredits += course.credits;
+            }
+            if (typeof gp === 'number' && gp > 0 && !semester.running && !isRetaken) {
+                earnedCredits += course.credits;
+            }
+        });
+    }
+    return {
+        points,
+        attemptedCredits,
+        earnedCredits,
+        cgpaCredits,
+        cgpa: cgpaCredits > 0 ? points / cgpaCredits : null,
+    };
+}
+function getSemesterCreditWarning(semester) {
+    const total = semester.courses.reduce((sum, course) => {
+        if (!course.name.trim() || !course.credits)
+            return sum;
+        if (course.grade === 'P' || course.grade === 'F(NT)')
+            return sum;
+        return sum + course.credits;
+    }, 0);
+    if (total === 0)
+        return null;
+    if (total < 9)
+        return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
+    if (total > 15)
+        return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
+    if (total > 12)
+        return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
+    return null;
+}
+function isRepeatEligible(grade) {
+    if (grade === 'F' || grade === 'F(NT)')
+        return false;
+    if (grade === 'P' || grade === 'I' || !grade)
+        return false;
+    const gp = gradePointFor(grade);
+    if (gp === undefined || gp === null)
+        return false;
+    return gp < 3.0;
+}
+function getImprovementStrategy(grade) {
+    if (grade === 'F' || grade === 'F(NT)')
+        return 'retake';
+    if (isRepeatEligible(grade))
+        return 'repeat';
+    return null;
+}
+function normalizeGradePoint(raw, mode) {
+    const trimmed = raw.trim();
+    if (/[a-zA-Z]/.test(trimmed))
+        return trimmed;
+    if (trimmed.includes('.'))
+        return trimmed;
+    if (/^[0-4]\d$/.test(trimmed))
+        return `${trimmed[0]}.${trimmed[1]}`;
+    if (mode === 'blur' && /^[0-4]$/.test(trimmed))
+        return `${trimmed}.0`;
+    return trimmed;
+}
+function clampGradePoint(value) {
+    const n = Number.parseFloat(value);
+    if (Number.isNaN(n))
+        return value;
+    if (n > 4.0)
+        return '4.0';
+    if (n < 0)
+        return '0.0';
+    return value;
+}
+const gpaCoreCalcSemesterGpa = calcSemesterGpa;
+const gpaCoreUsesBestGradePolicy = usesBestGradePolicy;
+const gpaCoreGetRetakenKeys = getRetakenKeys;
+const gpaCoreGetSemesterCreditWarning = getSemesterCreditWarning;
+const gpaCoreIsRepeatEligible = isRepeatEligible;
+const gpaCoreGetImprovementStrategy = getImprovementStrategy;
+const gpaCoreNormalizeGradePoint = normalizeGradePoint;
+const gpaCoreClampGradePoint = clampGradePoint;
+
 // ── js/core/calculator.js ───────────────────────────────────────
 function calcSemGPA(sem) {
-  return calcSemesterGpa(sem);
+  return gpaCoreCalcSemesterGpa(sem);
 }
 
 function usesBestGradePolicy() {
-  return typedUsesBestGradePolicy({
+  return gpaCoreUsesBestGradePolicy({
     startSeason: getStartSeason(),
     startYear: getStartYear(),
   });
@@ -9830,11 +10049,23 @@ function getRetakenKeys(semList, opts) {
     options.startSeason = getStartSeason();
     options.startYear = getStartYear();
   }
-  return getTypedRetakenKeys(semList || state.semesters, options);
+  return gpaCoreGetRetakenKeys(semList || state.semesters, options);
 }
 
 function getSemCreditWarning(sem) {
-  return getSemesterCreditWarning(sem);
+  return gpaCoreGetSemesterCreditWarning(sem);
+}
+
+function isRepeatEligible(grade) {
+  return gpaCoreIsRepeatEligible(grade);
+}
+
+function getImprovementStrategy(grade) {
+  return gpaCoreGetImprovementStrategy(grade);
+}
+
+function normalizeGradePoint(raw, mode) {
+  return gpaCoreNormalizeGradePoint(raw, mode);
 }
 
 function autoDetectGrade(semId, cIdx, val, inputEl) {
@@ -9856,7 +10087,7 @@ function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 
   // Clamp to 0.0–4.0 range
-  const clamped = clampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val);
   if (clamped !== val) {
     inputEl.value = clamped;
     val = clamped;
@@ -9893,7 +10124,7 @@ function onGradePointBlur(semId, cIdx, inputEl) {
   let val = original;
   const normalized = normalizeGradePoint(val, 'blur');
   if (normalized !== val) val = normalized;
-  const clamped = clampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val);
   if (clamped !== val) val = clamped;
   if (val !== original) {
     inputEl.value = val;
@@ -10489,467 +10720,475 @@ async function deletePaperReport(reportId) {
   return window._shohoj_deletePaperReport(reportId);
 }
 
-// ── js/import/parser.js ─────────────────────────────────────────
+// ── js/import/transcript-core.js ────────────────────────────────
+// Generated from src/core/transcript.ts for the vanilla JS runtime.
+// Update src/core/transcript.ts first, then regenerate this file.
 const DEPARTMENT_LABELS = {
-  CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
-  EEE: 'BSc EEE — Electrical & Electronic Engineering',
-  BBA: 'Bachelor of Business Administration (BBA)',
-  ECO: 'B.S.S. in Economics (ECO)',
-  ENG: 'B.A. in English (ENG)',
-  ARC: 'B.Arch. in Architecture (ARC)',
-  PHR: 'B.Sc. in Pharmacy (PHR)',
-  LAW: 'Bachelor of Laws (LLB)',
-  CS: 'B.Sc. in Computer Science (CS)',
-  ECE: 'B.Sc. in Electronic & Communication Engineering (ECE)',
-  ANT: 'B.S.S. in Anthropology (ANT)',
-  PHY: 'B.Sc. in Physics (PHY)',
-  APE: 'B.Sc. in Applied Physics & Electronics (APE)',
-  MAT: 'B.Sc. in Mathematics (MAT)',
-  MIC: 'B.Sc. in Microbiology (MIC)',
-  BIO: 'B.Sc. in Biotechnology (BIO)',
+    CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
+    EEE: 'BSc EEE \u2014 Electrical & Electronic Engineering',
+    BBA: 'Bachelor of Business Administration (BBA)',
+    ECO: 'B.S.S. in Economics (ECO)',
+    ENG: 'B.A. in English (ENG)',
+    ARC: 'B.Arch. in Architecture (ARC)',
+    PHR: 'B.Sc. in Pharmacy (PHR)',
+    LAW: 'Bachelor of Laws (LLB)',
+    CS: 'B.Sc. in Computer Science (CS)',
+    ECE: 'B.Sc. in Electronic & Communication Engineering (ECE)',
+    ANT: 'B.S.S. in Anthropology (ANT)',
+    PHY: 'B.Sc. in Physics (PHY)',
+    APE: 'B.Sc. in Applied Physics & Electronics (APE)',
+    MAT: 'B.Sc. in Mathematics (MAT)',
+    MIC: 'B.Sc. in Microbiology (MIC)',
+    BIO: 'B.Sc. in Biotechnology (BIO)',
 };
-
 const PROGRAM_DETECTORS = [
-  [DEPARTMENT_LABELS.CSE, /COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
-  [DEPARTMENT_LABELS.CS, /COMPUTER\s+SCIENCE(?!\s+AND\s+ENGINEERING)|\bCS\b/i],
-  [DEPARTMENT_LABELS.EEE, /ELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING|\bBSC\s*EEE\b|\bEEE\b/i],
-  [DEPARTMENT_LABELS.ECE, /ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING|\bECE\b/i],
-  [DEPARTMENT_LABELS.BBA, /BUSINESS\s+ADMINISTRATION|\bBBA\b/i],
-  [DEPARTMENT_LABELS.ECO, /ECONOMICS|\bECO\b/i],
-  [DEPARTMENT_LABELS.ENG, /ENGLISH|\bENG\b/i],
-  [DEPARTMENT_LABELS.ARC, /ARCHITECTURE|\bARCH\b|\bARC\b/i],
-  [DEPARTMENT_LABELS.PHR, /PHARMACY|\bPHR\b/i],
-  [DEPARTMENT_LABELS.LAW, /BACHELOR\s+OF\s+LAWS|\bLL\.?B\b|\bLAW\b/i],
-  [DEPARTMENT_LABELS.ANT, /ANTHROPOLOGY|\bANT\b/i],
-  [DEPARTMENT_LABELS.APE, /APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS|\bAPE\b/i],
-  [DEPARTMENT_LABELS.PHY, /PHYSICS(?!\s*(?:&|AND)\s*ELECTRONICS)|\bPHY\b/i],
-  [DEPARTMENT_LABELS.MAT, /MATHEMATICS|\bMAT\b/i],
-  [DEPARTMENT_LABELS.MIC, /MICROBIOLOGY|\bMIC\b/i],
-  [DEPARTMENT_LABELS.BIO, /BIOTECHNOLOGY|\bBIO\b/i],
+    [DEPARTMENT_LABELS.CSE, /COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
+    [DEPARTMENT_LABELS.CS, /COMPUTER\s+SCIENCE(?!\s+AND\s+ENGINEERING)|\bCS\b/i],
+    [DEPARTMENT_LABELS.EEE, /ELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING|\bBSC\s*EEE\b|\bEEE\b/i],
+    [DEPARTMENT_LABELS.ECE, /ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING|\bECE\b/i],
+    [DEPARTMENT_LABELS.BBA, /BUSINESS\s+ADMINISTRATION|\bBBA\b/i],
+    [DEPARTMENT_LABELS.ECO, /ECONOMICS|\bECO\b/i],
+    [DEPARTMENT_LABELS.ENG, /ENGLISH|\bENG\b/i],
+    [DEPARTMENT_LABELS.ARC, /ARCHITECTURE|\bARCH\b|\bARC\b/i],
+    [DEPARTMENT_LABELS.PHR, /PHARMACY|\bPHR\b/i],
+    [DEPARTMENT_LABELS.LAW, /BACHELOR\s+OF\s+LAWS|\bLL\.?B\b|\bLAW\b/i],
+    [DEPARTMENT_LABELS.ANT, /ANTHROPOLOGY|\bANT\b/i],
+    [DEPARTMENT_LABELS.APE, /APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS|\bAPE\b/i],
+    [DEPARTMENT_LABELS.PHY, /PHYSICS(?!\s*(?:&|AND)\s*ELECTRONICS)|\bPHY\b/i],
+    [DEPARTMENT_LABELS.MAT, /MATHEMATICS|\bMAT\b/i],
+    [DEPARTMENT_LABELS.MIC, /MICROBIOLOGY|\bMIC\b/i],
+    [DEPARTMENT_LABELS.BIO, /BIOTECHNOLOGY|\bBIO\b/i],
 ];
-
 const TEXT_DETECTORS = [
-  [DEPARTMENT_LABELS.CSE, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING\b|COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
-  [DEPARTMENT_LABELS.EEE, /\bBSC\s*EEE\b|\bELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING\b/i],
-  [DEPARTMENT_LABELS.BBA, /\bBACHELOR\s+OF\s+BUSINESS\s+ADMINISTRATION\b|\bBBA\b/i],
-  [DEPARTMENT_LABELS.ECO, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ECONOMICS\b|\bSOCIAL\s+SCIENCE.*ECONOMICS\b/i],
-  [DEPARTMENT_LABELS.ENG, /\bB\.?\s*A\.?\s+IN\s+ENGLISH\b|\bBACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH\b/i],
-  [DEPARTMENT_LABELS.ARC, /\bB\.?\s*ARCH\.?\b|\bBACHELOR\s+OF\s+ARCHITECTURE\b/i],
-  [DEPARTMENT_LABELS.PHR, /\bB\.?\s*SC\.?\s+IN\s+PHARMACY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHARMACY\b/i],
-  [DEPARTMENT_LABELS.LAW, /\bBACHELOR\s+OF\s+LAWS\b|\bLL\.?B\b/i],
-  [DEPARTMENT_LABELS.CS, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)/i],
-  [DEPARTMENT_LABELS.ECE, /\bB\.?\s*SC\.?\s+IN\s+ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b|\bELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b/i],
-  [DEPARTMENT_LABELS.ANT, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ANTHROPOLOGY\b|\bBACHELOR\s+OF\s+SOCIAL\s+SCIENCE\s+IN\s+ANTHROPOLOGY\b/i],
-  [DEPARTMENT_LABELS.APE, /\bB\.?\s*SC\.?\s+IN\s+APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b|\bAPPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b/i],
-  [DEPARTMENT_LABELS.PHY, /\bB\.?\s*SC\.?\s+IN\s+PHYSICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHYSICS\b/i],
-  [DEPARTMENT_LABELS.MAT, /\bB\.?\s*SC\.?\s+IN\s+MATHEMATICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MATHEMATICS\b/i],
-  [DEPARTMENT_LABELS.MIC, /\bB\.?\s*SC\.?\s+IN\s+MICROBIOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MICROBIOLOGY\b/i],
-  [DEPARTMENT_LABELS.BIO, /\bB\.?\s*SC\.?\s+IN\s+BIOTECHNOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+BIOTECHNOLOGY\b/i],
+    [DEPARTMENT_LABELS.CSE, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING\b|COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
+    [DEPARTMENT_LABELS.EEE, /\bBSC\s*EEE\b|\bELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING\b/i],
+    [DEPARTMENT_LABELS.BBA, /\bBACHELOR\s+OF\s+BUSINESS\s+ADMINISTRATION\b|\bBBA\b/i],
+    [DEPARTMENT_LABELS.ECO, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ECONOMICS\b|\bSOCIAL\s+SCIENCE.*ECONOMICS\b/i],
+    [DEPARTMENT_LABELS.ENG, /\bB\.?\s*A\.?\s+IN\s+ENGLISH\b|\bBACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH\b/i],
+    [DEPARTMENT_LABELS.ARC, /\bB\.?\s*ARCH\.?\b|\bBACHELOR\s+OF\s+ARCHITECTURE\b/i],
+    [DEPARTMENT_LABELS.PHR, /\bB\.?\s*SC\.?\s+IN\s+PHARMACY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHARMACY\b/i],
+    [DEPARTMENT_LABELS.LAW, /\bBACHELOR\s+OF\s+LAWS\b|\bLL\.?B\b/i],
+    [DEPARTMENT_LABELS.CS, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)/i],
+    [DEPARTMENT_LABELS.ECE, /\bB\.?\s*SC\.?\s+IN\s+ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b|\bELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b/i],
+    [DEPARTMENT_LABELS.ANT, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ANTHROPOLOGY\b|\bBACHELOR\s+OF\s+SOCIAL\s+SCIENCE\s+IN\s+ANTHROPOLOGY\b/i],
+    [DEPARTMENT_LABELS.APE, /\bB\.?\s*SC\.?\s+IN\s+APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b|\bAPPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b/i],
+    [DEPARTMENT_LABELS.PHY, /\bB\.?\s*SC\.?\s+IN\s+PHYSICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHYSICS\b/i],
+    [DEPARTMENT_LABELS.MAT, /\bB\.?\s*SC\.?\s+IN\s+MATHEMATICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MATHEMATICS\b/i],
+    [DEPARTMENT_LABELS.MIC, /\bB\.?\s*SC\.?\s+IN\s+MICROBIOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MICROBIOLOGY\b/i],
+    [DEPARTMENT_LABELS.BIO, /\bB\.?\s*SC\.?\s+IN\s+BIOTECHNOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+BIOTECHNOLOGY\b/i],
 ];
-
+const SEASON_NAMES = {
+    SPRING: 'Spring',
+    SUMMER: 'Summer',
+    FALL: 'Fall',
+};
 function detectDepartment(text) {
-  const compact = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!compact) return null;
-
-  const programMatch = compact.match(
-    /PROGRAM:\s*(.+?)(?=SEMESTER:|COURSE\s+NO|COURSE\s+TITLE|CREDITS\s+EARNED|GRADE\s+POINTS|GRADE\s+SHEET|STUDENT\s+ID|NAME\b|$)/i
-  );
-  const programText = programMatch ? programMatch[1].trim() : '';
-
-  if (programText) {
-    for (const [label, pattern] of PROGRAM_DETECTORS) {
-      if (pattern.test(programText)) return label;
-    }
-  }
-
-  for (const [label, pattern] of TEXT_DETECTORS) {
-    if (pattern.test(compact)) return label;
-  }
-
-  return null;
-}
-
-function normalizeTranscriptLine(line) {
-  let normalized = String(line || '').replace(/\u00a0/g, ' ').trim();
-  if (!normalized) return '';
-
-  normalized = normalized.replace(/\s+/g, ' ');
-  normalized = normalized.replace(/^(SEMESTER|PROGRAM)\s*:\s*/i, '$1: ');
-  normalized = normalized.replace(/\b(SPRING|SUMMER|FALL)(\d{4})\b/gi, '$1 $2');
-  normalized = normalized.replace(/^([A-Z]{2,4}\d{3}[A-Z]?)(?=[A-Z])/, '$1 ');
-  normalized = normalized.replace(/([A-Za-z\)])(?=\d+\.\d+)/g, '$1 ');
-  normalized = normalized.replace(/(\d+\.\d+)(?=F\s*\(\s*NT\s*\)|[A-Z][+-]?)/g, '$1 ');
-  normalized = normalized.replace(/(F\s*\(\s*NT\s*\)|[A-Z][+-]?)(?=\d+\.\d+)/g, '$1 ');
-  normalized = normalized.replace(/F\s*\(\s*NT\s*\)/gi, 'F(NT)');
-  normalized = normalized.replace(/\s+/g, ' ').trim();
-  return normalized;
-}
-
-function normalizeTranscriptText(text) {
-  return String(text || '')
-    .split(/\r?\n/)
-    .map(normalizeTranscriptLine)
-    .join('\n');
-}
-
-// ── parseBlobFallback ─────────────────────────────────────────────────────────
-function parseBlobFallback(text) {
-  const normalizedText = normalizeTranscriptText(text);
-  const blob = normalizedText.replace(/\s+/g, ' ');
-  const SEASON = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe  = /SEMESTER[:\s]+([A-Z]+)\s*(\d{4})/gi;
-  const semMatches = [];
-  let sm;
-  while ((sm = semRe.exec(blob)) !== null) {
-    const season = sm[1].toUpperCase();
-    const year   = sm[2];
-    semMatches.push({ name: `${SEASON[season] || sm[1]} ${year}`, season, year, idx: sm.index });
-  }
-  if (!semMatches.length) return { semesters: [], detectedDept: null };
-
-  const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
-  const semesters = semMatches.map((s, idx) => {
-    const sliceEnd = idx + 1 < semMatches.length ? semMatches[idx+1].idx : blob.length;
-    const slice    = blob.slice(s.idx, sliceEnd);
-    const courses  = [];
-    let   cm;
-    while ((cm = courseRe.exec(slice)) !== null) {
-      const code  = cm[1];
-      const title = (cm[2] || '').trim().replace(/\s{2,}/g, ' ');
-      const creds = parseFloat(cm[3]);
-      const grade = cm[4].replace(/\(RT\)/,'').trim();
-      const gp    = parseFloat(cm[5]);
-      if (!isNaN(creds) && creds > 0) {
-        courses.push({ name: `${code} ${title}`.trim(), credits: creds, grade, gradePoint: gp });
-      }
-    }
-    courseRe.lastIndex = 0;
-    return { id: Date.now() + idx, name: s.name, courses, running: false };
-  }).filter(s => s.courses.length > 0);
-
-  return { semesters, detectedDept: detectDepartment(normalizedText) };
-}
-
-// ── parseTranscriptText ───────────────────────────────────────────────────────
-// BRACU PDFs (via pdf.js) render in column order:
-//   • All semester blocks (codes + titles) appear first, each followed by
-//     semester/cumulative credit totals (which we skip)
-//   • Then ALL individual course credits in one contiguous block
-//   • Then ALL grades in one contiguous block
-//   • Then ALL grade points in one contiguous block
-function parseTranscriptText(text) {
-  const normalizedText = normalizeTranscriptText(text);
-  const lines = normalizedText.split('\n').map(l => l.trim()).filter(Boolean);
-
-  // ── Dept detection ────────────────────────────────────────────────────────
-  const detectedDept = detectDepartment(normalizedText);
-
-  const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe    = /^SEMESTER:\s*([A-Z]+)\s*(\d{4})\b/i;
-  const codeRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
-  // Detects a course code at the start of a line merged with credits data.
-  // This happens when pdf.js joins a code with credits/grade/GP that share
-  // the same y-coordinate (multi-line course title rows in BRACU PDFs).
-  // Supports merged forms where pdf.js outputs:
-  //   - "MAT120  3.00  B  3.00"
-  //   - "MAT1103.00B3.00"  (note the credit may start with ".00" immediately)
-  const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)(?:\s*(?:\d|\.\d))/;
-  const numberRe = /^\d+\.\d+$/;
-  const gradeRe  = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
-  // Lines to skip entirely in pass 1
-  const skipRe   = /^(SEMESTER\b(?!:)|CUMULATIVE\s+Credits|Credits\s+(Attempted|Earned)|GPA$|CGPA$|BRAC\s+University|Kha\s+224|Merul|GRADE\s+SHEET|UNOFFICIAL|Student\s+ID|^Name$|Course\s+No|Course\s+Title|UNDERGRADUATE|PROGRAM:|Page\s+\d|Credits\s+Earned\s+Grade|Grade\s+Points)/i;
-
-  // ── Pass 1: collect semester codes + titles (ignore all numbers) ──────────
-  const sems = [];
-  let curSem = null;
-
-  // Track last title extension for multi-line title un-appending.
-  // When a title overflow line is wrongly appended to the previous course's
-  // title, and we later discover the real code (merged with data), we need
-  // to undo the append and reassign the text as the new code's title.
-  let lastExtText = null;   // the text that was appended
-  let lastExtIdx  = -1;     // which title index it was appended to
-  let lastExtOrigLen = 0;   // title length before the extension was added
-
-  for (const line of lines) {
-    if (skipRe.test(line))   continue;   // skip junk header/footer lines
-    if (numberRe.test(line)) continue;   // skip all standalone numbers
-    if (gradeRe.test(line))  continue;   // skip stray grade tokens
-
-    const sm = line.match(semRe);
-    if (sm) {
-      const season = sm[1].toUpperCase();
-      curSem = {
-        name: `${SEASON_NAMES[season] || sm[1]} ${sm[2]}`,
-        codes: [], titles: [],
-      };
-      sems.push(curSem);
-      lastExtText = null; lastExtIdx = -1;
-      continue;
-    }
-    if (!curSem) continue;
-
-    const cm = line.match(codeRe);
-    if (cm) {
-      curSem.codes.push(cm[1]);
-      lastExtText = null; lastExtIdx = -1; // reset — normal standalone code
-      continue;
-    }
-
-    // Check for course code merged with credits data on the same line.
-    // In BRACU PDFs, multi-line course titles cause the code to share a
-    // y-coordinate with the credits/grade/GP columns, so pdf.js joins
-    // them into one line like "MAT1103.00B3.00" or "MAT120  3.00  B  3.00".
-    const cmStart = line.match(codeStartRe);
-    if (cmStart) {
-      curSem.codes.push(cmStart[1]);
-      // The last title extension was actually the START of this code's title.
-      // Un-append it from the previous title and assign it to the new code.
-      if (lastExtText !== null && lastExtIdx >= 0 && lastExtIdx < curSem.titles.length) {
-        curSem.titles[lastExtIdx] = curSem.titles[lastExtIdx].substring(0, lastExtOrigLen);
-        curSem.titles.push(lastExtText);
-      }
-      lastExtText = null; lastExtIdx = -1;
-      continue;
-    }
-
-    // Title line — pair with latest unmatched code, or extend previous title
-    if (!line[0].match(/\d/)) {
-      if (curSem.titles.length < curSem.codes.length) {
-        curSem.titles.push(line);
-        lastExtText = null; lastExtIdx = -1; // fresh title, not an extension
-      } else if (curSem.titles.length > 0) {
-        // Extension — track it so we can un-append if it turns out to be
-        // the start of a new title for a code that hasn't been seen yet.
-        lastExtOrigLen = curSem.titles[curSem.titles.length - 1].length;
-        lastExtText = line;
-        lastExtIdx = curSem.titles.length - 1;
-        curSem.titles[curSem.titles.length - 1] += ' ' + line;
-      }
-    }
-  }
-
-  const semCounts = sems.map(s => s.codes.length);
-  const totalCourses = semCounts.reduce((a, b) => a + b, 0);
-  if (totalCourses === 0) return _legacyParseTranscript(lines, detectedDept);
-
-  // ── Find where the individual-course credits block begins ─────────────────
-  // It starts immediately after the LAST "Credits Earned" line that precedes
-  // the contiguous block of per-course decimals.
-  let creditsBlockStart = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (/^Credits\s+Earned\b/i.test(lines[i])) {
-      // Confirm one of the next few lines starts the decimals block.
-      for (let j = i + 1; j <= i + 4 && j < lines.length; j++) {
-        if (numberRe.test(lines[j])) {
-          creditsBlockStart = j;
-          break;
+    const compact = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!compact)
+        return null;
+    const programMatch = compact.match(/PROGRAM:\s*(.+?)(?=SEMESTER:|COURSE\s+NO|COURSE\s+TITLE|CREDITS\s+EARNED|GRADE\s+POINTS|GRADE\s+SHEET|STUDENT\s+ID|NAME\b|$)/i);
+    const programText = programMatch ? programMatch[1].trim() : '';
+    if (programText) {
+        for (const [label, pattern] of PROGRAM_DETECTORS) {
+            if (pattern.test(programText))
+                return label;
         }
-      }
-      if (creditsBlockStart >= 0) break;
     }
-  }
-  if (creditsBlockStart < 0) return _legacyParseTranscript(lines, detectedDept);
-
-  // ── Collect raw numbers/grades/gp from creditsBlockStart onwards ──────────
-  const creditsRaw = [];
-  const gradesRaw  = [];
-  const gpRaw      = [];
-  let phase = 'credits'; // credits -> grades -> gp
-
-  for (let i = creditsBlockStart; i < lines.length; i++) {
-    const line = lines[i];
-    if (line === 'GPA' || line === 'CGPA') continue;
-
-    if (phase === 'credits') {
-      if (numberRe.test(line)) { creditsRaw.push(parseFloat(line)); continue; }
-      if (gradeRe.test(line))  { phase = 'grades'; /* fall through */ }
+    for (const [label, pattern] of TEXT_DETECTORS) {
+        if (pattern.test(compact))
+            return label;
     }
-    if (phase === 'grades') {
-      if (numberRe.test(line)) { phase = 'gp'; gpRaw.push(parseFloat(line)); continue; }
-      if (gradeRe.test(line)) {
-        let g = line.trim().replace(/\s+/g, '');
-        if (/F.*NT/i.test(line))  g = 'F(NT)';
-        else if (/\(RT\)/i.test(line)) g = g.replace('(RT)', '').trim();
-        gradesRaw.push(g);
-        continue;
-      }
+    return null;
+}
+function normalizeTranscriptLine(line) {
+    let normalized = String(line || '').replace(/\u00a0/g, ' ').trim();
+    if (!normalized)
+        return '';
+    normalized = normalized.replace(/\s+/g, ' ');
+    normalized = normalized.replace(/^(SEMESTER|PROGRAM)\s*:\s*/i, '$1: ');
+    normalized = normalized.replace(/\b(SPRING|SUMMER|FALL)(\d{4})\b/gi, '$1 $2');
+    normalized = normalized.replace(/^([A-Z]{2,4}\d{3}[A-Z]?)(?=[A-Z])/, '$1 ');
+    normalized = normalized.replace(/([A-Za-z\)])(?=\d+\.\d+)/g, '$1 ');
+    normalized = normalized.replace(/(\d+\.\d+)(?=F\s*\(\s*NT\s*\)|[A-Z][+-]?)/g, '$1 ');
+    normalized = normalized.replace(/(F\s*\(\s*NT\s*\)|[A-Z][+-]?)(?=\d+\.\d+)/g, '$1 ');
+    normalized = normalized.replace(/F\s*\(\s*NT\s*\)/gi, 'F(NT)');
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    return normalized;
+}
+function normalizeTranscriptText(text) {
+    return String(text || '')
+        .split(/\r?\n/)
+        .map(normalizeTranscriptLine)
+        .join('\n');
+}
+function parseSemesterName(name) {
+    const match = name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
+    if (!match)
+        return null;
+    return { season: match[1], year: Number.parseInt(match[2], 10) };
+}
+function normalizeGradeToken(raw) {
+    let grade = raw.trim().replace(/\s+/g, '');
+    if (/F.*NT/i.test(raw))
+        return 'F(NT)';
+    grade = grade.replace('(RT)', '').replace('(NT)', '').trim();
+    return grade;
+}
+function parseBlobFallback(text) {
+    const normalizedText = normalizeTranscriptText(text);
+    const blob = normalizedText.replace(/\s+/g, ' ');
+    const semRe = /SEMESTER[:\s]+([A-Z]+)\s*(\d{4})/gi;
+    const semMatches = [];
+    let semMatch;
+    while ((semMatch = semRe.exec(blob)) !== null) {
+        const season = semMatch[1].toUpperCase();
+        const year = semMatch[2];
+        semMatches.push({ name: `${SEASON_NAMES[season] || semMatch[1]} ${year}`, idx: semMatch.index });
     }
-    if (phase === 'gp') {
-      if (numberRe.test(line)) { gpRaw.push(parseFloat(line)); continue; }
+    if (!semMatches.length)
+        return { semesters: [], detectedDept: null };
+    const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
+    const semesters = semMatches.map((semester, index) => {
+        const sliceEnd = index + 1 < semMatches.length ? semMatches[index + 1].idx : blob.length;
+        const slice = blob.slice(semester.idx, sliceEnd);
+        const courses = [];
+        let courseMatch;
+        while ((courseMatch = courseRe.exec(slice)) !== null) {
+            const code = courseMatch[1];
+            const title = (courseMatch[2] || '').trim().replace(/\s{2,}/g, ' ');
+            const credits = Number.parseFloat(courseMatch[3]);
+            const grade = courseMatch[4].replace(/\(RT\)/, '').trim();
+            const gradePoint = Number.parseFloat(courseMatch[5]);
+            if (!Number.isNaN(credits) && credits > 0) {
+                courses.push({
+                    name: `${code} ${title}`.trim(),
+                    credits,
+                    grade,
+                    gradePoint,
+                });
+            }
+        }
+        courseRe.lastIndex = 0;
+        return { id: Date.now() + index, name: semester.name, courses, running: false };
+    }).filter(semester => semester.courses.length > 0);
+    return { semesters, detectedDept: detectDepartment(normalizedText) };
+}
+function parseTranscriptText(text) {
+    const normalizedText = normalizeTranscriptText(text);
+    const lines = normalizedText.split('\n').map(line => line.trim()).filter(Boolean);
+    const detectedDept = detectDepartment(normalizedText);
+    const semRe = /^SEMESTER:\s*([A-Z]+)\s*(\d{4})\b/i;
+    const codeRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
+    const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)(?:\s*(?:\d|\.\d))/;
+    const numberRe = /^\d+\.\d+$/;
+    const gradeRe = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
+    const skipRe = /^(SEMESTER\b(?!:)|CUMULATIVE\s+Credits|Credits\s+(Attempted|Earned)|GPA$|CGPA$|BRAC\s+University|Kha\s+224|Merul|GRADE\s+SHEET|UNOFFICIAL|Student\s+ID|^Name$|Course\s+No|Course\s+Title|UNDERGRADUATE|PROGRAM:|Page\s+\d|Credits\s+Earned\s+Grade|Grade\s+Points)/i;
+    const workingSemesters = [];
+    let currentSemester = null;
+    let lastExtText = null;
+    let lastExtIndex = -1;
+    let lastExtOrigLen = 0;
+    for (const line of lines) {
+        if (skipRe.test(line))
+            continue;
+        if (numberRe.test(line))
+            continue;
+        if (gradeRe.test(line))
+            continue;
+        const semesterMatch = line.match(semRe);
+        if (semesterMatch) {
+            const season = semesterMatch[1].toUpperCase();
+            currentSemester = {
+                name: `${SEASON_NAMES[season] || semesterMatch[1]} ${semesterMatch[2]}`,
+                codes: [],
+                titles: [],
+            };
+            workingSemesters.push(currentSemester);
+            lastExtText = null;
+            lastExtIndex = -1;
+            continue;
+        }
+        if (!currentSemester)
+            continue;
+        const codeMatch = line.match(codeRe);
+        if (codeMatch) {
+            currentSemester.codes.push(codeMatch[1]);
+            lastExtText = null;
+            lastExtIndex = -1;
+            continue;
+        }
+        const compactCodeMatch = line.match(codeStartRe);
+        if (compactCodeMatch) {
+            currentSemester.codes.push(compactCodeMatch[1]);
+            if (lastExtText !== null && lastExtIndex >= 0 && lastExtIndex < currentSemester.titles.length) {
+                currentSemester.titles[lastExtIndex] = currentSemester.titles[lastExtIndex].substring(0, lastExtOrigLen);
+                currentSemester.titles.push(lastExtText);
+            }
+            lastExtText = null;
+            lastExtIndex = -1;
+            continue;
+        }
+        if (!line[0].match(/\d/)) {
+            if (currentSemester.titles.length < currentSemester.codes.length) {
+                currentSemester.titles.push(line);
+                lastExtText = null;
+                lastExtIndex = -1;
+            }
+            else if (currentSemester.titles.length > 0) {
+                lastExtOrigLen = currentSemester.titles[currentSemester.titles.length - 1].length;
+                lastExtText = line;
+                lastExtIndex = currentSemester.titles.length - 1;
+                currentSemester.titles[currentSemester.titles.length - 1] += ` ${line}`;
+            }
+        }
     }
-  }
-
-  // ── Extract per-course values by skipping 2 semester totals after each N ──
-  function extractCourseValues(raw, counts) {
+    const semesterCourseCounts = workingSemesters.map(semester => semester.codes.length);
+    const totalCourses = semesterCourseCounts.reduce((sum, count) => sum + count, 0);
+    if (totalCourses === 0)
+        return legacyParseTranscript(lines, detectedDept);
+    let creditsBlockStart = -1;
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (!/^Credits\s+Earned\b/i.test(lines[i]))
+            continue;
+        for (let j = i + 1; j <= i + 4 && j < lines.length; j++) {
+            if (numberRe.test(lines[j])) {
+                creditsBlockStart = j;
+                break;
+            }
+        }
+        if (creditsBlockStart >= 0)
+            break;
+    }
+    if (creditsBlockStart < 0)
+        return legacyParseTranscript(lines, detectedDept);
+    const creditsRaw = [];
+    const gradesRaw = [];
+    const gpRaw = [];
+    let phase = 'credits';
+    for (let i = creditsBlockStart; i < lines.length; i++) {
+        const line = lines[i];
+        if (line === 'GPA' || line === 'CGPA')
+            continue;
+        if (phase === 'credits') {
+            if (numberRe.test(line)) {
+                creditsRaw.push(Number.parseFloat(line));
+                continue;
+            }
+            if (gradeRe.test(line))
+                phase = 'grades';
+        }
+        if (phase === 'grades') {
+            if (numberRe.test(line)) {
+                phase = 'gp';
+                gpRaw.push(Number.parseFloat(line));
+                continue;
+            }
+            if (gradeRe.test(line)) {
+                gradesRaw.push(normalizeGradeToken(line));
+                continue;
+            }
+        }
+        if (phase === 'gp' && numberRe.test(line)) {
+            gpRaw.push(Number.parseFloat(line));
+        }
+    }
+    const allCredits = extractCourseValues(creditsRaw, semesterCourseCounts);
+    const allGradePoints = extractCourseValues(gpRaw, semesterCourseCounts);
+    const allGrades = gradesRaw;
+    const semesters = [];
+    let flatIndex = 0;
+    for (const semester of workingSemesters) {
+        const courses = [];
+        for (let index = 0; index < semester.codes.length; index++) {
+            const code = semester.codes[index];
+            const title = semester.titles[index] || '';
+            const name = title ? `${title} (${code})` : code;
+            const credits = allCredits[flatIndex] ?? 0;
+            const grade = allGrades[flatIndex] ?? '';
+            const gradePoint = allGradePoints[flatIndex] ?? '';
+            courses.push({ name, credits, grade, gradePoint });
+            flatIndex++;
+        }
+        if (courses.length > 0) {
+            semesters.push({
+                id: Date.now() + semesters.length,
+                name: semester.name,
+                courses,
+                running: false,
+            });
+        }
+    }
+    if (semesters.length === 0)
+        return legacyParseTranscript(lines, detectedDept);
+    return { semesters, detectedDept };
+}
+function extractCourseValues(raw, counts) {
     const out = [];
-    let pos = 0;
-    for (const n of counts) {
-      for (let k = 0; k < n; k++) {
-        out.push(raw[pos] !== undefined ? raw[pos] : null);
-        pos++;
-      }
-      pos += 2; // skip semester total + cumulative total
+    let position = 0;
+    for (const count of counts) {
+        for (let index = 0; index < count; index++) {
+            out.push(raw[position] !== undefined ? raw[position] : null);
+            position++;
+        }
+        position += 2;
     }
     return out;
-  }
-
-  const allCredits = extractCourseValues(creditsRaw, semCounts);
-  const allGP      = extractCourseValues(gpRaw,      semCounts);
-  // Grades column doesn't have semester totals interspersed (already stripped GPA/CGPA)
-  // so gradesRaw is already flat
-  const allGrades  = gradesRaw;
-
-  // ── Assemble final semesters ──────────────────────────────────────────────
-  const semesters = [];
-  let flat = 0;
-  for (const sem of sems) {
-    const courses = [];
-    for (let k = 0; k < sem.codes.length; k++) {
-      const code       = sem.codes[k];
-      const title      = sem.titles[k] || '';
-      const name       = title ? `${title} (${code})` : code;
-      const credits    = allCredits[flat] !== null ? allCredits[flat]  : 0;
-      const grade      = allGrades[flat]  !== undefined ? allGrades[flat] : '';
-      const gradePoint = allGP[flat]      !== null ? allGP[flat]      : '';
-      courses.push({ name, credits, grade, gradePoint });
-      flat++;
-    }
-    if (courses.length > 0) {
-      semesters.push({
-        id: Date.now() + semesters.length,
-        name: sem.name,
-        courses,
-        running: false,
-      });
-    }
-  }
-
-  if (semesters.length === 0) return _legacyParseTranscript(lines, detectedDept);
-  return { semesters, detectedDept };
 }
-
-// ── _legacyParseTranscript — fallback for non-column-format PDFs ──────────────
-function _legacyParseTranscript(lines, detectedDept) {
-  const SEASON_NAMES = { SPRING: 'Spring', SUMMER: 'Summer', FALL: 'Fall' };
-  const semRe      = /^SEMESTER[:\s]*([A-Z]+)\s*(\d{4})\b/i;
-  const skipRe     = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
-  const fntRe      = /F\s*\(NT\)/;
-  const courseRe   = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
-  const codeMarkerRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
-  // Some PDFs merge code+credits+grade+gp into one compact token stream,
-  // e.g. "MAT1103.00B3.00" or "MAT120  3.00  B  3.00".
-  const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
-  const partialRe  = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
-  const contRe     = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
-  // Multi-line titles sometimes become:
-  //   <CODE>                 (e.g. "MAT110")
-  //   <TITLE line 1>
-  //   <TITLE line 2>
-  //   <CREDITS> <GRADE> <GP> (e.g. "3.00 B 3.00")
-  const creditsGradeGpOnlyRe =
-    /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-
-  const semesters = [];
-  let currentSem = null, pendingTitle = null, skipNextFrag = false;
-
-  for (const line of lines) {
-    if (skipRe.test(line)) { pendingTitle = null; skipNextFrag = false; continue; }
-    const semM = line.match(semRe);
-    if (semM) {
-      const season = semM[1].toUpperCase();
-      currentSem = { id: Date.now() + semesters.length, name: `${SEASON_NAMES[season] || semM[1]} ${semM[2]}`, courses: [], running: false };
-      semesters.push(currentSem);
-      pendingTitle = null; skipNextFrag = false; continue;
-    }
-    if (!currentSem) continue;
-    if (skipNextFrag) { skipNextFrag = false; if (/^[A-Z][A-Z\s&:,\(\)\-\.]+$/.test(line)) continue; }
-
-    // If the parser extracted just the course code as a standalone line,
-    // start a pending title so we can attach later "credits grade gp" lines.
-    const codeMarker = line.match(codeMarkerRe);
-    if (codeMarker) {
-      pendingTitle = line;
-      continue;
-    }
-
-    if (fntRe.test(line)) {
-      const code = line.trim().split(/\s+/)[0];
-      if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
-        const credM = line.match(/\b(\d+\.\d+)\b/);
-        currentSem.courses.push({ name: code, credits: credM ? parseFloat(credM[1]) : 0, grade: 'F(NT)', gradePoint: 'NT' });
-        pendingTitle = null; continue;
-      }
-    }
-    if (pendingTitle) {
-      const cgOnly = line.match(creditsGradeGpOnlyRe);
-      if (cgOnly) {
-        const code2 = (pendingTitle.match(codeMarkerRe) || pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || '';
-        const tp = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim();
-
-        let grade = cgOnly[2].trim().replace(/\s+/g,'');
-        if (/F.*NT/i.test(cgOnly[2])) grade = 'F(NT)';
-        else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-
-        currentSem.courses.push({ name: tp ? `${tp} (${code2})` : code2, credits: parseFloat(cgOnly[1]), grade, gradePoint: parseFloat(cgOnly[3]) });
-        pendingTitle = null;
-        continue;
-      }
-
-      const cont = line.match(contRe);
-      if (cont) {
-        const fullLine = pendingTitle + ' ' + line;
-        const cm2 = fullLine.match(courseRe);
-        if (cm2) {
-          let grade = cm2[4].trim().replace(/\s+/g,'');
-          if (/F.*NT/i.test(cm2[4])) grade = 'F(NT)';
-          else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-          currentSem.courses.push({ name: cm2[1]+' '+cm2[2].trim(), credits: parseFloat(cm2[3]), grade, gradePoint: parseFloat(cm2[5]) });
-          pendingTitle = null; continue;
+function legacyParseTranscript(lines, detectedDept) {
+    const semRe = /^SEMESTER[:\s]*([A-Z]+)\s*(\d{4})\b/i;
+    const skipRe = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
+    const fntRe = /F\s*\(NT\)/;
+    const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+    const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+    const codeMarkerRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
+    const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
+    const partialRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
+    const contRe = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+    const creditsGradeGpOnlyRe = /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+    const semesters = [];
+    let currentSemester = null;
+    let pendingTitle = null;
+    let skipNextFragment = false;
+    for (const line of lines) {
+        if (skipRe.test(line)) {
+            pendingTitle = null;
+            skipNextFragment = false;
+            continue;
         }
-        const code2 = (pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || pendingTitle;
-        const tp = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim();
-        let g2 = cont[3].trim().replace(/\s+/g,'').replace('(RT)','').replace('(NT)','').trim();
-        if (/F.*NT/i.test(cont[3])) g2 = 'F(NT)';
-        currentSem.courses.push({ name: `${(tp+' '+cont[1].trim()).trim()} (${code2})`, credits: parseFloat(cont[2]), grade: g2, gradePoint: parseFloat(cont[4]) });
-        pendingTitle = null; continue;
-      }
+        const semesterMatch = line.match(semRe);
+        if (semesterMatch) {
+            const season = semesterMatch[1].toUpperCase();
+            currentSemester = {
+                id: Date.now() + semesters.length,
+                name: `${SEASON_NAMES[season] || semesterMatch[1]} ${semesterMatch[2]}`,
+                courses: [],
+                running: false,
+            };
+            semesters.push(currentSemester);
+            pendingTitle = null;
+            skipNextFragment = false;
+            continue;
+        }
+        if (!currentSemester)
+            continue;
+        if (skipNextFragment) {
+            skipNextFragment = false;
+            if (/^[A-Z][A-Z\s&:,\(\)\-\.]+$/.test(line))
+                continue;
+        }
+        const codeMarker = line.match(codeMarkerRe);
+        if (codeMarker) {
+            pendingTitle = line;
+            continue;
+        }
+        if (fntRe.test(line)) {
+            const code = line.trim().split(/\s+/)[0];
+            if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
+                const creditMatch = line.match(/\b(\d+\.\d+)\b/);
+                currentSemester.courses.push({
+                    name: code,
+                    credits: creditMatch ? Number.parseFloat(creditMatch[1]) : 0,
+                    grade: 'F(NT)',
+                    gradePoint: 'NT',
+                });
+                pendingTitle = null;
+                continue;
+            }
+        }
+        if (pendingTitle) {
+            const creditsGradeGp = line.match(creditsGradeGpOnlyRe);
+            if (creditsGradeGp) {
+                const code = (pendingTitle.match(codeMarkerRe) || pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || '';
+                const title = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim();
+                currentSemester.courses.push({
+                    name: title ? `${title} (${code})` : code,
+                    credits: Number.parseFloat(creditsGradeGp[1]),
+                    grade: normalizeGradeToken(creditsGradeGp[2]),
+                    gradePoint: Number.parseFloat(creditsGradeGp[3]),
+                });
+                pendingTitle = null;
+                continue;
+            }
+            const continuation = line.match(contRe);
+            if (continuation) {
+                const fullLine = `${pendingTitle} ${line}`;
+                const fullCourse = fullLine.match(courseRe);
+                if (fullCourse) {
+                    currentSemester.courses.push({
+                        name: `${fullCourse[1]} ${fullCourse[2].trim()}`,
+                        credits: Number.parseFloat(fullCourse[3]),
+                        grade: normalizeGradeToken(fullCourse[4]),
+                        gradePoint: Number.parseFloat(fullCourse[5]),
+                    });
+                    pendingTitle = null;
+                    continue;
+                }
+                const code = (pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || pendingTitle;
+                const titlePrefix = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim();
+                currentSemester.courses.push({
+                    name: `${`${titlePrefix} ${continuation[1].trim()}`.trim()} (${code})`,
+                    credits: Number.parseFloat(continuation[2]),
+                    grade: normalizeGradeToken(continuation[3]),
+                    gradePoint: Number.parseFloat(continuation[4]),
+                });
+                pendingTitle = null;
+                continue;
+            }
+        }
+        const codeOnly = line.match(codeOnlyRe);
+        if (codeOnly) {
+            const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim() : '';
+            currentSemester.courses.push({
+                name: title ? `${title} (${codeOnly[1]})` : codeOnly[1],
+                credits: Number.parseFloat(codeOnly[2]),
+                grade: normalizeGradeToken(codeOnly[3]),
+                gradePoint: Number.parseFloat(codeOnly[4]),
+            });
+            pendingTitle = null;
+            skipNextFragment = true;
+            continue;
+        }
+        const compactCodeOnly = line.match(codeOnlyCompactRe);
+        if (compactCodeOnly) {
+            const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim() : '';
+            currentSemester.courses.push({
+                name: title ? `${title} (${compactCodeOnly[1]})` : compactCodeOnly[1],
+                credits: Number.parseFloat(compactCodeOnly[2]),
+                grade: normalizeGradeToken(compactCodeOnly[3]),
+                gradePoint: Number.parseFloat(compactCodeOnly[4]),
+            });
+            pendingTitle = null;
+            skipNextFragment = true;
+            continue;
+        }
+        const course = line.match(courseRe);
+        if (course) {
+            currentSemester.courses.push({
+                name: `${course[1]} ${course[2].trim()}`,
+                credits: Number.parseFloat(course[3]),
+                grade: normalizeGradeToken(course[4]),
+                gradePoint: Number.parseFloat(course[5]),
+            });
+            pendingTitle = null;
+            continue;
+        }
+        const partial = line.match(partialRe);
+        if (partial && !/\d+\.\d+\s*$/.test(line)) {
+            pendingTitle = line;
+            continue;
+        }
+        if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
+            pendingTitle = `${pendingTitle ? `${pendingTitle} ` : ''}${line}`;
+        }
+        else {
+            pendingTitle = null;
+        }
     }
-    const co = line.match(codeOnlyRe);
-    if (co) {
-      let grade = co[3].trim().replace(/\s+/g,'');
-      if (/F.*NT/i.test(co[3])) grade = 'F(NT)';
-      else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim() : '';
-      currentSem.courses.push({ name: title ? `${title} (${co[1]})` : co[1], credits: parseFloat(co[2]), grade, gradePoint: parseFloat(co[4]) });
-      pendingTitle = null; skipNextFrag = true; continue;
-    }
-    const coc = line.match(codeOnlyCompactRe);
-    if (coc) {
-      let grade = coc[3].trim().replace(/\s+/g,'');
-      if (/F.*NT/i.test(coc[3])) grade = 'F(NT)';
-      else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/,'').trim() : '';
-      currentSem.courses.push({ name: title ? `${title} (${coc[1]})` : coc[1], credits: parseFloat(coc[2]), grade, gradePoint: parseFloat(coc[4]) });
-      pendingTitle = null; skipNextFrag = true; continue;
-    }
-    const cm = line.match(courseRe);
-    if (cm) {
-      let grade = cm[4].trim().replace(/\s+/g,'');
-      if (/F.*NT/i.test(cm[4])) grade = 'F(NT)';
-      else grade = grade.replace('(RT)','').replace('(NT)','').trim();
-      currentSem.courses.push({ name: cm[1]+' '+cm[2].trim(), credits: parseFloat(cm[3]), grade, gradePoint: parseFloat(cm[5]) });
-      pendingTitle = null; continue;
-    }
-    const partial = line.match(partialRe);
-    if (partial && !/\d+\.\d+\s*$/.test(line)) { pendingTitle = line; continue; }
-    if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line))
-      pendingTitle = (pendingTitle ? pendingTitle+' ' : '') + line;
-    else pendingTitle = null;
-  }
-  return { semesters: semesters.filter(s => s.courses.length > 0), detectedDept };
+    return { semesters: semesters.filter(semester => semester.courses.length > 0), detectedDept };
 }
+
+// ── js/import/parser.js ─────────────────────────────────────────
+
 
 // ── js/ui/charts.js ─────────────────────────────────────────────
 function drawTrendChart(canvas, data) {
@@ -16784,6 +17023,268 @@ function renderPlayground(force) {
     <div class="pg-body">${bodyHtml}</div>`;
 }
 
+// ── js/core/planner-core.js ─────────────────────────────────────
+// Generated from src/core/planner.ts for the vanilla JS runtime.
+// Update src/core/planner.ts first, then regenerate this file.
+const DEPT_PREFIXES = {
+    CSE: ['CSE'],
+    CS: ['CSE'],
+    EEE: ['EEE'],
+    ECE: ['ECE'],
+    BBA: ['ACT', 'BUS', 'FIN', 'MGT', 'MKT', 'MSC', 'MIS'],
+    ECO: ['ECO'],
+    ENG: ['ENG'],
+    ANT: ['ANT', 'SOC'],
+    PHY: ['PHY'],
+    APE: ['APE', 'PHY'],
+    MAT: ['MAT'],
+    MIC: ['MIC', 'BCH', 'BIO'],
+    BIO: ['BTE', 'BIO', 'BCH', 'MIC'],
+    ARC: ['ARC'],
+    PHR: ['PHB', 'PHR'],
+    LAW: ['LAW'],
+};
+const COMMON_PREFIXES = [
+    'MAT',
+    'PHY',
+    'ENG',
+    'BNG',
+    'EMB',
+    'HUM',
+    'STA',
+    'ECO',
+    'CST',
+    'DEV',
+    'ENV',
+    'HST',
+    'POL',
+    'PSY',
+    'SOC',
+    'GEO',
+];
+function getCompletedCodes(semesters, retakenKeys = new Set()) {
+    const completed = new Set();
+    for (const semester of semesters) {
+        if (semester.summary)
+            continue;
+        semester.courses.forEach((course, index) => {
+            if (!course.name.trim() || !course.grade)
+                return;
+            if (course.grade === 'F' || course.grade === 'F(NT)' || course.grade === 'I')
+                return;
+            if (retakenKeys.has(`${semester.id}-${index}`))
+                return;
+            const code = getCourseCode(course.name);
+            if (code)
+                completed.add(code);
+        });
+    }
+    return completed;
+}
+function getInProgressCodes(semesters) {
+    const codes = new Set();
+    for (const semester of semesters) {
+        if (!semester.running)
+            continue;
+        for (const course of semester.courses) {
+            if (!course.name.trim())
+                continue;
+            const code = getCourseCode(course.name);
+            if (code)
+                codes.add(code);
+        }
+    }
+    return codes;
+}
+function getScheduledCodes(semesters) {
+    const codes = new Set();
+    for (const semester of semesters) {
+        if (semester.summary || semester.running)
+            continue;
+        for (const course of semester.courses) {
+            if (!course.name.trim() || course.grade)
+                continue;
+            const code = getCourseCode(course.name);
+            if (code)
+                codes.add(code);
+        }
+    }
+    return codes;
+}
+function checkPrereqs(code, completed, prerequisites) {
+    const prereq = prerequisites[code];
+    if (!prereq)
+        return { canTake: true, missingHp: [], missingSp: [], hasData: false };
+    const missingHp = (prereq.hp ?? []).filter(item => !completed.has(item));
+    const missingSp = (prereq.sp ?? []).filter(item => !completed.has(item));
+    return {
+        canTake: missingHp.length === 0,
+        missingHp,
+        missingSp,
+        hasData: true,
+    };
+}
+function buildUnlockCountMap(prerequisites) {
+    const counts = Object.create(null);
+    for (const code of Object.keys(prerequisites)) {
+        const prereq = prerequisites[code] ?? {};
+        for (const requirement of [...(prereq.hp ?? []), ...(prereq.sp ?? [])]) {
+            counts[requirement] = (counts[requirement] ?? 0) + 1;
+        }
+    }
+    return counts;
+}
+function isRelevantToDept(code, deptCode) {
+    if (!deptCode)
+        return true;
+    const prefix = code.replace(/\d.*/, '');
+    const relevantPrefixes = DEPT_PREFIXES[deptCode] ?? [];
+    if (relevantPrefixes.includes(prefix))
+        return true;
+    if (COMMON_PREFIXES.includes(prefix))
+        return true;
+    return false;
+}
+function getAvailableCourses(input, options = {}) {
+    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
+    const inProgress = getInProgressCodes(input.semesters);
+    const scheduled = getScheduledCodes(input.semesters);
+    const unlockCounts = buildUnlockCountMap(input.prerequisites);
+    const planSet = new Set(input.planCourses);
+    let results = [];
+    for (const course of input.allCourses) {
+        if (completed.has(course.code))
+            continue;
+        if (inProgress.has(course.code))
+            continue;
+        if (scheduled.has(course.code))
+            continue;
+        if (planSet.has(course.code))
+            continue;
+        if (course.credits === 0)
+            continue;
+        const check = checkPrereqs(course.code, completed, input.prerequisites);
+        results.push({
+            ...course,
+            canTake: check.canTake,
+            missingHp: check.missingHp,
+            missingSp: check.missingSp,
+            hasPrereqData: check.hasData,
+            isRelevant: isRelevantToDept(course.code, input.currentDept),
+            unlockCount: unlockCounts[course.code] ?? 0,
+        });
+    }
+    results.sort((a, b) => {
+        if (a.isRelevant !== b.isRelevant)
+            return a.isRelevant ? -1 : 1;
+        if (a.canTake !== b.canTake)
+            return a.canTake ? -1 : 1;
+        if (a.unlockCount !== b.unlockCount)
+            return b.unlockCount - a.unlockCount;
+        const aNumber = Number.parseInt(a.code.replace(/^[A-Z]+/, ''), 10);
+        const bNumber = Number.parseInt(b.code.replace(/^[A-Z]+/, ''), 10);
+        return aNumber - bNumber;
+    });
+    const query = options.searchQuery?.trim().toLowerCase();
+    if (query) {
+        results = results.filter(course => course.code.toLowerCase().includes(query) ||
+            course.name.toLowerCase().includes(query));
+    }
+    if (options.filterMode === 'unlocked') {
+        results = results.filter(course => course.canTake);
+    }
+    else if (options.filterMode === 'locked') {
+        results = results.filter(course => !course.canTake);
+    }
+    return typeof options.limit === 'number' ? results.slice(0, options.limit) : results;
+}
+function validatePlan(input) {
+    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
+    const scheduled = getScheduledCodes(input.semesters);
+    const inProgress = getInProgressCodes(input.semesters);
+    const totalCredits = input.planCourses.reduce((sum, code) => {
+        const course = input.courseCatalog[code];
+        return sum + (course ? course.credits : 0);
+    }, 0);
+    const issues = [];
+    const warnings = [];
+    if (totalCredits > 0 && totalCredits < 9) {
+        issues.push(`${totalCredits} credits \u2014 below 9-credit minimum`);
+    }
+    if (totalCredits > 15) {
+        issues.push(`${totalCredits} credits \u2014 exceeds 15-credit maximum`);
+    }
+    if (totalCredits > 12 && totalCredits <= 15) {
+        warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
+    }
+    for (const code of input.planCourses) {
+        const check = checkPrereqs(code, completed, input.prerequisites);
+        if (!check.canTake) {
+            issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
+        }
+        if (check.missingSp.length > 0) {
+            warnings.push(`${code} \u2014 recommended: ${check.missingSp.join(', ')}`);
+        }
+    }
+    for (const code of input.planCourses) {
+        if (completed.has(code)) {
+            warnings.push(`${code} \u2014 you\u2019ve already passed this course`);
+        }
+        else if (inProgress.has(code)) {
+            warnings.push(`${code} \u2014 already in your running semester`);
+        }
+        else if (scheduled.has(code)) {
+            warnings.push(`${code} \u2014 already scheduled in another semester`);
+        }
+    }
+    return { totalCredits, issues, warnings };
+}
+function getPrereqChain(code, completed, courseCatalog, prerequisites, depth = 0) {
+    if (depth > 8)
+        return null;
+    const prereq = prerequisites[code];
+    const node = {
+        code,
+        name: courseCatalog[code]?.name ?? code,
+        completed: completed.has(code),
+        children: [],
+    };
+    if (!prereq)
+        return node;
+    const allPrereqs = [...(prereq.hp ?? []), ...(prereq.sp ?? [])];
+    for (const item of allPrereqs) {
+        const child = getPrereqChain(item, completed, courseCatalog, prerequisites, depth + 1);
+        if (!child)
+            continue;
+        child.isSoft = (prereq.sp ?? []).includes(item);
+        node.children.push(child);
+    }
+    return node;
+}
+function projectCgpa(currentPoints, currentCredits, plannedCredits, assumedGrade) {
+    const gradePoint = Object.prototype.hasOwnProperty.call(GRADES, assumedGrade)
+        ? GRADES[assumedGrade]
+        : undefined;
+    const current = currentCredits > 0 ? currentPoints / currentCredits : null;
+    if (gradePoint === undefined || gradePoint === null) {
+        return { current, projected: null, delta: null };
+    }
+    const newPoints = currentPoints + plannedCredits * gradePoint;
+    const newCredits = currentCredits + plannedCredits;
+    const projected = newCredits > 0 ? newPoints / newCredits : null;
+    return {
+        current,
+        projected,
+        delta: current !== null && projected !== null ? projected - current : null,
+    };
+}
+const plannerCoreGetCompletedCodes = getCompletedCodes;
+const plannerCoreCheckPrereqs = checkPrereqs;
+const plannerCoreGetAvailableCourses = getAvailableCourses;
+const plannerCoreValidatePlan = validatePlan;
+const plannerCoreGetPrereqChain = getPrereqChain;
+const plannerCoreProjectCgpa = projectCgpa;
+
 // ── js/ui/planner.js ────────────────────────────────────────────
 // ── js/ui/planner.js ──────────────────────────────────────────────────────────
 // Semester Planner: prerequisite checking, course recommendations,
@@ -16814,234 +17315,39 @@ let _searchCursorStart = null;
 let _searchCursorEnd = null;
 let _assumedGrade = 'A';
 
-// ── Engine: get completed course codes ──────────────────────────────────────
-function getCompletedCodes() {
-  const rk = getRetakenKeys();
-  const completed = new Set();
-  state.semesters.forEach(sem => {
-    if (sem.summary) return;
-    sem.courses.forEach((c, i) => {
-      if (!c.name.trim() || !c.grade) return;
-      if (c.grade === 'F' || c.grade === 'F(NT)' || c.grade === 'I') return;
-      if (rk.has(`${sem.id}-${i}`)) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) completed.add(m[1]);
-    });
-  });
-  return completed;
-}
-
-// ── Engine: get in-progress course codes (running semester) ─────────────────
-function getInProgressCodes() {
-  const codes = new Set();
-  state.semesters.forEach(sem => {
-    if (!sem.running) return;
-    sem.courses.forEach(c => {
-      if (!c.name.trim()) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) codes.add(m[1]);
-    });
-  });
-  return codes;
-}
-
-// ── Engine: get codes already scheduled in future/manual semester blocks ─────
-function getScheduledCodes() {
-  const codes = new Set();
-  state.semesters.forEach(sem => {
-    if (sem.summary || sem.running) return;
-    sem.courses.forEach(c => {
-      if (!c.name.trim() || c.grade) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) codes.add(m[1]);
-    });
-  });
-  return codes;
-}
-
-// ── Engine: check prerequisites for a course ────────────────────────────────
-function checkPrereqs(code, completed) {
-  const prereq = PREREQS[code];
-  if (!prereq) return { canTake: true, missingHp: [], missingSp: [], hasData: false };
-
-  const missingHp = (prereq.hp || []).filter(p => !completed.has(p));
-  const missingSp = (prereq.sp || []).filter(p => !completed.has(p));
-
+function plannerEngineInput(retakenKeys = getRetakenKeys()) {
   return {
-    canTake: missingHp.length === 0,
-    missingHp,
-    missingSp,
-    hasData: true,
+    semesters: state.semesters,
+    allCourses: ALL_COURSES,
+    courseCatalog: COURSE_DB,
+    prerequisites: PREREQS,
+    planCourses: plan.courses,
+    currentDept: state.currentDept,
+    retakenKeys,
   };
 }
 
-// ── Engine: count how many downstream courses each code unlocks ─────────────
-// Built once from PREREQS; higher count = gating more future courses.
-let _unlockCountCache = null;
-function getUnlockCount(code) {
-  if (!_unlockCountCache) {
-    _unlockCountCache = Object.create(null);
-    Object.keys(PREREQS).forEach(c => {
-      const p = PREREQS[c] || {};
-      [...(p.hp || []), ...(p.sp || [])].forEach(req => {
-        _unlockCountCache[req] = (_unlockCountCache[req] || 0) + 1;
-      });
-    });
-  }
-  return _unlockCountCache[code] || 0;
+function getCompletedCodes() {
+  return plannerCoreGetCompletedCodes(state.semesters, getRetakenKeys());
 }
 
-// ── Engine: determine if a course is relevant to the current department ──────
-function isRelevantToDept(code, deptCode) {
-  if (!deptCode) return true;
-
-  // Direct department match
-  const prefix = code.replace(/\d.*/,'');
-
-  // Map department codes to relevant course prefixes
-  const deptPrefixes = {
-    CSE: ['CSE'],
-    CS:  ['CSE'],
-    EEE: ['EEE'],
-    ECE: ['ECE'],
-    BBA: ['ACT','BUS','FIN','MGT','MKT','MSC','MIS'],
-    ECO: ['ECO'],
-    ENG: ['ENG'],
-    ANT: ['ANT','SOC'],
-    PHY: ['PHY'],
-    APE: ['APE','PHY'],
-    MAT: ['MAT'],
-    MIC: ['MIC','BCH','BIO'],
-    BIO: ['BTE','BIO','BCH','MIC'],
-    ARC: ['ARC'],
-    PHR: ['PHB','PHR'],
-    LAW: ['LAW'],
-  };
-
-  // Common GED prefixes relevant to all departments
-  const commonPrefixes = ['MAT','PHY','ENG','BNG','EMB','HUM','STA','ECO','CST','DEV','ENV','HST','POL','PSY','SOC','GEO'];
-
-  const relevantPrefixes = deptPrefixes[deptCode] || [];
-
-  if (relevantPrefixes.includes(prefix)) return true;
-  if (commonPrefixes.includes(prefix)) return true;
-
-  return false;
+function checkPrereqs(code, completed) {
+  return plannerCoreCheckPrereqs(code, completed, PREREQS);
 }
 
-// ── Engine: get all available courses for planning ──────────────────────────
 function getAvailableCourses(completed, dept) {
-  const inProgress = getInProgressCodes();
-  const scheduled  = getScheduledCodes();
-  const deptCode   = dept || state.currentDept || '';
-  const results    = [];
-
-  ALL_COURSES.forEach(c => {
-    // Skip if already completed, in progress, or already scheduled elsewhere
-    if (completed.has(c.code)) return;
-    if (inProgress.has(c.code)) return;
-    if (scheduled.has(c.code)) return;
-    // Skip if already in plan
-    if (plan.courses.includes(c.code)) return;
-    // Skip 0-credit remedial courses
-    if (c.credits === 0) return;
-
-    const check = checkPrereqs(c.code, completed);
-    const relevant = isRelevantToDept(c.code, deptCode);
-
-    results.push({
-      ...c,
-      canTake: check.canTake,
-      missingHp: check.missingHp,
-      missingSp: check.missingSp,
-      hasPrereqData: check.hasData,
-      isRelevant: relevant,
-      unlockCount: getUnlockCount(c.code),
-    });
+  return plannerCoreGetAvailableCourses({
+    ...plannerEngineInput(),
+    currentDept: dept || state.currentDept || '',
   });
-
-  // Sort: relevant first, then unlocked, then by downstream unlock count (desc), then level
-  results.sort((a, b) => {
-    if (a.isRelevant !== b.isRelevant) return a.isRelevant ? -1 : 1;
-    if (a.canTake !== b.canTake) return a.canTake ? -1 : 1;
-    if (a.unlockCount !== b.unlockCount) return b.unlockCount - a.unlockCount;
-    const aNum = parseInt(a.code.replace(/^[A-Z]+/, ''));
-    const bNum = parseInt(b.code.replace(/^[A-Z]+/, ''));
-    return aNum - bNum;
-  });
-
-  return results;
 }
 
-// ── Engine: validate the current plan ───────────────────────────────────────
 function validatePlan(completed) {
-  const totalCredits = plan.courses.reduce((sum, code) => {
-    const c = COURSE_DB[code];
-    return sum + (c ? c.credits : 0);
-  }, 0);
-
-  const issues   = [];
-  const warnings = [];
-
-  if (totalCredits > 0 && totalCredits < 9) {
-    issues.push(`${totalCredits} credits \u2014 below 9-credit minimum`);
-  }
-  if (totalCredits > 15) {
-    issues.push(`${totalCredits} credits \u2014 exceeds 15-credit maximum`);
-  }
-  if (totalCredits > 12 && totalCredits <= 15) {
-    warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
-  }
-
-  const scheduled    = getScheduledCodes();
-  const inProgress   = getInProgressCodes();
-
-  plan.courses.forEach(code => {
-    const check = checkPrereqs(code, completed);
-    if (!check.canTake) {
-      issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
-    }
-    if (check.missingSp.length > 0) {
-      warnings.push(`${code} \u2014 recommended: ${check.missingSp.join(', ')}`);
-    }
-  });
-
-  plan.courses.forEach(code => {
-    if (completed.has(code)) {
-      warnings.push(`${code} \u2014 you\u2019ve already passed this course`);
-    } else if (inProgress.has(code)) {
-      warnings.push(`${code} \u2014 already in your running semester`);
-    } else if (scheduled.has(code)) {
-      warnings.push(`${code} \u2014 already scheduled in another semester`);
-    }
-  });
-
-  return { totalCredits, issues, warnings };
+  return plannerCoreValidatePlan(plannerEngineInput());
 }
 
-// ── Engine: build prereq chain for tree view ────────────────────────────────
 function getPrereqChain(code, completed, depth = 0) {
-  if (depth > 8) return null;
-  const prereq = PREREQS[code];
-  const node = {
-    code,
-    name: COURSE_DB[code]?.name || code,
-    completed: completed.has(code),
-    children: [],
-  };
-
-  if (prereq) {
-    const allPrereqs = [...(prereq.hp || []), ...(prereq.sp || [])];
-    allPrereqs.forEach(p => {
-      const child = getPrereqChain(p, completed, depth + 1);
-      if (child) {
-        child.isSoft = (prereq.sp || []).includes(p);
-        node.children.push(child);
-      }
-    });
-  }
-
-  return node;
+  return plannerCoreGetPrereqChain(code, completed, COURSE_DB, PREREQS, depth);
 }
 
 // ── Engine: project CGPA assuming a uniform grade across planned courses ────
@@ -17049,17 +17355,7 @@ const IMPACT_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D'];
 
 function projectCGPA(plannedCredits, assumedGrade) {
   const { pts, cr } = getCurrentTotals();
-  const gp = GRADES[assumedGrade];
-  if (gp === null || gp === undefined) return { current: cr > 0 ? pts / cr : null, projected: null, delta: null };
-  const newPts = pts + plannedCredits * gp;
-  const newCr  = cr + plannedCredits;
-  const projected = newCr > 0 ? newPts / newCr : null;
-  const current   = cr > 0 ? pts / cr : null;
-  return {
-    current,
-    projected,
-    delta: (current !== null && projected !== null) ? projected - current : null,
-  };
+  return plannerCoreProjectCgpa(pts, cr, plannedCredits, assumedGrade);
 }
 
 function renderImpactPreview(totalCredits) {
