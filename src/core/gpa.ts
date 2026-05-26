@@ -2,7 +2,7 @@ import { GRADES } from './grades';
 import type { GradeLetter } from './grades';
 import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types';
 
-export const SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
+const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
 
 export interface RetakePolicyOptions {
   bestGrade?: boolean;
@@ -58,7 +58,7 @@ export function usesBestGradePolicy(options: RetakePolicyOptions = {}): boolean 
 
   if (!season || Number.isNaN(year)) return false;
 
-  const seasonIndex = SEASON_ORDER.indexOf(season as SemesterSeason);
+  const seasonIndex = GPA_SEASON_ORDER.indexOf(season as SemesterSeason);
   if (year < 2024) return true;
   if (year === 2024 && seasonIndex === 0) return true;
   if (year === 2024 && seasonIndex === 1) return true;
@@ -239,3 +239,12 @@ export function clampGradePoint(value: string): string {
   if (n < 0) return '0.0';
   return value;
 }
+
+export const gpaCoreCalcSemesterGpa = calcSemesterGpa;
+export const gpaCoreUsesBestGradePolicy = usesBestGradePolicy;
+export const gpaCoreGetRetakenKeys = getRetakenKeys;
+export const gpaCoreGetSemesterCreditWarning = getSemesterCreditWarning;
+export const gpaCoreIsRepeatEligible = isRepeatEligible;
+export const gpaCoreGetImprovementStrategy = getImprovementStrategy;
+export const gpaCoreNormalizeGradePoint = normalizeGradePoint;
+export const gpaCoreClampGradePoint = clampGradePoint;
