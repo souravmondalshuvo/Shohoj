@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-CyqMHXiMaFI2xT25cFEmf5Y2grSiOs3nuBSBSmcgRg8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-IRVJlMnd3oUYDjOAbEtWV6SGW3nqRn2pqSlKBKdoWnA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9814,160 +9814,27 @@ function getCourseDept(code) {
 
 // ── js/core/calculator.js ───────────────────────────────────────
 function calcSemGPA(sem) {
-  let pts = 0, creds = 0;
-  sem.courses.forEach((c) => {
-    const gp = GRADES[c.grade];
-    if (gp === undefined || !c.credits) return;
-    if (c.grade === 'P' || c.grade === 'I') return;
-    if (c.grade === 'F(NT)') { creds += c.credits; return; }
-    if (gp === null) return;
-    pts += gp * c.credits;
-    creds += c.credits;
-  });
-  return creds > 0 ? pts / creds : null;
+  return calcSemesterGpa(sem);
 }
 
 function usesBestGradePolicy() {
-  const season = getStartSeason();
-  const year   = parseInt(getStartYear());
-  if (!season || !year) return false;
-  const idx = SEASON_ORDER.indexOf(season);
-  if (year < 2024) return true;
-  if (year === 2024 && idx === 0) return true;
-  if (year === 2024 && idx === 1) return true;
-  if (year === 2024 && idx === 2) return false;
-  return false;
+  return typedUsesBestGradePolicy({
+    startSeason: getStartSeason(),
+    startYear: getStartYear(),
+  });
 }
 
 function getRetakenKeys(semList, opts) {
-  const list = (semList || state.semesters).filter(sem => !sem.running && !sem.summary);
-  const bestGrade = (opts && typeof opts.bestGrade === 'boolean')
-    ? opts.bestGrade
-    : usesBestGradePolicy();
-
-  const all = [];
-  list.forEach(sem => {
-    sem.courses.forEach((c, i) => {
-      if (!c.name.trim()) return;
-      const codeMatch = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      const code = codeMatch ? codeMatch[1] : null;
-      const baseName = c.name.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
-      const gp = (c.grade && c.grade !== 'F(NT)') ? (GRADES[c.grade] ?? -1) : -1;
-      all.push({ semId: sem.id, idx: i, code, baseName, key: `${sem.id}-${i}`, gp });
-    });
-  });
-
-  const groups = {};
-  all.forEach(entry => {
-    const groupKey = entry.code || entry.baseName;
-    if (!groups[groupKey]) groups[groupKey] = [];
-    groups[groupKey].push(entry);
-  });
-
-  const retakenKeys = new Set();
-  Object.values(groups).forEach(group => {
-    if (group.length < 2) return;
-    if (bestGrade) {
-      const best = group.reduce((a, b) => a.gp >= b.gp ? a : b);
-      group.forEach(e => { if (e.key !== best.key) retakenKeys.add(e.key); });
-    } else {
-      group.slice(0, -1).forEach(e => retakenKeys.add(e.key));
-    }
-  });
-  return retakenKeys;
+  const options = { ...(opts || {}) };
+  if (typeof options.bestGrade !== 'boolean') {
+    options.startSeason = getStartSeason();
+    options.startYear = getStartYear();
+  }
+  return getTypedRetakenKeys(semList || state.semesters, options);
 }
 
 function getSemCreditWarning(sem) {
-  const total = sem.courses.reduce((sum, c) => {
-    if (!c.name.trim() || !c.credits) return sum;
-    if (c.grade === 'P' || c.grade === 'F(NT)') return sum;
-    return sum + c.credits;
-  }, 0);
-  if (total === 0) return null;
-  if (total < 9)  return { type: 'error', msg: `⚠ ${total} credits — below 9-credit minimum` };
-  if (total > 15) return { type: 'error', msg: `⛔ ${total} credits — exceeds 15-credit maximum` };
-  if (total > 12) return { type: 'warn',  msg: `⚠ ${total} credits — requires chairman's permission` };
-  return null;
-}
-
-/**
- * Returns whether a course with the given grade is eligible for a Repeat.
- *
- * Repeat policy (effective for all students):
- *   - Eligible if current grade is BELOW B (i.e. B- or lower, excluding F)
- *   - F grades require a Retake (full re-enrollment), not a Repeat
- *   - Can only be repeated ONCE, within 2 semesters of initial enrollment
- *   - No grade cap — latest grade counts regardless of what it is
- *   - Same intake-based policy applies to which grade counts in CGPA
- *     (best grade for Spring 2024 and earlier, latest grade for Fall 2024+)
- *
- * @param {string} grade - The current letter grade (e.g. 'C+', 'B-', 'F')
- * @returns {boolean}
- */
-function isRepeatEligible(grade) {
-  // F and F(NT) require Retake, not Repeat
-  if (grade === 'F' || grade === 'F(NT)') return false;
-  // P and I are not eligible
-  if (grade === 'P' || grade === 'I' || !grade) return false;
-  const gp = GRADES[grade];
-  if (gp === undefined || gp === null) return false;
-  // Below B means grade point < 3.0 (B = 3.0 is the threshold, not eligible)
-  return gp < 3.0;
-}
-
-/**
- * Returns the improvement strategy for a given grade:
- *   'retake'  — F grade, must re-enroll (up to 2 retakes)
- *   'repeat'  — B- or below (non-F), can sit repeat exam (once, within 2 sems)
- *   null      — B or above, no improvement mechanism available
- *
- * @param {string} grade
- * @returns {'retake'|'repeat'|null}
- */
-function getImprovementStrategy(grade) {
-  if (grade === 'F' || grade === 'F(NT)') return 'retake';
-  if (isRepeatEligible(grade)) return 'repeat';
-  return null;
-}
-
-/**
- * Normalize grade point input for common shorthand.
- * Two modes:
- *   'input' — only fixes 2-digit shorthand (safe mid-typing)
- *             "33" → "3.3",  "27" → "2.7",  "40" → "4.0"
- *   'blur'  — also fixes single digits (user is done typing)
- *             "3"  → "3.0",  "0"  → "0.0",  "4"  → "4.0"
- * Already valid inputs like "3.3", "2.70", "NT" pass through unchanged.
- */
-function normalizeGradePoint(raw, mode) {
-  const trimmed = raw.trim();
-
-  // Let NT / text pass through untouched
-  if (/[a-zA-Z]/.test(trimmed)) return trimmed;
-
-  // Already has a decimal point → leave it alone
-  if (trimmed.includes('.')) return trimmed;
-
-  // Two digits where first is 0-4 → insert decimal  (e.g. "33" → "3.3", "27" → "2.7")
-  if (/^[0-4]\d$/.test(trimmed)) return trimmed[0] + '.' + trimmed[1];
-
-  // Single digit 0-4 → append .0 — only on blur (user is done typing)
-  if (mode === 'blur' && /^[0-4]$/.test(trimmed)) return trimmed + '.0';
-
-  // Anything else → pass through
-  return trimmed;
-}
-
-/**
- * Clamp a grade point value to the valid 0.0–4.0 range.
- * Returns the clamped string, or the original if non-numeric.
- */
-function clampGradePoint(val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return val;
-  if (n > 4.0) return '4.0';
-  if (n < 0)   return '0.0';
-  return val;
+  return getSemesterCreditWarning(sem);
 }
 
 function autoDetectGrade(semId, cIdx, val, inputEl) {
