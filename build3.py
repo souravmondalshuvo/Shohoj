@@ -39,11 +39,13 @@ MAIN_JS_FILES = [
     'js/core/departments.js',
     # Core (with dependencies)
     'js/core/catalog.js',
+    'js/core/gpa-core.js',
     'js/core/calculator.js',
     'js/core/faculty.js',
     'js/core/reviews.js',
     'js/core/papers.js',
     # Import
+    'js/import/transcript-core.js',
     'js/import/parser.js',
     # UI
     'js/ui/charts.js',
@@ -59,6 +61,7 @@ MAIN_JS_FILES = [
     'js/ui/simulator.js',
     'js/ui/modals.js',
     'js/ui/playground.js',
+    'js/core/planner-core.js',
     'js/ui/planner.js',
     'js/ui/feedback.js',
     # Animations
