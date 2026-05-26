@@ -2,22 +2,22 @@ import { detectGrade } from './grades.js';
 import { getStartSeason, getStartYear } from './helpers.js';
 import { state } from './state.js';
 import {
-  calcSemesterGpa,
-  clampGradePoint,
-  getImprovementStrategy,
-  getRetakenKeys as getTypedRetakenKeys,
-  getSemesterCreditWarning,
-  isRepeatEligible,
-  normalizeGradePoint,
-  usesBestGradePolicy as typedUsesBestGradePolicy,
+  gpaCoreCalcSemesterGpa,
+  gpaCoreClampGradePoint,
+  gpaCoreGetImprovementStrategy,
+  gpaCoreGetRetakenKeys,
+  gpaCoreGetSemesterCreditWarning,
+  gpaCoreIsRepeatEligible,
+  gpaCoreNormalizeGradePoint,
+  gpaCoreUsesBestGradePolicy,
 } from './gpa-core.js';
 
 export function calcSemGPA(sem) {
-  return calcSemesterGpa(sem);
+  return gpaCoreCalcSemesterGpa(sem);
 }
 
 export function usesBestGradePolicy() {
-  return typedUsesBestGradePolicy({
+  return gpaCoreUsesBestGradePolicy({
     startSeason: getStartSeason(),
     startYear: getStartYear(),
   });
@@ -29,18 +29,24 @@ export function getRetakenKeys(semList, opts) {
     options.startSeason = getStartSeason();
     options.startYear = getStartYear();
   }
-  return getTypedRetakenKeys(semList || state.semesters, options);
+  return gpaCoreGetRetakenKeys(semList || state.semesters, options);
 }
 
 export function getSemCreditWarning(sem) {
-  return getSemesterCreditWarning(sem);
+  return gpaCoreGetSemesterCreditWarning(sem);
 }
 
-export {
-  getImprovementStrategy,
-  isRepeatEligible,
-  normalizeGradePoint,
-};
+export function isRepeatEligible(grade) {
+  return gpaCoreIsRepeatEligible(grade);
+}
+
+export function getImprovementStrategy(grade) {
+  return gpaCoreGetImprovementStrategy(grade);
+}
+
+export function normalizeGradePoint(raw, mode) {
+  return gpaCoreNormalizeGradePoint(raw, mode);
+}
 
 export function autoDetectGrade(semId, cIdx, val, inputEl) {
   if (val.trim().toUpperCase() === 'NT') {
@@ -61,7 +67,7 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 
   // Clamp to 0.0–4.0 range
-  const clamped = clampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val);
   if (clamped !== val) {
     inputEl.value = clamped;
     val = clamped;
@@ -98,7 +104,7 @@ export function onGradePointBlur(semId, cIdx, inputEl) {
   let val = original;
   const normalized = normalizeGradePoint(val, 'blur');
   if (normalized !== val) val = normalized;
-  const clamped = clampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val);
   if (clamped !== val) val = clamped;
   if (val !== original) {
     inputEl.value = val;
