@@ -1,7 +1,7 @@
 // Generated from src/core/gpa.ts for the vanilla JS runtime.
 // Update src/core/gpa.ts first, then regenerate this file.
 import { GRADES } from './grades.js';
-export const SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
+const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
 function isGradeLetter(grade) {
     return Object.prototype.hasOwnProperty.call(GRADES, grade);
 }
@@ -35,7 +35,7 @@ export function usesBestGradePolicy(options = {}) {
         : Number.parseInt(options.startYear || '2024', 10);
     if (!season || Number.isNaN(year))
         return false;
-    const seasonIndex = SEASON_ORDER.indexOf(season);
+    const seasonIndex = GPA_SEASON_ORDER.indexOf(season);
     if (year < 2024)
         return true;
     if (year === 2024 && seasonIndex === 0)
@@ -208,3 +208,11 @@ export function clampGradePoint(value) {
         return '0.0';
     return value;
 }
+export const gpaCoreCalcSemesterGpa = calcSemesterGpa;
+export const gpaCoreUsesBestGradePolicy = usesBestGradePolicy;
+export const gpaCoreGetRetakenKeys = getRetakenKeys;
+export const gpaCoreGetSemesterCreditWarning = getSemesterCreditWarning;
+export const gpaCoreIsRepeatEligible = isRepeatEligible;
+export const gpaCoreGetImprovementStrategy = getImprovementStrategy;
+export const gpaCoreNormalizeGradePoint = normalizeGradePoint;
+export const gpaCoreClampGradePoint = clampGradePoint;
