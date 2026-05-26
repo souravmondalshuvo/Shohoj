@@ -17,6 +17,7 @@
     "test:worker": "node worker/test/worker.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
     "test:e2e": "playwright test",
+    "test:bundle": "node tests/productionBundleSmoke.test.js",
     "typecheck": "tsc --noEmit",
     "set:admin": "node scripts/set_admin_claim.js",
     "config:local": "node scripts/generate_runtime_config.js"
