@@ -202,9 +202,9 @@ export function getSemesterCreditWarning(
   }, 0);
 
   if (total === 0) return null;
-  if (total < 9) return { type: 'error', msg: `${total} credits - below 9-credit minimum` };
-  if (total > 15) return { type: 'error', msg: `${total} credits - exceeds 15-credit maximum` };
-  if (total > 12) return { type: 'warn', msg: `${total} credits - requires chairman's permission` };
+  if (total < 9) return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
+  if (total > 15) return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
+  if (total > 12) return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
   return null;
 }
 
