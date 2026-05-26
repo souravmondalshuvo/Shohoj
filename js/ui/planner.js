@@ -2,8 +2,6 @@
 // Semester Planner: prerequisite checking, course recommendations,
 // plan building, credit validation, and prereq tree visualization.
 
-import { GRADES } from '../core/grades.js';
-import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState } from '../core/state.js';
 import { COURSE_DB, ALL_COURSES, PREREQS } from '../core/catalog.js';
 import { getRetakenKeys } from '../core/calculator.js';
@@ -11,6 +9,14 @@ import { escHtml, escAttr } from '../core/helpers.js';
 import { getCurrentTotals } from './playground.js';
 import { addRunningSemester } from './render.js';
 import { registerAction } from '../core/dispatch.js';
+import {
+  plannerCoreCheckPrereqs,
+  plannerCoreGetAvailableCourses,
+  plannerCoreGetCompletedCodes,
+  plannerCoreGetPrereqChain,
+  plannerCoreProjectCgpa,
+  plannerCoreValidatePlan,
+} from '../core/planner-core.js';
 
 registerAction('pl:impactGrade',   el => onPlannerImpactGrade(el.value));
 registerAction('pl:openReviews',   el => window.openCourseReviews?.(el.dataset.code, el.dataset.name));
@@ -37,234 +43,39 @@ let _searchCursorStart = null;
 let _searchCursorEnd = null;
 let _assumedGrade = 'A';
 
-// ── Engine: get completed course codes ──────────────────────────────────────
-function getCompletedCodes() {
-  const rk = getRetakenKeys();
-  const completed = new Set();
-  state.semesters.forEach(sem => {
-    if (sem.summary) return;
-    sem.courses.forEach((c, i) => {
-      if (!c.name.trim() || !c.grade) return;
-      if (c.grade === 'F' || c.grade === 'F(NT)' || c.grade === 'I') return;
-      if (rk.has(`${sem.id}-${i}`)) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) completed.add(m[1]);
-    });
-  });
-  return completed;
-}
-
-// ── Engine: get in-progress course codes (running semester) ─────────────────
-function getInProgressCodes() {
-  const codes = new Set();
-  state.semesters.forEach(sem => {
-    if (!sem.running) return;
-    sem.courses.forEach(c => {
-      if (!c.name.trim()) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) codes.add(m[1]);
-    });
-  });
-  return codes;
-}
-
-// ── Engine: get codes already scheduled in future/manual semester blocks ─────
-function getScheduledCodes() {
-  const codes = new Set();
-  state.semesters.forEach(sem => {
-    if (sem.summary || sem.running) return;
-    sem.courses.forEach(c => {
-      if (!c.name.trim() || c.grade) return;
-      const m = c.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-      if (m) codes.add(m[1]);
-    });
-  });
-  return codes;
-}
-
-// ── Engine: check prerequisites for a course ────────────────────────────────
-function checkPrereqs(code, completed) {
-  const prereq = PREREQS[code];
-  if (!prereq) return { canTake: true, missingHp: [], missingSp: [], hasData: false };
-
-  const missingHp = (prereq.hp || []).filter(p => !completed.has(p));
-  const missingSp = (prereq.sp || []).filter(p => !completed.has(p));
-
+function plannerEngineInput(retakenKeys = getRetakenKeys()) {
   return {
-    canTake: missingHp.length === 0,
-    missingHp,
-    missingSp,
-    hasData: true,
+    semesters: state.semesters,
+    allCourses: ALL_COURSES,
+    courseCatalog: COURSE_DB,
+    prerequisites: PREREQS,
+    planCourses: plan.courses,
+    currentDept: state.currentDept,
+    retakenKeys,
   };
 }
 
-// ── Engine: count how many downstream courses each code unlocks ─────────────
-// Built once from PREREQS; higher count = gating more future courses.
-let _unlockCountCache = null;
-function getUnlockCount(code) {
-  if (!_unlockCountCache) {
-    _unlockCountCache = Object.create(null);
-    Object.keys(PREREQS).forEach(c => {
-      const p = PREREQS[c] || {};
-      [...(p.hp || []), ...(p.sp || [])].forEach(req => {
-        _unlockCountCache[req] = (_unlockCountCache[req] || 0) + 1;
-      });
-    });
-  }
-  return _unlockCountCache[code] || 0;
+function getCompletedCodes() {
+  return plannerCoreGetCompletedCodes(state.semesters, getRetakenKeys());
 }
 
-// ── Engine: determine if a course is relevant to the current department ──────
-function isRelevantToDept(code, deptCode) {
-  if (!deptCode) return true;
-
-  // Direct department match
-  const prefix = code.replace(/\d.*/,'');
-
-  // Map department codes to relevant course prefixes
-  const deptPrefixes = {
-    CSE: ['CSE'],
-    CS:  ['CSE'],
-    EEE: ['EEE'],
-    ECE: ['ECE'],
-    BBA: ['ACT','BUS','FIN','MGT','MKT','MSC','MIS'],
-    ECO: ['ECO'],
-    ENG: ['ENG'],
-    ANT: ['ANT','SOC'],
-    PHY: ['PHY'],
-    APE: ['APE','PHY'],
-    MAT: ['MAT'],
-    MIC: ['MIC','BCH','BIO'],
-    BIO: ['BTE','BIO','BCH','MIC'],
-    ARC: ['ARC'],
-    PHR: ['PHB','PHR'],
-    LAW: ['LAW'],
-  };
-
-  // Common GED prefixes relevant to all departments
-  const commonPrefixes = ['MAT','PHY','ENG','BNG','EMB','HUM','STA','ECO','CST','DEV','ENV','HST','POL','PSY','SOC','GEO'];
-
-  const relevantPrefixes = deptPrefixes[deptCode] || [];
-
-  if (relevantPrefixes.includes(prefix)) return true;
-  if (commonPrefixes.includes(prefix)) return true;
-
-  return false;
+function checkPrereqs(code, completed) {
+  return plannerCoreCheckPrereqs(code, completed, PREREQS);
 }
 
-// ── Engine: get all available courses for planning ──────────────────────────
 function getAvailableCourses(completed, dept) {
-  const inProgress = getInProgressCodes();
-  const scheduled  = getScheduledCodes();
-  const deptCode   = dept || state.currentDept || '';
-  const results    = [];
-
-  ALL_COURSES.forEach(c => {
-    // Skip if already completed, in progress, or already scheduled elsewhere
-    if (completed.has(c.code)) return;
-    if (inProgress.has(c.code)) return;
-    if (scheduled.has(c.code)) return;
-    // Skip if already in plan
-    if (plan.courses.includes(c.code)) return;
-    // Skip 0-credit remedial courses
-    if (c.credits === 0) return;
-
-    const check = checkPrereqs(c.code, completed);
-    const relevant = isRelevantToDept(c.code, deptCode);
-
-    results.push({
-      ...c,
-      canTake: check.canTake,
-      missingHp: check.missingHp,
-      missingSp: check.missingSp,
-      hasPrereqData: check.hasData,
-      isRelevant: relevant,
-      unlockCount: getUnlockCount(c.code),
-    });
+  return plannerCoreGetAvailableCourses({
+    ...plannerEngineInput(),
+    currentDept: dept || state.currentDept || '',
   });
-
-  // Sort: relevant first, then unlocked, then by downstream unlock count (desc), then level
-  results.sort((a, b) => {
-    if (a.isRelevant !== b.isRelevant) return a.isRelevant ? -1 : 1;
-    if (a.canTake !== b.canTake) return a.canTake ? -1 : 1;
-    if (a.unlockCount !== b.unlockCount) return b.unlockCount - a.unlockCount;
-    const aNum = parseInt(a.code.replace(/^[A-Z]+/, ''));
-    const bNum = parseInt(b.code.replace(/^[A-Z]+/, ''));
-    return aNum - bNum;
-  });
-
-  return results;
 }
 
-// ── Engine: validate the current plan ───────────────────────────────────────
 function validatePlan(completed) {
-  const totalCredits = plan.courses.reduce((sum, code) => {
-    const c = COURSE_DB[code];
-    return sum + (c ? c.credits : 0);
-  }, 0);
-
-  const issues   = [];
-  const warnings = [];
-
-  if (totalCredits > 0 && totalCredits < 9) {
-    issues.push(`${totalCredits} credits \u2014 below 9-credit minimum`);
-  }
-  if (totalCredits > 15) {
-    issues.push(`${totalCredits} credits \u2014 exceeds 15-credit maximum`);
-  }
-  if (totalCredits > 12 && totalCredits <= 15) {
-    warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
-  }
-
-  const scheduled    = getScheduledCodes();
-  const inProgress   = getInProgressCodes();
-
-  plan.courses.forEach(code => {
-    const check = checkPrereqs(code, completed);
-    if (!check.canTake) {
-      issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
-    }
-    if (check.missingSp.length > 0) {
-      warnings.push(`${code} \u2014 recommended: ${check.missingSp.join(', ')}`);
-    }
-  });
-
-  plan.courses.forEach(code => {
-    if (completed.has(code)) {
-      warnings.push(`${code} \u2014 you\u2019ve already passed this course`);
-    } else if (inProgress.has(code)) {
-      warnings.push(`${code} \u2014 already in your running semester`);
-    } else if (scheduled.has(code)) {
-      warnings.push(`${code} \u2014 already scheduled in another semester`);
-    }
-  });
-
-  return { totalCredits, issues, warnings };
+  return plannerCoreValidatePlan(plannerEngineInput());
 }
 
-// ── Engine: build prereq chain for tree view ────────────────────────────────
 function getPrereqChain(code, completed, depth = 0) {
-  if (depth > 8) return null;
-  const prereq = PREREQS[code];
-  const node = {
-    code,
-    name: COURSE_DB[code]?.name || code,
-    completed: completed.has(code),
-    children: [],
-  };
-
-  if (prereq) {
-    const allPrereqs = [...(prereq.hp || []), ...(prereq.sp || [])];
-    allPrereqs.forEach(p => {
-      const child = getPrereqChain(p, completed, depth + 1);
-      if (child) {
-        child.isSoft = (prereq.sp || []).includes(p);
-        node.children.push(child);
-      }
-    });
-  }
-
-  return node;
+  return plannerCoreGetPrereqChain(code, completed, COURSE_DB, PREREQS, depth);
 }
 
 // ── Engine: project CGPA assuming a uniform grade across planned courses ────
@@ -272,17 +83,7 @@ const IMPACT_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D'];
 
 function projectCGPA(plannedCredits, assumedGrade) {
   const { pts, cr } = getCurrentTotals();
-  const gp = GRADES[assumedGrade];
-  if (gp === null || gp === undefined) return { current: cr > 0 ? pts / cr : null, projected: null, delta: null };
-  const newPts = pts + plannedCredits * gp;
-  const newCr  = cr + plannedCredits;
-  const projected = newCr > 0 ? newPts / newCr : null;
-  const current   = cr > 0 ? pts / cr : null;
-  return {
-    current,
-    projected,
-    delta: (current !== null && projected !== null) ? projected - current : null,
-  };
+  return plannerCoreProjectCgpa(pts, cr, plannedCredits, assumedGrade);
 }
 
 function renderImpactPreview(totalCredits) {
