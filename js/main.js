@@ -501,18 +501,6 @@ function startDemoMode() {
   scrollToCalculator();
 }
 
-function startManualEntry() {
-  switchCalcTab('calculator');
-  scrollToCalculator();
-  setTimeout(() => document.getElementById('deptSelect')?.focus(), 250);
-}
-
-function openTranscriptImport() {
-  switchCalcTab('calculator');
-  scrollToCalculator();
-  document.getElementById('transcriptFileInput')?.click();
-}
-
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
   let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
@@ -730,9 +718,6 @@ function _wireInlineReplacements() {
 
   // Department / start-semester pickers (replaces inline onchange on selects).
   on('heroDemoBtn', 'click', () => startDemoMode());
-  on('onboardingDemoBtn', 'click', () => startDemoMode());
-  on('onboardingImportBtn', 'click', () => openTranscriptImport());
-  on('onboardingManualBtn', 'click', () => startManualEntry());
   on('footerDemoBtn', 'click', () => startDemoMode());
   on('deptSelect', 'change', () => onDeptSelect());
   on('startSeason', 'change', () => { renderSemesters(); recalc(); });
