@@ -38,7 +38,7 @@ const COMMON_PREFIXES = [
     'SOC',
     'GEO',
 ];
-export function getCompletedCodes(semesters, retakenKeys = new Set()) {
+function plannerCoreGetCompletedCodesImpl(semesters, retakenKeys = new Set()) {
     const completed = new Set();
     for (const semester of semesters) {
         if (semester.summary)
@@ -57,7 +57,7 @@ export function getCompletedCodes(semesters, retakenKeys = new Set()) {
     }
     return completed;
 }
-export function getInProgressCodes(semesters) {
+function plannerCoreGetInProgressCodesImpl(semesters) {
     const codes = new Set();
     for (const semester of semesters) {
         if (!semester.running)
@@ -72,7 +72,7 @@ export function getInProgressCodes(semesters) {
     }
     return codes;
 }
-export function getScheduledCodes(semesters) {
+function plannerCoreGetScheduledCodesImpl(semesters) {
     const codes = new Set();
     for (const semester of semesters) {
         if (semester.summary || semester.running)
@@ -87,7 +87,7 @@ export function getScheduledCodes(semesters) {
     }
     return codes;
 }
-export function checkPrereqs(code, completed, prerequisites) {
+function plannerCoreCheckPrereqsImpl(code, completed, prerequisites) {
     const prereq = prerequisites[code];
     if (!prereq)
         return { canTake: true, missingHp: [], missingSp: [], hasData: false };
@@ -100,7 +100,7 @@ export function checkPrereqs(code, completed, prerequisites) {
         hasData: true,
     };
 }
-export function buildUnlockCountMap(prerequisites) {
+function plannerCoreBuildUnlockCountMapImpl(prerequisites) {
     const counts = Object.create(null);
     for (const code of Object.keys(prerequisites)) {
         const prereq = prerequisites[code] ?? {};
@@ -110,7 +110,7 @@ export function buildUnlockCountMap(prerequisites) {
     }
     return counts;
 }
-export function isRelevantToDept(code, deptCode) {
+function plannerCoreIsRelevantToDeptImpl(code, deptCode) {
     if (!deptCode)
         return true;
     const prefix = code.replace(/\d.*/, '');
@@ -121,11 +121,11 @@ export function isRelevantToDept(code, deptCode) {
         return true;
     return false;
 }
-export function getAvailableCourses(input, options = {}) {
-    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-    const inProgress = getInProgressCodes(input.semesters);
-    const scheduled = getScheduledCodes(input.semesters);
-    const unlockCounts = buildUnlockCountMap(input.prerequisites);
+function plannerCoreGetAvailableCoursesImpl(input, options = {}) {
+    const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+    const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
+    const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+    const unlockCounts = plannerCoreBuildUnlockCountMapImpl(input.prerequisites);
     const planSet = new Set(input.planCourses);
     let results = [];
     for (const course of input.allCourses) {
@@ -139,14 +139,14 @@ export function getAvailableCourses(input, options = {}) {
             continue;
         if (course.credits === 0)
             continue;
-        const check = checkPrereqs(course.code, completed, input.prerequisites);
+        const check = plannerCoreCheckPrereqsImpl(course.code, completed, input.prerequisites);
         results.push({
             ...course,
             canTake: check.canTake,
             missingHp: check.missingHp,
             missingSp: check.missingSp,
             hasPrereqData: check.hasData,
-            isRelevant: isRelevantToDept(course.code, input.currentDept),
+            isRelevant: plannerCoreIsRelevantToDeptImpl(course.code, input.currentDept),
             unlockCount: unlockCounts[course.code] ?? 0,
         });
     }
@@ -174,10 +174,10 @@ export function getAvailableCourses(input, options = {}) {
     }
     return typeof options.limit === 'number' ? results.slice(0, options.limit) : results;
 }
-export function validatePlan(input) {
-    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-    const scheduled = getScheduledCodes(input.semesters);
-    const inProgress = getInProgressCodes(input.semesters);
+function plannerCoreValidatePlanImpl(input) {
+    const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+    const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+    const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
     const totalCredits = input.planCourses.reduce((sum, code) => {
         const course = input.courseCatalog[code];
         return sum + (course ? course.credits : 0);
@@ -194,7 +194,7 @@ export function validatePlan(input) {
         warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
     }
     for (const code of input.planCourses) {
-        const check = checkPrereqs(code, completed, input.prerequisites);
+        const check = plannerCoreCheckPrereqsImpl(code, completed, input.prerequisites);
         if (!check.canTake) {
             issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
         }
@@ -215,7 +215,7 @@ export function validatePlan(input) {
     }
     return { totalCredits, issues, warnings };
 }
-export function getPrereqChain(code, completed, courseCatalog, prerequisites, depth = 0) {
+function plannerCoreGetPrereqChainImpl(code, completed, courseCatalog, prerequisites, depth = 0) {
     if (depth > 8)
         return null;
     const prereq = prerequisites[code];
@@ -229,7 +229,7 @@ export function getPrereqChain(code, completed, courseCatalog, prerequisites, de
         return node;
     const allPrereqs = [...(prereq.hp ?? []), ...(prereq.sp ?? [])];
     for (const item of allPrereqs) {
-        const child = getPrereqChain(item, completed, courseCatalog, prerequisites, depth + 1);
+        const child = plannerCoreGetPrereqChainImpl(item, completed, courseCatalog, prerequisites, depth + 1);
         if (!child)
             continue;
         child.isSoft = (prereq.sp ?? []).includes(item);
@@ -237,7 +237,7 @@ export function getPrereqChain(code, completed, courseCatalog, prerequisites, de
     }
     return node;
 }
-export function projectCgpa(currentPoints, currentCredits, plannedCredits, assumedGrade) {
+function plannerCoreProjectCgpaImpl(currentPoints, currentCredits, plannedCredits, assumedGrade) {
     const gradePoint = Object.prototype.hasOwnProperty.call(GRADES, assumedGrade)
         ? GRADES[assumedGrade]
         : undefined;
@@ -254,9 +254,10 @@ export function projectCgpa(currentPoints, currentCredits, plannedCredits, assum
         delta: current !== null && projected !== null ? projected - current : null,
     };
 }
-export const plannerCoreGetCompletedCodes = getCompletedCodes;
-export const plannerCoreCheckPrereqs = checkPrereqs;
-export const plannerCoreGetAvailableCourses = getAvailableCourses;
-export const plannerCoreValidatePlan = validatePlan;
-export const plannerCoreGetPrereqChain = getPrereqChain;
-export const plannerCoreProjectCgpa = projectCgpa;
+export const plannerCoreGetCompletedCodes = plannerCoreGetCompletedCodesImpl;
+export const plannerCoreCheckPrereqs = plannerCoreCheckPrereqsImpl;
+export const plannerCoreGetAvailableCourses = plannerCoreGetAvailableCoursesImpl;
+export const plannerCoreValidatePlan = plannerCoreValidatePlanImpl;
+export const plannerCoreGetPrereqChain = plannerCoreGetPrereqChainImpl;
+export const plannerCoreProjectCgpa = plannerCoreProjectCgpaImpl;
+export { plannerCoreGetCompletedCodesImpl as getCompletedCodes, plannerCoreGetInProgressCodesImpl as getInProgressCodes, plannerCoreGetScheduledCodesImpl as getScheduledCodes, plannerCoreCheckPrereqsImpl as checkPrereqs, plannerCoreBuildUnlockCountMapImpl as buildUnlockCountMap, plannerCoreIsRelevantToDeptImpl as isRelevantToDept, plannerCoreGetAvailableCoursesImpl as getAvailableCourses, plannerCoreValidatePlanImpl as validatePlan, plannerCoreGetPrereqChainImpl as getPrereqChain, plannerCoreProjectCgpaImpl as projectCgpa, };
