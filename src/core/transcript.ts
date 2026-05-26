@@ -2,7 +2,7 @@ import type { TranscriptParseResult, TranscriptSemester } from './types';
 
 export const DEPARTMENT_LABELS = {
   CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
-  EEE: 'BSc EEE - Electrical & Electronic Engineering',
+  EEE: 'BSc EEE \u2014 Electrical & Electronic Engineering',
   BBA: 'Bachelor of Business Administration (BBA)',
   ECO: 'B.S.S. in Economics (ECO)',
   ENG: 'B.A. in English (ENG)',
