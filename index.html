@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-oRP1NnXdkMBT24yLsptzKeRBPf5O1MsglmWq0Wb00Po='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-AbxrgGadM3IKflEtE/xUqiIldJ+P+RvNQmXG//nPxns='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9822,7 +9822,7 @@ function isGradeLetter(grade) {
 function gradePointFor(grade) {
     return isGradeLetter(grade) ? GRADES[grade] : undefined;
 }
-function calcSemesterGpa(semester) {
+function gpaCoreCalcSemesterGpaImpl(semester) {
     let points = 0;
     let credits = 0;
     for (const course of semester.courses) {
@@ -9842,7 +9842,7 @@ function calcSemesterGpa(semester) {
     }
     return credits > 0 ? points / credits : null;
 }
-function usesBestGradePolicy(options = {}) {
+function gpaCoreUsesBestGradePolicyImpl(options = {}) {
     const season = options.startSeason || 'Fall';
     const year = typeof options.startYear === 'number'
         ? options.startYear
@@ -9870,10 +9870,10 @@ function getCourseIdentity(courseName) {
         return code;
     return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
 }
-function getRetakenKeys(semesters, options = {}) {
+function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
     const bestGrade = typeof options.bestGrade === 'boolean'
         ? options.bestGrade
-        : usesBestGradePolicy(options);
+        : gpaCoreUsesBestGradePolicyImpl(options);
     const attempts = [];
     for (const semester of semesters) {
         if (semester.running || semester.summary)
@@ -9920,7 +9920,7 @@ function getRetakenKeys(semesters, options = {}) {
 function calculateCgpaTotals(semesters, options = {}) {
     const includeRunning = options.includeRunning ?? true;
     const includeSummary = options.includeSummary ?? true;
-    const retakenKeys = getRetakenKeys(semesters, options);
+    const retakenKeys = gpaCoreGetRetakenKeysImpl(semesters, options);
     let points = 0;
     let attemptedCredits = 0;
     let earnedCredits = 0;
@@ -9965,7 +9965,7 @@ function calculateCgpaTotals(semesters, options = {}) {
         cgpa: cgpaCredits > 0 ? points / cgpaCredits : null,
     };
 }
-function getSemesterCreditWarning(semester) {
+function gpaCoreGetSemesterCreditWarningImpl(semester) {
     const total = semester.courses.reduce((sum, course) => {
         if (!course.name.trim() || !course.credits)
             return sum;
@@ -9983,7 +9983,7 @@ function getSemesterCreditWarning(semester) {
         return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
     return null;
 }
-function isRepeatEligible(grade) {
+function gpaCoreIsRepeatEligibleImpl(grade) {
     if (grade === 'F' || grade === 'F(NT)')
         return false;
     if (grade === 'P' || grade === 'I' || !grade)
@@ -9993,14 +9993,14 @@ function isRepeatEligible(grade) {
         return false;
     return gp < 3.0;
 }
-function getImprovementStrategy(grade) {
+function gpaCoreGetImprovementStrategyImpl(grade) {
     if (grade === 'F' || grade === 'F(NT)')
         return 'retake';
-    if (isRepeatEligible(grade))
+    if (gpaCoreIsRepeatEligibleImpl(grade))
         return 'repeat';
     return null;
 }
-function normalizeGradePoint(raw, mode) {
+function gpaCoreNormalizeGradePointImpl(raw, mode) {
     const trimmed = raw.trim();
     if (/[a-zA-Z]/.test(trimmed))
         return trimmed;
@@ -10012,7 +10012,7 @@ function normalizeGradePoint(raw, mode) {
         return `${trimmed}.0`;
     return trimmed;
 }
-function clampGradePoint(value) {
+function gpaCoreClampGradePointImpl(value) {
     const n = Number.parseFloat(value);
     if (Number.isNaN(n))
         return value;
@@ -10022,14 +10022,14 @@ function clampGradePoint(value) {
         return '0.0';
     return value;
 }
-const gpaCoreCalcSemesterGpa = calcSemesterGpa;
-const gpaCoreUsesBestGradePolicy = usesBestGradePolicy;
-const gpaCoreGetRetakenKeys = getRetakenKeys;
-const gpaCoreGetSemesterCreditWarning = getSemesterCreditWarning;
-const gpaCoreIsRepeatEligible = isRepeatEligible;
-const gpaCoreGetImprovementStrategy = getImprovementStrategy;
-const gpaCoreNormalizeGradePoint = normalizeGradePoint;
-const gpaCoreClampGradePoint = clampGradePoint;
+const gpaCoreCalcSemesterGpa = gpaCoreCalcSemesterGpaImpl;
+const gpaCoreUsesBestGradePolicy = gpaCoreUsesBestGradePolicyImpl;
+const gpaCoreGetRetakenKeys = gpaCoreGetRetakenKeysImpl;
+const gpaCoreGetSemesterCreditWarning = gpaCoreGetSemesterCreditWarningImpl;
+const gpaCoreIsRepeatEligible = gpaCoreIsRepeatEligibleImpl;
+const gpaCoreGetImprovementStrategy = gpaCoreGetImprovementStrategyImpl;
+const gpaCoreNormalizeGradePoint = gpaCoreNormalizeGradePointImpl;
+const gpaCoreClampGradePoint = gpaCoreClampGradePointImpl;
 
 // ── js/core/calculator.js ───────────────────────────────────────
 function calcSemGPA(sem) {
@@ -17062,7 +17062,7 @@ const COMMON_PREFIXES = [
     'SOC',
     'GEO',
 ];
-function getCompletedCodes(semesters, retakenKeys = new Set()) {
+function plannerCoreGetCompletedCodesImpl(semesters, retakenKeys = new Set()) {
     const completed = new Set();
     for (const semester of semesters) {
         if (semester.summary)
@@ -17081,7 +17081,7 @@ function getCompletedCodes(semesters, retakenKeys = new Set()) {
     }
     return completed;
 }
-function getInProgressCodes(semesters) {
+function plannerCoreGetInProgressCodesImpl(semesters) {
     const codes = new Set();
     for (const semester of semesters) {
         if (!semester.running)
@@ -17096,7 +17096,7 @@ function getInProgressCodes(semesters) {
     }
     return codes;
 }
-function getScheduledCodes(semesters) {
+function plannerCoreGetScheduledCodesImpl(semesters) {
     const codes = new Set();
     for (const semester of semesters) {
         if (semester.summary || semester.running)
@@ -17111,7 +17111,7 @@ function getScheduledCodes(semesters) {
     }
     return codes;
 }
-function checkPrereqs(code, completed, prerequisites) {
+function plannerCoreCheckPrereqsImpl(code, completed, prerequisites) {
     const prereq = prerequisites[code];
     if (!prereq)
         return { canTake: true, missingHp: [], missingSp: [], hasData: false };
@@ -17124,7 +17124,7 @@ function checkPrereqs(code, completed, prerequisites) {
         hasData: true,
     };
 }
-function buildUnlockCountMap(prerequisites) {
+function plannerCoreBuildUnlockCountMapImpl(prerequisites) {
     const counts = Object.create(null);
     for (const code of Object.keys(prerequisites)) {
         const prereq = prerequisites[code] ?? {};
@@ -17134,7 +17134,7 @@ function buildUnlockCountMap(prerequisites) {
     }
     return counts;
 }
-function isRelevantToDept(code, deptCode) {
+function plannerCoreIsRelevantToDeptImpl(code, deptCode) {
     if (!deptCode)
         return true;
     const prefix = code.replace(/\d.*/, '');
@@ -17145,11 +17145,11 @@ function isRelevantToDept(code, deptCode) {
         return true;
     return false;
 }
-function getAvailableCourses(input, options = {}) {
-    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-    const inProgress = getInProgressCodes(input.semesters);
-    const scheduled = getScheduledCodes(input.semesters);
-    const unlockCounts = buildUnlockCountMap(input.prerequisites);
+function plannerCoreGetAvailableCoursesImpl(input, options = {}) {
+    const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+    const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
+    const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+    const unlockCounts = plannerCoreBuildUnlockCountMapImpl(input.prerequisites);
     const planSet = new Set(input.planCourses);
     let results = [];
     for (const course of input.allCourses) {
@@ -17163,14 +17163,14 @@ function getAvailableCourses(input, options = {}) {
             continue;
         if (course.credits === 0)
             continue;
-        const check = checkPrereqs(course.code, completed, input.prerequisites);
+        const check = plannerCoreCheckPrereqsImpl(course.code, completed, input.prerequisites);
         results.push({
             ...course,
             canTake: check.canTake,
             missingHp: check.missingHp,
             missingSp: check.missingSp,
             hasPrereqData: check.hasData,
-            isRelevant: isRelevantToDept(course.code, input.currentDept),
+            isRelevant: plannerCoreIsRelevantToDeptImpl(course.code, input.currentDept),
             unlockCount: unlockCounts[course.code] ?? 0,
         });
     }
@@ -17198,10 +17198,10 @@ function getAvailableCourses(input, options = {}) {
     }
     return typeof options.limit === 'number' ? results.slice(0, options.limit) : results;
 }
-function validatePlan(input) {
-    const completed = getCompletedCodes(input.semesters, input.retakenKeys);
-    const scheduled = getScheduledCodes(input.semesters);
-    const inProgress = getInProgressCodes(input.semesters);
+function plannerCoreValidatePlanImpl(input) {
+    const completed = plannerCoreGetCompletedCodesImpl(input.semesters, input.retakenKeys);
+    const scheduled = plannerCoreGetScheduledCodesImpl(input.semesters);
+    const inProgress = plannerCoreGetInProgressCodesImpl(input.semesters);
     const totalCredits = input.planCourses.reduce((sum, code) => {
         const course = input.courseCatalog[code];
         return sum + (course ? course.credits : 0);
@@ -17218,7 +17218,7 @@ function validatePlan(input) {
         warnings.push(`${totalCredits} credits \u2014 requires chairman\u2019s permission`);
     }
     for (const code of input.planCourses) {
-        const check = checkPrereqs(code, completed, input.prerequisites);
+        const check = plannerCoreCheckPrereqsImpl(code, completed, input.prerequisites);
         if (!check.canTake) {
             issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
         }
@@ -17239,7 +17239,7 @@ function validatePlan(input) {
     }
     return { totalCredits, issues, warnings };
 }
-function getPrereqChain(code, completed, courseCatalog, prerequisites, depth = 0) {
+function plannerCoreGetPrereqChainImpl(code, completed, courseCatalog, prerequisites, depth = 0) {
     if (depth > 8)
         return null;
     const prereq = prerequisites[code];
@@ -17253,7 +17253,7 @@ function getPrereqChain(code, completed, courseCatalog, prerequisites, depth = 0
         return node;
     const allPrereqs = [...(prereq.hp ?? []), ...(prereq.sp ?? [])];
     for (const item of allPrereqs) {
-        const child = getPrereqChain(item, completed, courseCatalog, prerequisites, depth + 1);
+        const child = plannerCoreGetPrereqChainImpl(item, completed, courseCatalog, prerequisites, depth + 1);
         if (!child)
             continue;
         child.isSoft = (prereq.sp ?? []).includes(item);
@@ -17261,7 +17261,7 @@ function getPrereqChain(code, completed, courseCatalog, prerequisites, depth = 0
     }
     return node;
 }
-function projectCgpa(currentPoints, currentCredits, plannedCredits, assumedGrade) {
+function plannerCoreProjectCgpaImpl(currentPoints, currentCredits, plannedCredits, assumedGrade) {
     const gradePoint = Object.prototype.hasOwnProperty.call(GRADES, assumedGrade)
         ? GRADES[assumedGrade]
         : undefined;
@@ -17278,12 +17278,12 @@ function projectCgpa(currentPoints, currentCredits, plannedCredits, assumedGrade
         delta: current !== null && projected !== null ? projected - current : null,
     };
 }
-const plannerCoreGetCompletedCodes = getCompletedCodes;
-const plannerCoreCheckPrereqs = checkPrereqs;
-const plannerCoreGetAvailableCourses = getAvailableCourses;
-const plannerCoreValidatePlan = validatePlan;
-const plannerCoreGetPrereqChain = getPrereqChain;
-const plannerCoreProjectCgpa = projectCgpa;
+const plannerCoreGetCompletedCodes = plannerCoreGetCompletedCodesImpl;
+const plannerCoreCheckPrereqs = plannerCoreCheckPrereqsImpl;
+const plannerCoreGetAvailableCourses = plannerCoreGetAvailableCoursesImpl;
+const plannerCoreValidatePlan = plannerCoreValidatePlanImpl;
+const plannerCoreGetPrereqChain = plannerCoreGetPrereqChainImpl;
+const plannerCoreProjectCgpa = plannerCoreProjectCgpaImpl;
 
 // ── js/ui/planner.js ────────────────────────────────────────────
 // ── js/ui/planner.js ──────────────────────────────────────────────────────────
