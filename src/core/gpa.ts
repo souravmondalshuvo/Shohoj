@@ -30,7 +30,7 @@ function gradePointFor(grade: string): number | null | undefined {
   return isGradeLetter(grade) ? GRADES[grade] : undefined;
 }
 
-export function calcSemesterGpa(semester: Pick<SemesterEntry, 'courses'>): number | null {
+function gpaCoreCalcSemesterGpaImpl(semester: Pick<SemesterEntry, 'courses'>): number | null {
   let points = 0;
   let credits = 0;
 
@@ -50,7 +50,7 @@ export function calcSemesterGpa(semester: Pick<SemesterEntry, 'courses'>): numbe
   return credits > 0 ? points / credits : null;
 }
 
-export function usesBestGradePolicy(options: RetakePolicyOptions = {}): boolean {
+function gpaCoreUsesBestGradePolicyImpl(options: RetakePolicyOptions = {}): boolean {
   const season = options.startSeason || 'Fall';
   const year = typeof options.startYear === 'number'
     ? options.startYear
@@ -77,13 +77,13 @@ export function getCourseIdentity(courseName: string): string {
   return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
 }
 
-export function getRetakenKeys(
+function gpaCoreGetRetakenKeysImpl(
   semesters: readonly SemesterEntry[],
   options: RetakePolicyOptions = {},
 ): Set<string> {
   const bestGrade = typeof options.bestGrade === 'boolean'
     ? options.bestGrade
-    : usesBestGradePolicy(options);
+    : gpaCoreUsesBestGradePolicyImpl(options);
 
   const attempts: {
     semId: number;
@@ -143,7 +143,7 @@ export function calculateCgpaTotals(
 ): CgpaTotals {
   const includeRunning = options.includeRunning ?? true;
   const includeSummary = options.includeSummary ?? true;
-  const retakenKeys = getRetakenKeys(semesters, options);
+  const retakenKeys = gpaCoreGetRetakenKeysImpl(semesters, options);
 
   let points = 0;
   let attemptedCredits = 0;
@@ -192,7 +192,7 @@ export function calculateCgpaTotals(
   };
 }
 
-export function getSemesterCreditWarning(
+function gpaCoreGetSemesterCreditWarningImpl(
   semester: Pick<SemesterEntry, 'courses'>,
 ): SemesterCreditWarning | null {
   const total = semester.courses.reduce((sum, course) => {
@@ -208,7 +208,7 @@ export function getSemesterCreditWarning(
   return null;
 }
 
-export function isRepeatEligible(grade: string): boolean {
+function gpaCoreIsRepeatEligibleImpl(grade: string): boolean {
   if (grade === 'F' || grade === 'F(NT)') return false;
   if (grade === 'P' || grade === 'I' || !grade) return false;
 
@@ -217,13 +217,13 @@ export function isRepeatEligible(grade: string): boolean {
   return gp < 3.0;
 }
 
-export function getImprovementStrategy(grade: string): ImprovementStrategy {
+function gpaCoreGetImprovementStrategyImpl(grade: string): ImprovementStrategy {
   if (grade === 'F' || grade === 'F(NT)') return 'retake';
-  if (isRepeatEligible(grade)) return 'repeat';
+  if (gpaCoreIsRepeatEligibleImpl(grade)) return 'repeat';
   return null;
 }
 
-export function normalizeGradePoint(raw: string, mode: 'input' | 'blur'): string {
+function gpaCoreNormalizeGradePointImpl(raw: string, mode: 'input' | 'blur'): string {
   const trimmed = raw.trim();
   if (/[a-zA-Z]/.test(trimmed)) return trimmed;
   if (trimmed.includes('.')) return trimmed;
@@ -232,7 +232,7 @@ export function normalizeGradePoint(raw: string, mode: 'input' | 'blur'): string
   return trimmed;
 }
 
-export function clampGradePoint(value: string): string {
+function gpaCoreClampGradePointImpl(value: string): string {
   const n = Number.parseFloat(value);
   if (Number.isNaN(n)) return value;
   if (n > 4.0) return '4.0';
@@ -240,11 +240,22 @@ export function clampGradePoint(value: string): string {
   return value;
 }
 
-export const gpaCoreCalcSemesterGpa = calcSemesterGpa;
-export const gpaCoreUsesBestGradePolicy = usesBestGradePolicy;
-export const gpaCoreGetRetakenKeys = getRetakenKeys;
-export const gpaCoreGetSemesterCreditWarning = getSemesterCreditWarning;
-export const gpaCoreIsRepeatEligible = isRepeatEligible;
-export const gpaCoreGetImprovementStrategy = getImprovementStrategy;
-export const gpaCoreNormalizeGradePoint = normalizeGradePoint;
-export const gpaCoreClampGradePoint = clampGradePoint;
+export const gpaCoreCalcSemesterGpa = gpaCoreCalcSemesterGpaImpl;
+export const gpaCoreUsesBestGradePolicy = gpaCoreUsesBestGradePolicyImpl;
+export const gpaCoreGetRetakenKeys = gpaCoreGetRetakenKeysImpl;
+export const gpaCoreGetSemesterCreditWarning = gpaCoreGetSemesterCreditWarningImpl;
+export const gpaCoreIsRepeatEligible = gpaCoreIsRepeatEligibleImpl;
+export const gpaCoreGetImprovementStrategy = gpaCoreGetImprovementStrategyImpl;
+export const gpaCoreNormalizeGradePoint = gpaCoreNormalizeGradePointImpl;
+export const gpaCoreClampGradePoint = gpaCoreClampGradePointImpl;
+
+export {
+  gpaCoreCalcSemesterGpaImpl as calcSemesterGpa,
+  gpaCoreUsesBestGradePolicyImpl as usesBestGradePolicy,
+  gpaCoreGetRetakenKeysImpl as getRetakenKeys,
+  gpaCoreGetSemesterCreditWarningImpl as getSemesterCreditWarning,
+  gpaCoreIsRepeatEligibleImpl as isRepeatEligible,
+  gpaCoreGetImprovementStrategyImpl as getImprovementStrategy,
+  gpaCoreNormalizeGradePointImpl as normalizeGradePoint,
+  gpaCoreClampGradePointImpl as clampGradePoint,
+};
