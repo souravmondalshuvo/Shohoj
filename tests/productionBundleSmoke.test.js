@@ -162,13 +162,26 @@ function externalScriptFor(url) {
   return '';
 }
 
-function isIgnoredConsoleError(text) {
-  return (
-    text.includes("The Content Security Policy directive 'frame-ancestors'") ||
-    text.includes('Failed to find a valid digest') ||
-    text.includes('[Shohoj] Firebase config missing or incomplete') ||
-    text.includes('Failed to load resource')
-  );
+const expectedFirebaseConfigError = '[Shohoj] Firebase config missing or incomplete';
+
+// Keep this list narrow so new broken scripts/assets still fail the bundle smoke test.
+const ignoredConsoleErrors = [
+  {
+    name: 'meta-csp-frame-ancestors',
+    match: "The Content Security Policy directive 'frame-ancestors'",
+  },
+  {
+    name: 'stubbed-cdn-script-integrity',
+    match: 'Failed to find a valid digest',
+  },
+  {
+    name: 'missing-firebase-config',
+    match: expectedFirebaseConfigError,
+  },
+];
+
+function ignoredConsoleErrorFor(text) {
+  return ignoredConsoleErrors.find(({ match }) => text.includes(match));
 }
 
 async function installExternalStubs(page) {
@@ -226,9 +239,14 @@ async function run() {
 
   page.on('console', message => {
     const text = message.text();
-    if (message.type() === 'error' && !isIgnoredConsoleError(text)) {
-      pageErrors.push(`console error: ${text}`);
+    if (message.type() !== 'error') return;
+
+    const ignoredError = ignoredConsoleErrorFor(text);
+    if (ignoredError) {
+      return;
     }
+
+    pageErrors.push(`console error: ${text}`);
   });
 
   try {
