@@ -13,6 +13,9 @@ concurrency:
   group: pages-deploy
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
 
