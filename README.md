@@ -62,6 +62,10 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 
 ## Product Screenshots
 
+| Demo Mode | Semester Planner |
+|-----------|------------------|
+| ![Demo mode](assets/screenshots/demo-mode.png) | ![Semester planner](assets/screenshots/semester-planner.png) |
+
 | Calculator | Transcript Import |
 |------------|-------------------|
 | ![CGPA calculator](assets/screenshots/calculator.png) | ![Transcript import](assets/screenshots/transcript-import.png) |
@@ -69,6 +73,14 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 | Course Search | Trend Chart |
 |---------------|-------------|
 | ![Course autocomplete](assets/screenshots/autocomplete.png) | ![Trend chart](assets/screenshots/trend-chart.png) |
+
+| Degree Progress | Faculty Reviews |
+|-----------------|-----------------|
+| ![Degree progress](assets/screenshots/degree-progress.png) | ![Faculty reviews](assets/screenshots/faculty-reviews.png) |
+
+| Past Papers | Admin Dashboard |
+|-------------|-----------------|
+| ![Past papers](assets/screenshots/past-papers.png) | ![Admin dashboard](assets/screenshots/admin-dashboard.png) |
 
 ---
 
@@ -107,6 +119,10 @@ Plan your next semester with prerequisite-aware recommendations. Shohoj reads yo
 - **CGPA impact preview** — see the projected CGPA if your plan lands a given grade across the board
 - **Start Semester** — promote a finished plan directly into a running semester in the Calculator with one click
 
+<p align="center">
+  <img src="assets/screenshots/semester-planner.png" alt="Semester Planner" width="700" />
+</p>
+
 ### 🗺️ Course Difficulty Map (New)
 
 A bird's-eye view of how hard each course actually is, based on real student reviews. Aggregates difficulty and workload ratings across the whole review corpus and surfaces them as a sortable, filterable card grid.
@@ -130,6 +146,10 @@ Pseudonymous faculty ratings from real BRACU students — stored in Firestore, g
 - **Report for moderation** — every review surfaces a "Report" action that writes to an admin-only `reviewReports` collection, capped at one report per user per review
 - **LLM-assisted seeding** — the `scripts/seed_reviews.py` pipeline bulk-imports LLM-processed community posts so the directory isn't empty on day one
 
+<p align="center">
+  <img src="assets/screenshots/faculty-reviews.png" alt="Faculty Reviews" width="700" />
+</p>
+
 #### Anonymity — what we do and don't claim
 
 Review submissions go through the Cloudflare Worker (`POST /reviews`) before the Firestore document is written. That means:
@@ -152,6 +172,10 @@ BRACU-only resource sharing for course papers, notes, assignments, lab reports, 
 - **Strict file allowlist** — uploads are capped at 10 MB and restricted to PDF, PNG, JPEG, WebP, or GIF
 - **Report flow** — every paper can be reported once per user for admin review
 
+<p align="center">
+  <img src="assets/screenshots/past-papers.png" alt="Past Papers and Notes" width="700" />
+</p>
+
 ### 💬 Feedback Board (New)
 
 In-app product feedback for bugs, feature ideas, and general comments.
@@ -169,6 +193,10 @@ A separate admin shell at `/admin/` for moderation and audit work.
 - **Moderation queues** — pending papers, paper reports, review reports, and feedback are handled in one place
 - **Safe file deletion** — reported-paper deletion resolves the paper metadata first, then deletes both the R2 object and Firestore metadata
 - **Audit logs** — admin actions are written to immutable `adminLogs` documents
+
+<p align="center">
+  <img src="assets/screenshots/admin-dashboard.png" alt="Admin Dashboard" width="700" />
+</p>
 
 ### ☁ Cloud Sync
 
@@ -229,6 +257,10 @@ A visual timeline of your GPA across semesters. Spot patterns, track improvement
 ### 🎓 Degree Progress Tracker
 
 Visual timeline of your degree journey — credits earned vs total required, semester-by-semester progress nodes, estimated graduation date based on your current pace, and a running credit pace indicator.
+
+<p align="center">
+  <img src="assets/screenshots/degree-progress.png" alt="Degree Progress Tracker" width="700" />
+</p>
 
 ### 🔍 Course Autocomplete
 
