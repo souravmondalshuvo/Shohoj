@@ -275,7 +275,11 @@ Start typing a course code or name and get instant suggestions from a complete B
 Export a professionally designed grade report — color-coded grade badges, per-semester GPA breakdown, academic stats, and a clean white-and-green layout ready for print or sharing.
 
 <p align="center">
-  <img src="assets/screenshots/pdf-export.png" alt="PDF Export" width="700" />
+  <img src="assets/screenshots/pdf-export.png" alt="PDF Export page 1" width="700" />
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/pdf-export-page-2.png" alt="PDF Export page 2" width="700" />
 </p>
 
 ### ⚠️ Credit Load Warnings
