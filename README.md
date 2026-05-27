@@ -82,6 +82,11 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 |-------------|-----------------|
 | ![Past papers](assets/screenshots/past-papers.png) | ![Admin dashboard](assets/screenshots/admin-dashboard.png) |
 
+<p align="center">
+  <strong>Mobile View</strong><br>
+  <img src="assets/screenshots/mobile-view.png" alt="Shohoj mobile view" width="320" />
+</p>
+
 ---
 
 ## What is Shohoj?
