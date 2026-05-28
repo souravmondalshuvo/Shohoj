@@ -20,7 +20,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-GHXSUfppE/Rz/X1EB3uGHrZBazXWF/kLTs3ILtfX4dM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-EHwlAjizusc7Tqe+1vWvxDaLLi6FtmP0zVvwaYCrdR0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19047,57 +19047,26 @@ function startDemoMode() {
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
-  let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
-
-  // ── Inject summary block contribution first ────────────────────────────────
-  const summaryBlock = state.semesters.find(s => s.summary);
-  if (summaryBlock) {
-    const sp = summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
-    totalPts        += sp;
-    totalEarnedCGPA += summaryBlock.summaryCredits;
-    totalAttempted  += summaryBlock.summaryAttempted || summaryBlock.summaryCredits;
-    totalEarned     += summaryBlock.summaryCredits;
-  }
-
-  const retakenKeys = getRetakenKeys();
-  const completedOnly = state.semesters.filter(s => !s.running && !s.summary);
-  const retakenKeysCompleted = getRetakenKeys(completedOnly);
-  for (const sem of state.semesters) {
-    if (sem.summary) continue;   // already handled above
-    sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
-      if (gp === undefined || !c.credits) return;
-      if (c.grade === 'P' || c.grade === 'I') return;
-      const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-      if (!sem.running) totalAttempted += c.credits;
-      if (!isRetaken) {
-        totalPts += gp * c.credits;
-        if (gp !== null) totalEarnedCGPA += c.credits;
-      }
-      if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
-    });
-  }
-
-  const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
-
-  let completedPts = 0, completedEarned = 0;
-
-  // inject summary into completed totals
-  if (summaryBlock) {
-    completedPts    += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
-    completedEarned += summaryBlock.summaryCredits;
-  }
-
-  state.semesters.filter(s => !s.running && !s.summary).forEach(sem => {
-    sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
-      if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
-      if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
-      completedPts += gp * c.credits;
-      if (gp !== null) completedEarned += c.credits;
-    });
+  const gpaOptions = {
+    startSeason: getStartSeason(),
+    startYear: getStartYear(),
+  };
+  const projectedTotals = calculateCgpaTotals(state.semesters, {
+    ...gpaOptions,
+    includeRunning: true,
+    includeSummary: true,
   });
-  const cgpaCompleted = completedEarned > 0 ? completedPts / completedEarned : null;
+  const completedTotals = calculateCgpaTotals(state.semesters, {
+    ...gpaOptions,
+    includeRunning: false,
+    includeSummary: true,
+  });
+  const totalPts = projectedTotals.points;
+  const totalAttempted = projectedTotals.attemptedCredits;
+  const totalEarned = projectedTotals.earnedCredits;
+  const totalEarnedCGPA = projectedTotals.cgpaCredits;
+  const cgpa = projectedTotals.cgpa;
+  const cgpaCompleted = completedTotals.cgpa;
 
   const cgpaEl = document.getElementById('cgpaVal');
   cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
