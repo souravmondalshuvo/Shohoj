@@ -31,7 +31,12 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
   `<script>` block and injects them into the CSP meta tag. `style-src`
   still allows `'unsafe-inline'` because templates rely on inline
   `style="…"` attributes; tightening that requires `'unsafe-hashes'` and
-  per-attribute hashing, which is queued separately.
+  per-attribute hashing, which is queued separately. The built bundle
+  has ~340 unique `style="…"` values, most generated at runtime via
+  template literals (e.g. `style="background:${_theme().input};…"`), so
+  static per-attribute hashing cannot cover them — closing this gap
+  requires first refactoring dynamic theming to CSS variables / class
+  toggles, tracked separately.
 
 ### Added
 - Worker test suite at `worker/test/worker.test.js` covering the path
