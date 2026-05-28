@@ -88,6 +88,28 @@ test('does not mutate other fields (semesters, dept)', () => {
   eq(out.semesterCounter, 1);
 });
 
+test('keeps valid restored gradePoint values', () => {
+  const s = base();
+  s.semesters[0].courses = [
+    { name: 'Programming Language I (CSE110)', credits: 3, grade: 'A-', gradePoint: 3.7 },
+    { name: 'Data Structures (CSE220)', credits: 3, grade: 'B', gradePoint: '3.0' },
+    { name: 'No Transfer (CSE999)', credits: 0, grade: 'F(NT)', gradePoint: 'nt' },
+  ];
+  const out = sanitizeRestoredState(s);
+  eq(out.semesters[0].courses.map(c => c.gradePoint), [3.7, '3.0', 'NT']);
+});
+
+test('strips malformed restored gradePoint values', () => {
+  const s = base();
+  s.semesters[0].courses = [
+    { name: 'Bad Attr (CSE110)', credits: 3, grade: 'A', gradePoint: '4" autofocus onfocus=alert(1)' },
+    { name: 'Bad Markup (CSE111)', credits: 3, grade: 'B', gradePoint: '<script>alert(1)</script>' },
+    { name: 'Out of Range (CSE220)', credits: 3, grade: 'A', gradePoint: 9 },
+  ];
+  const out = sanitizeRestoredState(s);
+  eq(out.semesters[0].courses.map(c => c.gradePoint), ['', '', '']);
+});
+
 test('returns null for totally malformed input (unchanged behavior)', () => {
   assert(sanitizeRestoredState(null) === null);
   assert(sanitizeRestoredState(undefined) === null);
