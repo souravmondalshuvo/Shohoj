@@ -4,9 +4,10 @@ import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
 import './core/dispatch.js'; // installs delegated event listeners + registerAction
 import {
-  calcSemGPA, getRetakenKeys, autoDetectGrade,
+  calcSemGPA, autoDetectGrade,
   onPFChange, getSemCreditWarning, onGradePointBlur
 } from './core/calculator.js';
+import { calculateCgpaTotals } from './core/gpa-core.js';
 import {
   generateSemesterNames, getStartSeason, getStartYear,
   sanitizeRestoredState
@@ -503,57 +504,26 @@ function startDemoMode() {
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
-  let totalPts = 0, totalAttempted = 0, totalEarned = 0, totalEarnedCGPA = 0;
-
-  // ── Inject summary block contribution first ────────────────────────────────
-  const summaryBlock = state.semesters.find(s => s.summary);
-  if (summaryBlock) {
-    const sp = summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
-    totalPts        += sp;
-    totalEarnedCGPA += summaryBlock.summaryCredits;
-    totalAttempted  += summaryBlock.summaryAttempted || summaryBlock.summaryCredits;
-    totalEarned     += summaryBlock.summaryCredits;
-  }
-
-  const retakenKeys = getRetakenKeys();
-  const completedOnly = state.semesters.filter(s => !s.running && !s.summary);
-  const retakenKeysCompleted = getRetakenKeys(completedOnly);
-  for (const sem of state.semesters) {
-    if (sem.summary) continue;   // already handled above
-    sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
-      if (gp === undefined || !c.credits) return;
-      if (c.grade === 'P' || c.grade === 'I') return;
-      const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-      if (!sem.running) totalAttempted += c.credits;
-      if (!isRetaken) {
-        totalPts += gp * c.credits;
-        if (gp !== null) totalEarnedCGPA += c.credits;
-      }
-      if (gp > 0 && !sem.running && !retakenKeysCompleted.has(`${sem.id}-${i}`)) totalEarned += c.credits;
-    });
-  }
-
-  const cgpa = totalEarnedCGPA > 0 ? totalPts / totalEarnedCGPA : null;
-
-  let completedPts = 0, completedEarned = 0;
-
-  // inject summary into completed totals
-  if (summaryBlock) {
-    completedPts    += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
-    completedEarned += summaryBlock.summaryCredits;
-  }
-
-  state.semesters.filter(s => !s.running && !s.summary).forEach(sem => {
-    sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
-      if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
-      if (retakenKeysCompleted.has(`${sem.id}-${i}`)) return;
-      completedPts += gp * c.credits;
-      if (gp !== null) completedEarned += c.credits;
-    });
+  const gpaOptions = {
+    startSeason: getStartSeason(),
+    startYear: getStartYear(),
+  };
+  const projectedTotals = calculateCgpaTotals(state.semesters, {
+    ...gpaOptions,
+    includeRunning: true,
+    includeSummary: true,
   });
-  const cgpaCompleted = completedEarned > 0 ? completedPts / completedEarned : null;
+  const completedTotals = calculateCgpaTotals(state.semesters, {
+    ...gpaOptions,
+    includeRunning: false,
+    includeSummary: true,
+  });
+  const totalPts = projectedTotals.points;
+  const totalAttempted = projectedTotals.attemptedCredits;
+  const totalEarned = projectedTotals.earnedCredits;
+  const totalEarnedCGPA = projectedTotals.cgpaCredits;
+  const cgpa = projectedTotals.cgpa;
+  const cgpaCompleted = completedTotals.cgpa;
 
   const cgpaEl = document.getElementById('cgpaVal');
   cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
