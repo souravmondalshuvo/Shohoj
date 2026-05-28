@@ -6,6 +6,13 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Main CGPA recalculation now consumes the shared GPA totals helper instead of duplicating the per-semester aggregation loop, keeping the calculator and recalc paths in lockstep.
+
+### Fixed
+- Restored grade point values are sanitized and the grade point input is HTML-escaped on render, preventing malformed or hostile values from breaking the calculator UI.
+- Worker uploads generate unique storage paths so concurrent uploads to the same course/filename no longer overwrite each other in R2.
+
 ## [0.3.0] — 2026-05-25
 
 ### Added
