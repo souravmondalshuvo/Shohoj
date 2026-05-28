@@ -46,6 +46,25 @@ export function sanitizeSemName(name) {
   return name.replace(/<sup>(.*?)<\/sup>/gi, '$1');
 }
 
+function sanitizeGradePointValue(value) {
+  if (value === undefined || value === null) return '';
+  if (value === 'NT') return 'NT';
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 && value <= 4 ? value : '';
+  }
+
+  if (typeof value !== 'string') return '';
+
+  const trimmed = value.trim();
+  if (trimmed === '') return '';
+  if (trimmed.toUpperCase() === 'NT') return 'NT';
+  if (!/^(?:\d+(?:\.\d+)?)$/.test(trimmed)) return '';
+
+  const numeric = Number.parseFloat(trimmed);
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 4 ? trimmed : '';
+}
+
 export function sanitizeRestoredState(saved) {
   if (!saved || typeof saved !== 'object') return null;
   if (!Array.isArray(saved.semesters)) return null;
@@ -81,7 +100,7 @@ export function sanitizeRestoredState(saved) {
       name:       typeof c.name === 'string' ? c.name : '',
       credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
       grade:      typeof c.grade === 'string' ? c.grade : '',
-      gradePoint: c.gradePoint !== undefined ? c.gradePoint : '',
+      gradePoint: sanitizeGradePointValue(c.gradePoint),
       faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
     }));
     return true;
