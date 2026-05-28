@@ -12,7 +12,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-mOk/Zyz/90RlwjkavQx6vlTeTReVqao8NytRBoLgsis='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-LzlI6NziUrCzZZLOT8/X7z+WTO/TWspVIDjIyYXl8Dc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -7206,6 +7206,25 @@ function sanitizeSemName(name) {
   return name.replace(/<sup>(.*?)<\/sup>/gi, '$1');
 }
 
+function sanitizeGradePointValue(value) {
+  if (value === undefined || value === null) return '';
+  if (value === 'NT') return 'NT';
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 && value <= 4 ? value : '';
+  }
+
+  if (typeof value !== 'string') return '';
+
+  const trimmed = value.trim();
+  if (trimmed === '') return '';
+  if (trimmed.toUpperCase() === 'NT') return 'NT';
+  if (!/^(?:\d+(?:\.\d+)?)$/.test(trimmed)) return '';
+
+  const numeric = Number.parseFloat(trimmed);
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 4 ? trimmed : '';
+}
+
 function sanitizeRestoredState(saved) {
   if (!saved || typeof saved !== 'object') return null;
   if (!Array.isArray(saved.semesters)) return null;
@@ -7241,7 +7260,7 @@ function sanitizeRestoredState(saved) {
       name:       typeof c.name === 'string' ? c.name : '',
       credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
       grade:      typeof c.grade === 'string' ? c.grade : '',
-      gradePoint: c.gradePoint !== undefined ? c.gradePoint : '',
+      gradePoint: sanitizeGradePointValue(c.gradePoint),
       faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
     }));
     return true;
