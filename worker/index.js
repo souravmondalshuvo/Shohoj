@@ -148,6 +148,11 @@ export function safeFilename(name) {
   return String(name || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
 }
 
+function uniqueUploadObjectName(filename) {
+  const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 14);
+  return `${Date.now()}-${randomId}-${filename}`;
+}
+
 function safePathSegment(value) {
   return String(value || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 128);
 }
@@ -417,7 +422,8 @@ async function handleUpload(request, env, origin, ctx) {
     );
   }
 
-  const path = `papers/${courseCode}/${ownerSegment}/${filename}`;
+  const objectName = uniqueUploadObjectName(filename);
+  const path = `papers/${courseCode}/${ownerSegment}/${objectName}`;
   await env.PAPERS_BUCKET.put(path, body, {
     httpMetadata: { contentType },
   });
