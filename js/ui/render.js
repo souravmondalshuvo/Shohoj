@@ -533,7 +533,7 @@ export function renderSemesters() {
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
-                value="${c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : ''))}"
+                value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')))}"
                 data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
                 onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
