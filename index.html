@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <!-- Clickjacking defense. GitHub Pages can't send X-Frame-Options or a real
+       frame-ancestors header (that CSP directive is ignored in a <meta> tag),
+       so guard against framing in JS: keep the page hidden until we confirm
+       we're the top window, then try to break out of any frame. A sandboxed
+       frame that blocks top-navigation simply leaves the page hidden — there is
+       nothing to click-jack. build3.py hashes this inline script into the CSP. -->
+  <style id="antiClickjack">body{display:none !important;}</style>
+  <script>
+    if (self === top) {
+      var n = document.getElementById('antiClickjack');
+      n.parentNode.removeChild(n);
+    } else {
+      try { top.location = self.location; } catch (e) {}
+    }
+  </script>
   <!-- Google Analytics | Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WXKLJDM6P"></script>
   <script>
