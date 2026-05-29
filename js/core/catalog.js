@@ -1166,9 +1166,9 @@ export const PREFIX_DEPT_MAP = {
   CSE: 'CSE',                                           // Dept of CSE
   EEE: 'EEE',                                           // Dept of EEE
   ECE: 'ECE',                                           // Dept of ECE
-  MAT: 'MNS', PHY: 'MNS', STA: 'MNS', ENV: 'MNS',     // Dept of Math &
-  MIC: 'MNS', BCH: 'MNS', BTE: 'MNS', BIO: 'MNS',     //   Natural Sciences
-  APE: 'MNS', CHE: 'MNS', GEO: 'MNS',                   //   (MNS) — GEO sits here at BRACU
+  MAT: 'MPS', PHY: 'MPS', STA: 'MPS', ENV: 'MPS',     // Dept of Math &
+  MIC: 'MPS', BCH: 'MPS', BTE: 'MPS', BIO: 'MPS',     //   Physical Sciences
+  APE: 'MPS', CHE: 'MPS', GEO: 'MPS',                   //   (MPS) — GEO sits here at BRACU
   // ── BRAC Business School (BBS) ────────────────────────────────────────────
   ACT: 'BBA', BUS: 'BBA', FIN: 'BBA', MGT: 'BBA',
   MKT: 'BBA', MIS: 'BBA', MSC: 'BBA',
@@ -1194,7 +1194,7 @@ export const DEPT_META = {
   CSE:   { label: 'Computer Science & Engineering',        school: 'SDS'  },
   EEE:   { label: 'Electrical & Electronic Engineering',   school: 'SDS'  },
   ECE:   { label: 'Electronic & Communication Engineering',school: 'SDS'  },
-  MNS:   { label: 'Mathematics & Natural Sciences',        school: 'SDS'  },
+  MPS:   { label: 'Mathematics & Physical Sciences',       school: 'SDS'  },
   BBA:   { label: 'Business',                              school: 'BBS'  },
   ENG:   { label: 'English & Humanities',                  school: 'ENH'  },
   ECO:   { label: 'Economics & Social Sciences',           school: 'ESS'  },
