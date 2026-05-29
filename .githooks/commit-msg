@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# Shohoj commit-msg hook: reject CI-skip directives.
+#
+# GitHub Actions skips a workflow run when the pushed tip commit message
+# contains a skip directive (e.g. "[skip ci]"). On Shohoj we always want
+# CI/CD to validate every commit, so block these at commit time rather than
+# discovering an untested commit on main later.
+#
+# Wired up via core.hooksPath -> .githooks (see the "prepare" script in
+# package.json). To activate manually: git config core.hooksPath .githooks
+
+msg_file="$1"
+
+if grep -Eiq '\[(skip[ _-]?ci|ci[ _-]?skip|no[ _-]?ci|skip[ _-]?actions|actions[ _-]?skip)\]' "$msg_file"; then
+  echo "" >&2
+  echo "  commit-msg hook: this message contains a CI-skip directive." >&2
+  echo "  Shohoj requires CI/CD to run on every commit." >&2
+  echo "  Remove the [skip ci]-style marker from the message and commit again." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0
