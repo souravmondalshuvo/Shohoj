@@ -145,7 +145,13 @@ service cloud.firestore {
         && d.anonymous is bool
         && d.createdAt == request.time
         && (!('context' in d) || (d.context is map && d.context.size() <= 8))
-        && (!('uid' in d) || d.uid == request.auth.uid);
+        // Tie uid to the anonymous flag: anonymous feedback must store no
+        // identity (uid absent or null), and named feedback must carry the
+        // caller's own uid. appFeedback is readable by every BRACU user, so a
+        // uid leaking onto "anonymous" feedback would de-anonymise the author.
+        && (d.anonymous
+              ? (!('uid' in d) || d.uid == null)
+              : ('uid' in d && d.uid == request.auth.uid));
     }
 
     match /appFeedback/{feedbackId} {
