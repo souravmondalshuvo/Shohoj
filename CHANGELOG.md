@@ -6,6 +6,22 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Faculty reviews for two new Pharmacy faculty (KMP, MKS) and several CSE hardware faculty (TSE plus extended profiles for AQT, NFS, RAO, TAV), covering PHB201, PHB105, and the CSE251 hardware courses.
+
+### Changed
+- `CONTRIBUTING.md` now documents logical-change commits as the default workflow, with strict one-file-per-commit reserved for explicit requests.
+- A `commit-msg` git hook rejects `[skip ci]` and equivalent directives so CI can never be silently bypassed.
+
+### Removed
+- Dropped the dead `validReviewPayload` helper from `firestore.rules`.
+
+### Security
+- The client busts out of frames on load to prevent clickjacking.
+- Disabled PDF.js `eval`-based code paths to close CVE-2024-4367.
+- Cleared the moderate `ws` advisory in `worker/` via dependency upgrade.
+- Firestore rules now reject anonymous feedback documents that carry a `uid`, keeping anonymous submissions truly unattributable.
+
 ## [0.4.0] — 2026-05-29
 
 ### Changed
