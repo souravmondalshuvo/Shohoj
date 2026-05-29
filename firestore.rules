@@ -24,41 +24,9 @@ service cloud.firestore {
       return isAdmin() || isVerifiedBracuGoogleUser();
     }
 
-    function validRating(v) {
-      return v is int && v >= 1 && v <= 5;
-    }
-
-    function validCourseCode(code) {
-      return code is string
-        && code.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$');
-    }
-
     function validReviewId(id) {
       return id is string
         && id.matches('^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$');
-    }
-
-    function validRatings(r) {
-      return r.keys().hasOnly(['teaching','marking','behavior','difficulty','workload'])
-        && r.keys().hasAll(['teaching','marking','behavior','difficulty','workload'])
-        && validRating(r.teaching)
-        && validRating(r.marking)
-        && validRating(r.behavior)
-        && validRating(r.difficulty)
-        && validRating(r.workload);
-    }
-
-    function validReviewPayload(d) {
-      // Exact key set — no extra fields allowed.
-      return d.keys().hasOnly(['facultyInitials','courseCode','semester','ratings','text','createdAt'])
-        && d.keys().hasAll(['facultyInitials','courseCode','ratings','createdAt'])
-        && d.facultyInitials is string
-        && d.facultyInitials.matches('^[A-Z]{2,6}$')
-        && validCourseCode(d.courseCode)
-        && validRatings(d.ratings)
-        && (!('text' in d) || (d.text is string && d.text.size() <= 500))
-        && (!('semester' in d) || (d.semester is string && d.semester.size() <= 40))
-        && d.createdAt == request.time;
     }
 
     function validReviewReportPayload(d) {
