@@ -169,7 +169,10 @@ export async function importTranscriptPDF(inputEl) {
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     const arrayBuffer = await file.arrayBuffer();
-    const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // isEvalSupported:false closes CVE-2024-4367 (arbitrary JS execution via a
+    // crafted PDF) on this pinned pdf.js 3.11.174; defence-in-depth alongside
+    // the no-'unsafe-eval' CSP.
+    const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
     let   fullText    = '';
 
     for (let p = 1; p <= pdf.numPages; p++) {
