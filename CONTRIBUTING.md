@@ -63,6 +63,21 @@ git push origin branch-name
 
 Each commit should contain one file and a clear message. If a task needs multiple files, split them into separate commits and keep the final branch working.
 
+## Continuous Integration
+
+Every commit must run through CI/CD. Do **not** add CI-skip directives such as
+`[skip ci]`, `[ci skip]`, `[no ci]`, or `[skip actions]` to commit messages —
+GitHub Actions honors these and would let an untested commit reach `main`.
+
+A `commit-msg` hook in [`.githooks/`](.githooks/) enforces this and rejects any
+such message. It is wired up automatically when you run `npm ci` / `npm install`
+(via the `prepare` script, which sets `core.hooksPath` to `.githooks`). To enable
+it manually:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Pull Requests
 
 Include:
