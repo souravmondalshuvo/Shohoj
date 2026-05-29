@@ -486,6 +486,24 @@ async function run() {
       feedbackDoc({ context })));
   });
 
+  await test('Anonymous feedback with uid:null succeeds', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb8'),
+      feedbackDoc({ anonymous: true, uid: null })));
+  });
+
+  await test('Anonymous feedback carrying a real uid is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb9'),
+      feedbackDoc({ anonymous: true, uid: BRACU_UID })));
+  });
+
+  await test('Named feedback without a uid is rejected', async () => {
+    const db = bracuCtx().firestore();
+    const { uid, ...noUid } = feedbackDoc({ anonymous: false });
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb10'), noUid));
+  });
+
   await test('User can read own feedback upvote', async () => {
     const db = bracuCtx().firestore();
     await assertSucceeds(setDoc(doc(db, 'appFeedbackUpvotes', `fb_private_${BRACU_UID}`), upvoteDoc()));
