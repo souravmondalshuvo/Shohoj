@@ -7,6 +7,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Changed
+- CGPA calculator, semester planner, and BRACU transcript parser cores are now ported to TypeScript under `src/core/`, with the live JS runtime served from auto-generated bridges in `js/core/` and `js/import/`. Behavior is gated by `tests/typedCoreParity.test.js`, which transpiles the typed core at test time and asserts identical output to the JS modules — extending the v0.3.0 typed grade-logic mirror to the full academic-logic surface.
 - Main CGPA recalculation now consumes the shared GPA totals helper instead of duplicating the per-semester aggregation loop, keeping the calculator and recalc paths in lockstep.
 
 ### Fixed
