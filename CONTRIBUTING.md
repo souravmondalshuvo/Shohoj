@@ -33,8 +33,8 @@ Use an issue-first workflow:
 1. Create or pick a GitHub issue.
 2. Create a branch for that one issue.
 3. Make small, focused changes.
-4. Commit one changed file at a time.
-5. Push after every commit.
+4. Commit one logical change at a time (see Commit Rules).
+5. Push when the branch is ready — once per branch is fine.
 6. Open a pull request that links the issue.
 7. Wait for review and CI before merging.
 
@@ -51,17 +51,26 @@ refactor/firebase-services
 
 Stage files explicitly. Do not use `git add .` or `git add -A`.
 
-Good pattern:
+Each commit should capture one **logical change** — the smallest set of edits that
+leaves the branch in a working state. That is often a single file, but it may span
+several files when they have to move together (for example a function and its test,
+or a rename and the call sites it updates). Keep unrelated changes in separate
+commits, and make sure the branch builds and tests pass at each one.
+
+Good pattern for a commit:
 
 ```bash
 git status
-git add path/to/one-file
+git add path/to/file path/to/related-file
 git diff --cached
 git commit -m "docs: update setup instructions"
-git push origin branch-name
 ```
 
-Each commit should contain one file and a clear message. If a task needs multiple files, split them into separate commits and keep the final branch working.
+You do not need to push after every commit. Push once when the branch is ready:
+
+```bash
+git push origin branch-name
+```
 
 ## Continuous Integration
 
