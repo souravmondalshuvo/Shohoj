@@ -107,7 +107,10 @@ export async function openPreviewModalPdfjs({ url, title, mimeType }) {
   });
 
   try {
-    pdf = await window.pdfjsLib.getDocument({ url }).promise;
+    // isEvalSupported:false closes CVE-2024-4367 (arbitrary JS execution via a
+    // crafted PDF) on this pinned pdf.js 3.11.174; defence-in-depth alongside
+    // the no-'unsafe-eval' CSP.
+    pdf = await window.pdfjsLib.getDocument({ url, isEvalSupported: false }).promise;
     pageInd.textContent = `${pdf.numPages} page${pdf.numPages !== 1 ? 's' : ''}`;
     await renderAll();
   } catch (e) {
