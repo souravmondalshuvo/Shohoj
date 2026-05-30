@@ -688,7 +688,6 @@ function _wireInlineReplacements() {
 
   // Department / start-semester pickers (replaces inline onchange on selects).
   on('heroDemoBtn', 'click', () => startDemoMode());
-  on('footerDemoBtn', 'click', () => startDemoMode());
   on('deptSelect', 'change', () => onDeptSelect());
   on('startSeason', 'change', () => { renderSemesters(); recalc(); });
   on('startYear',   'change', () => { renderSemesters(); recalc(); });
