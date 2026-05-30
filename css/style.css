@@ -3052,18 +3052,36 @@ input, select, textarea,
   text-align: center;
 }
 .rv-tab-aggcard-email {
-  margin-top: 4px;
+  margin-top: 8px;
   font-size: 12px;
-  color: var(--text2);
-  line-height: 1.5;
-  text-align: center;
-  display: block;
+  line-height: 1.4;
   text-decoration: none;
 }
-.rv-tab-aggcard-email--link:hover {
+.rv-tab-aggcard-email--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
   color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.rv-tab-aggcard-email-icon {
+  flex: 0 0 auto;
+}
+.rv-tab-aggcard-email-addr {
   text-decoration: underline;
+  text-decoration-style: dotted;
   text-underline-offset: 2px;
+}
+.rv-tab-aggcard-email--link:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent);
+}
+.rv-tab-aggcard-email--link:active {
+  transform: translateY(1px);
 }
 .rv-tab-aggcard-grid {
   display: grid;
