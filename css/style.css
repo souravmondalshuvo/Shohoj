@@ -3071,11 +3071,6 @@ input, select, textarea,
 .rv-tab-aggcard-email-icon {
   flex: 0 0 auto;
 }
-.rv-tab-aggcard-email-addr {
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-}
 .rv-tab-aggcard-email--link:hover {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   border-color: var(--accent);
