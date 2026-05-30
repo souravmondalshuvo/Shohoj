@@ -30,6 +30,7 @@ PROJECT_ID   = 'shohoj'
 COLLECTION   = 'facultyProfiles'
 INITIALS_RE  = re.compile(r'^[A-Z]{2,6}$')
 COURSE_RE    = re.compile(r'^[A-Z]{2,4}\d{3}[A-Z]?$')
+EMAIL_RE     = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 # ── Validation ────────────────────────────────────────────────────────────────
 def validate(row, lineno):
@@ -43,9 +44,11 @@ def validate(row, lineno):
     if not name:
         errs.append('name is required')
 
-    email = str(row.get('email', '')).strip()
-    if not email:
-        errs.append('email is required')
+    # Email is optional: some faculty have no verifiable public BRACU
+    # address. When absent the public UI simply omits the email link.
+    email = str(row.get('email', '') or '').strip()
+    if email and not EMAIL_RE.match(email):
+        errs.append(f'email is malformed (got {email!r})')
 
     dept = str(row.get('dept', '')).strip().upper()
     if not dept:
