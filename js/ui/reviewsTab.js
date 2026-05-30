@@ -697,10 +697,11 @@ async function _renderFacultyPage(root, initials, courseFilter, token) {
   const emailTooltip = facultyEmail
     ? `Send an email to ${(facultyName || initials)} (${initials})`
     : '';
+  const mailIcon = `<svg class="rv-tab-aggcard-email-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6"></path></svg>`;
   const emailHtml = facultyEmail
     ? `<a href="${escAttr(gmailLink)}" target="_blank" rel="noopener noreferrer"
           title="${escAttr(emailTooltip)}" class="rv-tab-aggcard-email rv-tab-aggcard-email--link"
-       >${escHtml(facultyEmail)}</a>`
+       >${mailIcon}<span class="rv-tab-aggcard-email-addr">${escHtml(facultyEmail)}</span></a>`
     : '';
   const heroBadgeHtml = overview
     ? `<div class="rv-tab-aggcard-badge ${escAttr(_overviewToneClass(overview.headline))}">${escHtml(overview.headline)}</div>`
