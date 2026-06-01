@@ -105,3 +105,6 @@
 {"initials": "KAR", "name": "Abdul Karim", "email": "abdul.karim@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
 {"initials": "BNR", "name": "Bineeta Rahman", "email": "bineeta.rahman@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
 {"initials": "FZS", "name": "Dr. Syeda Farzana Sultana", "email": "farzana.sultana@bracu.ac.bd", "dept": "ENH", "courses": ["ENG101", "ENG102", "ENG334", "ENG434"]}
+{"initials": "RIC", "name": "Md. Raisul Islam Chowdhury", "email": "rislam@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
+{"initials": "LIR", "name": "Liza Reshmin", "email": "lreshmin@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
+{"initials": "PUP", "name": "Priti Paul", "email": "priti.paul@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
