@@ -97,3 +97,11 @@
 {"initials":"EMNH","name":"Emon Hossain","email":"emon.hossain@bracu.ac.bd","dept":"MPS","courses":["MAT211","MAT215","MAT216"]}
 {"initials":"KHZ","name":"Kazi Hafizur Rahman","email":"hafizur.rahman@bracu.ac.bd","dept":"MPS","courses":["MAT216"]}
 {"initials":"SHY","name":"Shathy Khan","email":"","dept":"MPS","courses":["MAT216"]}
+{"initials": "FAM", "name": "Fariah Amin", "email": "fariah.amin@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "SOM", "name": "Samira Osmany", "email": "samira.osmany@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "TFC", "name": "Tarannum Fatema Chowdhury", "email": "tarannum.fatema@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "JUL", "name": "Md. Julhas Uddin", "email": "julhas@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "NZA", "name": "Nazneen Zafar", "email": "nzafar@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "KAR", "name": "Abdul Karim", "email": "abdul.karim@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "BNR", "name": "Bineeta Rahman", "email": "bineeta.rahman@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
+{"initials": "FZS", "name": "Dr. Syeda Farzana Sultana", "email": "farzana.sultana@bracu.ac.bd", "dept": "ENH", "courses": ["ENG101", "ENG102", "ENG334", "ENG434"]}
