@@ -40,10 +40,20 @@ making future UI work easier.
      scripts; a non-deploying CI step runs `vite build`. `build3.py` and the
      gh-pages deploy are unchanged.
 
-4. Add React shell.
+4. Add React shell. **(in progress)**
    - Start with a small React root around the calculator area.
    - Keep existing CSS tokens and visual language.
    - Avoid redesigning the product during migration.
+   - Done so far: the headline CGPA display (`#cgpaVal` + `.cgpa-label`) is owned
+     by a React island (`src/react/CgpaSummary.tsx`) that computes live via the
+     typed core (`calculateCgpaTotals`) and re-renders on a `shohoj:recalc` event.
+     `recalc()` skips those writes when `window.__SHOHOJ_REACT_SUMMARY__` is set,
+     so the vanilla/build3.py path is unchanged. Injected only in the Vite build
+     via `vite/react-island.js`; verified by `npm run test:e2e:vite`.
+   - Known follow-up before cutover: the firebase auth module is currently bundled
+     into the main Vite chunk, so a failed gstatic import would break the whole
+     chunk. Isolate firebase into its own chunk (it stays a separate module under
+     build3.py today).
 
 5. Rebuild features in risk order.
    - CGPA calculator first
