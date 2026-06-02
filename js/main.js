@@ -562,8 +562,12 @@ function recalc() {
     incWarn.style.display = 'none';
   }
 
-  document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
-  document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
+  // The React footer island (Vite build only) owns these two credit totals.
+  // build3.py / un-bundled source never sets this flag, so vanilla stays as-is.
+  if (!window.__SHOHOJ_REACT_CREDIT_TOTALS__) {
+    document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
+    document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
+  }
 
   const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
