@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-MaLdMWY1Vdo96Y2w5bclDhvzVL8EpxyfgTOMF9iu4FE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-bQLvkHGabUxIoA29YWyUDsJxmpBm0HJoCY4YPDx85LY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18726,6 +18726,13 @@ window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
+// Bridge for the React CGPA island (Vite build): hands the shared state +
+// start-semester inputs to the typed core so React can compute the same totals.
+window._shohoj_getCgpaInputs = () => ({
+  semesters: state.semesters,
+  startSeason: getStartSeason(),
+  startYear: getStartYear(),
+});
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
@@ -19181,10 +19188,18 @@ function recalc() {
   const cgpa = projectedTotals.cgpa;
   const cgpaCompleted = completedTotals.cgpa;
 
-  const cgpaEl = document.getElementById('cgpaVal');
-  cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
   const hasRunning = state.semesters.some(s => s.running);
-  document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
+  // The React island (Vite build only) owns #cgpaVal + .cgpa-label and sets this
+  // flag on mount; skip the vanilla writes so the two don't fight. The flag is
+  // never set on the build3.py / un-bundled path, so behavior there is unchanged.
+  if (!window.__SHOHOJ_REACT_SUMMARY__) {
+    const cgpaEl = document.getElementById('cgpaVal');
+    cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
+    cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
+      cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
+      cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
+    document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
+  }
 
   const hasIncomplete = state.semesters.some(s => !s.running && !s.summary && s.courses.some(c => c.name.trim() && !c.grade));
   let incWarn = document.getElementById('incompleteWarning');
@@ -19202,10 +19217,6 @@ function recalc() {
   } else {
     incWarn.style.display = 'none';
   }
-
-  cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
-    cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
-    cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
 
   document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
   document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
@@ -19333,6 +19344,10 @@ function recalc() {
   renderPlayground();
   saveState();
   updateSetupWizard();
+
+  // Notify React islands (Vite build only) that the calculator recomputed.
+  // No-op on the vanilla / build3.py path where nothing listens.
+  window.dispatchEvent(new CustomEvent('shohoj:recalc'));
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
