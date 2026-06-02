@@ -28,11 +28,17 @@ making future UI work easier.
    - Keep all shared types in `src/core/types.ts` or nearby domain-specific
      files.
 
-3. Introduce Vite without changing the product UI.
+3. Introduce Vite without changing the product UI. **(in progress)**
    - Add Vite as a build path beside the current `build3.py` deploy path.
    - Keep the existing GitHub Pages deployment live until the Vite build has
      matching behavior.
    - Reuse the same runtime config values and CI secrets.
+   - Done so far: `vite.config.js` builds `index.html` + `admin/index.html` as
+     native ESM; `vite/seed-injection.js` injects `SEEDED_REVIEWS` /
+     `SEEDED_FACULTY_PROFILES` exactly like `build3.py` (parity guarded by
+     `tests/seedInjectionParity.test.js`); `npm run dev|build:vite|preview`
+     scripts; a non-deploying CI step runs `vite build`. `build3.py` and the
+     gh-pages deploy are unchanged.
 
 4. Add React shell.
    - Start with a small React root around the calculator area.
