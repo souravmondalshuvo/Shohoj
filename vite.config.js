@@ -14,6 +14,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 import copyGlobals from './vite/copy-globals.js';
+import firebaseIsolation from './vite/firebase-isolation.js';
 import reactIsland from './vite/react-island.js';
 import seedInjection from './vite/seed-injection.js';
 
@@ -21,7 +22,13 @@ export default defineConfig({
   root: '.',
   // Relative asset URLs so the build works under the GitHub Pages project path.
   base: './',
-  plugins: [react(), reactIsland(), seedInjection(), copyGlobals()],
+  plugins: [
+    react(),
+    reactIsland(),
+    firebaseIsolation(),
+    seedInjection(),
+    copyGlobals(),
+  ],
   server: {
     port: 5173,
   },
@@ -32,6 +39,10 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         admin: resolve(import.meta.dirname, 'admin/index.html'),
+        // Firebase auth boot as its own entry so it builds into a chunk
+        // separate from `main` — a blocked gstatic import then can't take the
+        // calculator down. Wired into the page by vite/firebase-isolation.js.
+        firebase: resolve(import.meta.dirname, 'src/firebase/firebase-entry.js'),
       },
     },
   },
