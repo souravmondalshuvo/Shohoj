@@ -50,10 +50,15 @@ making future UI work easier.
      `recalc()` skips those writes when `window.__SHOHOJ_REACT_SUMMARY__` is set,
      so the vanilla/build3.py path is unchanged. Injected only in the Vite build
      via `vite/react-island.js`; verified by `npm run test:e2e:vite`.
-   - Known follow-up before cutover: the firebase auth module is currently bundled
-     into the main Vite chunk, so a failed gstatic import would break the whole
-     chunk. Isolate firebase into its own chunk (it stays a separate module under
-     build3.py today).
+   - Firebase auth is isolated into its own chunk: `src/firebase/firebase-entry.js`
+     is a dedicated rollup input (`vite.config.js`), and `vite/firebase-isolation.js`
+     strips the inline firebase `<script type="module">` from `index.html` (Vite
+     only — the file on disk is unchanged) and points the page at the standalone
+     firebase chunk instead. Because that chunk is a separate module-graph root
+     with no static import edge from `main`, a blocked/failed gstatic import no
+     longer takes the calculator down — mirroring the separate firebase module
+     under build3.py. Verified by `e2e-vite/firebase-isolation.spec.js`, which
+     blocks gstatic entirely and asserts the CGPA calculator still computes.
 
 5. Rebuild features in risk order.
    - CGPA calculator first

@@ -8,10 +8,10 @@
 import { expect, test } from '@playwright/test';
 
 async function boot(page) {
-  // Block external calls, but let the firebase SDK modules load from gstatic:
-  // in the Vite build they're bundled into the same chunk as main.js, so a
-  // failed gstatic import would take the whole chunk (and the calculator) down.
-  // (Isolating firebase into its own chunk is a separate pre-cutover task.)
+  // Block external calls, but let the firebase SDK modules load from gstatic so
+  // the auth boot exercises its real path here. (Firebase now lives in its own
+  // chunk — see firebase-isolation.spec.js, which blocks gstatic entirely and
+  // proves the calculator survives a firebase load failure.)
   await page.route('https://**/*', route =>
     route.request().url().includes('gstatic.com') ? route.continue() : route.abort(),
   );
