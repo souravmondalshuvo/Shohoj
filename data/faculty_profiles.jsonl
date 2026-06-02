@@ -113,3 +113,4 @@
 {"initials": "HKU", "name": "Himel Kundu Utsha", "email": "himel.kundu@bracu.ac.bd", "dept": "EEE", "courses": ["EEE103"]}
 {"initials": "SKBR", "name": "Md Saif Kabir", "email": "saif.kabir@bracu.ac.bd", "dept": "EEE", "courses": ["EEE203", "ECE203"]}
 {"initials": "TKT", "name": "Tasmin Kamal Tulka", "email": "tasmin.tulka@bracu.ac.bd", "dept": "MPS", "courses": ["APE103", "PHY112"]}
+{"initials": "SNU", "name": "Sadia Noor Mou", "email": "sadia.noor@bracu.ac.bd", "dept": "BIO", "courses": ["BTE155", "BTE201", "BTE307", "BCH102", "BIO101", "BTE311"]}
