@@ -1153,6 +1153,86 @@ export const PREREQS = {
   'ENG437': { hp: ['ENG334'] },
   'ENG438': { hp: ['ENG334'] },
   'ENG439': { hp: ['ENG332', 'ENG334'] },
+
+  // ── ARC Prerequisites ─────────────────────────────────────────────────────
+  // BRACU does not publish an explicit prereq table for Architecture; the program
+  // is a fixed lock-step studio sequence. Only the explicit roman-numeral course
+  // progressions are encoded here as hard prereqs — non-sequential courses are
+  // intentionally left unlocked rather than inferred.
+  'ARC102': { hp: ['ARC101'] },   // Design II ← Design I
+  'ARC201': { hp: ['ARC102'] },   // Design III
+  'ARC202': { hp: ['ARC201'] },   // Design IV
+  'ARC301': { hp: ['ARC202'] },   // Design V
+  'ARC302': { hp: ['ARC301'] },   // Design VI
+  'ARC401': { hp: ['ARC302'] },   // Design VII
+  'ARC402': { hp: ['ARC401'] },   // Design VIII
+  'ARC501': { hp: ['ARC402'] },   // Design IX
+  'ARC502': { hp: ['ARC501'] },   // Design X
+  'ARC503': { hp: ['ARC501'] },   // Design Studio X (alternative to ARC502)
+  'ARC112': { hp: ['ARC111'] },   // Graphic Communication II ← I
+  'ARC123': { hp: ['ARC122'] },   // History of Art and Architecture II ← I
+  'ARC224': { hp: ['ARC123'] },   // History of Art and Architecture III
+  'ARC225': { hp: ['ARC224'] },   // History of Art and Architecture IV
+  'ARC326': { hp: ['ARC225'] },   // History of Art and Architecture V
+  'ARC242': { hp: ['ARC241'] },   // Construction II ← Construction I
+  'ARC312': { hp: ['ARC311'] },   // Working Drawings II ← I
+  'ARC512': { hp: ['ARC511'] },   // Seminar II ← Seminar I
+  'CEE212': { hp: ['CEE211'] },   // Structure II ← Structure I
+  'CEE311': { hp: ['CEE212'] },   // Structure III
+  'CEE312': { hp: ['CEE311'] },   // Structure IV
+  'CEE411': { hp: ['CEE312'] },   // Structure V
+  'CEE412': { hp: ['CEE411'] },   // Structure VI
+
+  // ── PHR Prerequisites (catalog uses PHB codes for years 1–3) ───────────────
+  // BRACU's Pharmacy handbook lists no prereq column; encoded below are only the
+  // explicit I→II→III science progressions (and their matching labs). Codes are
+  // mapped onto the catalog's PHB/PHR scheme by course title.
+  'PHB105': { hp: ['PHB101'] },     // Inorganic Chemistry II ← I
+  'PHB108': { hp: ['PHB102'] },     // Pharmaceutical Microbiology II ← I
+  'PHB109': { hp: ['PHB104'] },     // Organic Chemistry II ← I
+  'PHB109L': { hp: ['PHB104L'] },   // Organic Chemistry II Lab ← I Lab
+  'PHB201': { hp: ['PHB103'] },     // Physiology & Anatomy II ← I
+  'PHB201L': { hp: ['PHB103L'] },   // Physiology & Anatomy II Lab ← I Lab
+  'PHB203': { hp: ['PHB106'] },     // Physical Pharmacy II ← I
+  'PHB203L': { hp: ['PHB106L'] },   // Physical Pharmacy II Lab ← I Lab
+  'PHB307': { hp: ['PHB204'] },     // Pharmaceutical Analysis II ← I
+  'PHB307L': { hp: ['PHB204L'] },   // Pharmaceutical Analysis II Lab ← I Lab
+  'PHB401': { hp: ['PHB307'] },     // Pharmaceutical Analysis III ← II
+  'PHB305': { hp: ['PHB205'] },     // Pharmacology II ← I
+  'PHB305L': { hp: ['PHB205L'] },   // Pharmacology II Lab ← I Lab
+  'PHR411': { hp: ['PHB305'] },     // Pharmacology III ← II
+  'PHR416': { hp: ['PHB305L'] },    // Pharmacology III Lab ← II Lab
+  'PHB308': { hp: ['PHB302'] },     // Pharmaceutical Technology II ← I
+  'PHB308L': { hp: ['PHB302L'] },   // Pharmaceutical Technology II Lab ← I Lab
+  'PHB407': { hp: ['PHB308'] },     // Pharmaceutical Technology III ← II
+  'PHB407L': { hp: ['PHB308L'] },   // Pharmaceutical Technology III Lab ← II Lab
+  'PHB309': { hp: ['PHB304'] },     // Medicinal Chemistry II ← I
+  'PHB309L': { hp: ['PHB304L'] },   // Medicinal Chemistry II Lab ← I Lab
+  'PHB402': { hp: ['PHB310'] },     // Biopharmaceutics & Pharmacokinetics II ← I
+  'PHB402L': { hp: ['PHB310L'] },   // Biopharmaceutics & Pharmacokinetics II Lab ← I Lab
+
+  // ── APE Prerequisites ─────────────────────────────────────────────────────
+  // Explicit sequential progressions only.
+  'APE203': { hp: ['APE103'] },   // Electrical Circuits II ← I
+  'APE205': { hp: ['APE103'] },   // Electronic Devices and Circuits I ← Electrical Circuits I
+  'APE302': { hp: ['APE205'] },   // Electronic Devices and Circuits II ← I
+  'APE206': { hp: ['APE104'] },   // APE Lab II ← Lab I
+  'APE301': { hp: ['APE206'] },   // APE Lab III ← II
+  'APE303': { hp: ['APE301'] },   // APE Lab IV ← III
+
+  // ── MIC Prerequisites ─────────────────────────────────────────────────────
+  // Explicit sequential progressions only.
+  'MIC255': { hp: ['MIC155'] },   // Microbiology Lab II ← I
+  'MIC355': { hp: ['MIC255'] },   // Microbiology Lab III ← II
+  'MIC455': { hp: ['MIC355'] },   // Microbiology Lab IV ← III
+  'MIC310': { hp: ['MIC206'] },   // Advanced Molecular Biology ← Introduction to Molecular Biology
+  'MIC404': { hp: ['MIC301'] },   // Molecular Virology and Oncology ← Virology
+
+  // ── BTE Prerequisites ─────────────────────────────────────────────────────
+  // Explicit Intro→Advanced / Basic→Advanced progressions only.
+  'BTE307': { hp: ['BTE203'] },   // Advanced Molecular Biology ← Introduction to Molecular Biology
+  'BTE405': { hp: ['BTE303'] },   // Advanced Immunology ← Basic Immunology
+  'BTE409': { hp: ['BTE401'] },   // Advanced Bioinformatics ← Bioinformatics
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
