@@ -33,13 +33,15 @@ async function boot(page) {
 test('CGPA headline is React-owned and computed via the typed core', async ({ page }) => {
   await boot(page);
 
-  // The islands wrap #cgpaVal / footer credit totals and set flags that tell
-  // recalc() to stop writing those nodes.
+  // The islands wrap #cgpaVal, footer credit totals, and the CGPA meter; their
+  // flags tell recalc() to stop writing those nodes.
   await expect(page.locator('[data-react-cgpa] #cgpaVal')).toBeAttached();
   expect(await page.evaluate(() => window.__SHOHOJ_REACT_SUMMARY__)).toBe(true);
   await expect(page.locator('[data-react-cgpa-credit="attempted"]#totalAttempted')).toBeAttached();
   await expect(page.locator('[data-react-cgpa-credit="earned"]#totalEarned')).toBeAttached();
   expect(await page.evaluate(() => window.__SHOHOJ_REACT_CREDIT_TOTALS__)).toBe(true);
+  await expect(page.locator('.cgpa-meter[data-react-cgpa-meter="true"] #meterPct')).toBeAttached();
+  expect(await page.evaluate(() => window.__SHOHOJ_REACT_METER__)).toBe(true);
 
   // Demo data → React renders the same values the typed core computes.
   await page.locator('#heroDemoBtn').click();
@@ -47,6 +49,8 @@ test('CGPA headline is React-owned and computed via the typed core', async ({ pa
   await expect(page.locator('.cgpa-label')).toHaveText('Current CGPA');
   await expect(page.locator('[data-react-cgpa-credit="attempted"]#totalAttempted')).toHaveText('18');
   await expect(page.locator('[data-react-cgpa-credit="earned"]#totalEarned')).toHaveText('18');
+  await expect(page.locator('.cgpa-meter[data-react-cgpa-meter="true"] #meterPct')).toHaveText('87.5%');
+  await expect(page.locator('.cgpa-meter[data-react-cgpa-meter="true"] #meterStatus')).toContainText("You're on track for a strong degree.");
 });
 
 test('React island updates when a course changes', async ({ page }) => {
@@ -69,4 +73,6 @@ test('React island updates when a course changes', async ({ page }) => {
   await expect(page.locator('[data-react-cgpa] #cgpaVal')).toHaveText('3.57');
   await expect(page.locator('[data-react-cgpa-credit="attempted"]#totalAttempted')).toHaveText('21');
   await expect(page.locator('[data-react-cgpa-credit="earned"]#totalEarned')).toHaveText('21');
+  await expect(page.locator('.cgpa-meter[data-react-cgpa-meter="true"] #meterPct')).toHaveText('89.3%');
+  await expect(page.locator('.cgpa-meter[data-react-cgpa-meter="true"] #meterStatus')).toContainText('CGPA 3.57');
 });
