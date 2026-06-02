@@ -70,6 +70,13 @@ window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
+// Bridge for the React CGPA island (Vite build): hands the shared state +
+// start-semester inputs to the typed core so React can compute the same totals.
+window._shohoj_getCgpaInputs = () => ({
+  semesters: state.semesters,
+  startSeason: getStartSeason(),
+  startYear: getStartYear(),
+});
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
@@ -525,10 +532,18 @@ function recalc() {
   const cgpa = projectedTotals.cgpa;
   const cgpaCompleted = completedTotals.cgpa;
 
-  const cgpaEl = document.getElementById('cgpaVal');
-  cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
   const hasRunning = state.semesters.some(s => s.running);
-  document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
+  // The React island (Vite build only) owns #cgpaVal + .cgpa-label and sets this
+  // flag on mount; skip the vanilla writes so the two don't fight. The flag is
+  // never set on the build3.py / un-bundled path, so behavior there is unchanged.
+  if (!window.__SHOHOJ_REACT_SUMMARY__) {
+    const cgpaEl = document.getElementById('cgpaVal');
+    cgpaEl.textContent = cgpa !== null ? cgpa.toFixed(2) : '—';
+    cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
+      cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
+      cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
+    document.querySelector('.cgpa-label').textContent = hasRunning ? 'Projected CGPA' : 'Current CGPA';
+  }
 
   const hasIncomplete = state.semesters.some(s => !s.running && !s.summary && s.courses.some(c => c.name.trim() && !c.grade));
   let incWarn = document.getElementById('incompleteWarning');
@@ -546,10 +561,6 @@ function recalc() {
   } else {
     incWarn.style.display = 'none';
   }
-
-  cgpaEl.style.color = cgpa === null ? 'var(--text3)' :
-    cgpa >= 3.5 ? '#2ECC71' : cgpa >= 3.0 ? '#27ae60' :
-    cgpa >= 2.5 ? '#F0A500' : '#e74c3c';
 
   document.getElementById('totalAttempted').textContent = fmtCr(totalAttempted);
   document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
@@ -677,6 +688,10 @@ function recalc() {
   renderPlayground();
   saveState();
   updateSetupWizard();
+
+  // Notify React islands (Vite build only) that the calculator recomputed.
+  // No-op on the vanilla / build3.py path where nothing listens.
+  window.dispatchEvent(new CustomEvent('shohoj:recalc'));
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
