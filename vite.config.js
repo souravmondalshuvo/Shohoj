@@ -10,16 +10,18 @@
 // seed-injection plugin, mirroring build3.py.
 
 import { resolve } from 'node:path';
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 import copyGlobals from './vite/copy-globals.js';
+import reactIsland from './vite/react-island.js';
 import seedInjection from './vite/seed-injection.js';
 
 export default defineConfig({
   root: '.',
   // Relative asset URLs so the build works under the GitHub Pages project path.
   base: './',
-  plugins: [seedInjection(), copyGlobals()],
+  plugins: [react(), reactIsland(), seedInjection(), copyGlobals()],
   server: {
     port: 5173,
   },
