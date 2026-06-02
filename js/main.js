@@ -663,29 +663,33 @@ function recalc() {
     trendBox.style.display = 'none';
   }
 
-  const pct = cgpaCompleted !== null ? Math.min((cgpaCompleted / 4) * 100, 100) : 0;
-  document.getElementById('meterFill').style.width = pct + '%';
-  document.getElementById('meterPct').textContent = cgpaCompleted !== null ? pct.toFixed(1) + '%' : '0%';
+  // The React meter island (Vite build only) owns #meterFill, #meterPct, and
+  // #meterStatus. Vanilla/build3.py keeps writing these nodes directly.
+  if (!window.__SHOHOJ_REACT_METER__) {
+    const pct = cgpaCompleted !== null ? Math.min((cgpaCompleted / 4) * 100, 100) : 0;
+    document.getElementById('meterFill').style.width = pct + '%';
+    document.getElementById('meterPct').textContent = cgpaCompleted !== null ? pct.toFixed(1) + '%' : '0%';
 
-  const statusEl = document.getElementById('meterStatus');
-  if (cgpa === null) {
-    statusEl.innerHTML = 'Add your courses to get started.';
-  } else if (cgpaCompleted === null) {
-    if (hasRunning) {
-      statusEl.innerHTML = `<strong>Projected only.</strong> CGPA ${cgpa.toFixed(2)} is based on running courses. Add completed semesters to assess your standing.`;
+    const statusEl = document.getElementById('meterStatus');
+    if (cgpa === null) {
+      statusEl.innerHTML = 'Add your courses to get started.';
+    } else if (cgpaCompleted === null) {
+      if (hasRunning) {
+        statusEl.innerHTML = `<strong>Projected only.</strong> CGPA ${cgpa.toFixed(2)} is based on running courses. Add completed semesters to assess your standing.`;
+      } else {
+        statusEl.innerHTML = 'Add completed graded courses to see your academic standing.';
+      }
+    } else if (cgpaCompleted >= 3.75) {
+      statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpaCompleted.toFixed(2)} — Dean's List territory. Keep it up.`;
+    } else if (cgpaCompleted >= 3.5) {
+      statusEl.innerHTML = `<strong>Excellent.</strong> CGPA ${cgpaCompleted.toFixed(2)} — You're on track for a strong degree.`;
+    } else if (cgpaCompleted >= 3.0) {
+      statusEl.innerHTML = `<strong>Good standing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Push for 3.5 and you'll stand out.`;
+    } else if (cgpaCompleted >= 2.5) {
+      statusEl.innerHTML = `<strong>Keep pushing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Consider retaking weak courses for a boost.`;
     } else {
-      statusEl.innerHTML = 'Add completed graded courses to see your academic standing.';
+      statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
     }
-  } else if (cgpaCompleted >= 3.75) {
-    statusEl.innerHTML = `<strong>Outstanding!</strong> CGPA ${cgpaCompleted.toFixed(2)} — Dean's List territory. Keep it up.`;
-  } else if (cgpaCompleted >= 3.5) {
-    statusEl.innerHTML = `<strong>Excellent.</strong> CGPA ${cgpaCompleted.toFixed(2)} — You're on track for a strong degree.`;
-  } else if (cgpaCompleted >= 3.0) {
-    statusEl.innerHTML = `<strong>Good standing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Push for 3.5 and you'll stand out.`;
-  } else if (cgpaCompleted >= 2.5) {
-    statusEl.innerHTML = `<strong>Keep pushing.</strong> CGPA ${cgpaCompleted.toFixed(2)} — Consider retaking weak courses for a boost.`;
-  } else {
-    statusEl.innerHTML = `<strong>Recovery mode.</strong> CGPA ${cgpa.toFixed(2)} — Focus on retakes and consistent grades from here.`;
   }
 
   runSimulator(cgpa, totalEarnedCGPA, totalPts);
