@@ -1018,7 +1018,6 @@ export const PREREQS = {
   'EEE385': { hp: ['EEE282'], sp: ['STA201'] },
   'EEE410': { hp: ['EEE365'] },
   'EEE411': { hp: ['EEE301'] },
-  'EEE412': { hp: ['EEE411'] },
   'EEE415': { hp: ['EEE308'] },
   'EEE421': { hp: ['EEE205'] },
   'EEE433': { hp: ['EEE321'] },
