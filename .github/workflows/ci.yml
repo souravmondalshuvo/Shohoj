@@ -104,3 +104,16 @@ jobs:
               sys.exit(1)
           print('bundles OK')
           PY
+
+      - name: Vite build (non-deploying smoke check)
+        run: |
+          # Verify the Vite build path (docs/REACT_VITE_MIGRATION.md Step 3)
+          # compiles. This output is NOT deployed — gh-pages still ships the
+          # build3.py bundle. Vite needs a resolvable runtime-config.js; the
+          # template is valid JS and its __PLACEHOLDER__ tokens are fine for a
+          # build-compile check (the bundle is never served, so no secrets are
+          # needed — this also keeps fork PRs green).
+          cp js/config/runtime-config.template.js js/config/runtime-config.js
+          npm run build:vite
+          test -s dist/index.html
+          test -s dist/admin/index.html
