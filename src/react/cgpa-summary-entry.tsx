@@ -8,6 +8,7 @@
 import { createRoot } from 'react-dom/client';
 
 import CgpaCreditTotal from './CgpaCreditTotals';
+import CgpaMeter from './CgpaMeter';
 import CgpaSummary from './CgpaSummary';
 
 function mount() {
@@ -25,6 +26,13 @@ function mount() {
     window.__SHOHOJ_REACT_CREDIT_TOTALS__ = true;
     createRoot(attemptedHost).render(<CgpaCreditTotal metric="attempted" />);
     createRoot(earnedHost).render(<CgpaCreditTotal metric="earned" />);
+  }
+
+  const meterHost = document.querySelector('.cgpa-meter');
+  if (meterHost) {
+    meterHost.setAttribute('data-react-cgpa-meter', 'true');
+    window.__SHOHOJ_REACT_METER__ = true;
+    createRoot(meterHost).render(<CgpaMeter />);
   }
 }
 
