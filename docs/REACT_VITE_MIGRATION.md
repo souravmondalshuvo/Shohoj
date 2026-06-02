@@ -54,6 +54,10 @@ making future UI work easier.
      are now a second Vite-only React island (`src/react/CgpaCreditTotals.tsx`)
      fed by the same typed `calculateCgpaTotals` core and `shohoj:recalc` event.
      The vanilla/build3.py path still writes those footer nodes directly.
+   - The CGPA meter panel (`#meterFill`, `#meterPct`, and `#meterStatus`) is now
+     a Vite-only React island (`src/react/CgpaMeter.tsx`) computed from the same
+     projected/completed typed totals. The vanilla/build3.py path still owns the
+     meter DOM when React is absent.
    - Firebase auth is isolated into its own chunk: `src/firebase/firebase-entry.js`
      is a dedicated rollup input (`vite.config.js`), and `vite/firebase-isolation.js`
      strips the inline firebase `<script type="module">` from `index.html` (Vite
