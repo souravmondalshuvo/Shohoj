@@ -24,6 +24,19 @@ import {
 } from '../js/core/calculator.js';
 import { ALL_COURSES, COURSE_DB, PREREQS } from '../js/core/catalog.js';
 import { parseTranscriptText } from '../js/import/parser.js';
+import {
+  aggregateByFaculty,
+  aggregateRatings,
+  buildReviewOverview,
+  buildReviewReportId,
+  isValidReviewId,
+  validateReview,
+} from '../js/core/reviews.js';
+import {
+  isValidPaperType,
+  paperTimestampMs,
+  validatePaperUpload,
+} from '../js/core/papers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -35,6 +48,8 @@ const coreFiles = [
   'gpa.ts',
   'planner.ts',
   'transcript.ts',
+  'reviews.ts',
+  'papers.ts',
 ];
 
 function rewriteLocalImports(output) {
@@ -92,6 +107,8 @@ const tempDir = transpileTypedCore();
 const typedGpa = await import(pathToFileURL(path.join(tempDir, 'gpa.mjs')));
 const typedPlanner = await import(pathToFileURL(path.join(tempDir, 'planner.mjs')));
 const typedTranscript = await import(pathToFileURL(path.join(tempDir, 'transcript.mjs')));
+const typedReviews = await import(pathToFileURL(path.join(tempDir, 'reviews.mjs')));
+const typedPapers = await import(pathToFileURL(path.join(tempDir, 'papers.mjs')));
 
 console.log('\nTyped core parity:');
 
@@ -239,6 +256,96 @@ test('typed transcript parser matches current JS parser output shape', () => {
     stripTranscriptIds(typedTranscript.parseTranscriptText(text)),
     stripTranscriptIds(parseTranscriptText(text)),
   );
+});
+
+function makeRatings(teaching, marking, behavior, difficulty, workload) {
+  return { teaching, marking, behavior, difficulty, workload };
+}
+
+const REVIEW_SAMPLE = [
+  { id: 'a', facultyInitials: 'ABC', courseCode: 'CSE110', text: 'Very clear explanations and patient, helpful support. Marking is fair.', ratings: makeRatings(5, 4, 5, 2, 3) },
+  { id: 'b', facultyInitials: 'ABC', courseCode: 'CSE110', text: 'Quizzes were manageable and easy if you practice.', ratings: makeRatings(4, 4, 4, 3, 3) },
+  { id: 'c', facultyInitials: 'XY', courseCode: 'CSE220', text: 'Disorganized and harsh marking.', ratings: makeRatings(2, 2, 2, 4, 5) },
+  { id: 'd', facultyInitials: 'XY', courseCode: 'CSE220', text: '', ratings: { teaching: 3 } },
+];
+
+test('typed review validation matches current JS reviews validator', () => {
+  const payloads = [
+    null,
+    {},
+    { facultyInitials: 'A', courseCode: 'CSE110', ratings: makeRatings(5, 5, 5, 5, 5) },
+    { facultyInitials: 'ABC', courseCode: '', ratings: makeRatings(5, 5, 5, 5, 5) },
+    { facultyInitials: 'ABC', courseCode: 'ZZ9', ratings: makeRatings(5, 5, 5, 5, 5) },
+    { facultyInitials: 'ABC', courseCode: 'QWE999', ratings: makeRatings(5, 5, 5, 5, 5) },
+    { facultyInitials: 'ABC', courseCode: 'CSE110', ratings: makeRatings(5, 5, 5, 5, 6) },
+    { facultyInitials: 'ABC', courseCode: 'CSE110', ratings: makeRatings(5, 5, 5, 5, 5), semester: 'x'.repeat(41) },
+    { facultyInitials: 'ABC', courseCode: 'CSE110', ratings: makeRatings(5, 5, 5, 5, 5), text: 'y'.repeat(501) },
+    { facultyInitials: 'ABC', courseCode: 'cse110', ratings: makeRatings(4, 4, 4, 4, 4) },
+  ];
+  for (const payload of payloads) {
+    assert.equal(typedReviews.validateReview(payload, COURSE_DB), validateReview(payload));
+  }
+});
+
+test('typed review id + report id helpers match current JS', () => {
+  const ids = ['', 'nope', 'ABC_CSE110_' + 'a'.repeat(64), 'ABC_CSE110_' + 'g'.repeat(64)];
+  for (const id of ids) {
+    assert.equal(typedReviews.isValidReviewId(id), isValidReviewId(id));
+    assert.equal(typedReviews.buildReviewReportId(id, 'uid123'), buildReviewReportId(id, 'uid123'));
+  }
+  assert.equal(typedReviews.buildReviewReportId('', 'uid'), buildReviewReportId('', 'uid'));
+});
+
+test('typed rating aggregation matches current JS aggregateRatings', () => {
+  assert.equal(typedReviews.aggregateRatings([]), aggregateRatings([]));
+  assert.deepEqual(typedReviews.aggregateRatings(REVIEW_SAMPLE), aggregateRatings(REVIEW_SAMPLE));
+});
+
+test('typed per-faculty aggregation matches current JS aggregateByFaculty', () => {
+  assert.deepEqual(typedReviews.aggregateByFaculty(REVIEW_SAMPLE), aggregateByFaculty(REVIEW_SAMPLE));
+});
+
+test('typed review overview matches current JS buildReviewOverview', () => {
+  assert.equal(typedReviews.buildReviewOverview([]), buildReviewOverview([]));
+  for (const opts of [{}, { facultyName: 'Dr. Test', facultyInitials: 'ABC', courseCode: 'CSE110' }, { facultyInitials: 'XY' }]) {
+    assert.deepEqual(
+      typedReviews.buildReviewOverview(REVIEW_SAMPLE, opts),
+      buildReviewOverview(REVIEW_SAMPLE, opts),
+    );
+  }
+});
+
+test('typed paper upload validation matches current JS validatePaperUpload', () => {
+  const inputs = [
+    { file: null, courseCode: 'CSE110', type: 'midterm', title: 'Midterm 1' },
+    { file: { size: 0, type: 'application/pdf' }, courseCode: 'CSE110', type: 'final', title: 'Final' },
+    { file: { size: 11 * 1024 * 1024, type: 'application/pdf' }, courseCode: 'CSE110', type: 'final', title: 'Final' },
+    { file: { size: 100, type: 'text/plain' }, courseCode: 'CSE110', type: 'final', title: 'Final' },
+    { file: { size: 100, type: 'image/png' }, courseCode: 'ZZ9', type: 'final', title: 'Final' },
+    { file: { size: 100, type: 'application/pdf' }, courseCode: 'CSE110', type: 'bogus', title: 'Final' },
+    { file: { size: 100, type: 'application/pdf' }, courseCode: 'CSE110', type: 'quiz', title: 'ab' },
+    { file: { size: 100, type: 'application/pdf' }, courseCode: 'CSE110', type: 'quiz', title: 'z'.repeat(121) },
+    { file: { size: 100, type: 'application/pdf' }, courseCode: 'cse110', type: 'notes', title: 'Lecture notes' },
+  ];
+  for (const input of inputs) {
+    assert.equal(typedPapers.validatePaperUpload(input, COURSE_DB), validatePaperUpload(input));
+  }
+});
+
+test('typed paper type + timestamp helpers match current JS', () => {
+  for (const type of ['midterm', 'MIDTERM', 'final', 'bogus', '', null, 'lab-quiz']) {
+    assert.equal(typedPapers.isValidPaperType(type), isValidPaperType(type));
+  }
+  const stamps = [
+    null,
+    {},
+    { createdAt: null },
+    { createdAt: { seconds: 1700 } },
+    { createdAt: { toMillis: () => 1700000 } },
+  ];
+  for (const stamp of stamps) {
+    assert.equal(typedPapers.paperTimestampMs(stamp), paperTimestampMs(stamp));
+  }
 });
 
 let passed = 0;
