@@ -691,8 +691,9 @@ Additional notes on Repeat:
 
 ### Semester Planner
 
-- Prerequisite data currently covers **CSE, EEE, ECE, MAT, PHY, BBA, ECO, and ENG** departments (approx. 300 prerequisite rules).
-- Departments not yet in the prereq database (ARC, ANT, PHR, LAW, MIC, BIO, APE) will show courses as unlocked by default — not because they have no prerequisites, but because the data hasn't been added yet.
+- Prerequisite data fully covers **CSE, EEE, ECE, MAT, PHY, BBA, ECO, and ENG** departments (approx. 300 prerequisite rules).
+- **ARC, PHR, APE, MIC, and BIO** have partial coverage: BRACU does not publish an explicit prerequisite table for these lock-step programs, so only the explicit course progressions (Design I→X, Structure I→VI, Pharmacology I→III, Microbiology Lab I→IV, Intro→Advanced sequences, etc.) are encoded as hard prereqs. Non-sequential courses in these departments are intentionally left unlocked rather than inferred.
+- **ANT and LAW** have no prerequisite data — their curricula are topical with no published or roman-numeral progressions, so all their courses show as unlocked.
 - The planner does not check time conflicts or section availability — that requires integration with BRACU CONNECT, which is planned for a future phase.
 
 ### Faculty Reviews
