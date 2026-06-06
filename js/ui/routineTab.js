@@ -25,6 +25,7 @@ import {
   formatRatingScore,
 } from '../core/routineFaculty.js';
 import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
+import { suggestCombinations } from '../core/routineSuggestions.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -47,6 +48,8 @@ const _store = {
   query: '',
   ratingMap: new Map(), // initials -> FacultyRating (built from reviews)
   ratingLoaded: false,
+  suggestionsOpen: false,
+  suggestionsResult: null, // SuggestionsResult or null
 };
 
 const REVIEWS_FETCH_LIMIT = 5000;
@@ -80,17 +83,49 @@ registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Nu
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
+registerAction('routine:suggest',     () => _onSuggest());
+registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
+registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
 
 function _onRemoveCourse(code)         { _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 function _onPickSection(code, sid)     { _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
-function _onClearAll()                 { _store.routine = clearRoutine(_store.routine); _persistRoutine(); _rerender(); }
+function _onClearAll()                 {
+  _store.routine = clearRoutine(_store.routine);
+  _store.suggestionsOpen = false; _store.suggestionsResult = null;
+  _persistRoutine(); _rerender();
+}
 function _onAddCourseFromSuggest(code) {
   if (!code || !_store.index || !_store.index.has(code)) return;
   _store.routine = pickCourse(_store.routine, code);
   _store.query = '';
   const input = document.getElementById('routineCourseInput');
   if (input) input.value = '';
+  _persistRoutine();
+  _rerender();
+}
+
+function _onSuggest() {
+  if (!_store.index) return;
+  const codes = pickedCourseCodes(_store.routine);
+  if (codes.length === 0) return;
+  _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap);
+  _store.suggestionsOpen = true;
+  _rerender();
+}
+
+function _onApplyCombo(idx) {
+  const result = _store.suggestionsResult;
+  if (!result || !Number.isFinite(idx)) return;
+  const combo = result.suggestions[idx];
+  if (!combo) return;
+  let next = _store.routine;
+  for (const s of combo.sections) {
+    next = pickSection(next, s.courseCode, s.sectionId);
+  }
+  _store.routine = next;
+  _store.suggestionsOpen = false;
+  _store.suggestionsResult = null;
   _persistRoutine();
   _rerender();
 }
@@ -238,6 +273,8 @@ function _mainHTML() {
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
+      ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
       ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
     </div>
   `;
@@ -482,4 +519,100 @@ function _renderSuggestions() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   if (wrap) wrap.innerHTML = _suggestionsHTML();
+}
+
+// ── SUGGESTIONS (PR 6) ──────────────────────────────────────────────────────
+function _suggestionsToolbarHTML(pickedCount) {
+  return `
+    <div class="routine-suggest-toolbar">
+      <button class="btn-primary btn-sm" data-action="routine:suggest" title="Find the best clash-free section combinations">
+        ✨ Auto-suggest combinations
+      </button>
+      <span class="routine-suggest-hint">${pickedCount} course${pickedCount === 1 ? '' : 's'} picked</span>
+    </div>
+  `;
+}
+
+function _suggestionsPanelHTML() {
+  const r = _store.suggestionsResult;
+  if (!r) return '';
+  const headerNote = [];
+  if (r.skippedCourses.length > 0) {
+    headerNote.push(`<span class="routine-suggest-warn">Skipped (no open sections): ${escHtml(r.skippedCourses.join(', '))}</span>`);
+  }
+  if (r.truncated) {
+    headerNote.push(`<span class="routine-suggest-warn">⚠ Search truncated at ${r.enumerated} combos — too many to enumerate.</span>`);
+  }
+  if (r.suggestions.length === 0) {
+    return `
+      <div class="routine-suggest-panel">
+        <div class="routine-suggest-panel-head">
+          <h4>No clash-free combinations found</h4>
+          <button class="routine-remove-x" data-action="routine:closeSuggest" aria-label="Close">×</button>
+        </div>
+        <div class="routine-suggest-empty">
+          Try removing a course or relaxing your picker. Enumerated ${r.enumerated}, all had class clashes.
+          ${headerNote.join(' ')}
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="routine-suggest-panel">
+      <div class="routine-suggest-panel-head">
+        <h4>Top ${r.suggestions.length} clash-free combination${r.suggestions.length === 1 ? '' : 's'}</h4>
+        <div class="routine-suggest-meta">
+          ${r.feasible} feasible of ${r.enumerated} enumerated
+          ${headerNote.length ? '· ' + headerNote.join(' · ') : ''}
+        </div>
+        <button class="routine-remove-x" data-action="routine:closeSuggest" aria-label="Close">×</button>
+      </div>
+      <div class="routine-suggest-cards">
+        ${r.suggestions.map((s, i) => _comboCardHTML(s, i)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function _comboCardHTML(combo, idx) {
+  const b = combo.breakdown;
+  const rating = b.avgRating === null ? '—' : b.avgRating.toFixed(1);
+  const ratingClass = b.avgRating === null ? 'unknown'
+    : b.avgRating >= 4.3 ? 'excellent'
+    : b.avgRating >= 3.7 ? 'good'
+    : b.avgRating >= 3.0 ? 'mid'
+    : b.avgRating >= 2.0 ? 'warn' : 'bad';
+  const seatNotes = [];
+  if (b.fullCount > 0)  seatNotes.push(`${b.fullCount} FULL`);
+  if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
+  const examNote = b.examClashPairs > 0
+    ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
+  return `
+    <div class="routine-suggest-card" data-idx="${idx}">
+      <div class="routine-suggest-card-head">
+        <span class="routine-suggest-card-rank">#${idx + 1}</span>
+        <span class="routine-suggest-card-rating routine-faculty-badge--${ratingClass}" title="Average faculty rating">★ ${escHtml(rating)}</span>
+        <span class="routine-suggest-card-score" title="Score">score ${combo.score.toFixed(1)}</span>
+        ${seatNotes.length ? `<span class="routine-suggest-card-seats">${escHtml(seatNotes.join(' · '))}</span>` : ''}
+        ${examNote}
+      </div>
+      <div class="routine-suggest-card-list">
+        ${combo.sections.map(s => _comboSectionLineHTML(s)).join('')}
+      </div>
+      <div class="routine-suggest-card-actions">
+        <button class="btn-primary btn-sm" data-action="routine:applyCombo" data-idx="${idx}">Apply this combination</button>
+      </div>
+    </div>
+  `;
+}
+
+function _comboSectionLineHTML(section) {
+  return `
+    <div class="routine-suggest-line">
+      <span class="routine-suggest-line-code">${escHtml(section.courseCode)}</span>
+      <span class="routine-suggest-line-sec">§${escHtml(section.sectionName)}</span>
+      <span class="routine-suggest-line-fac">${escHtml(section.facultyInitials || 'TBA')}</span>
+      <span class="routine-suggest-line-sched">${_formatSchedule(section)}</span>
+    </div>
+  `;
 }

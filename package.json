@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "test": "node tests/calculator.test.js && node tests/parser.test.js && node tests/tracker.test.js && node tests/render.test.js && node tests/planner.test.js && node tests/typedCoreParity.test.js && node tests/seedInjectionParity.test.js && node tests/reviews.test.js && node tests/adminDashboard.test.js && node tests/connectFeed.test.js && node tests/connectFeedClient.test.js && node tests/routineState.test.js && node tests/routineGrid.test.js && node tests/routineFaculty.test.js && node worker/test/worker.test.js && npm run test:rules",
+    "test": "node tests/calculator.test.js && node tests/parser.test.js && node tests/tracker.test.js && node tests/render.test.js && node tests/planner.test.js && node tests/typedCoreParity.test.js && node tests/seedInjectionParity.test.js && node tests/reviews.test.js && node tests/adminDashboard.test.js && node tests/connectFeed.test.js && node tests/connectFeedClient.test.js && node tests/routineState.test.js && node tests/routineGrid.test.js && node tests/routineFaculty.test.js && node tests/routineSuggestions.test.js && node worker/test/worker.test.js && npm run test:rules",
     "test:calculator": "node tests/calculator.test.js",
     "test:parser": "node tests/parser.test.js",
     "test:tracker": "node tests/tracker.test.js",
@@ -24,6 +24,7 @@
     "test:routineState": "node tests/routineState.test.js",
     "test:routineGrid": "node tests/routineGrid.test.js",
     "test:routineFaculty": "node tests/routineFaculty.test.js",
+    "test:routineSuggestions": "node tests/routineSuggestions.test.js",
     "test:worker": "node worker/test/worker.test.js",
     "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
     "test:e2e": "playwright test",
