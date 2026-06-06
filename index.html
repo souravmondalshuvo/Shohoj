@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-fbfRaJGOBXe6nda3CsoaDeaZg+9JlpoYVq92H5EsrOw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Gbg93WwDBx3NSYQ545kLLqMaGVLrc8a34CfUyTdxdAc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5505,6 +5505,40 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (max-width: 720px) {
   .routine-grid { min-width: 480px; }
   .routine-grid-block-meta, .routine-grid-block-time { display: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Routine Builder — faculty rating badges (PR 5)
+ * ─────────────────────────────────────────────────────────────────────────── */
+.routine-faculty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+  vertical-align: 1px;
+  margin-left: 5px;
+}
+.routine-faculty-badge--excellent  { background: rgba(46,204,113,0.16); color: #2ecc71; }
+.routine-faculty-badge--good       { background: rgba(46,204,113,0.10); color: #82e0aa; }
+.routine-faculty-badge--mid        { background: rgba(241,196,15,0.12); color: #f1c40f; }
+.routine-faculty-badge--warn       { background: rgba(230,126,34,0.14); color: #e67e22; }
+.routine-faculty-badge--bad        { background: rgba(231,76,60,0.14);  color: #e74c3c; }
+.routine-faculty-badge--low-sample { background: rgba(255,255,255,0.06); color: var(--text3); font-style: italic; }
+
+/* In-grid rating badge keeps the same colors but compresses padding */
+.routine-grid-block-rating {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 4px;
+  margin-left: 3px;
+  letter-spacing: 0.2px;
 }
 
 </style>
@@ -15461,6 +15495,61 @@ function computeGridLayout(routine, options = {}) {
     return { days, startMin, endMin, rowMinutes, totalRows, rowLabels, blocks };
 }
 
+// ── js/core/routineFaculty.js ───────────────────────────────────
+// Generated from src/core/routineFaculty.ts for the vanilla JS runtime.
+// Update src/core/routineFaculty.ts first, then regenerate this file.
+//
+// Cross-references the live CONNECT feed (faculty initials like "ABC") with
+// the existing review aggregations so the Routine Builder can show a ★ next
+// to each section's faculty. Pure: the async fetch lives in routineTab.js.
+
+const LOW_SAMPLE_THRESHOLD = 3;
+
+function ratingTier(overall, count) {
+    if (overall === null) return 'unknown';
+    if (count < LOW_SAMPLE_THRESHOLD) return 'low-sample';
+    if (overall >= 4.3) return 'excellent';
+    if (overall >= 3.7) return 'good';
+    if (overall >= 3.0) return 'mid';
+    if (overall >= 2.0) return 'warn';
+    return 'bad';
+}
+
+function normalizeKey(raw) {
+    if (typeof raw !== 'string') return '';
+    return raw.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6);
+}
+
+function buildFacultyRatingMap(aggregated) {
+    const out = new Map();
+    if (!Array.isArray(aggregated)) return out;
+    for (const entry of aggregated) {
+        if (!entry || typeof entry !== 'object') continue;
+        const key = normalizeKey(entry.facultyInitials);
+        if (!key) continue;
+        const count = typeof entry.count === 'number' && entry.count > 0 ? entry.count : 0;
+        const overall = typeof entry.overall === 'number' ? entry.overall : null;
+        out.set(key, {
+            initials: key,
+            overall,
+            count,
+            tier: ratingTier(overall, count),
+        });
+    }
+    return out;
+}
+
+function getRatingForSection(section, ratingMap) {
+    const key = normalizeKey(section && section.facultyInitials);
+    if (!key) return null;
+    return ratingMap.get(key) ?? null;
+}
+
+function formatRatingScore(value, digits = 1) {
+    if (value === null || Number.isNaN(value)) return '—';
+    return value.toFixed(digits);
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -15486,7 +15575,11 @@ const _store = {
   courseCodes: [],
   routine: _restoreRoutine(),
   query: '',
+  ratingMap: new Map(), // initials -> FacultyRating (built from reviews)
+  ratingLoaded: false,
 };
+
+const REVIEWS_FETCH_LIMIT = 5000;
 
 function _restoreRoutine() {
   try {
@@ -15572,8 +15665,15 @@ async function _refresh(force = false) {
   _store.loading = true;
   _store.error = null;
   _rerender();
+
+  // Fetch the Connect feed and the review aggregation in parallel.
+  // Reviews are best-effort: if they fail, the UI degrades to "no ratings"
+  // rather than refusing to render the routine.
+  const feedPromise = fetchConnectFeed(force ? { forceRefresh: true } : {});
+  const reviewsPromise = _loadFacultyRatings(force);
+
   try {
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    const result = await feedPromise;
     _store.index = indexByCourse(result.sections);
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
@@ -15583,6 +15683,25 @@ async function _refresh(force = false) {
   } finally {
     _store.loading = false;
     _rerender();
+  }
+
+  // Don't await reviews inside the loading block — once they arrive, just
+  // rerender to surface the badges.
+  reviewsPromise
+    .then(() => { if (_store.index) _rerender(); })
+    .catch(() => { /* silent — ratings stay unloaded */ });
+}
+
+async function _loadFacultyRatings(force) {
+  if (_store.ratingLoaded && !force) return;
+  try {
+    const reviews = await fetchRecentReviews(REVIEWS_FETCH_LIMIT);
+    const aggregated = aggregateByFaculty(reviews || []);
+    _store.ratingMap = buildFacultyRatingMap(aggregated);
+    _store.ratingLoaded = true;
+  } catch {
+    // Leave ratingMap empty; UI will render sections without badges.
+    _store.ratingLoaded = false;
   }
 }
 
@@ -15706,11 +15825,20 @@ function _gridBlockHTML(block, clashMap) {
     `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
     `--routine-hue: ${hue}`,
   ].join('; ');
-  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'} — ${block.roomName || ''}`;
+  const rating = _store.ratingLoaded
+    ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
+    : null;
+  const ratingBadge = (rating && rating.tier !== 'unknown')
+    ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
+    : '';
+  const ratingTitle = rating && rating.tier !== 'unknown'
+    ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
+    : '';
+  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}`;
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
@@ -15827,7 +15955,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark) {
   return `
     <button type="button" class="routine-section-row ${isPicked ? 'routine-section--picked' : ''} ${clashClass}" data-action="${action}" ${data}>
       <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
-      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
+      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
       <span class="routine-section-seats routine-seats--${seatClass}" title="Seats">${section.consumedSeat}/${section.capacity}</span>
@@ -15836,6 +15964,18 @@ function _sectionRowHTML(courseCode, section, isPicked, mark) {
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
     </button>
   `;
+}
+
+function _facultyBadgeHTML(section) {
+  if (!_store.ratingLoaded) return '';
+  const r = getRatingForSection(section, _store.ratingMap);
+  if (!r) return '';
+  if (r.tier === 'unknown') return '';
+  const score = formatRatingScore(r.overall);
+  const title = r.tier === 'low-sample'
+    ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
+    : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
+  return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
 }
 
 function _formatSchedule(section) {

@@ -5504,6 +5504,40 @@ body[data-page="admin"] .orb { display: none !important; }
   .routine-grid-block-meta, .routine-grid-block-time { display: none; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Routine Builder — faculty rating badges (PR 5)
+ * ─────────────────────────────────────────────────────────────────────────── */
+.routine-faculty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+  vertical-align: 1px;
+  margin-left: 5px;
+}
+.routine-faculty-badge--excellent  { background: rgba(46,204,113,0.16); color: #2ecc71; }
+.routine-faculty-badge--good       { background: rgba(46,204,113,0.10); color: #82e0aa; }
+.routine-faculty-badge--mid        { background: rgba(241,196,15,0.12); color: #f1c40f; }
+.routine-faculty-badge--warn       { background: rgba(230,126,34,0.14); color: #e67e22; }
+.routine-faculty-badge--bad        { background: rgba(231,76,60,0.14);  color: #e74c3c; }
+.routine-faculty-badge--low-sample { background: rgba(255,255,255,0.06); color: var(--text3); font-style: italic; }
+
+/* In-grid rating badge keeps the same colors but compresses padding */
+.routine-grid-block-rating {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 4px;
+  margin-left: 3px;
+  letter-spacing: 0.2px;
+}
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
