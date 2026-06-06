@@ -19,6 +19,12 @@ import {
   summarizeRoutine,
 } from '../core/routineState.js';
 import { computeGridLayout } from '../core/routineGrid.js';
+import {
+  buildFacultyRatingMap,
+  getRatingForSection,
+  formatRatingScore,
+} from '../core/routineFaculty.js';
+import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -39,7 +45,11 @@ const _store = {
   courseCodes: [],
   routine: _restoreRoutine(),
   query: '',
+  ratingMap: new Map(), // initials -> FacultyRating (built from reviews)
+  ratingLoaded: false,
 };
+
+const REVIEWS_FETCH_LIMIT = 5000;
 
 function _restoreRoutine() {
   try {
@@ -125,8 +135,15 @@ async function _refresh(force = false) {
   _store.loading = true;
   _store.error = null;
   _rerender();
+
+  // Fetch the Connect feed and the review aggregation in parallel.
+  // Reviews are best-effort: if they fail, the UI degrades to "no ratings"
+  // rather than refusing to render the routine.
+  const feedPromise = fetchConnectFeed(force ? { forceRefresh: true } : {});
+  const reviewsPromise = _loadFacultyRatings(force);
+
   try {
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    const result = await feedPromise;
     _store.index = indexByCourse(result.sections);
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
@@ -136,6 +153,25 @@ async function _refresh(force = false) {
   } finally {
     _store.loading = false;
     _rerender();
+  }
+
+  // Don't await reviews inside the loading block — once they arrive, just
+  // rerender to surface the badges.
+  reviewsPromise
+    .then(() => { if (_store.index) _rerender(); })
+    .catch(() => { /* silent — ratings stay unloaded */ });
+}
+
+async function _loadFacultyRatings(force) {
+  if (_store.ratingLoaded && !force) return;
+  try {
+    const reviews = await fetchRecentReviews(REVIEWS_FETCH_LIMIT);
+    const aggregated = aggregateByFaculty(reviews || []);
+    _store.ratingMap = buildFacultyRatingMap(aggregated);
+    _store.ratingLoaded = true;
+  } catch {
+    // Leave ratingMap empty; UI will render sections without badges.
+    _store.ratingLoaded = false;
   }
 }
 
@@ -259,11 +295,20 @@ function _gridBlockHTML(block, clashMap) {
     `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
     `--routine-hue: ${hue}`,
   ].join('; ');
-  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'} — ${block.roomName || ''}`;
+  const rating = _store.ratingLoaded
+    ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
+    : null;
+  const ratingBadge = (rating && rating.tier !== 'unknown')
+    ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
+    : '';
+  const ratingTitle = rating && rating.tier !== 'unknown'
+    ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
+    : '';
+  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}`;
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
@@ -380,7 +425,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark) {
   return `
     <button type="button" class="routine-section-row ${isPicked ? 'routine-section--picked' : ''} ${clashClass}" data-action="${action}" ${data}>
       <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
-      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
+      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
       <span class="routine-section-seats routine-seats--${seatClass}" title="Seats">${section.consumedSeat}/${section.capacity}</span>
@@ -389,6 +434,18 @@ function _sectionRowHTML(courseCode, section, isPicked, mark) {
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
     </button>
   `;
+}
+
+function _facultyBadgeHTML(section) {
+  if (!_store.ratingLoaded) return '';
+  const r = getRatingForSection(section, _store.ratingMap);
+  if (!r) return '';
+  if (r.tier === 'unknown') return '';
+  const score = formatRatingScore(r.overall);
+  const title = r.tier === 'low-sample'
+    ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
+    : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
+  return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
 }
 
 function _formatSchedule(section) {
