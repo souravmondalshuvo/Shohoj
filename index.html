@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-PvNDukmyf+UNudS5lg+Qtc8RsTLkZforwgRLREHfFK4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-fbfRaJGOBXe6nda3CsoaDeaZg+9JlpoYVq92H5EsrOw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5408,6 +5408,103 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (max-width: 720px) {
   .routine-section-row { grid-template-columns: 1fr; gap: 4px; }
   .routine-section-room, .routine-section-exam { font-size: 10px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Routine Builder — weekly grid (PR 4)
+ * ─────────────────────────────────────────────────────────────────────────── */
+.routine-grid-wrap {
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  padding: 14px;
+  overflow-x: auto;
+}
+.routine-grid-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 10px;
+  letter-spacing: 0.4px;
+}
+.routine-grid {
+  display: grid;
+  position: relative;
+  min-width: 540px;
+  font-family: 'DM Sans', sans-serif;
+}
+.routine-grid-day-header {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  align-self: end;
+}
+.routine-grid-time {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: right;
+  padding-right: 8px;
+  font-variant-numeric: tabular-nums;
+  align-self: start;
+}
+.routine-grid-row {
+  border-top: 1px dashed rgba(255,255,255,0.04);
+}
+.routine-grid-row--hour {
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.routine-grid-block {
+  margin: 1px 2px;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: hsl(var(--routine-hue, 200), 65%, 22%);
+  border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
+  color: hsl(var(--routine-hue, 200), 90%, 92%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 28px;
+  font-size: 10px;
+  line-height: 1.2;
+  cursor: default;
+  transition: transform 0.12s;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+.routine-grid-block:hover {
+  transform: translateY(-1px);
+  z-index: 2;
+}
+.routine-grid-block--clash {
+  background: rgba(231, 76, 60, 0.30);
+  border-left-color: #e74c3c;
+  color: #ffd1cc;
+  box-shadow: 0 0 0 1px rgba(231,76,60,0.4);
+}
+.routine-grid-block-code {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+.routine-grid-block-meta {
+  font-size: 9px;
+  opacity: 0.85;
+  letter-spacing: 0.3px;
+}
+.routine-grid-block-time {
+  font-size: 9px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .routine-grid { min-width: 480px; }
+  .routine-grid-block-meta, .routine-grid-block-time { display: none; }
 }
 
 </style>
@@ -15272,6 +15369,98 @@ function summarizeRoutine(state, index) {
     };
 }
 
+// ── js/core/routineGrid.js ──────────────────────────────────────
+// Generated from src/core/routineGrid.ts for the vanilla JS runtime.
+// Update src/core/routineGrid.ts first, then regenerate this file.
+//
+// Pure helpers that turn a selected routine into positioning data for a
+// weekly-calendar grid. UI-agnostic: outputs grid rows/cols + minute bounds;
+// the renderer maps to CSS grid or pixel offsets.
+
+const WEEK_ORDER = [
+    'SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY',
+];
+
+const DEFAULT_ROW_MINUTES = 30;
+const DEFAULT_MIN_HOUR = 8;
+const DEFAULT_MAX_HOUR = 19;
+
+function clamp(n, lo, hi) { return n < lo ? lo : n > hi ? hi : n; }
+function snapDown(min, g) { return Math.floor(min / g) * g; }
+function snapUp(min, g)   { return Math.ceil(min / g) * g; }
+
+function formatRowLabel(min) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+function computeGridLayout(routine, options = {}) {
+    const rowMinutes = options.rowMinutes ?? DEFAULT_ROW_MINUTES;
+    const pruneEmptyDays = options.pruneEmptyDays !== false;
+    if (rowMinutes <= 0) throw new Error('rowMinutes must be positive');
+    if (!routine || routine.length === 0) return null;
+
+    let earliest = Infinity, latest = -Infinity;
+    const daysWithClasses = new Set();
+    for (const s of routine) {
+        for (const slot of s.classSlots) {
+            if (slot.startMin < earliest) earliest = slot.startMin;
+            if (slot.endMin > latest) latest = slot.endMin;
+            daysWithClasses.add(slot.day);
+        }
+    }
+    if (earliest === Infinity) return null;
+
+    const lowerBoundMin = options.minHour !== undefined
+        ? options.minHour * 60
+        : snapDown(earliest, rowMinutes);
+    const upperBoundMin = options.maxHour !== undefined
+        ? options.maxHour * 60
+        : snapUp(latest, rowMinutes);
+
+    const startMin = clamp(lowerBoundMin, 0, 24 * 60 - rowMinutes);
+    const endMin = clamp(upperBoundMin, startMin + rowMinutes, 24 * 60);
+
+    const days = pruneEmptyDays
+        ? WEEK_ORDER.filter(d => daysWithClasses.has(d))
+        : [...WEEK_ORDER];
+
+    const totalRows = (endMin - startMin) / rowMinutes;
+    const rowLabels = [];
+    for (let i = 0; i < totalRows; i++) {
+        rowLabels.push(formatRowLabel(startMin + i * rowMinutes));
+    }
+
+    const blocks = [];
+    for (const s of routine) {
+        for (const slot of s.classSlots) {
+            const dayCol = days.indexOf(slot.day);
+            if (dayCol === -1) continue;
+            const localStart = clamp(slot.startMin, startMin, endMin);
+            const localEnd = clamp(slot.endMin, startMin, endMin);
+            if (localEnd <= localStart) continue;
+            const rowStart = Math.floor((localStart - startMin) / rowMinutes);
+            const rowEnd = Math.ceil((localEnd - startMin) / rowMinutes);
+            blocks.push({
+                sectionId: s.sectionId,
+                courseCode: s.courseCode,
+                sectionName: s.sectionName,
+                facultyInitials: s.facultyInitials,
+                roomName: s.roomName,
+                day: slot.day,
+                dayCol,
+                gridRowStart: rowStart + 1,
+                gridRowSpan: Math.max(1, rowEnd - rowStart),
+                startMin: slot.startMin,
+                endMin: slot.endMin,
+            });
+        }
+    }
+
+    return { days, startMin, endMin, rowMinutes, totalRows, rowLabels, blocks };
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -15460,8 +15649,85 @@ function _mainHTML() {
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
     </div>
   `;
+}
+
+// ── WEEKLY GRID ─────────────────────────────────────────────────────────────
+function _gridHTML(routine, clashMap) {
+  const layout = computeGridLayout(routine);
+  if (!layout) return '';
+
+  // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
+  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, 14px);`;
+
+  const dayHeaders = layout.days.map((d, i) => `
+    <div class="routine-grid-day-header" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+  `).join('');
+
+  // Time labels every 2 rows (= every hour).
+  const timeLabels = [];
+  for (let r = 0; r < layout.totalRows; r++) {
+    const min = layout.startMin + r * layout.rowMinutes;
+    if (min % 60 !== 0) continue;
+    timeLabels.push(`<div class="routine-grid-time" style="grid-column: 1; grid-row: ${r + 2} / span ${Math.min(2, layout.totalRows - r)};">${_hourLabel(min)}</div>`);
+  }
+
+  // Background row separators so an empty grid still reads as a schedule.
+  const rowSep = [];
+  for (let r = 0; r < layout.totalRows; r++) {
+    const min = layout.startMin + r * layout.rowMinutes;
+    const cls = (min % 60 === 0) ? 'routine-grid-row routine-grid-row--hour' : 'routine-grid-row';
+    rowSep.push(`<div class="${cls}" style="grid-column: 1 / -1; grid-row: ${r + 2};"></div>`);
+  }
+
+  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap)).join('');
+
+  return `
+    <div class="routine-grid-wrap">
+      <div class="routine-grid-title">Weekly schedule</div>
+      <div class="routine-grid" style="${gridStyle}">
+        ${rowSep.join('')}
+        ${dayHeaders}
+        ${timeLabels.join('')}
+        ${blocks}
+      </div>
+    </div>
+  `;
+}
+
+function _gridBlockHTML(block, clashMap) {
+  const mark = clashMap.get(block.sectionId);
+  const isClash = mark && (mark.classClash || mark.examClash);
+  const hue = _hueForSection(block.sectionId);
+  const styles = [
+    `grid-column: ${block.dayCol + 2}`,
+    `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
+    `--routine-hue: ${hue}`,
+  ].join('; ');
+  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'} — ${block.roomName || ''}`;
+  return `
+    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
+      <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+    </div>
+  `;
+}
+
+function _hueForSection(sectionId) {
+  // Deterministic hue per sectionId so each course block has a stable colour.
+  // Mod 360, skip the muddy reds since we reserve red for clashes.
+  const raw = (sectionId * 47) % 360;
+  return Math.round((raw + 30) % 360);
+}
+
+function _hourLabel(min) {
+  const h = Math.floor(min / 60);
+  const hh = ((h + 11) % 12) + 1;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hh} ${ampm}`;
 }
 
 function _headerHTML(summary) {
