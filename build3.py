@@ -61,6 +61,7 @@ MAIN_JS_FILES = [
     'js/core/connectFeed.js',
     'js/core/connectFeedClient.js',
     'js/core/routineState.js',
+    'js/core/routineGrid.js',
     'js/ui/routineTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
