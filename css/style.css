@@ -5366,3 +5366,100 @@ body[data-page="admin"] .orb { display: none !important; }
   .routine-section-row { grid-template-columns: 1fr; gap: 4px; }
   .routine-section-room, .routine-section-exam { font-size: 10px; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Routine Builder — weekly grid (PR 4)
+ * ─────────────────────────────────────────────────────────────────────────── */
+.routine-grid-wrap {
+  margin-top: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  padding: 14px;
+  overflow-x: auto;
+}
+.routine-grid-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 10px;
+  letter-spacing: 0.4px;
+}
+.routine-grid {
+  display: grid;
+  position: relative;
+  min-width: 540px;
+  font-family: 'DM Sans', sans-serif;
+}
+.routine-grid-day-header {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text2);
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  align-self: end;
+}
+.routine-grid-time {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: right;
+  padding-right: 8px;
+  font-variant-numeric: tabular-nums;
+  align-self: start;
+}
+.routine-grid-row {
+  border-top: 1px dashed rgba(255,255,255,0.04);
+}
+.routine-grid-row--hour {
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.routine-grid-block {
+  margin: 1px 2px;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: hsl(var(--routine-hue, 200), 65%, 22%);
+  border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
+  color: hsl(var(--routine-hue, 200), 90%, 92%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 28px;
+  font-size: 10px;
+  line-height: 1.2;
+  cursor: default;
+  transition: transform 0.12s;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+.routine-grid-block:hover {
+  transform: translateY(-1px);
+  z-index: 2;
+}
+.routine-grid-block--clash {
+  background: rgba(231, 76, 60, 0.30);
+  border-left-color: #e74c3c;
+  color: #ffd1cc;
+  box-shadow: 0 0 0 1px rgba(231,76,60,0.4);
+}
+.routine-grid-block-code {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+.routine-grid-block-meta {
+  font-size: 9px;
+  opacity: 0.85;
+  letter-spacing: 0.3px;
+}
+.routine-grid-block-time {
+  font-size: 9px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .routine-grid { min-width: 480px; }
+  .routine-grid-block-meta, .routine-grid-block-time { display: none; }
+}
