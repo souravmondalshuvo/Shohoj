@@ -64,11 +64,21 @@ registerAction('routine:removeCourse',(el) => _onRemoveCourse(el.dataset.code));
 registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Number(el.dataset.sid)));
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
 registerAction('routine:clearAll',    () => _onClearAll());
+registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 
 function _onRemoveCourse(code)         { _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 function _onPickSection(code, sid)     { _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
 function _onClearAll()                 { _store.routine = clearRoutine(_store.routine); _persistRoutine(); _rerender(); }
+function _onAddCourseFromSuggest(code) {
+  if (!code || !_store.index || !_store.index.has(code)) return;
+  _store.routine = pickCourse(_store.routine, code);
+  _store.query = '';
+  const input = document.getElementById('routineCourseInput');
+  if (input) input.value = '';
+  _persistRoutine();
+  _rerender();
+}
 
 function _addCourseFromInput() {
   const input = document.getElementById('routineCourseInput');
@@ -234,7 +244,7 @@ function _suggestionsHTML() {
     const first = list && list[0];
     const name = first ? first.courseName : '';
     return `
-      <button type="button" class="routine-suggest-item" data-action="routine:pickSection" data-code="${escAttr(code)}" data-sid="">
+      <button type="button" class="routine-suggest-item" data-action="routine:addFromSuggest" data-code="${escAttr(code)}">
         <span class="routine-suggest-code">${escHtml(code)}</span>
         <span class="routine-suggest-name">${escHtml(name)}</span>
         <span class="routine-suggest-count">${list.length} section${list.length===1?'':'s'}</span>
