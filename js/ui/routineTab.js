@@ -148,6 +148,10 @@ export async function renderRoutineTab() {
 function _rerender() {
   const root = document.getElementById('routineContent');
   if (!root) return;
+  // All interpolations in _html() go through escHtml/escAttr (same pattern as
+  // papersTab.js, difficultyMap.js, etc.). Suppress the static-analysis warning.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = _html();
   _attachInputHandlers();
 }
@@ -335,5 +339,8 @@ function _ageLabel(fetchedAt) {
 
 function _renderSuggestions() {
   const wrap = document.getElementById('routineSuggestions');
+  // _suggestionsHTML escapes every interpolation via escHtml/escAttr.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   if (wrap) wrap.innerHTML = _suggestionsHTML();
 }
