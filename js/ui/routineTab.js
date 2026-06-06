@@ -18,6 +18,7 @@ import {
   buildClashMap,
   summarizeRoutine,
 } from '../core/routineState.js';
+import { computeGridLayout } from '../core/routineGrid.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -201,8 +202,85 @@ function _mainHTML() {
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
     </div>
   `;
+}
+
+// ── WEEKLY GRID ─────────────────────────────────────────────────────────────
+function _gridHTML(routine, clashMap) {
+  const layout = computeGridLayout(routine);
+  if (!layout) return '';
+
+  // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
+  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, 14px);`;
+
+  const dayHeaders = layout.days.map((d, i) => `
+    <div class="routine-grid-day-header" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+  `).join('');
+
+  // Time labels every 2 rows (= every hour).
+  const timeLabels = [];
+  for (let r = 0; r < layout.totalRows; r++) {
+    const min = layout.startMin + r * layout.rowMinutes;
+    if (min % 60 !== 0) continue;
+    timeLabels.push(`<div class="routine-grid-time" style="grid-column: 1; grid-row: ${r + 2} / span ${Math.min(2, layout.totalRows - r)};">${_hourLabel(min)}</div>`);
+  }
+
+  // Background row separators so an empty grid still reads as a schedule.
+  const rowSep = [];
+  for (let r = 0; r < layout.totalRows; r++) {
+    const min = layout.startMin + r * layout.rowMinutes;
+    const cls = (min % 60 === 0) ? 'routine-grid-row routine-grid-row--hour' : 'routine-grid-row';
+    rowSep.push(`<div class="${cls}" style="grid-column: 1 / -1; grid-row: ${r + 2};"></div>`);
+  }
+
+  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap)).join('');
+
+  return `
+    <div class="routine-grid-wrap">
+      <div class="routine-grid-title">Weekly schedule</div>
+      <div class="routine-grid" style="${gridStyle}">
+        ${rowSep.join('')}
+        ${dayHeaders}
+        ${timeLabels.join('')}
+        ${blocks}
+      </div>
+    </div>
+  `;
+}
+
+function _gridBlockHTML(block, clashMap) {
+  const mark = clashMap.get(block.sectionId);
+  const isClash = mark && (mark.classClash || mark.examClash);
+  const hue = _hueForSection(block.sectionId);
+  const styles = [
+    `grid-column: ${block.dayCol + 2}`,
+    `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
+    `--routine-hue: ${hue}`,
+  ].join('; ');
+  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'} — ${block.roomName || ''}`;
+  return `
+    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
+      <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+    </div>
+  `;
+}
+
+function _hueForSection(sectionId) {
+  // Deterministic hue per sectionId so each course block has a stable colour.
+  // Mod 360, skip the muddy reds since we reserve red for clashes.
+  const raw = (sectionId * 47) % 360;
+  return Math.round((raw + 30) % 360);
+}
+
+function _hourLabel(min) {
+  const h = Math.floor(min / 60);
+  const hh = ((h + 11) % 12) + 1;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hh} ${ampm}`;
 }
 
 function _headerHTML(summary) {
