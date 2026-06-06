@@ -57,6 +57,11 @@ MAIN_JS_FILES = [
     'js/ui/previewModalPdfjs.js',
     'js/ui/previewModal.js',
     'js/ui/papersTab.js',
+    # Routine Builder (Connect-feed-backed)
+    'js/core/connectFeed.js',
+    'js/core/connectFeedClient.js',
+    'js/core/routineState.js',
+    'js/ui/routineTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',

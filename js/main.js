@@ -57,6 +57,7 @@ import { openCourseReviewsPanel, openReviewsDirectory } from './ui/reviews.js';
 import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
 import { renderPapersTab } from './ui/papersTab.js';
+import { renderRoutineTab } from './ui/routineTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -404,6 +405,7 @@ const TAB_MAP = {
   reviews:    'tabReviews',
   difficulty: 'tabDifficulty',
   papers:     'tabPapers',
+  routine:    'tabRoutine',
 };
 
 let _activeCalcTab = 'calculator';
@@ -462,6 +464,9 @@ function switchCalcTab(tabId) {
   }
   if (tabId === 'papers') {
     renderPapersTab();
+  }
+  if (tabId === 'routine') {
+    renderRoutineTab();
   }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
