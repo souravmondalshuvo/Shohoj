@@ -21,7 +21,11 @@ import {
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
-const STORAGE_KEY = 'shohoj_routine_v1';
+// Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
+// js/core/state.js's STORAGE_KEY once build3.py concatenates every module
+// into a single scope — a duplicate top-level `const` is a hard parse error
+// that takes down the whole bundle.
+const ROUTINE_STORAGE_KEY = 'shohoj_routine_v1';
 const DAY_ORDER   = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const DAY_SHORT   = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
 
@@ -38,7 +42,7 @@ const _store = {
 
 function _restoreRoutine() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(ROUTINE_STORAGE_KEY);
     if (!raw) return emptyRoutineState();
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed.picks !== 'object' || parsed.picks === null) return emptyRoutineState();
@@ -52,7 +56,7 @@ function _restoreRoutine() {
 }
 
 function _persistRoutine() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_store.routine)); }
+  try { localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(_store.routine)); }
   catch {}
 }
 
