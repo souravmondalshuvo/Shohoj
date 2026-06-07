@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-02Bb1gi9s5sixratDNnqL4YdDD/TtSi6gDkY/EvmNAI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-58QkuNKWaQhEFjRUtJ3zsTreBa3YX+7639cAdJ8Bk+c='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5642,6 +5642,15 @@ body[data-page="admin"] .orb { display: none !important; }
   padding: 6px 10px;
   margin-top: 6px;
 }
+
+/* Routine Builder — grid header row with export button (PR: PNG export) */
+.routine-grid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.routine-grid-head .routine-grid-title { margin-bottom: 0; }
 
 </style>
   <!-- CDN dependencies -->
@@ -15869,6 +15878,180 @@ function summarizePlanImport(result) {
     return parts.join(' · ');
 }
 
+// ── js/core/routineExport.js ────────────────────────────────────
+// Generated from src/core/routineExport.ts for the vanilla JS runtime.
+// Update src/core/routineExport.ts first, then regenerate this file.
+//
+// Turns a GridLayout into a flat list of canvas draw ops + dimensions. Pure /
+// renderer-agnostic: routineTab.js walks the ops against a 2D context and calls
+// toDataURL. Keeping the geometry here makes it unit-testable without a DOM.
+
+const DEFAULT_THEME = {
+    bg: '#0b0f0d',
+    headerText: '#cfd8d3',
+    timeText: '#8a948f',
+    gridLine: 'rgba(255,255,255,0.06)',
+    hourLine: 'rgba(255,255,255,0.12)',
+    blockText: '#ffffff',
+    titleText: '#2ecc71',
+};
+
+function defaultHueForSection(sectionId) {
+    const raw = (sectionId * 47) % 360;
+    return Math.round((raw + 30) % 360);
+}
+
+function dayLabel(day) {
+    return ({
+        SATURDAY: 'Sat', SUNDAY: 'Sun', MONDAY: 'Mon', TUESDAY: 'Tue',
+        WEDNESDAY: 'Wed', THURSDAY: 'Thu', FRIDAY: 'Fri',
+    })[day] ?? day.slice(0, 3);
+}
+
+function hhmm(totalMin) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    const hh = ((h + 11) % 12) + 1;
+    const ampm = h < 12 ? 'AM' : 'PM';
+    return `${hh}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function buildExportPlan(layout, options = {}) {
+    const timeColWidth = options.timeColWidth ?? 64;
+    const dayColWidth = options.dayColWidth ?? 150;
+    const rowHeight = options.rowHeight ?? 22;
+    const headerHeight = options.headerHeight ?? 34;
+    const titleHeight = options.title ? (options.titleHeight ?? 36) : 0;
+    const padding = options.padding ?? 16;
+    const theme = { ...DEFAULT_THEME, ...(options.theme ?? {}) };
+    const hueFor = options.hueForSection ?? defaultHueForSection;
+
+    const cols = layout.days.length;
+    const gridWidth = timeColWidth + cols * dayColWidth;
+    const gridHeight = headerHeight + layout.totalRows * rowHeight;
+
+    const width = padding * 2 + gridWidth;
+    const height = padding * 2 + titleHeight + gridHeight;
+
+    const ops = [];
+    const originX = padding;
+    const originY = padding + titleHeight;
+
+    ops.push({ type: 'rect', x: 0, y: 0, w: width, h: height, fill: theme.bg });
+
+    if (options.title) {
+        ops.push({
+            type: 'text', x: padding, y: padding + 22,
+            text: options.title, font: '700 18px sans-serif',
+            fill: theme.titleText, align: 'left',
+        });
+    }
+
+    layout.days.forEach((day, i) => {
+        const x = originX + timeColWidth + i * dayColWidth + dayColWidth / 2;
+        ops.push({
+            type: 'text', x, y: originY + headerHeight - 12,
+            text: dayLabel(day), font: '700 13px sans-serif',
+            fill: theme.headerText, align: 'center',
+        });
+    });
+
+    for (let r = 0; r <= layout.totalRows; r++) {
+        const y = originY + headerHeight + r * rowHeight;
+        const min = layout.startMin + r * layout.rowMinutes;
+        const isHour = min % 60 === 0;
+        ops.push({
+            type: 'line', x1: originX, y1: y, x2: originX + gridWidth, y2: y,
+            stroke: isHour ? theme.hourLine : theme.gridLine,
+        });
+        if (isHour && r < layout.totalRows) {
+            ops.push({
+                type: 'text', x: originX + timeColWidth - 8, y: y + 14,
+                text: hhmm(min), font: '500 10px sans-serif',
+                fill: theme.timeText, align: 'right',
+            });
+        }
+    }
+
+    for (let c = 0; c <= cols; c++) {
+        const x = originX + timeColWidth + c * dayColWidth;
+        ops.push({
+            type: 'line', x1: x, y1: originY + headerHeight, x2: x, y2: originY + gridHeight,
+            stroke: theme.gridLine,
+        });
+    }
+
+    for (const block of layout.blocks) {
+        const x = originX + timeColWidth + block.dayCol * dayColWidth + 2;
+        const y = originY + headerHeight + (block.gridRowStart - 1) * rowHeight + 1;
+        const w = dayColWidth - 4;
+        const h = block.gridRowSpan * rowHeight - 2;
+        const hue = hueFor(block.sectionId);
+        ops.push({
+            type: 'rect', x, y, w, h, radius: 5,
+            fill: `hsl(${hue}, 60%, 24%)`,
+            stroke: `hsl(${hue}, 70%, 50%)`,
+        });
+        ops.push({
+            type: 'text', x: x + 7, y: y + 15,
+            text: block.courseCode, font: '700 12px sans-serif',
+            fill: theme.blockText, align: 'left',
+        });
+        if (h >= 32) {
+            const fac = block.facultyInitials || 'TBA';
+            ops.push({
+                type: 'text', x: x + 7, y: y + 29,
+                text: `${fac} · §${block.sectionName}`, font: '400 10px sans-serif',
+                fill: theme.blockText, align: 'left',
+            });
+        }
+        if (h >= 46) {
+            ops.push({
+                type: 'text', x: x + 7, y: y + 42,
+                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}`, font: '400 9px sans-serif',
+                fill: theme.blockText, align: 'left',
+            });
+        }
+    }
+
+    return { width, height, ops };
+}
+
+function exportFileName(now = new Date()) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `shohoj-routine-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.png`;
+}
+
+// Browser-only: execute a draw plan against a 2D context.
+function paintExportPlan(ctx, plan) {
+    for (const op of plan.ops) {
+        if (op.type === 'rect') {
+            if (op.fill) { ctx.fillStyle = op.fill; }
+            if (op.radius && typeof ctx.roundRect === 'function') {
+                ctx.beginPath();
+                ctx.roundRect(op.x, op.y, op.w, op.h, op.radius);
+                if (op.fill) ctx.fill();
+                if (op.stroke) { ctx.strokeStyle = op.stroke; ctx.stroke(); }
+            } else {
+                if (op.fill) ctx.fillRect(op.x, op.y, op.w, op.h);
+                if (op.stroke) { ctx.strokeStyle = op.stroke; ctx.strokeRect(op.x, op.y, op.w, op.h); }
+            }
+        } else if (op.type === 'line') {
+            ctx.strokeStyle = op.stroke;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(op.x1, op.y1);
+            ctx.lineTo(op.x2, op.y2);
+            ctx.stroke();
+        } else if (op.type === 'text') {
+            ctx.font = op.font;
+            ctx.fillStyle = op.fill;
+            ctx.textAlign = op.align;
+            ctx.fillText(op.text, op.x, op.y);
+        }
+    }
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -15933,6 +16116,7 @@ registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code)
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
+registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -15953,6 +16137,33 @@ function _onAddCourseFromSuggest(code) {
   if (input) input.value = '';
   _persistRoutine();
   _rerender();
+}
+
+function _onExportPng() {
+  const routine = selectedSections(_store.routine, _store.index);
+  const layout = computeGridLayout(routine);
+  if (!layout) return;
+  const plan = buildExportPlan(layout, { title: 'Shohoj — Weekly Routine' });
+
+  const scale = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(plan.width * scale);
+  canvas.height = Math.round(plan.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(scale, scale);
+  ctx.textBaseline = 'alphabetic';
+  paintExportPlan(ctx, plan);
+
+  let url;
+  try { url = canvas.toDataURL('image/png'); }
+  catch { return; } // tainted canvas etc. — nothing drawn from cross-origin here, but be safe
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = exportFileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function _planCourses() {
@@ -16188,7 +16399,10 @@ function _gridHTML(routine, clashMap) {
 
   return `
     <div class="routine-grid-wrap">
-      <div class="routine-grid-title">Weekly schedule</div>
+      <div class="routine-grid-head">
+        <div class="routine-grid-title">Weekly schedule</div>
+        <button class="btn-secondary btn-sm" data-action="routine:exportPng" title="Download this schedule as a PNG image">⬇ Export PNG</button>
+      </div>
       <div class="routine-grid" style="${gridStyle}">
         ${rowSep.join('')}
         ${dayHeaders}
