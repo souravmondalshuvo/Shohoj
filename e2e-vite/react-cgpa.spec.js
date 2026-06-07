@@ -12,9 +12,12 @@ async function boot(page) {
   // the auth boot exercises its real path here. (Firebase now lives in its own
   // chunk — see firebase-isolation.spec.js, which blocks gstatic entirely and
   // proves the calculator survives a firebase load failure.)
-  await page.route('https://**/*', route =>
-    route.request().url().includes('gstatic.com') ? route.continue() : route.abort(),
-  );
+  await page.route('https://**/*', (route) => {
+    let host = '';
+    try { host = new URL(route.request().url()).hostname; } catch {}
+    const isGstatic = host === 'gstatic.com' || host.endsWith('.gstatic.com');
+    return isGstatic ? route.continue() : route.abort();
+  });
   page.on('dialog', dialog => dialog.accept());
   await page.addInitScript(() => {
     localStorage.clear();

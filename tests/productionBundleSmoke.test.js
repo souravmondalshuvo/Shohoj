@@ -147,14 +147,18 @@ function externalScriptFor(url) {
   const firebaseName = Object.keys(firebaseStubs).find(name => url.endsWith(`/${name}`));
   if (firebaseName) return firebaseStubs[firebaseName];
 
-  if (url.includes('cdnjs.cloudflare.com')) {
-    return '';
-  }
+  // Match on the parsed host (not a substring), so e.g. "evil.com/google.com"
+  // can't be mistaken for a Google host. Every non-firebase branch stubs to ''.
+  let host = '';
+  let path = '';
+  try { const u = new URL(url); host = u.hostname; path = u.pathname; } catch {}
+  const hostIs = (h) => host === h || host.endsWith(`.${h}`);
 
+  if (hostIs('cdnjs.cloudflare.com')) return '';
   if (
-    url.includes('googletagmanager.com') ||
-    url.includes('google-analytics.com') ||
-    url.includes('google.com/recaptcha')
+    hostIs('googletagmanager.com') ||
+    hostIs('google-analytics.com') ||
+    (hostIs('google.com') && path.startsWith('/recaptcha'))
   ) {
     return '';
   }
