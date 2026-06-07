@@ -27,6 +27,7 @@ import {
 import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
 import { suggestCombinations } from '../core/routineSuggestions.js';
 import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerImport.js';
+import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routineExport.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -86,6 +87,7 @@ registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code)
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
+registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -106,6 +108,33 @@ function _onAddCourseFromSuggest(code) {
   if (input) input.value = '';
   _persistRoutine();
   _rerender();
+}
+
+function _onExportPng() {
+  const routine = selectedSections(_store.routine, _store.index);
+  const layout = computeGridLayout(routine);
+  if (!layout) return;
+  const plan = buildExportPlan(layout, { title: 'Shohoj — Weekly Routine' });
+
+  const scale = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(plan.width * scale);
+  canvas.height = Math.round(plan.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.scale(scale, scale);
+  ctx.textBaseline = 'alphabetic';
+  paintExportPlan(ctx, plan);
+
+  let url;
+  try { url = canvas.toDataURL('image/png'); }
+  catch { return; } // tainted canvas etc. — nothing drawn from cross-origin here, but be safe
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = exportFileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function _planCourses() {
@@ -341,7 +370,10 @@ function _gridHTML(routine, clashMap) {
 
   return `
     <div class="routine-grid-wrap">
-      <div class="routine-grid-title">Weekly schedule</div>
+      <div class="routine-grid-head">
+        <div class="routine-grid-title">Weekly schedule</div>
+        <button class="btn-secondary btn-sm" data-action="routine:exportPng" title="Download this schedule as a PNG image">⬇ Export PNG</button>
+      </div>
       <div class="routine-grid" style="${gridStyle}">
         ${rowSep.join('')}
         ${dayHeaders}
