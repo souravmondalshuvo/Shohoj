@@ -7,6 +7,10 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+# Least privilege: this workflow only reads the repo to test and build.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Tests & build
