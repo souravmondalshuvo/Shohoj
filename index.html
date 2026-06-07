@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-cFMA/qz87eG5LR8XZk1DK+UYcAGw0ySfu+ThylRQtfw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-02Bb1gi9s5sixratDNnqL4YdDD/TtSi6gDkY/EvmNAI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5631,6 +5631,17 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-suggest-line-fac  { color: var(--text2); font-weight: 600; letter-spacing: 0.3px; }
 .routine-suggest-line-sched{ color: var(--text1); font-size: 10px; }
 .routine-suggest-card-actions { display: flex; justify-content: flex-end; }
+
+/* Routine Builder — Import-from-Planner note (PR: planner cross-reference) */
+.routine-plan-note {
+  font-size: 11px;
+  color: var(--text2);
+  background: rgba(46,204,113,0.06);
+  border: 1px solid rgba(46,204,113,0.16);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 6px;
+}
 
 </style>
   <!-- CDN dependencies -->
@@ -15799,6 +15810,65 @@ function suggestCombinations(courseCodes, index, ratingMap = new Map(), options 
     };
 }
 
+// ── js/core/routinePlannerImport.js ─────────────────────────────
+// Generated from src/core/routinePlannerImport.ts for the vanilla JS runtime.
+// Update src/core/routinePlannerImport.ts first, then regenerate this file.
+//
+// Resolves the student's Planner course codes against the live CONNECT feed so
+// the Routine Builder can pre-fill its picker with courses already planned,
+// skipping ones not offered this semester or already in the routine. Pure.
+
+function normalizeCode(raw) {
+    if (typeof raw !== 'string') return '';
+    return raw.trim().toUpperCase();
+}
+
+function resolvePlanImport(planCourses, index, alreadyPickedCodes = []) {
+    const picked = new Set(alreadyPickedCodes.map(normalizeCode).filter(Boolean));
+    const seen = new Set();
+
+    const importable = [];
+    const notOffered = [];
+    const alreadyPicked = [];
+
+    for (const raw of planCourses ?? []) {
+        const code = normalizeCode(raw);
+        if (!code) continue;
+        if (seen.has(code)) continue; // de-dupe the plan list
+        seen.add(code);
+
+        if (picked.has(code)) {
+            alreadyPicked.push(code);
+            continue;
+        }
+        if (index.has(code)) {
+            importable.push(code);
+        } else {
+            notOffered.push(code);
+        }
+    }
+
+    importable.sort();
+    notOffered.sort();
+    alreadyPicked.sort();
+    return { importable, notOffered, alreadyPicked };
+}
+
+function summarizePlanImport(result) {
+    const parts = [];
+    if (result.importable.length > 0) {
+        parts.push(`Added ${result.importable.length} course${result.importable.length === 1 ? '' : 's'}`);
+    }
+    if (result.alreadyPicked.length > 0) {
+        parts.push(`${result.alreadyPicked.length} already in routine`);
+    }
+    if (result.notOffered.length > 0) {
+        parts.push(`${result.notOffered.length} not offered this semester (${result.notOffered.join(', ')})`);
+    }
+    if (parts.length === 0) return 'Nothing to import from your plan.';
+    return parts.join(' · ');
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -15828,6 +15898,7 @@ const _store = {
   ratingLoaded: false,
   suggestionsOpen: false,
   suggestionsResult: null, // SuggestionsResult or null
+  planImportNote: '',      // last "Import from Planner" summary message
 };
 
 const REVIEWS_FETCH_LIMIT = 5000;
@@ -15861,6 +15932,7 @@ registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Nu
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
+registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -15879,6 +15951,32 @@ function _onAddCourseFromSuggest(code) {
   _store.query = '';
   const input = document.getElementById('routineCourseInput');
   if (input) input.value = '';
+  _persistRoutine();
+  _rerender();
+}
+
+function _planCourses() {
+  // Bridged from the Semester Planner tab (js/main.js sets this).
+  try {
+    return typeof window._shohoj_getPlanCourses === 'function'
+      ? (window._shohoj_getPlanCourses() || [])
+      : [];
+  } catch { return []; }
+}
+
+function _onImportPlan() {
+  if (!_store.index) return;
+  const result = resolvePlanImport(
+    _planCourses(),
+    _store.index,
+    pickedCourseCodes(_store.routine),
+  );
+  let next = _store.routine;
+  for (const code of result.importable) {
+    next = pickCourse(next, code);
+  }
+  _store.routine = next;
+  _store.planImportNote = summarizePlanImport(result);
   _persistRoutine();
   _rerender();
 }
@@ -16170,13 +16268,22 @@ function _headerHTML(summary) {
 }
 
 function _pickerHTML() {
+  const planCount = _planCourses().length;
+  const importBtn = planCount > 0
+    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that are offered this semester">↧ Import from Planner (${planCount})</button>`
+    : '';
+  const note = _store.planImportNote
+    ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
+    : '';
   return `
     <div class="routine-picker">
       <input type="text" id="routineCourseInput" class="routine-input"
              placeholder="Add course (e.g. CSE220) — start typing for matches"
              autocomplete="off" spellcheck="false" />
       <button class="btn-primary btn-sm" data-action="routine:addCourse">Add</button>
+      ${importBtn}
     </div>
+    ${note}
   `;
 }
 
