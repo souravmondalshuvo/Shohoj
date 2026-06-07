@@ -5599,3 +5599,12 @@ body[data-page="admin"] .orb { display: none !important; }
   padding: 6px 10px;
   margin-top: 6px;
 }
+
+/* Routine Builder — grid header row with export button (PR: PNG export) */
+.routine-grid-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.routine-grid-head .routine-grid-title { margin-bottom: 0; }

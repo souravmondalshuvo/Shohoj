@@ -65,6 +65,7 @@ MAIN_JS_FILES = [
     'js/core/routineFaculty.js',
     'js/core/routineSuggestions.js',
     'js/core/routinePlannerImport.js',
+    'js/core/routineExport.js',
     'js/ui/routineTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
