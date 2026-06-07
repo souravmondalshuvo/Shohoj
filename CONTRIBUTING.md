@@ -26,6 +26,21 @@ python3 build3.py
 npm run test:bundle
 ```
 
+### Adding a test
+
+Drop a `*.test.js` file in `tests/` (or `worker/test/`) and it is picked up
+automatically by `npm test` — no need to edit `package.json`. To run a subset
+while iterating, filter by name:
+
+```bash
+npm run test:one -- routine   # runs every test file whose path contains "routine"
+```
+
+Two test files run under their own harness and are excluded from the
+auto-runner: `firestore.rules.test.js` (`npm run test:rules`, needs the
+Firestore emulator) and `productionBundleSmoke.test.js` (`npm run test:bundle`,
+needs a built bundle).
+
 ## Workflow
 
 Use an issue-first workflow:
