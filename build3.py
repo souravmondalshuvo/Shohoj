@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import re
+from html.parser import HTMLParser
 
 DATA_DIR = 'data'
 
@@ -305,21 +306,49 @@ window.clearAllData = clearAllData;
     return bundled_js
 
 
-_INLINE_SCRIPT_RE = re.compile(
-    r'<script\b([^>]*)>([\s\S]*?)</script>',
-    re.IGNORECASE,
-)
-_HAS_SRC_RE = re.compile(r'\bsrc\s*=', re.IGNORECASE)
+class _InlineScriptCollector(HTMLParser):
+    """Collect the text bodies of inline <script> tags (those without a src).
+
+    Uses the stdlib HTML parser instead of a tag-matching regex: script and
+    style are CDATA elements, so their raw text arrives verbatim through
+    handle_data (character references are not decoded) — byte-for-byte what the
+    browser hashes for a CSP 'sha256-...' source. Bodies are kept in document
+    order to match the previous regex-based output.
+    """
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.bodies = []
+        self._capturing = False
+        self._buf = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'script':
+            has_src = any(name.lower() == 'src' for name, _ in attrs)
+            self._capturing = not has_src
+            self._buf = []
+
+    def handle_endtag(self, tag):
+        if tag == 'script':
+            if self._capturing:
+                self.bodies.append(''.join(self._buf))
+            self._capturing = False
+            self._buf = []
+
+    def handle_data(self, data):
+        if self._capturing:
+            self._buf.append(data)
 
 
 def harden_script_csp(html, output_path):
     """Replace 'unsafe-inline' in CSP script-src with SHA-256 hashes."""
+    collector = _InlineScriptCollector()
+    collector.feed(html)
+    collector.close()
+
     hashes = []
     seen = set()
-    for m in _INLINE_SCRIPT_RE.finditer(html):
-        attrs, body = m.group(1), m.group(2)
-        if _HAS_SRC_RE.search(attrs):
-            continue
+    for body in collector.bodies:
         if not body.strip():
             continue
         digest = hashlib.sha256(body.encode('utf-8')).digest()
