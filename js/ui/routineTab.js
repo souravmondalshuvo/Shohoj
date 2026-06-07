@@ -6,7 +6,7 @@
 // highlighting + a source/age badge that's honest about freshness.
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
-import { indexByCourse } from '../core/connectFeed.js';
+import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
 import {
   emptyRoutineState,
   pickCourse,
@@ -53,7 +53,18 @@ const _store = {
   suggestionsOpen: false,
   suggestionsResult: null, // SuggestionsResult or null
   planImportNote: '',      // last "Import from Planner" summary message
+  sortMode: 'section',     // 'section' | 'faculty' | 'seats' | 'time'
+  expanded: new Set(),     // courseCodes the user re-opened after picking a section
+  hideClashing: false,     // hide (vs. dim) sections that clash with current picks
 };
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SORT_MODES = [
+  ['section', 'Section #'],
+  ['faculty', 'Faculty ★'],
+  ['seats',   'Seats'],
+  ['time',    'Earliest'],
+];
 
 const REVIEWS_FETCH_LIMIT = 5000;
 
@@ -91,10 +102,22 @@ registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
+registerAction('routine:setSort',     (el) => { _store.sortMode = el.dataset.sort || 'section'; _rerender(); });
+registerAction('routine:toggleExpand',(el) => _onToggleExpand(el.dataset.code));
+registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.hideClashing; _rerender(); });
 
-function _onRemoveCourse(code)         { _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
-function _onPickSection(code, sid)     { _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
+function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
+// Picking a section folds the course down to its summary line so attention
+// shifts to the courses still being decided. The user can re-open via "Change".
+function _onPickSection(code, sid)     { _store.expanded.delete((code || '').toUpperCase()); _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
+function _onToggleExpand(code) {
+  const c = (code || '').toUpperCase();
+  if (!c) return;
+  if (_store.expanded.has(c)) _store.expanded.delete(c);
+  else _store.expanded.add(c);
+  _rerender();
+}
 function _onClearAll()                 {
   _store.routine = clearRoutine(_store.routine);
   _store.suggestionsOpen = false; _store.suggestionsResult = null;
@@ -330,7 +353,8 @@ function _mainHTML() {
       ${_headerHTML(summary)}
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
-      ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
+      ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap, selected)}
       ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
       ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
       ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
@@ -499,14 +523,83 @@ function _emptyHTML() {
   `;
 }
 
-function _pickedListHTML(picked, clashMap) {
-  return `<div class="routine-picked-list">${picked.map(code => _courseBlockHTML(code, clashMap)).join('')}</div>`;
+// ── CONTROLS: status bar + sort + clash filter ──────────────────────────────
+function _controlsHTML(picked, summary, selected) {
+  const credits  = _plannedCredits(picked);
+  const clashes  = summary.classClashPairs + summary.examClashPairs;
+  const clashChip = clashes > 0
+    ? `<span class="routine-stat routine-stat--clash" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${clashes} clash${clashes === 1 ? '' : 'es'}</span>`
+    : `<span class="routine-stat routine-stat--ok">✓ no clashes</span>`;
+  const sortBtns = SORT_MODES.map(([mode, label]) =>
+    `<button class="routine-sort-btn ${_store.sortMode === mode ? 'is-active' : ''}" data-action="routine:setSort" data-sort="${mode}">${label}</button>`
+  ).join('');
+  // Hiding clashes only does anything once at least one section is resolved.
+  const hideToggle = selected.length > 0
+    ? `<button class="routine-chip-toggle ${_store.hideClashing ? 'is-active' : ''}" data-action="routine:toggleHideClash" title="Hide sections that clash with your current picks">${_store.hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}</button>`
+    : '';
+  return `
+    <div class="routine-controls">
+      <div class="routine-stats">
+        <span class="routine-stat">${picked.length} course${picked.length === 1 ? '' : 's'}</span>
+        <span class="routine-stat">${credits} cr</span>
+        <span class="routine-stat">${summary.resolvedCount}/${picked.length} set</span>
+        ${clashChip}
+      </div>
+      <div class="routine-controls-right">
+        ${hideToggle}
+        <div class="routine-sort" role="group" aria-label="Sort sections">
+          <span class="routine-sort-label">Sort</span>${sortBtns}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function _courseBlockHTML(courseCode, clashMap) {
+function _plannedCredits(picked) {
+  let total = 0;
+  for (const code of picked) {
+    const list = _store.index.get(code) || [];
+    if (list.length === 0) continue;
+    const sid = _store.routine.picks[code];
+    const sec = (sid != null && list.find(s => s.sectionId === sid)) || list[0];
+    if (sec && Number.isFinite(sec.credits)) total += sec.credits;
+  }
+  return total;
+}
+
+function _pickedListHTML(picked, clashMap, selected) {
+  return `<div class="routine-picked-list">${picked.map(code => _courseBlockHTML(code, clashMap, selected)).join('')}</div>`;
+}
+
+function _courseBlockHTML(courseCode, clashMap, selected) {
   const sections = _store.index.get(courseCode) || [];
   const currentSid = _store.routine.picks[courseCode];
   const name = sections[0] ? sections[0].courseName : courseCode;
+  const resolved = currentSid != null ? sections.find(s => s.sectionId === currentSid) : null;
+
+  // A resolved course folds to a one-line summary unless re-opened via "Change".
+  if (resolved && !_store.expanded.has(courseCode)) {
+    return _collapsedCourseHTML(courseCode, name, resolved, clashMap.get(resolved.sectionId));
+  }
+
+  const rows = [];
+  let hidden = 0;
+  for (const s of _sortSections(sections)) {
+    const isPicked = currentSid === s.sectionId;
+    const cand = isPicked ? null : _candidateClash(s, courseCode, selected);
+    if (_store.hideClashing && !isPicked && cand && (cand.cls || cand.exam)) { hidden++; continue; }
+    rows.push(_sectionRowHTML(courseCode, s, isPicked, clashMap.get(s.sectionId), cand));
+  }
+  const body = rows.length > 0
+    ? rows.join('')
+    : `<div class="routine-section-empty">Every section clashes with your current picks.</div>`;
+  const hiddenNote = hidden > 0
+    ? `<div class="routine-section-hidden">${hidden} clashing section${hidden === 1 ? '' : 's'} hidden</div>`
+    : '';
+  const collapseBtn = resolved
+    ? `<button class="routine-change-btn" data-action="routine:toggleExpand" data-code="${escAttr(courseCode)}">Collapse ▴</button>`
+    : '';
+
   return `
     <div class="routine-course-block">
       <div class="routine-course-head">
@@ -514,31 +607,137 @@ function _courseBlockHTML(courseCode, clashMap) {
           <span class="routine-course-code">${escHtml(courseCode)}</span>
           <span class="routine-course-name">${escHtml(name)}</span>
         </div>
-        <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        <div class="routine-course-actions">
+          ${collapseBtn}
+          <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        </div>
       </div>
       <div class="routine-section-list">
-        ${sections.map(s => _sectionRowHTML(courseCode, s, currentSid === s.sectionId, clashMap.get(s.sectionId))).join('')}
+        ${_sectionHeadHTML()}
+        ${body}
+      </div>
+      ${hiddenNote}
+    </div>
+  `;
+}
+
+function _collapsedCourseHTML(courseCode, name, section, mark) {
+  const clash = mark && (mark.classClash || mark.examClash);
+  const clashPill = clash
+    ? `<span class="routine-clash-pill" title="This section clashes with another pick">⚠ clash</span>`
+    : '';
+  return `
+    <div class="routine-course-block routine-course-block--collapsed ${clash ? 'routine-course-block--clash' : ''}">
+      <div class="routine-course-head">
+        <div class="routine-collapsed-main">
+          <span class="routine-course-code">${escHtml(courseCode)}</span>
+          <span class="routine-course-name">${escHtml(name)}</span>
+          <span class="routine-collapsed-pick">
+            <span class="routine-collapsed-sec">§ ${escHtml(section.sectionName || '—')}</span>
+            <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+            <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
+            ${clashPill}
+          </span>
+        </div>
+        <div class="routine-course-actions">
+          <button class="routine-change-btn" data-action="routine:toggleExpand" data-code="${escAttr(courseCode)}">Change ▾</button>
+          <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        </div>
       </div>
     </div>
   `;
 }
 
-function _sectionRowHTML(courseCode, section, isPicked, mark) {
+function _sectionHeadHTML() {
+  return `
+    <div class="routine-section-head" aria-hidden="true">
+      <span>Sec</span>
+      <span>Faculty</span>
+      <span>Schedule</span>
+      <span>Room</span>
+      <span>Seats</span>
+      <span>Mid · Final</span>
+    </div>
+  `;
+}
+
+// Sort a course's sections by the active mode. Full sections always sink to the
+// bottom (they can't be taken), and section number is the universal tie-break.
+function _sortSections(sections) {
+  const mode = _store.sortMode;
+  const decorated = sections.map(s => ({ s, full: !!s.isFull, num: _sectionNum(s.sectionName) }));
+  let primary;
+  if (mode === 'faculty')   primary = (a, b) => _ratingValue(b.s) - _ratingValue(a.s);
+  else if (mode === 'seats') primary = (a, b) => _seatsLeft(b.s) - _seatsLeft(a.s);
+  else if (mode === 'time')  primary = (a, b) => _earliestStart(a.s) - _earliestStart(b.s);
+  else                       primary = (a, b) => a.num - b.num;
+  decorated.sort((a, b) => {
+    if (a.full !== b.full) return a.full ? 1 : -1;
+    const p = primary(a, b);
+    if (p !== 0) return p;
+    return a.num - b.num;
+  });
+  return decorated.map(d => d.s);
+}
+
+function _sectionNum(name) {
+  const n = parseInt(name, 10);
+  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
+function _seatsLeft(section) {
+  return Math.max(0, (section.capacity || 0) - (section.consumedSeat || 0));
+}
+function _earliestStart(section) {
+  if (!section.classSlots || section.classSlots.length === 0) return Number.MAX_SAFE_INTEGER;
+  return Math.min(...section.classSlots.map(s => s.startMin));
+}
+function _ratingValue(section) {
+  if (!_store.ratingLoaded) return -1;
+  const r = getRatingForSection(section, _store.ratingMap);
+  return r && r.tier !== 'unknown' ? r.overall : -1;
+}
+
+// Does this (unpicked) section clash with any resolved pick from another course?
+function _candidateClash(section, courseCode, selected) {
+  let cls = false, exam = false;
+  const codes = new Set();
+  for (const other of selected) {
+    if (other.courseCode === courseCode) continue;
+    if (hasClassClash(section, other)) { cls = true; codes.add(other.courseCode); }
+    if (hasExamClash(section, other))  { exam = true; codes.add(other.courseCode); }
+  }
+  return { cls, exam, codes: Array.from(codes) };
+}
+
+function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const seatPct = section.capacity > 0 ? (section.consumedSeat / section.capacity) : 0;
   const seatClass = section.isFull ? 'full' : (seatPct > 0.85 ? 'tight' : 'open');
   const action = isPicked ? 'routine:unpickSection' : 'routine:pickSection';
   const data = `data-code="${escAttr(courseCode)}" data-sid="${section.sectionId}"`;
-  const clashClass = isPicked && mark && (mark.classClash || mark.examClash) ? 'routine-section--clash' : '';
+  const pickedClash = isPicked && mark && (mark.classClash || mark.examClash);
+  const candClash = !isPicked && cand && (cand.cls || cand.exam);
+  const classes = [
+    'routine-section-row',
+    isPicked ? 'routine-section--picked' : '',
+    pickedClash ? 'routine-section--clash' : '',
+    candClash ? 'routine-section--candclash' : '',
+  ].filter(Boolean).join(' ');
+  const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
+  const seatTitle = section.isFull
+    ? 'Section full'
+    : `${section.consumedSeat}/${section.capacity} seats taken · ${_seatsLeft(section)} left`;
   return `
-    <button type="button" class="routine-section-row ${isPicked ? 'routine-section--picked' : ''} ${clashClass}" data-action="${action}" ${data}>
+    <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
-      <span class="routine-section-seats routine-seats--${seatClass}" title="Seats">${section.consumedSeat}/${section.capacity}</span>
-      <span class="routine-section-exam" title="Mid · Final">${_formatExams(section)}</span>
+      <span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
+      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>
       ${isPicked && mark && mark.classClash ? `<span class="routine-clash-pill" title="Class clash">CLASS ✕</span>` : ''}
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
+      ${candClash && cand.cls  ? `<span class="routine-clash-pill routine-clash-pill--cand" title="${escAttr(candTitle)}">clash</span>` : ''}
+      ${candClash && cand.exam && !cand.cls ? `<span class="routine-clash-pill routine-clash-pill--cand routine-clash-pill--candexam" title="${escAttr(candTitle)}">exam</span>` : ''}
     </button>
   `;
 }
@@ -562,9 +761,27 @@ function _formatSchedule(section) {
 }
 
 function _formatExams(section) {
-  const mid = section.midExam ? `M ${section.midExam.date}` : '';
-  const fin = section.finalExam ? `F ${section.finalExam.date}` : '';
-  return [mid, fin].filter(Boolean).join(' · ') || '—';
+  const mid = section.midExam ? `Mid ${_examDate(section.midExam.date)}` : '';
+  const fin = section.finalExam ? `Final ${_examDate(section.finalExam.date)}` : '';
+  return [mid, fin].filter(Boolean).join(' · ') || 'No exam dates';
+}
+
+// "2026-07-26" -> "Jul 26". Parse the parts by hand so a Date timezone shift
+// can't roll the day backward.
+function _examDate(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return dateStr || '';
+  return `${MONTHS[Number(m[2]) - 1] || m[2]} ${Number(m[3])}`;
+}
+
+// Seat count, made actionable: full sections say so, nearly-full sections show
+// how many are left, the rest show taken/capacity.
+function _seatText(section) {
+  if (section.isFull) return 'FULL';
+  const left = _seatsLeft(section);
+  const pct = section.capacity > 0 ? section.consumedSeat / section.capacity : 0;
+  if (pct > 0.85) return `${left} left`;
+  return `${section.consumedSeat}/${section.capacity}`;
 }
 
 function _min2hhmm(m) {
