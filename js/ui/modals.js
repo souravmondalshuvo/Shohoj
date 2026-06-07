@@ -4,7 +4,7 @@ import { state, saveState, clearState } from '../core/state.js';
 import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
 import { parseTranscriptText, parseBlobFallback } from '../import/parser.js';
 import { COURSE_DB } from '../core/catalog.js';
-import { escHtml } from '../core/helpers.js';
+import { escHtml, stripTags } from '../core/helpers.js';
 import { resetPlayground } from './playground.js';
 import { resetPlanner } from './planner.js';
 import { estimateSummaryCompletedSemesters } from './tracker.js';
@@ -542,7 +542,7 @@ export function exportPDF() {
     setFill(GREEN); doc.roundedRect(ML, y, 3, 8, 1, 1, 'F');
     doc.rect(ML + 1.5, y, 1.5, 8, 'F');
 
-    const semNameClean = sem.name.replace(/<[^>]+>/g, '').replace(/\s*\((\d+(?:st|nd|rd|th)) Semester\)/i, ' | $1 Semester') + (sem.running ? ' [Running]' : '');
+    const semNameClean = stripTags(sem.name).replace(/\s*\((\d+(?:st|nd|rd|th)) Semester\)/i, ' | $1 Semester') + (sem.running ? ' [Running]' : '');
     doc.setFontSize(8); doc.setFont('helvetica', 'bold'); setTxt(TEXT1);
     doc.text(semNameClean, ML + 6, y + 5.3);
 

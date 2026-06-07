@@ -8,6 +8,7 @@ import {
   getLastCompletedSemester,
   countSemesters,
   escHtml,
+  stripTags,
 } from '../core/helpers.js';
 
 export function estimateSummaryCompletedSemesters({
@@ -81,7 +82,7 @@ export function renderDegreeTracker(totalEarned) {
 
     const gpa = calcSemGPA(sem);
     const semLabel = sem.name
-      ? sem.name.replace(/<[^>]+>/g, '').replace(/\s*\(.*\)$/, '')
+      ? stripTags(sem.name).replace(/\s*\(.*\)$/, '')
       : 'Semester';
 
     const creditsThisSem = sem.courses.reduce((sum, c) => {
