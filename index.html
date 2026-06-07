@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Gbg93WwDBx3NSYQ545kLLqMaGVLrc8a34CfUyTdxdAc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-cFMA/qz87eG5LR8XZk1DK+UYcAGw0ySfu+ThylRQtfw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5540,6 +5540,97 @@ body[data-page="admin"] .orb { display: none !important; }
   margin-left: 3px;
   letter-spacing: 0.2px;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Routine Builder — auto-suggest panel (PR 6)
+ * ─────────────────────────────────────────────────────────────────────────── */
+.routine-suggest-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed rgba(255,255,255,0.10);
+  border-radius: 10px;
+}
+.routine-suggest-hint {
+  font-size: 11px; color: var(--text3); letter-spacing: 0.3px;
+}
+
+.routine-suggest-panel {
+  border: 1px solid rgba(46,204,113,0.20);
+  background: rgba(46,204,113,0.03);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.routine-suggest-panel-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.routine-suggest-panel-head h4 {
+  margin: 0; flex: 1; font-size: 14px;
+}
+.routine-suggest-meta {
+  font-size: 11px; color: var(--text3); letter-spacing: 0.2px;
+}
+.routine-suggest-warn {
+  font-size: 11px; color: #f1c40f;
+}
+.routine-suggest-empty {
+  font-size: 12px; color: var(--text2);
+  padding: 14px 0;
+}
+
+.routine-suggest-cards {
+  display: grid; gap: 10px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .routine-suggest-cards { grid-template-columns: 1fr 1fr; }
+}
+
+.routine-suggest-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.routine-suggest-card-head {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  font-size: 11px;
+}
+.routine-suggest-card-rank {
+  font-weight: 700; color: var(--green); letter-spacing: 0.4px;
+}
+.routine-suggest-card-score {
+  color: var(--text3); font-variant-numeric: tabular-nums;
+}
+.routine-suggest-card-seats {
+  font-size: 10px; color: var(--text3);
+}
+.routine-suggest-card-warn {
+  font-size: 10px; font-weight: 600; color: #e74c3c;
+  background: rgba(231,76,60,0.10);
+  padding: 1px 6px; border-radius: 4px;
+}
+.routine-suggest-card-list {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 4px 0;
+}
+.routine-suggest-line {
+  display: grid;
+  grid-template-columns: 70px 36px 50px 1fr;
+  gap: 8px; align-items: center;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 5px;
+}
+.routine-suggest-line-code { font-weight: 700; color: var(--green); letter-spacing: 0.3px; }
+.routine-suggest-line-sec  { color: var(--text2); }
+.routine-suggest-line-fac  { color: var(--text2); font-weight: 600; letter-spacing: 0.3px; }
+.routine-suggest-line-sched{ color: var(--text1); font-size: 10px; }
+.routine-suggest-card-actions { display: flex; justify-content: flex-end; }
 
 </style>
   <!-- CDN dependencies -->
@@ -15550,6 +15641,164 @@ function formatRatingScore(value, digits = 1) {
     return value.toFixed(digits);
 }
 
+// ── js/core/routineSuggestions.js ───────────────────────────────
+// Generated from src/core/routineSuggestions.ts for the vanilla JS runtime.
+// Update src/core/routineSuggestions.ts first, then regenerate this file.
+//
+// Auto-suggest engine: enumerate one-section-per-picked-course combinations,
+// drop class-clashing combos, rank survivors by faculty rating + seat slack +
+// exam-clash penalty, return top K. Pure / I/O-free.
+
+const DEFAULTS = {
+    maxCombinations: 5_000,
+    topK: 5,
+    skipAboveFillRatio: 1.0,
+    examClashPenalty: 25,
+    excellentBonus: 4,
+    goodBonus: 2,
+    badPenalty: 4,
+    warnPenalty: 2,
+    seatSlackWeight: 2,
+};
+
+function fillRatio(s) {
+    if (!s || s.capacity <= 0) return 0;
+    return s.consumedSeat / s.capacity;
+}
+
+function filterUsableSections(sections, maxFill) {
+    return sections.filter(s => fillRatio(s) < maxFill);
+}
+
+function enumerate(perCourse, cap) {
+    if (perCourse.length === 0) return { combos: [], truncated: false };
+    if (perCourse.some(list => list.length === 0)) return { combos: [], truncated: false };
+    const combos = [];
+    const idx = new Array(perCourse.length).fill(0);
+    let truncated = false;
+    while (true) {
+        const row = perCourse.map((list, i) => list[idx[i]]);
+        combos.push(row);
+        if (combos.length >= cap) { truncated = true; break; }
+        let i = perCourse.length - 1;
+        while (i >= 0) {
+            idx[i] += 1;
+            if (idx[i] < perCourse[i].length) break;
+            idx[i] = 0;
+            i -= 1;
+        }
+        if (i < 0) break;
+    }
+    return { combos, truncated };
+}
+
+function anyClassClash(row) {
+    for (let i = 0; i < row.length; i++) {
+        for (let j = i + 1; j < row.length; j++) {
+            if (hasClassClash(row[i], row[j])) return true;
+        }
+    }
+    return false;
+}
+
+function countExamClashPairs(row) {
+    let n = 0;
+    for (let i = 0; i < row.length; i++) {
+        for (let j = i + 1; j < row.length; j++) {
+            if (hasExamClash(row[i], row[j])) n += 1;
+        }
+    }
+    return n;
+}
+
+function ratingFor(section, ratingMap) {
+    const key = (section.facultyInitials || '').toUpperCase();
+    if (!key) return null;
+    return ratingMap.get(key) ?? null;
+}
+
+function scoreCombination(row, ratingMap, options = {}) {
+    const opts = { ...DEFAULTS, ...options };
+
+    let ratingSum = 0;
+    let ratingDenom = 0;
+    let excellentCount = 0, goodCount = 0, midCount = 0;
+    let warnCount = 0, badCount = 0, unratedCount = 0;
+    let ratingScore = 0;
+
+    for (const s of row) {
+        const r = ratingFor(s, ratingMap);
+        if (!r || r.overall === null) { unratedCount += 1; continue; }
+        ratingSum += r.overall;
+        ratingDenom += 1;
+        const tier = r.tier === 'low-sample' ? ratingTier(r.overall, 99) : r.tier;
+        if (tier === 'excellent') { excellentCount += 1; ratingScore += opts.excellentBonus; }
+        else if (tier === 'good') { goodCount += 1; ratingScore += opts.goodBonus; }
+        else if (tier === 'mid')  { midCount += 1; }
+        else if (tier === 'warn') { warnCount += 1; ratingScore -= opts.warnPenalty; }
+        else if (tier === 'bad')  { badCount += 1; ratingScore -= opts.badPenalty; }
+    }
+
+    let seatScore = 0;
+    let fullCount = 0, tightCount = 0;
+    for (const s of row) {
+        const fr = fillRatio(s);
+        if (fr >= 1.0) fullCount += 1;
+        else if (fr > 0.85) tightCount += 1;
+        seatScore += (1 - Math.min(1, fr)) * opts.seatSlackWeight;
+    }
+
+    const examPairs = countExamClashPairs(row);
+    const examClashPenalty = examPairs * opts.examClashPenalty;
+    const score = ratingScore + seatScore - examClashPenalty;
+
+    return {
+        sections: row,
+        score,
+        breakdown: {
+            ratingScore, seatScore, examClashPenalty,
+            avgRating: ratingDenom > 0 ? ratingSum / ratingDenom : null,
+            excellentCount, goodCount, midCount, warnCount, badCount, unratedCount,
+            fullCount, tightCount,
+            examClashPairs: examPairs,
+        },
+    };
+}
+
+function suggestCombinations(courseCodes, index, ratingMap = new Map(), options = {}) {
+    const opts = { ...DEFAULTS, ...options };
+
+    const skippedCourses = [];
+    const perCourse = [];
+    for (const code of courseCodes) {
+        const list = index.get(code) ?? [];
+        const usable = filterUsableSections(list, opts.skipAboveFillRatio);
+        if (usable.length === 0) skippedCourses.push(code);
+        else perCourse.push(usable);
+    }
+    if (perCourse.length === 0) {
+        return { suggestions: [], skippedCourses, truncated: false, enumerated: 0, feasible: 0 };
+    }
+
+    const { combos, truncated } = enumerate(perCourse, opts.maxCombinations);
+    let feasible = 0;
+    const scored = [];
+    for (const row of combos) {
+        if (anyClassClash(row)) continue;
+        feasible += 1;
+        scored.push(scoreCombination(row, ratingMap, opts));
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    return {
+        suggestions: scored.slice(0, opts.topK),
+        skippedCourses,
+        truncated,
+        enumerated: combos.length,
+        feasible,
+    };
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -15577,6 +15826,8 @@ const _store = {
   query: '',
   ratingMap: new Map(), // initials -> FacultyRating (built from reviews)
   ratingLoaded: false,
+  suggestionsOpen: false,
+  suggestionsResult: null, // SuggestionsResult or null
 };
 
 const REVIEWS_FETCH_LIMIT = 5000;
@@ -15610,17 +15861,49 @@ registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Nu
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
+registerAction('routine:suggest',     () => _onSuggest());
+registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
+registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
 
 function _onRemoveCourse(code)         { _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 function _onPickSection(code, sid)     { _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
-function _onClearAll()                 { _store.routine = clearRoutine(_store.routine); _persistRoutine(); _rerender(); }
+function _onClearAll()                 {
+  _store.routine = clearRoutine(_store.routine);
+  _store.suggestionsOpen = false; _store.suggestionsResult = null;
+  _persistRoutine(); _rerender();
+}
 function _onAddCourseFromSuggest(code) {
   if (!code || !_store.index || !_store.index.has(code)) return;
   _store.routine = pickCourse(_store.routine, code);
   _store.query = '';
   const input = document.getElementById('routineCourseInput');
   if (input) input.value = '';
+  _persistRoutine();
+  _rerender();
+}
+
+function _onSuggest() {
+  if (!_store.index) return;
+  const codes = pickedCourseCodes(_store.routine);
+  if (codes.length === 0) return;
+  _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap);
+  _store.suggestionsOpen = true;
+  _rerender();
+}
+
+function _onApplyCombo(idx) {
+  const result = _store.suggestionsResult;
+  if (!result || !Number.isFinite(idx)) return;
+  const combo = result.suggestions[idx];
+  if (!combo) return;
+  let next = _store.routine;
+  for (const s of combo.sections) {
+    next = pickSection(next, s.courseCode, s.sectionId);
+  }
+  _store.routine = next;
+  _store.suggestionsOpen = false;
+  _store.suggestionsResult = null;
   _persistRoutine();
   _rerender();
 }
@@ -15768,6 +16051,8 @@ function _mainHTML() {
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
+      ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
       ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
     </div>
   `;
@@ -16012,6 +16297,102 @@ function _renderSuggestions() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   if (wrap) wrap.innerHTML = _suggestionsHTML();
+}
+
+// ── SUGGESTIONS (PR 6) ──────────────────────────────────────────────────────
+function _suggestionsToolbarHTML(pickedCount) {
+  return `
+    <div class="routine-suggest-toolbar">
+      <button class="btn-primary btn-sm" data-action="routine:suggest" title="Find the best clash-free section combinations">
+        ✨ Auto-suggest combinations
+      </button>
+      <span class="routine-suggest-hint">${pickedCount} course${pickedCount === 1 ? '' : 's'} picked</span>
+    </div>
+  `;
+}
+
+function _suggestionsPanelHTML() {
+  const r = _store.suggestionsResult;
+  if (!r) return '';
+  const headerNote = [];
+  if (r.skippedCourses.length > 0) {
+    headerNote.push(`<span class="routine-suggest-warn">Skipped (no open sections): ${escHtml(r.skippedCourses.join(', '))}</span>`);
+  }
+  if (r.truncated) {
+    headerNote.push(`<span class="routine-suggest-warn">⚠ Search truncated at ${r.enumerated} combos — too many to enumerate.</span>`);
+  }
+  if (r.suggestions.length === 0) {
+    return `
+      <div class="routine-suggest-panel">
+        <div class="routine-suggest-panel-head">
+          <h4>No clash-free combinations found</h4>
+          <button class="routine-remove-x" data-action="routine:closeSuggest" aria-label="Close">×</button>
+        </div>
+        <div class="routine-suggest-empty">
+          Try removing a course or relaxing your picker. Enumerated ${r.enumerated}, all had class clashes.
+          ${headerNote.join(' ')}
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div class="routine-suggest-panel">
+      <div class="routine-suggest-panel-head">
+        <h4>Top ${r.suggestions.length} clash-free combination${r.suggestions.length === 1 ? '' : 's'}</h4>
+        <div class="routine-suggest-meta">
+          ${r.feasible} feasible of ${r.enumerated} enumerated
+          ${headerNote.length ? '· ' + headerNote.join(' · ') : ''}
+        </div>
+        <button class="routine-remove-x" data-action="routine:closeSuggest" aria-label="Close">×</button>
+      </div>
+      <div class="routine-suggest-cards">
+        ${r.suggestions.map((s, i) => _comboCardHTML(s, i)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function _comboCardHTML(combo, idx) {
+  const b = combo.breakdown;
+  const rating = b.avgRating === null ? '—' : b.avgRating.toFixed(1);
+  const ratingClass = b.avgRating === null ? 'unknown'
+    : b.avgRating >= 4.3 ? 'excellent'
+    : b.avgRating >= 3.7 ? 'good'
+    : b.avgRating >= 3.0 ? 'mid'
+    : b.avgRating >= 2.0 ? 'warn' : 'bad';
+  const seatNotes = [];
+  if (b.fullCount > 0)  seatNotes.push(`${b.fullCount} FULL`);
+  if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
+  const examNote = b.examClashPairs > 0
+    ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
+  return `
+    <div class="routine-suggest-card" data-idx="${idx}">
+      <div class="routine-suggest-card-head">
+        <span class="routine-suggest-card-rank">#${idx + 1}</span>
+        <span class="routine-suggest-card-rating routine-faculty-badge--${ratingClass}" title="Average faculty rating">★ ${escHtml(rating)}</span>
+        <span class="routine-suggest-card-score" title="Score">score ${combo.score.toFixed(1)}</span>
+        ${seatNotes.length ? `<span class="routine-suggest-card-seats">${escHtml(seatNotes.join(' · '))}</span>` : ''}
+        ${examNote}
+      </div>
+      <div class="routine-suggest-card-list">
+        ${combo.sections.map(s => _comboSectionLineHTML(s)).join('')}
+      </div>
+      <div class="routine-suggest-card-actions">
+        <button class="btn-primary btn-sm" data-action="routine:applyCombo" data-idx="${idx}">Apply this combination</button>
+      </div>
+    </div>
+  `;
+}
+
+function _comboSectionLineHTML(section) {
+  return `
+    <div class="routine-suggest-line">
+      <span class="routine-suggest-line-code">${escHtml(section.courseCode)}</span>
+      <span class="routine-suggest-line-sec">§${escHtml(section.sectionName)}</span>
+      <span class="routine-suggest-line-fac">${escHtml(section.facultyInitials || 'TBA')}</span>
+      <span class="routine-suggest-line-sched">${_formatSchedule(section)}</span>
+    </div>
+  `;
 }
 
 // ── js/ui/render.js ─────────────────────────────────────────────
