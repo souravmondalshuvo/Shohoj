@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-58QkuNKWaQhEFjRUtJ3zsTreBa3YX+7639cAdJ8Bk+c='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-BLa9G32m4CTBRx9dyAvs0gkbhQdxwqcUAYMiEVyE0Dc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5404,10 +5404,90 @@ body[data-page="admin"] .orb { display: none !important; }
   background: rgba(231,76,60,0.18); color: #e74c3c; letter-spacing: 0.5px;
 }
 .routine-clash-pill--exam { background: rgba(155,89,182,0.18); color: #9b59b6; }
+.routine-clash-pill--cand {
+  background: rgba(231,76,60,0.12); color: #e74c3c; font-weight: 600;
+  text-transform: lowercase; letter-spacing: 0.2px;
+}
+.routine-clash-pill--candexam { background: rgba(155,89,182,0.12); color: #9b59b6; }
+
+/* Controls: status bar + sort + clash filter */
+.routine-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin: 14px 0 10px;
+}
+.routine-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.routine-stat {
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  padding: 3px 10px; border-radius: 999px; background: rgba(255,255,255,0.04);
+}
+.routine-stat--ok    { color: #2ecc71; background: rgba(46,204,113,0.10); }
+.routine-stat--clash { color: #e74c3c; background: rgba(231,76,60,0.12); }
+.routine-controls-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.routine-sort { display: inline-flex; align-items: center; gap: 4px; }
+.routine-sort-label { font-size: 11px; color: var(--text3); margin-right: 2px; text-transform: uppercase; letter-spacing: 0.6px; }
+.routine-sort-btn {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.routine-sort-btn:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.routine-sort-btn.is-active {
+  background: rgba(46,204,113,0.14); color: #2ecc71; border-color: rgba(46,204,113,0.35);
+}
+.routine-chip-toggle {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.routine-chip-toggle:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.routine-chip-toggle.is-active {
+  background: rgba(241,196,15,0.12); color: #f1c40f; border-color: rgba(241,196,15,0.35);
+}
+
+/* Per-course actions + section legend */
+.routine-course-actions { display: flex; align-items: center; gap: 6px; }
+.routine-change-btn {
+  font: 11px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s;
+}
+.routine-change-btn:hover { background: rgba(255,255,255,0.06); color: var(--text1); }
+.routine-section-head {
+  display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr;
+  gap: 10px; padding: 6px 14px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text3); border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.routine-section-empty, .routine-section-hidden {
+  padding: 10px 14px; font-size: 12px; color: var(--text3);
+}
+.routine-section-hidden { border-top: 1px solid rgba(255,255,255,0.04); font-style: italic; }
+
+/* A section that clashes with the current picks: still pickable, just muted */
+.routine-section--candclash { opacity: 0.5; }
+.routine-section--candclash:hover { opacity: 0.85; background: rgba(231,76,60,0.05); }
+
+/* Collapsed course summary */
+.routine-course-block--collapsed .routine-course-head { border-bottom: none; }
+.routine-course-block--clash { border-color: rgba(231,76,60,0.35); }
+.routine-collapsed-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.routine-collapsed-pick {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--text2);
+}
+.routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
+.routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
+.routine-collapsed-sched { color: var(--text2); }
 
 @media (max-width: 720px) {
   .routine-section-row { grid-template-columns: 1fr; gap: 4px; }
   .routine-section-room, .routine-section-exam { font-size: 10px; }
+  .routine-section-head { display: none; }
+  .routine-controls { flex-direction: column; align-items: stretch; }
+  .routine-controls-right { justify-content: space-between; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -16082,7 +16162,18 @@ const _store = {
   suggestionsOpen: false,
   suggestionsResult: null, // SuggestionsResult or null
   planImportNote: '',      // last "Import from Planner" summary message
+  sortMode: 'section',     // 'section' | 'faculty' | 'seats' | 'time'
+  expanded: new Set(),     // courseCodes the user re-opened after picking a section
+  hideClashing: false,     // hide (vs. dim) sections that clash with current picks
 };
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const SORT_MODES = [
+  ['section', 'Section #'],
+  ['faculty', 'Faculty ★'],
+  ['seats',   'Seats'],
+  ['time',    'Earliest'],
+];
 
 const REVIEWS_FETCH_LIMIT = 5000;
 
@@ -16120,10 +16211,22 @@ registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
+registerAction('routine:setSort',     (el) => { _store.sortMode = el.dataset.sort || 'section'; _rerender(); });
+registerAction('routine:toggleExpand',(el) => _onToggleExpand(el.dataset.code));
+registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.hideClashing; _rerender(); });
 
-function _onRemoveCourse(code)         { _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
-function _onPickSection(code, sid)     { _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
+function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
+// Picking a section folds the course down to its summary line so attention
+// shifts to the courses still being decided. The user can re-open via "Change".
+function _onPickSection(code, sid)     { _store.expanded.delete((code || '').toUpperCase()); _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
+function _onToggleExpand(code) {
+  const c = (code || '').toUpperCase();
+  if (!c) return;
+  if (_store.expanded.has(c)) _store.expanded.delete(c);
+  else _store.expanded.add(c);
+  _rerender();
+}
 function _onClearAll()                 {
   _store.routine = clearRoutine(_store.routine);
   _store.suggestionsOpen = false; _store.suggestionsResult = null;
@@ -16359,7 +16462,8 @@ function _mainHTML() {
       ${_headerHTML(summary)}
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
-      ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap)}
+      ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
+      ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap, selected)}
       ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
       ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
       ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
@@ -16528,14 +16632,83 @@ function _emptyHTML() {
   `;
 }
 
-function _pickedListHTML(picked, clashMap) {
-  return `<div class="routine-picked-list">${picked.map(code => _courseBlockHTML(code, clashMap)).join('')}</div>`;
+// ── CONTROLS: status bar + sort + clash filter ──────────────────────────────
+function _controlsHTML(picked, summary, selected) {
+  const credits  = _plannedCredits(picked);
+  const clashes  = summary.classClashPairs + summary.examClashPairs;
+  const clashChip = clashes > 0
+    ? `<span class="routine-stat routine-stat--clash" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${clashes} clash${clashes === 1 ? '' : 'es'}</span>`
+    : `<span class="routine-stat routine-stat--ok">✓ no clashes</span>`;
+  const sortBtns = SORT_MODES.map(([mode, label]) =>
+    `<button class="routine-sort-btn ${_store.sortMode === mode ? 'is-active' : ''}" data-action="routine:setSort" data-sort="${mode}">${label}</button>`
+  ).join('');
+  // Hiding clashes only does anything once at least one section is resolved.
+  const hideToggle = selected.length > 0
+    ? `<button class="routine-chip-toggle ${_store.hideClashing ? 'is-active' : ''}" data-action="routine:toggleHideClash" title="Hide sections that clash with your current picks">${_store.hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}</button>`
+    : '';
+  return `
+    <div class="routine-controls">
+      <div class="routine-stats">
+        <span class="routine-stat">${picked.length} course${picked.length === 1 ? '' : 's'}</span>
+        <span class="routine-stat">${credits} cr</span>
+        <span class="routine-stat">${summary.resolvedCount}/${picked.length} set</span>
+        ${clashChip}
+      </div>
+      <div class="routine-controls-right">
+        ${hideToggle}
+        <div class="routine-sort" role="group" aria-label="Sort sections">
+          <span class="routine-sort-label">Sort</span>${sortBtns}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function _courseBlockHTML(courseCode, clashMap) {
+function _plannedCredits(picked) {
+  let total = 0;
+  for (const code of picked) {
+    const list = _store.index.get(code) || [];
+    if (list.length === 0) continue;
+    const sid = _store.routine.picks[code];
+    const sec = (sid != null && list.find(s => s.sectionId === sid)) || list[0];
+    if (sec && Number.isFinite(sec.credits)) total += sec.credits;
+  }
+  return total;
+}
+
+function _pickedListHTML(picked, clashMap, selected) {
+  return `<div class="routine-picked-list">${picked.map(code => _courseBlockHTML(code, clashMap, selected)).join('')}</div>`;
+}
+
+function _courseBlockHTML(courseCode, clashMap, selected) {
   const sections = _store.index.get(courseCode) || [];
   const currentSid = _store.routine.picks[courseCode];
   const name = sections[0] ? sections[0].courseName : courseCode;
+  const resolved = currentSid != null ? sections.find(s => s.sectionId === currentSid) : null;
+
+  // A resolved course folds to a one-line summary unless re-opened via "Change".
+  if (resolved && !_store.expanded.has(courseCode)) {
+    return _collapsedCourseHTML(courseCode, name, resolved, clashMap.get(resolved.sectionId));
+  }
+
+  const rows = [];
+  let hidden = 0;
+  for (const s of _sortSections(sections)) {
+    const isPicked = currentSid === s.sectionId;
+    const cand = isPicked ? null : _candidateClash(s, courseCode, selected);
+    if (_store.hideClashing && !isPicked && cand && (cand.cls || cand.exam)) { hidden++; continue; }
+    rows.push(_sectionRowHTML(courseCode, s, isPicked, clashMap.get(s.sectionId), cand));
+  }
+  const body = rows.length > 0
+    ? rows.join('')
+    : `<div class="routine-section-empty">Every section clashes with your current picks.</div>`;
+  const hiddenNote = hidden > 0
+    ? `<div class="routine-section-hidden">${hidden} clashing section${hidden === 1 ? '' : 's'} hidden</div>`
+    : '';
+  const collapseBtn = resolved
+    ? `<button class="routine-change-btn" data-action="routine:toggleExpand" data-code="${escAttr(courseCode)}">Collapse ▴</button>`
+    : '';
+
   return `
     <div class="routine-course-block">
       <div class="routine-course-head">
@@ -16543,31 +16716,137 @@ function _courseBlockHTML(courseCode, clashMap) {
           <span class="routine-course-code">${escHtml(courseCode)}</span>
           <span class="routine-course-name">${escHtml(name)}</span>
         </div>
-        <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        <div class="routine-course-actions">
+          ${collapseBtn}
+          <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        </div>
       </div>
       <div class="routine-section-list">
-        ${sections.map(s => _sectionRowHTML(courseCode, s, currentSid === s.sectionId, clashMap.get(s.sectionId))).join('')}
+        ${_sectionHeadHTML()}
+        ${body}
+      </div>
+      ${hiddenNote}
+    </div>
+  `;
+}
+
+function _collapsedCourseHTML(courseCode, name, section, mark) {
+  const clash = mark && (mark.classClash || mark.examClash);
+  const clashPill = clash
+    ? `<span class="routine-clash-pill" title="This section clashes with another pick">⚠ clash</span>`
+    : '';
+  return `
+    <div class="routine-course-block routine-course-block--collapsed ${clash ? 'routine-course-block--clash' : ''}">
+      <div class="routine-course-head">
+        <div class="routine-collapsed-main">
+          <span class="routine-course-code">${escHtml(courseCode)}</span>
+          <span class="routine-course-name">${escHtml(name)}</span>
+          <span class="routine-collapsed-pick">
+            <span class="routine-collapsed-sec">§ ${escHtml(section.sectionName || '—')}</span>
+            <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+            <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
+            ${clashPill}
+          </span>
+        </div>
+        <div class="routine-course-actions">
+          <button class="routine-change-btn" data-action="routine:toggleExpand" data-code="${escAttr(courseCode)}">Change ▾</button>
+          <button class="routine-remove-x" data-action="routine:removeCourse" data-code="${escAttr(courseCode)}" aria-label="Remove ${escAttr(courseCode)}">×</button>
+        </div>
       </div>
     </div>
   `;
 }
 
-function _sectionRowHTML(courseCode, section, isPicked, mark) {
+function _sectionHeadHTML() {
+  return `
+    <div class="routine-section-head" aria-hidden="true">
+      <span>Sec</span>
+      <span>Faculty</span>
+      <span>Schedule</span>
+      <span>Room</span>
+      <span>Seats</span>
+      <span>Mid · Final</span>
+    </div>
+  `;
+}
+
+// Sort a course's sections by the active mode. Full sections always sink to the
+// bottom (they can't be taken), and section number is the universal tie-break.
+function _sortSections(sections) {
+  const mode = _store.sortMode;
+  const decorated = sections.map(s => ({ s, full: !!s.isFull, num: _sectionNum(s.sectionName) }));
+  let primary;
+  if (mode === 'faculty')   primary = (a, b) => _ratingValue(b.s) - _ratingValue(a.s);
+  else if (mode === 'seats') primary = (a, b) => _seatsLeft(b.s) - _seatsLeft(a.s);
+  else if (mode === 'time')  primary = (a, b) => _earliestStart(a.s) - _earliestStart(b.s);
+  else                       primary = (a, b) => a.num - b.num;
+  decorated.sort((a, b) => {
+    if (a.full !== b.full) return a.full ? 1 : -1;
+    const p = primary(a, b);
+    if (p !== 0) return p;
+    return a.num - b.num;
+  });
+  return decorated.map(d => d.s);
+}
+
+function _sectionNum(name) {
+  const n = parseInt(name, 10);
+  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
+function _seatsLeft(section) {
+  return Math.max(0, (section.capacity || 0) - (section.consumedSeat || 0));
+}
+function _earliestStart(section) {
+  if (!section.classSlots || section.classSlots.length === 0) return Number.MAX_SAFE_INTEGER;
+  return Math.min(...section.classSlots.map(s => s.startMin));
+}
+function _ratingValue(section) {
+  if (!_store.ratingLoaded) return -1;
+  const r = getRatingForSection(section, _store.ratingMap);
+  return r && r.tier !== 'unknown' ? r.overall : -1;
+}
+
+// Does this (unpicked) section clash with any resolved pick from another course?
+function _candidateClash(section, courseCode, selected) {
+  let cls = false, exam = false;
+  const codes = new Set();
+  for (const other of selected) {
+    if (other.courseCode === courseCode) continue;
+    if (hasClassClash(section, other)) { cls = true; codes.add(other.courseCode); }
+    if (hasExamClash(section, other))  { exam = true; codes.add(other.courseCode); }
+  }
+  return { cls, exam, codes: Array.from(codes) };
+}
+
+function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const seatPct = section.capacity > 0 ? (section.consumedSeat / section.capacity) : 0;
   const seatClass = section.isFull ? 'full' : (seatPct > 0.85 ? 'tight' : 'open');
   const action = isPicked ? 'routine:unpickSection' : 'routine:pickSection';
   const data = `data-code="${escAttr(courseCode)}" data-sid="${section.sectionId}"`;
-  const clashClass = isPicked && mark && (mark.classClash || mark.examClash) ? 'routine-section--clash' : '';
+  const pickedClash = isPicked && mark && (mark.classClash || mark.examClash);
+  const candClash = !isPicked && cand && (cand.cls || cand.exam);
+  const classes = [
+    'routine-section-row',
+    isPicked ? 'routine-section--picked' : '',
+    pickedClash ? 'routine-section--clash' : '',
+    candClash ? 'routine-section--candclash' : '',
+  ].filter(Boolean).join(' ');
+  const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
+  const seatTitle = section.isFull
+    ? 'Section full'
+    : `${section.consumedSeat}/${section.capacity} seats taken · ${_seatsLeft(section)} left`;
   return `
-    <button type="button" class="routine-section-row ${isPicked ? 'routine-section--picked' : ''} ${clashClass}" data-action="${action}" ${data}>
+    <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
-      <span class="routine-section-seats routine-seats--${seatClass}" title="Seats">${section.consumedSeat}/${section.capacity}</span>
-      <span class="routine-section-exam" title="Mid · Final">${_formatExams(section)}</span>
+      <span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
+      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>
       ${isPicked && mark && mark.classClash ? `<span class="routine-clash-pill" title="Class clash">CLASS ✕</span>` : ''}
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
+      ${candClash && cand.cls  ? `<span class="routine-clash-pill routine-clash-pill--cand" title="${escAttr(candTitle)}">clash</span>` : ''}
+      ${candClash && cand.exam && !cand.cls ? `<span class="routine-clash-pill routine-clash-pill--cand routine-clash-pill--candexam" title="${escAttr(candTitle)}">exam</span>` : ''}
     </button>
   `;
 }
@@ -16591,9 +16870,27 @@ function _formatSchedule(section) {
 }
 
 function _formatExams(section) {
-  const mid = section.midExam ? `M ${section.midExam.date}` : '';
-  const fin = section.finalExam ? `F ${section.finalExam.date}` : '';
-  return [mid, fin].filter(Boolean).join(' · ') || '—';
+  const mid = section.midExam ? `Mid ${_examDate(section.midExam.date)}` : '';
+  const fin = section.finalExam ? `Final ${_examDate(section.finalExam.date)}` : '';
+  return [mid, fin].filter(Boolean).join(' · ') || 'No exam dates';
+}
+
+// "2026-07-26" -> "Jul 26". Parse the parts by hand so a Date timezone shift
+// can't roll the day backward.
+function _examDate(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr || '');
+  if (!m) return dateStr || '';
+  return `${MONTHS[Number(m[2]) - 1] || m[2]} ${Number(m[3])}`;
+}
+
+// Seat count, made actionable: full sections say so, nearly-full sections show
+// how many are left, the rest show taken/capacity.
+function _seatText(section) {
+  if (section.isFull) return 'FULL';
+  const left = _seatsLeft(section);
+  const pct = section.capacity > 0 ? section.consumedSeat / section.capacity : 0;
+  if (pct > 0.85) return `${left} left`;
+  return `${section.consumedSeat}/${section.capacity}`;
 }
 
 function _min2hhmm(m) {
