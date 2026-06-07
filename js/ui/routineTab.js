@@ -26,6 +26,7 @@ import {
 } from '../core/routineFaculty.js';
 import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
 import { suggestCombinations } from '../core/routineSuggestions.js';
+import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerImport.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -50,6 +51,7 @@ const _store = {
   ratingLoaded: false,
   suggestionsOpen: false,
   suggestionsResult: null, // SuggestionsResult or null
+  planImportNote: '',      // last "Import from Planner" summary message
 };
 
 const REVIEWS_FETCH_LIMIT = 5000;
@@ -83,6 +85,7 @@ registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Nu
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
 registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
+registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -101,6 +104,32 @@ function _onAddCourseFromSuggest(code) {
   _store.query = '';
   const input = document.getElementById('routineCourseInput');
   if (input) input.value = '';
+  _persistRoutine();
+  _rerender();
+}
+
+function _planCourses() {
+  // Bridged from the Semester Planner tab (js/main.js sets this).
+  try {
+    return typeof window._shohoj_getPlanCourses === 'function'
+      ? (window._shohoj_getPlanCourses() || [])
+      : [];
+  } catch { return []; }
+}
+
+function _onImportPlan() {
+  if (!_store.index) return;
+  const result = resolvePlanImport(
+    _planCourses(),
+    _store.index,
+    pickedCourseCodes(_store.routine),
+  );
+  let next = _store.routine;
+  for (const code of result.importable) {
+    next = pickCourse(next, code);
+  }
+  _store.routine = next;
+  _store.planImportNote = summarizePlanImport(result);
   _persistRoutine();
   _rerender();
 }
@@ -392,13 +421,22 @@ function _headerHTML(summary) {
 }
 
 function _pickerHTML() {
+  const planCount = _planCourses().length;
+  const importBtn = planCount > 0
+    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that are offered this semester">↧ Import from Planner (${planCount})</button>`
+    : '';
+  const note = _store.planImportNote
+    ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
+    : '';
   return `
     <div class="routine-picker">
       <input type="text" id="routineCourseInput" class="routine-input"
              placeholder="Add course (e.g. CSE220) — start typing for matches"
              autocomplete="off" spellcheck="false" />
       <button class="btn-primary btn-sm" data-action="routine:addCourse">Add</button>
+      ${importBtn}
     </div>
+    ${note}
   `;
 }
 
