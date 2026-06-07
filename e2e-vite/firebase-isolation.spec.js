@@ -15,8 +15,11 @@ import { expect, test } from '@playwright/test';
 async function bootWithGstaticBlocked(page) {
   const blockedGstatic = [];
   await page.route('https://**/*', (route) => {
-    if (route.request().url().includes('gstatic.com')) {
-      blockedGstatic.push(route.request().url());
+    const url = route.request().url();
+    let host = '';
+    try { host = new URL(url).hostname; } catch {}
+    if (host === 'gstatic.com' || host.endsWith('.gstatic.com')) {
+      blockedGstatic.push(url);
     }
     return route.abort();
   });

@@ -15,6 +15,11 @@ concurrency:
   group: worker-deploy
   cancel-in-progress: true
 
+# Least privilege: deploy authenticates to Cloudflare via its own secret, so the
+# GITHUB_TOKEN only needs to read the repo for checkout.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy Cloudflare Worker

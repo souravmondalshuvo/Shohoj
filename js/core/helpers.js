@@ -46,6 +46,17 @@ export function sanitizeSemName(name) {
   return name.replace(/<sup>(.*?)<\/sup>/gi, '$1');
 }
 
+// Strip HTML tags for plain-text contexts (PDF text, labels). Applied
+// repeatedly until stable so a single removal can't re-form a tag
+// (e.g. "<<b>b>" -> "<b>" -> ""), which a one-pass replace would leave behind.
+export function stripTags(s) {
+  if (typeof s !== 'string') return '';
+  let prev;
+  let out = s;
+  do { prev = out; out = out.replace(/<[^>]+>/g, ''); } while (out !== prev);
+  return out;
+}
+
 function sanitizeGradePointValue(value) {
   if (value === undefined || value === null) return '';
   if (value === 'NT') return 'NT';

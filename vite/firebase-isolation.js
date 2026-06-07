@@ -24,7 +24,7 @@
 // Matches the inline firebase boot in index.html — an optional leading comment
 // followed by the module script that imports from js/auth/firebase.js.
 const INLINE_FIREBASE_RE =
-  /(?:<!--[^>]*-->\s*)?<script\s+type="module">[\s\S]*?from\s+['"]\.\/js\/auth\/firebase\.js['"][\s\S]*?<\/script>/;
+  /(?:<!--[^>]*-->\s*)?<script\s+type="module">[\s\S]*?from\s+['"]\.\/js\/auth\/firebase\.js['"][\s\S]*?<\/script>/g;
 
 // Dev-server path to the standalone entry (served from project root).
 const DEV_ENTRY = '/src/firebase/firebase-entry.js';
@@ -57,7 +57,11 @@ export default function firebaseIsolation() {
       handler(html, ctx) {
         if (isAdminPage(ctx)) return html;
 
-        const stripped = html.replace(INLINE_FIREBASE_RE, '');
+        // Strip repeatedly until stable so a removal can't leave a re-formed
+        // tag behind (matches the stripTags() pattern in core/helpers.js).
+        let stripped = html;
+        let prev;
+        do { prev = stripped; stripped = stripped.replace(INLINE_FIREBASE_RE, ''); } while (stripped !== prev);
         if (stripped === html) {
           // Inline firebase script not found — fail loud rather than silently
           // shipping a page with no auth boot.
