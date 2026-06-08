@@ -73,6 +73,47 @@ export function pickedCourseCodes(state: RoutineState): string[] {
     return Object.keys(state.picks).sort();
 }
 
+/** Cap on courses decoded from a shared link — guards against abusive payloads. */
+export const MAX_SHARE_COURSES = 15;
+const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}$/;
+
+/**
+ * Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`
+ * pairs joined by `~` (all chars are RFC-3986 unreserved). Sorted for a stable
+ * link. A `null` pick (course added, no section yet) encodes as just the code.
+ */
+export function encodeRoutinePicks(state: RoutineState): string {
+    const parts: string[] = [];
+    for (const code of pickedCourseCodes(state)) {
+        const sid = state.picks[code];
+        parts.push(sid == null ? code : `${code}-${sid}`);
+    }
+    return parts.join('~');
+}
+
+/**
+ * Inverse of {@link encodeRoutinePicks}. Lenient by design: malformed or
+ * out-of-shape entries are skipped rather than throwing. The result is still
+ * re-validated against the live feed by the caller before anything is picked.
+ */
+export function decodeRoutinePicks(encoded: string): RoutineState {
+    const picks: Record<string, number | null> = {};
+    if (typeof encoded !== 'string' || encoded === '') return { picks };
+    for (const part of encoded.split('~').slice(0, MAX_SHARE_COURSES)) {
+        if (!part) continue;
+        const dash = part.indexOf('-');
+        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash));
+        if (!SHARE_CODE_RE.test(code)) continue;
+        let sid: number | null = null;
+        if (dash !== -1) {
+            const n = Number.parseInt(part.slice(dash + 1), 10);
+            sid = Number.isFinite(n) && n > 0 ? n : null;
+        }
+        picks[code] = sid;
+    }
+    return { picks };
+}
+
 /**
  * Resolve picked sections via the course index. Courses with `null` (no section
  * picked yet) and section ids that no longer exist in the feed are silently
