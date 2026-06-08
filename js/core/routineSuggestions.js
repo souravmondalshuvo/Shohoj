@@ -18,6 +18,7 @@ const DEFAULTS = {
     badPenalty: 4,
     warnPenalty: 2,
     seatSlackWeight: 2,
+    sectionFilter: () => true,
 };
 
 function fillRatio(s) {
@@ -25,8 +26,8 @@ function fillRatio(s) {
     return s.consumedSeat / s.capacity;
 }
 
-function filterUsableSections(sections, maxFill) {
-    return sections.filter(s => fillRatio(s) < maxFill);
+function filterUsableSections(sections, maxFill, sectionFilter) {
+    return sections.filter(s => fillRatio(s) < maxFill && sectionFilter(s));
 }
 
 function enumerate(perCourse, cap) {
@@ -131,7 +132,7 @@ export function suggestCombinations(courseCodes, index, ratingMap = new Map(), o
     const perCourse = [];
     for (const code of courseCodes) {
         const list = index.get(code) ?? [];
-        const usable = filterUsableSections(list, opts.skipAboveFillRatio);
+        const usable = filterUsableSections(list, opts.skipAboveFillRatio, opts.sectionFilter);
         if (usable.length === 0) skippedCourses.push(code);
         else perCourse.push(usable);
     }

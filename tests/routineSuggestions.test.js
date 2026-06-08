@@ -197,6 +197,21 @@ test('unrated section contributes nothing to ratingScore but appears in combo', 
     eq(out.suggestions[0].breakdown.avgRating, null);
 });
 
+// ---- sectionFilter option -------------------------------------------------
+console.log('\nsectionFilter:');
+test('sectionFilter drops non-matching sections before enumeration', () => {
+    const noSunday = (s) => !s.classSlots.some(sl => sl.day === 'SUNDAY');
+    const out = suggestCombinations(['CSE220', 'MAT215'], idx, new Map(), { sectionFilter: noSunday });
+    const ids = out.suggestions.flatMap(s => s.sections.map(x => x.sectionId));
+    assert(!ids.includes(1) && !ids.includes(4), 'Sunday sections (1, 4) should be filtered out');
+    assert(out.suggestions.length > 0, 'a Sunday-free combo should still exist');
+});
+test('a sectionFilter that rejects everything skips all courses', () => {
+    const out = suggestCombinations(['CSE220', 'MAT215'], idx, new Map(), { sectionFilter: () => false });
+    eq(out.suggestions, []);
+    eq(out.skippedCourses.sort(), ['CSE220', 'MAT215']);
+});
+
 // ---------------------------------------------------------------------------
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
