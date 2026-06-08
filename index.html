@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-BpHTWzQmY6BFYttSJYcsl2/OHoiIUohMd6fAbc9jQC4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-rfQjBIkleC1rnIcqdkqyU01P95qXvkXOT7rWdsnTUTI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5320,6 +5320,24 @@ body[data-page="admin"] .orb { display: none !important; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .routine-error h3 { color: #e74c3c; margin: 0 0 6px; }
 
+/* Skeleton loading state — shimmer placeholders shaped like the real layout. */
+.routine-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.rsk {
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 37%,
+    rgba(255,255,255,0.04) 63%);
+  background-size: 400% 100%;
+  animation: rsk-shimmer 1.4s ease infinite;
+}
+.rsk-header { height: 26px; width: 220px; }
+.rsk-picker { height: 40px; width: 100%; }
+.rsk-block  { height: 84px; width: 100%; }
+@keyframes rsk-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.routine-loading-note { text-align: center; color: var(--text3); font-size: 12px; margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { .rsk { animation: none; } }
+
 .routine-picker { display: flex; gap: 8px; align-items: center; }
 .routine-input {
   flex: 1; min-width: 200px;
@@ -5537,6 +5555,28 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-grid-row--hour {
   border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* Current-time line across the day columns. Blue, not red — red means clash. */
+.routine-grid-now {
+  position: relative;
+  align-self: start;
+  height: 0;
+  border-top: 2px solid #5b9dff;
+  pointer-events: none;
+  z-index: 3;
+}
+.routine-grid-now::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5b9dff;
+}
+.routine-grid-day-header--today {
+  color: #5b9dff;
 }
 .routine-grid-block {
   margin: 1px 2px;
@@ -16218,6 +16258,11 @@ function paintExportPlan(ctx, plan) {
 const ROUTINE_STORAGE_KEY = 'shohoj_routine_v1';
 const DAY_ORDER   = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const DAY_SHORT   = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
+// Date.getDay() (0=Sun..6=Sat) -> canonical day name, for the "today" marker.
+const WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+// Grid row height in px; one row = layout.rowMinutes. Kept in one place so the
+// grid template and the current-time line agree.
+const ROW_PX = 14;
 
 const _store = {
   loading: false,
@@ -16586,10 +16631,13 @@ function _html() {
 function _loadingHTML() {
   return `
     <div class="routine-tab">
-      <div class="routine-loading">
-        <div class="routine-spinner" aria-hidden="true"></div>
-        <div>Fetching live section data from CONNECT…</div>
+      <div class="routine-skeleton" aria-hidden="true">
+        <div class="rsk rsk-header"></div>
+        <div class="rsk rsk-picker"></div>
+        <div class="rsk rsk-block"></div>
+        <div class="rsk rsk-block"></div>
       </div>
+      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
     </div>
   `;
 }
@@ -16670,11 +16718,15 @@ function _gridHTML(routine, clashMap) {
   if (!layout) return '';
 
   // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
-  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, 14px);`;
+  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, ${ROW_PX}px);`;
 
-  const dayHeaders = layout.days.map((d, i) => `
-    <div class="routine-grid-day-header" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
-  `).join('');
+  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const dayHeaders = layout.days.map((d, i) => {
+    const isToday = d === today;
+    return `
+    <div class="routine-grid-day-header ${isToday ? 'routine-grid-day-header--today' : ''}" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+  `;
+  }).join('');
 
   // Time labels every 2 rows (= every hour).
   const timeLabels = [];
@@ -16706,9 +16758,24 @@ function _gridHTML(routine, clashMap) {
         ${dayHeaders}
         ${timeLabels.join('')}
         ${blocks}
+        ${_nowLineHTML(layout)}
       </div>
     </div>
   `;
+}
+
+// Thin line across the day columns at the current local time. Returns '' when
+// "now" falls outside the grid's displayed hours. The line sits on the right
+// grid row and is nudged within that row by the sub-row fraction.
+function _nowLineHTML(layout) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin < layout.startMin || nowMin >= layout.endMin) return '';
+  const rowsFromStart = (nowMin - layout.startMin) / layout.rowMinutes;
+  const rowIndex = Math.floor(rowsFromStart);     // 0-based data row
+  const frac = rowsFromStart - rowIndex;          // position within the row
+  // Header is grid-row 1; data rows start at 2. Span day columns (skip labels).
+  return `<div class="routine-grid-now" style="grid-column: 2 / -1; grid-row: ${rowIndex + 2}; transform: translateY(calc(${frac.toFixed(4)} * ${ROW_PX}px));" aria-hidden="true"></div>`;
 }
 
 function _gridBlockHTML(block, clashMap, hueMap) {
