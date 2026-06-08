@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-jNmfAZjgHKVoUGlYfXRn1CFTKSe7IK4jod2HDlvwoD4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-WP5C+MQezOPfmDbVDykN5sFgPQebo2unmIE8nEUogVg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16186,7 +16186,15 @@ const SORT_MODES = [
   ['time',    'Earliest'],
 ];
 
-const REVIEWS_FETCH_LIMIT = 5000;
+// The Firestore hook caps at Math.min(n, 1000) (js/auth/firebase.js), so 1000
+// is the real ceiling — asking for more just gets clamped.
+const REVIEWS_FETCH_LIMIT = 1000;
+
+// Cross-session cache for the aggregated faculty rating map. Faculty ratings
+// move slowly, so a returning user within the TTL gets instant badges and pays
+// zero Firestore reads. Mirrors the CONNECT-feed cache pattern.
+const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
+const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 function _restoreRoutine() {
   try {
@@ -16401,15 +16409,46 @@ async function _refresh(force = false) {
 
 async function _loadFacultyRatings(force) {
   if (_store.ratingLoaded && !force) return;
+  // Cache hit (unless forced): instant badges, no Firestore read.
+  if (!force) {
+    const cached = _readRatingCache();
+    if (cached) { _store.ratingMap = cached; _store.ratingLoaded = true; return; }
+  }
   try {
     const reviews = await fetchRecentReviews(REVIEWS_FETCH_LIMIT);
     const aggregated = aggregateByFaculty(reviews || []);
     _store.ratingMap = buildFacultyRatingMap(aggregated);
     _store.ratingLoaded = true;
+    _writeRatingCache(_store.ratingMap);
   } catch {
     // Leave ratingMap empty; UI will render sections without badges.
     _store.ratingLoaded = false;
   }
+}
+
+// FacultyRating entries are flat, JSON-safe objects ({ initials, overall,
+// count, tier }), so we serialize the map as a list and rebuild it keyed by
+// the same normalized initials buildFacultyRatingMap used.
+function _readRatingCache() {
+  try {
+    const raw = localStorage.getItem(RATING_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.at !== 'number' || !Array.isArray(parsed.entries)) return null;
+    if (Date.now() - parsed.at > RATING_CACHE_TTL_MS) return null;
+    const map = new Map();
+    for (const e of parsed.entries) {
+      if (e && typeof e.initials === 'string') map.set(e.initials, e);
+    }
+    return map.size > 0 ? map : null;
+  } catch { return null; }
+}
+
+function _writeRatingCache(map) {
+  try {
+    const entries = Array.from(map.values());
+    localStorage.setItem(RATING_CACHE_KEY, JSON.stringify({ at: Date.now(), entries }));
+  } catch { /* quota / disabled storage — caching is best-effort */ }
 }
 
 // ── RENDER ──────────────────────────────────────────────────────────────────
