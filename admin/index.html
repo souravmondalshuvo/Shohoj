@@ -5371,6 +5371,10 @@ body[data-page="admin"] .orb { display: none !important; }
   font: 12px 'DM Sans', sans-serif;
 }
 .routine-suggest-item:hover { background: rgba(255,255,255,0.07); }
+.routine-suggest-item.is-active {
+  background: rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.40);
+}
 .routine-suggest-code { font-weight: 700; letter-spacing: 0.4px; color: var(--green); }
 .routine-suggest-name { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .routine-suggest-count { color: var(--text3); font-size: 11px; }
@@ -5606,6 +5610,12 @@ body[data-page="admin"] .orb { display: none !important; }
   transform: translateX(var(--sub-x, 0)) translateY(-1px);
   z-index: 2;
 }
+.routine-grid-block:focus-visible {
+  outline: 2px solid #5b9dff;
+  outline-offset: 1px;
+  z-index: 4;
+}
+.routine-grid-block-clashmark { margin-right: 3px; }
 /* Overlapping blocks tiled into N side-by-side sub-columns within one day.
    Width is set inline to 100%/N; border-box + zeroed h-margins make the
    tiles add up exactly, and the colored left accent keeps them readable. */
