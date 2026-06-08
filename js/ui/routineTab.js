@@ -102,9 +102,9 @@ registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
-registerAction('routine:setSort',     (el) => { _store.sortMode = el.dataset.sort || 'section'; _rerender(); });
+registerAction('routine:setSort',     (el) => { _store.sortMode = el.dataset.sort || 'section'; _repaintControls(); _repaintList(); });
 registerAction('routine:toggleExpand',(el) => _onToggleExpand(el.dataset.code));
-registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.hideClashing; _rerender(); });
+registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.hideClashing; _repaintControls(); _repaintList(); });
 
 function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 // Picking a section folds the course down to its summary line so attention
@@ -116,7 +116,7 @@ function _onToggleExpand(code) {
   if (!c) return;
   if (_store.expanded.has(c)) _store.expanded.delete(c);
   else _store.expanded.add(c);
-  _rerender();
+  _repaintList();
 }
 function _onClearAll()                 {
   _store.routine = clearRoutine(_store.routine);
@@ -302,15 +302,46 @@ export async function renderRoutineTab() {
   _rerender();
 }
 
+// Full rebuild of the tab. Reserved for structural changes (data load,
+// add/remove course, pick/unpick, apply combination) — anything that can add
+// or remove whole regions. Sort/expand/hide-clash use the scoped repaints
+// below so a single click doesn't tear down the grid and every section row.
 function _rerender() {
   const root = document.getElementById('routineContent');
   if (!root) return;
+  const scrollY = (typeof window !== 'undefined') ? window.scrollY : 0;
   // All interpolations in _html() go through escHtml/escAttr (same pattern as
   // papersTab.js, difficultyMap.js, etc.). Suppress the static-analysis warning.
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = _html();
   _attachInputHandlers();
+  // window.scrollTo clamps to max scroll, so a shorter page can't overscroll.
+  if (typeof window !== 'undefined') window.scrollTo(0, scrollY);
+}
+
+// Repaint just the picked-course list (section rows, collapse state, candidate
+// clashes, hidden-clash note). Leaves the grid, stats and picker untouched.
+// Falls back to a full render if the list container isn't on the page yet
+// (e.g. going from zero courses to one adds the region structurally).
+function _repaintList() {
+  const el = document.getElementById('routinePickedList');
+  if (!el) { _rerender(); return; }
+  const { picked, selected, clashMap } = _computeViewState();
+  if (picked.length === 0) { _rerender(); return; }
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  el.innerHTML = _pickedListInner(picked, clashMap, selected);
+}
+
+// Repaint just the controls bar (stats chips + sort buttons + hide-clash
+// toggle active state). Used alongside _repaintList for sort/hide changes.
+function _repaintControls() {
+  const el = document.getElementById('routineControls');
+  if (!el) { _rerender(); return; }
+  const { picked, summary, selected } = _computeViewState();
+  if (picked.length === 0) { _rerender(); return; }
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  el.innerHTML = _controlsInner(picked, summary, selected);
 }
 
 function _html() {
@@ -342,11 +373,19 @@ function _errorHTML() {
   `;
 }
 
-function _mainHTML() {
+// Shared per-render view state. Centralised so the scoped repaints
+// (_repaintList / _repaintControls) derive from exactly the same data as a
+// full render.
+function _computeViewState() {
   const summary = summarizeRoutine(_store.routine, _store.index);
   const picked  = pickedCourseCodes(_store.routine);
   const selected = selectedSections(_store.routine, _store.index);
   const clashMap = buildClashMap(selected);
+  return { summary, picked, selected, clashMap };
+}
+
+function _mainHTML() {
+  const { summary, picked, selected, clashMap } = _computeViewState();
 
   return `
     <div class="routine-tab">
@@ -525,6 +564,12 @@ function _emptyHTML() {
 
 // ── CONTROLS: status bar + sort + clash filter ──────────────────────────────
 function _controlsHTML(picked, summary, selected) {
+  return `
+    <div class="routine-controls" id="routineControls">${_controlsInner(picked, summary, selected)}</div>
+  `;
+}
+
+function _controlsInner(picked, summary, selected) {
   const credits  = _plannedCredits(picked);
   const clashes  = summary.classClashPairs + summary.examClashPairs;
   const clashChip = clashes > 0
@@ -538,7 +583,6 @@ function _controlsHTML(picked, summary, selected) {
     ? `<button class="routine-chip-toggle ${_store.hideClashing ? 'is-active' : ''}" data-action="routine:toggleHideClash" title="Hide sections that clash with your current picks">${_store.hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}</button>`
     : '';
   return `
-    <div class="routine-controls">
       <div class="routine-stats">
         <span class="routine-stat">${picked.length} course${picked.length === 1 ? '' : 's'}</span>
         <span class="routine-stat">${credits} cr</span>
@@ -551,7 +595,6 @@ function _controlsHTML(picked, summary, selected) {
           <span class="routine-sort-label">Sort</span>${sortBtns}
         </div>
       </div>
-    </div>
   `;
 }
 
@@ -568,7 +611,11 @@ function _plannedCredits(picked) {
 }
 
 function _pickedListHTML(picked, clashMap, selected) {
-  return `<div class="routine-picked-list">${picked.map(code => _courseBlockHTML(code, clashMap, selected)).join('')}</div>`;
+  return `<div class="routine-picked-list" id="routinePickedList">${_pickedListInner(picked, clashMap, selected)}</div>`;
+}
+
+function _pickedListInner(picked, clashMap, selected) {
+  return picked.map(code => _courseBlockHTML(code, clashMap, selected)).join('');
 }
 
 function _courseBlockHTML(courseCode, clashMap, selected) {
