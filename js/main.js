@@ -489,6 +489,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
   if (hash === '#calculator/papers')          return 'papers';
+  if (hash.startsWith('#calculator/routine'))  return 'routine';
 
   // Then check sessionStorage
   try {

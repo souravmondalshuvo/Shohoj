@@ -17,6 +17,8 @@ import {
   selectedSections,
   buildClashMap,
   summarizeRoutine,
+  encodeRoutinePicks,
+  decodeRoutinePicks,
 } from '../core/routineState.js';
 import { computeGridLayout } from '../core/routineGrid.js';
 import {
@@ -61,6 +63,8 @@ const _store = {
   sortMode: 'section',     // 'section' | 'faculty' | 'seats' | 'time'
   expanded: new Set(),     // courseCodes the user re-opened after picking a section
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
+  shareNote: '',           // transient "link copied" feedback
+  pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
 };
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
@@ -106,6 +110,22 @@ function _persistRoutine() {
   catch {}
 }
 
+// Read a `?routine=…` shared-link payload once at startup and strip it from the
+// URL (keeping the hash) so a later refresh can't re-apply and clobber edits.
+// The payload is held until the feed loads, then validated + applied.
+function _captureSharePayload() {
+  try {
+    if (typeof location === 'undefined') return null;
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('routine');
+    if (!raw) return null;
+    if (typeof history !== 'undefined' && history.replaceState) {
+      history.replaceState(null, '', location.pathname + location.hash);
+    }
+    return raw;
+  } catch { return null; }
+}
+
 // ── ACTIONS (delegated via dispatch.js) ─────────────────────────────────────
 registerAction('routine:refresh',     () => _refresh(true));
 registerAction('routine:clearCache',  () => { clearConnectFeedCache(); _refresh(true); });
@@ -117,6 +137,7 @@ registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
+registerAction('routine:share',       () => _onShare());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -184,6 +205,65 @@ function _onExportPng() {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// Validate a decoded shared payload against the live feed and replace the
+// current routine with it. Codes/sids that no longer exist are skipped; if
+// nothing survives, the existing routine is left untouched.
+function _applySharedRoutine(encoded) {
+  if (!_store.index) return;
+  const decoded = decodeRoutinePicks(encoded);
+  let next = emptyRoutineState();
+  for (const code of pickedCourseCodes(decoded)) {
+    const list = _store.index.get(code);
+    if (!list) continue;
+    next = pickCourse(next, code);
+    const sid = decoded.picks[code];
+    if (sid != null && list.some(s => s.sectionId === sid)) {
+      next = pickSection(next, code, sid);
+    }
+  }
+  if (pickedCourseCodes(next).length === 0) return;
+  _store.routine = next;
+  _persistRoutine();
+}
+
+function _shareUrl() {
+  const payload = encodeRoutinePicks(_store.routine);
+  const base = (typeof location !== 'undefined') ? location.origin + location.pathname : '';
+  return `${base}?routine=${encodeURIComponent(payload)}#calculator/routine`;
+}
+
+function _onShare() {
+  if (pickedCourseCodes(_store.routine).length === 0) return;
+  const url = _shareUrl();
+  const flash = (msg) => {
+    _store.shareNote = msg;
+    _rerender();
+    setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => flash('✓ Link copied'), () => _fallbackCopy(url, flash));
+    } else {
+      _fallbackCopy(url, flash);
+    }
+  } catch { _fallbackCopy(url, flash); }
+}
+
+// execCommand fallback for browsers without the async clipboard API.
+function _fallbackCopy(text, flash) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    flash(ok ? '✓ Link copied' : 'Press Ctrl/⌘+C to copy');
+  } catch { flash('Copy failed'); }
 }
 
 function _planCourses() {
@@ -291,6 +371,12 @@ async function _refresh(force = false) {
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
+    // A shared link's picks are applied here — once we have the feed to
+    // validate them against — and only on the first load that carries one.
+    if (_store.pendingShare) {
+      _applySharedRoutine(_store.pendingShare);
+      _store.pendingShare = null;
+    }
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -635,6 +721,12 @@ function _headerHTML(summary) {
         ${clashWarn}
       </div>
       <div class="routine-header-right">
+        ${_store.shareNote
+          ? `<span class="routine-share-note" role="status">${escHtml(_store.shareNote)}</span>`
+          : ''}
+        ${Object.keys(_store.routine.picks).length > 0
+          ? `<button class="btn-secondary btn-sm" data-action="routine:share" title="Copy a shareable link to this routine">🔗 Share</button>`
+          : ''}
         <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:clearAll" title="Remove all picked courses">Clear</button>`
