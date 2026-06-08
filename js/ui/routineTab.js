@@ -521,11 +521,20 @@ function _gridBlockHTML(block, clashMap) {
   const mark = clashMap.get(block.sectionId);
   const isClash = mark && (mark.classClash || mark.examClash);
   const hue = _hueForSection(block.sectionId);
-  const styles = [
+  // Overlapping blocks share a day column; tile them side-by-side at 1/N width
+  // and offset by sub-column. --sub-x drives the X translate so the hover lift
+  // (translateY) can compose with it instead of snapping the block back.
+  const isSplit = block.subCols > 1;
+  const styleParts = [
     `grid-column: ${block.dayCol + 2}`,
     `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
     `--routine-hue: ${hue}`,
-  ].join('; ');
+  ];
+  if (isSplit) {
+    styleParts.push(`width: calc(100% / ${block.subCols})`);
+    styleParts.push(`--sub-x: calc(100% * ${block.subCol})`);
+  }
+  const styles = styleParts.join('; ');
   const rating = _store.ratingLoaded
     ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
     : null;
@@ -537,7 +546,7 @@ function _gridBlockHTML(block, clashMap) {
     : '';
   const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}`;
   return `
-    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
+    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
