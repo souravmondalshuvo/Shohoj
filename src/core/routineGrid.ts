@@ -35,6 +35,10 @@ export interface GridBlock {
     gridRowStart: number;
     /** Span in grid rows (`gridRowEnd = gridRowStart + gridRowSpan`). */
     gridRowSpan: number;
+    /** Sub-column index (0-based) among blocks it overlaps in time on its day. */
+    subCol: number;
+    /** Number of side-by-side sub-columns in this block's overlap cluster (1 = no overlap). */
+    subCols: number;
     startMin: number;
     endMin: number;
 }
@@ -145,11 +149,62 @@ export function computeGridLayout(
                 // CSS grid is 1-based.
                 gridRowStart: rowStart + 1,
                 gridRowSpan: Math.max(1, rowEnd - rowStart),
+                subCol: 0,
+                subCols: 1,
                 startMin: slot.startMin,
                 endMin: slot.endMin,
             });
         }
     }
 
+    assignSubColumns(blocks);
+
     return { days, startMin, endMin, rowMinutes, totalRows, rowLabels, blocks };
+}
+
+/**
+ * Lay overlapping blocks side-by-side instead of stacking them. For each day,
+ * group blocks into clusters of transitively-overlapping time ranges, then
+ * partition each cluster greedily into the fewest columns (classic interval
+ * partitioning). Mutates each block's `subCol` (its column) and `subCols`
+ * (columns in its cluster) in place. Non-overlapping blocks stay at 0 / 1.
+ */
+function assignSubColumns(blocks: GridBlock[]): void {
+    const byDay = new Map<number, GridBlock[]>();
+    for (const b of blocks) {
+        const list = byDay.get(b.dayCol);
+        if (list) list.push(b);
+        else byDay.set(b.dayCol, [b]);
+    }
+
+    for (const dayBlocks of byDay.values()) {
+        dayBlocks.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+        let cluster: GridBlock[] = [];
+        let clusterEnd = -Infinity;
+
+        const flush = () => {
+            if (cluster.length === 0) return;
+            const colEnds: number[] = []; // last endMin placed in each column
+            for (const b of cluster) {
+                let placed = -1;
+                for (let c = 0; c < colEnds.length; c++) {
+                    if (colEnds[c] <= b.startMin) { placed = c; break; }
+                }
+                if (placed === -1) { placed = colEnds.length; colEnds.push(b.endMin); }
+                else colEnds[placed] = b.endMin;
+                b.subCol = placed;
+            }
+            const width = colEnds.length;
+            for (const b of cluster) b.subCols = width;
+            cluster = [];
+        };
+
+        for (const b of dayBlocks) {
+            if (cluster.length > 0 && b.startMin >= clusterEnd) flush();
+            cluster.push(b);
+            clusterEnd = Math.max(clusterEnd, b.endMin);
+        }
+        flush();
+    }
 }

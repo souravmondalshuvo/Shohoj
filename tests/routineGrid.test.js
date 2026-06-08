@@ -139,10 +139,47 @@ test('dayCol references position in days[] order', () => {
     eq(monday.dayCol, 1);
     eq(tuesday.dayCol, 2);
 });
-test('overlapping Sunday sections both get blocks (UI handles overlay)', () => {
+test('overlapping Sunday sections both get blocks', () => {
     const layout = computeGridLayout([A, C]);
     const sundayBlocks = layout.blocks.filter(b => b.day === 'SUNDAY');
     eq(sundayBlocks.length, 2);
+});
+test('overlapping Sunday sections get distinct side-by-side sub-columns', () => {
+    const layout = computeGridLayout([A, C]); // A 14:00-15:20, C 14:30-15:50 overlap
+    const sun = layout.blocks.filter(b => b.day === 'SUNDAY').sort((x, y) => x.startMin - y.startMin);
+    eq(sun.map(b => b.subCol), [0, 1]);    // distinct columns
+    eq(sun.map(b => b.subCols), [2, 2]);   // cluster width 2 for both
+});
+test('non-overlapping blocks stay single-column (subCol 0 / subCols 1)', () => {
+    const layout = computeGridLayout([A, B]); // no two share a day+time
+    for (const b of layout.blocks) { eq(b.subCol, 0); eq(b.subCols, 1); }
+});
+test('a third concurrent section widens the cluster to 3 columns', () => {
+    // D overlaps both A and C on Sunday around 14:40-15:10.
+    const D = parseFeed([{
+        sectionId: 1005, courseCode: 'CHE101', courseName: 'CH',
+        sectionName: '05', capacity: 30, consumedSeat: 1, faculties: 'XYZ',
+        roomName: '10A-01A',
+        sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '14:40', endTime: '15:10' }] },
+    }]).sections[0];
+    const layout = computeGridLayout([A, C, D]);
+    const sun = layout.blocks.filter(b => b.day === 'SUNDAY');
+    eq(sun.every(b => b.subCols === 3), true);
+    eq([...sun.map(b => b.subCol)].sort(), [0, 1, 2]);
+});
+test('sequential same-day sections reuse a single column', () => {
+    // E then F back-to-back on Monday: 09:00-10:00, 10:00-11:00 — no overlap.
+    const [E, F] = parseFeed([
+        { sectionId: 2001, courseCode: 'ENG101', courseName: 'E', sectionName: '01',
+          capacity: 30, consumedSeat: 1, faculties: 'AAA', roomName: '01A-01A',
+          sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '09:00', endTime: '10:00' }] } },
+        { sectionId: 2002, courseCode: 'ENG102', courseName: 'E2', sectionName: '02',
+          capacity: 30, consumedSeat: 1, faculties: 'BBB', roomName: '01A-02A',
+          sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '10:00', endTime: '11:00' }] } },
+    ]).sections;
+    const layout = computeGridLayout([E, F]);
+    const mon = layout.blocks.filter(b => b.day === 'MONDAY');
+    eq(mon.every(b => b.subCol === 0 && b.subCols === 1), true);
 });
 test('block startMin/endMin reflect the original slot, not snapped', () => {
     const layout = computeGridLayout([A]);
