@@ -39,6 +39,8 @@ export interface SuggestionOptions {
     warnPenalty?: number;
     /** Reward for seat slack (consumedSeat / capacity); multiplied by per-section weight. Default 2. */
     seatSlackWeight?: number;
+    /** Predicate to drop sections before enumeration (e.g. time-of-day filters). Default: keep all. */
+    sectionFilter?: (section: NormalizedSection) => boolean;
 }
 
 export interface SuggestionBreakdown {
@@ -85,6 +87,7 @@ const DEFAULTS: Required<SuggestionOptions> = {
     badPenalty: 4,
     warnPenalty: 2,
     seatSlackWeight: 2,
+    sectionFilter: () => true,
 };
 
 function fillRatio(s: NormalizedSection): number {
@@ -95,8 +98,9 @@ function fillRatio(s: NormalizedSection): number {
 function filterUsableSections(
     sections: readonly NormalizedSection[],
     maxFill: number,
+    sectionFilter: (section: NormalizedSection) => boolean,
 ): NormalizedSection[] {
-    return sections.filter(s => fillRatio(s) < maxFill);
+    return sections.filter(s => fillRatio(s) < maxFill && sectionFilter(s));
 }
 
 /**
@@ -227,7 +231,7 @@ export function suggestCombinations(
     const perCourse: NormalizedSection[][] = [];
     for (const code of courseCodes) {
         const list = index.get(code) ?? [];
-        const usable = filterUsableSections(list, opts.skipAboveFillRatio);
+        const usable = filterUsableSections(list, opts.skipAboveFillRatio, opts.sectionFilter);
         if (usable.length === 0) skippedCourses.push(code);
         else perCourse.push(usable);
     }
