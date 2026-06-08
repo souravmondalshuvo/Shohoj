@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-XA4JyjUUoGl5YPfTcSZ09FSaS/6wuk01fPcCWHXUjaA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-BpHTWzQmY6BFYttSJYcsl2/OHoiIUohMd6fAbc9jQC4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16238,6 +16238,11 @@ const _store = {
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
 };
 
+// Curated, well-separated hues for course blocks, ordered so consecutive
+// courses land far apart on the wheel. Red (~0/360) is deliberately absent —
+// it's reserved for clash highlighting.
+const COURSE_HUES = [210, 160, 275, 40, 190, 320, 95, 250, 130, 300];
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SORT_MODES = [
   ['section', 'Section #'],
@@ -16325,7 +16330,15 @@ function _onExportPng() {
   const routine = selectedSections(_store.routine, _store.index);
   const layout = computeGridLayout(routine);
   if (!layout) return;
-  const plan = buildExportPlan(layout, { title: 'Shohoj — Weekly Routine' });
+  // Match the on-screen per-course palette: map sectionId -> course hue so the
+  // exported PNG colors line up with the grid.
+  const hueMap = _buildHueMap(layout.blocks);
+  const sidHue = new Map();
+  for (const b of layout.blocks) sidHue.set(b.sectionId, hueMap.get(b.courseCode));
+  const plan = buildExportPlan(layout, {
+    title: 'Shohoj — Weekly Routine',
+    hueForSection: (sid) => sidHue.get(sid) ?? COURSE_HUES[0],
+  });
 
   const scale = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const canvas = document.createElement('canvas');
@@ -16679,7 +16692,8 @@ function _gridHTML(routine, clashMap) {
     rowSep.push(`<div class="${cls}" style="grid-column: 1 / -1; grid-row: ${r + 2};"></div>`);
   }
 
-  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap)).join('');
+  const hueMap = _buildHueMap(layout.blocks);
+  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap, hueMap)).join('');
 
   return `
     <div class="routine-grid-wrap">
@@ -16697,10 +16711,10 @@ function _gridHTML(routine, clashMap) {
   `;
 }
 
-function _gridBlockHTML(block, clashMap) {
+function _gridBlockHTML(block, clashMap, hueMap) {
   const mark = clashMap.get(block.sectionId);
   const isClash = mark && (mark.classClash || mark.examClash);
-  const hue = _hueForSection(block.sectionId);
+  const hue = (hueMap && hueMap.get(block.courseCode)) ?? COURSE_HUES[0];
   // Overlapping blocks share a day column; tile them side-by-side at 1/N width
   // and offset by sub-column. --sub-x drives the X translate so the hover lift
   // (translateY) can compose with it instead of snapping the block back.
@@ -16734,11 +16748,20 @@ function _gridBlockHTML(block, clashMap) {
   `;
 }
 
-function _hueForSection(sectionId) {
-  // Deterministic hue per sectionId so each course block has a stable colour.
-  // Mod 360, skip the muddy reds since we reserve red for clashes.
-  const raw = (sectionId * 47) % 360;
-  return Math.round((raw + 30) % 360);
+// Build a courseCode -> hue map by walking the grid blocks in first-appearance
+// order and assigning successive palette entries (cycling if there are more
+// courses than colors). Per-course (not per-section) so every block of a course
+// shares one stable, distinct color.
+function _buildHueMap(blocks) {
+  const map = new Map();
+  let i = 0;
+  for (const b of blocks) {
+    if (!map.has(b.courseCode)) {
+      map.set(b.courseCode, COURSE_HUES[i % COURSE_HUES.length]);
+      i++;
+    }
+  }
+  return map;
 }
 
 function _hourLabel(min) {
