@@ -65,6 +65,7 @@ const _store = {
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
   shareNote: '',           // transient "link copied" feedback
   pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
+  suggestActive: -1,       // keyboard-highlighted index in the course-search dropdown (-1 = none)
 };
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
@@ -166,6 +167,7 @@ function _onAddCourseFromSuggest(code) {
   if (!code || !_store.index || !_store.index.has(code)) return;
   _store.routine = pickCourse(_store.routine, code);
   _store.query = '';
+  _store.suggestActive = -1;
   const input = document.getElementById('routineCourseInput');
   if (input) input.value = '';
   _persistRoutine();
@@ -331,12 +333,22 @@ function _addCourseFromInput() {
   _persistRoutine();
   input.value = '';
   _store.query = '';
+  _store.suggestActive = -1;
   _rerender();
+}
+
+// The course codes currently matching the query (shared by the dropdown render
+// and the keyboard handler so they never disagree on what's selectable).
+function _currentMatches() {
+  const q = _store.query;
+  if (!q || q.length < 2 || !_store.index) return [];
+  return _store.courseCodes.filter(c => c.startsWith(q)).slice(0, 8);
 }
 
 // Live search-as-you-type for the input (no debounce — list is small).
 function _onSearchInput(ev) {
   _store.query = (ev.target.value || '').toUpperCase();
+  _store.suggestActive = -1; // reset highlight whenever the query changes
   _renderSuggestions();
 }
 
@@ -345,11 +357,49 @@ function _attachInputHandlers() {
   if (!input) return;
   input.addEventListener('input', _onSearchInput);
   input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
+    const matches = _currentMatches();
+    if (ev.key === 'ArrowDown' && matches.length) {
       ev.preventDefault();
-      _addCourseFromInput();
+      _store.suggestActive = (_store.suggestActive + 1) % matches.length;
+      _renderSuggestions();
+      _scrollActiveIntoView();
+    } else if (ev.key === 'ArrowUp' && matches.length) {
+      ev.preventDefault();
+      _store.suggestActive = (_store.suggestActive - 1 + matches.length) % matches.length;
+      _renderSuggestions();
+      _scrollActiveIntoView();
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      if (_store.suggestActive >= 0 && matches[_store.suggestActive]) {
+        _onAddCourseFromSuggest(matches[_store.suggestActive]);
+      } else {
+        _addCourseFromInput();
+      }
+    } else if (ev.key === 'Escape' && _store.query) {
+      _store.query = '';
+      _store.suggestActive = -1;
+      input.value = '';
+      _renderSuggestions();
     }
   });
+}
+
+function _scrollActiveIntoView() {
+  const el = document.getElementById(`routine-sugg-${_store.suggestActive}`);
+  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+}
+
+// Keep the combobox input's ARIA state in sync with the dropdown.
+function _syncComboState() {
+  const input = document.getElementById('routineCourseInput');
+  if (!input) return;
+  const matches = _currentMatches();
+  input.setAttribute('aria-expanded', matches.length > 0 ? 'true' : 'false');
+  if (_store.suggestActive >= 0 && matches[_store.suggestActive]) {
+    input.setAttribute('aria-activedescendant', `routine-sugg-${_store.suggestActive}`);
+  } else {
+    input.removeAttribute('aria-activedescendant');
+  }
 }
 
 // ── DATA LOADING ────────────────────────────────────────────────────────────
@@ -568,7 +618,7 @@ function _mainHTML() {
     <div class="routine-tab">
       ${_headerHTML(summary)}
       ${_pickerHTML()}
-      <div class="routine-suggestions" id="routineSuggestions">${_suggestionsHTML()}</div>
+      <div class="routine-suggestions" id="routineSuggestions" role="listbox" aria-label="Course matches">${_suggestionsHTML()}</div>
       ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap, selected)}
       ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
@@ -715,10 +765,13 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const ratingTitle = rating && rating.tier !== 'unknown'
     ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
     : '';
-  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}`;
+  const clashLabel = isClash ? ' — clashes with another class' : '';
+  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
+  // Non-color clash cue (⚠) so the state reads without relying on red alone.
+  const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
   return `
-    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" title="${escAttr(title)}">
-      <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
+    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
+      <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
@@ -792,7 +845,9 @@ function _pickerHTML() {
     <div class="routine-picker">
       <input type="text" id="routineCourseInput" class="routine-input"
              placeholder="Add course (e.g. CSE220) — start typing for matches"
-             autocomplete="off" spellcheck="false" />
+             autocomplete="off" spellcheck="false"
+             role="combobox" aria-autocomplete="list" aria-expanded="false"
+             aria-controls="routineSuggestions" aria-label="Add a course by code" />
       <button class="btn-primary btn-sm" data-action="routine:addCourse">Add</button>
       ${importBtn}
     </div>
@@ -803,14 +858,16 @@ function _pickerHTML() {
 function _suggestionsHTML() {
   const q = _store.query;
   if (!q || q.length < 2 || !_store.index) return '';
-  const matches = _store.courseCodes.filter(c => c.startsWith(q)).slice(0, 8);
+  const matches = _currentMatches();
   if (matches.length === 0) return `<div class="routine-suggest-empty">No course matches "${escHtml(q)}"</div>`;
-  return matches.map(code => {
+  return matches.map((code, i) => {
     const list = _store.index.get(code);
     const first = list && list[0];
     const name = first ? first.courseName : '';
+    const active = i === _store.suggestActive;
     return `
-      <button type="button" class="routine-suggest-item" data-action="routine:addFromSuggest" data-code="${escAttr(code)}">
+      <button type="button" role="option" id="routine-sugg-${i}" aria-selected="${active ? 'true' : 'false'}"
+              class="routine-suggest-item ${active ? 'is-active' : ''}" data-action="routine:addFromSuggest" data-code="${escAttr(code)}">
         <span class="routine-suggest-code">${escHtml(code)}</span>
         <span class="routine-suggest-name">${escHtml(name)}</span>
         <span class="routine-suggest-count">${list.length} section${list.length===1?'':'s'}</span>
@@ -1126,6 +1183,7 @@ function _renderSuggestions() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   if (wrap) wrap.innerHTML = _suggestionsHTML();
+  _syncComboState();
 }
 
 // ── SUGGESTIONS (PR 6) ──────────────────────────────────────────────────────
