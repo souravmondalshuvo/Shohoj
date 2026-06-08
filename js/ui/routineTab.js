@@ -66,7 +66,12 @@ const _store = {
   shareNote: '',           // transient "link copied" feedback
   pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
   suggestActive: -1,       // keyboard-highlighted index in the course-search dropdown (-1 = none)
+  filters: { noEarly: false, noEvening: false, avoidDays: [] }, // section time-of-day prefs
 };
+
+// Time-filter thresholds (minutes since midnight).
+const FILTER_EARLY_MIN = 9 * 60;   // "no early" hides anything starting before 9:00 AM
+const FILTER_EVENING_MIN = 17 * 60; // "no evening" hides anything ending after 5:00 PM
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
 // courses land far apart on the wheel. Red (~0/360) is deliberately absent —
@@ -145,12 +150,38 @@ registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.id
 registerAction('routine:setSort',     (el) => { _store.sortMode = el.dataset.sort || 'section'; _repaintControls(); _repaintList(); });
 registerAction('routine:toggleExpand',(el) => _onToggleExpand(el.dataset.code));
 registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.hideClashing; _repaintControls(); _repaintList(); });
+registerAction('routine:toggleFilterEarly',   () => { _store.filters.noEarly = !_store.filters.noEarly; _repaintFilters(); _repaintList(); });
+registerAction('routine:toggleFilterEvening', () => { _store.filters.noEvening = !_store.filters.noEvening; _repaintFilters(); _repaintList(); });
+registerAction('routine:toggleAvoidDay',      (el) => { _onToggleAvoidDay(el.dataset.day); });
 
 function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 // Picking a section folds the course down to its summary line so attention
 // shifts to the courses still being decided. The user can re-open via "Change".
 function _onPickSection(code, sid)     { _store.expanded.delete((code || '').toUpperCase()); _store.routine = pickSection(_store.routine, code, sid); _persistRoutine(); _rerender(); }
 function _onUnpickSection(code)        { _store.routine = pickSection(_store.routine, code, null); _persistRoutine(); _rerender(); }
+function _onToggleAvoidDay(day) {
+  const d = (day || '').toUpperCase();
+  if (!DAY_ORDER.includes(d)) return;
+  const arr = _store.filters.avoidDays;
+  const i = arr.indexOf(d);
+  if (i === -1) arr.push(d); else arr.splice(i, 1);
+  _repaintFilters();
+  _repaintList();
+}
+
+// Does a section satisfy the active time-of-day filters? A section with no
+// scheduled slots passes (nothing to violate).
+function _sectionPassesFilters(section) {
+  const f = _store.filters;
+  if (!f.noEarly && !f.noEvening && f.avoidDays.length === 0) return true;
+  for (const slot of (section.classSlots || [])) {
+    if (f.noEarly && slot.startMin < FILTER_EARLY_MIN) return false;
+    if (f.noEvening && slot.endMin > FILTER_EVENING_MIN) return false;
+    if (f.avoidDays.includes(slot.day)) return false;
+  }
+  return true;
+}
+
 function _onToggleExpand(code) {
   const c = (code || '').toUpperCase();
   if (!c) return;
@@ -298,7 +329,10 @@ function _onSuggest() {
   if (!_store.index) return;
   const codes = pickedCourseCodes(_store.routine);
   if (codes.length === 0) return;
-  _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap);
+  // Feed the active time filters into enumeration so suggestions respect them.
+  _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap, {
+    sectionFilter: (s) => _sectionPassesFilters(s),
+  });
   _store.suggestionsOpen = true;
   _rerender();
 }
@@ -538,6 +572,14 @@ function _repaintControls() {
   el.innerHTML = _controlsInner(picked, summary, selected);
 }
 
+// Repaint just the filters row (toggle/day-chip active state).
+function _repaintFilters() {
+  const el = document.getElementById('routineFilters');
+  if (!el) { _rerender(); return; }
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  el.innerHTML = _filtersInner();
+}
+
 function _html() {
   if (_store.loading && !_store.index) return _loadingHTML();
   if (_store.error  && !_store.index) return _errorHTML();
@@ -620,6 +662,7 @@ function _mainHTML() {
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions" role="listbox" aria-label="Course matches">${_suggestionsHTML()}</div>
       ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
+      ${picked.length > 0 ? _filtersHTML() : ''}
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap, selected)}
       ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
       ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
@@ -920,6 +963,26 @@ function _controlsInner(picked, summary, selected) {
   `;
 }
 
+function _filtersHTML() {
+  return `<div class="routine-filters" id="routineFilters">${_filtersInner()}</div>`;
+}
+
+function _filtersInner() {
+  const f = _store.filters;
+  const dayChips = DAY_ORDER.map(d => {
+    const on = f.avoidDays.includes(d);
+    return `<button class="routine-filter-day ${on ? 'is-active' : ''}" data-action="routine:toggleAvoidDay" data-day="${d}" aria-pressed="${on ? 'true' : 'false'}" title="Avoid classes on ${escAttr(DAY_SHORT[d] || d)}">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</button>`;
+  }).join('');
+  return `
+    <span class="routine-filter-label">Filters</span>
+    <button class="routine-filter-toggle ${f.noEarly ? 'is-active' : ''}" data-action="routine:toggleFilterEarly" aria-pressed="${f.noEarly ? 'true' : 'false'}" title="Hide sections starting before 9:00 AM">No early</button>
+    <button class="routine-filter-toggle ${f.noEvening ? 'is-active' : ''}" data-action="routine:toggleFilterEvening" aria-pressed="${f.noEvening ? 'true' : 'false'}" title="Hide sections ending after 5:00 PM">No evening</button>
+    <span class="routine-filter-sep" aria-hidden="true"></span>
+    <span class="routine-filter-label">Avoid</span>
+    <div class="routine-filter-days" role="group" aria-label="Avoid days">${dayChips}</div>
+  `;
+}
+
 function _plannedCredits(picked) {
   let total = 0;
   for (const code of picked) {
@@ -952,18 +1015,24 @@ function _courseBlockHTML(courseCode, clashMap, selected) {
   }
 
   const rows = [];
-  let hidden = 0;
+  let hiddenClash = 0;
+  let hiddenFilter = 0;
   for (const s of _sortSections(sections)) {
     const isPicked = currentSid === s.sectionId;
+    // A picked section always shows, even if it now fails a filter the user set.
+    if (!isPicked && !_sectionPassesFilters(s)) { hiddenFilter++; continue; }
     const cand = isPicked ? null : _candidateClash(s, courseCode, selected);
-    if (_store.hideClashing && !isPicked && cand && (cand.cls || cand.exam)) { hidden++; continue; }
+    if (_store.hideClashing && !isPicked && cand && (cand.cls || cand.exam)) { hiddenClash++; continue; }
     rows.push(_sectionRowHTML(courseCode, s, isPicked, clashMap.get(s.sectionId), cand));
   }
   const body = rows.length > 0
     ? rows.join('')
-    : `<div class="routine-section-empty">Every section clashes with your current picks.</div>`;
-  const hiddenNote = hidden > 0
-    ? `<div class="routine-section-hidden">${hidden} clashing section${hidden === 1 ? '' : 's'} hidden</div>`
+    : `<div class="routine-section-empty">No sections match your current picks and filters.</div>`;
+  const hiddenParts = [];
+  if (hiddenClash > 0)  hiddenParts.push(`${hiddenClash} clashing`);
+  if (hiddenFilter > 0) hiddenParts.push(`${hiddenFilter} filtered`);
+  const hiddenNote = hiddenParts.length > 0
+    ? `<div class="routine-section-hidden">${hiddenParts.join(' · ')} section${hiddenClash + hiddenFilter === 1 ? '' : 's'} hidden</div>`
     : '';
   const collapseBtn = resolved
     ? `<button class="routine-change-btn" data-action="routine:toggleExpand" data-code="${escAttr(courseCode)}">Collapse ▴</button>`
