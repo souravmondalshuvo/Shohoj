@@ -58,6 +58,11 @@ const _store = {
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
 };
 
+// Curated, well-separated hues for course blocks, ordered so consecutive
+// courses land far apart on the wheel. Red (~0/360) is deliberately absent —
+// it's reserved for clash highlighting.
+const COURSE_HUES = [210, 160, 275, 40, 190, 320, 95, 250, 130, 300];
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const SORT_MODES = [
   ['section', 'Section #'],
@@ -145,7 +150,15 @@ function _onExportPng() {
   const routine = selectedSections(_store.routine, _store.index);
   const layout = computeGridLayout(routine);
   if (!layout) return;
-  const plan = buildExportPlan(layout, { title: 'Shohoj — Weekly Routine' });
+  // Match the on-screen per-course palette: map sectionId -> course hue so the
+  // exported PNG colors line up with the grid.
+  const hueMap = _buildHueMap(layout.blocks);
+  const sidHue = new Map();
+  for (const b of layout.blocks) sidHue.set(b.sectionId, hueMap.get(b.courseCode));
+  const plan = buildExportPlan(layout, {
+    title: 'Shohoj — Weekly Routine',
+    hueForSection: (sid) => sidHue.get(sid) ?? COURSE_HUES[0],
+  });
 
   const scale = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const canvas = document.createElement('canvas');
@@ -499,7 +512,8 @@ function _gridHTML(routine, clashMap) {
     rowSep.push(`<div class="${cls}" style="grid-column: 1 / -1; grid-row: ${r + 2};"></div>`);
   }
 
-  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap)).join('');
+  const hueMap = _buildHueMap(layout.blocks);
+  const blocks = layout.blocks.map(b => _gridBlockHTML(b, clashMap, hueMap)).join('');
 
   return `
     <div class="routine-grid-wrap">
@@ -517,10 +531,10 @@ function _gridHTML(routine, clashMap) {
   `;
 }
 
-function _gridBlockHTML(block, clashMap) {
+function _gridBlockHTML(block, clashMap, hueMap) {
   const mark = clashMap.get(block.sectionId);
   const isClash = mark && (mark.classClash || mark.examClash);
-  const hue = _hueForSection(block.sectionId);
+  const hue = (hueMap && hueMap.get(block.courseCode)) ?? COURSE_HUES[0];
   // Overlapping blocks share a day column; tile them side-by-side at 1/N width
   // and offset by sub-column. --sub-x drives the X translate so the hover lift
   // (translateY) can compose with it instead of snapping the block back.
@@ -554,11 +568,20 @@ function _gridBlockHTML(block, clashMap) {
   `;
 }
 
-function _hueForSection(sectionId) {
-  // Deterministic hue per sectionId so each course block has a stable colour.
-  // Mod 360, skip the muddy reds since we reserve red for clashes.
-  const raw = (sectionId * 47) % 360;
-  return Math.round((raw + 30) % 360);
+// Build a courseCode -> hue map by walking the grid blocks in first-appearance
+// order and assigning successive palette entries (cycling if there are more
+// courses than colors). Per-course (not per-section) so every block of a course
+// shares one stable, distinct color.
+function _buildHueMap(blocks) {
+  const map = new Map();
+  let i = 0;
+  for (const b of blocks) {
+    if (!map.has(b.courseCode)) {
+      map.set(b.courseCode, COURSE_HUES[i % COURSE_HUES.length]);
+      i++;
+    }
+  }
+  return map;
 }
 
 function _hourLabel(min) {
