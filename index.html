@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-x+NqmYew8M9lNxsPYbJZ7EmxOLMAsf2UpAeua4TyX1g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-gx705SlGUrnCQwYrC1ZmKe5RO/vcXO993ci+syLXaBg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5643,6 +5643,44 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (max-width: 720px) {
   .routine-grid { min-width: 480px; }
   .routine-grid-block-meta, .routine-grid-block-time { display: none; }
+}
+
+/* ── Agenda (mobile) view ──────────────────────────────────────────────────
+   A day-by-day list shown instead of the grid on narrow screens. */
+.routine-agenda { display: none; }
+.routine-agenda-day { margin-top: 14px; }
+.routine-agenda-dayname {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
+  color: var(--text2); text-transform: uppercase;
+  padding-bottom: 6px; margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.routine-agenda-dayname--today { color: #5b9dff; }
+.routine-agenda-items { display: flex; flex-direction: column; gap: 8px; }
+.routine-agenda-item {
+  display: flex; gap: 12px; align-items: stretch;
+  padding: 8px 10px; border-radius: 8px;
+  background: hsl(var(--routine-hue, 200), 45%, 14%);
+  border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
+}
+.routine-agenda-item--clash {
+  background: rgba(231,76,60,0.16);
+  border-left-color: #e74c3c;
+}
+.routine-agenda-time {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 64px; font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--text1);
+}
+.routine-agenda-time span { font-weight: 400; color: var(--text3); }
+.routine-agenda-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.routine-agenda-code { font-size: 13px; font-weight: 700; color: var(--text1); }
+.routine-agenda-sec { font-weight: 600; color: var(--text2); }
+.routine-agenda-meta { font-size: 11px; color: var(--text2); letter-spacing: 0.2px; }
+
+@media (max-width: 720px) {
+  .routine-grid-wrap { display: none; }
+  .routine-agenda { display: block; }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -16888,7 +16926,51 @@ function _gridHTML(routine, clashMap) {
         ${_nowLineHTML(layout)}
       </div>
     </div>
+    ${_agendaHTML(layout, clashMap, hueMap)}
   `;
+}
+
+// Day-by-day list view of the same layout, shown instead of the grid on narrow
+// screens (toggled purely in CSS — no JS viewport detection). Days with no
+// classes are omitted; within a day, classes are listed in time order.
+function _agendaHTML(layout, clashMap, hueMap) {
+  const byDay = new Map();
+  for (const b of layout.blocks) {
+    const list = byDay.get(b.day);
+    if (list) list.push(b);
+    else byDay.set(b.day, [b]);
+  }
+  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const days = layout.days.filter(d => byDay.has(d));
+  const sections = days.map(d => {
+    const items = byDay.get(d)
+      .sort((a, b) => a.startMin - b.startMin)
+      .map(b => _agendaItemHTML(b, clashMap, hueMap))
+      .join('');
+    return `
+      <div class="routine-agenda-day">
+        <div class="routine-agenda-dayname ${d === today ? 'routine-agenda-dayname--today' : ''}">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+        <div class="routine-agenda-items">${items}</div>
+      </div>`;
+  }).join('');
+  return `<div class="routine-agenda">${sections}</div>`;
+}
+
+function _agendaItemHTML(block, clashMap, hueMap) {
+  const mark = clashMap.get(block.sectionId);
+  const isClash = mark && (mark.classClash || mark.examClash);
+  const hue = (hueMap && hueMap.get(block.courseCode)) ?? COURSE_HUES[0];
+  const clashPill = isClash
+    ? ` <span class="routine-clash-pill" title="Clashes with another pick">⚠ clash</span>`
+    : '';
+  return `
+    <div class="routine-agenda-item ${isClash ? 'routine-agenda-item--clash' : ''}" style="--routine-hue: ${hue};">
+      <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
+      <div class="routine-agenda-body">
+        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">§${escHtml(block.sectionName)}</span>${clashPill}</div>
+        <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
+      </div>
+    </div>`;
 }
 
 // Thin line across the day columns at the current local time. Returns '' when

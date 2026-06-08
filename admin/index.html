@@ -5642,6 +5642,44 @@ body[data-page="admin"] .orb { display: none !important; }
   .routine-grid-block-meta, .routine-grid-block-time { display: none; }
 }
 
+/* ── Agenda (mobile) view ──────────────────────────────────────────────────
+   A day-by-day list shown instead of the grid on narrow screens. */
+.routine-agenda { display: none; }
+.routine-agenda-day { margin-top: 14px; }
+.routine-agenda-dayname {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.6px;
+  color: var(--text2); text-transform: uppercase;
+  padding-bottom: 6px; margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.routine-agenda-dayname--today { color: #5b9dff; }
+.routine-agenda-items { display: flex; flex-direction: column; gap: 8px; }
+.routine-agenda-item {
+  display: flex; gap: 12px; align-items: stretch;
+  padding: 8px 10px; border-radius: 8px;
+  background: hsl(var(--routine-hue, 200), 45%, 14%);
+  border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
+}
+.routine-agenda-item--clash {
+  background: rgba(231,76,60,0.16);
+  border-left-color: #e74c3c;
+}
+.routine-agenda-time {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 64px; font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--text1);
+}
+.routine-agenda-time span { font-weight: 400; color: var(--text3); }
+.routine-agenda-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; justify-content: center; }
+.routine-agenda-code { font-size: 13px; font-weight: 700; color: var(--text1); }
+.routine-agenda-sec { font-weight: 600; color: var(--text2); }
+.routine-agenda-meta { font-size: 11px; color: var(--text2); letter-spacing: 0.2px; }
+
+@media (max-width: 720px) {
+  .routine-grid-wrap { display: none; }
+  .routine-agenda { display: block; }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
  * Routine Builder — faculty rating badges (PR 5)
  * ─────────────────────────────────────────────────────────────────────────── */
