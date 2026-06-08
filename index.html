@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-rfQjBIkleC1rnIcqdkqyU01P95qXvkXOT7rWdsnTUTI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-x+NqmYew8M9lNxsPYbJZ7EmxOLMAsf2UpAeua4TyX1g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5292,6 +5292,13 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-header h3 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
 .routine-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .routine-header-right { display: flex; align-items: center; gap: 6px; }
+.routine-share-note {
+  font-size: 11px; font-weight: 600; color: #2ecc71;
+  background: rgba(46,204,113,0.10);
+  border: 1px solid rgba(46,204,113,0.24);
+  padding: 3px 9px; border-radius: 999px;
+  white-space: nowrap;
+}
 
 .routine-source-badge {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
@@ -15599,6 +15606,42 @@ function pickedCourseCodes(state) {
     return Object.keys(state.picks).sort();
 }
 
+// Cap on courses decoded from a shared link — guards against abusive payloads.
+const MAX_SHARE_COURSES = 15;
+const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}$/;
+
+// Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`
+// pairs joined by `~`. Sorted for a stable link; a null pick encodes as the
+// bare code.
+function encodeRoutinePicks(state) {
+    const parts = [];
+    for (const code of pickedCourseCodes(state)) {
+        const sid = state.picks[code];
+        parts.push(sid == null ? code : `${code}-${sid}`);
+    }
+    return parts.join('~');
+}
+
+// Inverse of encodeRoutinePicks. Lenient: malformed entries are skipped, not
+// thrown. The caller still re-validates against the live feed before picking.
+function decodeRoutinePicks(encoded) {
+    const picks = {};
+    if (typeof encoded !== 'string' || encoded === '') return { picks };
+    for (const part of encoded.split('~').slice(0, MAX_SHARE_COURSES)) {
+        if (!part) continue;
+        const dash = part.indexOf('-');
+        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash));
+        if (!SHARE_CODE_RE.test(code)) continue;
+        let sid = null;
+        if (dash !== -1) {
+            const n = Number.parseInt(part.slice(dash + 1), 10);
+            sid = Number.isFinite(n) && n > 0 ? n : null;
+        }
+        picks[code] = sid;
+    }
+    return { picks };
+}
+
 function selectedSections(state, index) {
     const out = [];
     for (const [code, sectionId] of Object.entries(state.picks)) {
@@ -16281,6 +16324,8 @@ const _store = {
   sortMode: 'section',     // 'section' | 'faculty' | 'seats' | 'time'
   expanded: new Set(),     // courseCodes the user re-opened after picking a section
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
+  shareNote: '',           // transient "link copied" feedback
+  pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
 };
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
@@ -16326,6 +16371,22 @@ function _persistRoutine() {
   catch {}
 }
 
+// Read a `?routine=…` shared-link payload once at startup and strip it from the
+// URL (keeping the hash) so a later refresh can't re-apply and clobber edits.
+// The payload is held until the feed loads, then validated + applied.
+function _captureSharePayload() {
+  try {
+    if (typeof location === 'undefined') return null;
+    const params = new URLSearchParams(location.search);
+    const raw = params.get('routine');
+    if (!raw) return null;
+    if (typeof history !== 'undefined' && history.replaceState) {
+      history.replaceState(null, '', location.pathname + location.hash);
+    }
+    return raw;
+  } catch { return null; }
+}
+
 // ── ACTIONS (delegated via dispatch.js) ─────────────────────────────────────
 registerAction('routine:refresh',     () => _refresh(true));
 registerAction('routine:clearCache',  () => { clearConnectFeedCache(); _refresh(true); });
@@ -16337,6 +16398,7 @@ registerAction('routine:clearAll',    () => _onClearAll());
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
+registerAction('routine:share',       () => _onShare());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -16404,6 +16466,65 @@ function _onExportPng() {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// Validate a decoded shared payload against the live feed and replace the
+// current routine with it. Codes/sids that no longer exist are skipped; if
+// nothing survives, the existing routine is left untouched.
+function _applySharedRoutine(encoded) {
+  if (!_store.index) return;
+  const decoded = decodeRoutinePicks(encoded);
+  let next = emptyRoutineState();
+  for (const code of pickedCourseCodes(decoded)) {
+    const list = _store.index.get(code);
+    if (!list) continue;
+    next = pickCourse(next, code);
+    const sid = decoded.picks[code];
+    if (sid != null && list.some(s => s.sectionId === sid)) {
+      next = pickSection(next, code, sid);
+    }
+  }
+  if (pickedCourseCodes(next).length === 0) return;
+  _store.routine = next;
+  _persistRoutine();
+}
+
+function _shareUrl() {
+  const payload = encodeRoutinePicks(_store.routine);
+  const base = (typeof location !== 'undefined') ? location.origin + location.pathname : '';
+  return `${base}?routine=${encodeURIComponent(payload)}#calculator/routine`;
+}
+
+function _onShare() {
+  if (pickedCourseCodes(_store.routine).length === 0) return;
+  const url = _shareUrl();
+  const flash = (msg) => {
+    _store.shareNote = msg;
+    _rerender();
+    setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => flash('✓ Link copied'), () => _fallbackCopy(url, flash));
+    } else {
+      _fallbackCopy(url, flash);
+    }
+  } catch { _fallbackCopy(url, flash); }
+}
+
+// execCommand fallback for browsers without the async clipboard API.
+function _fallbackCopy(text, flash) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    ta.remove();
+    flash(ok ? '✓ Link copied' : 'Press Ctrl/⌘+C to copy');
+  } catch { flash('Copy failed'); }
 }
 
 function _planCourses() {
@@ -16511,6 +16632,12 @@ async function _refresh(force = false) {
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
+    // A shared link's picks are applied here — once we have the feed to
+    // validate them against — and only on the first load that carries one.
+    if (_store.pendingShare) {
+      _applySharedRoutine(_store.pendingShare);
+      _store.pendingShare = null;
+    }
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -16855,6 +16982,12 @@ function _headerHTML(summary) {
         ${clashWarn}
       </div>
       <div class="routine-header-right">
+        ${_store.shareNote
+          ? `<span class="routine-share-note" role="status">${escHtml(_store.shareNote)}</span>`
+          : ''}
+        ${Object.keys(_store.routine.picks).length > 0
+          ? `<button class="btn-secondary btn-sm" data-action="routine:share" title="Copy a shareable link to this routine">🔗 Share</button>`
+          : ''}
         <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:clearAll" title="Remove all picked courses">Clear</button>`
@@ -21744,6 +21877,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/reviews')) return 'reviews';
   if (hash === '#calculator/difficulty')      return 'difficulty';
   if (hash === '#calculator/papers')          return 'papers';
+  if (hash.startsWith('#calculator/routine'))  return 'routine';
 
   // Then check sessionStorage
   try {
