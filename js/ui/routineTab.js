@@ -38,6 +38,11 @@ import { registerAction } from '../core/dispatch.js';
 const ROUTINE_STORAGE_KEY = 'shohoj_routine_v1';
 const DAY_ORDER   = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const DAY_SHORT   = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
+// Date.getDay() (0=Sun..6=Sat) -> canonical day name, for the "today" marker.
+const WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+// Grid row height in px; one row = layout.rowMinutes. Kept in one place so the
+// grid template and the current-time line agree.
+const ROW_PX = 14;
 
 const _store = {
   loading: false,
@@ -406,10 +411,13 @@ function _html() {
 function _loadingHTML() {
   return `
     <div class="routine-tab">
-      <div class="routine-loading">
-        <div class="routine-spinner" aria-hidden="true"></div>
-        <div>Fetching live section data from CONNECT…</div>
+      <div class="routine-skeleton" aria-hidden="true">
+        <div class="rsk rsk-header"></div>
+        <div class="rsk rsk-picker"></div>
+        <div class="rsk rsk-block"></div>
+        <div class="rsk rsk-block"></div>
       </div>
+      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
     </div>
   `;
 }
@@ -490,11 +498,15 @@ function _gridHTML(routine, clashMap) {
   if (!layout) return '';
 
   // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
-  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, 14px);`;
+  const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, ${ROW_PX}px);`;
 
-  const dayHeaders = layout.days.map((d, i) => `
-    <div class="routine-grid-day-header" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
-  `).join('');
+  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const dayHeaders = layout.days.map((d, i) => {
+    const isToday = d === today;
+    return `
+    <div class="routine-grid-day-header ${isToday ? 'routine-grid-day-header--today' : ''}" style="grid-column: ${i + 2}; grid-row: 1;">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+  `;
+  }).join('');
 
   // Time labels every 2 rows (= every hour).
   const timeLabels = [];
@@ -526,9 +538,24 @@ function _gridHTML(routine, clashMap) {
         ${dayHeaders}
         ${timeLabels.join('')}
         ${blocks}
+        ${_nowLineHTML(layout)}
       </div>
     </div>
   `;
+}
+
+// Thin line across the day columns at the current local time. Returns '' when
+// "now" falls outside the grid's displayed hours. The line sits on the right
+// grid row and is nudged within that row by the sub-row fraction.
+function _nowLineHTML(layout) {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (nowMin < layout.startMin || nowMin >= layout.endMin) return '';
+  const rowsFromStart = (nowMin - layout.startMin) / layout.rowMinutes;
+  const rowIndex = Math.floor(rowsFromStart);     // 0-based data row
+  const frac = rowsFromStart - rowIndex;          // position within the row
+  // Header is grid-row 1; data rows start at 2. Span day columns (skip labels).
+  return `<div class="routine-grid-now" style="grid-column: 2 / -1; grid-row: ${rowIndex + 2}; transform: translateY(calc(${frac.toFixed(4)} * ${ROW_PX}px));" aria-hidden="true"></div>`;
 }
 
 function _gridBlockHTML(block, clashMap, hueMap) {

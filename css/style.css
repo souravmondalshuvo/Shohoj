@@ -5277,6 +5277,24 @@ body[data-page="admin"] .orb { display: none !important; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .routine-error h3 { color: #e74c3c; margin: 0 0 6px; }
 
+/* Skeleton loading state — shimmer placeholders shaped like the real layout. */
+.routine-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.rsk {
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 37%,
+    rgba(255,255,255,0.04) 63%);
+  background-size: 400% 100%;
+  animation: rsk-shimmer 1.4s ease infinite;
+}
+.rsk-header { height: 26px; width: 220px; }
+.rsk-picker { height: 40px; width: 100%; }
+.rsk-block  { height: 84px; width: 100%; }
+@keyframes rsk-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.routine-loading-note { text-align: center; color: var(--text3); font-size: 12px; margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { .rsk { animation: none; } }
+
 .routine-picker { display: flex; gap: 8px; align-items: center; }
 .routine-input {
   flex: 1; min-width: 200px;
@@ -5494,6 +5512,28 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-grid-row--hour {
   border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* Current-time line across the day columns. Blue, not red — red means clash. */
+.routine-grid-now {
+  position: relative;
+  align-self: start;
+  height: 0;
+  border-top: 2px solid #5b9dff;
+  pointer-events: none;
+  z-index: 3;
+}
+.routine-grid-now::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5b9dff;
+}
+.routine-grid-day-header--today {
+  color: #5b9dff;
 }
 .routine-grid-block {
   margin: 1px 2px;
