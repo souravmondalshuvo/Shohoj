@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-WP5C+MQezOPfmDbVDykN5sFgPQebo2unmIE8nEUogVg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-XA4JyjUUoGl5YPfTcSZ09FSaS/6wuk01fPcCWHXUjaA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5555,10 +5555,21 @@ body[data-page="admin"] .orb { display: none !important; }
   cursor: default;
   transition: transform 0.12s;
   box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  /* --sub-x is 0 unless the block is tiled side-by-side (see --split). */
+  transform: translateX(var(--sub-x, 0));
 }
 .routine-grid-block:hover {
-  transform: translateY(-1px);
+  transform: translateX(var(--sub-x, 0)) translateY(-1px);
   z-index: 2;
+}
+/* Overlapping blocks tiled into N side-by-side sub-columns within one day.
+   Width is set inline to 100%/N; border-box + zeroed h-margins make the
+   tiles add up exactly, and the colored left accent keeps them readable. */
+.routine-grid-block--split {
+  box-sizing: border-box;
+  justify-self: start;
+  margin-left: 0;
+  margin-right: 0;
 }
 .routine-grid-block--clash {
   background: rgba(231, 76, 60, 0.30);
@@ -15688,13 +15699,62 @@ function computeGridLayout(routine, options = {}) {
                 dayCol,
                 gridRowStart: rowStart + 1,
                 gridRowSpan: Math.max(1, rowEnd - rowStart),
+                subCol: 0,
+                subCols: 1,
                 startMin: slot.startMin,
                 endMin: slot.endMin,
             });
         }
     }
 
+    assignSubColumns(blocks);
+
     return { days, startMin, endMin, rowMinutes, totalRows, rowLabels, blocks };
+}
+
+// Lay overlapping blocks side-by-side instead of stacking them. For each day,
+// group blocks into clusters of transitively-overlapping time ranges, then
+// partition each cluster greedily into the fewest columns (interval
+// partitioning). Mutates each block's subCol (its column) and subCols (columns
+// in its cluster). Non-overlapping blocks stay at 0 / 1.
+function assignSubColumns(blocks) {
+    const byDay = new Map();
+    for (const b of blocks) {
+        const list = byDay.get(b.dayCol);
+        if (list) list.push(b);
+        else byDay.set(b.dayCol, [b]);
+    }
+
+    for (const dayBlocks of byDay.values()) {
+        dayBlocks.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+        let cluster = [];
+        let clusterEnd = -Infinity;
+
+        const flush = () => {
+            if (cluster.length === 0) return;
+            const colEnds = []; // last endMin placed in each column
+            for (const b of cluster) {
+                let placed = -1;
+                for (let c = 0; c < colEnds.length; c++) {
+                    if (colEnds[c] <= b.startMin) { placed = c; break; }
+                }
+                if (placed === -1) { placed = colEnds.length; colEnds.push(b.endMin); }
+                else colEnds[placed] = b.endMin;
+                b.subCol = placed;
+            }
+            const width = colEnds.length;
+            for (const b of cluster) b.subCols = width;
+            cluster = [];
+        };
+
+        for (const b of dayBlocks) {
+            if (cluster.length > 0 && b.startMin >= clusterEnd) flush();
+            cluster.push(b);
+            clusterEnd = Math.max(clusterEnd, b.endMin);
+        }
+        flush();
+    }
 }
 
 // ── js/core/routineFaculty.js ───────────────────────────────────
@@ -16641,11 +16701,20 @@ function _gridBlockHTML(block, clashMap) {
   const mark = clashMap.get(block.sectionId);
   const isClash = mark && (mark.classClash || mark.examClash);
   const hue = _hueForSection(block.sectionId);
-  const styles = [
+  // Overlapping blocks share a day column; tile them side-by-side at 1/N width
+  // and offset by sub-column. --sub-x drives the X translate so the hover lift
+  // (translateY) can compose with it instead of snapping the block back.
+  const isSplit = block.subCols > 1;
+  const styleParts = [
     `grid-column: ${block.dayCol + 2}`,
     `grid-row: ${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
     `--routine-hue: ${hue}`,
-  ].join('; ');
+  ];
+  if (isSplit) {
+    styleParts.push(`width: calc(100% / ${block.subCols})`);
+    styleParts.push(`--sub-x: calc(100% * ${block.subCol})`);
+  }
+  const styles = styleParts.join('; ');
   const rating = _store.ratingLoaded
     ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
     : null;
@@ -16657,7 +16726,7 @@ function _gridBlockHTML(block, clashMap) {
     : '';
   const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}`;
   return `
-    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''}" style="${styles}" title="${escAttr(title)}">
+    <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${escHtml(block.courseCode)}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
