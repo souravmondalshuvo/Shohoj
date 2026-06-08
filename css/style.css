@@ -5432,6 +5432,33 @@ body[data-page="admin"] .orb { display: none !important; }
   background: rgba(241,196,15,0.12); color: #f1c40f; border-color: rgba(241,196,15,0.35);
 }
 
+/* ── Section time filters ──────────────────────────────────────────────── */
+.routine-filters {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 2px 0;
+}
+.routine-filter-label {
+  font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px;
+}
+.routine-filter-sep {
+  width: 1px; align-self: stretch; min-height: 16px;
+  background: rgba(255,255,255,0.10); margin: 0 2px;
+}
+.routine-filter-days { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.routine-filter-toggle, .routine-filter-day {
+  font: 11px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.routine-filter-day { padding: 4px 8px; }
+.routine-filter-toggle:hover, .routine-filter-day:hover {
+  background: rgba(255,255,255,0.05); color: var(--text1);
+}
+.routine-filter-toggle.is-active, .routine-filter-day.is-active {
+  background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38);
+}
+
 /* Per-course actions + section legend */
 .routine-course-actions { display: flex; align-items: center; gap: 6px; }
 .routine-change-btn {
