@@ -5512,10 +5512,21 @@ body[data-page="admin"] .orb { display: none !important; }
   cursor: default;
   transition: transform 0.12s;
   box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  /* --sub-x is 0 unless the block is tiled side-by-side (see --split). */
+  transform: translateX(var(--sub-x, 0));
 }
 .routine-grid-block:hover {
-  transform: translateY(-1px);
+  transform: translateX(var(--sub-x, 0)) translateY(-1px);
   z-index: 2;
+}
+/* Overlapping blocks tiled into N side-by-side sub-columns within one day.
+   Width is set inline to 100%/N; border-box + zeroed h-margins make the
+   tiles add up exactly, and the colored left accent keeps them readable. */
+.routine-grid-block--split {
+  box-sizing: border-box;
+  justify-self: start;
+  margin-left: 0;
+  margin-right: 0;
 }
 .routine-grid-block--clash {
   background: rgba(231, 76, 60, 0.30);
