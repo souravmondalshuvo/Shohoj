@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-WtAwEJetNoovdqYRVgs0YqwfUc+7zEdDP3L2acUig5E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-jNmfAZjgHKVoUGlYfXRn1CFTKSe7IK4jod2HDlvwoD4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16381,6 +16381,7 @@ async function _refresh(force = false) {
   try {
     const result = await feedPromise;
     _store.index = indexByCourse(result.sections);
+    _dataVersion++; // new section index ⇒ invalidate the clash memo
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
@@ -16493,15 +16494,45 @@ function _errorHTML() {
   `;
 }
 
+// ── CLASH MEMO ──────────────────────────────────────────────────────────────
+// Every derived value below (view state + per-section candidate clashes) is a
+// pure function of the user's picks and the current section index. Those only
+// change on structural actions (add/remove/pick/unpick/applyCombo/clear) and on
+// feed refresh — never on a sort/expand/hide click. So we cache on a signature
+// of (dataVersion + picks) and reuse it across display-only repaints.
+let _dataVersion = 0;
+let _memoKey = null;
+let _memoView = null;
+let _memoCandClash = new Map(); // sectionId -> { cls, exam, codes }
+
+function _picksSignature() {
+  const picks = _store.routine.picks;
+  const parts = Object.keys(picks).sort().map(k => `${k}:${picks[k]}`);
+  return `${_dataVersion}|${parts.join(',')}`;
+}
+
+// Invalidate the memo whenever the signature changes. Cheap to call often.
+function _ensureMemo() {
+  const sig = _picksSignature();
+  if (sig !== _memoKey) {
+    _memoKey = sig;
+    _memoView = null;
+    _memoCandClash = new Map();
+  }
+}
+
 // Shared per-render view state. Centralised so the scoped repaints
 // (_repaintList / _repaintControls) derive from exactly the same data as a
-// full render.
+// full render. Memoized: recomputed only when picks/index change.
 function _computeViewState() {
+  _ensureMemo();
+  if (_memoView) return _memoView;
   const summary = summarizeRoutine(_store.routine, _store.index);
   const picked  = pickedCourseCodes(_store.routine);
   const selected = selectedSections(_store.routine, _store.index);
   const clashMap = buildClashMap(selected);
-  return { summary, picked, selected, clashMap };
+  _memoView = { summary, picked, selected, clashMap };
+  return _memoView;
 }
 
 function _mainHTML() {
@@ -16865,7 +16896,13 @@ function _ratingValue(section) {
 }
 
 // Does this (unpicked) section clash with any resolved pick from another course?
+// Memoized per sectionId under the current picks signature — the result depends
+// only on this section vs the selected picks of *other* courses, and a section's
+// course is fixed, so sectionId is a sufficient key.
 function _candidateClash(section, courseCode, selected) {
+  _ensureMemo();
+  const cached = _memoCandClash.get(section.sectionId);
+  if (cached) return cached;
   let cls = false, exam = false;
   const codes = new Set();
   for (const other of selected) {
@@ -16873,7 +16910,9 @@ function _candidateClash(section, courseCode, selected) {
     if (hasClassClash(section, other)) { cls = true; codes.add(other.courseCode); }
     if (hasExamClash(section, other))  { exam = true; codes.add(other.courseCode); }
   }
-  return { cls, exam, codes: Array.from(codes) };
+  const result = { cls, exam, codes: Array.from(codes) };
+  _memoCandClash.set(section.sectionId, result);
+  return result;
 }
 
 function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
