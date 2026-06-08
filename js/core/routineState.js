@@ -47,6 +47,42 @@ export function pickedCourseCodes(state) {
     return Object.keys(state.picks).sort();
 }
 
+// Cap on courses decoded from a shared link — guards against abusive payloads.
+export const MAX_SHARE_COURSES = 15;
+const SHARE_CODE_RE = /^[A-Z]{2,6}\d{2,4}$/;
+
+// Encode picks into a compact, URL-safe string: `CODE` or `CODE-sectionId`
+// pairs joined by `~`. Sorted for a stable link; a null pick encodes as the
+// bare code.
+export function encodeRoutinePicks(state) {
+    const parts = [];
+    for (const code of pickedCourseCodes(state)) {
+        const sid = state.picks[code];
+        parts.push(sid == null ? code : `${code}-${sid}`);
+    }
+    return parts.join('~');
+}
+
+// Inverse of encodeRoutinePicks. Lenient: malformed entries are skipped, not
+// thrown. The caller still re-validates against the live feed before picking.
+export function decodeRoutinePicks(encoded) {
+    const picks = {};
+    if (typeof encoded !== 'string' || encoded === '') return { picks };
+    for (const part of encoded.split('~').slice(0, MAX_SHARE_COURSES)) {
+        if (!part) continue;
+        const dash = part.indexOf('-');
+        const code = normalizeCourseCode(dash === -1 ? part : part.slice(0, dash));
+        if (!SHARE_CODE_RE.test(code)) continue;
+        let sid = null;
+        if (dash !== -1) {
+            const n = Number.parseInt(part.slice(dash + 1), 10);
+            sid = Number.isFinite(n) && n > 0 ? n : null;
+        }
+        picks[code] = sid;
+    }
+    return { picks };
+}
+
 export function selectedSections(state, index) {
     const out = [];
     for (const [code, sectionId] of Object.entries(state.picks)) {

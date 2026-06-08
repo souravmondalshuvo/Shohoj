@@ -15,6 +15,9 @@ import {
     selectedSections,
     buildClashMap,
     summarizeRoutine,
+    encodeRoutinePicks,
+    decodeRoutinePicks,
+    MAX_SHARE_COURSES,
 } from '../js/core/routineState.js';
 import { parseFeed, indexByCourse } from '../js/core/connectFeed.js';
 
@@ -208,6 +211,39 @@ test('unresolved course where sectionId no longer exists', () => {
     const s = pickSection(emptyRoutineState(), 'CSE220', 9999);
     const sum = summarizeRoutine(s, index);
     eq(sum.unresolvedCourses, ['CSE220']);
+});
+
+// ---- Share codec ----
+console.log('\nshare codec:');
+test('encode is sorted, ~-joined, with CODE-sid and bare-code forms', () => {
+    let s = pickCourse(emptyRoutineState(), 'PHY111');
+    s = pickSection(s, 'CSE220', 123);
+    s = pickCourse(s, 'MAT215'); // null pick
+    eq(encodeRoutinePicks(s), 'CSE220-123~MAT215~PHY111');
+});
+test('encode of empty routine is the empty string', () => {
+    eq(encodeRoutinePicks(emptyRoutineState()), '');
+});
+test('decode round-trips encode', () => {
+    let s = pickSection(pickCourse(emptyRoutineState(), 'MAT215'), 'CSE220', 7);
+    eq(decodeRoutinePicks(encodeRoutinePicks(s)).picks, { CSE220: 7, MAT215: null });
+});
+test('decode lowercases-in / uppercases-out and trims', () => {
+    eq(decodeRoutinePicks('cse220-5').picks, { CSE220: 5 });
+});
+test('decode skips malformed entries but keeps valid ones', () => {
+    eq(decodeRoutinePicks('CSE220-9~~garbage!~MAT215').picks, { CSE220: 9, MAT215: null });
+});
+test('decode treats a non-positive / non-numeric sid as null', () => {
+    eq(decodeRoutinePicks('CSE220-0~MAT215-abc').picks, { CSE220: null, MAT215: null });
+});
+test('decode caps at MAX_SHARE_COURSES entries', () => {
+    const many = Array.from({ length: MAX_SHARE_COURSES + 5 }, (_, i) => `CSE${100 + i}`).join('~');
+    eq(Object.keys(decodeRoutinePicks(many).picks).length, MAX_SHARE_COURSES);
+});
+test('decode of empty / non-string is an empty routine', () => {
+    eq(decodeRoutinePicks('').picks, {});
+    eq(decodeRoutinePicks(null).picks, {});
 });
 
 // ---------------------------------------------------------------------------
