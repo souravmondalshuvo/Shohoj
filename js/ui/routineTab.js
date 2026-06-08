@@ -261,6 +261,7 @@ async function _refresh(force = false) {
   try {
     const result = await feedPromise;
     _store.index = indexByCourse(result.sections);
+    _dataVersion++; // new section index ⇒ invalidate the clash memo
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
@@ -373,15 +374,45 @@ function _errorHTML() {
   `;
 }
 
+// ── CLASH MEMO ──────────────────────────────────────────────────────────────
+// Every derived value below (view state + per-section candidate clashes) is a
+// pure function of the user's picks and the current section index. Those only
+// change on structural actions (add/remove/pick/unpick/applyCombo/clear) and on
+// feed refresh — never on a sort/expand/hide click. So we cache on a signature
+// of (dataVersion + picks) and reuse it across display-only repaints.
+let _dataVersion = 0;
+let _memoKey = null;
+let _memoView = null;
+let _memoCandClash = new Map(); // sectionId -> { cls, exam, codes }
+
+function _picksSignature() {
+  const picks = _store.routine.picks;
+  const parts = Object.keys(picks).sort().map(k => `${k}:${picks[k]}`);
+  return `${_dataVersion}|${parts.join(',')}`;
+}
+
+// Invalidate the memo whenever the signature changes. Cheap to call often.
+function _ensureMemo() {
+  const sig = _picksSignature();
+  if (sig !== _memoKey) {
+    _memoKey = sig;
+    _memoView = null;
+    _memoCandClash = new Map();
+  }
+}
+
 // Shared per-render view state. Centralised so the scoped repaints
 // (_repaintList / _repaintControls) derive from exactly the same data as a
-// full render.
+// full render. Memoized: recomputed only when picks/index change.
 function _computeViewState() {
+  _ensureMemo();
+  if (_memoView) return _memoView;
   const summary = summarizeRoutine(_store.routine, _store.index);
   const picked  = pickedCourseCodes(_store.routine);
   const selected = selectedSections(_store.routine, _store.index);
   const clashMap = buildClashMap(selected);
-  return { summary, picked, selected, clashMap };
+  _memoView = { summary, picked, selected, clashMap };
+  return _memoView;
 }
 
 function _mainHTML() {
@@ -745,7 +776,13 @@ function _ratingValue(section) {
 }
 
 // Does this (unpicked) section clash with any resolved pick from another course?
+// Memoized per sectionId under the current picks signature — the result depends
+// only on this section vs the selected picks of *other* courses, and a section's
+// course is fixed, so sectionId is a sufficient key.
 function _candidateClash(section, courseCode, selected) {
+  _ensureMemo();
+  const cached = _memoCandClash.get(section.sectionId);
+  if (cached) return cached;
   let cls = false, exam = false;
   const codes = new Set();
   for (const other of selected) {
@@ -753,7 +790,9 @@ function _candidateClash(section, courseCode, selected) {
     if (hasClassClash(section, other)) { cls = true; codes.add(other.courseCode); }
     if (hasExamClash(section, other))  { exam = true; codes.add(other.courseCode); }
   }
-  return { cls, exam, codes: Array.from(codes) };
+  const result = { cls, exam, codes: Array.from(codes) };
+  _memoCandClash.set(section.sectionId, result);
+  return result;
 }
 
 function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
