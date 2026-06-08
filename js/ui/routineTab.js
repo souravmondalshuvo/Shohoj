@@ -627,7 +627,51 @@ function _gridHTML(routine, clashMap) {
         ${_nowLineHTML(layout)}
       </div>
     </div>
+    ${_agendaHTML(layout, clashMap, hueMap)}
   `;
+}
+
+// Day-by-day list view of the same layout, shown instead of the grid on narrow
+// screens (toggled purely in CSS — no JS viewport detection). Days with no
+// classes are omitted; within a day, classes are listed in time order.
+function _agendaHTML(layout, clashMap, hueMap) {
+  const byDay = new Map();
+  for (const b of layout.blocks) {
+    const list = byDay.get(b.day);
+    if (list) list.push(b);
+    else byDay.set(b.day, [b]);
+  }
+  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const days = layout.days.filter(d => byDay.has(d));
+  const sections = days.map(d => {
+    const items = byDay.get(d)
+      .sort((a, b) => a.startMin - b.startMin)
+      .map(b => _agendaItemHTML(b, clashMap, hueMap))
+      .join('');
+    return `
+      <div class="routine-agenda-day">
+        <div class="routine-agenda-dayname ${d === today ? 'routine-agenda-dayname--today' : ''}">${escHtml(DAY_SHORT[d] || d.slice(0, 3))}</div>
+        <div class="routine-agenda-items">${items}</div>
+      </div>`;
+  }).join('');
+  return `<div class="routine-agenda">${sections}</div>`;
+}
+
+function _agendaItemHTML(block, clashMap, hueMap) {
+  const mark = clashMap.get(block.sectionId);
+  const isClash = mark && (mark.classClash || mark.examClash);
+  const hue = (hueMap && hueMap.get(block.courseCode)) ?? COURSE_HUES[0];
+  const clashPill = isClash
+    ? ` <span class="routine-clash-pill" title="Clashes with another pick">⚠ clash</span>`
+    : '';
+  return `
+    <div class="routine-agenda-item ${isClash ? 'routine-agenda-item--clash' : ''}" style="--routine-hue: ${hue};">
+      <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
+      <div class="routine-agenda-body">
+        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">§${escHtml(block.sectionName)}</span>${clashPill}</div>
+        <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
+      </div>
+    </div>`;
 }
 
 // Thin line across the day columns at the current local time. Returns '' when
