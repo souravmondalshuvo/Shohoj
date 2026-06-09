@@ -75,12 +75,32 @@ if (typeof document !== 'undefined') {
   });
 }
 
+// When auth resolves (or flips), push the current local watchlist to Firestore
+// so signing in retroactively enables email alerts for sections already being
+// watched, and repaint so the panel's email line reflects the new identity.
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:auth-changed', () => {
+    _seatsSyncCloud();
+    _seatsRender();
+  });
+}
+
 // Persisted watches present at boot → start the background poller now.
 _seatsSyncPoller();
 
 // ── SEAT-DROP WATCH ───────────────────────────────────────────────────────────
 function _seatsSaveWatches() {
   try { localStorage.setItem(SEAT_WATCH_STORAGE_KEY, serializeWatches(_seats.watches)); } catch { /* storage off */ }
+}
+
+// Mirror the watched-section *set* to Firestore (when signed in) so the cron
+// Worker can email on a drop even with Shohoj closed. Called only when the set
+// changes (add/remove) — not on every poll, which just updates hadSeat locally.
+// Fire-and-forget; the auth layer logs failures and the local watch still works.
+function _seatsSyncCloud() {
+  if (typeof window === 'undefined' || typeof window._shohoj_syncSeatAlerts !== 'function') return;
+  const payload = _seats.watches.map(w => ({ id: w.sectionId, code: w.courseCode, name: w.sectionName }));
+  try { window._shohoj_syncSeatAlerts(payload); } catch { /* ignore */ }
 }
 
 function _seatsFindSection(sectionId) {
@@ -103,6 +123,7 @@ function _seatsToggleWatch(sectionId) {
     _seatsRequestNotifyPermission();
   }
   _seatsSaveWatches();
+  _seatsSyncCloud();
   _seatsSyncPoller();
   _seatsRender();
 }
@@ -110,6 +131,7 @@ function _seatsToggleWatch(sectionId) {
 function _seatsRemoveWatch(sectionId) {
   _seats.watches = removeWatch(_seats.watches, sectionId);
   _seatsSaveWatches();
+  _seatsSyncCloud();
   _seatsSyncPoller();
   _seatsRender();
 }
@@ -413,6 +435,7 @@ function _seatsWatchPanelHTML() {
       <div class="seats-watch-head">
         <h4>🔔 Watching (${_seats.watches.length})</h4>
         <span class="seats-watch-note">${escHtml(_seatsNotifNote())}</span>
+        <span class="seats-watch-note seats-watch-note--email">${escHtml(_seatsEmailNote())}</span>
       </div>
       <div class="seats-watch-list">${rows}</div>
     </div>
@@ -452,6 +475,18 @@ function _seatsNotifNote() {
     return 'Notifications blocked — you’ll still get in-app alerts while Shohoj is open.';
   }
   return 'Allow notifications to get alerted even on another tab.';
+}
+
+// Email-channel line: when signed in, alerts also arrive by email even with
+// Shohoj fully closed (delivered by the cron Worker); otherwise prompt sign-in.
+function _seatsEmailNote() {
+  const id = (typeof window !== 'undefined' && typeof window._shohoj_seatAlertIdentity === 'function')
+    ? window._shohoj_seatAlertIdentity()
+    : { signedIn: false, email: null };
+  if (id.signedIn) {
+    return `✉️ Also emailing ${id.email} if a seat opens while Shohoj is closed.`;
+  }
+  return '✉️ Sign in with your BRACU email to get alerts even when Shohoj is closed.';
 }
 
 // ── FORMATTERS ────────────────────────────────────────────────────────────────

@@ -753,7 +753,187 @@ export function validateReviewPayload(p) {
   return { value: { facultyInitials, courseCode, ratings, semester, text } };
 }
 
+// ── Seat-drop email alerts (cron) ────────────────────────────────────────────
+// A scheduled handler polls the CONNECT feed once for every user, edge-detects
+// watched sections flipping full→open against persisted per-user state, and
+// emails via Resend. Parsing / detection / formatting are pure and exported for
+// tests; the orchestration below does the Firestore + Resend I/O.
+
+export const SEAT_FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
+const SEAT_ALERT_WATCHES = 'seatAlertWatches';
+const SEAT_ALERT_STATE   = 'seatAlertState';
+
+// Build sectionId → seat info from the raw CONNECT array. Tolerant of junk.
+export function parseFeedSeatMap(payload) {
+  const map = new Map();
+  if (!Array.isArray(payload)) return map;
+  for (const s of payload) {
+    const id = s?.sectionId;
+    if (typeof id !== 'number') continue;
+    const capacity = Number.isFinite(s.capacity) ? Number(s.capacity) : 0;
+    const consumed = Number.isFinite(s.consumedSeat) ? Number(s.consumedSeat) : 0;
+    map.set(id, {
+      code: String(s.courseCode || '').toUpperCase(),
+      name: String(s.sectionName || ''),
+      hasSeat: capacity > 0 && consumed < capacity,
+      seatsLeft: Math.max(0, capacity - consumed),
+    });
+  }
+  return map;
+}
+
+// Edge-triggered drop detection for one user's watchlist.
+//   watched   : [{ id, code, name }]
+//   seatMap   : Map<id, {code,name,hasSeat,seatsLeft}>
+//   priorSeen : { "<id>": boolean }  worker-managed state (string keys)
+// Returns { drops:[{id,label,seatsLeft}], nextSeen, changed }. A drop fires only
+// on an observed false→true flip; an unknown prior state is seeded (no email),
+// so first-run or newly-added sections that are already open never spam.
+export function detectSeatDrops(watched, seatMap, priorSeen = {}) {
+  const drops = [];
+  const nextSeen = {};
+  let changed = false;
+  for (const w of (watched || [])) {
+    const id = w?.id;
+    if (typeof id !== 'number') continue;
+    const key = String(id);
+    const info = seatMap.get(id);
+    if (!info) {
+      // Not in the current feed — preserve any prior state, never drop.
+      if (key in priorSeen) nextSeen[key] = priorSeen[key];
+      continue;
+    }
+    if (priorSeen[key] === false && info.hasSeat) {
+      const label = `${info.code || w.code || ''} §${info.name || w.name || ''}`.trim();
+      drops.push({ id, label, seatsLeft: info.seatsLeft });
+    }
+    nextSeen[key] = info.hasSeat;
+    if (priorSeen[key] !== info.hasSeat) changed = true;
+  }
+  // A pruned section (no longer watched) also counts as a state change.
+  if (!changed && Object.keys(priorSeen).length !== Object.keys(nextSeen).length) {
+    changed = true;
+  }
+  return { drops, nextSeen, changed };
+}
+
+// Plain, escaped email for one user's freed seats.
+export function buildSeatAlertEmail(drops) {
+  const items = drops.map(d =>
+    `<li style="margin:6px 0;"><strong>${escapeHtml(d.label)}</strong> — ${d.seatsLeft} seat${d.seatsLeft === 1 ? '' : 's'} left</li>`,
+  ).join('');
+  const n = drops.length;
+  const subject = sanitizeHeaderValue(
+    n === 1 ? `[Shohoj] Seat open: ${drops[0].label}` : `[Shohoj] ${n} watched seats just opened`,
+    200,
+  );
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; line-height: 1.5; color:#222;">
+      <h2 style="margin:0 0 8px;color:#0b0f0d;">🎉 A seat just opened</h2>
+      <p style="margin:0 0 16px;color:#555;">A section you're watching on Shohoj has a free seat. Grab it on USIS before it fills again:</p>
+      <ul style="padding-left:20px;margin:0 0 20px;">${items}</ul>
+      <p style="margin:0;color:#999;font-size:12px;">You're getting this because you enabled seat-drop email alerts in Shohoj. Remove the section from your watchlist to stop these.</p>
+    </div>
+  `;
+  return { subject, html };
+}
+
+async function resendSeatAlert(env, to, subject, html) {
+  if (!env.RESEND_API_KEY) return false;
+  const from = env.EMAIL_FROM || 'Shohoj <onboarding@resend.dev>';
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject, html }),
+  });
+  if (!res.ok) {
+    console.error(`Resend ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
+    return false;
+  }
+  return true;
+}
+
+async function firestoreListAll(env, token, collection) {
+  const out = [];
+  let pageToken = '';
+  do {
+    const url = `${firestoreDocsBase(env)}/${collection}?pageSize=300${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Firestore list ${collection} ${res.status}`);
+    const data = await res.json();
+    for (const d of (data.documents || [])) {
+      const name = d.name || '';
+      out.push({ id: name.slice(name.lastIndexOf('/') + 1), fields: fromFirestoreFields(d.fields || {}) });
+    }
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return out;
+}
+
+async function firestoreGetFields(env, token, path) {
+  const res = await fetch(`${firestoreDocsBase(env)}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Firestore get ${path} ${res.status}`);
+  return fromFirestoreFields((await res.json()).fields || {});
+}
+
+async function firestorePatchFields(env, token, path, obj) {
+  const res = await fetch(`${firestoreDocsBase(env)}/${path}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: toFirestoreFields(obj) }),
+  });
+  if (!res.ok) throw new Error(`Firestore patch ${path} ${res.status}`);
+}
+
+// Poll the feed once, fan out over every user's watchlist, email on drops, and
+// persist updated state. Resolves to a small summary for logging.
+export async function runSeatAlertCron(env) {
+  const feedRes = await fetch(SEAT_FEED_URL, { headers: { Accept: 'application/json' } });
+  if (!feedRes.ok) throw new Error(`Feed fetch ${feedRes.status}`);
+  const seatMap = parseFeedSeatMap(await feedRes.json());
+  if (seatMap.size === 0) return { users: 0, emailed: 0 };
+
+  const token = await getServiceAccountAccessToken(env);
+  const watchDocs = await firestoreListAll(env, token, SEAT_ALERT_WATCHES);
+
+  let emailed = 0;
+  for (const { id: uid, fields } of watchDocs) {
+    if (fields.enabled === false) continue;
+    const email = typeof fields.email === 'string' ? fields.email : '';
+    const sections = Array.isArray(fields.sections) ? fields.sections : [];
+    if (!email || sections.length === 0) continue;
+
+    const state = await firestoreGetFields(env, token, `${SEAT_ALERT_STATE}/${uid}`);
+    const firstRun = state === null;
+    const priorSeen = (state && state.seen && typeof state.seen === 'object') ? state.seen : {};
+
+    const { drops, nextSeen, changed } = detectSeatDrops(sections, seatMap, priorSeen);
+
+    // First run has no baseline → seed state silently, never email.
+    if (!firstRun && drops.length > 0) {
+      const { subject, html } = buildSeatAlertEmail(drops);
+      if (await resendSeatAlert(env, email, subject, html)) emailed += 1;
+    }
+    if (firstRun || changed) {
+      await firestorePatchFields(env, token, `${SEAT_ALERT_STATE}/${uid}`, { seen: nextSeen, updatedAt: new Date() });
+    }
+  }
+  return { users: watchDocs.length, emailed };
+}
+
 export default {
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        const r = await runSeatAlertCron(env);
+        console.log(`seat-alert cron: users=${r.users} emailed=${r.emailed}`);
+      } catch (e) {
+        console.error('seat-alert cron failed:', e?.message || e);
+      }
+    })());
+  },
+
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
 

@@ -59,6 +59,29 @@ Wrangler will print the deployed URL, something like
 In this repo, `.github/workflows/deploy-worker.yml` also deploys the Worker on
 pushes that touch `worker/**`, after `npm run test:worker` passes.
 
+## Seat-drop email alerts (cron)
+
+The Worker's `scheduled()` handler powers "email me when a watched seat opens,
+even with Shohoj closed". On each tick it fetches the CONNECT feed once, reads
+every `seatAlertWatches/{uid}` doc, edge-detects watched sections flipping
+full→open against per-user state in `seatAlertState/{uid}`, and emails via
+Resend. One feed fetch serves all users.
+
+To enable it:
+
+1. Add the cron trigger to your `wrangler.toml` (see `wrangler.example.toml`):
+   ```toml
+   [triggers]
+   crons = ["*/2 * * * *"]
+   ```
+2. Redeploy: `npx wrangler deploy`.
+
+No new secrets are needed — it reuses `RESEND_API_KEY` (sender) and
+`SERVICE_ACCOUNT_JSON` (Firestore reads/writes). Watches are written by the
+signed-in client to `seatAlertWatches/{uid}` (see `firestore.rules`); the
+Worker's `seatAlertState` collection is closed to all clients. Tail live runs
+with `npx wrangler tail`.
+
 ## Wire it into the app
 
 For local development, set `PAPERS_WORKER_URL` in `.env.local` and run
