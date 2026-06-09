@@ -61,6 +61,7 @@ MAIN_JS_FILES = [
     # Routine Builder (Connect-feed-backed)
     'js/core/connectFeed.js',
     'js/core/connectFeedClient.js',
+    'js/core/freeRooms.js',
     'js/core/routineState.js',
     'js/core/routineGrid.js',
     'js/core/routineFaculty.js',
@@ -68,6 +69,7 @@ MAIN_JS_FILES = [
     'js/core/routinePlannerImport.js',
     'js/core/routineExport.js',
     'js/ui/routineTab.js',
+    'js/ui/freeRoomsTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',

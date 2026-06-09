@@ -26,7 +26,7 @@ export interface FreeWindow {
     endMin: number;
 }
 
-const WEEK_ORDER: readonly WeekdayName[] = [
+const FR_WEEK_ORDER: readonly WeekdayName[] = [
     'SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
 ];
 
@@ -65,7 +65,7 @@ export function buildRoomBusyIndex(
     }
     for (const list of index.values()) {
         list.sort((a, b) =>
-            (WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)) ||
+            (FR_WEEK_ORDER.indexOf(a.day) - FR_WEEK_ORDER.indexOf(b.day)) ||
             (a.startMin - b.startMin) ||
             (a.endMin - b.endMin));
     }
