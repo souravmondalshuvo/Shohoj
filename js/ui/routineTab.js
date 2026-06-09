@@ -69,12 +69,18 @@ const _store = {
   qrOpen: false,           // QR-of-share-link panel toggled open
   pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
   suggestActive: -1,       // keyboard-highlighted index in the course-search dropdown (-1 = none)
-  filters: { noEarly: false, noEvening: false, avoidDays: [] }, // section time-of-day prefs
+  // `noEarly/noEvening/avoidDays` hard-filter the section list + suggester;
+  // `compact` is a suggest-only ranking preference (prefer fewer idle gaps).
+  filters: { noEarly: false, noEvening: false, avoidDays: [], compact: true },
 };
 
 // Time-filter thresholds (minutes since midnight).
 const FILTER_EARLY_MIN = 9 * 60;   // "no early" hides anything starting before 9:00 AM
 const FILTER_EVENING_MIN = 17 * 60; // "no evening" hides anything ending after 5:00 PM
+
+// Auto-suggest gap penalty per idle hour when "Compact" is on. Tuned to break
+// ties between similarly-rated combos without overpowering faculty quality.
+const ROUTINE_GAP_WEIGHT = 1.5;
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
 // courses land far apart on the wheel. Red (~0/360) is deliberately absent —
@@ -158,6 +164,7 @@ registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.
 registerAction('routine:toggleFilterEarly',   () => { _store.filters.noEarly = !_store.filters.noEarly; _repaintFilters(); _repaintList(); });
 registerAction('routine:toggleFilterEvening', () => { _store.filters.noEvening = !_store.filters.noEvening; _repaintFilters(); _repaintList(); });
 registerAction('routine:toggleAvoidDay',      (el) => { _onToggleAvoidDay(el.dataset.day); });
+registerAction('routine:toggleCompact',       () => _onToggleCompact());
 
 function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 // Picking a section folds the course down to its summary line so attention
@@ -172,6 +179,14 @@ function _onToggleAvoidDay(day) {
   if (i === -1) arr.push(d); else arr.splice(i, 1);
   _repaintFilters();
   _repaintList();
+}
+
+// "Compact" is a suggest-only ranking preference, not a section filter, so it
+// doesn't touch the list. Re-run suggest live if the panel is already open.
+function _onToggleCompact() {
+  _store.filters.compact = !_store.filters.compact;
+  _repaintFilters();
+  if (_store.suggestionsOpen) _onSuggest();
 }
 
 // Does a section satisfy the active time-of-day filters? A section with no
@@ -388,9 +403,11 @@ function _onSuggest() {
   if (!_store.index) return;
   const codes = pickedCourseCodes(_store.routine);
   if (codes.length === 0) return;
-  // Feed the active time filters into enumeration so suggestions respect them.
+  // Feed the active time filters into enumeration so suggestions respect them,
+  // and the compact preference into scoring so packed days rank higher.
   _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap, {
     sectionFilter: (s) => _sectionPassesFilters(s),
+    gapWeight: _store.filters.compact ? ROUTINE_GAP_WEIGHT : 0,
   });
   _store.suggestionsOpen = true;
   _rerender();
@@ -1046,6 +1063,9 @@ function _filtersInner() {
     <span class="routine-filter-sep" aria-hidden="true"></span>
     <span class="routine-filter-label">Avoid</span>
     <div class="routine-filter-days" role="group" aria-label="Avoid days">${dayChips}</div>
+    <span class="routine-filter-sep" aria-hidden="true"></span>
+    <span class="routine-filter-label">Suggest</span>
+    <button class="routine-filter-toggle ${f.compact ? 'is-active' : ''}" data-action="routine:toggleCompact" aria-pressed="${f.compact ? 'true' : 'false'}" title="Prefer compact days (fewer idle gaps between classes) when ranking suggestions">Compact days</button>
   `;
 }
 
@@ -1303,6 +1323,14 @@ function _min2hhmm(m) {
   return `${hh}:${String(mm).padStart(2,'0')} ${ampm}`;
 }
 
+// Idle-gap duration for the suggestion cards: "45m", "1h", "2h 30m".
+function _fmtGap(minutes) {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function _ageLabel(fetchedAt) {
   if (!fetchedAt) return 'just now';
   const diff = Date.now() - fetchedAt;
@@ -1387,6 +1415,9 @@ function _comboCardHTML(combo, idx) {
   if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
   const examNote = b.examClashPairs > 0
     ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
+  const gapNote = b.gapMinutes === 0
+    ? `<span class="routine-suggest-card-gap is-compact" title="No idle gaps between classes">compact</span>`
+    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(_fmtGap(b.gapMinutes))} gaps</span>`;
   return `
     <div class="routine-suggest-card" data-idx="${idx}">
       <div class="routine-suggest-card-head">
@@ -1394,6 +1425,7 @@ function _comboCardHTML(combo, idx) {
         <span class="routine-suggest-card-rating routine-faculty-badge--${ratingClass}" title="Average faculty rating">★ ${escHtml(rating)}</span>
         <span class="routine-suggest-card-score" title="Score">score ${combo.score.toFixed(1)}</span>
         ${seatNotes.length ? `<span class="routine-suggest-card-seats">${escHtml(seatNotes.join(' · '))}</span>` : ''}
+        ${gapNote}
         ${examNote}
       </div>
       <div class="routine-suggest-card-list">
