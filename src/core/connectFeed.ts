@@ -30,6 +30,8 @@ export interface RawClassSlot {
 
 export interface RawSectionSchedule {
   classSchedules?: readonly RawClassSlot[] | null;
+  classStartDate?: string | null;
+  classEndDate?: string | null;
   finalExamDate?: string | null;
   finalExamStartTime?: string | null;
   finalExamEndTime?: string | null;
@@ -98,6 +100,9 @@ export interface NormalizedSection {
   semesterSessionId: number | null;
   /** Class meetings (theory + lab merged). */
   classSlots: TimeSlot[];
+  /** Semester class period, `YYYY-MM-DD` or null. Bounds recurring exports. */
+  classStartDate: string | null;
+  classEndDate: string | null;
   midExam: ExamSlot | null;
   finalExam: ExamSlot | null;
 }
@@ -156,6 +161,11 @@ function normalizeSlots(
   return out;
 }
 
+/** Validate a bare `YYYY-MM-DD` date, returning it unchanged or null. */
+function normalizeDateOnly(value: string | null | undefined): string | null {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function normalizeExam(
   date: string | null | undefined,
   start: string | null | undefined,
@@ -209,6 +219,8 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     semesterSessionId:
       typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
     classSlots,
+    classStartDate: normalizeDateOnly(raw.sectionSchedule?.classStartDate),
+    classEndDate: normalizeDateOnly(raw.sectionSchedule?.classEndDate),
     midExam,
     finalExam,
   };
