@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6068,6 +6068,8 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .seats-watch-head h4 { margin: 0; font-size: 13px; color: var(--text1); }
 .seats-watch-note { color: var(--text3); font-size: 11px; }
+/* The email-channel line sits on its own row under the notification note. */
+.seats-watch-note--email { flex-basis: 100%; color: var(--text2); }
 .seats-watch-list { display: flex; flex-direction: column; gap: 6px; }
 .seats-watch-row {
   display: grid; grid-template-columns: 1fr 64px 24px;
@@ -7119,6 +7121,38 @@ window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
 window._shohoj_showToast = showToast;
+
+// ── Seat-drop alert sync ──────────────────────────────────────────────────────
+// Mirror the Seat Status watchlist to Firestore (seatAlertWatches/{uid}) so the
+// cron Worker can email the signed-in student when a watched seat opens — even
+// with Shohoj closed. No-op (resolves false) when signed out; the Seats tab then
+// falls back to in-tab alerts only and prompts sign-in. The doc is fully
+// overwritten each sync; `email` is pinned to the user's own address (enforced
+// again by firestore.rules) so a watch can only ever notify its own owner.
+window._shohoj_syncSeatAlerts = async function(sections) {
+  if (!currentUser || !currentUser.email || !db) return false;
+  try {
+    const list = (Array.isArray(sections) ? sections : []).slice(0, 50)
+      .map(s => ({ id: Number(s.id), code: String(s.code || ''), name: String(s.name || '') }))
+      .filter(s => Number.isFinite(s.id));
+    await setDoc(doc(db, 'seatAlertWatches', currentUser.uid), {
+      email:     currentUser.email,
+      enabled:   list.length > 0,
+      sections:  list,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error('[Shohoj] Seat-alert sync failed:', e);
+    return false;
+  }
+};
+
+// Lets the Seats tab tailor its copy: "you'll get emails" vs "sign in first".
+window._shohoj_seatAlertIdentity = () =>
+  (currentUser && currentUser.email)
+    ? { signedIn: true, email: currentUser.email }
+    : { signedIn: false, email: null };
 
 // ── Faculty review hooks ──────────────────────────────────────────────────────
 // Expose a thin Firestore bridge so the bundled code (js/core/reviews.js) can
