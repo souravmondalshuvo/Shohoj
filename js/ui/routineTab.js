@@ -8,6 +8,7 @@
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
 import { buildRoutineICS } from '../core/calendarExport.js';
+import qrcode from '../vendor/qrcode.js';
 import {
   emptyRoutineState,
   pickCourse,
@@ -65,6 +66,7 @@ const _store = {
   expanded: new Set(),     // courseCodes the user re-opened after picking a section
   hideClashing: false,     // hide (vs. dim) sections that clash with current picks
   shareNote: '',           // transient "link copied" feedback
+  qrOpen: false,           // QR-of-share-link panel toggled open
   pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
   suggestActive: -1,       // keyboard-highlighted index in the course-search dropdown (-1 = none)
   filters: { noEarly: false, noEvening: false, avoidDays: [] }, // section time-of-day prefs
@@ -146,6 +148,7 @@ registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
 registerAction('routine:calendar',     () => _onAddToCalendar());
+registerAction('routine:toggleQr',     () => { _store.qrOpen = !_store.qrOpen; _rerender(); });
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -267,6 +270,34 @@ function _shareUrl() {
   const payload = encodeRoutinePicks(_store.routine);
   const base = (typeof location !== 'undefined') ? location.origin + location.pathname : '';
   return `${base}?routine=${encodeURIComponent(payload)}#calculator/routine`;
+}
+
+// Scannable QR of the share link, generated entirely client-side (offline) by
+// the vendored qrcode-generator. The SVG it returns is pure rect/path geometry
+// (no embedded text), so injecting it as innerHTML carries no XSS risk.
+function _qrSvg(url) {
+  try {
+    const qr = qrcode(0, 'M');       // type 0 = auto-size, medium error correction
+    qr.addData(url);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+  } catch {
+    return '';
+  }
+}
+
+// QR panel under the header — shown only while toggled open and the routine
+// has picks (a share link only exists then).
+function _qrPanelHTML(picked) {
+  if (!_store.qrOpen || !picked || picked.length === 0) return '';
+  const svg = _qrSvg(_shareUrl());
+  if (!svg) return '';
+  return `
+    <div class="routine-qr-panel">
+      <div class="routine-qr-code" aria-label="QR code for this routine's share link">${svg}</div>
+      <div class="routine-qr-cap">📱 Scan with another phone to open this routine in Shohoj.</div>
+    </div>
+  `;
 }
 
 function _onShare() {
@@ -687,6 +718,7 @@ function _mainHTML() {
   return `
     <div class="routine-tab">
       ${_headerHTML(summary)}
+      ${_qrPanelHTML(picked)}
       ${_pickerHTML()}
       <div class="routine-suggestions" id="routineSuggestions" role="listbox" aria-label="Course matches">${_suggestionsHTML()}</div>
       ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
@@ -897,6 +929,9 @@ function _headerHTML(summary) {
           : ''}
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:calendar" title="Download an .ics calendar of your classes + exams with reminders">📅 Add to Calendar</button>`
+          : ''}
+        ${Object.keys(_store.routine.picks).length > 0
+          ? `<button class="btn-secondary btn-sm ${_store.qrOpen ? 'is-active' : ''}" data-action="routine:toggleQr" aria-pressed="${_store.qrOpen}" title="Show a scannable QR of the share link">📱 QR</button>`
           : ''}
         <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
