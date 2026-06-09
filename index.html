@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ZwHJaWVSYIB4qpA3NCFdl2tC1GsWzycLVzGy3MX9tD8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ybpXV8EJ/ZJCxl4aqQSWzzV+xZk0xIe1AeAUwoSbouI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15702,6 +15702,94 @@ function peekConnectFeedCache(
     return entry === null ? null : { fetchedAt: entry.fetchedAt, etag: entry.etag };
 }
 
+// ── js/core/freeRooms.js ────────────────────────────────────────
+// Generated from src/core/freeRooms.ts for the vanilla JS runtime.
+// Update src/core/freeRooms.ts first, then regenerate this file.
+//
+// Free-room finder — pure helpers that invert the normalized section list into
+// room-availability queries (which rooms are busy when), so the UI can answer
+// "what's free right now / on day D". UI-agnostic.
+
+const CAMPUS_START_MIN = 8 * 60;   // 08:00
+const CAMPUS_END_MIN = 22 * 60;    // 22:00
+
+const FR_WEEK_ORDER = [
+    'SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
+];
+
+function isRealRoom(name) {
+    if (typeof name !== 'string') return false;
+    const trimmed = name.trim();
+    if (trimmed === '') return false;
+    return trimmed.toUpperCase() !== 'TBA';
+}
+
+// Map each room to its busy intervals across the week, sorted by day
+// (canonical Sat→Fri order) then start time. Blank/TBA rooms contribute nothing.
+function buildRoomBusyIndex(sections) {
+    const index = new Map();
+    for (const s of sections) {
+        if (!isRealRoom(s.roomName)) continue;
+        const room = s.roomName.trim();
+        for (const slot of s.classSlots) {
+            const interval = {
+                day: slot.day,
+                startMin: slot.startMin,
+                endMin: slot.endMin,
+                courseCode: s.courseCode,
+                sectionName: s.sectionName,
+            };
+            const list = index.get(room);
+            if (list) list.push(interval);
+            else index.set(room, [interval]);
+        }
+    }
+    for (const list of index.values()) {
+        list.sort((a, b) =>
+            (FR_WEEK_ORDER.indexOf(a.day) - FR_WEEK_ORDER.indexOf(b.day)) ||
+            (a.startMin - b.startMin) ||
+            (a.endMin - b.endMin));
+    }
+    return index;
+}
+
+// Busy intervals for a room on a single day (already sorted by start).
+function busyOnDay(index, room, day) {
+    return (index.get(room) ?? []).filter(i => i.day === day);
+}
+
+// Rooms with no class covering `minute` on `day`, sorted alphabetically. A room
+// with no class that day counts as free all day. Classes are half-open
+// [startMin, endMin): a room frees up exactly at endMin.
+function freeRoomsAt(index, day, minute) {
+    const free = [];
+    for (const [room, intervals] of index) {
+        const occupied = intervals.some(i =>
+            i.day === day && minute >= i.startMin && minute < i.endMin);
+        if (!occupied) free.push(room);
+    }
+    return free.sort((a, b) => a.localeCompare(b));
+}
+
+// Free time windows for one room on a given day = complement of its busy
+// intervals within [dayStart, dayEnd). Overlaps are merged first.
+function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEnd = CAMPUS_END_MIN) {
+    if (dayEnd <= dayStart) return [];
+    const busy = busyOnDay(index, room, day)
+        .map(i => ({ startMin: Math.max(i.startMin, dayStart), endMin: Math.min(i.endMin, dayEnd) }))
+        .filter(i => i.endMin > i.startMin)
+        .sort((a, b) => a.startMin - b.startMin);
+
+    const windows = [];
+    let cursor = dayStart;
+    for (const b of busy) {
+        if (b.startMin > cursor) windows.push({ startMin: cursor, endMin: b.startMin });
+        if (b.endMin > cursor) cursor = b.endMin;
+    }
+    if (cursor < dayEnd) windows.push({ startMin: cursor, endMin: dayEnd });
+    return windows;
+}
+
 // ── js/core/routineState.js ─────────────────────────────────────
 // Generated from src/core/routineState.ts for the vanilla JS runtime.
 // Update src/core/routineState.ts first, then regenerate this file.
@@ -17755,6 +17843,242 @@ function _comboSectionLineHTML(section) {
       <span class="routine-suggest-line-sched">${_formatSchedule(section)}</span>
     </div>
   `;
+}
+
+// ── js/ui/freeRoomsTab.js ───────────────────────────────────────
+// ── js/ui/freeRoomsTab.js ─────────────────────────────────────────────────────
+// Free Rooms tab. Reuses the live CONNECT feed (via connectFeedClient's 10-min
+// cache) to answer "which rooms are empty on day D at time T", plus per-room
+// free windows for the whole day. Pure availability logic lives in
+// js/core/freeRooms.js; this file is the picker + rendering + wiring.
+
+const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
+const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
+// Date.getDay() (0=Sun..6=Sat) -> canonical day name.
+const FR_WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+
+function _frClampMinute(m) {
+  return Math.max(CAMPUS_START_MIN, Math.min(CAMPUS_END_MIN - 1, m));
+}
+function _frNowMinute() {
+  const d = new Date();
+  return _frClampMinute(d.getHours() * 60 + d.getMinutes());
+}
+
+const _frStore = {
+  loading: false,
+  error: null,
+  source: null,
+  fetchedAt: 0,
+  index: null,                 // Map<room, BusyInterval[]>
+  day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
+  minute: _frNowMinute(),
+  selectedRoom: null,
+};
+
+// ── ACTIONS ─────────────────────────────────────────────────────────────────
+registerAction('freerooms:refresh',    () => _frRefresh(true));
+registerAction('freerooms:clearCache', () => { clearConnectFeedCache(); _frRefresh(true); });
+registerAction('freerooms:setDay',     (el) => { _frStore.day = el.dataset.day || _frStore.day; _frStore.selectedRoom = null; _frRerender(); });
+registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDEX[new Date().getDay()]; _frStore.minute = _frNowMinute(); _frStore.selectedRoom = null; _frRerender(); });
+registerAction('freerooms:selectRoom', (el) => {
+  const r = el.dataset.room || '';
+  _frStore.selectedRoom = _frStore.selectedRoom === r ? null : r;
+  _frRerender();
+});
+
+// ── DATA ──────────────────────────────────────────────────────────────────
+async function _frRefresh(force = false) {
+  _frStore.loading = true;
+  _frStore.error = null;
+  _frRerender();
+  try {
+    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    _frStore.index = buildRoomBusyIndex(result.sections);
+    _frStore.source = result.source;
+    _frStore.fetchedAt = result.fetchedAt;
+  } catch (e) {
+    _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
+  } finally {
+    _frStore.loading = false;
+    _frRerender();
+  }
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────────────
+async function renderFreeRoomsTab() {
+  const root = document.getElementById('freeRoomsContent');
+  if (!root) return;
+  if (!_frStore.index && !_frStore.loading && !_frStore.error) { _frRefresh(false); return; }
+  _frRerender();
+}
+
+function _frRerender() {
+  const root = document.getElementById('freeRoomsContent');
+  if (!root) return;
+  // Every interpolation goes through escHtml/escAttr.
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  root.innerHTML = _frHtml();
+  _frAttachHandlers();
+}
+
+function _frAttachHandlers() {
+  const time = document.getElementById('freeRoomsTime');
+  if (time) {
+    time.addEventListener('input', (ev) => {
+      const m = _frParseTime(ev.target.value);
+      if (m !== null) { _frStore.minute = _frClampMinute(m); _frStore.selectedRoom = null; _frRenderResults(); }
+    });
+  }
+}
+
+function _frHtml() {
+  if (_frStore.loading && !_frStore.index) return _frLoadingHTML();
+  if (_frStore.error && !_frStore.index)   return _frErrorHTML();
+  return _frMainHTML();
+}
+
+function _frLoadingHTML() {
+  return `
+    <div class="freerooms-tab">
+      <div class="routine-skeleton" aria-hidden="true">
+        <div class="rsk rsk-header"></div>
+        <div class="rsk rsk-picker"></div>
+        <div class="rsk rsk-block"></div>
+      </div>
+      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
+    </div>`;
+}
+
+function _frErrorHTML() {
+  return `
+    <div class="freerooms-tab">
+      <div class="routine-error">
+        <h3>Couldn't reach the Connect feed</h3>
+        <p>${escHtml(_frStore.error || 'Unknown error.')}</p>
+        <button class="btn-primary" data-action="freerooms:refresh">Try again</button>
+      </div>
+    </div>`;
+}
+
+function _frMainHTML() {
+  return `
+    <div class="freerooms-tab">
+      ${_frHeaderHTML()}
+      ${_frControlsHTML()}
+      <div id="freeRoomsResults">${_frResultsHTML()}</div>
+    </div>`;
+}
+
+function _frHeaderHTML() {
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_frStore.source] || '—';
+  const age = _frAgeLabel(_frStore.fetchedAt);
+  return `
+    <div class="routine-header">
+      <div class="routine-header-left">
+        <h3>🚪 Free Rooms</h3>
+        <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
+          ${escHtml(sourceLabel)} · ${escHtml(age)}
+        </span>
+      </div>
+      <div class="routine-header-right">
+        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+      </div>
+    </div>`;
+}
+
+function _frControlsHTML() {
+  const dayChips = FR_DAY_ORDER.map(d =>
+    `<button class="freerooms-day ${d === _frStore.day ? 'is-active' : ''}" data-action="freerooms:setDay" data-day="${d}" aria-pressed="${d === _frStore.day ? 'true' : 'false'}">${escHtml(FR_DAY_SHORT[d])}</button>`
+  ).join('');
+  return `
+    <div class="freerooms-controls">
+      <div class="freerooms-days" role="group" aria-label="Day">${dayChips}</div>
+      <div class="freerooms-time-wrap">
+        <label class="freerooms-time-label" for="freeRoomsTime">at</label>
+        <input type="time" id="freeRoomsTime" class="freerooms-time" value="${escAttr(_frHhmm24(_frStore.minute))}"
+               min="${_frHhmm24(CAMPUS_START_MIN)}" max="${_frHhmm24(CAMPUS_END_MIN - 1)}" />
+        <button class="btn-secondary btn-sm" data-action="freerooms:now" title="Jump to right now">Now</button>
+      </div>
+    </div>`;
+}
+
+function _frResultsHTML() {
+  if (!_frStore.index) return '';
+  const free = freeRoomsAt(_frStore.index, _frStore.day, _frStore.minute);
+  const when = `${FR_DAY_SHORT[_frStore.day]} ${_frMin2hhmm(_frStore.minute)}`;
+  if (free.length === 0) {
+    return `<div class="freerooms-empty">No rooms are free at ${escHtml(when)}.</div>`;
+  }
+  const cards = free.map(room => _frRoomCardHTML(room)).join('');
+  return `
+    <div class="freerooms-summary">${free.length} room${free.length === 1 ? '' : 's'} free · ${escHtml(when)}</div>
+    <div class="freerooms-grid">${cards}</div>
+    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+}
+
+function _frRenderResults() {
+  const el = document.getElementById('freeRoomsResults');
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  if (el) el.innerHTML = _frResultsHTML();
+}
+
+function _frRoomCardHTML(room) {
+  const until = _frFreeUntil(room);
+  const untilLabel = until === null ? ''
+    : until >= CAMPUS_END_MIN ? 'free rest of day'
+    : `free until ${_frMin2hhmm(until)}`;
+  const active = _frStore.selectedRoom === room;
+  return `
+    <button type="button" class="freerooms-card ${active ? 'is-active' : ''}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-pressed="${active ? 'true' : 'false'}">
+      <span class="freerooms-card-room">${escHtml(room)}</span>
+      <span class="freerooms-card-until">${escHtml(untilLabel)}</span>
+    </button>`;
+}
+
+function _frRoomDetailHTML(room) {
+  const windows = freeWindowsForRoom(_frStore.index, room, _frStore.day);
+  const rows = windows.length === 0
+    ? `<div class="freerooms-empty">Busy all day.</div>`
+    : windows.map(w => `<li>${escHtml(_frMin2hhmm(w.startMin))} – ${escHtml(_frMin2hhmm(w.endMin))}</li>`).join('');
+  return `
+    <div class="freerooms-detail">
+      <div class="freerooms-detail-head">Free windows · ${escHtml(room)} · ${escHtml(FR_DAY_SHORT[_frStore.day])}</div>
+      <ul class="freerooms-windows">${rows}</ul>
+    </div>`;
+}
+
+// Minute the room's current free window ends at, or null if not free now.
+function _frFreeUntil(room) {
+  const windows = freeWindowsForRoom(_frStore.index, room, _frStore.day);
+  const w = windows.find(x => _frStore.minute >= x.startMin && _frStore.minute < x.endMin);
+  return w ? w.endMin : null;
+}
+
+// ── TIME HELPERS ──────────────────────────────────────────────────────────
+function _frParseTime(value) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value || '');
+  if (!m) return null;
+  const min = Number(m[1]) * 60 + Number(m[2]);
+  return Number.isFinite(min) ? min : null;
+}
+function _frHhmm24(min) {
+  const h = Math.floor(min / 60), mm = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+function _frMin2hhmm(min) {
+  const h = Math.floor(min / 60), mm = min % 60;
+  const hh = ((h + 11) % 12) + 1;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  return `${hh}:${String(mm).padStart(2, '0')} ${ampm}`;
+}
+function _frAgeLabel(fetchedAt) {
+  if (!fetchedAt) return 'just now';
+  const diff = Date.now() - fetchedAt;
+  if (diff < 60_000)     return 'just now';
+  if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
+  return new Date(fetchedAt).toLocaleString();
 }
 
 // ── js/ui/render.js ─────────────────────────────────────────────
