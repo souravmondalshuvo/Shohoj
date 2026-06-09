@@ -15,12 +15,22 @@
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse } from '../core/connectFeed.js';
 import { seatInfo, searchCourseSections } from '../core/seatStatus.js';
+import {
+  MAX_WATCHES, SEAT_WATCH_STORAGE_KEY,
+  isWatched, addWatch, removeWatch,
+  indexBySectionId, evaluateWatches, serializeWatches, parseWatches,
+} from '../core/seatWatch.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
 // Cap on rendered course groups so a 1-letter query doesn't paint the whole
 // catalog; a note tells the student when results were trimmed.
 const SEATS_RESULT_LIMIT = 40;
+
+// How often we re-fetch the live feed while ≥1 section is being watched and the
+// tab is visible. Frequent enough to catch a freed seat during registration,
+// polite enough not to hammer the student-run CDN (which also caches).
+const SEATS_POLL_INTERVAL_MS = 90_000;
 
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -31,16 +41,139 @@ const _seats = {
   source: null,        // 'live' | 'cache' | 'fallback'
   fetchedAt: 0,
   index: null,         // Map<courseCode, NormalizedSection[]>
+  sections: [],        // flat NormalizedSection[] (for sectionId lookups)
   query: '',
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
+  watches: [],         // WatchEntry[] — persisted seat-drop watchlist
+  pollTimer: null,     // setInterval handle while watching + visible
+  polling: false,      // in-flight guard for a poll tick
 };
+
+// Restore the watchlist before anything renders so a persisted watch keeps
+// alerting across reloads — even if the student never opens the Seats tab.
+try { _seats.watches = parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY)); } catch { /* storage off */ }
 
 registerAction('seats:refresh',         () => _seatsRefresh(true));
 registerAction('seats:clearCache',      () => { clearConnectFeedCache(); _seatsRefresh(true); });
 registerAction('seats:sortSection',     () => { _seats.sortMode = 'section'; _seatsRender(); });
 registerAction('seats:sortSeats',       () => { _seats.sortMode = 'seats'; _seatsRender(); });
 registerAction('seats:toggleAvailable', () => { _seats.availableOnly = !_seats.availableOnly; _seatsRender(); });
+registerAction('seats:toggleWatch',     (el) => _seatsToggleWatch(Number(el.dataset.sectionId)));
+registerAction('seats:removeWatch',     (el) => _seatsRemoveWatch(Number(el.dataset.sectionId)));
+
+// Pause polling when the tab is hidden (be polite to the CDN); resume — and do
+// one immediate catch-up poll — when it comes back to the foreground.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    _seatsSyncPoller();
+    if (document.visibilityState !== 'hidden') _seatsPollTick();
+  });
+}
+
+// Persisted watches present at boot → start the background poller now.
+_seatsSyncPoller();
+
+// ── SEAT-DROP WATCH ───────────────────────────────────────────────────────────
+function _seatsSaveWatches() {
+  try { localStorage.setItem(SEAT_WATCH_STORAGE_KEY, serializeWatches(_seats.watches)); } catch { /* storage off */ }
+}
+
+function _seatsFindSection(sectionId) {
+  return (_seats.sections || []).find(s => s.sectionId === sectionId) || null;
+}
+
+function _seatsToggleWatch(sectionId) {
+  if (!Number.isFinite(sectionId)) return;
+  if (isWatched(_seats.watches, sectionId)) {
+    _seats.watches = removeWatch(_seats.watches, sectionId);
+  } else {
+    const section = _seatsFindSection(sectionId);
+    if (!section) return;
+    const next = addWatch(_seats.watches, section);
+    if (next.length === _seats.watches.length) {
+      _seatsToast(`You can watch at most ${MAX_WATCHES} sections at once.`, true);
+      return;
+    }
+    _seats.watches = next;
+    _seatsRequestNotifyPermission();
+  }
+  _seatsSaveWatches();
+  _seatsSyncPoller();
+  _seatsRender();
+}
+
+function _seatsRemoveWatch(sectionId) {
+  _seats.watches = removeWatch(_seats.watches, sectionId);
+  _seatsSaveWatches();
+  _seatsSyncPoller();
+  _seatsRender();
+}
+
+function _seatsRequestNotifyPermission() {
+  try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'default') Notification.requestPermission();
+  } catch { /* some browsers throw on insecure origins */ }
+}
+
+// Edge-trigger watched sections against the freshest feed; alert on each drop.
+function _seatsEvaluateWatches() {
+  if (_seats.watches.length === 0) return;
+  const { watches, drops } = evaluateWatches(_seats.watches, indexBySectionId(_seats.sections || []));
+  _seats.watches = watches;
+  _seatsSaveWatches();
+  for (const drop of drops) _seatsAnnounceDrop(drop);
+}
+
+function _seatsAnnounceDrop(drop) {
+  const label = `${drop.section.courseCode} §${drop.section.sectionName || '—'}`;
+  const seats = `${drop.seatsLeft} seat${drop.seatsLeft === 1 ? '' : 's'} left`;
+  _seatsToast(`🎉 Seat open in ${label} — ${seats}. Grab it on USIS!`);
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      // tag de-dupes repeat notifications for the same section in the tray.
+      new Notification('Shohoj — a seat just opened!', {
+        body: `${label} now has ${seats}.`,
+        tag: `shohoj-seat-${drop.section.sectionId}`,
+      });
+    }
+  } catch { /* Notification ctor can throw in some embedded contexts */ }
+}
+
+function _seatsToast(msg, isError = false) {
+  if (typeof window !== 'undefined' && typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast(msg, isError);
+  }
+}
+
+// Start/stop the interval so it runs exactly when there's something to watch
+// and the tab is in the foreground.
+function _seatsSyncPoller() {
+  const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+  const shouldPoll = _seats.watches.length > 0 && visible;
+  if (shouldPoll && !_seats.pollTimer) {
+    _seats.pollTimer = setInterval(_seatsPollTick, SEATS_POLL_INTERVAL_MS);
+  } else if (!shouldPoll && _seats.pollTimer) {
+    clearInterval(_seats.pollTimer);
+    _seats.pollTimer = null;
+  }
+}
+
+async function _seatsPollTick() {
+  if (_seats.polling || _seats.watches.length === 0) return;
+  _seats.polling = true;
+  try {
+    const result = await fetchConnectFeed({ forceRefresh: true });
+    _seats.index = indexByCourse(result.sections);
+    _seats.sections = result.sections;
+    _seats.source = result.source;
+    _seats.fetchedAt = result.fetchedAt;
+    _seatsEvaluateWatches();
+    _seatsRender();
+  } catch { /* transient poll failure — keep prior data, try again next tick */ }
+  finally { _seats.polling = false; }
+}
 
 // ── DATA LOADING ────────────────────────────────────────────────────────────
 async function _seatsRefresh(force = false) {
@@ -50,8 +183,10 @@ async function _seatsRefresh(force = false) {
   try {
     const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
     _seats.index = indexByCourse(result.sections);
+    _seats.sections = result.sections;
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
+    _seatsEvaluateWatches();
   } catch (e) {
     _seats.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -153,6 +288,8 @@ function _seatsMainHTML() {
         </div>
       </div>
 
+      ${_seatsWatchPanelHTML()}
+
       <div class="seats-searchbar">
         <input
           id="seatsCourseInput"
@@ -224,8 +361,13 @@ function _seatsSectionRowHTML(section) {
   const seatTitle = info.status === 'full'
     ? 'Section full'
     : `${info.taken}/${info.capacity} seats taken · ${info.left} left`;
+  const watched = isWatched(_seats.watches, section.sectionId);
+  const watchTitle = watched
+    ? 'Watching — click to stop'
+    : 'Watch this section — get alerted the moment a seat opens';
   return `
     <div class="seats-section-row seats-row--${info.status}">
+      <button class="seats-watch-btn ${watched ? 'is-watched' : ''}" data-action="seats:toggleWatch" data-section-id="${section.sectionId}" aria-pressed="${watched}" title="${escAttr(watchTitle)}">${watched ? '🔔' : '🔕'}</button>
       <span class="seats-section-name">§ ${escHtml(section.sectionName || '—')}</span>
       <span class="seats-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
       <span class="seats-section-schedule">${escHtml(_seatsFormatSchedule(section))}</span>
@@ -233,6 +375,56 @@ function _seatsSectionRowHTML(section) {
       <span class="seats-section-seats seats-seats--${info.status}" title="${escAttr(seatTitle)}">${escHtml(_seatsText(info))}</span>
     </div>
   `;
+}
+
+// ── WATCH PANEL ───────────────────────────────────────────────────────────────
+function _seatsWatchPanelHTML() {
+  if (_seats.watches.length === 0) return '';
+  const rows = _seats.watches.map(_seatsWatchRowHTML).join('');
+  return `
+    <div class="seats-watch-panel">
+      <div class="seats-watch-head">
+        <h4>🔔 Watching (${_seats.watches.length})</h4>
+        <span class="seats-watch-note">${escHtml(_seatsNotifNote())}</span>
+      </div>
+      <div class="seats-watch-list">${rows}</div>
+    </div>
+  `;
+}
+
+function _seatsWatchRowHTML(w) {
+  const section = _seatsFindSection(w.sectionId);
+  let statusHtml;
+  if (!section) {
+    statusHtml = `<span class="seats-watch-status seats-watch-status--unknown" title="Not in the current feed">—</span>`;
+  } else {
+    const info = seatInfo(section);
+    const text = info.status === 'full' ? 'FULL' : `${info.left} left`;
+    statusHtml = `<span class="seats-watch-status seats-seats--${info.status}">${escHtml(text)}</span>`;
+  }
+  return `
+    <div class="seats-watch-row">
+      <span class="seats-watch-label">${escHtml(w.courseCode)} §${escHtml(w.sectionName || '—')}</span>
+      ${statusHtml}
+      <button class="seats-watch-remove" data-action="seats:removeWatch" data-section-id="${w.sectionId}" title="Stop watching" aria-label="Stop watching ${escAttr(w.courseCode + ' section ' + (w.sectionName || ''))}">✕</button>
+    </div>
+  `;
+}
+
+// A one-line hint about how alerts will reach the student, given their current
+// Notification permission. In-app toasts always fire while Shohoj is open.
+function _seatsNotifNote() {
+  const every = `${Math.round(SEATS_POLL_INTERVAL_MS / 1000)}s`;
+  if (typeof Notification === 'undefined') {
+    return 'In-app alerts only — your browser doesn’t support notifications.';
+  }
+  if (Notification.permission === 'granted') {
+    return `Checking live every ${every} while Shohoj is open.`;
+  }
+  if (Notification.permission === 'denied') {
+    return 'Notifications blocked — you’ll still get in-app alerts while Shohoj is open.';
+  }
+  return 'Allow notifications to get alerted even on another tab.';
 }
 
 // ── FORMATTERS ────────────────────────────────────────────────────────────────
