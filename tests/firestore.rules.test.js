@@ -556,6 +556,51 @@ async function run() {
     }));
   });
 
+  // ── Seat-drop email alerts ──────────────────────────────────────────
+  const validWatch = (email = BRACU_EMAIL) => ({
+    email,
+    enabled: true,
+    sections: [{ id: 1, code: 'CSE220', name: '01' }],
+    updatedAt: serverTimestamp(),
+  });
+
+  await test('BRACU user can write and read own seatAlertWatches/{uid}', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'seatAlertWatches', BRACU_UID), validWatch()));
+    await assertSucceeds(getDoc(doc(db, 'seatAlertWatches', BRACU_UID)));
+  });
+
+  await test('seatAlertWatches with a foreign email is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'seatAlertWatches', BRACU_UID), validWatch(OTHER_BRACU_EMAIL)));
+  });
+
+  await test('seatAlertWatches under another user\'s uid is denied', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'seatAlertWatches', OTHER_BRACU_UID), validWatch()));
+  });
+
+  await test('seatAlertWatches with an extra field is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'seatAlertWatches', BRACU_UID), {
+      ...validWatch(), evil: true,
+    }));
+  });
+
+  await test('seatAlertWatches over the 50-section cap is rejected', async () => {
+    const db = bracuCtx().firestore();
+    const sections = Array.from({ length: 51 }, (_, i) => ({ id: i, code: 'X', name: String(i) }));
+    await assertFails(setDoc(doc(db, 'seatAlertWatches', BRACU_UID), {
+      ...validWatch(), sections,
+    }));
+  });
+
+  await test('seatAlertState is closed to clients (read + write denied)', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(getDoc(doc(db, 'seatAlertState', BRACU_UID)));
+    await assertFails(setDoc(doc(db, 'seatAlertState', BRACU_UID), { seen: {} }));
+  });
+
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
