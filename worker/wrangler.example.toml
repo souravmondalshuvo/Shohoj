@@ -11,6 +11,14 @@ name = "shohoj-papers"
 main = "index.js"
 compatibility_date = "2026-05-01"
 
+# Cron trigger for seat-drop email alerts. The scheduled() handler polls the
+# CONNECT feed once for everyone, edge-detects watched sections going full→open,
+# and emails via Resend. Every 2 minutes balances responsiveness during
+# registration week against CDN politeness (one fetch serves all users). Reuses
+# the existing RESEND_API_KEY + SERVICE_ACCOUNT_JSON secrets — none new.
+[triggers]
+crons = ["*/2 * * * *"]
+
 # R2 bucket binding — create the bucket in the Cloudflare dashboard first.
 [[r2_buckets]]
 binding = "PAPERS_BUCKET"

@@ -885,6 +885,38 @@ window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
 window._shohoj_showToast = showToast;
 
+// ── Seat-drop alert sync ──────────────────────────────────────────────────────
+// Mirror the Seat Status watchlist to Firestore (seatAlertWatches/{uid}) so the
+// cron Worker can email the signed-in student when a watched seat opens — even
+// with Shohoj closed. No-op (resolves false) when signed out; the Seats tab then
+// falls back to in-tab alerts only and prompts sign-in. The doc is fully
+// overwritten each sync; `email` is pinned to the user's own address (enforced
+// again by firestore.rules) so a watch can only ever notify its own owner.
+window._shohoj_syncSeatAlerts = async function(sections) {
+  if (!currentUser || !currentUser.email || !db) return false;
+  try {
+    const list = (Array.isArray(sections) ? sections : []).slice(0, 50)
+      .map(s => ({ id: Number(s.id), code: String(s.code || ''), name: String(s.name || '') }))
+      .filter(s => Number.isFinite(s.id));
+    await setDoc(doc(db, 'seatAlertWatches', currentUser.uid), {
+      email:     currentUser.email,
+      enabled:   list.length > 0,
+      sections:  list,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error('[Shohoj] Seat-alert sync failed:', e);
+    return false;
+  }
+};
+
+// Lets the Seats tab tailor its copy: "you'll get emails" vs "sign in first".
+window._shohoj_seatAlertIdentity = () =>
+  (currentUser && currentUser.email)
+    ? { signedIn: true, email: currentUser.email }
+    : { signedIn: false, email: null };
+
 // ── Faculty review hooks ──────────────────────────────────────────────────────
 // Expose a thin Firestore bridge so the bundled code (js/core/reviews.js) can
 // submit and fetch reviews without importing Firebase itself.

@@ -6028,6 +6028,8 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .seats-watch-head h4 { margin: 0; font-size: 13px; color: var(--text1); }
 .seats-watch-note { color: var(--text3); font-size: 11px; }
+/* The email-channel line sits on its own row under the notification note. */
+.seats-watch-note--email { flex-basis: 100%; color: var(--text2); }
 .seats-watch-list { display: flex; flex-direction: column; gap: 6px; }
 .seats-watch-row {
   display: grid; grid-template-columns: 1fr 64px 24px;

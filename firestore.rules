@@ -215,6 +215,38 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── Seat-drop email alerts ───────────────────────────────────────────
+    // A user owns their watch doc at seatAlertWatches/{uid}. The email is
+    // pinned to the caller's own verified token email, so a user can never make
+    // the cron Worker send alerts to someone else's inbox. Per-section element
+    // shape is validated by the Worker (rules can't iterate a list of maps);
+    // the list is size-capped here to bound abuse. The Worker reads these via a
+    // service-account token (bypassing rules) and never trusts client-stored
+    // state — its own state lives in seatAlertState, closed to all clients.
+    function validSeatAlertWatchPayload(d) {
+      return d.keys().hasOnly(['email','enabled','sections','updatedAt'])
+        && d.keys().hasAll(['email','enabled','sections','updatedAt'])
+        && d.email is string
+        && d.email == request.auth.token.email
+        && d.enabled is bool
+        && d.sections is list
+        && d.sections.size() <= 50
+        && d.updatedAt == request.time;
+    }
+
+    match /seatAlertWatches/{uid} {
+      allow read, delete: if isVerifiedBracuGoogleUser() && request.auth.uid == uid;
+      allow create, update: if isVerifiedBracuGoogleUser()
+        && request.auth.uid == uid
+        && validSeatAlertWatchPayload(request.resource.data);
+    }
+
+    // Worker-managed per-user transition state. Never readable or writable from
+    // a client; the cron Worker reaches it with a service-account token.
+    match /seatAlertState/{uid} {
+      allow read, write: if false;
+    }
+
     // ── Catch-all: deny everything else ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

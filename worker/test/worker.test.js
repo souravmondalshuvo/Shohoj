@@ -18,6 +18,9 @@ import worker, {
   isValidStoragePath,
   safeFilename,
   validateReviewPayload,
+  parseFeedSeatMap,
+  detectSeatDrops,
+  buildSeatAlertEmail,
 } from '../index.js';
 
 let passed = 0;
@@ -679,6 +682,81 @@ async function makeServiceAccountJson() {
     // Auth-first ⇒ 401 (no token). CORS still echoed for allowed origin.
     assertEq(res.status, 401);
     assertEq(res.headers.get('Access-Control-Allow-Origin'), ALLOWED_ORIGIN);
+  });
+
+  // ── Seat-drop email alerts (cron) ──────────────────────────────────────────
+  console.log('\nSeat-drop alerts:');
+
+  const FEED = [
+    { sectionId: 1, courseCode: 'cse220', sectionName: '01', capacity: 30, consumedSeat: 30 }, // full
+    { sectionId: 2, courseCode: 'CSE220', sectionName: '02', capacity: 30, consumedSeat: 29 }, // 1 left
+    { sectionId: 3, courseCode: 'MAT110', sectionName: '05', capacity: 0,  consumedSeat: 0  }, // unknown cap → no seat
+    { sectionId: 'x', courseCode: 'BAD' }, // junk, dropped
+  ];
+
+  await test('parseFeedSeatMap: seat math + tolerance', () => {
+    const m = parseFeedSeatMap(FEED);
+    assertEq(m.size, 3, 'junk entry dropped');
+    assertEq(m.get(1).hasSeat, false);
+    assertEq(m.get(1).code, 'CSE220'); // uppercased
+    assertEq(m.get(2).hasSeat, true);
+    assertEq(m.get(2).seatsLeft, 1);
+    assertEq(m.get(3).hasSeat, false, 'zero capacity is never "open"');
+  });
+  await test('parseFeedSeatMap: non-array → empty map', () => {
+    assertEq(parseFeedSeatMap(null).size, 0);
+    assertEq(parseFeedSeatMap({}).size, 0);
+  });
+
+  const seatMap = parseFeedSeatMap(FEED);
+  const watch = [{ id: 1, code: 'CSE220', name: '01' }];
+
+  await test('detectSeatDrops: first sighting seeds state, never drops', () => {
+    const { drops, nextSeen, changed } = detectSeatDrops(watch, seatMap, {});
+    assertEq(drops.length, 0, 'no email on first observation');
+    assertEq(nextSeen['1'], false, 'seeded as full');
+    assertEq(changed, true);
+  });
+  await test('detectSeatDrops: false→true flip fires exactly one drop', () => {
+    // §1 was full last tick; feed now shows it open.
+    const openMap = parseFeedSeatMap([{ sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 28 }]);
+    const { drops, nextSeen } = detectSeatDrops(watch, openMap, { '1': false });
+    assertEq(drops.length, 1);
+    assertEq(drops[0].label, 'CSE220 §01');
+    assertEq(drops[0].seatsLeft, 2);
+    assertEq(nextSeen['1'], true);
+  });
+  await test('detectSeatDrops: staying open does not re-fire', () => {
+    const openMap = parseFeedSeatMap([{ sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 28 }]);
+    const { drops, changed } = detectSeatDrops(watch, openMap, { '1': true });
+    assertEq(drops.length, 0);
+    assertEq(changed, false, 'no state change while it stays open');
+  });
+  await test('detectSeatDrops: section missing from feed preserves state, no drop', () => {
+    const { drops, nextSeen } = detectSeatDrops(watch, parseFeedSeatMap([]), { '1': false });
+    assertEq(drops.length, 0);
+    assertEq(nextSeen['1'], false, 'prior state retained');
+  });
+  await test('detectSeatDrops: dropping a watched section counts as a change', () => {
+    const { changed } = detectSeatDrops([], seatMap, { '1': true });
+    assertEq(changed, true);
+  });
+
+  await test('buildSeatAlertEmail: subject + escaped body for one and many', () => {
+    const one = buildSeatAlertEmail([{ id: 1, label: 'CSE220 §01', seatsLeft: 1 }]);
+    assert(one.subject.includes('Seat open: CSE220 §01'));
+    assert(one.html.includes('1 seat left'));
+    const many = buildSeatAlertEmail([
+      { id: 1, label: 'CSE220 §01', seatsLeft: 2 },
+      { id: 2, label: 'MAT110 §05', seatsLeft: 5 },
+    ]);
+    assert(many.subject.includes('2 watched seats'));
+    assert(many.html.includes('2 seats left') && many.html.includes('5 seats left'));
+  });
+  await test('buildSeatAlertEmail: escapes HTML in labels', () => {
+    const { html } = buildSeatAlertEmail([{ id: 9, label: '<b>X</b> §01', seatsLeft: 1 }]);
+    assert(!html.includes('<b>X</b>'), 'label HTML must be escaped');
+    assert(html.includes('&lt;b&gt;'));
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
