@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-lF/QKhCCPMeBG7YV16O+M4exy9em8m+uyOG+uEKGa2g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-/gwNs8llDQ+Xicz8zMuisMF8k042zM/Gxq45EMwansQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15554,6 +15554,10 @@ function normalizeSlots(raw) {
     return out;
 }
 
+function normalizeDateOnly(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function normalizeExam(date, start, end) {
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
     const startMin = parseTimeToMinutes(start);
@@ -15595,6 +15599,8 @@ function normalizeSection(raw) {
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
         classSlots,
+        classStartDate: normalizeDateOnly(schedule && schedule.classStartDate),
+        classEndDate: normalizeDateOnly(schedule && schedule.classEndDate),
         midExam,
         finalExam,
     };
@@ -16021,6 +16027,173 @@ function searchCourseSections(index, query, opts = {}) {
 
     const groups = ranked.map(r => r.group);
     return typeof opts.limit === 'number' ? groups.slice(0, opts.limit) : groups;
+}
+
+// ── js/core/calendarExport.js ───────────────────────────────────
+// Generated from src/core/calendarExport.ts for the vanilla JS runtime.
+// Update src/core/calendarExport.ts first, then regenerate this file.
+//
+// Calendar export — builds an RFC 5545 iCalendar (.ics) string from a student's
+// picked sections so their phone/laptop calendar fires real class/exam
+// reminders without Shohoj being open. Classes become weekly-recurring VEVENTs
+// bounded by the semester dates; mid/final exams become one-off VEVENTs; every
+// event carries a VALARM (default 30 min before). Times are floating local
+// date-times (BRACU = Asia/Dhaka, no DST). Pure + UI-agnostic.
+
+const BYDAY = {
+    SUNDAY: 'SU', MONDAY: 'MO', TUESDAY: 'TU', WEDNESDAY: 'WE',
+    THURSDAY: 'TH', FRIDAY: 'FR', SATURDAY: 'SA',
+};
+
+const DOW_INDEX = {
+    SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3,
+    THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
+};
+
+function pad2(n) {
+    return n < 10 ? `0${n}` : String(n);
+}
+
+// Escape a text value per RFC 5545 §3.3.11 (backslash, semicolon, comma, newline).
+function escapeText(value) {
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\r?\n/g, '\\n');
+}
+
+function hhmmss(min) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${pad2(h)}${pad2(m)}00`;
+}
+
+function compactDate(date) {
+    return date.replace(/-/g, '');
+}
+
+function floatingDateTime(date, min) {
+    return `${compactDate(date)}T${hhmmss(min)}`;
+}
+
+function utcStamp(now) {
+    return (
+        `${now.getUTCFullYear()}${pad2(now.getUTCMonth() + 1)}${pad2(now.getUTCDate())}` +
+        `T${pad2(now.getUTCHours())}${pad2(now.getUTCMinutes())}${pad2(now.getUTCSeconds())}Z`
+    );
+}
+
+// First YYYY-MM-DD on or after startDate whose weekday is `weekday`. Pure UTC
+// date math so a local-timezone shift can't roll the day.
+function firstOnOrAfter(startDate, weekday) {
+    const [y, m, d] = startDate.split('-').map(Number);
+    const base = new Date(Date.UTC(y, m - 1, d));
+    const delta = (DOW_INDEX[weekday] - base.getUTCDay() + 7) % 7;
+    const out = new Date(base.getTime() + delta * 86_400_000);
+    return `${out.getUTCFullYear()}-${pad2(out.getUTCMonth() + 1)}-${pad2(out.getUTCDate())}`;
+}
+
+function valarm(summary, alarmMinutes) {
+    return [
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:${escapeText(summary)}`,
+        `TRIGGER:-PT${alarmMinutes}M`,
+        'END:VALARM',
+    ];
+}
+
+function vevent(ev, dtstamp, alarmMinutes) {
+    const lines = [
+        'BEGIN:VEVENT',
+        `UID:${ev.uid}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${floatingDateTime(ev.startDate, ev.startMin)}`,
+        `DTEND:${floatingDateTime(ev.startDate, ev.endMin)}`,
+        `SUMMARY:${escapeText(ev.summary)}`,
+    ];
+    if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`);
+    if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`);
+    if (ev.untilDate && ev.byday) {
+        lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${ev.byday};UNTIL=${compactDate(ev.untilDate)}T235959`);
+    }
+    lines.push(...valarm(ev.summary, alarmMinutes));
+    lines.push('END:VEVENT');
+    return lines;
+}
+
+// Build a complete VCALENDAR string for the given sections. Sections are
+// processed in order; for each, class meetings come before mid/final exams.
+// Class events are only emitted when both semester dates are known and an
+// occurrence falls within them.
+function buildRoutineICS(sections, options = {}) {
+    const alarmMinutes = Math.max(0, Math.round(options.alarmMinutes ?? 30));
+    const calName = options.calName ?? 'Shohoj Routine';
+    const dtstamp = utcStamp(options.now ?? new Date());
+
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Shohoj//Routine//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        `X-WR-CALNAME:${escapeText(calName)}`,
+    ];
+
+    for (const s of sections) {
+        const tag = `${s.courseCode}${s.sectionName ? ` (§${s.sectionName})` : ''}`;
+        const faculty = s.facultyInitials ? `Faculty: ${s.facultyInitials}` : '';
+
+        if (s.classStartDate && s.classEndDate) {
+            for (const slot of s.classSlots) {
+                const startDate = firstOnOrAfter(s.classStartDate, slot.day);
+                if (startDate > s.classEndDate) continue; // no occurrence in range
+                lines.push(...vevent({
+                    uid: `shohoj-${s.sectionId}-class-${slot.day}-${slot.startMin}@shohoj.app`,
+                    summary: `${tag} class`,
+                    location: s.roomName,
+                    description: faculty,
+                    startDate,
+                    startMin: slot.startMin,
+                    endMin: slot.endMin,
+                    untilDate: s.classEndDate,
+                    byday: BYDAY[slot.day],
+                }, dtstamp, alarmMinutes));
+            }
+        }
+
+        if (s.midExam) {
+            lines.push(...vevent({
+                uid: `shohoj-${s.sectionId}-mid@shohoj.app`,
+                summary: `${tag} — Mid Exam`,
+                location: '',
+                description: faculty,
+                startDate: s.midExam.date,
+                startMin: s.midExam.startMin,
+                endMin: s.midExam.endMin,
+                untilDate: null,
+                byday: null,
+            }, dtstamp, alarmMinutes));
+        }
+
+        if (s.finalExam) {
+            lines.push(...vevent({
+                uid: `shohoj-${s.sectionId}-final@shohoj.app`,
+                summary: `${tag} — Final Exam`,
+                location: '',
+                description: faculty,
+                startDate: s.finalExam.date,
+                startMin: s.finalExam.startMin,
+                endMin: s.finalExam.endMin,
+                untilDate: null,
+                byday: null,
+            }, dtstamp, alarmMinutes));
+        }
+    }
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n') + '\r\n';
 }
 
 // ── js/core/routineState.js ─────────────────────────────────────
@@ -16871,6 +17044,7 @@ registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.data
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
+registerAction('routine:calendar',     () => _onAddToCalendar());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -17009,6 +17183,32 @@ function _onShare() {
       _fallbackCopy(url, flash);
     }
   } catch { _fallbackCopy(url, flash); }
+}
+
+// Download an .ics calendar of the picked sections — weekly class events +
+// mid/final exams, each with a 30-min reminder — so the student's own calendar
+// app fires the alerts. Uses the resolved sections from the live feed.
+function _onAddToCalendar() {
+  if (!_store.index) return;
+  const sections = selectedSections(_store.routine, _store.index);
+  if (sections.length === 0) return;
+  const ics = buildRoutineICS(sections);
+  try {
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shohoj-routine.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    _store.shareNote = '✓ Calendar downloaded';
+  } catch {
+    _store.shareNote = 'Calendar export failed';
+  }
+  _rerender();
+  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
 }
 
 // execCommand fallback for browsers without the async clipboard API.
@@ -17593,6 +17793,9 @@ function _headerHTML(summary) {
           : ''}
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:share" title="Copy a shareable link to this routine">🔗 Share</button>`
+          : ''}
+        ${Object.keys(_store.routine.picks).length > 0
+          ? `<button class="btn-secondary btn-sm" data-action="routine:calendar" title="Download an .ics calendar of your classes + exams with reminders">📅 Add to Calendar</button>`
           : ''}
         <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
