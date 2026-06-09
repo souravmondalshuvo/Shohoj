@@ -27,10 +27,13 @@ import { registerAction } from '../core/dispatch.js';
 // catalog; a note tells the student when results were trimmed.
 const SEATS_RESULT_LIMIT = 40;
 
-// How often we re-fetch the live feed while ≥1 section is being watched and the
-// tab is visible. Frequent enough to catch a freed seat during registration,
-// polite enough not to hammer the student-run CDN (which also caches).
+// How often we re-fetch the live feed while ≥1 section is being watched.
+// Frequent enough to catch a freed seat during registration, polite enough not
+// to hammer the student-run CDN (which also 304s on an unchanged etag). We keep
+// polling when the tab is hidden — that's exactly when a desktop notification
+// earns its keep — but at the slower hidden cadence to stay a good citizen.
 const SEATS_POLL_INTERVAL_MS = 90_000;
+const SEATS_POLL_INTERVAL_HIDDEN_MS = 5 * 60_000;
 
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -46,7 +49,8 @@ const _seats = {
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
   watches: [],         // WatchEntry[] — persisted seat-drop watchlist
-  pollTimer: null,     // setInterval handle while watching + visible
+  pollTimer: null,     // setInterval handle while watching
+  pollPeriod: 0,       // current interval period (ms) so we only reset on change
   polling: false,      // in-flight guard for a poll tick
 };
 
@@ -62,8 +66,8 @@ registerAction('seats:toggleAvailable', () => { _seats.availableOnly = !_seats.a
 registerAction('seats:toggleWatch',     (el) => _seatsToggleWatch(Number(el.dataset.sectionId)));
 registerAction('seats:removeWatch',     (el) => _seatsRemoveWatch(Number(el.dataset.sectionId)));
 
-// Pause polling when the tab is hidden (be polite to the CDN); resume — and do
-// one immediate catch-up poll — when it comes back to the foreground.
+// Re-tune the poll cadence whenever the tab's visibility flips (slower while
+// hidden), and do one immediate catch-up poll when it returns to the foreground.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     _seatsSyncPoller();
@@ -147,17 +151,25 @@ function _seatsToast(msg, isError = false) {
   }
 }
 
-// Start/stop the interval so it runs exactly when there's something to watch
-// and the tab is in the foreground.
+function _seatsPollPeriodMs() {
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  return hidden ? SEATS_POLL_INTERVAL_HIDDEN_MS : SEATS_POLL_INTERVAL_MS;
+}
+
+// Keep exactly one interval running while there's something to watch, at the
+// cadence for the current visibility. Re-creates the timer only when the
+// watchlist empties or the cadence actually changes (so a no-op visibility
+// flip doesn't reset the countdown).
 function _seatsSyncPoller() {
-  const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
-  const shouldPoll = _seats.watches.length > 0 && visible;
-  if (shouldPoll && !_seats.pollTimer) {
-    _seats.pollTimer = setInterval(_seatsPollTick, SEATS_POLL_INTERVAL_MS);
-  } else if (!shouldPoll && _seats.pollTimer) {
-    clearInterval(_seats.pollTimer);
-    _seats.pollTimer = null;
+  if (_seats.watches.length === 0) {
+    if (_seats.pollTimer) { clearInterval(_seats.pollTimer); _seats.pollTimer = null; _seats.pollPeriod = 0; }
+    return;
   }
+  const period = _seatsPollPeriodMs();
+  if (_seats.pollTimer && _seats.pollPeriod === period) return;
+  if (_seats.pollTimer) clearInterval(_seats.pollTimer);
+  _seats.pollPeriod = period;
+  _seats.pollTimer = setInterval(_seatsPollTick, period);
 }
 
 async function _seatsPollTick() {
@@ -207,8 +219,23 @@ export function renderSeatsTab() {
 function _seatsRender() {
   const root = document.getElementById('seatsContent');
   if (!root) return;
+  // Preserve the search box's focus + caret across the full innerHTML swap, so a
+  // background poll landing mid-type doesn't yank the cursor out from under the
+  // student.
+  const active = document.activeElement;
+  const keepFocus = !!active && active.id === 'seatsCourseInput';
+  const selStart = keepFocus ? active.selectionStart : null;
+  const selEnd = keepFocus ? active.selectionEnd : null;
   root.innerHTML = _seatsShellHTML();
   _seatsAttachInput();
+  if (keepFocus) {
+    const input = document.getElementById('seatsCourseInput');
+    if (input) {
+      input.focus();
+      try { input.setSelectionRange(selStart ?? input.value.length, selEnd ?? input.value.length); }
+      catch { /* selection API unsupported on this input type */ }
+    }
+  }
 }
 
 function _seatsAttachInput() {
@@ -419,7 +446,7 @@ function _seatsNotifNote() {
     return 'In-app alerts only — your browser doesn’t support notifications.';
   }
   if (Notification.permission === 'granted') {
-    return `Checking live every ${every} while Shohoj is open.`;
+    return `Checking live every ${every} — you’ll get a notification even on another tab.`;
   }
   if (Notification.permission === 'denied') {
     return 'Notifications blocked — you’ll still get in-app alerts while Shohoj is open.';
