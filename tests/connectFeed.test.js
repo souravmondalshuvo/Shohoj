@@ -201,6 +201,18 @@ test('merges lab schedules into classSlots', () => {
     eq(out.classSlots.length, 2);
     eq(out.classSlots[1].day, 'THURSDAY');
 });
+test('parses classStartDate/classEndDate, nulling malformed values', () => {
+    const ok = normalizeSection({
+        sectionId: 1, courseCode: 'X',
+        sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08' },
+    });
+    eq([ok.classStartDate, ok.classEndDate], ['2026-06-09', '2026-09-08']);
+    const bad = normalizeSection({
+        sectionId: 2, courseCode: 'X',
+        sectionSchedule: { classStartDate: '06/09/2026' },
+    });
+    eq([bad.classStartDate, bad.classEndDate], [null, null]);
+});
 test('rejects exam with malformed date', () => {
     const out = normalizeSection({
         sectionId: 1, courseCode: 'X',
