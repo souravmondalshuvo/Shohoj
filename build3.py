@@ -70,6 +70,8 @@ MAIN_JS_FILES = [
     'js/core/routineSuggestions.js',
     'js/core/routinePlannerImport.js',
     'js/core/routineExport.js',
+    # Vendored QR generator (defines a top-level `qrcode`; used by routineTab)
+    'js/vendor/qrcode.js',
     'js/ui/routineTab.js',
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
