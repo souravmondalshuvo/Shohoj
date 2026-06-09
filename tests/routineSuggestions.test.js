@@ -212,6 +212,63 @@ test('a sectionFilter that rejects everything skips all courses', () => {
     eq(out.skippedCourses.sort(), ['CSE220', 'MAT215']);
 });
 
+// ---- gap minimization (compact days) --------------------------------------
+console.log('\ngap minimization:');
+
+// Two same-day slots → score a row directly. GA1 Sun 09:00–10:20, GB1 right
+// after at 10:20–11:40 (compact), GB2 far later at 13:00–14:20 (160-min gap).
+const GAP_RAW = [
+    { sectionId: 201, courseCode: 'GAPA', courseName: 'A', courseCredit: 3,
+      sectionName: 'A1', capacity: 30, consumedSeat: 10, faculties: '',
+      sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '09:00', endTime: '10:20' }] } },
+    { sectionId: 202, courseCode: 'GAPB', courseName: 'B', courseCredit: 3,
+      sectionName: 'B1', capacity: 30, consumedSeat: 10, faculties: '',
+      sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '10:20', endTime: '11:40' }] } },
+    { sectionId: 203, courseCode: 'GAPB', courseName: 'B', courseCredit: 3,
+      sectionName: 'B2', capacity: 30, consumedSeat: 10, faculties: '',
+      sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '13:00', endTime: '14:20' }] } },
+];
+const gapSecs = parseFeed(GAP_RAW).sections;
+const gA1 = gapSecs.find(s => s.sectionId === 201);
+const gB1 = gapSecs.find(s => s.sectionId === 202);
+const gB2 = gapSecs.find(s => s.sectionId === 203);
+const gapIdx = indexByCourse(gapSecs);
+
+test('totalGapMinutes: back-to-back classes have no gap', () => {
+    const b = scoreCombination([gA1, gB1], new Map(), { gapWeight: 6 }).breakdown;
+    eq(b.gapMinutes, 0);
+    eq(b.gapPenalty, 0);
+});
+test('totalGapMinutes: idle window between same-day classes is counted', () => {
+    // 13:00 (780) − 10:20 (620) = 160 idle minutes.
+    const b = scoreCombination([gA1, gB2], new Map(), { gapWeight: 6 }).breakdown;
+    eq(b.gapMinutes, 160);
+    eq(b.gapPenalty, (160 / 60) * 6);
+});
+test('classes on different days never count as a gap', () => {
+    const otherDay = parseFeed([{ ...GAP_RAW[2], sectionId: 204,
+        sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '13:00', endTime: '14:20' }] } }]).sections[0];
+    const b = scoreCombination([gA1, otherDay], new Map(), { gapWeight: 6 }).breakdown;
+    eq(b.gapMinutes, 0);
+});
+test('gapWeight: 0 is a no-op — gaps reported but never penalized', () => {
+    const out = suggestCombinations(['GAPA', 'GAPB'], gapIdx, new Map());
+    // Compact (A1+B1) and gappy (A1+B2) tie on everything but the gap, which is
+    // ignored by default → equal scores.
+    eq(out.suggestions.length, 2);
+    eq(out.suggestions[0].score, out.suggestions[1].score);
+    assert(out.suggestions.some(s => s.breakdown.gapMinutes === 160), 'gap still reported');
+});
+test('gapWeight > 0 ranks the compact combo above the gappy one', () => {
+    const out = suggestCombinations(['GAPA', 'GAPB'], gapIdx, new Map(), { gapWeight: 6 });
+    const top = out.suggestions[0];
+    const topIds = top.sections.map(s => s.sectionId).sort();
+    eq(topIds, [201, 202], 'A1 + B1 (compact) wins');
+    eq(top.breakdown.gapMinutes, 0);
+    assert(out.suggestions[1].breakdown.gapPenalty > 0, 'the gappy runner-up is penalized');
+    assert(top.score > out.suggestions[1].score, 'compact strictly outscores gappy');
+});
+
 // ---------------------------------------------------------------------------
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
