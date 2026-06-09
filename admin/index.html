@@ -5862,6 +5862,63 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-grid-head .routine-grid-title { margin-bottom: 0; }
 
+/* ═════════════════════════════════════════════════════════════════════════
+ * Free Rooms tab
+ * ═══════════════════════════════════════════════════════════════════════ */
+.freerooms-tab { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+.freerooms-controls {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.freerooms-days { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.freerooms-day {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.freerooms-day:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.freerooms-day.is-active {
+  background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38);
+}
+.freerooms-time-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.freerooms-time-label { font-size: 12px; color: var(--text3); }
+.freerooms-time {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text1); border-radius: 8px; padding: 6px 10px;
+  font: 13px 'DM Sans', sans-serif;
+}
+.freerooms-time:focus { outline: none; border-color: var(--green); }
+
+.freerooms-summary { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: 0.3px; }
+.freerooms-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+.freerooms-grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.freerooms-card {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text1); transition: background 0.15s, border-color 0.15s;
+}
+.freerooms-card:hover { background: rgba(255,255,255,0.06); }
+.freerooms-card.is-active { border-color: rgba(91,157,255,0.45); background: rgba(91,157,255,0.10); }
+.freerooms-card-room { font-weight: 700; letter-spacing: 0.3px; font-size: 13px; }
+.freerooms-card-until { font-size: 11px; color: #5b9dff; }
+
+.freerooms-detail {
+  border: 1px solid rgba(91,157,255,0.22); background: rgba(91,157,255,0.04);
+  border-radius: 10px; padding: 12px 14px; margin-top: 6px;
+}
+.freerooms-detail-head { font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.4px; margin-bottom: 8px; }
+.freerooms-windows { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.freerooms-windows li { font-size: 12px; color: var(--text1); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 720px) {
+  .freerooms-controls { flex-direction: column; align-items: stretch; gap: 10px; }
+}
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
