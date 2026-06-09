@@ -58,6 +58,7 @@ import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
 import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
+import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
@@ -407,6 +408,7 @@ const TAB_MAP = {
   difficulty: 'tabDifficulty',
   papers:     'tabPapers',
   routine:    'tabRoutine',
+  seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
 };
 
@@ -470,6 +472,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'routine') {
     renderRoutineTab();
   }
+  if (tabId === 'seats') {
+    renderSeatsTab();
+  }
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
@@ -495,6 +500,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/difficulty')      return 'difficulty';
   if (hash === '#calculator/papers')          return 'papers';
   if (hash.startsWith('#calculator/routine'))  return 'routine';
+  if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
 
   // Then check sessionStorage
