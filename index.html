@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-z6oBmrEbUuaVwNC9zl3lRcS4DlpTTYyOGGTPkLElTDU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-84sjZuTTWCQoPc1XTfJrqDrd9VLP/+PgwH5nYsO8U+4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5840,6 +5840,14 @@ body[data-page="admin"] .orb { display: none !important; }
   font-size: 10px; font-weight: 600; color: #e74c3c;
   background: rgba(231,76,60,0.10);
   padding: 1px 6px; border-radius: 4px;
+}
+.routine-suggest-card-gap {
+  font-size: 10px; font-weight: 600; color: #f1c40f;
+  background: rgba(241,196,15,0.10);
+  padding: 1px 6px; border-radius: 4px;
+}
+.routine-suggest-card-gap.is-compact {
+  color: #2ecc71; background: rgba(46,204,113,0.10);
 }
 .routine-suggest-card-list {
   display: flex; flex-direction: column; gap: 3px;
@@ -16740,12 +16748,36 @@ const DEFAULTS = {
     badPenalty: 4,
     warnPenalty: 2,
     seatSlackWeight: 2,
+    gapWeight: 0,
     sectionFilter: () => true,
 };
 
 function fillRatio(s) {
     if (!s || s.capacity <= 0) return 0;
     return s.consumedSeat / s.capacity;
+}
+
+// Total idle minutes between consecutive classes on the same day, summed over
+// the week. Slots are grouped per day and sorted; only positive gaps count, so
+// overlaps (which clash-filtering removes anyway) never produce negative time.
+function totalGapMinutes(row) {
+    const byDay = new Map();
+    for (const s of row) {
+        for (const slot of s.classSlots) {
+            const arr = byDay.get(slot.day);
+            if (arr) arr.push(slot);
+            else byDay.set(slot.day, [slot]);
+        }
+    }
+    let total = 0;
+    for (const slots of byDay.values()) {
+        slots.sort((a, b) => a.startMin - b.startMin);
+        for (let i = 1; i < slots.length; i++) {
+            const gap = slots[i].startMin - slots[i - 1].endMin;
+            if (gap > 0) total += gap;
+        }
+    }
+    return total;
 }
 
 function filterUsableSections(sections, maxFill, sectionFilter) {
@@ -16832,13 +16864,18 @@ function scoreCombination(row, ratingMap, options = {}) {
 
     const examPairs = countExamClashPairs(row);
     const examClashPenalty = examPairs * opts.examClashPenalty;
-    const score = ratingScore + seatScore - examClashPenalty;
+
+    const gapMinutes = totalGapMinutes(row);
+    const gapPenalty = (gapMinutes / 60) * opts.gapWeight;
+
+    const score = ratingScore + seatScore - examClashPenalty - gapPenalty;
 
     return {
         sections: row,
         score,
         breakdown: {
             ratingScore, seatScore, examClashPenalty,
+            gapMinutes, gapPenalty,
             avgRating: ratingDenom > 0 ? ratingSum / ratingDenom : null,
             excellentCount, goodCount, midCount, warnCount, badCount, unratedCount,
             fullCount, tightCount,
@@ -19400,12 +19437,18 @@ const _store = {
   qrOpen: false,           // QR-of-share-link panel toggled open
   pendingShare: _captureSharePayload(), // ?routine=… from a shared link, applied once the feed loads
   suggestActive: -1,       // keyboard-highlighted index in the course-search dropdown (-1 = none)
-  filters: { noEarly: false, noEvening: false, avoidDays: [] }, // section time-of-day prefs
+  // `noEarly/noEvening/avoidDays` hard-filter the section list + suggester;
+  // `compact` is a suggest-only ranking preference (prefer fewer idle gaps).
+  filters: { noEarly: false, noEvening: false, avoidDays: [], compact: true },
 };
 
 // Time-filter thresholds (minutes since midnight).
 const FILTER_EARLY_MIN = 9 * 60;   // "no early" hides anything starting before 9:00 AM
 const FILTER_EVENING_MIN = 17 * 60; // "no evening" hides anything ending after 5:00 PM
+
+// Auto-suggest gap penalty per idle hour when "Compact" is on. Tuned to break
+// ties between similarly-rated combos without overpowering faculty quality.
+const ROUTINE_GAP_WEIGHT = 1.5;
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
 // courses land far apart on the wheel. Red (~0/360) is deliberately absent —
@@ -19489,6 +19532,7 @@ registerAction('routine:toggleHideClash', () => { _store.hideClashing = !_store.
 registerAction('routine:toggleFilterEarly',   () => { _store.filters.noEarly = !_store.filters.noEarly; _repaintFilters(); _repaintList(); });
 registerAction('routine:toggleFilterEvening', () => { _store.filters.noEvening = !_store.filters.noEvening; _repaintFilters(); _repaintList(); });
 registerAction('routine:toggleAvoidDay',      (el) => { _onToggleAvoidDay(el.dataset.day); });
+registerAction('routine:toggleCompact',       () => _onToggleCompact());
 
 function _onRemoveCourse(code)         { const c = (code || '').toUpperCase(); _store.expanded.delete(c); _store.routine = unpickCourse(_store.routine, code); _persistRoutine(); _rerender(); }
 // Picking a section folds the course down to its summary line so attention
@@ -19503,6 +19547,14 @@ function _onToggleAvoidDay(day) {
   if (i === -1) arr.push(d); else arr.splice(i, 1);
   _repaintFilters();
   _repaintList();
+}
+
+// "Compact" is a suggest-only ranking preference, not a section filter, so it
+// doesn't touch the list. Re-run suggest live if the panel is already open.
+function _onToggleCompact() {
+  _store.filters.compact = !_store.filters.compact;
+  _repaintFilters();
+  if (_store.suggestionsOpen) _onSuggest();
 }
 
 // Does a section satisfy the active time-of-day filters? A section with no
@@ -19719,9 +19771,11 @@ function _onSuggest() {
   if (!_store.index) return;
   const codes = pickedCourseCodes(_store.routine);
   if (codes.length === 0) return;
-  // Feed the active time filters into enumeration so suggestions respect them.
+  // Feed the active time filters into enumeration so suggestions respect them,
+  // and the compact preference into scoring so packed days rank higher.
   _store.suggestionsResult = suggestCombinations(codes, _store.index, _store.ratingMap, {
     sectionFilter: (s) => _sectionPassesFilters(s),
+    gapWeight: _store.filters.compact ? ROUTINE_GAP_WEIGHT : 0,
   });
   _store.suggestionsOpen = true;
   _rerender();
@@ -20377,6 +20431,9 @@ function _filtersInner() {
     <span class="routine-filter-sep" aria-hidden="true"></span>
     <span class="routine-filter-label">Avoid</span>
     <div class="routine-filter-days" role="group" aria-label="Avoid days">${dayChips}</div>
+    <span class="routine-filter-sep" aria-hidden="true"></span>
+    <span class="routine-filter-label">Suggest</span>
+    <button class="routine-filter-toggle ${f.compact ? 'is-active' : ''}" data-action="routine:toggleCompact" aria-pressed="${f.compact ? 'true' : 'false'}" title="Prefer compact days (fewer idle gaps between classes) when ranking suggestions">Compact days</button>
   `;
 }
 
@@ -20634,6 +20691,14 @@ function _min2hhmm(m) {
   return `${hh}:${String(mm).padStart(2,'0')} ${ampm}`;
 }
 
+// Idle-gap duration for the suggestion cards: "45m", "1h", "2h 30m".
+function _fmtGap(minutes) {
+  const h = Math.floor(minutes / 60), m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function _ageLabel(fetchedAt) {
   if (!fetchedAt) return 'just now';
   const diff = Date.now() - fetchedAt;
@@ -20718,6 +20783,9 @@ function _comboCardHTML(combo, idx) {
   if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
   const examNote = b.examClashPairs > 0
     ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
+  const gapNote = b.gapMinutes === 0
+    ? `<span class="routine-suggest-card-gap is-compact" title="No idle gaps between classes">compact</span>`
+    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(_fmtGap(b.gapMinutes))} gaps</span>`;
   return `
     <div class="routine-suggest-card" data-idx="${idx}">
       <div class="routine-suggest-card-head">
@@ -20725,6 +20793,7 @@ function _comboCardHTML(combo, idx) {
         <span class="routine-suggest-card-rating routine-faculty-badge--${ratingClass}" title="Average faculty rating">★ ${escHtml(rating)}</span>
         <span class="routine-suggest-card-score" title="Score">score ${combo.score.toFixed(1)}</span>
         ${seatNotes.length ? `<span class="routine-suggest-card-seats">${escHtml(seatNotes.join(' · '))}</span>` : ''}
+        ${gapNote}
         ${examNote}
       </div>
       <div class="routine-suggest-card-list">
