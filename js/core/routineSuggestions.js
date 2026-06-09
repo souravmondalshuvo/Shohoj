@@ -18,12 +18,36 @@ const DEFAULTS = {
     badPenalty: 4,
     warnPenalty: 2,
     seatSlackWeight: 2,
+    gapWeight: 0,
     sectionFilter: () => true,
 };
 
 function fillRatio(s) {
     if (!s || s.capacity <= 0) return 0;
     return s.consumedSeat / s.capacity;
+}
+
+// Total idle minutes between consecutive classes on the same day, summed over
+// the week. Slots are grouped per day and sorted; only positive gaps count, so
+// overlaps (which clash-filtering removes anyway) never produce negative time.
+function totalGapMinutes(row) {
+    const byDay = new Map();
+    for (const s of row) {
+        for (const slot of s.classSlots) {
+            const arr = byDay.get(slot.day);
+            if (arr) arr.push(slot);
+            else byDay.set(slot.day, [slot]);
+        }
+    }
+    let total = 0;
+    for (const slots of byDay.values()) {
+        slots.sort((a, b) => a.startMin - b.startMin);
+        for (let i = 1; i < slots.length; i++) {
+            const gap = slots[i].startMin - slots[i - 1].endMin;
+            if (gap > 0) total += gap;
+        }
+    }
+    return total;
 }
 
 function filterUsableSections(sections, maxFill, sectionFilter) {
@@ -110,13 +134,18 @@ export function scoreCombination(row, ratingMap, options = {}) {
 
     const examPairs = countExamClashPairs(row);
     const examClashPenalty = examPairs * opts.examClashPenalty;
-    const score = ratingScore + seatScore - examClashPenalty;
+
+    const gapMinutes = totalGapMinutes(row);
+    const gapPenalty = (gapMinutes / 60) * opts.gapWeight;
+
+    const score = ratingScore + seatScore - examClashPenalty - gapPenalty;
 
     return {
         sections: row,
         score,
         breakdown: {
             ratingScore, seatScore, examClashPenalty,
+            gapMinutes, gapPenalty,
             avgRating: ratingDenom > 0 ? ratingSum / ratingDenom : null,
             excellentCount, goodCount, midCount, warnCount, badCount, unratedCount,
             fullCount, tightCount,
