@@ -46,6 +46,10 @@ function normalizeSlots(raw) {
     return out;
 }
 
+function normalizeDateOnly(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function normalizeExam(date, start, end) {
     if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
     const startMin = parseTimeToMinutes(start);
@@ -87,6 +91,8 @@ export function normalizeSection(raw) {
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
         classSlots,
+        classStartDate: normalizeDateOnly(schedule && schedule.classStartDate),
+        classEndDate: normalizeDateOnly(schedule && schedule.classEndDate),
         midExam,
         finalExam,
     };
