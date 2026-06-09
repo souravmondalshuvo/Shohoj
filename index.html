@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ybpXV8EJ/ZJCxl4aqQSWzzV+xZk0xIe1AeAUwoSbouI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-twx+IdzeTTG6E2Uwp7hwSsjhADh9abGDWEFixOEF8J8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-lF/QKhCCPMeBG7YV16O+M4exy9em8m+uyOG+uEKGa2g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.workers.dev https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5922,6 +5922,113 @@ body[data-page="admin"] .orb { display: none !important; }
   .freerooms-controls { flex-direction: column; align-items: stretch; gap: 10px; }
 }
 
+/* ── Seat Status tab ─────────────────────────────────────────────────────── */
+.seats-tab { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+
+.seats-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+.seats-header h3 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
+.seats-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seats-header-right { display: flex; align-items: center; gap: 6px; }
+
+.seats-source-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); color: var(--text2);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.seats-source--live     { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.28); }
+.seats-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
+.seats-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
+
+.seats-error { text-align: center; padding: 36px 18px; color: var(--text2); }
+.seats-error h3 { color: #e74c3c; margin: 0 0 6px; }
+
+/* Skeleton loading state — shimmer placeholders shaped like the real layout. */
+.seats-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.ssk {
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 37%,
+    rgba(255,255,255,0.04) 63%);
+  background-size: 400% 100%;
+  animation: rsk-shimmer 1.4s ease infinite;
+}
+.ssk-header { height: 26px; width: 200px; }
+.ssk-search { height: 42px; width: 100%; }
+.ssk-row    { height: 64px; width: 100%; }
+.seats-loading-note { text-align: center; color: var(--text3); font-size: 12px; margin-top: 10px; }
+
+.seats-searchbar { display: flex; }
+.seats-search-input {
+  flex: 1; min-width: 200px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: 13px 'DM Sans', sans-serif;
+  letter-spacing: 0.5px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.seats-search-input:focus { outline: none; border-color: var(--green); background: rgba(255,255,255,0.06); }
+
+.seats-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.seats-sort { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.seats-sort-label { font-size: 12px; color: var(--text3); }
+.seats-chip {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.seats-chip:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.seats-chip.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
+.seats-chip--filter.is-active { background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38); }
+
+.seats-results { display: flex; flex-direction: column; gap: 12px; }
+.seats-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+.seats-trimmed-note { color: var(--text3); font-size: 12px; padding: 2px 2px 6px; }
+
+.seats-course {
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+  background: rgba(255,255,255,0.02); overflow: hidden;
+}
+.seats-course-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.seats-course-code { font-weight: 700; color: var(--green); letter-spacing: 0.4px; }
+.seats-course-name { color: var(--text2); font-size: 13px; }
+.seats-course-summary { margin-left: auto; color: var(--text3); font-size: 11px; font-weight: 600; }
+
+.seats-section-list { display: flex; flex-direction: column; }
+.seats-section-row {
+  display: grid;
+  grid-template-columns: 44px 56px 1fr 100px 80px;
+  gap: 10px; align-items: center;
+  text-align: left; padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  color: var(--text1);
+  font: 12px 'DM Sans', sans-serif;
+}
+.seats-section-name { font-weight: 700; }
+.seats-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
+.seats-section-schedule { color: var(--text1); }
+.seats-section-room { color: var(--text3); font-size: 11px; }
+.seats-section-seats { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; text-align: center; }
+.seats-seats--open  { background: rgba(46,204,113,0.10); color: #2ecc71; }
+.seats-seats--tight { background: rgba(241,196,15,0.10); color: #f1c40f; }
+.seats-seats--full  { background: rgba(231,76,60,0.10);  color: #e74c3c; }
+
+@media (max-width: 720px) {
+  .seats-section-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
+}
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -6213,6 +6320,10 @@ body[data-page="admin"] .orb { display: none !important; }
           <span class="calc-tab-icon">🗓️</span>
           <span>Routine</span>
         </button>
+        <button class="calc-tab" data-tab="seats">
+          <span class="calc-tab-icon">🪑</span>
+          <span>Seats</span>
+        </button>
         <button class="calc-tab" data-tab="freerooms">
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
@@ -6332,6 +6443,14 @@ body[data-page="admin"] .orb { display: none !important; }
         <div class="calc-body">
           <div id="routineContent">
             <!-- Rendered dynamically by routineTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-tab-panel" id="tabSeats">
+        <div class="calc-body">
+          <div id="seatsContent">
+            <!-- Rendered dynamically by seatsTab.js -->
           </div>
         </div>
       </div>
@@ -15790,6 +15909,120 @@ function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEn
     return windows;
 }
 
+// ── js/core/seatStatus.js ───────────────────────────────────────
+// Generated from src/core/seatStatus.ts for the vanilla JS runtime.
+// Update src/core/seatStatus.ts first, then regenerate this file.
+//
+// Seat-status lookup — pure helpers that turn the normalized section list into
+// "is there a seat in COURSE X" answers. Layers search, seat math, sorting, and
+// a per-course summary on top of the live CONNECT feed so the Seats tab stays a
+// thin renderer. Seat status thresholds mirror the Routine Builder's inline
+// seat badge so the two tabs agree. UI-agnostic on purpose.
+
+// A section at >85% capacity is "tight"; full sections are "full".
+const TIGHT_THRESHOLD = 0.85;
+
+// Per-section seat math, derived purely from capacity/consumedSeat/isFull.
+function seatInfo(section) {
+    const capacity = Number.isFinite(section.capacity) ? section.capacity : 0;
+    const taken = Number.isFinite(section.consumedSeat) ? section.consumedSeat : 0;
+    const left = Math.max(0, capacity - taken);
+    const pct = capacity > 0 ? taken / capacity : 0;
+    const status = section.isFull
+        ? 'full'
+        : (pct > TIGHT_THRESHOLD ? 'tight' : 'open');
+    return { capacity, taken, left, pct, status };
+}
+
+// "01" < "2" < "12" — numeric when both parse, else case-insensitive string.
+function compareSectionName(a, b) {
+    const na = Number(a);
+    const nb = Number(b);
+    if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+// A new, sorted copy of `sections`. 'section' orders by section name; 'seats'
+// puts the most open seats first (full sections last), breaking ties by section
+// name. Never mutates the input.
+function sortSections(sections, mode = 'section') {
+    const copy = sections.slice();
+    if (mode === 'seats') {
+        copy.sort((a, b) => {
+            const la = seatInfo(a).left;
+            const lb = seatInfo(b).left;
+            if (la !== lb) return lb - la;
+            return compareSectionName(a.sectionName, b.sectionName);
+        });
+    } else {
+        copy.sort((a, b) => compareSectionName(a.sectionName, b.sectionName));
+    }
+    return copy;
+}
+
+function courseSeatSummary(sections) {
+    let openSections = 0;
+    let seatsLeft = 0;
+    for (const s of sections) {
+        const info = seatInfo(s);
+        if (info.left > 0) openSections += 1;
+        seatsLeft += info.left;
+    }
+    return { totalSections: sections.length, openSections, seatsLeft };
+}
+
+// Match-rank a course against a normalized query: exact code (0), code prefix
+// (1), code substring (2), name substring (3), or no match (-1). Lower is more
+// relevant.
+function matchRank(courseCode, courseName, query) {
+    if (courseCode === query) return 0;
+    if (courseCode.startsWith(query)) return 1;
+    if (courseCode.includes(query)) return 2;
+    if (courseName.toUpperCase().includes(query)) return 3;
+    return -1;
+}
+
+// Group every course matching `query` with its sections, ordered by match
+// relevance then course code. An empty/whitespace query returns []. Sections
+// within a group are sorted by opts.sort (default 'section'); with
+// availableOnly, full sections — and any course left with no sections — are
+// dropped.
+function searchCourseSections(index, query, opts = {}) {
+    const q = (query || '').trim().toUpperCase();
+    if (q === '') return [];
+
+    const sort = opts.sort ?? 'section';
+    const ranked = [];
+
+    for (const [courseCode, rawSections] of index) {
+        const courseName = rawSections.length > 0 ? rawSections[0].courseName : '';
+        const rank = matchRank(courseCode, courseName, q);
+        if (rank < 0) continue;
+
+        const kept = opts.availableOnly
+            ? rawSections.filter(s => seatInfo(s).left > 0)
+            : rawSections.slice();
+        if (kept.length === 0) continue;
+
+        const sections = sortSections(kept, sort);
+        ranked.push({
+            rank,
+            group: {
+                courseCode,
+                courseName,
+                sections,
+                summary: courseSeatSummary(sections),
+            },
+        });
+    }
+
+    ranked.sort((a, b) =>
+        (a.rank - b.rank) || a.group.courseCode.localeCompare(b.group.courseCode));
+
+    const groups = ranked.map(r => r.group);
+    return typeof opts.limit === 'number' ? groups.slice(0, opts.limit) : groups;
+}
+
 // ── js/core/routineState.js ─────────────────────────────────────
 // Generated from src/core/routineState.ts for the vanilla JS runtime.
 // Update src/core/routineState.ts first, then regenerate this file.
@@ -18073,6 +18306,267 @@ function _frMin2hhmm(min) {
   return `${hh}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 function _frAgeLabel(fetchedAt) {
+  if (!fetchedAt) return 'just now';
+  const diff = Date.now() - fetchedAt;
+  if (diff < 60_000)     return 'just now';
+  if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
+  return new Date(fetchedAt).toLocaleString();
+}
+
+// ── js/ui/seatsTab.js ───────────────────────────────────────────
+// ── js/ui/seatsTab.js ─────────────────────────────────────────────────────────
+// Seat Status tab. Reuses the live BRACU CONNECT feed (connectFeedClient,
+// 10-min cache → cache → offline fallback) and answers the registration-week
+// question "is there a seat open in COURSE X right now?". Type a course code,
+// see every matching section with live seats / faculty / room / schedule,
+// sortable by section # or seats-left, with an "open seats only" filter. All
+// seat math + search lives in the pure core module js/core/seatStatus.js; this
+// file is just the renderer + wiring.
+//
+// Every top-level identifier here is SEATS_-/_seats-prefixed on purpose:
+// build3.py concatenates every module into one scope, so a bare `const
+// DAY_ORDER` would collide with routineTab.js's and take down the whole bundle
+// (see the matching note in routineTab.js).
+
+// Cap on rendered course groups so a 1-letter query doesn't paint the whole
+// catalog; a note tells the student when results were trimmed.
+const SEATS_RESULT_LIMIT = 40;
+
+const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
+const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
+
+const _seats = {
+  loading: false,
+  error: null,
+  source: null,        // 'live' | 'cache' | 'fallback'
+  fetchedAt: 0,
+  index: null,         // Map<courseCode, NormalizedSection[]>
+  query: '',
+  sortMode: 'section', // 'section' | 'seats'
+  availableOnly: false,
+};
+
+registerAction('seats:refresh',         () => _seatsRefresh(true));
+registerAction('seats:clearCache',      () => { clearConnectFeedCache(); _seatsRefresh(true); });
+registerAction('seats:sortSection',     () => { _seats.sortMode = 'section'; _seatsRender(); });
+registerAction('seats:sortSeats',       () => { _seats.sortMode = 'seats'; _seatsRender(); });
+registerAction('seats:toggleAvailable', () => { _seats.availableOnly = !_seats.availableOnly; _seatsRender(); });
+
+// ── DATA LOADING ────────────────────────────────────────────────────────────
+async function _seatsRefresh(force = false) {
+  _seats.loading = true;
+  _seats.error = null;
+  _seatsRender();
+  try {
+    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    _seats.index = indexByCourse(result.sections);
+    _seats.source = result.source;
+    _seats.fetchedAt = result.fetchedAt;
+  } catch (e) {
+    _seats.error = e && e.message ? e.message : 'Failed to load Connect feed.';
+  } finally {
+    _seats.loading = false;
+    _seatsRender();
+  }
+}
+
+// ── ENTRY ─────────────────────────────────────────────────────────────────────
+function renderSeatsTab() {
+  if (!_seats.index && !_seats.loading && !_seats.error) {
+    _seatsRefresh(); // fire-and-forget; _seatsRefresh repaints on settle
+    return;
+  }
+  _seatsRender();
+}
+
+function _seatsRender() {
+  const root = document.getElementById('seatsContent');
+  if (!root) return;
+  root.innerHTML = _seatsShellHTML();
+  _seatsAttachInput();
+}
+
+function _seatsAttachInput() {
+  const input = document.getElementById('seatsCourseInput');
+  if (!input) return;
+  // Keep the live value across repaints, and the caret where the student left it.
+  input.value = _seats.query;
+  input.addEventListener('input', (ev) => {
+    _seats.query = (ev.target.value || '').toUpperCase();
+    _seatsPaintResults();
+  });
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && _seats.query) {
+      _seats.query = '';
+      input.value = '';
+      _seatsPaintResults();
+    }
+  });
+}
+
+// Repaint only the results list — leaves the search box (and its focus/caret)
+// untouched while the student types.
+function _seatsPaintResults() {
+  const el = document.getElementById('seatsResults');
+  if (!el) return;
+  el.innerHTML = _seatsResultsInner();
+}
+
+// ── HTML ────────────────────────────────────────────────────────────────────
+function _seatsShellHTML() {
+  if (_seats.loading && !_seats.index) return _seatsLoadingHTML();
+  if (_seats.error  && !_seats.index) return _seatsErrorHTML();
+  return _seatsMainHTML();
+}
+
+function _seatsLoadingHTML() {
+  return `
+    <div class="seats-tab">
+      <div class="seats-skeleton" aria-hidden="true">
+        <div class="ssk ssk-header"></div>
+        <div class="ssk ssk-search"></div>
+        <div class="ssk ssk-row"></div>
+        <div class="ssk ssk-row"></div>
+      </div>
+      <div class="seats-loading-note">Fetching live section data from CONNECT…</div>
+    </div>
+  `;
+}
+
+function _seatsErrorHTML() {
+  return `
+    <div class="seats-tab">
+      <div class="seats-error">
+        <h3>Couldn't reach the Connect feed</h3>
+        <p>${escHtml(_seats.error || 'Unknown error.')}</p>
+        <button class="btn-primary" data-action="seats:refresh">Try again</button>
+      </div>
+    </div>
+  `;
+}
+
+function _seatsMainHTML() {
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_seats.source] || '—';
+  const sourceClass = `seats-source--${_seats.source || 'unknown'}`;
+  const age = _seatsAgeLabel(_seats.fetchedAt);
+  return `
+    <div class="seats-tab">
+      <div class="seats-header">
+        <div class="seats-header-left">
+          <h3>🪑 Seat Status</h3>
+          <span class="seats-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
+            ${escHtml(sourceLabel)} · ${escHtml(age)}
+          </span>
+        </div>
+        <div class="seats-header-right">
+          <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="seats-searchbar">
+        <input
+          id="seatsCourseInput"
+          type="text"
+          class="seats-search-input"
+          placeholder="Search a course code, e.g. CSE220"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search a course code to check seat availability"
+        />
+      </div>
+
+      <div class="seats-controls">
+        <div class="seats-sort" role="group" aria-label="Sort sections">
+          <span class="seats-sort-label">Sort</span>
+          <button class="seats-chip ${_seats.sortMode === 'section' ? 'is-active' : ''}" data-action="seats:sortSection" aria-pressed="${_seats.sortMode === 'section'}">Section #</button>
+          <button class="seats-chip ${_seats.sortMode === 'seats' ? 'is-active' : ''}" data-action="seats:sortSeats" aria-pressed="${_seats.sortMode === 'seats'}">Seats left</button>
+        </div>
+        <button class="seats-chip seats-chip--filter ${_seats.availableOnly ? 'is-active' : ''}" data-action="seats:toggleAvailable" aria-pressed="${_seats.availableOnly}" title="Hide sections with no seats left">Open seats only</button>
+      </div>
+
+      <div id="seatsResults" class="seats-results">${_seatsResultsInner()}</div>
+    </div>
+  `;
+}
+
+function _seatsResultsInner() {
+  if (!_seats.index) return '';
+  const q = _seats.query.trim();
+  if (q === '') {
+    return `<div class="seats-empty">Type a course code above to check live seat availability.</div>`;
+  }
+  const all = searchCourseSections(_seats.index, q, {
+    availableOnly: _seats.availableOnly,
+    sort: _seats.sortMode,
+  });
+  if (all.length === 0) {
+    const extra = _seats.availableOnly ? ' with open seats' : '';
+    return `<div class="seats-empty">No course matches “${escHtml(q)}”${extra}.</div>`;
+  }
+  const groups = all.slice(0, SEATS_RESULT_LIMIT);
+  const trimmedNote = all.length > groups.length
+    ? `<div class="seats-trimmed-note">Showing the first ${groups.length} of ${all.length} matching courses — keep typing to narrow.</div>`
+    : '';
+  return trimmedNote + groups.map(_seatsGroupHTML).join('');
+}
+
+function _seatsGroupHTML(group) {
+  const s = group.summary;
+  const openText = s.openSections === 0
+    ? 'no open sections'
+    : `${s.openSections} open · ${s.seatsLeft} seat${s.seatsLeft === 1 ? '' : 's'} left`;
+  return `
+    <div class="seats-course">
+      <div class="seats-course-head">
+        <span class="seats-course-code">${escHtml(group.courseCode)}</span>
+        <span class="seats-course-name">${escHtml(group.courseName || '')}</span>
+        <span class="seats-course-summary">${escHtml(`${s.totalSections} section${s.totalSections === 1 ? '' : 's'} · ${openText}`)}</span>
+      </div>
+      <div class="seats-section-list">
+        ${group.sections.map(_seatsSectionRowHTML).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function _seatsSectionRowHTML(section) {
+  const info = seatInfo(section);
+  const seatTitle = info.status === 'full'
+    ? 'Section full'
+    : `${info.taken}/${info.capacity} seats taken · ${info.left} left`;
+  return `
+    <div class="seats-section-row seats-row--${info.status}">
+      <span class="seats-section-name">§ ${escHtml(section.sectionName || '—')}</span>
+      <span class="seats-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
+      <span class="seats-section-schedule">${escHtml(_seatsFormatSchedule(section))}</span>
+      <span class="seats-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
+      <span class="seats-section-seats seats-seats--${info.status}" title="${escAttr(seatTitle)}">${escHtml(_seatsText(info))}</span>
+    </div>
+  `;
+}
+
+// ── FORMATTERS ────────────────────────────────────────────────────────────────
+function _seatsText(info) {
+  if (info.status === 'full') return 'FULL';
+  if (info.status === 'tight') return `${info.left} left`;
+  return `${info.taken}/${info.capacity}`;
+}
+
+function _seatsFormatSchedule(section) {
+  if (!section.classSlots || section.classSlots.length === 0) return 'No schedule';
+  const byDay = [...section.classSlots].sort((a, b) => SEATS_DAY_ORDER.indexOf(a.day) - SEATS_DAY_ORDER.indexOf(b.day));
+  return byDay.map(s => `${SEATS_DAY_SHORT[s.day] || s.day.slice(0, 3)} ${_seatsMin2hhmm(s.startMin)}–${_seatsMin2hhmm(s.endMin)}`).join(' · ');
+}
+
+function _seatsMin2hhmm(m) {
+  const h = Math.floor(m / 60), mm = m % 60;
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+}
+
+function _seatsAgeLabel(fetchedAt) {
   if (!fetchedAt) return 'just now';
   const diff = Date.now() - fetchedAt;
   if (diff < 60_000)     return 'just now';
@@ -22434,6 +22928,7 @@ const TAB_MAP = {
   difficulty: 'tabDifficulty',
   papers:     'tabPapers',
   routine:    'tabRoutine',
+  seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
 };
 
@@ -22497,6 +22992,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'routine') {
     renderRoutineTab();
   }
+  if (tabId === 'seats') {
+    renderSeatsTab();
+  }
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
@@ -22522,6 +23020,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/difficulty')      return 'difficulty';
   if (hash === '#calculator/papers')          return 'papers';
   if (hash.startsWith('#calculator/routine'))  return 'routine';
+  if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
 
   // Then check sessionStorage

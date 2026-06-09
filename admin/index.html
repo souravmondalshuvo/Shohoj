@@ -5919,6 +5919,113 @@ body[data-page="admin"] .orb { display: none !important; }
   .freerooms-controls { flex-direction: column; align-items: stretch; gap: 10px; }
 }
 
+/* ── Seat Status tab ─────────────────────────────────────────────────────── */
+.seats-tab { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+
+.seats-header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+.seats-header h3 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
+.seats-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seats-header-right { display: flex; align-items: center; gap: 6px; }
+
+.seats-source-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: rgba(255,255,255,0.06); color: var(--text2);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.seats-source--live     { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.28); }
+.seats-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
+.seats-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
+
+.seats-error { text-align: center; padding: 36px 18px; color: var(--text2); }
+.seats-error h3 { color: #e74c3c; margin: 0 0 6px; }
+
+/* Skeleton loading state — shimmer placeholders shaped like the real layout. */
+.seats-skeleton { display: flex; flex-direction: column; gap: 12px; padding: 4px 0; }
+.ssk {
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 37%,
+    rgba(255,255,255,0.04) 63%);
+  background-size: 400% 100%;
+  animation: rsk-shimmer 1.4s ease infinite;
+}
+.ssk-header { height: 26px; width: 200px; }
+.ssk-search { height: 42px; width: 100%; }
+.ssk-row    { height: 64px; width: 100%; }
+.seats-loading-note { text-align: center; color: var(--text3); font-size: 12px; margin-top: 10px; }
+
+.seats-searchbar { display: flex; }
+.seats-search-input {
+  flex: 1; min-width: 200px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: 13px 'DM Sans', sans-serif;
+  letter-spacing: 0.5px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.seats-search-input:focus { outline: none; border-color: var(--green); background: rgba(255,255,255,0.06); }
+
+.seats-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.seats-sort { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.seats-sort-label { font-size: 12px; color: var(--text3); }
+.seats-chip {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.seats-chip:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.seats-chip.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
+.seats-chip--filter.is-active { background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38); }
+
+.seats-results { display: flex; flex-direction: column; gap: 12px; }
+.seats-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+.seats-trimmed-note { color: var(--text3); font-size: 12px; padding: 2px 2px 6px; }
+
+.seats-course {
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+  background: rgba(255,255,255,0.02); overflow: hidden;
+}
+.seats-course-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.seats-course-code { font-weight: 700; color: var(--green); letter-spacing: 0.4px; }
+.seats-course-name { color: var(--text2); font-size: 13px; }
+.seats-course-summary { margin-left: auto; color: var(--text3); font-size: 11px; font-weight: 600; }
+
+.seats-section-list { display: flex; flex-direction: column; }
+.seats-section-row {
+  display: grid;
+  grid-template-columns: 44px 56px 1fr 100px 80px;
+  gap: 10px; align-items: center;
+  text-align: left; padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  color: var(--text1);
+  font: 12px 'DM Sans', sans-serif;
+}
+.seats-section-name { font-weight: 700; }
+.seats-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
+.seats-section-schedule { color: var(--text1); }
+.seats-section-room { color: var(--text3); font-size: 11px; }
+.seats-section-seats { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; text-align: center; }
+.seats-seats--open  { background: rgba(46,204,113,0.10); color: #2ecc71; }
+.seats-seats--tight { background: rgba(241,196,15,0.10); color: #f1c40f; }
+.seats-seats--full  { background: rgba(231,76,60,0.10);  color: #e74c3c; }
+
+@media (max-width: 720px) {
+  .seats-section-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
+}
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
