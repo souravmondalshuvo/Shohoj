@@ -58,6 +58,7 @@ import { renderReviewsTab } from './ui/reviewsTab.js';
 import { renderDifficultyMapTab } from './ui/difficultyMap.js';
 import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
+import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -406,6 +407,7 @@ const TAB_MAP = {
   difficulty: 'tabDifficulty',
   papers:     'tabPapers',
   routine:    'tabRoutine',
+  freerooms:  'tabFreeRooms',
 };
 
 let _activeCalcTab = 'calculator';
@@ -468,6 +470,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'routine') {
     renderRoutineTab();
   }
+  if (tabId === 'freerooms') {
+    renderFreeRoomsTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -490,6 +495,7 @@ function restoreCalcTab() {
   if (hash === '#calculator/difficulty')      return 'difficulty';
   if (hash === '#calculator/papers')          return 'papers';
   if (hash.startsWith('#calculator/routine'))  return 'routine';
+  if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
 
   // Then check sessionStorage
   try {
