@@ -63,6 +63,7 @@ MAIN_JS_FILES = [
     'js/core/connectFeedClient.js',
     'js/core/freeRooms.js',
     'js/core/seatStatus.js',
+    'js/core/calendarExport.js',
     'js/core/routineState.js',
     'js/core/routineGrid.js',
     'js/core/routineFaculty.js',
