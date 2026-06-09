@@ -7,6 +7,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Seat-drop alerts on the Seat Status tab: watch a full section and Shohoj polls the live CONNECT feed in the background (while open), then fires a browser notification and an in-app toast the moment a seat opens. Watchlist persists across reloads; transition detection lives in the unit-tested `src/core/seatWatch.ts` core.
 - Faculty reviews for two new Pharmacy faculty (KMP, MKS) and several CSE hardware faculty (TSE plus extended profiles for AQT, NFS, RAO, TAV), covering PHB201, PHB105, and the CSE251 hardware courses.
 
 ### Changed
