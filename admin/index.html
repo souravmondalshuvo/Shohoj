@@ -6020,7 +6020,7 @@ body[data-page="admin"] .orb { display: none !important; }
 .seats-section-list { display: flex; flex-direction: column; }
 .seats-section-row {
   display: grid;
-  grid-template-columns: 44px 56px 1fr 100px 80px;
+  grid-template-columns: 30px 44px 56px 1fr 100px 80px;
   gap: 10px; align-items: center;
   text-align: left; padding: 10px 14px;
   border-top: 1px solid rgba(255,255,255,0.04);
@@ -6036,8 +6036,55 @@ body[data-page="admin"] .orb { display: none !important; }
 .seats-seats--tight { background: rgba(241,196,15,0.10); color: #f1c40f; }
 .seats-seats--full  { background: rgba(231,76,60,0.10);  color: #e74c3c; }
 
+/* Per-row watch toggle (bell). Dim until armed, blue-tinted once watching. */
+.seats-watch-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 2px; line-height: 1; font-size: 15px;
+  opacity: 0.4; filter: grayscale(0.6);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.seats-watch-btn:hover { opacity: 0.85; transform: scale(1.1); }
+.seats-watch-btn.is-watched { opacity: 1; filter: none; }
+
+/* "Watching (N)" panel above the search box. */
+.seats-watch-panel {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(91,157,255,0.28);
+  background: rgba(91,157,255,0.06);
+  border-radius: 12px;
+}
+.seats-watch-head {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.seats-watch-head h4 { margin: 0; font-size: 13px; color: var(--text1); }
+.seats-watch-note { color: var(--text3); font-size: 11px; }
+.seats-watch-list { display: flex; flex-direction: column; gap: 6px; }
+.seats-watch-row {
+  display: grid; grid-template-columns: 1fr 64px 24px;
+  gap: 10px; align-items: center;
+  font: 12px 'DM Sans', sans-serif; color: var(--text1);
+}
+.seats-watch-label { font-weight: 600; }
+.seats-watch-status {
+  font-weight: 700; font-size: 11px; text-align: center;
+  padding: 2px 8px; border-radius: 999px;
+}
+.seats-watch-status--unknown { background: rgba(255,255,255,0.05); color: var(--text3); }
+.seats-watch-remove {
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); font-size: 13px; line-height: 1; padding: 2px;
+  transition: color 0.15s ease;
+}
+.seats-watch-remove:hover { color: #e74c3c; }
+
 @media (max-width: 720px) {
-  .seats-section-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .seats-section-row { grid-template-columns: auto 1fr auto; gap: 4px 10px; }
+  .seats-watch-btn { grid-row: 1; grid-column: 1; }
+  .seats-section-name { grid-column: 2; }
+  .seats-section-seats { grid-column: 3; }
+  .seats-section-faculty { grid-column: 2 / -1; }
   .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
 }
 
