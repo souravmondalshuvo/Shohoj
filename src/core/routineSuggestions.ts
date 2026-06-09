@@ -39,6 +39,12 @@ export interface SuggestionOptions {
     warnPenalty?: number;
     /** Reward for seat slack (consumedSeat / capacity); multiplied by per-section weight. Default 2. */
     seatSlackWeight?: number;
+    /**
+     * Penalty per idle hour between consecutive same-day classes — rewards
+     * compact weeks. Default 0 (off), so callers opt in explicitly and existing
+     * behavior is unchanged.
+     */
+    gapWeight?: number;
     /** Predicate to drop sections before enumeration (e.g. time-of-day filters). Default: keep all. */
     sectionFilter?: (section: NormalizedSection) => boolean;
 }
@@ -47,6 +53,10 @@ export interface SuggestionBreakdown {
     ratingScore: number;
     seatScore: number;
     examClashPenalty: number;
+    /** Total idle minutes between consecutive same-day classes (informational). */
+    gapMinutes: number;
+    /** Score penalty applied for those gaps; 0 when `gapWeight` is 0. */
+    gapPenalty: number;
     avgRating: number | null;
     excellentCount: number;
     goodCount: number;
@@ -87,12 +97,38 @@ const DEFAULTS: Required<SuggestionOptions> = {
     badPenalty: 4,
     warnPenalty: 2,
     seatSlackWeight: 2,
+    gapWeight: 0,
     sectionFilter: () => true,
 };
 
 function fillRatio(s: NormalizedSection): number {
     if (s.capacity <= 0) return 0;
     return s.consumedSeat / s.capacity;
+}
+
+/**
+ * Total idle minutes between consecutive classes on the same day, summed over
+ * the week. Slots are grouped per day and sorted; only positive gaps count, so
+ * overlaps (which clash-filtering removes anyway) never produce negative time.
+ */
+function totalGapMinutes(row: readonly NormalizedSection[]): number {
+    const byDay = new Map<string, Array<{ startMin: number; endMin: number }>>();
+    for (const s of row) {
+        for (const slot of s.classSlots) {
+            const arr = byDay.get(slot.day);
+            if (arr) arr.push(slot);
+            else byDay.set(slot.day, [slot]);
+        }
+    }
+    let total = 0;
+    for (const slots of byDay.values()) {
+        slots.sort((a, b) => a.startMin - b.startMin);
+        for (let i = 1; i < slots.length; i++) {
+            const gap = slots[i].startMin - slots[i - 1].endMin;
+            if (gap > 0) total += gap;
+        }
+    }
+    return total;
 }
 
 function filterUsableSections(
@@ -202,7 +238,10 @@ export function scoreCombination(
     const examPairs = countExamClashPairs(row as NormalizedSection[]);
     const examClashPenalty = examPairs * opts.examClashPenalty;
 
-    const score = ratingScore + seatScore - examClashPenalty;
+    const gapMinutes = totalGapMinutes(row);
+    const gapPenalty = (gapMinutes / 60) * opts.gapWeight;
+
+    const score = ratingScore + seatScore - examClashPenalty - gapPenalty;
 
     return {
         sections: row as NormalizedSection[],
@@ -211,6 +250,8 @@ export function scoreCombination(
             ratingScore,
             seatScore,
             examClashPenalty,
+            gapMinutes,
+            gapPenalty,
             avgRating: ratingDenom > 0 ? ratingSum / ratingDenom : null,
             excellentCount, goodCount, midCount, warnCount, badCount, unratedCount,
             fullCount, tightCount,
