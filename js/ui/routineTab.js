@@ -7,6 +7,7 @@
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
+import { buildRoutineICS } from '../core/calendarExport.js';
 import {
   emptyRoutineState,
   pickCourse,
@@ -144,6 +145,7 @@ registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.data
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
+registerAction('routine:calendar',     () => _onAddToCalendar());
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -282,6 +284,32 @@ function _onShare() {
       _fallbackCopy(url, flash);
     }
   } catch { _fallbackCopy(url, flash); }
+}
+
+// Download an .ics calendar of the picked sections — weekly class events +
+// mid/final exams, each with a 30-min reminder — so the student's own calendar
+// app fires the alerts. Uses the resolved sections from the live feed.
+function _onAddToCalendar() {
+  if (!_store.index) return;
+  const sections = selectedSections(_store.routine, _store.index);
+  if (sections.length === 0) return;
+  const ics = buildRoutineICS(sections);
+  try {
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shohoj-routine.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    _store.shareNote = '✓ Calendar downloaded';
+  } catch {
+    _store.shareNote = 'Calendar export failed';
+  }
+  _rerender();
+  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
 }
 
 // execCommand fallback for browsers without the async clipboard API.
@@ -866,6 +894,9 @@ function _headerHTML(summary) {
           : ''}
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:share" title="Copy a shareable link to this routine">🔗 Share</button>`
+          : ''}
+        ${Object.keys(_store.routine.picks).length > 0
+          ? `<button class="btn-secondary btn-sm" data-action="routine:calendar" title="Download an .ics calendar of your classes + exams with reminders">📅 Add to Calendar</button>`
           : ''}
         <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
