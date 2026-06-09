@@ -8,7 +8,7 @@
 export const CAMPUS_START_MIN = 8 * 60;   // 08:00
 export const CAMPUS_END_MIN = 22 * 60;    // 22:00
 
-const WEEK_ORDER = [
+const FR_WEEK_ORDER = [
     'SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
 ];
 
@@ -41,7 +41,7 @@ export function buildRoomBusyIndex(sections) {
     }
     for (const list of index.values()) {
         list.sort((a, b) =>
-            (WEEK_ORDER.indexOf(a.day) - WEEK_ORDER.indexOf(b.day)) ||
+            (FR_WEEK_ORDER.indexOf(a.day) - FR_WEEK_ORDER.indexOf(b.day)) ||
             (a.startMin - b.startMin) ||
             (a.endMin - b.endMin));
     }
