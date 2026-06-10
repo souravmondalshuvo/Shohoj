@@ -4633,29 +4633,6 @@ input, select, textarea,
     white-space: nowrap;
   }
 
-  .calc-tabs {
-    justify-content: flex-start;
-    overflow-x: auto;
-    margin: 10px 0.8rem 12px;
-    border-radius: 16px;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .calc-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .calc-tab {
-    flex: 0 0 auto;
-    min-width: 108px;
-    scroll-snap-align: start;
-  }
-
-  .calc-tab-slider {
-    display: none;
-  }
-
   .footer-btn-group {
     flex-wrap: wrap !important;
     overflow-x: visible !important;
@@ -4695,6 +4672,33 @@ input, select, textarea,
   .paper-card-download,
   .paper-card-report {
     width: 100%;
+  }
+}
+
+/* Tab bar horizontal-scroll layout: only between the ≤480px grid and the
+   desktop layout, so it can't override the grid's min-width: 0 reset. */
+@media (min-width: 481px) and (max-width: 640px) {
+  .calc-tabs {
+    justify-content: flex-start;
+    overflow-x: auto;
+    margin: 10px 0.8rem 12px;
+    border-radius: 16px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calc-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .calc-tab {
+    flex: 0 0 auto;
+    min-width: 108px;
+    scroll-snap-align: start;
+  }
+
+  .calc-tab-slider {
+    display: none;
   }
 }
 
