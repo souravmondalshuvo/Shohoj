@@ -740,10 +740,10 @@ function _mainHTML() {
       <div class="routine-suggestions" id="routineSuggestions" role="listbox" aria-label="Course matches">${_suggestionsHTML()}</div>
       ${picked.length > 0 ? _controlsHTML(picked, summary, selected) : ''}
       ${picked.length > 0 ? _filtersHTML() : ''}
+      ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
       ${picked.length === 0 ? _emptyHTML() : _pickedListHTML(picked, clashMap, selected)}
       ${picked.length >= 1 ? _suggestionsToolbarHTML(picked.length) : ''}
       ${_store.suggestionsOpen ? _suggestionsPanelHTML() : ''}
-      ${selected.length > 0 ? _gridHTML(selected, clashMap) : ''}
     </div>
   `;
 }
