@@ -5981,19 +5981,27 @@ body[data-page="admin"] .orb { display: none !important; }
 .ssk-row    { height: 64px; width: 100%; }
 .seats-loading-note { text-align: center; color: var(--text3); font-size: 12px; margin-top: 10px; }
 
-.seats-searchbar { display: flex; }
+.seats-searchbar { position: relative; display: flex; align-items: center; }
+.seats-search-icon {
+  position: absolute; left: 14px; font-size: 13px;
+  opacity: 0.5; pointer-events: none;
+}
 .seats-search-input {
   flex: 1; min-width: 200px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.10);
   color: var(--text1);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 11px 14px 11px 38px;
   font: 13px 'DM Sans', sans-serif;
   letter-spacing: 0.5px;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
-.seats-search-input:focus { outline: none; border-color: var(--green); background: rgba(255,255,255,0.06); }
+.seats-search-input::placeholder { color: var(--text3); }
+.seats-search-input:focus {
+  outline: none; border-color: var(--green); background: rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 3px var(--green-glow);
+}
 
 .seats-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .seats-sort { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -6006,10 +6014,22 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .seats-chip:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
 .seats-chip.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
-.seats-chip--filter.is-active { background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38); }
+.seats-chip--filter.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
 
 .seats-results { display: flex; flex-direction: column; gap: 12px; }
-.seats-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+
+/* Friendly empty state — centered, with data-driven quick-pick chips. */
+.seats-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; padding: 40px 18px 34px; color: var(--text3);
+}
+.seats-empty-icon { font-size: 34px; line-height: 1; opacity: 0.85; margin-bottom: 4px; }
+.seats-empty-title { font-size: 16px; font-weight: 700; color: var(--text1); }
+.seats-empty-sub { font-size: 13px; color: var(--text2); max-width: 360px; line-height: 1.5; }
+.seats-quickpicks { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
+.seats-quickpick { font-weight: 700; letter-spacing: 0.4px; color: var(--text2); }
+.seats-quickpick:hover { border-color: rgba(46,204,113,0.38); color: var(--green); }
+
 .seats-trimmed-note { color: var(--text3); font-size: 12px; padding: 2px 2px 6px; }
 
 .seats-course {
@@ -6034,7 +6054,9 @@ body[data-page="admin"] .orb { display: none !important; }
   border-top: 1px solid rgba(255,255,255,0.04);
   color: var(--text1);
   font: 12px 'DM Sans', sans-serif;
+  transition: background 0.15s ease;
 }
+.seats-section-row:hover { background: rgba(255,255,255,0.03); }
 .seats-section-name { font-weight: 700; }
 .seats-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
 .seats-section-schedule { color: var(--text1); }
@@ -6052,14 +6074,24 @@ body[data-page="admin"] .orb { display: none !important; }
   transition: opacity 0.15s ease, transform 0.1s ease;
 }
 .seats-watch-btn:hover { opacity: 0.85; transform: scale(1.1); }
-.seats-watch-btn.is-watched { opacity: 1; filter: none; }
+.seats-watch-btn.is-watched {
+  opacity: 1; filter: none;
+  animation: seats-bell-pop 0.3s ease;
+}
+@keyframes seats-bell-pop {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .seats-watch-btn.is-watched { animation: none; } }
 
-/* "Watching (N)" panel above the search box. */
+/* "Watching (N)" panel above the search box. Amber tint reads as an alert/bell
+   channel and keeps the tab inside Shohoj's green-and-gold palette. */
 .seats-watch-panel {
   margin: 12px 0 4px;
   padding: 12px 14px;
-  border: 1px solid rgba(91,157,255,0.28);
-  background: rgba(91,157,255,0.06);
+  border: 1px solid rgba(241,196,15,0.30);
+  background: rgba(241,196,15,0.06);
   border-radius: 12px;
 }
 .seats-watch-head {
