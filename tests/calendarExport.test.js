@@ -32,7 +32,7 @@ function sec(over) {
 
 const NOW = new Date(Date.UTC(2026, 5, 1, 9, 30, 0)); // fixed clock for DTSTAMP
 
-// CSE110 §01: Sunday class 14:00–15:20 over a real semester, with mid + final exams.
+// CSE110 Section 01: Sunday class 14:00–15:20 over a real semester, with mid + final exams.
 const CSE110 = parseFeed([
     sec({
         sectionId: 187473, courseCode: 'CSE110', courseName: 'Programming Language I', sectionName: '01',
@@ -114,8 +114,8 @@ test('class events are skipped when semester dates are unknown (exams still emit
 console.log('\nexam events:');
 test('mid and final exams become one-off VEVENTs (no RRULE)', () => {
     const ics = buildRoutineICS(CSE110, { now: NOW });
-    assert(ics.includes('SUMMARY:CSE110 (§01) — Mid Exam'), 'mid summary missing');
-    assert(ics.includes('SUMMARY:CSE110 (§01) — Final Exam'), 'final summary missing');
+    assert(ics.includes('SUMMARY:CSE110 (Section 01) — Mid Exam'), 'mid summary missing');
+    assert(ics.includes('SUMMARY:CSE110 (Section 01) — Final Exam'), 'final summary missing');
     assert(ics.includes('DTSTART:20260801T110000'), 'mid DTSTART wrong');
     assert(ics.includes('DTSTART:20260918T110000'), 'final DTSTART wrong');
     // 3 events total: 1 class + 2 exams.
