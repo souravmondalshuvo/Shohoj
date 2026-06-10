@@ -255,6 +255,17 @@
       transition: border-color 0.2s, color 0.2s, transform 0.2s, background 0.2s;
     }
     .btn-secondary:hover { border-color: var(--green); color: var(--green); background: var(--glass2); transform: translateY(-2px); }
+    /* Compact modifier for in-tab toolbars (Routine / Seats / Free Rooms). The
+       base buttons are hero-CTA scale; toolbars opt down via .btn-sm. The
+       width/max-width reset keeps the ≤480px hero rule (width:100%) from
+       stretching toolbar buttons full-width — .btn-sm wins on specificity. */
+    .btn-primary.btn-sm, .btn-secondary.btn-sm {
+      font-size: 12.5px;
+      padding: 7px 14px;
+      border-radius: 9px;
+      width: auto; max-width: none;
+    }
+    .btn-primary.btn-sm:hover { box-shadow: 0 4px 16px rgba(46,204,113,0.3); }
     .hero-stats { display: flex; gap: 3rem; justify-content: center; margin-top: 4rem; animation: fadeUp 0.6s 0.4s ease both; }
     .stat { text-align: center; }
     .stat-num { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--green); }
