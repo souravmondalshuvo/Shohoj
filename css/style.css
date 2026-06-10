@@ -2474,7 +2474,7 @@ input, select, textarea,
 /* ── Tab bar ─────────────────────────────────────────────── */
 .calc-tabs {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   margin: 12px 2rem 12px;
   padding: 4px;
   border-bottom: none;
@@ -2488,7 +2488,15 @@ input, select, textarea,
   box-shadow:
     0 8px 32px rgba(0,0,0,0.28),
     inset 0 1px 0 rgba(255,255,255,0.14);
+  /* Nine tabs no longer fit every desktop window. Scroll instead of clipping —
+     without this, mid-width windows cut Seats in half and hide Free Rooms
+     entirely (the ≤640px breakpoint already scrolls; this covers 641px+). */
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
+.calc-tabs::-webkit-scrollbar { display: none; }
 [data-theme="light"] .calc-tabs {
   background: rgba(255,255,255,0.45);
   border-color: rgba(255,255,255,0.7);
@@ -2517,17 +2525,23 @@ input, select, textarea,
 }
 
 .calc-tab {
-  flex: 1;
+  /* Grow to fill a wide bar, but never shrink below the label — shrinking is
+     what made nowrap text clip; at narrow widths the bar scrolls instead. */
+  flex: 1 0 auto;
+  scroll-snap-align: start;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 14px;
+  gap: 4px;
+  /* Sized so all nine tabs fit the ~868px wrapper without scrolling (needs
+     ~841px at these values); the bar's overflow-x is the fallback, not the
+     default experience. */
+  padding: 9px 10px;
   border: none;
   background: transparent;
   color: var(--text2);
   font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.2px;
   cursor: pointer;
