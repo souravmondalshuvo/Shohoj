@@ -634,6 +634,11 @@ async function handleDownload(request, env, origin) {
   headers.set('Content-Type', fallbackType);
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'private, max-age=300');
+  // Serve the exact declared type and forbid MIME-sniffing. Uploads are
+  // magic-byte validated, but this is the response that hands untrusted
+  // user content to a browser, so pin the type defensively: without nosniff
+  // a browser could sniff the bytes and render the blob as an active type.
+  headers.set('X-Content-Type-Options', 'nosniff');
   // `inline` keeps the browser rendering in-place (iframe/<embed>) rather
   // than triggering a download dialog.
   headers.set('Content-Disposition', 'inline');
