@@ -18,7 +18,7 @@ function sec(over) {
   };
 }
 
-// CSE220: §01 open (10/30), §02 driven by `consumed02` (starts full at 30/30).
+// CSE220: Section 01 open (10/30), Section 02 driven by `consumed02` (starts full at 30/30).
 function feed(consumed02) {
   return [
     sec({ sectionId: 1, courseCode: 'CSE220', courseName: 'Data Structures', sectionName: '01', capacity: 30, consumedSeat: 10 }),
@@ -26,10 +26,10 @@ function feed(consumed02) {
   ];
 }
 
-// Boot the app with a mutable feed. Returns `setSeats(n)` to change §02's taken
+// Boot the app with a mutable feed. Returns `setSeats(n)` to change Section 02's taken
 // count for the next fetch, simulating a seat freeing up on USIS.
 async function boot(page) {
-  let consumed02 = 30; // §02 full to begin with
+  let consumed02 = 30; // Section 02 full to begin with
   page.on('dialog', d => d.accept());
   await page.addInitScript(() => {
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
@@ -58,20 +58,20 @@ async function boot(page) {
 }
 
 function row(page, sectionName) {
-  return page.locator('.seats-section-row', { hasText: `§ ${sectionName}` });
+  return page.locator('.seats-section-row', { hasText: `Section ${sectionName}` });
 }
 
 test('watch a full section → it shows in the Watching panel; remove clears it', async ({ page }) => {
   await boot(page);
 
-  // §02 is full; no watch panel yet.
+  // Section 02 is full; no watch panel yet.
   await expect(row(page, '02').locator('.seats-section-seats')).toHaveText('FULL');
   await expect(page.locator('.seats-watch-panel')).toHaveCount(0);
 
-  // Watch §02 → panel appears, listing it as FULL.
+  // Watch Section 02 → panel appears, listing it as FULL.
   await row(page, '02').locator('.seats-watch-btn').click();
   await expect(page.locator('.seats-watch-head h4')).toHaveText('🔔 Watching (1)');
-  const watchRow = page.locator('.seats-watch-row', { hasText: 'CSE220 §02' });
+  const watchRow = page.locator('.seats-watch-row', { hasText: 'CSE220 Section 02' });
   await expect(watchRow).toBeVisible();
   await expect(watchRow.locator('.seats-watch-status')).toHaveText('FULL');
 
@@ -87,9 +87,9 @@ test('watch a full section → it shows in the Watching panel; remove clears it'
 test('a watched section that frees up fires a seat-open alert', async ({ page }) => {
   const { setSeats } = await boot(page);
 
-  // Watch §02 while full — seeded as "no seat", so no alert yet.
+  // Watch Section 02 while full — seeded as "no seat", so no alert yet.
   await row(page, '02').locator('.seats-watch-btn').click();
-  await expect(page.locator('.seats-watch-row', { hasText: 'CSE220 §02' })).toBeVisible();
+  await expect(page.locator('.seats-watch-row', { hasText: 'CSE220 Section 02' })).toBeVisible();
   expect(await page.evaluate(() => window.__seatToasts.length)).toBe(0);
 
   // A seat frees up (30→29). Re-fetch via Refresh → the watcher should fire.
@@ -99,11 +99,11 @@ test('a watched section that frees up fires a seat-open alert', async ({ page })
   // In-app alert fired, naming the course/section.
   await expect.poll(() => page.evaluate(
     () => window.__seatToasts.map(t => t.msg).join('\n'),
-  )).toContain('Seat open in CSE220 §02');
+  )).toContain('Seat open in CSE220 Section 02');
 
   // The Watching panel now reflects the freed seat.
   await expect(
-    page.locator('.seats-watch-row', { hasText: 'CSE220 §02' }).locator('.seats-watch-status'),
+    page.locator('.seats-watch-row', { hasText: 'CSE220 Section 02' }).locator('.seats-watch-status'),
   ).toHaveText('1 left');
 
   // Refreshing again while it stays open must NOT re-fire (edge-triggered).
