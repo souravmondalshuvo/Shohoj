@@ -718,11 +718,11 @@ async function makeServiceAccountJson() {
     assertEq(changed, true);
   });
   await test('detectSeatDrops: false→true flip fires exactly one drop', () => {
-    // §1 was full last tick; feed now shows it open.
+    // Section 1 was full last tick; feed now shows it open.
     const openMap = parseFeedSeatMap([{ sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 28 }]);
     const { drops, nextSeen } = detectSeatDrops(watch, openMap, { '1': false });
     assertEq(drops.length, 1);
-    assertEq(drops[0].label, 'CSE220 §01');
+    assertEq(drops[0].label, 'CSE220 Section 01');
     assertEq(drops[0].seatsLeft, 2);
     assertEq(nextSeen['1'], true);
   });
@@ -743,18 +743,18 @@ async function makeServiceAccountJson() {
   });
 
   await test('buildSeatAlertEmail: subject + escaped body for one and many', () => {
-    const one = buildSeatAlertEmail([{ id: 1, label: 'CSE220 §01', seatsLeft: 1 }]);
-    assert(one.subject.includes('Seat open: CSE220 §01'));
+    const one = buildSeatAlertEmail([{ id: 1, label: 'CSE220 Section 01', seatsLeft: 1 }]);
+    assert(one.subject.includes('Seat open: CSE220 Section 01'));
     assert(one.html.includes('1 seat left'));
     const many = buildSeatAlertEmail([
-      { id: 1, label: 'CSE220 §01', seatsLeft: 2 },
-      { id: 2, label: 'MAT110 §05', seatsLeft: 5 },
+      { id: 1, label: 'CSE220 Section 01', seatsLeft: 2 },
+      { id: 2, label: 'MAT110 Section 05', seatsLeft: 5 },
     ]);
     assert(many.subject.includes('2 watched seats'));
     assert(many.html.includes('2 seats left') && many.html.includes('5 seats left'));
   });
   await test('buildSeatAlertEmail: escapes HTML in labels', () => {
-    const { html } = buildSeatAlertEmail([{ id: 9, label: '<b>X</b> §01', seatsLeft: 1 }]);
+    const { html } = buildSeatAlertEmail([{ id: 9, label: '<b>X</b> Section 01', seatsLeft: 1 }]);
     assert(!html.includes('<b>X</b>'), 'label HTML must be escaped');
     assert(html.includes('&lt;b&gt;'));
   });
