@@ -154,7 +154,7 @@ function _seatsEvaluateWatches() {
 }
 
 function _seatsAnnounceDrop(drop) {
-  const label = `${drop.section.courseCode} §${drop.section.sectionName || '—'}`;
+  const label = `${drop.section.courseCode} Section ${drop.section.sectionName || '—'}`;
   const seats = `${drop.seatsLeft} seat${drop.seatsLeft === 1 ? '' : 's'} left`;
   _seatsToast(`🎉 Seat open in ${label} — ${seats}. Grab it on USIS!`);
   try {
@@ -451,7 +451,7 @@ function _seatsSectionRowHTML(section) {
   return `
     <div class="seats-section-row seats-row--${info.status}">
       <button class="seats-watch-btn ${watched ? 'is-watched' : ''}" data-action="seats:toggleWatch" data-section-id="${section.sectionId}" aria-pressed="${watched}" title="${escAttr(watchTitle)}">${watched ? '🔔' : '🔕'}</button>
-      <span class="seats-section-name">§ ${escHtml(section.sectionName || '—')}</span>
+      <span class="seats-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="seats-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
       <span class="seats-section-schedule">${escHtml(_seatsFormatSchedule(section))}</span>
       <span class="seats-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
@@ -488,7 +488,7 @@ function _seatsWatchRowHTML(w) {
   }
   return `
     <div class="seats-watch-row">
-      <span class="seats-watch-label">${escHtml(w.courseCode)} §${escHtml(w.sectionName || '—')}</span>
+      <span class="seats-watch-label">${escHtml(w.courseCode)} Section ${escHtml(w.sectionName || '—')}</span>
       ${statusHtml}
       <button class="seats-watch-remove" data-action="seats:removeWatch" data-section-id="${w.sectionId}" title="Stop watching" aria-label="Stop watching ${escAttr(w.courseCode + ' section ' + (w.sectionName || ''))}">✕</button>
     </div>
