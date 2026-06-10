@@ -27,9 +27,9 @@ function section(over) {
   };
 }
 
-// CSE110: §01 Sun+Tue 08:00 (early, Sunday), §02 Mon 11:00 (FULL), §03 Sun 14:00,
-// §04 Tue 16:00. MAT110: §01 Sun 08:30 (overlaps CSE110 §01 on Sunday morning),
-// §02 Thu 10:00.
+// CSE110: Section 01 Sun+Tue 08:00 (early, Sunday), Section 02 Mon 11:00 (FULL), Section 03 Sun 14:00,
+// Section 04 Tue 16:00. MAT110: Section 01 Sun 08:30 (overlaps CSE110 Section 01 on Sunday morning),
+// Section 02 Thu 10:00.
 const MOCK_FEED = [
   section({ sectionId: 9001, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
     sectionName: '01', capacity: 30, consumedSeat: 10, faculties: 'ABC', roomName: '09A-10C',
@@ -90,7 +90,7 @@ function cseBlock(page) {
 test('avoid-day filter hides every section scheduled on that day', async ({ page }) => {
   await boot(page);
   await addCourse(page, 'CSE110');
-  // §01 (Sun+Tue) and §03 (Sun) have Sunday slots; §02 (Mon) and §04 (Tue) don't.
+  // Section 01 (Sun+Tue) and Section 03 (Sun) have Sunday slots; Section 02 (Mon) and Section 04 (Tue) don't.
   await page.locator('[data-action="routine:toggleAvoidDay"][data-day="SUNDAY"]').click();
   const block = cseBlock(page);
   await expect(block.locator('.routine-section-row[data-sid="9001"]')).toHaveCount(0);
@@ -105,7 +105,7 @@ test('no-early filter hides sections starting before 9:00 AM', async ({ page }) 
   await addCourse(page, 'CSE110');
   await page.locator('[data-action="routine:toggleFilterEarly"]').click();
   const block = cseBlock(page);
-  // §01 starts 08:00 → hidden; the later sections remain.
+  // Section 01 starts 08:00 → hidden; the later sections remain.
   await expect(block.locator('.routine-section-row[data-sid="9001"]')).toHaveCount(0);
   await expect(block.locator('.routine-section-row[data-sid="9003"]')).toBeVisible();
 });
@@ -127,10 +127,10 @@ test('a ?routine= link restores the encoded picks on load', async ({ page }) => 
   await setupFeed(page);
   await page.goto('/?routine=CSE110-9001#calculator/routine', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
-  // CSE110 §01 should be restored and folded to its collapsed summary line.
+  // CSE110 Section 01 should be restored and folded to its collapsed summary line.
   const collapsed = page.locator('.routine-course-block--collapsed', { hasText: 'CSE110' });
   await expect(collapsed).toBeVisible();
-  await expect(collapsed).toContainText('§ 01');
+  await expect(collapsed).toContainText('Section 01');
   // The shared param is stripped from the URL after applying.
   await expect.poll(() => page.evaluate(() => location.search)).toBe('');
 });
@@ -142,7 +142,7 @@ test('mobile viewport shows the agenda and hides the grid', async ({ page }) => 
   await page.locator('.routine-section-row[data-sid="9001"]').click(); // pick a section → grid/agenda render
   await expect(page.locator('.routine-agenda')).toBeVisible();
   await expect(page.locator('.routine-grid-wrap')).toBeHidden();
-  // §01 meets on both Sunday and Tuesday, so it appears once per day — assert the first.
+  // Section 01 meets on both Sunday and Tuesday, so it appears once per day — assert the first.
   await expect(page.locator('.routine-agenda-item').filter({ hasText: 'CSE110' }).first()).toBeVisible();
 });
 
@@ -150,7 +150,7 @@ test('overlapping picks render as side-by-side split blocks', async ({ page }) =
   await boot(page);
   await addCourse(page, 'CSE110');
   await addCourse(page, 'MAT110');
-  // CSE110 §01 (Sun 08:00–09:20) and MAT110 §01 (Sun 08:30–09:50) overlap.
+  // CSE110 Section 01 (Sun 08:00–09:20) and MAT110 Section 01 (Sun 08:30–09:50) overlap.
   await cseBlock(page).locator('.routine-section-row[data-sid="9001"]').click();
   await page.locator('.routine-course-block', { hasText: 'MAT110' })
     .locator('.routine-section-row[data-sid="9101"]').click();
