@@ -3,8 +3,11 @@
 // Setup
 //   1. npm install
 //   2. Firebase Console → Project settings → Service accounts → Generate new
-//      private key. Save the downloaded JSON at the repo root as
-//      shohoj-service-account.json (already in .gitignore).
+//      private key. Keep the downloaded JSON OUTSIDE the repo so the live
+//      private key never sits in the working tree. The key is located, in order:
+//        a. $GOOGLE_APPLICATION_CREDENTIALS, if set
+//        b. ~/.config/shohoj/shohoj-service-account.json (recommended)
+//        c. repo-root shohoj-service-account.json (legacy; gitignored)
 //
 // Usage
 //   npm run set:admin -- <uid>            # grant admin
@@ -16,10 +19,16 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import admin from 'firebase-admin';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const serviceAccountPath = resolve(here, '..', 'shohoj-service-account.json');
+// Prefer keys stored outside the repo; fall back to the legacy repo-root path
+// so existing setups keep working.
+const serviceAccountPath =
+  process.env.GOOGLE_APPLICATION_CREDENTIALS
+  || resolve(homedir(), '.config', 'shohoj', 'shohoj-service-account.json');
+const legacyRepoKeyPath = resolve(here, '..', 'shohoj-service-account.json');
 
 const [, , uid, ...flags] = process.argv;
 if (!uid) {
@@ -28,11 +37,20 @@ if (!uid) {
 }
 const revoke = flags.includes('--revoke');
 
-let serviceAccount;
-try {
-  serviceAccount = JSON.parse(await readFile(serviceAccountPath, 'utf8'));
-} catch (err) {
-  console.error(`Could not read ${serviceAccountPath}`);
+async function loadServiceAccount() {
+  for (const path of [serviceAccountPath, legacyRepoKeyPath]) {
+    try {
+      return JSON.parse(await readFile(path, 'utf8'));
+    } catch {
+      // Try the next candidate path.
+    }
+  }
+  return null;
+}
+
+const serviceAccount = await loadServiceAccount();
+if (!serviceAccount) {
+  console.error(`Could not read a service-account key (tried ${serviceAccountPath} and ${legacyRepoKeyPath}).`);
   console.error('See setup instructions at the top of this file.');
   process.exit(1);
 }
