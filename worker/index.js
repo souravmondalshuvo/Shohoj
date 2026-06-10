@@ -809,7 +809,7 @@ export function detectSeatDrops(watched, seatMap, priorSeen = {}) {
       continue;
     }
     if (priorSeen[key] === false && info.hasSeat) {
-      const label = `${info.code || w.code || ''} §${info.name || w.name || ''}`.trim();
+      const label = `${info.code || w.code || ''} Section ${info.name || w.name || ''}`.trim();
       drops.push({ id, label, seatsLeft: info.seatsLeft });
     }
     nextSeen[key] = info.hasSeat;
