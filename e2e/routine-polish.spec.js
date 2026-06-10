@@ -27,8 +27,8 @@ function section(over) {
 }
 
 // CSE110 sections deliberately out of order in the feed (02, 04, 01, 03) with a
-// FULL section (02) and a nearly-full one (04, 2 left). MAT110 §01 clashes with
-// CSE110 §01 on Sunday morning; §02 does not.
+// FULL section (02) and a nearly-full one (04, 2 left). MAT110 Section 01 clashes with
+// CSE110 Section 01 on Sunday morning; Section 02 does not.
 const MOCK_FEED = [
   section({
     sectionId: 9002, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
@@ -100,9 +100,9 @@ test('sections render in numeric order with full sections sunk to the bottom', a
   await addCourse(page, 'CSE110');
   const block = page.locator('.routine-course-block', { hasText: 'CSE110' });
 
-  // Feed order is 02,04,01,03 — default sort is numeric, and the FULL §02 sinks.
+  // Feed order is 02,04,01,03 — default sort is numeric, and the FULL Section 02 sinks.
   const names = (await sectionNames(block)).map(s => s.trim());
-  expect(names).toEqual(['§ 01', '§ 03', '§ 04', '§ 02']);
+  expect(names).toEqual(['Section 01', 'Section 03', 'Section 04', 'Section 02']);
 });
 
 test('column legend and humanized seat/exam text are shown', async ({ page }) => {
@@ -116,9 +116,9 @@ test('column legend and humanized seat/exam text are shown', async ({ page }) =>
 
   // Seats: full → FULL, nearly-full → "N left", roomy → taken/cap.
   const seats = (await block.locator('.routine-section-seats').allTextContents()).map(s => s.trim());
-  expect(seats).toContain('FULL');     // §02 30/30
-  expect(seats).toContain('2 left');   // §04 28/30
-  expect(seats).toContain('10/30');    // §01 10/30
+  expect(seats).toContain('FULL');     // Section 02 30/30
+  expect(seats).toContain('2 left');   // Section 04 28/30
+  expect(seats).toContain('10/30');    // Section 01 10/30
 
   // Exam dates are humanized (no raw ISO strings).
   await expect(block.locator('.routine-section-row').first().locator('.routine-section-exam'))
@@ -131,21 +131,21 @@ test('sort toggle reorders sections by seats available', async ({ page }) => {
   const block = page.locator('.routine-course-block', { hasText: 'CSE110' });
 
   await page.locator('[data-action="routine:setSort"][data-sort="seats"]').click();
-  // Seats left desc: §03 (25), §01 (20), §04 (2), then FULL §02.
+  // Seats left desc: Section 03 (25), Section 01 (20), Section 04 (2), then FULL Section 02.
   const names = (await sectionNames(block)).map(s => s.trim());
-  expect(names).toEqual(['§ 03', '§ 01', '§ 04', '§ 02']);
+  expect(names).toEqual(['Section 03', 'Section 01', 'Section 04', 'Section 02']);
 });
 
 test('picking a section folds the course and Change re-expands it', async ({ page }) => {
   await boot(page);
   await addCourse(page, 'CSE110');
 
-  // Pick §01 (sectionId 9001).
+  // Pick Section 01 (sectionId 9001).
   await page.locator('.routine-section-row[data-sid="9001"]').click();
 
   const collapsed = page.locator('.routine-course-block--collapsed', { hasText: 'CSE110' });
   await expect(collapsed).toBeVisible();
-  await expect(collapsed).toContainText('§ 01');
+  await expect(collapsed).toContainText('Section 01');
   // Section rows are hidden while collapsed.
   await expect(page.locator('.routine-course-block', { hasText: 'CSE110' }).locator('.routine-section-row')).toHaveCount(0);
 
@@ -159,13 +159,13 @@ test('sections clashing with a current pick are flagged as candidate clashes', a
   await addCourse(page, 'CSE110');
   await addCourse(page, 'MAT110');
 
-  // Resolve CSE110 §01 (Sun 08:00–09:20). MAT110 §01 (Sun 08:30) now clashes.
+  // Resolve CSE110 Section 01 (Sun 08:00–09:20). MAT110 Section 01 (Sun 08:30) now clashes.
   await page.locator('.routine-section-row[data-sid="9001"]').click();
 
   const mat = page.locator('.routine-course-block', { hasText: 'MAT110' });
   await expect(mat.locator('.routine-section-row[data-sid="9101"]')).toHaveClass(/routine-section--candclash/);
   await expect(mat.locator('.routine-section-row[data-sid="9101"]')).toContainText('clash');
-  // The non-clashing §02 stays normal.
+  // The non-clashing Section 02 stays normal.
   await expect(mat.locator('.routine-section-row[data-sid="9102"]')).not.toHaveClass(/routine-section--candclash/);
 
   // The status bar reflects two picked courses and total credits.
@@ -180,7 +180,7 @@ test('Hide clashes removes clashing alternatives from the list', async ({ page }
 
   await page.locator('[data-action="routine:toggleHideClash"]').click();
   const mat = page.locator('.routine-course-block', { hasText: 'MAT110' });
-  // Clashing §01 is hidden; §02 remains, with a note about what was hidden.
+  // Clashing Section 01 is hidden; Section 02 remains, with a note about what was hidden.
   await expect(mat.locator('.routine-section-row[data-sid="9101"]')).toHaveCount(0);
   await expect(mat.locator('.routine-section-row[data-sid="9102"]')).toBeVisible();
   await expect(mat.locator('.routine-section-hidden')).toContainText('1 clashing section hidden');
