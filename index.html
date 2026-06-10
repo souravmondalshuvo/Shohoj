@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-i/dPPEzrNAxE7ZOb1Xx8psRW4mgCIMLpFc9XGYZElLA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ig9WxuCoTrgI8GEKDSvA83uvO+LjZ0AZ36Or2Wb7R1E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16434,7 +16434,7 @@ function buildRoutineICS(sections, options = {}) {
     ];
 
     for (const s of sections) {
-        const tag = `${s.courseCode}${s.sectionName ? ` (§${s.sectionName})` : ''}`;
+        const tag = `${s.courseCode}${s.sectionName ? ` (Section ${s.sectionName})` : ''}`;
         const faculty = s.facultyInitials ? `Faculty: ${s.facultyInitials}` : '';
 
         if (s.classStartDate && s.classEndDate) {
@@ -17195,7 +17195,7 @@ function buildExportPlan(layout, options = {}) {
             const fac = block.facultyInitials || 'TBA';
             ops.push({
                 type: 'text', x: x + 7, y: y + 29,
-                text: `${fac} · §${block.sectionName}`, font: '400 10px sans-serif',
+                text: `${fac} · Section ${block.sectionName}`, font: '400 10px sans-serif',
                 fill: theme.blockText, align: 'left',
             });
         }
@@ -20301,7 +20301,7 @@ function _agendaItemHTML(block, clashMap, hueMap) {
     <div class="routine-agenda-item ${isClash ? 'routine-agenda-item--clash' : ''}" style="--routine-hue: ${hue};">
       <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
       <div class="routine-agenda-body">
-        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">§${escHtml(block.sectionName)}</span>${clashPill}</div>
+        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">Section ${escHtml(block.sectionName)}</span>${clashPill}</div>
         <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
       </div>
     </div>`;
@@ -20349,13 +20349,13 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
     : '';
   const clashLabel = isClash ? ' — clashes with another class' : '';
-  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
+  const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Section ${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
@@ -20620,7 +20620,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
           <span class="routine-course-code">${escHtml(courseCode)}</span>
           <span class="routine-course-name">${escHtml(name)}</span>
           <span class="routine-collapsed-pick">
-            <span class="routine-collapsed-sec">§ ${escHtml(section.sectionName || '—')}</span>
+            <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
             ${clashPill}
@@ -20723,7 +20723,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
     : `${section.consumedSeat}/${section.capacity} seats taken · ${_seatsLeft(section)} left`;
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
-      <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
+      <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
@@ -20905,7 +20905,7 @@ function _comboSectionLineHTML(section) {
   return `
     <div class="routine-suggest-line">
       <span class="routine-suggest-line-code">${escHtml(section.courseCode)}</span>
-      <span class="routine-suggest-line-sec">§${escHtml(section.sectionName)}</span>
+      <span class="routine-suggest-line-sec">Section ${escHtml(section.sectionName)}</span>
       <span class="routine-suggest-line-fac">${escHtml(section.facultyInitials || 'TBA')}</span>
       <span class="routine-suggest-line-sched">${_formatSchedule(section)}</span>
     </div>
@@ -21294,7 +21294,7 @@ function _seatsEvaluateWatches() {
 }
 
 function _seatsAnnounceDrop(drop) {
-  const label = `${drop.section.courseCode} §${drop.section.sectionName || '—'}`;
+  const label = `${drop.section.courseCode} Section ${drop.section.sectionName || '—'}`;
   const seats = `${drop.seatsLeft} seat${drop.seatsLeft === 1 ? '' : 's'} left`;
   _seatsToast(`🎉 Seat open in ${label} — ${seats}. Grab it on USIS!`);
   try {
@@ -21591,7 +21591,7 @@ function _seatsSectionRowHTML(section) {
   return `
     <div class="seats-section-row seats-row--${info.status}">
       <button class="seats-watch-btn ${watched ? 'is-watched' : ''}" data-action="seats:toggleWatch" data-section-id="${section.sectionId}" aria-pressed="${watched}" title="${escAttr(watchTitle)}">${watched ? '🔔' : '🔕'}</button>
-      <span class="seats-section-name">§ ${escHtml(section.sectionName || '—')}</span>
+      <span class="seats-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="seats-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}</span>
       <span class="seats-section-schedule">${escHtml(_seatsFormatSchedule(section))}</span>
       <span class="seats-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
@@ -21628,7 +21628,7 @@ function _seatsWatchRowHTML(w) {
   }
   return `
     <div class="seats-watch-row">
-      <span class="seats-watch-label">${escHtml(w.courseCode)} §${escHtml(w.sectionName || '—')}</span>
+      <span class="seats-watch-label">${escHtml(w.courseCode)} Section ${escHtml(w.sectionName || '—')}</span>
       ${statusHtml}
       <button class="seats-watch-remove" data-action="seats:removeWatch" data-section-id="${w.sectionId}" title="Stop watching" aria-label="Stop watching ${escAttr(w.courseCode + ' section ' + (w.sectionName || ''))}">✕</button>
     </div>
