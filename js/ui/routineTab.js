@@ -838,7 +838,7 @@ function _agendaItemHTML(block, clashMap, hueMap) {
     <div class="routine-agenda-item ${isClash ? 'routine-agenda-item--clash' : ''}" style="--routine-hue: ${hue};">
       <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
       <div class="routine-agenda-body">
-        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">§${escHtml(block.sectionName)}</span>${clashPill}</div>
+        <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">Section ${escHtml(block.sectionName)}</span>${clashPill}</div>
         <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
       </div>
     </div>`;
@@ -886,13 +886,13 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
     : '';
   const clashLabel = isClash ? ' — clashes with another class' : '';
-  const title = `${block.courseCode} §${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
+  const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · §${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Section ${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
@@ -1157,7 +1157,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
           <span class="routine-course-code">${escHtml(courseCode)}</span>
           <span class="routine-course-name">${escHtml(name)}</span>
           <span class="routine-collapsed-pick">
-            <span class="routine-collapsed-sec">§ ${escHtml(section.sectionName || '—')}</span>
+            <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
             ${clashPill}
@@ -1260,7 +1260,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
     : `${section.consumedSeat}/${section.capacity} seats taken · ${_seatsLeft(section)} left`;
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
-      <span class="routine-section-name">§ ${escHtml(section.sectionName || '—')}</span>
+      <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
@@ -1442,7 +1442,7 @@ function _comboSectionLineHTML(section) {
   return `
     <div class="routine-suggest-line">
       <span class="routine-suggest-line-code">${escHtml(section.courseCode)}</span>
-      <span class="routine-suggest-line-sec">§${escHtml(section.sectionName)}</span>
+      <span class="routine-suggest-line-sec">Section ${escHtml(section.sectionName)}</span>
       <span class="routine-suggest-line-fac">${escHtml(section.facultyInitials || 'TBA')}</span>
       <span class="routine-suggest-line-sched">${_formatSchedule(section)}</span>
     </div>
