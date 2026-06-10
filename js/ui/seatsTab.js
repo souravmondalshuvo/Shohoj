@@ -65,6 +65,7 @@ registerAction('seats:sortSeats',       () => { _seats.sortMode = 'seats'; _seat
 registerAction('seats:toggleAvailable', () => { _seats.availableOnly = !_seats.availableOnly; _seatsRender(); });
 registerAction('seats:toggleWatch',     (el) => _seatsToggleWatch(Number(el.dataset.sectionId)));
 registerAction('seats:removeWatch',     (el) => _seatsRemoveWatch(Number(el.dataset.sectionId)));
+registerAction('seats:quickPick',       (el) => _seatsQuickPick(el.dataset.code || ''));
 
 // Re-tune the poll cadence whenever the tab's visibility flips (slower while
 // hidden), and do one immediate catch-up poll when it returns to the foreground.
@@ -278,6 +279,25 @@ function _seatsAttachInput() {
   });
 }
 
+// Quick-pick chip on the empty state → drop the code into the search box,
+// repaint, and leave the caret ready so the student can keep refining.
+function _seatsQuickPick(code) {
+  _seats.query = (code || '').toUpperCase();
+  const input = document.getElementById('seatsCourseInput');
+  if (input) { input.value = _seats.query; input.focus(); }
+  _seatsPaintResults();
+}
+
+// The handful of codes with the most sections in the live feed — used as
+// friendly starting points on the empty state. Data-driven so a pick always
+// resolves to real results.
+function _seatsQuickPickCodes() {
+  if (!_seats.index) return [];
+  return [..._seats.index.keys()]
+    .sort((a, b) => (_seats.index.get(b)?.length || 0) - (_seats.index.get(a)?.length || 0))
+    .slice(0, 6);
+}
+
 // Repaint only the results list — leaves the search box (and its focus/caret)
 // untouched while the student types.
 function _seatsPaintResults() {
@@ -340,6 +360,7 @@ function _seatsMainHTML() {
       ${_seatsWatchPanelHTML()}
 
       <div class="seats-searchbar">
+        <span class="seats-search-icon" aria-hidden="true">🔍</span>
         <input
           id="seatsCourseInput"
           type="text"
@@ -369,7 +390,20 @@ function _seatsResultsInner() {
   if (!_seats.index) return '';
   const q = _seats.query.trim();
   if (q === '') {
-    return `<div class="seats-empty">Type a course code above to check live seat availability.</div>`;
+    const picks = _seatsQuickPickCodes();
+    const chips = picks.length
+      ? `<div class="seats-quickpicks">
+           ${picks.map(c => `<button class="seats-chip seats-quickpick" data-action="seats:quickPick" data-code="${escAttr(c)}">${escHtml(c)}</button>`).join('')}
+         </div>`
+      : '';
+    return `
+      <div class="seats-empty">
+        <div class="seats-empty-icon" aria-hidden="true">🪑</div>
+        <div class="seats-empty-title">Check a seat in seconds</div>
+        <div class="seats-empty-sub">Type a course code to see live seats, faculty &amp; rooms${picks.length ? ' — or start with one of these:' : '.'}</div>
+        ${chips}
+      </div>
+    `;
   }
   const all = searchCourseSections(_seats.index, q, {
     availableOnly: _seats.availableOnly,
