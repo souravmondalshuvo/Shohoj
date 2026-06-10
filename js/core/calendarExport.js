@@ -110,7 +110,7 @@ export function buildRoutineICS(sections, options = {}) {
     ];
 
     for (const s of sections) {
-        const tag = `${s.courseCode}${s.sectionName ? ` (§${s.sectionName})` : ''}`;
+        const tag = `${s.courseCode}${s.sectionName ? ` (Section ${s.sectionName})` : ''}`;
         const faculty = s.facultyInitials ? `Faculty: ${s.facultyInitials}` : '';
 
         if (s.classStartDate && s.classEndDate) {
