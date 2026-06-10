@@ -165,7 +165,7 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
             const fac = block.facultyInitials || 'TBA';
             ops.push({
                 type: 'text', x: x + 7, y: y + 29,
-                text: `${fac} · §${block.sectionName}`, font: '400 10px sans-serif',
+                text: `${fac} · Section ${block.sectionName}`, font: '400 10px sans-serif',
                 fill: theme.blockText, align: 'left',
             });
         }
