@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ig9WxuCoTrgI8GEKDSvA83uvO+LjZ0AZ36Or2Wb7R1E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-uOktOBJmooArte4KbxZAeXYoXdBlbsBVHc0kBhJnfns='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19490,6 +19490,101 @@ qrcode;
 
 const stringToBytes = qrcode.stringToBytes;
 
+// ── js/ui/feedLive.js ───────────────────────────────────────────
+// ── js/ui/feedLive.js ─────────────────────────────────────────────────────────
+// Shared live poller for the Connect feed. One interval serves every
+// subscriber (routine, seats, free rooms): while the page is visible it
+// re-fetches every FEED_LIVE_POLL_MS (ETag-aware, so an unchanged feed is a
+// cheap 304), and while hidden it pauses — unless a subscriber asked to keep
+// going (seat watches), in which case it slows to FEED_LIVE_HIDDEN_MS.
+//
+// Subscribers receive the same materialized result `fetchConnectFeed`
+// returns ({ sections, summary, source, fetchedAt, etag, dropped }) and apply
+// it to their own stores. Manual per-tab refreshes call broadcastFeedResult
+// so one fetch updates every tab instead of leaving the others stale.
+
+const FEED_LIVE_POLL_MS = 90_000;
+const FEED_LIVE_HIDDEN_MS = 5 * 60_000;
+
+const _feedLive = {
+  listeners: new Set(),
+  timer: null,
+  period: 0,        // current interval period (ms) so we only reset on change
+  inFlight: false,  // guard against overlapping fetches on slow networks
+  hiddenPolling: false, // keep polling while hidden (seat watches need this)
+  lastAt: 0,        // last poll attempt — gates the foreground catch-up tick
+};
+
+// Subscribe to live feed updates. Returns an unsubscribe function. The first
+// subscriber starts the interval; the last one leaving stops it.
+function onFeedUpdate(listener) {
+  _feedLive.listeners.add(listener);
+  _feedLiveSync();
+  return () => {
+    _feedLive.listeners.delete(listener);
+    _feedLiveSync();
+  };
+}
+
+// Seat watches must keep alerting with the tab in the background; everything
+// else can wait for the page to become visible again.
+function setFeedHiddenPolling(on) {
+  _feedLive.hiddenPolling = !!on;
+  _feedLiveSync();
+}
+
+// Fan a fetch result out to every subscriber except `except` (the tab that
+// already applied it as part of its own refresh).
+function broadcastFeedResult(result, except = null) {
+  for (const listener of _feedLive.listeners) {
+    if (listener === except) continue;
+    try { listener(result); }
+    catch { /* one bad listener must not starve the rest */ }
+  }
+}
+
+function _feedLivePeriodMs() {
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  if (!hidden) return FEED_LIVE_POLL_MS;
+  return _feedLive.hiddenPolling ? FEED_LIVE_HIDDEN_MS : 0; // 0 = paused
+}
+
+// Keep exactly one interval running while there's a subscriber, at the
+// cadence for the current visibility. Re-creates the timer only when the
+// cadence actually changes, so a no-op flip doesn't reset the countdown.
+function _feedLiveSync() {
+  const period = _feedLive.listeners.size > 0 ? _feedLivePeriodMs() : 0;
+  if (period === _feedLive.period) return;
+  if (_feedLive.timer) { clearInterval(_feedLive.timer); _feedLive.timer = null; }
+  _feedLive.period = period;
+  if (period > 0) _feedLive.timer = setInterval(_feedLiveTick, period);
+}
+
+async function _feedLiveTick() {
+  if (_feedLive.inFlight || _feedLive.listeners.size === 0) return;
+  _feedLive.inFlight = true;
+  _feedLive.lastAt = Date.now();
+  try {
+    const result = await fetchConnectFeed({ forceRefresh: true });
+    broadcastFeedResult(result);
+  } catch { /* transient poll failure — keep prior data, next tick retries */ }
+  finally { _feedLive.inFlight = false; }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    _feedLiveSync();
+    // Catch up right away when the page returns to the foreground — but only
+    // if a full visible period has actually elapsed, so alt-tabbing back and
+    // forth doesn't hammer the CDN.
+    if (
+      document.visibilityState !== 'hidden' &&
+      _feedLive.listeners.size > 0 &&
+      Date.now() - _feedLive.lastAt >= FEED_LIVE_POLL_MS
+    ) _feedLiveTick();
+  });
+}
+
 // ── js/ui/routineTab.js ─────────────────────────────────────────
 // ── js/ui/routineTab.js ───────────────────────────────────────────────────────
 // Routine Builder tab. Pulls live BRACU CONNECT section data via the
@@ -20000,6 +20095,9 @@ async function _refresh(force = false) {
       _applySharedRoutine(_store.pendingShare);
       _store.pendingShare = null;
     }
+    // One fetch serves every tab: let seats/free-rooms repaint from this
+    // result instead of going stale until their own next poll.
+    broadcastFeedResult(result, _applyLiveFeed);
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -20058,10 +20156,36 @@ function _writeRatingCache(map) {
   } catch { /* quota / disabled storage — caching is best-effort */ }
 }
 
+// ── LIVE UPDATES ────────────────────────────────────────────────────────────
+// Apply a live poll (or another tab's manual refresh) in place: fresh seat
+// counts in the section rows, fresh clash data, fresh source/age badge.
+function _applyLiveFeed(result) {
+  if (_store.loading) return; // our own refresh is mid-flight; it will win
+  _store.index = indexByCourse(result.sections);
+  _dataVersion++; // new section index ⇒ invalidate the clash memo
+  _store.courseCodes = Array.from(_store.index.keys()).sort();
+  _store.source = result.source;
+  _store.fetchedAt = result.fetchedAt;
+  // Don't tear the DOM down mid-search: the course input and its dropdown
+  // only survive a full rebuild via the focus dance _rerender doesn't do.
+  // The store is fresh either way; the next interaction repaints from it.
+  const input = document.getElementById('routineCourseInput');
+  if (input && document.activeElement === input) return;
+  _rerender();
+}
+
+let _routineLiveSubscribed = false;
+function _routineGoLive() {
+  if (_routineLiveSubscribed) return;
+  _routineLiveSubscribed = true;
+  onFeedUpdate(_applyLiveFeed);
+}
+
 // ── RENDER ──────────────────────────────────────────────────────────────────
 async function renderRoutineTab() {
   const root = document.getElementById('routineContent');
   if (!root) return;
+  _routineGoLive();
   if (!_store.index && !_store.loading && !_store.error) {
     _refresh(false);
     return;
@@ -20964,6 +21088,9 @@ async function _frRefresh(force = false) {
     _frStore.index = buildRoomBusyIndex(result.sections);
     _frStore.source = result.source;
     _frStore.fetchedAt = result.fetchedAt;
+    // One fetch serves every tab: let routine/seats repaint from this result
+    // instead of going stale until their own next poll.
+    broadcastFeedResult(result, _frApplyLiveFeed);
   } catch (e) {
     _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -20972,10 +21099,31 @@ async function _frRefresh(force = false) {
   }
 }
 
+// Apply a live poll (or another tab's manual refresh) in place. Skips the
+// repaint while the student is typing in the time field — the store is fresh
+// either way, and the next interaction repaints from it.
+function _frApplyLiveFeed(result) {
+  if (_frStore.loading) return; // our own refresh is mid-flight; it will win
+  _frStore.index = buildRoomBusyIndex(result.sections);
+  _frStore.source = result.source;
+  _frStore.fetchedAt = result.fetchedAt;
+  const time = document.getElementById('freeRoomsTime');
+  if (time && document.activeElement === time) return;
+  _frRerender();
+}
+
+let _frLiveSubscribed = false;
+function _frGoLive() {
+  if (_frLiveSubscribed) return;
+  _frLiveSubscribed = true;
+  onFeedUpdate(_frApplyLiveFeed);
+}
+
 // ── RENDER ──────────────────────────────────────────────────────────────────
 async function renderFreeRoomsTab() {
   const root = document.getElementById('freeRoomsContent');
   if (!root) return;
+  _frGoLive();
   if (!_frStore.index && !_frStore.loading && !_frStore.error) { _frRefresh(false); return; }
   _frRerender();
 }
@@ -21167,14 +21315,6 @@ function _frAgeLabel(fetchedAt) {
 // catalog; a note tells the student when results were trimmed.
 const SEATS_RESULT_LIMIT = 40;
 
-// How often we re-fetch the live feed while ≥1 section is being watched.
-// Frequent enough to catch a freed seat during registration, polite enough not
-// to hammer the student-run CDN (which also 304s on an unchanged etag). We keep
-// polling when the tab is hidden — that's exactly when a desktop notification
-// earns its keep — but at the slower hidden cadence to stay a good citizen.
-const SEATS_POLL_INTERVAL_MS = 90_000;
-const SEATS_POLL_INTERVAL_HIDDEN_MS = 5 * 60_000;
-
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
 
@@ -21189,9 +21329,7 @@ const _seats = {
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
   watches: [],         // WatchEntry[] — persisted seat-drop watchlist
-  pollTimer: null,     // setInterval handle while watching
-  pollPeriod: 0,       // current interval period (ms) so we only reset on change
-  polling: false,      // in-flight guard for a poll tick
+  live: false,         // subscribed to the shared live poller yet?
 };
 
 // Restore the watchlist before anything renders so a persisted watch keeps
@@ -21207,15 +21345,6 @@ registerAction('seats:toggleWatch',     (el) => _seatsToggleWatch(Number(el.data
 registerAction('seats:removeWatch',     (el) => _seatsRemoveWatch(Number(el.dataset.sectionId)));
 registerAction('seats:quickPick',       (el) => _seatsQuickPick(el.dataset.code || ''));
 
-// Re-tune the poll cadence whenever the tab's visibility flips (slower while
-// hidden), and do one immediate catch-up poll when it returns to the foreground.
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    _seatsSyncPoller();
-    if (document.visibilityState !== 'hidden') _seatsPollTick();
-  });
-}
-
 // When auth resolves (or flips), push the current local watchlist to Firestore
 // so signing in retroactively enables email alerts for sections already being
 // watched, and repaint so the panel's email line reflects the new identity.
@@ -21226,8 +21355,35 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Persisted watches present at boot → start the background poller now.
-_seatsSyncPoller();
+// Hook this tab into the shared live poller (idempotent). Live results flow
+// through the same store-update path a manual refresh uses, so watch alerts
+// stay edge-triggered. Subscribed lazily — on first render, or at boot when a
+// persisted watch needs background alerting before the tab is ever opened.
+function _seatsGoLive() {
+  if (_seats.live) return;
+  _seats.live = true;
+  onFeedUpdate(_seatsApplyFeed);
+  _seatsSyncHiddenPolling();
+}
+
+// Watches are the only reason to keep fetching while the page is hidden —
+// that's exactly when a desktop notification earns its keep.
+function _seatsSyncHiddenPolling() {
+  setFeedHiddenPolling(_seats.watches.length > 0);
+}
+
+function _seatsApplyFeed(result) {
+  if (_seats.loading) return; // a manual refresh is mid-flight; it will win
+  _seats.index = indexByCourse(result.sections);
+  _seats.sections = result.sections;
+  _seats.source = result.source;
+  _seats.fetchedAt = result.fetchedAt;
+  _seatsEvaluateWatches();
+  _seatsRender();
+}
+
+// Persisted watches present at boot → start background polling now.
+if (_seats.watches.length > 0) _seatsGoLive();
 
 // ── SEAT-DROP WATCH ───────────────────────────────────────────────────────────
 function _seatsSaveWatches() {
@@ -21265,7 +21421,8 @@ function _seatsToggleWatch(sectionId) {
   }
   _seatsSaveWatches();
   _seatsSyncCloud();
-  _seatsSyncPoller();
+  _seatsGoLive();
+  _seatsSyncHiddenPolling();
   _seatsRender();
 }
 
@@ -21273,7 +21430,7 @@ function _seatsRemoveWatch(sectionId) {
   _seats.watches = removeWatch(_seats.watches, sectionId);
   _seatsSaveWatches();
   _seatsSyncCloud();
-  _seatsSyncPoller();
+  _seatsSyncHiddenPolling();
   _seatsRender();
 }
 
@@ -21314,42 +21471,6 @@ function _seatsToast(msg, isError = false) {
   }
 }
 
-function _seatsPollPeriodMs() {
-  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-  return hidden ? SEATS_POLL_INTERVAL_HIDDEN_MS : SEATS_POLL_INTERVAL_MS;
-}
-
-// Keep exactly one interval running while there's something to watch, at the
-// cadence for the current visibility. Re-creates the timer only when the
-// watchlist empties or the cadence actually changes (so a no-op visibility
-// flip doesn't reset the countdown).
-function _seatsSyncPoller() {
-  if (_seats.watches.length === 0) {
-    if (_seats.pollTimer) { clearInterval(_seats.pollTimer); _seats.pollTimer = null; _seats.pollPeriod = 0; }
-    return;
-  }
-  const period = _seatsPollPeriodMs();
-  if (_seats.pollTimer && _seats.pollPeriod === period) return;
-  if (_seats.pollTimer) clearInterval(_seats.pollTimer);
-  _seats.pollPeriod = period;
-  _seats.pollTimer = setInterval(_seatsPollTick, period);
-}
-
-async function _seatsPollTick() {
-  if (_seats.polling || _seats.watches.length === 0) return;
-  _seats.polling = true;
-  try {
-    const result = await fetchConnectFeed({ forceRefresh: true });
-    _seats.index = indexByCourse(result.sections);
-    _seats.sections = result.sections;
-    _seats.source = result.source;
-    _seats.fetchedAt = result.fetchedAt;
-    _seatsEvaluateWatches();
-    _seatsRender();
-  } catch { /* transient poll failure — keep prior data, try again next tick */ }
-  finally { _seats.polling = false; }
-}
-
 // ── DATA LOADING ────────────────────────────────────────────────────────────
 async function _seatsRefresh(force = false) {
   _seats.loading = true;
@@ -21362,6 +21483,9 @@ async function _seatsRefresh(force = false) {
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
     _seatsEvaluateWatches();
+    // One fetch serves every tab: let routine/free-rooms repaint from this
+    // result instead of going stale until their own next poll.
+    broadcastFeedResult(result, _seatsApplyFeed);
   } catch (e) {
     _seats.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -21372,6 +21496,7 @@ async function _seatsRefresh(force = false) {
 
 // ── ENTRY ─────────────────────────────────────────────────────────────────────
 function renderSeatsTab() {
+  _seatsGoLive();
   if (!_seats.index && !_seats.loading && !_seats.error) {
     _seatsRefresh(); // fire-and-forget; _seatsRefresh repaints on settle
     return;
@@ -21638,7 +21763,7 @@ function _seatsWatchRowHTML(w) {
 // A one-line hint about how alerts will reach the student, given their current
 // Notification permission. In-app toasts always fire while Shohoj is open.
 function _seatsNotifNote() {
-  const every = `${Math.round(SEATS_POLL_INTERVAL_MS / 1000)}s`;
+  const every = `${Math.round(FEED_LIVE_POLL_MS / 1000)}s`;
   if (typeof Notification === 'undefined') {
     return 'In-app alerts only — your browser doesn’t support notifications.';
   }
