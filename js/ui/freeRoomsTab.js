@@ -14,6 +14,7 @@ import {
 } from '../core/freeRooms.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
 
 const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -60,6 +61,9 @@ async function _frRefresh(force = false) {
     _frStore.index = buildRoomBusyIndex(result.sections);
     _frStore.source = result.source;
     _frStore.fetchedAt = result.fetchedAt;
+    // One fetch serves every tab: let routine/seats repaint from this result
+    // instead of going stale until their own next poll.
+    broadcastFeedResult(result, _frApplyLiveFeed);
   } catch (e) {
     _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -68,10 +72,31 @@ async function _frRefresh(force = false) {
   }
 }
 
+// Apply a live poll (or another tab's manual refresh) in place. Skips the
+// repaint while the student is typing in the time field — the store is fresh
+// either way, and the next interaction repaints from it.
+function _frApplyLiveFeed(result) {
+  if (_frStore.loading) return; // our own refresh is mid-flight; it will win
+  _frStore.index = buildRoomBusyIndex(result.sections);
+  _frStore.source = result.source;
+  _frStore.fetchedAt = result.fetchedAt;
+  const time = document.getElementById('freeRoomsTime');
+  if (time && document.activeElement === time) return;
+  _frRerender();
+}
+
+let _frLiveSubscribed = false;
+function _frGoLive() {
+  if (_frLiveSubscribed) return;
+  _frLiveSubscribed = true;
+  onFeedUpdate(_frApplyLiveFeed);
+}
+
 // ── RENDER ──────────────────────────────────────────────────────────────────
 export async function renderFreeRoomsTab() {
   const root = document.getElementById('freeRoomsContent');
   if (!root) return;
+  _frGoLive();
   if (!_frStore.index && !_frStore.loading && !_frStore.error) { _frRefresh(false); return; }
   _frRerender();
 }
