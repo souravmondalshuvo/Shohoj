@@ -22,18 +22,11 @@ import {
 } from '../core/seatWatch.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, FEED_LIVE_POLL_MS } from './feedLive.js';
 
 // Cap on rendered course groups so a 1-letter query doesn't paint the whole
 // catalog; a note tells the student when results were trimmed.
 const SEATS_RESULT_LIMIT = 40;
-
-// How often we re-fetch the live feed while ≥1 section is being watched.
-// Frequent enough to catch a freed seat during registration, polite enough not
-// to hammer the student-run CDN (which also 304s on an unchanged etag). We keep
-// polling when the tab is hidden — that's exactly when a desktop notification
-// earns its keep — but at the slower hidden cadence to stay a good citizen.
-const SEATS_POLL_INTERVAL_MS = 90_000;
-const SEATS_POLL_INTERVAL_HIDDEN_MS = 5 * 60_000;
 
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -49,9 +42,7 @@ const _seats = {
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
   watches: [],         // WatchEntry[] — persisted seat-drop watchlist
-  pollTimer: null,     // setInterval handle while watching
-  pollPeriod: 0,       // current interval period (ms) so we only reset on change
-  polling: false,      // in-flight guard for a poll tick
+  live: false,         // subscribed to the shared live poller yet?
 };
 
 // Restore the watchlist before anything renders so a persisted watch keeps
@@ -67,15 +58,6 @@ registerAction('seats:toggleWatch',     (el) => _seatsToggleWatch(Number(el.data
 registerAction('seats:removeWatch',     (el) => _seatsRemoveWatch(Number(el.dataset.sectionId)));
 registerAction('seats:quickPick',       (el) => _seatsQuickPick(el.dataset.code || ''));
 
-// Re-tune the poll cadence whenever the tab's visibility flips (slower while
-// hidden), and do one immediate catch-up poll when it returns to the foreground.
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    _seatsSyncPoller();
-    if (document.visibilityState !== 'hidden') _seatsPollTick();
-  });
-}
-
 // When auth resolves (or flips), push the current local watchlist to Firestore
 // so signing in retroactively enables email alerts for sections already being
 // watched, and repaint so the panel's email line reflects the new identity.
@@ -86,8 +68,35 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Persisted watches present at boot → start the background poller now.
-_seatsSyncPoller();
+// Hook this tab into the shared live poller (idempotent). Live results flow
+// through the same store-update path a manual refresh uses, so watch alerts
+// stay edge-triggered. Subscribed lazily — on first render, or at boot when a
+// persisted watch needs background alerting before the tab is ever opened.
+function _seatsGoLive() {
+  if (_seats.live) return;
+  _seats.live = true;
+  onFeedUpdate(_seatsApplyFeed);
+  _seatsSyncHiddenPolling();
+}
+
+// Watches are the only reason to keep fetching while the page is hidden —
+// that's exactly when a desktop notification earns its keep.
+function _seatsSyncHiddenPolling() {
+  setFeedHiddenPolling(_seats.watches.length > 0);
+}
+
+function _seatsApplyFeed(result) {
+  if (_seats.loading) return; // a manual refresh is mid-flight; it will win
+  _seats.index = indexByCourse(result.sections);
+  _seats.sections = result.sections;
+  _seats.source = result.source;
+  _seats.fetchedAt = result.fetchedAt;
+  _seatsEvaluateWatches();
+  _seatsRender();
+}
+
+// Persisted watches present at boot → start background polling now.
+if (_seats.watches.length > 0) _seatsGoLive();
 
 // ── SEAT-DROP WATCH ───────────────────────────────────────────────────────────
 function _seatsSaveWatches() {
@@ -125,7 +134,8 @@ function _seatsToggleWatch(sectionId) {
   }
   _seatsSaveWatches();
   _seatsSyncCloud();
-  _seatsSyncPoller();
+  _seatsGoLive();
+  _seatsSyncHiddenPolling();
   _seatsRender();
 }
 
@@ -133,7 +143,7 @@ function _seatsRemoveWatch(sectionId) {
   _seats.watches = removeWatch(_seats.watches, sectionId);
   _seatsSaveWatches();
   _seatsSyncCloud();
-  _seatsSyncPoller();
+  _seatsSyncHiddenPolling();
   _seatsRender();
 }
 
@@ -174,42 +184,6 @@ function _seatsToast(msg, isError = false) {
   }
 }
 
-function _seatsPollPeriodMs() {
-  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-  return hidden ? SEATS_POLL_INTERVAL_HIDDEN_MS : SEATS_POLL_INTERVAL_MS;
-}
-
-// Keep exactly one interval running while there's something to watch, at the
-// cadence for the current visibility. Re-creates the timer only when the
-// watchlist empties or the cadence actually changes (so a no-op visibility
-// flip doesn't reset the countdown).
-function _seatsSyncPoller() {
-  if (_seats.watches.length === 0) {
-    if (_seats.pollTimer) { clearInterval(_seats.pollTimer); _seats.pollTimer = null; _seats.pollPeriod = 0; }
-    return;
-  }
-  const period = _seatsPollPeriodMs();
-  if (_seats.pollTimer && _seats.pollPeriod === period) return;
-  if (_seats.pollTimer) clearInterval(_seats.pollTimer);
-  _seats.pollPeriod = period;
-  _seats.pollTimer = setInterval(_seatsPollTick, period);
-}
-
-async function _seatsPollTick() {
-  if (_seats.polling || _seats.watches.length === 0) return;
-  _seats.polling = true;
-  try {
-    const result = await fetchConnectFeed({ forceRefresh: true });
-    _seats.index = indexByCourse(result.sections);
-    _seats.sections = result.sections;
-    _seats.source = result.source;
-    _seats.fetchedAt = result.fetchedAt;
-    _seatsEvaluateWatches();
-    _seatsRender();
-  } catch { /* transient poll failure — keep prior data, try again next tick */ }
-  finally { _seats.polling = false; }
-}
-
 // ── DATA LOADING ────────────────────────────────────────────────────────────
 async function _seatsRefresh(force = false) {
   _seats.loading = true;
@@ -222,6 +196,9 @@ async function _seatsRefresh(force = false) {
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
     _seatsEvaluateWatches();
+    // One fetch serves every tab: let routine/free-rooms repaint from this
+    // result instead of going stale until their own next poll.
+    broadcastFeedResult(result, _seatsApplyFeed);
   } catch (e) {
     _seats.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -232,6 +209,7 @@ async function _seatsRefresh(force = false) {
 
 // ── ENTRY ─────────────────────────────────────────────────────────────────────
 export function renderSeatsTab() {
+  _seatsGoLive();
   if (!_seats.index && !_seats.loading && !_seats.error) {
     _seatsRefresh(); // fire-and-forget; _seatsRefresh repaints on settle
     return;
@@ -498,7 +476,7 @@ function _seatsWatchRowHTML(w) {
 // A one-line hint about how alerts will reach the student, given their current
 // Notification permission. In-app toasts always fire while Shohoj is open.
 function _seatsNotifNote() {
-  const every = `${Math.round(SEATS_POLL_INTERVAL_MS / 1000)}s`;
+  const every = `${Math.round(FEED_LIVE_POLL_MS / 1000)}s`;
   if (typeof Notification === 'undefined') {
     return 'In-app alerts only — your browser doesn’t support notifications.';
   }
