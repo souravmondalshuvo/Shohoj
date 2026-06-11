@@ -5277,13 +5277,19 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-header h3 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
 .routine-header-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.routine-header-right { display: flex; align-items: center; gap: 6px; }
+.routine-header-right { display: flex; align-items: center; gap: 6px; position: relative; }
+/* Overlaid (not in the flex flow) so the transient confirmation can't widen
+   the row and wrap the whole toolbar onto a second line — see #204. The
+   opaque backdrop keeps it legible over the search input it floats above. */
 .routine-share-note {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 5;
+  pointer-events: none; /* floats over the row below — never block its clicks */
   font-size: 11px; font-weight: 600; color: #2ecc71;
-  background: rgba(46,204,113,0.10);
-  border: 1px solid rgba(46,204,113,0.24);
+  background: rgba(16, 34, 24, 0.95);
+  border: 1px solid rgba(46,204,113,0.35);
   padding: 3px 9px; border-radius: 999px;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
 }
 
 /* QR-of-share-link panel. The code sits on a solid white card so dark modules
