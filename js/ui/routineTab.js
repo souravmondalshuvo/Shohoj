@@ -34,6 +34,7 @@ import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerIm
 import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routineExport.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
 
 // Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
 // js/core/state.js's STORAGE_KEY once build3.py concatenates every module
@@ -537,6 +538,9 @@ async function _refresh(force = false) {
       _applySharedRoutine(_store.pendingShare);
       _store.pendingShare = null;
     }
+    // One fetch serves every tab: let seats/free-rooms repaint from this
+    // result instead of going stale until their own next poll.
+    broadcastFeedResult(result, _applyLiveFeed);
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
@@ -595,10 +599,36 @@ function _writeRatingCache(map) {
   } catch { /* quota / disabled storage — caching is best-effort */ }
 }
 
+// ── LIVE UPDATES ────────────────────────────────────────────────────────────
+// Apply a live poll (or another tab's manual refresh) in place: fresh seat
+// counts in the section rows, fresh clash data, fresh source/age badge.
+function _applyLiveFeed(result) {
+  if (_store.loading) return; // our own refresh is mid-flight; it will win
+  _store.index = indexByCourse(result.sections);
+  _dataVersion++; // new section index ⇒ invalidate the clash memo
+  _store.courseCodes = Array.from(_store.index.keys()).sort();
+  _store.source = result.source;
+  _store.fetchedAt = result.fetchedAt;
+  // Don't tear the DOM down mid-search: the course input and its dropdown
+  // only survive a full rebuild via the focus dance _rerender doesn't do.
+  // The store is fresh either way; the next interaction repaints from it.
+  const input = document.getElementById('routineCourseInput');
+  if (input && document.activeElement === input) return;
+  _rerender();
+}
+
+let _routineLiveSubscribed = false;
+function _routineGoLive() {
+  if (_routineLiveSubscribed) return;
+  _routineLiveSubscribed = true;
+  onFeedUpdate(_applyLiveFeed);
+}
+
 // ── RENDER ──────────────────────────────────────────────────────────────────
 export async function renderRoutineTab() {
   const root = document.getElementById('routineContent');
   if (!root) return;
+  _routineGoLive();
   if (!_store.index && !_store.loading && !_store.error) {
     _refresh(false);
     return;
