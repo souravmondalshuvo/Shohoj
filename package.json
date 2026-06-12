@@ -35,7 +35,7 @@
     "firebase-tools": "^15.0.0",
     "qrcode-generator": "^2.0.4",
     "typescript": "^6.0.3",
-    "vite": "^7.3.5"
+    "vite": "^8.0.16"
   },
   "dependencies": {
     "react": "^19.2.7",
