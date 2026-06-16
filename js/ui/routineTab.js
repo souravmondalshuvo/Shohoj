@@ -149,13 +149,13 @@ registerAction('routine:addCourse',   (el) => _addCourseFromInput(el));
 registerAction('routine:removeCourse',(el) => _onRemoveCourse(el.dataset.code));
 registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Number(el.dataset.sid)));
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
-registerAction('routine:clearAll',    () => _onClearAll());
+registerAction('routine:clearAll',    () => { _onClearAll(); _flashNote('✓ Routine cleared'); });
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
 registerAction('routine:calendar',     () => _onAddToCalendar());
-registerAction('routine:toggleQr',     () => { _store.qrOpen = !_store.qrOpen; _rerender(); });
+registerAction('routine:toggleQr',     () => { _store.qrOpen = !_store.qrOpen; _rerender(); _flashNote(_store.qrOpen ? '📱 QR shown' : '📱 QR hidden'); });
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -316,14 +316,18 @@ function _qrPanelHTML(picked) {
   `;
 }
 
+// Transient toast in the header toolbar. Setting shareNote and rerendering
+// surfaces the .routine-share-note pill; it clears itself after 2.5s.
+function _flashNote(msg) {
+  _store.shareNote = msg;
+  _rerender();
+  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
+}
+
 function _onShare() {
   if (pickedCourseCodes(_store.routine).length === 0) return;
   const url = _shareUrl();
-  const flash = (msg) => {
-    _store.shareNote = msg;
-    _rerender();
-    setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
-  };
+  const flash = (msg) => _flashNote(msg);
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(() => flash('✓ Link copied'), () => _fallbackCopy(url, flash));
@@ -351,12 +355,10 @@ function _onAddToCalendar() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    _store.shareNote = '✓ Calendar downloaded';
+    _flashNote('✓ Calendar downloaded');
   } catch {
-    _store.shareNote = 'Calendar export failed';
+    _flashNote('Calendar export failed');
   }
-  _rerender();
-  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
 }
 
 // execCommand fallback for browsers without the async clipboard API.
@@ -541,6 +543,7 @@ async function _refresh(force = false) {
     // One fetch serves every tab: let seats/free-rooms repaint from this
     // result instead of going stale until their own next poll.
     broadcastFeedResult(result, _applyLiveFeed);
+    if (force) _flashNote('✓ Refreshed from CONNECT');
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
