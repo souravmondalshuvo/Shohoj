@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-uOktOBJmooArte4KbxZAeXYoXdBlbsBVHc0kBhJnfns='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-BYBIY3kLjZs2Ba9oCKC0cYyV9q3dG4JfD5dIEdICQfs='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19712,13 +19712,13 @@ registerAction('routine:addCourse',   (el) => _addCourseFromInput(el));
 registerAction('routine:removeCourse',(el) => _onRemoveCourse(el.dataset.code));
 registerAction('routine:pickSection', (el) => _onPickSection(el.dataset.code, Number(el.dataset.sid)));
 registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code));
-registerAction('routine:clearAll',    () => _onClearAll());
+registerAction('routine:clearAll',    () => { _onClearAll(); _flashNote('✓ Routine cleared'); });
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
 registerAction('routine:calendar',     () => _onAddToCalendar());
-registerAction('routine:toggleQr',     () => { _store.qrOpen = !_store.qrOpen; _rerender(); });
+registerAction('routine:toggleQr',     () => { _store.qrOpen = !_store.qrOpen; _rerender(); _flashNote(_store.qrOpen ? '📱 QR shown' : '📱 QR hidden'); });
 registerAction('routine:suggest',     () => _onSuggest());
 registerAction('routine:closeSuggest',() => { _store.suggestionsOpen = false; _store.suggestionsResult = null; _rerender(); });
 registerAction('routine:applyCombo',  (el) => _onApplyCombo(Number(el.dataset.idx)));
@@ -19879,14 +19879,18 @@ function _qrPanelHTML(picked) {
   `;
 }
 
+// Transient toast in the header toolbar. Setting shareNote and rerendering
+// surfaces the .routine-share-note pill; it clears itself after 2.5s.
+function _flashNote(msg) {
+  _store.shareNote = msg;
+  _rerender();
+  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
+}
+
 function _onShare() {
   if (pickedCourseCodes(_store.routine).length === 0) return;
   const url = _shareUrl();
-  const flash = (msg) => {
-    _store.shareNote = msg;
-    _rerender();
-    setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
-  };
+  const flash = (msg) => _flashNote(msg);
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(url).then(() => flash('✓ Link copied'), () => _fallbackCopy(url, flash));
@@ -19914,12 +19918,10 @@ function _onAddToCalendar() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    _store.shareNote = '✓ Calendar downloaded';
+    _flashNote('✓ Calendar downloaded');
   } catch {
-    _store.shareNote = 'Calendar export failed';
+    _flashNote('Calendar export failed');
   }
-  _rerender();
-  setTimeout(() => { _store.shareNote = ''; _rerender(); }, 2500);
 }
 
 // execCommand fallback for browsers without the async clipboard API.
@@ -20104,6 +20106,7 @@ async function _refresh(force = false) {
     // One fetch serves every tab: let seats/free-rooms repaint from this
     // result instead of going stale until their own next poll.
     broadcastFeedResult(result, _applyLiveFeed);
+    if (force) _flashNote('✓ Refreshed from CONNECT');
   } catch (e) {
     _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
