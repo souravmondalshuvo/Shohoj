@@ -16,7 +16,16 @@ function isRealRoom(name) {
     if (typeof name !== 'string') return false;
     const trimmed = name.trim();
     if (trimmed === '') return false;
-    return trimmed.toUpperCase() !== 'TBA';
+    const upper = trimmed.toUpperCase();
+    if (upper === 'TBA') return false;
+    // The live feed sometimes stuffs a class schedule into roomName
+    // (e.g. "MON 11:00AM: 07A-08C; WED 2:00PM: 09G-31T"); real room codes
+    // never contain whitespace or schedule punctuation.
+    if (/[\s:;]/.test(trimmed)) return false;
+    // UB (old University Building) is gone post campus-move; its "UB0000"
+    // placeholder still lingers in the feed.
+    if (upper.startsWith('UB')) return false;
+    return true;
 }
 
 // Map each room to its busy intervals across the week, sorted by day
