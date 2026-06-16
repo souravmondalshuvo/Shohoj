@@ -59,6 +59,21 @@ test('indexes only real rooms (blank/TBA excluded)', () => {
     const idx = buildRoomBusyIndex(SECTIONS);
     eq([...idx.keys()].sort(), ['R1', 'R2', 'R3']);
 });
+test('excludes feed junk: schedule-string room names and UB placeholders', () => {
+    const junk = parseFeed([
+        sec({ sectionId: 10, courseCode: 'CSE111', courseName: 'C', sectionName: '01', capacity: 30, consumedSeat: 1, faculties: 'ABC',
+              roomName: 'MON 11:00AM: 07A-08C; WED 2:00PM: 09G-31T',
+              sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '11:00', endTime: '12:20' }] } }),
+        sec({ sectionId: 11, courseCode: 'CSE112', courseName: 'C', sectionName: '01', capacity: 30, consumedSeat: 1, faculties: 'DEF',
+              roomName: 'UB0000',
+              sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '14:00', endTime: '15:20' }] } }),
+        sec({ sectionId: 12, courseCode: 'CSE113', courseName: 'C', sectionName: '01', capacity: 30, consumedSeat: 1, faculties: 'GHI',
+              roomName: '09G-31T',
+              sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '08:00', endTime: '09:20' }] } }),
+    ]).sections;
+    const idx = buildRoomBusyIndex(junk);
+    eq([...idx.keys()], ['09G-31T']);
+});
 test('a room used by two courses collects both intervals, sorted Sat→Fri then start', () => {
     const idx = buildRoomBusyIndex(SECTIONS);
     eq(idx.get('R1').map(i => [i.day, i.startMin]), [
