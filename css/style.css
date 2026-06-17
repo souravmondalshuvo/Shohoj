@@ -5900,6 +5900,24 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .freerooms-time-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .freerooms-time-label { font-size: 12px; color: var(--text3); }
+
+.freerooms-controls--view { gap: 14px; }
+.freerooms-view { display: inline-flex; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); overflow: hidden; }
+.freerooms-view-btn {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer; padding: 5px 14px;
+  border: none; background: transparent; color: var(--text2);
+  transition: background 0.15s, color 0.15s;
+}
+.freerooms-view-btn:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.freerooms-view-btn.is-active { background: rgba(91,157,255,0.16); color: #5b9dff; }
+.freerooms-types { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.freerooms-type {
+  font: 12px 'DM Sans', sans-serif; cursor: pointer; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text3);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.freerooms-type:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.freerooms-type.is-active { background: rgba(255,255,255,0.08); color: var(--text1); border-color: rgba(255,255,255,0.20); }
 .freerooms-time {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.10);
@@ -5922,8 +5940,22 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .freerooms-card:hover { background: rgba(255,255,255,0.06); }
 .freerooms-card.is-active { border-color: rgba(91,157,255,0.45); background: rgba(91,157,255,0.10); }
-.freerooms-card-room { font-weight: 700; letter-spacing: 0.3px; font-size: 13px; }
-.freerooms-card-until { font-size: 11px; color: #5b9dff; }
+/* Status accents: a left edge keeps the grid calm while signalling state. */
+.freerooms-card.is-free  { border-left: 3px solid rgba(63,185,80,0.7); }
+.freerooms-card.is-class { border-left: 3px solid rgba(210,153,34,0.8); }
+.freerooms-card.is-lab   { border-left: 3px solid rgba(163,113,247,0.8); }
+.freerooms-card-room {
+  font-weight: 700; letter-spacing: 0.3px; font-size: 13px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+}
+.freerooms-card-type {
+  font-size: 9px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+  color: var(--text3); padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,0.06);
+}
+.freerooms-card-until { font-size: 11px; }
+.freerooms-card.is-free  .freerooms-card-until { color: #3fb950; }
+.freerooms-card.is-class .freerooms-card-until { color: #d29922; }
+.freerooms-card.is-lab   .freerooms-card-until { color: #a371f7; }
 
 .freerooms-detail {
   border: 1px solid rgba(91,157,255,0.22); background: rgba(91,157,255,0.04);
@@ -5945,9 +5977,10 @@ body[data-page="admin"] .orb { display: none !important; }
 .freerooms-seg-label { font-size: 11px; font-weight: 600; }
 .freerooms-seg--free .freerooms-seg-time { color: var(--text1); }
 .freerooms-seg--free .freerooms-seg-label { color: #5b9dff; }
-.freerooms-seg--busy { opacity: 0.7; }
-.freerooms-seg--busy .freerooms-seg-time { color: var(--text2); }
+.freerooms-seg--busy, .freerooms-seg--lab { opacity: 0.7; }
+.freerooms-seg--busy .freerooms-seg-time, .freerooms-seg--lab .freerooms-seg-time { color: var(--text2); }
 .freerooms-seg--busy .freerooms-seg-label { color: var(--text3); font-weight: 500; }
+.freerooms-seg--lab .freerooms-seg-label { color: #a371f7; font-weight: 500; }
 .freerooms-seg--none { color: var(--text3); }
 
 @media (max-width: 720px) {
