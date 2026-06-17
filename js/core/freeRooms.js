@@ -42,6 +42,7 @@ export function buildRoomBusyIndex(sections) {
                 endMin: slot.endMin,
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
+                kind: slot.kind,
             };
             const list = index.get(room);
             if (list) list.push(interval);
@@ -60,6 +61,23 @@ export function buildRoomBusyIndex(sections) {
 // Busy intervals for a room on a single day (already sorted by start).
 export function busyOnDay(index, room, day) {
     return (index.get(room) ?? []).filter(i => i.day === day);
+}
+
+// Every room in the feed, sorted alphabetically.
+export function listAllRooms(index) {
+    return [...index.keys()].sort((a, b) => a.localeCompare(b));
+}
+
+// The class/lab occupying `room` at `minute` on `day`, or null if free. When
+// intervals overlap (rare), the one ending latest wins so "busy until" reflects
+// when the room actually frees up. Half-open [startMin, endMin).
+export function occupantAt(index, room, day, minute) {
+    let occupant = null;
+    for (const i of index.get(room) ?? []) {
+        if (i.day !== day || minute < i.startMin || minute >= i.endMin) continue;
+        if (!occupant || i.endMin > occupant.endMin) occupant = i;
+    }
+    return occupant;
 }
 
 // Rooms with no class covering `minute` on `day`, sorted alphabetically. A room
