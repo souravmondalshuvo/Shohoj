@@ -285,7 +285,7 @@ function _frRoomCardHTML(room) {
       : `free until ${_frMin2hhmm(until)}`;
   } else {
     stateClass = occ.kind === 'lab' ? 'is-lab' : 'is-class';
-    const sec = occ.sectionName ? `${occ.courseCode} §${occ.sectionName}` : occ.courseCode;
+    const sec = occ.sectionName ? `${occ.courseCode} Section ${occ.sectionName}` : occ.courseCode;
     statusLabel = `${occ.kind === 'lab' ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
   }
   return `
@@ -303,7 +303,7 @@ function _frDayTimeline(room, day) {
     .map(w => ({ startMin: w.startMin, endMin: w.endMin, busy: false, label: 'free' }));
   const busy = busyOnDay(_frStore.index, room, day)
     .map(i => {
-      const sec = i.sectionName ? `${i.courseCode} §${i.sectionName}` : i.courseCode;
+      const sec = i.sectionName ? `${i.courseCode} Section ${i.sectionName}` : i.courseCode;
       return {
         startMin: Math.max(i.startMin, CAMPUS_START_MIN),
         endMin: Math.min(i.endMin, CAMPUS_END_MIN),
