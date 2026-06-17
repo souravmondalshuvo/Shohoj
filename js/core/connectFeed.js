@@ -32,7 +32,7 @@ function normalizeDay(value) {
     return WEEKDAYS.has(upper) ? upper : null;
 }
 
-function normalizeSlots(raw, kind) {
+function normalizeSlots(raw, kind, room) {
     if (!Array.isArray(raw)) return [];
     const out = [];
     for (const slot of raw) {
@@ -41,7 +41,7 @@ function normalizeSlots(raw, kind) {
         const endMin = parseTimeToMinutes(slot && slot.endTime);
         if (day === null || startMin === null || endMin === null) continue;
         if (endMin <= startMin) continue;
-        out.push({ day, startMin, endMin, kind });
+        out.push({ day, startMin, endMin, kind, room });
     }
     return out;
 }
@@ -66,8 +66,13 @@ export function normalizeSection(raw) {
     const consumedSeat = Number.isFinite(raw.consumedSeat) ? Number(raw.consumedSeat) : 0;
 
     const schedule = raw.sectionSchedule || null;
-    const theorySlots = normalizeSlots(schedule && schedule.classSchedules, 'theory');
-    const labSlots = normalizeSlots(raw.labSchedules, 'lab');
+    // The feed rooms theory and lab separately: theory uses roomName, the lab
+    // component carries its own labRoomName. Tag each slot with its real room
+    // so a section's lab isn't mis-attributed to its theory classroom.
+    const roomName = (raw.roomName || raw.roomNumber || '').trim();
+    const labRoomName = (raw.labRoomName || '').trim() || roomName;
+    const theorySlots = normalizeSlots(schedule && schedule.classSchedules, 'theory', roomName);
+    const labSlots = normalizeSlots(raw.labSchedules, 'lab', labRoomName);
     const classSlots = theorySlots.concat(labSlots);
 
     const midExam = schedule
@@ -87,7 +92,7 @@ export function normalizeSection(raw) {
         consumedSeat,
         isFull: capacity > 0 && consumedSeat >= capacity,
         facultyInitials: (raw.faculties || '').trim().toUpperCase(),
-        roomName: (raw.roomName || raw.roomNumber || '').trim(),
+        roomName,
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
         classSlots,
