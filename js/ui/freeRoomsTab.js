@@ -18,6 +18,7 @@ import {
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
+import { openModal } from './modal.js';
 
 const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -56,7 +57,6 @@ const _frStore = {
   index: null,                 // Map<room, BusyInterval[]>
   day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
   minute: _frNowMinute(),
-  selectedRoom: null,
   showAll: false,              // false = free-only view, true = all-rooms board
   roomType: 'ALL',            // type filter (all-rooms view only)
 };
@@ -64,21 +64,19 @@ const _frStore = {
 // ── ACTIONS ─────────────────────────────────────────────────────────────────
 registerAction('freerooms:refresh',    () => _frRefresh(true));
 registerAction('freerooms:clearCache', () => { clearConnectFeedCache(); _frRefresh(true); });
-registerAction('freerooms:setDay',     (el) => { _frStore.day = el.dataset.day || _frStore.day; _frStore.selectedRoom = null; _frRerender(); });
-registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDEX[new Date().getDay()]; _frStore.minute = _frNowMinute(); _frStore.selectedRoom = null; _frRerender(); });
+registerAction('freerooms:setDay',     (el) => { _frStore.day = el.dataset.day || _frStore.day; _frRerender(); });
+registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDEX[new Date().getDay()]; _frStore.minute = _frNowMinute(); _frRerender(); });
 registerAction('freerooms:selectRoom', (el) => {
-  const r = el.dataset.room || '';
-  _frStore.selectedRoom = _frStore.selectedRoom === r ? null : r;
-  _frRerender();
+  const room = el.dataset.room || '';
+  if (!_frStore.index || !room) return;
+  openModal({ title: `📍 ${room} · weekly availability`, bodyHtml: _frRoomWeekHTML(room) });
 });
 registerAction('freerooms:setView', (el) => {
   _frStore.showAll = el.dataset.view === 'all';
-  _frStore.selectedRoom = null;
   _frRerender();
 });
 registerAction('freerooms:setType', (el) => {
   _frStore.roomType = el.dataset.type || 'ALL';
-  _frStore.selectedRoom = null;
   _frRerender();
 });
 
@@ -146,7 +144,7 @@ function _frAttachHandlers() {
   if (time) {
     time.addEventListener('input', (ev) => {
       const m = _frParseTime(ev.target.value);
-      if (m !== null) { _frStore.minute = _frClampMinute(m); _frStore.selectedRoom = null; _frRenderResults(); }
+      if (m !== null) { _frStore.minute = _frClampMinute(m); _frRenderResults(); }
     });
   }
 }
@@ -251,8 +249,7 @@ function _frFreeOnlyHTML() {
   const cards = free.map(room => _frRoomCardHTML(room)).join('');
   return `
     <div class="freerooms-summary">${free.length} room${free.length === 1 ? '' : 's'} free · ${escHtml(when)}</div>
-    <div class="freerooms-grid">${cards}</div>
-    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+    <div class="freerooms-grid">${cards}</div>`;
 }
 
 function _frAllRoomsHTML() {
@@ -268,8 +265,7 @@ function _frAllRoomsHTML() {
   const cards = rooms.map(room => _frRoomCardHTML(room)).join('');
   return `
     <div class="freerooms-summary">${rooms.length} room${rooms.length === 1 ? '' : 's'} · ${freeCount} free · ${escHtml(when)}</div>
-    <div class="freerooms-grid">${cards}</div>
-    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+    <div class="freerooms-grid">${cards}</div>`;
 }
 
 function _frRenderResults() {
@@ -292,9 +288,8 @@ function _frRoomCardHTML(room) {
     const sec = occ.sectionName ? `${occ.courseCode} §${occ.sectionName}` : occ.courseCode;
     statusLabel = `${occ.kind === 'lab' ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
   }
-  const active = _frStore.selectedRoom === room;
   return `
-    <button type="button" class="freerooms-card ${stateClass} ${active ? 'is-active' : ''}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-pressed="${active ? 'true' : 'false'}">
+    <button type="button" class="freerooms-card ${stateClass}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-haspopup="dialog" title="${escAttr(room)} — view weekly availability">
       <span class="freerooms-card-room">${escHtml(room)}<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span></span>
       <span class="freerooms-card-until">${escHtml(statusLabel)}</span>
     </button>`;
@@ -321,7 +316,9 @@ function _frDayTimeline(room, day) {
   return [...free, ...busy].sort((a, b) => (a.startMin - b.startMin) || (a.busy ? 1 : -1));
 }
 
-function _frRoomDetailHTML(room) {
+// Body HTML for the room's weekly-availability modal: a free/busy timeline per
+// day, with the currently-selected day highlighted.
+function _frRoomWeekHTML(room) {
   const rows = FR_DAY_ORDER.map(day => {
     const segs = _frDayTimeline(room, day);
     const active = day === _frStore.day;
@@ -340,11 +337,7 @@ function _frRoomDetailHTML(room) {
         <ul class="freerooms-day-segs">${segHtml}</ul>
       </div>`;
   }).join('');
-  return `
-    <div class="freerooms-detail">
-      <div class="freerooms-detail-head">📍 ${escHtml(room)} · weekly availability</div>
-      <div class="freerooms-week">${rows}</div>
-    </div>`;
+  return `<div class="freerooms-week">${rows}</div>`;
 }
 
 // Minute the room's current free window ends at, or null if not free now.
