@@ -8,6 +8,8 @@ import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClie
 import {
   buildRoomBusyIndex,
   busyOnDay,
+  listAllRooms,
+  occupantAt,
   freeRoomsAt,
   freeWindowsForRoom,
   CAMPUS_START_MIN,
@@ -21,6 +23,22 @@ const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSD
 const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
 // Date.getDay() (0=Sun..6=Sat) -> canonical day name.
 const FR_WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+
+// Room type from the code's trailing letter: C=Classroom, L=Lab, T=Tutorial.
+const FR_ROOM_TYPES = { C: 'Classroom', L: 'Lab', T: 'Tutorial' };
+const FR_TYPE_FILTERS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'C', label: 'Class' },
+  { key: 'L', label: 'Lab' },
+  { key: 'T', label: 'Tutorial' },
+];
+function _frRoomTypeKey(room) {
+  const last = room.trim().slice(-1).toUpperCase();
+  return FR_ROOM_TYPES[last] ? last : 'C';
+}
+function _frRoomTypeLabel(room) {
+  return FR_ROOM_TYPES[_frRoomTypeKey(room)];
+}
 
 function _frClampMinute(m) {
   return Math.max(CAMPUS_START_MIN, Math.min(CAMPUS_END_MIN - 1, m));
@@ -39,6 +57,8 @@ const _frStore = {
   day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
   minute: _frNowMinute(),
   selectedRoom: null,
+  showAll: false,              // false = free-only view, true = all-rooms board
+  roomType: 'ALL',            // type filter (all-rooms view only)
 };
 
 // ── ACTIONS ─────────────────────────────────────────────────────────────────
@@ -49,6 +69,16 @@ registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDE
 registerAction('freerooms:selectRoom', (el) => {
   const r = el.dataset.room || '';
   _frStore.selectedRoom = _frStore.selectedRoom === r ? null : r;
+  _frRerender();
+});
+registerAction('freerooms:setView', (el) => {
+  _frStore.showAll = el.dataset.view === 'all';
+  _frStore.selectedRoom = null;
+  _frRerender();
+});
+registerAction('freerooms:setType', (el) => {
+  _frStore.roomType = el.dataset.type || 'ALL';
+  _frStore.selectedRoom = null;
   _frRerender();
 });
 
@@ -180,6 +210,17 @@ function _frControlsHTML() {
   const dayChips = FR_DAY_ORDER.map(d =>
     `<button class="freerooms-day ${d === _frStore.day ? 'is-active' : ''}" data-action="freerooms:setDay" data-day="${d}" aria-pressed="${d === _frStore.day ? 'true' : 'false'}">${escHtml(FR_DAY_SHORT[d])}</button>`
   ).join('');
+  const viewToggle = `
+    <div class="freerooms-view" role="group" aria-label="View">
+      <button class="freerooms-view-btn ${!_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="free" aria-pressed="${!_frStore.showAll}">Free only</button>
+      <button class="freerooms-view-btn ${_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="all" aria-pressed="${_frStore.showAll}">All rooms</button>
+    </div>`;
+  const typeFilter = _frStore.showAll ? `
+    <div class="freerooms-types" role="group" aria-label="Room type">
+      ${FR_TYPE_FILTERS.map(t =>
+        `<button class="freerooms-type ${_frStore.roomType === t.key ? 'is-active' : ''}" data-action="freerooms:setType" data-type="${t.key}" aria-pressed="${_frStore.roomType === t.key}">${escHtml(t.label)}</button>`
+      ).join('')}
+    </div>` : '';
   return `
     <div class="freerooms-controls">
       <div class="freerooms-days" role="group" aria-label="Day">${dayChips}</div>
@@ -189,11 +230,19 @@ function _frControlsHTML() {
                min="${_frHhmm24(CAMPUS_START_MIN)}" max="${_frHhmm24(CAMPUS_END_MIN - 1)}" />
         <button class="btn-secondary btn-sm" data-action="freerooms:now" title="Jump to right now">Now</button>
       </div>
+    </div>
+    <div class="freerooms-controls freerooms-controls--view">
+      ${viewToggle}
+      ${typeFilter}
     </div>`;
 }
 
 function _frResultsHTML() {
   if (!_frStore.index) return '';
+  return _frStore.showAll ? _frAllRoomsHTML() : _frFreeOnlyHTML();
+}
+
+function _frFreeOnlyHTML() {
   const free = freeRoomsAt(_frStore.index, _frStore.day, _frStore.minute);
   const when = `${FR_DAY_SHORT[_frStore.day]} ${_frMin2hhmm(_frStore.minute)}`;
   if (free.length === 0) {
@@ -206,6 +255,23 @@ function _frResultsHTML() {
     ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
 }
 
+function _frAllRoomsHTML() {
+  const all = listAllRooms(_frStore.index);
+  const rooms = _frStore.roomType === 'ALL'
+    ? all
+    : all.filter(r => _frRoomTypeKey(r) === _frStore.roomType);
+  const when = `${FR_DAY_SHORT[_frStore.day]} ${_frMin2hhmm(_frStore.minute)}`;
+  if (rooms.length === 0) {
+    return `<div class="freerooms-empty">No rooms match this filter.</div>`;
+  }
+  const freeCount = rooms.filter(r => !occupantAt(_frStore.index, r, _frStore.day, _frStore.minute)).length;
+  const cards = rooms.map(room => _frRoomCardHTML(room)).join('');
+  return `
+    <div class="freerooms-summary">${rooms.length} room${rooms.length === 1 ? '' : 's'} · ${freeCount} free · ${escHtml(when)}</div>
+    <div class="freerooms-grid">${cards}</div>
+    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+}
+
 function _frRenderResults() {
   const el = document.getElementById('freeRoomsResults');
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
@@ -213,15 +279,24 @@ function _frRenderResults() {
 }
 
 function _frRoomCardHTML(room) {
-  const until = _frFreeUntil(room);
-  const untilLabel = until === null ? ''
-    : until >= CAMPUS_END_MIN ? 'free rest of day'
-    : `free until ${_frMin2hhmm(until)}`;
+  const occ = occupantAt(_frStore.index, room, _frStore.day, _frStore.minute);
+  let stateClass, statusLabel;
+  if (!occ) {
+    const until = _frFreeUntil(room);
+    stateClass = 'is-free';
+    statusLabel = (until === null || until >= CAMPUS_END_MIN)
+      ? 'free rest of day'
+      : `free until ${_frMin2hhmm(until)}`;
+  } else {
+    stateClass = occ.kind === 'lab' ? 'is-lab' : 'is-class';
+    const sec = occ.sectionName ? `${occ.courseCode} §${occ.sectionName}` : occ.courseCode;
+    statusLabel = `${occ.kind === 'lab' ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
+  }
   const active = _frStore.selectedRoom === room;
   return `
-    <button type="button" class="freerooms-card ${active ? 'is-active' : ''}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-pressed="${active ? 'true' : 'false'}">
-      <span class="freerooms-card-room">${escHtml(room)}</span>
-      <span class="freerooms-card-until">${escHtml(untilLabel)}</span>
+    <button type="button" class="freerooms-card ${stateClass} ${active ? 'is-active' : ''}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-pressed="${active ? 'true' : 'false'}">
+      <span class="freerooms-card-room">${escHtml(room)}<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span></span>
+      <span class="freerooms-card-until">${escHtml(statusLabel)}</span>
     </button>`;
 }
 
@@ -232,12 +307,16 @@ function _frDayTimeline(room, day) {
   const free = freeWindowsForRoom(_frStore.index, room, day)
     .map(w => ({ startMin: w.startMin, endMin: w.endMin, busy: false, label: 'free' }));
   const busy = busyOnDay(_frStore.index, room, day)
-    .map(i => ({
-      startMin: Math.max(i.startMin, CAMPUS_START_MIN),
-      endMin: Math.min(i.endMin, CAMPUS_END_MIN),
-      busy: true,
-      label: i.sectionName ? `${i.courseCode} §${i.sectionName}` : i.courseCode,
-    }))
+    .map(i => {
+      const sec = i.sectionName ? `${i.courseCode} §${i.sectionName}` : i.courseCode;
+      return {
+        startMin: Math.max(i.startMin, CAMPUS_START_MIN),
+        endMin: Math.min(i.endMin, CAMPUS_END_MIN),
+        busy: true,
+        lab: i.kind === 'lab',
+        label: i.kind === 'lab' ? `${sec} · lab` : sec,
+      };
+    })
     .filter(s => s.endMin > s.startMin);
   return [...free, ...busy].sort((a, b) => (a.startMin - b.startMin) || (a.busy ? 1 : -1));
 }
@@ -248,11 +327,13 @@ function _frRoomDetailHTML(room) {
     const active = day === _frStore.day;
     const segHtml = segs.length === 0
       ? `<li class="freerooms-seg freerooms-seg--none">No class data</li>`
-      : segs.map(s =>
-          `<li class="freerooms-seg ${s.busy ? 'freerooms-seg--busy' : 'freerooms-seg--free'}">
+      : segs.map(s => {
+          const cls = !s.busy ? 'freerooms-seg--free' : (s.lab ? 'freerooms-seg--lab' : 'freerooms-seg--busy');
+          return `<li class="freerooms-seg ${cls}">
              <span class="freerooms-seg-time">${escHtml(_frMin2hhmm(s.startMin))} – ${escHtml(_frMin2hhmm(s.endMin))}</span>
              <span class="freerooms-seg-label">${escHtml(s.label)}</span>
-           </li>`).join('');
+           </li>`;
+        }).join('');
     return `
       <div class="freerooms-day-row ${active ? 'is-active' : ''}">
         <div class="freerooms-day-name">${escHtml(FR_DAY_SHORT[day])}</div>
