@@ -33,9 +33,11 @@ function isRealRoom(name) {
 export function buildRoomBusyIndex(sections) {
     const index = new Map();
     for (const s of sections) {
-        if (!isRealRoom(s.roomName)) continue;
-        const room = s.roomName.trim();
         for (const slot of s.classSlots) {
+            // Each slot carries its own room (theory→roomName, lab→labRoomName),
+            // so a lab lands in its real lab, not the section's theory classroom.
+            const room = (slot.room || s.roomName || '').trim();
+            if (!isRealRoom(room)) continue;
             const interval = {
                 day: slot.day,
                 startMin: slot.startMin,
