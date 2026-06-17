@@ -32,7 +32,7 @@ function normalizeDay(value) {
     return WEEKDAYS.has(upper) ? upper : null;
 }
 
-function normalizeSlots(raw) {
+function normalizeSlots(raw, kind) {
     if (!Array.isArray(raw)) return [];
     const out = [];
     for (const slot of raw) {
@@ -41,7 +41,7 @@ function normalizeSlots(raw) {
         const endMin = parseTimeToMinutes(slot && slot.endTime);
         if (day === null || startMin === null || endMin === null) continue;
         if (endMin <= startMin) continue;
-        out.push({ day, startMin, endMin });
+        out.push({ day, startMin, endMin, kind });
     }
     return out;
 }
@@ -66,8 +66,8 @@ export function normalizeSection(raw) {
     const consumedSeat = Number.isFinite(raw.consumedSeat) ? Number(raw.consumedSeat) : 0;
 
     const schedule = raw.sectionSchedule || null;
-    const theorySlots = normalizeSlots(schedule && schedule.classSchedules);
-    const labSlots = normalizeSlots(raw.labSchedules);
+    const theorySlots = normalizeSlots(schedule && schedule.classSchedules, 'theory');
+    const labSlots = normalizeSlots(raw.labSchedules, 'lab');
     const classSlots = theorySlots.concat(labSlots);
 
     const midExam = schedule
