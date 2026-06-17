@@ -71,10 +71,14 @@ export interface RawSection {
 /** Minutes since 00:00, e.g. `14:00:00` → 840. */
 export type MinutesOfDay = number;
 
+/** Whether a slot is a theory class or a lab session. */
+export type SlotKind = 'theory' | 'lab';
+
 export interface TimeSlot {
   day: WeekdayName;
   startMin: MinutesOfDay;
   endMin: MinutesOfDay;
+  kind: SlotKind;
 }
 
 export interface ExamSlot {
@@ -147,6 +151,7 @@ function normalizeDay(value: string | null | undefined): WeekdayName | null {
 
 function normalizeSlots(
   raw: readonly RawClassSlot[] | null | undefined,
+  kind: SlotKind,
 ): TimeSlot[] {
   if (!Array.isArray(raw)) return [];
   const out: TimeSlot[] = [];
@@ -156,7 +161,7 @@ function normalizeSlots(
     const endMin = parseTimeToMinutes(slot?.endTime);
     if (day === null || startMin === null || endMin === null) continue;
     if (endMin <= startMin) continue;
-    out.push({ day, startMin, endMin });
+    out.push({ day, startMin, endMin, kind });
   }
   return out;
 }
@@ -190,8 +195,8 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
   const capacity = Number.isFinite(raw.capacity) ? Number(raw.capacity) : 0;
   const consumedSeat = Number.isFinite(raw.consumedSeat) ? Number(raw.consumedSeat) : 0;
 
-  const theorySlots = normalizeSlots(raw.sectionSchedule?.classSchedules);
-  const labSlots = normalizeSlots(raw.labSchedules);
+  const theorySlots = normalizeSlots(raw.sectionSchedule?.classSchedules, 'theory');
+  const labSlots = normalizeSlots(raw.labSchedules, 'lab');
   const classSlots = [...theorySlots, ...labSlots];
 
   const midExam = normalizeExam(
