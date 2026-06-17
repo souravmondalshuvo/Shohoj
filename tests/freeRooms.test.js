@@ -160,6 +160,37 @@ test('custom bounds are respected', () => {
     eq(freeWindowsForRoom(idx, 'R2', 'TUESDAY', M(9), M(17)), [{ startMin: M(9), endMin: M(17) }]);
 });
 
+console.log('\nlab rooming (labRoomName):');
+// A section whose theory is in a classroom but whose lab is in a separate lab
+// room must attribute the lab to labRoomName, leaving the classroom free.
+const LAB_SECTIONS = parseFeed([
+    sec({ sectionId: 7, courseCode: 'CSE110', courseName: 'C', sectionName: '04',
+          capacity: 30, consumedSeat: 1, faculties: 'XYZ',
+          roomName: '10B-16C', labRoomName: '09B-08L',
+          sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '08:00', endTime: '09:20' }] },
+          labSchedules: [{ day: 'THURSDAY', startTime: '08:00', endTime: '10:50' }] }),
+]).sections;
+test('lab is attributed to labRoomName, not the theory classroom', () => {
+    const idx = buildRoomBusyIndex(LAB_SECTIONS);
+    // Lab lives in the lab room.
+    eq(occupantAt(idx, '09B-08L', 'THURSDAY', M(9)),
+       { day: 'THURSDAY', startMin: M(8), endMin: M(10, 50), courseCode: 'CSE110', sectionName: '04', kind: 'lab' });
+    // The classroom is untouched by the lab slot.
+    assert(occupantAt(idx, '10B-16C', 'THURSDAY', M(9)) === null, 'classroom must be free during the lab');
+    // Theory still occupies the classroom on its own day.
+    assert(occupantAt(idx, '10B-16C', 'SUNDAY', M(8, 30)) !== null, 'theory must occupy the classroom');
+});
+test('lab falls back to roomName when labRoomName is blank', () => {
+    const fallback = parseFeed([
+        sec({ sectionId: 8, courseCode: 'CSE111', courseName: 'C2', sectionName: '01',
+              capacity: 30, consumedSeat: 1, faculties: 'ABC', roomName: 'R9', labRoomName: '',
+              sectionSchedule: { classSchedules: [] },
+              labSchedules: [{ day: 'MONDAY', startTime: '14:00', endTime: '16:50' }] }),
+    ]).sections;
+    const idx = buildRoomBusyIndex(fallback);
+    assert(occupantAt(idx, 'R9', 'MONDAY', M(15)) !== null, 'lab falls back to roomName');
+});
+
 // ---------------------------------------------------------------------------
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
