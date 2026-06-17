@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-C58zFE0hk2/tLPo87NzLzXVGocn6+XyzHvd2bR5/FpM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-W/PazXD1HbtCVQayzikRDPGrxN3TUpXcXHoUJEXlxQc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5982,7 +5982,6 @@ body[data-page="admin"] .orb { display: none !important; }
   color: var(--text1); transition: background 0.15s, border-color 0.15s;
 }
 .freerooms-card:hover { background: rgba(255,255,255,0.06); }
-.freerooms-card.is-active { border-color: rgba(91,157,255,0.45); background: rgba(91,157,255,0.10); }
 /* Status accents: a left edge keeps the grid calm while signalling state. */
 .freerooms-card.is-free  { border-left: 3px solid rgba(63,185,80,0.7); }
 .freerooms-card.is-class { border-left: 3px solid rgba(210,153,34,0.8); }
@@ -6000,11 +5999,6 @@ body[data-page="admin"] .orb { display: none !important; }
 .freerooms-card.is-class .freerooms-card-until { color: #d29922; }
 .freerooms-card.is-lab   .freerooms-card-until { color: #a371f7; }
 
-.freerooms-detail {
-  border: 1px solid rgba(91,157,255,0.22); background: rgba(91,157,255,0.04);
-  border-radius: 10px; padding: 12px 14px; margin-top: 6px;
-}
-.freerooms-detail-head { font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.4px; margin-bottom: 8px; }
 .freerooms-week { display: flex; flex-direction: column; gap: 4px; }
 .freerooms-day-row {
   display: grid; grid-template-columns: 38px 1fr; gap: 10px;
@@ -6025,6 +6019,34 @@ body[data-page="admin"] .orb { display: none !important; }
 .freerooms-seg--busy .freerooms-seg-label { color: var(--text3); font-weight: 500; }
 .freerooms-seg--lab .freerooms-seg-label { color: #a371f7; font-weight: 500; }
 .freerooms-seg--none { color: var(--text3); }
+
+/* ── Generic content modal (js/ui/modal.js) ─────────────────────────────── */
+.app-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.app-modal {
+  background: var(--bg-elev, #1a1c20); color: inherit;
+  border-radius: 14px; border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  width: min(540px, 100%); max-height: min(82vh, 100%);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.app-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
+}
+.app-modal-title { font-size: 13px; font-weight: 700; color: var(--text1); letter-spacing: 0.3px; }
+.app-modal-close {
+  background: transparent; border: 0; color: inherit; cursor: pointer;
+  font-size: 1.6rem; line-height: 1; padding: 0 6px; opacity: 0.7;
+}
+.app-modal-close:hover { opacity: 1; }
+.app-modal-body { padding: 14px 16px; overflow-y: auto; }
+[data-theme="light"] .app-modal { background: #fff; }
+[data-theme="light"] .app-modal-head { border-bottom-color: rgba(0,0,0,0.08); }
 
 @media (max-width: 720px) {
   .freerooms-controls { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -21166,7 +21188,6 @@ const _frStore = {
   index: null,                 // Map<room, BusyInterval[]>
   day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
   minute: _frNowMinute(),
-  selectedRoom: null,
   showAll: false,              // false = free-only view, true = all-rooms board
   roomType: 'ALL',            // type filter (all-rooms view only)
 };
@@ -21174,21 +21195,19 @@ const _frStore = {
 // ── ACTIONS ─────────────────────────────────────────────────────────────────
 registerAction('freerooms:refresh',    () => _frRefresh(true));
 registerAction('freerooms:clearCache', () => { clearConnectFeedCache(); _frRefresh(true); });
-registerAction('freerooms:setDay',     (el) => { _frStore.day = el.dataset.day || _frStore.day; _frStore.selectedRoom = null; _frRerender(); });
-registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDEX[new Date().getDay()]; _frStore.minute = _frNowMinute(); _frStore.selectedRoom = null; _frRerender(); });
+registerAction('freerooms:setDay',     (el) => { _frStore.day = el.dataset.day || _frStore.day; _frRerender(); });
+registerAction('freerooms:now',        () => { _frStore.day = FR_WEEKDAY_BY_INDEX[new Date().getDay()]; _frStore.minute = _frNowMinute(); _frRerender(); });
 registerAction('freerooms:selectRoom', (el) => {
-  const r = el.dataset.room || '';
-  _frStore.selectedRoom = _frStore.selectedRoom === r ? null : r;
-  _frRerender();
+  const room = el.dataset.room || '';
+  if (!_frStore.index || !room) return;
+  openModal({ title: `📍 ${room} · weekly availability`, bodyHtml: _frRoomWeekHTML(room) });
 });
 registerAction('freerooms:setView', (el) => {
   _frStore.showAll = el.dataset.view === 'all';
-  _frStore.selectedRoom = null;
   _frRerender();
 });
 registerAction('freerooms:setType', (el) => {
   _frStore.roomType = el.dataset.type || 'ALL';
-  _frStore.selectedRoom = null;
   _frRerender();
 });
 
@@ -21256,7 +21275,7 @@ function _frAttachHandlers() {
   if (time) {
     time.addEventListener('input', (ev) => {
       const m = _frParseTime(ev.target.value);
-      if (m !== null) { _frStore.minute = _frClampMinute(m); _frStore.selectedRoom = null; _frRenderResults(); }
+      if (m !== null) { _frStore.minute = _frClampMinute(m); _frRenderResults(); }
     });
   }
 }
@@ -21361,8 +21380,7 @@ function _frFreeOnlyHTML() {
   const cards = free.map(room => _frRoomCardHTML(room)).join('');
   return `
     <div class="freerooms-summary">${free.length} room${free.length === 1 ? '' : 's'} free · ${escHtml(when)}</div>
-    <div class="freerooms-grid">${cards}</div>
-    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+    <div class="freerooms-grid">${cards}</div>`;
 }
 
 function _frAllRoomsHTML() {
@@ -21378,8 +21396,7 @@ function _frAllRoomsHTML() {
   const cards = rooms.map(room => _frRoomCardHTML(room)).join('');
   return `
     <div class="freerooms-summary">${rooms.length} room${rooms.length === 1 ? '' : 's'} · ${freeCount} free · ${escHtml(when)}</div>
-    <div class="freerooms-grid">${cards}</div>
-    ${_frStore.selectedRoom ? _frRoomDetailHTML(_frStore.selectedRoom) : ''}`;
+    <div class="freerooms-grid">${cards}</div>`;
 }
 
 function _frRenderResults() {
@@ -21402,9 +21419,8 @@ function _frRoomCardHTML(room) {
     const sec = occ.sectionName ? `${occ.courseCode} §${occ.sectionName}` : occ.courseCode;
     statusLabel = `${occ.kind === 'lab' ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
   }
-  const active = _frStore.selectedRoom === room;
   return `
-    <button type="button" class="freerooms-card ${stateClass} ${active ? 'is-active' : ''}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-pressed="${active ? 'true' : 'false'}">
+    <button type="button" class="freerooms-card ${stateClass}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-haspopup="dialog" title="${escAttr(room)} — view weekly availability">
       <span class="freerooms-card-room">${escHtml(room)}<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span></span>
       <span class="freerooms-card-until">${escHtml(statusLabel)}</span>
     </button>`;
@@ -21431,7 +21447,9 @@ function _frDayTimeline(room, day) {
   return [...free, ...busy].sort((a, b) => (a.startMin - b.startMin) || (a.busy ? 1 : -1));
 }
 
-function _frRoomDetailHTML(room) {
+// Body HTML for the room's weekly-availability modal: a free/busy timeline per
+// day, with the currently-selected day highlighted.
+function _frRoomWeekHTML(room) {
   const rows = FR_DAY_ORDER.map(day => {
     const segs = _frDayTimeline(room, day);
     const active = day === _frStore.day;
@@ -21450,11 +21468,7 @@ function _frRoomDetailHTML(room) {
         <ul class="freerooms-day-segs">${segHtml}</ul>
       </div>`;
   }).join('');
-  return `
-    <div class="freerooms-detail">
-      <div class="freerooms-detail-head">📍 ${escHtml(room)} · weekly availability</div>
-      <div class="freerooms-week">${rows}</div>
-    </div>`;
+  return `<div class="freerooms-week">${rows}</div>`;
 }
 
 // Minute the room's current free window ends at, or null if not free now.
