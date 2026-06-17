@@ -7,6 +7,8 @@
 import {
     buildRoomBusyIndex,
     busyOnDay,
+    listAllRooms,
+    occupantAt,
     freeRoomsAt,
     freeWindowsForRoom,
     CAMPUS_START_MIN,
@@ -84,6 +86,34 @@ test('busyOnDay filters to one day', () => {
     const idx = buildRoomBusyIndex(SECTIONS);
     eq(busyOnDay(idx, 'R1', 'MONDAY').map(i => i.courseCode), ['MAT110']);
     eq(busyOnDay(idx, 'R1', 'WEDNESDAY'), []);
+});
+test('theory and lab slots are tagged by kind', () => {
+    const idx = buildRoomBusyIndex(parseFeed([
+        sec({ sectionId: 20, courseCode: 'CSE220', courseName: 'C', sectionName: '01', capacity: 30, consumedSeat: 1, faculties: 'ABC', roomName: 'LAB1',
+              sectionSchedule: { classSchedules: [{ day: 'MONDAY', startTime: '08:00', endTime: '09:20' }] },
+              labSchedules: [{ day: 'MONDAY', startTime: '14:00', endTime: '16:50' }] }),
+    ]).sections);
+    eq(busyOnDay(idx, 'LAB1', 'MONDAY').map(i => [i.kind, i.startMin]), [
+        ['theory', M(8)], ['lab', M(14)],
+    ]);
+});
+
+console.log('\nlistAllRooms / occupantAt:');
+test('listAllRooms returns every room sorted', () => {
+    const idx = buildRoomBusyIndex(SECTIONS);
+    eq(listAllRooms(idx), ['R1', 'R2', 'R3']);
+});
+test('occupantAt returns the covering class, or null when free', () => {
+    const idx = buildRoomBusyIndex(SECTIONS);
+    // R1 Sunday 08:00–09:20 occupied by CSE110.
+    eq(occupantAt(idx, 'R1', 'SUNDAY', M(8, 30))?.courseCode, 'CSE110');
+    // Half-open: at 09:20 it's free.
+    eq(occupantAt(idx, 'R1', 'SUNDAY', M(9, 20)), null);
+});
+test('occupantAt prefers the interval ending latest when classes overlap', () => {
+    const idx = buildRoomBusyIndex(SECTIONS);
+    // R3 Sunday: 08:00–09:20 and 09:00–10:20 overlap at 09:10 → pick the 10:20 one.
+    eq(occupantAt(idx, 'R3', 'SUNDAY', M(9, 10))?.endMin, M(10, 20));
 });
 
 console.log('\nfreeRoomsAt:');
