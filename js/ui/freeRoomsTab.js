@@ -7,6 +7,7 @@
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import {
   buildRoomBusyIndex,
+  busyOnDay,
   freeRoomsAt,
   freeWindowsForRoom,
   CAMPUS_START_MIN,
@@ -224,15 +225,44 @@ function _frRoomCardHTML(room) {
     </button>`;
 }
 
+// Chronological free + busy segments for one day, clamped to campus hours and
+// sorted by start (free before busy when they touch at a boundary). Free windows
+// are the merged complement; busy segments carry the occupying course/section.
+function _frDayTimeline(room, day) {
+  const free = freeWindowsForRoom(_frStore.index, room, day)
+    .map(w => ({ startMin: w.startMin, endMin: w.endMin, busy: false, label: 'free' }));
+  const busy = busyOnDay(_frStore.index, room, day)
+    .map(i => ({
+      startMin: Math.max(i.startMin, CAMPUS_START_MIN),
+      endMin: Math.min(i.endMin, CAMPUS_END_MIN),
+      busy: true,
+      label: i.sectionName ? `${i.courseCode} §${i.sectionName}` : i.courseCode,
+    }))
+    .filter(s => s.endMin > s.startMin);
+  return [...free, ...busy].sort((a, b) => (a.startMin - b.startMin) || (a.busy ? 1 : -1));
+}
+
 function _frRoomDetailHTML(room) {
-  const windows = freeWindowsForRoom(_frStore.index, room, _frStore.day);
-  const rows = windows.length === 0
-    ? `<div class="freerooms-empty">Busy all day.</div>`
-    : windows.map(w => `<li>${escHtml(_frMin2hhmm(w.startMin))} – ${escHtml(_frMin2hhmm(w.endMin))}</li>`).join('');
+  const rows = FR_DAY_ORDER.map(day => {
+    const segs = _frDayTimeline(room, day);
+    const active = day === _frStore.day;
+    const segHtml = segs.length === 0
+      ? `<li class="freerooms-seg freerooms-seg--none">No class data</li>`
+      : segs.map(s =>
+          `<li class="freerooms-seg ${s.busy ? 'freerooms-seg--busy' : 'freerooms-seg--free'}">
+             <span class="freerooms-seg-time">${escHtml(_frMin2hhmm(s.startMin))} – ${escHtml(_frMin2hhmm(s.endMin))}</span>
+             <span class="freerooms-seg-label">${escHtml(s.label)}</span>
+           </li>`).join('');
+    return `
+      <div class="freerooms-day-row ${active ? 'is-active' : ''}">
+        <div class="freerooms-day-name">${escHtml(FR_DAY_SHORT[day])}</div>
+        <ul class="freerooms-day-segs">${segHtml}</ul>
+      </div>`;
+  }).join('');
   return `
     <div class="freerooms-detail">
-      <div class="freerooms-detail-head">Free windows · ${escHtml(room)} · ${escHtml(FR_DAY_SHORT[_frStore.day])}</div>
-      <ul class="freerooms-windows">${rows}</ul>
+      <div class="freerooms-detail-head">📍 ${escHtml(room)} · weekly availability</div>
+      <div class="freerooms-week">${rows}</div>
     </div>`;
 }
 
