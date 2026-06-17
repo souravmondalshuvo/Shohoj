@@ -7,7 +7,7 @@
  * UI-agnostic on purpose: plain data in, plain data out.
  */
 
-import type { NormalizedSection, WeekdayName } from './connectFeed';
+import type { NormalizedSection, SlotKind, WeekdayName } from './connectFeed';
 
 /** Default campus hours used when computing a room's free windows. */
 export const CAMPUS_START_MIN = 8 * 60;   // 08:00
@@ -19,6 +19,7 @@ export interface BusyInterval {
     endMin: number;
     courseCode: string;
     sectionName: string;
+    kind: SlotKind;
 }
 
 export interface FreeWindow {
@@ -67,6 +68,7 @@ export function buildRoomBusyIndex(
                 endMin: slot.endMin,
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
+                kind: slot.kind,
             };
             if (list) list.push(interval);
             else index.set(room, [interval]);
@@ -88,6 +90,31 @@ export function busyOnDay(
     day: WeekdayName,
 ): BusyInterval[] {
     return (index.get(room) ?? []).filter(i => i.day === day);
+}
+
+/** Every room in the feed, sorted alphabetically. */
+export function listAllRooms(index: Map<string, BusyInterval[]>): string[] {
+    return [...index.keys()].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The class/lab occupying `room` at `minute` on `day`, or null if free. When
+ * intervals overlap (rare), the one ending latest wins so "busy until" reflects
+ * when the room actually frees up. Half-open [startMin, endMin): a class at
+ * exactly endMin no longer occupies.
+ */
+export function occupantAt(
+    index: Map<string, BusyInterval[]>,
+    room: string,
+    day: WeekdayName,
+    minute: number,
+): BusyInterval | null {
+    let occupant: BusyInterval | null = null;
+    for (const i of index.get(room) ?? []) {
+        if (i.day !== day || minute < i.startMin || minute >= i.endMin) continue;
+        if (!occupant || i.endMin > occupant.endMin) occupant = i;
+    }
+    return occupant;
 }
 
 /**
