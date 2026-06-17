@@ -25,13 +25,13 @@ const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue'
 // Date.getDay() (0=Sun..6=Sat) -> canonical day name.
 const FR_WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
 
-// Room type from the code's trailing letter: C=Classroom, L=Lab, T=Tutorial.
-const FR_ROOM_TYPES = { C: 'Classroom', L: 'Lab', T: 'Tutorial' };
+// Room type from the code's trailing letter: C=Classroom, L=Lab, T=Theater.
+const FR_ROOM_TYPES = { C: 'Classroom', L: 'Lab', T: 'Theater' };
 const FR_TYPE_FILTERS = [
   { key: 'ALL', label: 'All' },
   { key: 'C', label: 'Class' },
   { key: 'L', label: 'Lab' },
-  { key: 'T', label: 'Tutorial' },
+  { key: 'T', label: 'Theater' },
 ];
 function _frRoomTypeKey(room) {
   const last = room.trim().slice(-1).toUpperCase();
