@@ -77,19 +77,23 @@ test('a room frees up once its class ends', async ({ page }) => {
   await expect(card(page, 'R2')).toBeVisible();
 });
 
-test('selecting a room reveals its full-week availability', async ({ page }) => {
+test('clicking a room opens its full-week availability in a modal', async ({ page }) => {
   await boot(page);
   await page.locator('[data-action="freerooms:setDay"][data-day="SUNDAY"]').click();
   await page.locator('#freeRoomsTime').fill('09:30');
   await card(page, 'R1').click();
-  const detail = page.locator('.freerooms-detail');
-  await expect(detail).toContainText('R1');
+  const modal = page.locator('.app-modal');
+  await expect(modal).toBeVisible();
+  await expect(modal.locator('.app-modal-title')).toContainText('R1');
   // Every weekday is listed, not just the selected one.
-  await expect(detail.locator('.freerooms-day-row')).toHaveCount(7);
+  await expect(modal.locator('.freerooms-day-row')).toHaveCount(7);
   // Sunday: R1 busy 08:00–09:20 (labeled with its course), then free from 9:20 AM.
-  const sunday = detail.locator('.freerooms-day-row', { hasText: 'Sun' });
+  const sunday = modal.locator('.freerooms-day-row', { hasText: 'Sun' });
   await expect(sunday.locator('.freerooms-seg--busy').filter({ hasText: 'CSE110' })).toBeVisible();
   await expect(sunday.locator('.freerooms-seg--free').filter({ hasText: '9:20 AM' })).toBeVisible();
+  // Escape closes it.
+  await page.keyboard.press('Escape');
+  await expect(modal).toHaveCount(0);
 });
 
 test('all-rooms view shows free / in-class / in-lab status', async ({ page }) => {
