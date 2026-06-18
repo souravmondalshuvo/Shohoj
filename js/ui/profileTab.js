@@ -129,11 +129,17 @@ export function renderProfileTab() {
   if (!root) return;
 
   if (!_authReady()) {
+    // Static markup, no interpolation.
+    // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
     root.innerHTML = profileLoadingHtml();
     return;
   }
 
   const profile = _profile();
+  // Every interpolation in these builders goes through escHtml/escAttr.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = profile.signedIn
     ? profileSignedInHtml(profile, _seatAlerts())
     : profileSignedOutHtml();
