@@ -26,6 +26,17 @@ function _authReady() {
     : true;
 }
 
+// Seat watchlist + email-alert preference, read from the Seats tab's globals.
+function _seatAlerts() {
+  const watches = (typeof window !== 'undefined' && typeof window._shohoj_getSeatWatches === 'function')
+    ? (window._shohoj_getSeatWatches() || [])
+    : [];
+  const alertsEnabled = (typeof window !== 'undefined' && typeof window._shohoj_seatAlertsEnabled === 'function')
+    ? !!window._shohoj_seatAlertsEnabled()
+    : true;
+  return { watches, alertsEnabled };
+}
+
 // ── Pure view builders (exported for unit tests) ──────────────────────────────
 
 export function profileLoadingHtml() {
@@ -50,7 +61,38 @@ export function profileSignedOutHtml() {
     </div>`;
 }
 
-export function profileSignedInHtml(profile) {
+// Seat-drop alerts card: the email on/off switch (acceptance #3) plus the
+// watchlist it governs. Pure — takes { watches, alertsEnabled } so it's unit
+// testable without the Seats tab.
+export function seatAlertsSectionHtml(seatAlerts) {
+  const watches = Array.isArray(seatAlerts?.watches) ? seatAlerts.watches : [];
+  const on = !!seatAlerts?.alertsEnabled;
+  const n = watches.length;
+
+  const list = n === 0
+    ? `<div class="pf-watch-empty">You're not watching any sections yet. Add them from the <strong>Seats</strong> tab.</div>`
+    : `<ul class="pf-watch-list">${watches.map(w => `
+        <li class="pf-watch-item">
+          <span class="pf-watch-code">${escHtml(w.courseCode || '')}</span>
+          <span class="pf-watch-sec">Section ${escHtml(w.sectionName || '')}</span>
+        </li>`).join('')}</ul>`;
+
+  return `
+    <section class="pf-card">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">🪑 Seat alerts</h3>
+        <span class="pf-card-count">${n} watched</span>
+      </div>
+      <button class="pf-toggle ${on ? 'is-on' : ''}" data-action="profile:toggleAlerts"
+              role="switch" aria-checked="${on ? 'true' : 'false'}">
+        <span class="pf-toggle-track" aria-hidden="true"><span class="pf-toggle-thumb"></span></span>
+        <span class="pf-toggle-text">Email me when a watched seat opens${on ? '' : ' <span class="pf-toggle-off">(paused)</span>'}</span>
+      </button>
+      ${list}
+    </section>`;
+}
+
+export function profileSignedInHtml(profile, seatAlerts) {
   const p = profile || {};
   const name = p.displayName ? String(p.displayName) : 'BRACU student';
   const email = p.email ? String(p.email) : '';
@@ -70,9 +112,10 @@ export function profileSignedInHtml(profile) {
         <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
       </div>
       <div class="pf-sections">
+        ${seatAlertsSectionHtml(seatAlerts)}
         <div class="pf-section-stub">
           <span class="pf-section-stub-icon">🗓️</span>
-          <span>Your routine, seat watchlist &amp; alert preferences, and reviews will appear here.</span>
+          <span>Your routine summary and reviews will appear here.</span>
         </div>
       </div>
     </div>`;
@@ -91,7 +134,9 @@ export function renderProfileTab() {
   }
 
   const profile = _profile();
-  root.innerHTML = profile.signedIn ? profileSignedInHtml(profile) : profileSignedOutHtml();
+  root.innerHTML = profile.signedIn
+    ? profileSignedInHtml(profile, _seatAlerts())
+    : profileSignedOutHtml();
 }
 
 // Sign out via the auth layer; it tears down the session and dispatches
@@ -100,6 +145,17 @@ registerAction('profile:signout', () => {
   if (typeof window !== 'undefined' && typeof window._shohoj_signOut === 'function') {
     window._shohoj_signOut();
   }
+});
+
+// Flip the email-alert preference via the Seats tab (which persists it and
+// re-syncs Firestore), then repaint so the switch reflects the new state.
+registerAction('profile:toggleAlerts', () => {
+  if (typeof window !== 'undefined'
+      && typeof window._shohoj_setSeatAlertsEnabled === 'function'
+      && typeof window._shohoj_seatAlertsEnabled === 'function') {
+    window._shohoj_setSeatAlertsEnabled(!window._shohoj_seatAlertsEnabled());
+  }
+  renderProfileTab();
 });
 
 // Auth can resolve or flip after the tab first paints (slow Firebase init, or
