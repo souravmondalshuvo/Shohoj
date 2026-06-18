@@ -47,6 +47,7 @@ function expect(actual) {
   const {
     profileSignedOutHtml,
     profileSignedInHtml,
+    seatAlertsSectionHtml,
   } = await import('../js/ui/profileTab.js');
 
   console.log('\nProfile tab view builders:');
@@ -109,6 +110,62 @@ function expect(actual) {
     });
     expect(html).notToContain('<img src=x onerror=alert(1)>');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  test('seat-alert card: empty watchlist shows a friendly prompt and 0 count', () => {
+    const html = seatAlertsSectionHtml({ watches: [], alertsEnabled: true });
+    expect(html).toContain('0 watched');
+    expect(html).toContain("You're not watching any sections yet");
+    expect(html).toContain('data-action="profile:toggleAlerts"');
+  });
+
+  test('seat-alert card: lists each watched section with its code and number', () => {
+    const html = seatAlertsSectionHtml({
+      watches: [
+        { sectionId: 1, courseCode: 'CSE110', sectionName: '04' },
+        { sectionId: 2, courseCode: 'MAT110', sectionName: '12' },
+      ],
+      alertsEnabled: true,
+    });
+    expect(html).toContain('2 watched');
+    expect(html).toContain('CSE110');
+    expect(html).toContain('Section 04');
+    expect(html).toContain('MAT110');
+    expect(html).toContain('Section 12');
+  });
+
+  test('seat-alert toggle reflects the on state (no paused tag, aria-checked true)', () => {
+    const html = seatAlertsSectionHtml({ watches: [], alertsEnabled: true });
+    expect(html).toContain('pf-toggle is-on');
+    expect(html).toContain('aria-checked="true"');
+    expect(html).notToContain('(paused)');
+  });
+
+  test('seat-alert toggle reflects the off state (paused tag, aria-checked false)', () => {
+    const html = seatAlertsSectionHtml({ watches: [{ sectionId: 1, courseCode: 'X', sectionName: '1' }], alertsEnabled: false });
+    expect(html).notToContain('pf-toggle is-on');
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain('(paused)');
+  });
+
+  test('seat-alert card escapes hostile section fields', () => {
+    const html = seatAlertsSectionHtml({
+      watches: [{ sectionId: 1, courseCode: '<b>x</b>', sectionName: '"><img>' }],
+      alertsEnabled: true,
+    });
+    expect(html).notToContain('<b>x</b>');
+    expect(html).notToContain('"><img>');
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+  });
+
+  test('signed-in view embeds the seat-alert card when given watch data', () => {
+    const html = profileSignedInHtml(
+      { signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null },
+      { watches: [{ sectionId: 9, courseCode: 'PHY111', sectionName: '03' }], alertsEnabled: true },
+    );
+    expect(html).toContain('🪑 Seat alerts');
+    expect(html).toContain('PHY111');
+    expect(html).toContain('data-action="profile:toggleAlerts"');
   });
 
   console.log('\n──────────────────────────────────────────────────');
