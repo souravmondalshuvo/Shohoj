@@ -31,6 +31,11 @@ const SEATS_RESULT_LIMIT = 40;
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
 
+// Independent on/off switch for the email channel of seat-drop alerts, toggled
+// from the Profile tab. Stored as '0' (off) / '1' (on); absent → on, so existing
+// users keep today's always-armed behavior.
+const SEAT_ALERT_PREF_KEY = 'shohoj_seat_alerts_enabled';
+
 const _seats = {
   loading: false,
   error: null,
@@ -42,12 +47,15 @@ const _seats = {
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
   watches: [],         // WatchEntry[] — persisted seat-drop watchlist
+  alertsEnabled: true, // email channel on/off (Profile toggle); default armed
   live: false,         // subscribed to the shared live poller yet?
 };
 
 // Restore the watchlist before anything renders so a persisted watch keeps
 // alerting across reloads — even if the student never opens the Seats tab.
 try { _seats.watches = parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY)); } catch { /* storage off */ }
+// Restore the email-alert preference (absent → armed).
+try { _seats.alertsEnabled = localStorage.getItem(SEAT_ALERT_PREF_KEY) !== '0'; } catch { /* storage off */ }
 
 registerAction('seats:refresh',         () => _seatsRefresh(true));
 registerAction('seats:clearCache',      () => { clearConnectFeedCache(); _seatsRefresh(true); });
@@ -110,7 +118,32 @@ function _seatsSaveWatches() {
 function _seatsSyncCloud() {
   if (typeof window === 'undefined' || typeof window._shohoj_syncSeatAlerts !== 'function') return;
   const payload = _seats.watches.map(w => ({ id: w.sectionId, code: w.courseCode, name: w.sectionName }));
-  try { window._shohoj_syncSeatAlerts(payload); } catch { /* ignore */ }
+  // The cron Worker emails only when enabled is true: gate it on both the user's
+  // preference and actually having something to watch.
+  const enabled = _seats.alertsEnabled && payload.length > 0;
+  try { window._shohoj_syncSeatAlerts(payload, enabled); } catch { /* ignore */ }
+}
+
+// ── Seat-alert preference (driven by the Profile account hub) ──────────────────
+function _seatsSaveAlertPref() {
+  try { localStorage.setItem(SEAT_ALERT_PREF_KEY, _seats.alertsEnabled ? '1' : '0'); } catch { /* storage off */ }
+}
+
+// Cross-module reads for the Profile tab, exposed as globals to avoid a circular
+// import (the codebase's standard _shohoj_* bridge). The watchlist snapshot is
+// intentionally lightweight — just what Profile needs to label each watch.
+if (typeof window !== 'undefined') {
+  window._shohoj_getSeatWatches = () => _seats.watches.map(w => ({
+    sectionId: w.sectionId, courseCode: w.courseCode, sectionName: w.sectionName,
+  }));
+  window._shohoj_seatAlertsEnabled = () => _seats.alertsEnabled;
+  // Flip the email channel without touching the watchlist: persist locally and
+  // re-sync so Firestore's enabled flag (and thus the cron Worker) follows now.
+  window._shohoj_setSeatAlertsEnabled = (on) => {
+    _seats.alertsEnabled = !!on;
+    _seatsSaveAlertPref();
+    _seatsSyncCloud();
+  };
 }
 
 function _seatsFindSection(sectionId) {
@@ -496,6 +529,9 @@ function _seatsEmailNote() {
     ? window._shohoj_seatAlertIdentity()
     : { signedIn: false, email: null };
   if (id.signedIn) {
+    if (!_seats.alertsEnabled) {
+      return '✉️ Email alerts are paused — turn them back on from your Profile.';
+    }
     return `✉️ Also emailing ${id.email} if a seat opens while Shohoj is closed.`;
   }
   return '✉️ Sign in with your BRACU email to get alerts even when Shohoj is closed.';
