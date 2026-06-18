@@ -78,6 +78,7 @@ MAIN_JS_FILES = [
     'js/ui/routineTab.js',
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
+    'js/ui/profileTab.js',  # after seatsTab: reads its _shohoj_getSeatWatches/* globals
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
