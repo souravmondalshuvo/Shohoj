@@ -60,6 +60,7 @@ import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
+import { renderProfileTab } from './ui/profileTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -410,6 +411,7 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
+  profile:    'tabProfile',
 };
 
 let _activeCalcTab = 'calculator';
@@ -477,6 +479,9 @@ function switchCalcTab(tabId) {
   }
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
+  }
+  if (tabId === 'profile') {
+    renderProfileTab();
   }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
