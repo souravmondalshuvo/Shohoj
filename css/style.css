@@ -6303,3 +6303,78 @@ body[data-page="admin"] .orb { display: none !important; }
   line-height: 1.5;
 }
 .pf-section-stub-icon { font-size: 18px; flex-shrink: 0; }
+
+/* Profile cards (seat alerts, and future routine/reviews) */
+.pf-card {
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pf-card-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-card-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+/* Email-alert switch */
+.pf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.pf-toggle-track {
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border2);
+  position: relative;
+  transition: background 0.2s;
+}
+.pf-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.pf-toggle.is-on .pf-toggle-track { background: var(--accent); }
+.pf-toggle.is-on .pf-toggle-thumb { transform: translateX(16px); }
+.pf-toggle-text { font-size: 12px; color: var(--text); line-height: 1.4; }
+.pf-toggle-off { color: var(--text2); font-style: italic; }
+
+/* Watchlist */
+.pf-watch-empty {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.pf-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-watch-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--border);
+}
+.pf-watch-code { font-size: 13px; font-weight: 700; color: var(--text); }
+.pf-watch-sec { font-size: 12px; color: var(--text2); }
