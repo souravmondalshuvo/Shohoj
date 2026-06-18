@@ -892,15 +892,18 @@ window._shohoj_showToast = showToast;
 // falls back to in-tab alerts only and prompts sign-in. The doc is fully
 // overwritten each sync; `email` is pinned to the user's own address (enforced
 // again by firestore.rules) so a watch can only ever notify its own owner.
-window._shohoj_syncSeatAlerts = async function(sections) {
+window._shohoj_syncSeatAlerts = async function(sections, enabled) {
   if (!currentUser || !currentUser.email || !db) return false;
   try {
     const list = (Array.isArray(sections) ? sections : []).slice(0, 50)
       .map(s => ({ id: Number(s.id), code: String(s.code || ''), name: String(s.name || '') }))
       .filter(s => Number.isFinite(s.id));
+    // The caller (Seats tab) owns the on/off preference and passes the resolved
+    // flag; fall back to the old "armed when watching" rule if omitted.
+    const armed = typeof enabled === 'boolean' ? enabled : list.length > 0;
     await setDoc(doc(db, 'seatAlertWatches', currentUser.uid), {
       email:     currentUser.email,
-      enabled:   list.length > 0,
+      enabled:   armed,
       sections:  list,
       updatedAt: serverTimestamp(),
     });
