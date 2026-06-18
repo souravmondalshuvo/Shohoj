@@ -79,6 +79,17 @@ test('toggling the email-alert switch flips and persists the preference', async 
   await expect.poll(() => page.evaluate(() => localStorage.getItem('shohoj_seat_alerts_enabled'))).toBe('1');
 });
 
+test('opening #calculator/profile restores the Profile tab directly', async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch {}
+    window.Chart = window.Chart || class { destroy() {} };
+  });
+  await page.route('https://**/*', route => route.abort());
+  await page.goto('/#calculator/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#tabProfile')).toHaveClass(/active/);
+  await expect(page.locator('#profileContent')).toContainText('Sign in to view your profile');
+});
+
 test('the avatar falls back to the name initial when there is no photo', async ({ page }) => {
   await boot(page, () => {
     window._shohoj_userProfile = () => ({
