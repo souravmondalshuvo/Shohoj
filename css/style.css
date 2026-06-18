@@ -6196,3 +6196,110 @@ body[data-page="admin"] .orb { display: none !important; }
   .seats-section-faculty { grid-column: 2 / -1; }
   .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
 }
+
+/* ═══ Profile tab (#196) ═══ */
+.pf-empty {
+  padding: 40px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pf-empty-icon { font-size: 32px; opacity: 0.8; margin-bottom: 4px; }
+.pf-empty-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-empty-sub {
+  font-size: 12px;
+  color: var(--text2);
+  max-width: 320px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.pf-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #06140b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.pf-signin-btn:hover { filter: brightness(1.08); }
+.pf-signin-icon { font-size: 15px; }
+
+.pf-hub { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.pf-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border2);
+}
+.pf-avatar { flex-shrink: 0; }
+.pf-avatar-img,
+.pf-avatar-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: block;
+}
+.pf-avatar-img { object-fit: cover; border: 1px solid var(--border); }
+.pf-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+}
+.pf-identity { flex: 1; min-width: 0; }
+.pf-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-email {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-signout-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pf-signout-btn:hover { border-color: var(--border); color: var(--text); }
+
+.pf-sections { display: flex; flex-direction: column; gap: 12px; }
+.pf-section-stub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--border2);
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pf-section-stub-icon { font-size: 18px; flex-shrink: 0; }
