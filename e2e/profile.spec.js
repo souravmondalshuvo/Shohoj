@@ -47,6 +47,38 @@ test('signed-in users see their account header with a sign-out control', async (
   await expect(content.locator('input')).toHaveCount(0);
 });
 
+// A signed-in identity stub used by the seat-alert cases below.
+function signedInStub() {
+  window._shohoj_userProfile = () => ({
+    signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+  });
+}
+
+test('the seat-alert card shows the empty watchlist and an armed toggle by default', async ({ page }) => {
+  await boot(page, signedInStub);
+  const content = page.locator('#profileContent');
+  await expect(content).toContainText('Seat alerts');
+  await expect(content).toContainText("You're not watching any sections yet");
+  // Default preference is armed (the Seats tab restores absent → on).
+  await expect(content.locator('.pf-toggle')).toHaveClass(/is-on/);
+});
+
+test('toggling the email-alert switch flips and persists the preference', async ({ page }) => {
+  await boot(page, signedInStub);
+  const toggle = page.locator('#profileContent .pf-toggle');
+  await expect(toggle).toHaveClass(/is-on/);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('#profileContent')).toContainText('(paused)');
+  // The Seats tab persisted the off state to localStorage.
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('shohoj_seat_alerts_enabled'))).toBe('0');
+
+  await toggle.click();
+  await expect(toggle).toHaveClass(/is-on/);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('shohoj_seat_alerts_enabled'))).toBe('1');
+});
+
 test('the avatar falls back to the name initial when there is no photo', async ({ page }) => {
   await boot(page, () => {
     window._shohoj_userProfile = () => ({
