@@ -21,6 +21,11 @@ import worker, {
   parseFeedSeatMap,
   detectSeatDrops,
   buildSeatAlertEmail,
+  resolveEmailFrom,
+  seatAlertEmailConfig,
+  runSeatAlertCron,
+  RESEND_TEST_SENDER,
+  SEAT_FEED_URL,
 } from '../index.js';
 
 let passed = 0;
@@ -757,6 +762,242 @@ async function makeServiceAccountJson() {
     const { html } = buildSeatAlertEmail([{ id: 9, label: '<b>X</b> Section 01', seatsLeft: 1 }]);
     assert(!html.includes('<b>X</b>'), 'label HTML must be escaped');
     assert(html.includes('&lt;b&gt;'));
+  });
+
+  // ── Sender configuration (fail-safe) ──────────────────────────────────────
+  console.log('\nSeat-alert sender configuration:');
+
+  await test('resolveEmailFrom: missing → not ok', () => {
+    const r = resolveEmailFrom({});
+    assert(!r.ok && /not set/i.test(r.reason), 'missing EMAIL_FROM must be rejected');
+  });
+  await test('resolveEmailFrom: Resend test sender → not ok (even with display name)', () => {
+    assert(!resolveEmailFrom({ EMAIL_FROM: RESEND_TEST_SENDER }).ok);
+    const r = resolveEmailFrom({ EMAIL_FROM: 'Shohoj <onboarding@resend.dev>' });
+    assert(!r.ok && /test sender/i.test(r.reason), 'test sender must be rejected');
+  });
+  await test('resolveEmailFrom: verified-domain sender → ok, value preserved', () => {
+    const r = resolveEmailFrom({ EMAIL_FROM: 'Shohoj Alerts <alerts@shohoj.example>' });
+    assert(r.ok);
+    assertEq(r.from, 'Shohoj Alerts <alerts@shohoj.example>');
+  });
+  await test('seatAlertEmailConfig: needs both key and real sender', () => {
+    assert(!seatAlertEmailConfig({ EMAIL_FROM: 'a@shohoj.example' }).ok, 'no key → not ok');
+    assert(/RESEND_API_KEY/.test(seatAlertEmailConfig({ EMAIL_FROM: 'a@shohoj.example' }).reason));
+    assert(!seatAlertEmailConfig({ RESEND_API_KEY: 'k', EMAIL_FROM: RESEND_TEST_SENDER }).ok, 'test sender → not ok');
+    assert(seatAlertEmailConfig({ RESEND_API_KEY: 'k', EMAIL_FROM: 'a@shohoj.example' }).ok, 'key + real sender → ok');
+  });
+
+  // ── Cron orchestration ────────────────────────────────────────────────────
+  console.log('\nSeat-alert cron orchestration:');
+
+  const SA_JSON = await makeServiceAccountJson();
+  const FS_BASE = `https://firestore.googleapis.com/v1/projects/${ENV.FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+  const VERIFIED_SENDER = 'Shohoj Alerts <alerts@shohoj.example>';
+
+  // Local mirror of the worker's Firestore field encoder so mock list/get
+  // responses are shaped exactly like the REST API returns them.
+  function fsValue(v) {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'string') return { stringValue: v };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    if (Array.isArray(v)) return { arrayValue: { values: v.map(fsValue) } };
+    if (typeof v === 'object') return { mapValue: { fields: fsFields(v) } };
+    throw new Error('cannot encode');
+  }
+  function fsFields(obj) {
+    const f = {};
+    for (const [k, val] of Object.entries(obj)) f[k] = fsValue(val);
+    return f;
+  }
+
+  function cronEnv(extra = {}) {
+    return { FIREBASE_PROJECT_ID: ENV.FIREBASE_PROJECT_ID, RESEND_API_KEY: 'rk_test', EMAIL_FROM: VERIFIED_SENDER, SERVICE_ACCOUNT_JSON: SA_JSON, ...extra };
+  }
+
+  // Build a mock fetch router + recorder for one cron run.
+  function cronRouter({ feed = [], feedStatus = 200, watches = [], states = {}, resend = async () => ({ ok: true }) }) {
+    const calls = { resend: [], patched: {}, gets: [], listed: 0 };
+    const handler = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      const method = (init.method || 'GET').toUpperCase();
+      if (url === SEAT_FEED_URL) {
+        if (feedStatus !== 200) return new Response('feed error', { status: feedStatus });
+        return json(feed);
+      }
+      if (url === 'https://oauth2.googleapis.com/token') return json({ access_token: 'sa-token', expires_in: 3600 });
+      if (url.startsWith(`${FS_BASE}/seatAlertWatches`)) {
+        calls.listed += 1;
+        return json({ documents: watches.map(w => ({ name: `${FS_BASE}/seatAlertWatches/${w.uid}`, fields: fsFields(w.fields) })) });
+      }
+      const m = url.match(/\/seatAlertState\/([^?]+)$/);
+      if (m) {
+        const uid = decodeURIComponent(m[1]);
+        if (method === 'GET') {
+          calls.gets.push(uid);
+          const st = states[uid];
+          if (st === undefined || st === null) return new Response('not found', { status: 404 });
+          return json({ name: url, fields: fsFields(st) });
+        }
+        if (method === 'PATCH') { calls.patched[uid] = JSON.parse(init.body); return json({}); }
+      }
+      if (url === 'https://api.resend.com/emails') {
+        const body = JSON.parse(init.body);
+        calls.resend.push(body);
+        const r = await resend(body);
+        return r.ok ? json({ id: 'email_1' }) : new Response(JSON.stringify({ error: 'x' }), { status: r.status || 500, headers: { 'Content-Type': 'application/json' } });
+      }
+      throw new Error(`unexpected fetch: ${method} ${url}`);
+    };
+    return { handler, calls };
+  }
+
+  const OPEN_1 = [{ sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 28 }];
+  const OPEN_1_2 = [
+    { sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 28 },
+    { sectionId: 2, courseCode: 'MAT110', sectionName: '05', capacity: 40, consumedSeat: 39 },
+  ];
+  const mkWatch = (uid, sections, fields = {}) => ({ uid, fields: { email: `${uid}@g.bracu.ac.bd`, sections, ...fields } });
+
+  await test('cron: missing RESEND_API_KEY → not configured, no I/O', async () => {
+    const { handler } = cronRouter({ feed: OPEN_1 });
+    const throwing = async () => { throw new Error('no fetch should happen when unconfigured'); };
+    await withMockedFetch(throwing, async () => {
+      const r = await runSeatAlertCron(cronEnv({ RESEND_API_KEY: undefined }));
+      assert(!r.configured, 'must report not configured');
+      assert(/RESEND_API_KEY/.test(r.reason));
+      assertEq(r.emailed, 0);
+    });
+    void handler;
+  });
+
+  await test('cron: EMAIL_FROM set to test sender → not configured', async () => {
+    const throwing = async () => { throw new Error('no fetch should happen'); };
+    await withMockedFetch(throwing, async () => {
+      const r = await runSeatAlertCron(cronEnv({ EMAIL_FROM: 'Shohoj <onboarding@resend.dev>' }));
+      assert(!r.configured && /test sender/i.test(r.reason));
+    });
+  });
+
+  await test('cron: feed fetch failure rejects', async () => {
+    const { handler } = cronRouter({ feedStatus: 503 });
+    let threw = false;
+    await withMockedFetch(handler, async () => {
+      try { await runSeatAlertCron(cronEnv()); } catch { threw = true; }
+    });
+    assert(threw, 'feed failure must throw so scheduled() logs it');
+  });
+
+  await test('cron: full→open drop emails once from the verified sender and advances state', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1,
+      watches: [mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }])],
+      states: { u1: { seen: { '1': false } } },
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.configured, true);
+      assertEq(r.transitions, 1);
+      assertEq(r.emailed, 1);
+      assertEq(r.failed, 0);
+    });
+    assertEq(calls.resend.length, 1);
+    assertEq(calls.resend[0].from, VERIFIED_SENDER);
+    assertEq(calls.resend[0].to[0], 'u1@g.bracu.ac.bd');
+    assert(calls.patched.u1, 'delivered drop must advance state');
+  });
+
+  await test('cron: first run seeds state silently, never emails', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1,
+      watches: [mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }])],
+      states: {}, // 404 → first run
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.emailed, 0);
+      assertEq(r.transitions, 0);
+    });
+    assertEq(calls.resend.length, 0);
+    assert(calls.patched.u1, 'first run still seeds baseline state');
+  });
+
+  await test('cron: disabled user is skipped entirely', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1,
+      watches: [mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }], { enabled: false })],
+      states: { u1: { seen: { '1': false } } },
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.watches, 0);
+      assertEq(r.emailed, 0);
+    });
+    assertEq(calls.resend.length, 0);
+  });
+
+  await test('cron: one user watching multiple sections fires only the section that flipped', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1_2,
+      watches: [mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }, { id: 2, code: 'MAT110', name: '05' }])],
+      states: { u1: { seen: { '1': false, '2': true } } }, // s1 full→open, s2 already open
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.transitions, 1);
+      assertEq(r.emailed, 1);
+    });
+    assertEq(calls.resend.length, 1);
+  });
+
+  await test('cron: Resend failure does NOT advance state (retried next tick)', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1,
+      watches: [mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }])],
+      states: { u1: { seen: { '1': false } } },
+      resend: async () => ({ ok: false, status: 500 }),
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.transitions, 1);
+      assertEq(r.emailed, 0);
+      assertEq(r.failed, 1);
+    });
+    assertEq(calls.resend.length, 1);
+    assert(!calls.patched.u1, 'failed delivery must leave state untouched so the drop is retried');
+  });
+
+  await test('cron: multiple watchers, partial delivery — one ok, one fails', async () => {
+    const { handler, calls } = cronRouter({
+      feed: OPEN_1_2,
+      watches: [
+        mkWatch('u1', [{ id: 1, code: 'CSE220', name: '01' }]),
+        mkWatch('u2', [{ id: 2, code: 'MAT110', name: '05' }]),
+      ],
+      states: { u1: { seen: { '1': false } }, u2: { seen: { '2': false } } },
+      resend: async (body) => ({ ok: body.to[0] === 'u1@g.bracu.ac.bd', status: 500 }),
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runSeatAlertCron(cronEnv());
+      assertEq(r.users, 2);
+      assertEq(r.transitions, 2);
+      assertEq(r.emailed, 1);
+      assertEq(r.failed, 1);
+    });
+    assert(calls.patched.u1, 'delivered user advances');
+    assert(!calls.patched.u2, 'failed user does not advance');
+  });
+
+  await test('scheduled(): runs via waitUntil and swallows a feed failure', async () => {
+    const { handler } = cronRouter({ feedStatus: 503 });
+    let captured;
+    const ctx = { waitUntil(p) { captured = p; } };
+    await withMockedFetch(handler, async () => {
+      worker.scheduled({}, cronEnv(), ctx);
+      await captured; // must resolve, not reject — handler catches internally
+    });
+    assert(true);
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
