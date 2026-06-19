@@ -933,6 +933,26 @@ installReviewIdentityHooks({
 // service-account identity. Firestore rules deny all client creates on
 // `facultyReviews`, so the canonical sha256(uid|initials|course) ID can't be
 // subverted by clients posting under arbitrary hex suffixes.
+// Privacy-preserving local "receipt" of reviews this browser submitted, keyed by
+// uid. Public review docs store no uid (authorship is only the non-reversible
+// sha256(uid|initials|course) doc id), so this local list is the only way the
+// Profile tab can show a student "your reviews" without a de-anonymizing query.
+// Best-effort: localStorage may be unavailable, and reviews written on another
+// device won't appear here.
+const MY_REVIEWS_KEY = 'shohoj_my_reviews_v1';
+function _recordMyReview(uid, entry) {
+  if (!uid) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(MY_REVIEWS_KEY) || '{}');
+    const list = Array.isArray(all[uid]) ? all[uid] : [];
+    const key = `${entry.facultyInitials}|${entry.courseCode}`;
+    const next = list.filter(r => `${r.facultyInitials}|${r.courseCode}` !== key);
+    next.push(entry);
+    all[uid] = next;
+    localStorage.setItem(MY_REVIEWS_KEY, JSON.stringify(all));
+  } catch { /* storage unavailable — non-fatal */ }
+}
+
 window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
   const base = getPapersWorkerUrl();
@@ -967,6 +987,13 @@ window._shohoj_submitReview = async function(payload) {
       return { ok: false, error: msg };
     }
     const data = await res.json().catch(() => ({}));
+    _recordMyReview(currentUser.uid, {
+      id:              data.id || null,
+      facultyInitials: payload?.facultyInitials || '',
+      courseCode:      payload?.courseCode || '',
+      semester:        payload?.semester || '',
+      at:              Date.now(),
+    });
     return { ok: true, id: data.id || null };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
