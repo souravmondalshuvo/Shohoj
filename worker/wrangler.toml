@@ -38,4 +38,10 @@ FIREBASE_PROJECT_ID = "shohoj"
 ALLOWED_ORIGINS = "https://souravmondalshuvo.github.io,http://localhost:5173,http://127.0.0.1:5173"
 ADMIN_EMAIL = "admin.shohoj@gmail.com"
 ADMIN_MODERATION_URL = "https://souravmondalshuvo.github.io/Shohoj/admin/"
-EMAIL_FROM = "Shohoj <onboarding@resend.dev>"
+# Sender for seat-alert + admin-upload emails. MUST be a sender on a domain you
+# have verified in Resend (SPF + DKIM) — see worker/README.md. Leave UNSET until
+# then: the Resend test sender (onboarding@resend.dev) only delivers to the
+# Resend account owner, so the Worker treats a missing or test EMAIL_FROM as
+# "not configured" and skips sends (logging a loud operational error) rather
+# than silently dropping every student's email.
+# EMAIL_FROM = "Shohoj Alerts <alerts@your-verified-domain.example>"
