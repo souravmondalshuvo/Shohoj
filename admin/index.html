@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-UdO2q7/JFkY0cTsTRDFqa2N4x59JdLO1+QBu8qmjK/Y=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-HchYZBwRxM8Yc/W8GAWG9lJ9Q9lSIozIbDrrCNU3k30=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6331,18 +6331,6 @@ body[data-page="admin"] .orb { display: none !important; }
 .pf-signout-btn:hover { border-color: var(--border); color: var(--text); }
 
 .pf-sections { display: flex; flex-direction: column; gap: 12px; }
-.pf-section-stub {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 10px;
-  border: 1px dashed var(--border2);
-  color: var(--text2);
-  font-size: 12px;
-  line-height: 1.5;
-}
-.pf-section-stub-icon { font-size: 18px; flex-shrink: 0; }
 
 /* Profile cards (seat alerts, and future routine/reviews) */
 .pf-card {
@@ -6418,6 +6406,29 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .pf-watch-code { font-size: 13px; font-weight: 700; color: var(--text); }
 .pf-watch-sec { font-size: 12px; color: var(--text2); }
+
+/* Routine / planner course chips */
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-chip {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.pf-chip-plan { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.pf-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  padding-top: 2px;
+}
+.pf-note { font-size: 11px; color: var(--text2); line-height: 1.5; }
 
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
@@ -7506,6 +7517,26 @@ installReviewIdentityHooks({
 // service-account identity. Firestore rules deny all client creates on
 // `facultyReviews`, so the canonical sha256(uid|initials|course) ID can't be
 // subverted by clients posting under arbitrary hex suffixes.
+// Privacy-preserving local "receipt" of reviews this browser submitted, keyed by
+// uid. Public review docs store no uid (authorship is only the non-reversible
+// sha256(uid|initials|course) doc id), so this local list is the only way the
+// Profile tab can show a student "your reviews" without a de-anonymizing query.
+// Best-effort: localStorage may be unavailable, and reviews written on another
+// device won't appear here.
+const MY_REVIEWS_KEY = 'shohoj_my_reviews_v1';
+function _recordMyReview(uid, entry) {
+  if (!uid) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(MY_REVIEWS_KEY) || '{}');
+    const list = Array.isArray(all[uid]) ? all[uid] : [];
+    const key = `${entry.facultyInitials}|${entry.courseCode}`;
+    const next = list.filter(r => `${r.facultyInitials}|${r.courseCode}` !== key);
+    next.push(entry);
+    all[uid] = next;
+    localStorage.setItem(MY_REVIEWS_KEY, JSON.stringify(all));
+  } catch { /* storage unavailable — non-fatal */ }
+}
+
 window._shohoj_submitReview = async function(payload) {
   if (!currentUser) return { ok: false, error: 'Not signed in' };
   const base = getPapersWorkerUrl();
@@ -7540,6 +7571,13 @@ window._shohoj_submitReview = async function(payload) {
       return { ok: false, error: msg };
     }
     const data = await res.json().catch(() => ({}));
+    _recordMyReview(currentUser.uid, {
+      id:              data.id || null,
+      facultyInitials: payload?.facultyInitials || '',
+      courseCode:      payload?.courseCode || '',
+      semester:        payload?.semester || '',
+      at:              Date.now(),
+    });
     return { ok: true, id: data.id || null };
   } catch (e) {
     console.error('[Shohoj] submitReview failed:', e);
