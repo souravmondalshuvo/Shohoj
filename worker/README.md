@@ -76,11 +76,74 @@ To enable it:
    ```
 2. Redeploy: `npx wrangler deploy`.
 
-No new secrets are needed — it reuses `RESEND_API_KEY` (sender) and
-`SERVICE_ACCOUNT_JSON` (Firestore reads/writes). Watches are written by the
-signed-in client to `seatAlertWatches/{uid}` (see `firestore.rules`); the
-Worker's `seatAlertState` collection is closed to all clients. Tail live runs
-with `npx wrangler tail`.
+It reuses `SERVICE_ACCOUNT_JSON` (Firestore reads/writes) and `RESEND_API_KEY`,
+and additionally requires a verified **`EMAIL_FROM`** (see below). Watches are
+written by the signed-in client to `seatAlertWatches/{uid}` (see
+`firestore.rules`); the Worker's `seatAlertState` collection is closed to all
+clients. Tail live runs with `npx wrangler tail`.
+
+### Cron observability
+
+Each run logs a single privacy-safe line — counts only, never UIDs or emails:
+
+```text
+seat-alert cron: users=12 watches=9 transitions=2 emailed=2 failed=0
+```
+
+If the email channel is not configured it logs a loud operational error instead
+and sends nothing:
+
+```text
+seat-alert cron: email channel not configured — EMAIL_FROM is not set; skipped (no emails sent)
+```
+
+## Email delivery setup (required for alerts)
+
+Both seat-alert and admin-upload emails go through Resend and need a verified
+sender. **The Worker never falls back to a default sender.** A missing
+`EMAIL_FROM`, or one set to the Resend test sender (`onboarding@resend.dev`,
+which only delivers to the Resend account owner), is treated as *not configured*:
+the Worker skips the send and logs an operational error rather than silently
+dropping mail. So alerts do **not** deliver until the steps below are done.
+
+1. **Verify a domain in Resend.** Resend dashboard → **Domains** → **Add
+   Domain** → enter a domain you control (e.g. `shohoj.app`).
+2. **Add the DNS records Resend shows you** at your DNS provider:
+   - **SPF** — a `TXT` record (`v=spf1 include:...`) authorizing Resend to send.
+   - **DKIM** — the `CNAME`/`TXT` record(s) Resend generates for signing.
+   - (Optional but recommended) **DMARC** — a `_dmarc` `TXT` record.
+   Wait for Resend to show the domain as **Verified** (DNS can take minutes–hours).
+3. **Set the secrets / vars:**
+   ```bash
+   cd worker
+   wrangler secret put RESEND_API_KEY        # Resend API key (secret)
+   ```
+   Then set `EMAIL_FROM` to a sender on the verified domain. Either uncomment and
+   edit it in `wrangler.toml` (it is not secret):
+   ```toml
+   EMAIL_FROM = "Shohoj Alerts <alerts@your-verified-domain.example>"
+   ```
+   or set it as a secret if you prefer (`wrangler secret put EMAIL_FROM`).
+4. **Redeploy:** `npx wrangler deploy`.
+
+### Test the email path
+
+- **Unit:** `npm run test:worker` exercises the sender-config guard and the full
+  cron fan-out (drop → email, first-run seeding, disabled user, multi-user
+  partial delivery, Resend failure, missing config) with mocked Resend/Firestore.
+- **End-to-end (manual, after deploy):** sign in on the live site, add a *full*
+  section to your Seat Status watchlist and enable email alerts, then either wait
+  for that section to open or use a Resend test send from the dashboard to your
+  own address to confirm SPF/DKIM pass (no spam-folder placement). Tail the
+  Worker (`npx wrangler tail`) and confirm `emailed=1 failed=0` for the run.
+
+### Production-delivery verification checklist
+
+- [ ] Resend domain shows **Verified** (SPF + DKIM green).
+- [ ] `EMAIL_FROM` uses that domain (not `onboarding@resend.dev`).
+- [ ] `wrangler tail` shows `seat-alert cron: ... emailed=N failed=0`, not the
+      "not configured" line.
+- [ ] A real test recipient received the mail in the inbox (not spam).
 
 ## Wire it into the app
 
@@ -104,21 +167,23 @@ Edit `wrangler.toml` if these change:
 | --------------------- | ------------------------------------------------------ |
 | `FIREBASE_PROJECT_ID` | Firebase project ID — used to validate token audience  |
 | `ALLOWED_ORIGINS`     | Comma-separated CORS origins (live site + localhost)   |
-| `ADMIN_EMAIL`         | Optional upload-notification email recipient           |
+| `ADMIN_EMAIL`         | Upload-notification email recipient (admin)            |
 | `ADMIN_MODERATION_URL` | Optional link included in upload-notification emails  |
-| `EMAIL_FROM`          | Optional sender for upload-notification emails         |
+| `EMAIL_FROM`          | **Verified-domain** sender for seat-alert + upload emails (see "Email delivery setup"). Required for any email to send; never falls back to a default. |
 
 Admin authorization is not configured with an env var. It is enforced from the
 Firebase ID token's `admin: true` custom claim.
 
-Optional secret:
+Secret:
 
 ```bash
 wrangler secret put RESEND_API_KEY
 ```
 
-If `RESEND_API_KEY` or `ADMIN_EMAIL` is missing, uploads still succeed; the
-notification email is skipped.
+If the email channel is not fully configured (`RESEND_API_KEY` missing, or
+`EMAIL_FROM` missing / set to the Resend test sender), uploads and the cron
+still run — but the emails are skipped and an operational error is logged. Email
+delivery never silently uses a default sender.
 
 After changing any of these, redeploy with `npx wrangler deploy`.
 
