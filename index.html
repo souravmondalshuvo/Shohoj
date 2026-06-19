@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Pg07b8KGV8QfRLThEuTBiDM5Nhfjw8I9+nujkdMig/Y='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-UdO2q7/JFkY0cTsTRDFqa2N4x59JdLO1+QBu8qmjK/Y=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-fYz8NkAGJdlRX7GbC7/3mInUhvVr+itD5s9Dr6YYbRM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6240,6 +6240,188 @@ body[data-page="admin"] .orb { display: none !important; }
   .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
 }
 
+/* ═══ Profile tab (#196) ═══ */
+.pf-empty {
+  padding: 40px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pf-empty-icon { font-size: 32px; opacity: 0.8; margin-bottom: 4px; }
+.pf-empty-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-empty-sub {
+  font-size: 12px;
+  color: var(--text2);
+  max-width: 320px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.pf-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #06140b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.pf-signin-btn:hover { filter: brightness(1.08); }
+.pf-signin-icon { font-size: 15px; }
+
+.pf-hub { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.pf-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border2);
+}
+.pf-avatar { flex-shrink: 0; }
+.pf-avatar-img,
+.pf-avatar-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: block;
+}
+.pf-avatar-img { object-fit: cover; border: 1px solid var(--border); }
+.pf-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+}
+.pf-identity { flex: 1; min-width: 0; }
+.pf-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-email {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-signout-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pf-signout-btn:hover { border-color: var(--border); color: var(--text); }
+
+.pf-sections { display: flex; flex-direction: column; gap: 12px; }
+.pf-section-stub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--border2);
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pf-section-stub-icon { font-size: 18px; flex-shrink: 0; }
+
+/* Profile cards (seat alerts, and future routine/reviews) */
+.pf-card {
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pf-card-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-card-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+/* Email-alert switch */
+.pf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.pf-toggle-track {
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border2);
+  position: relative;
+  transition: background 0.2s;
+}
+.pf-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.pf-toggle.is-on .pf-toggle-track { background: var(--accent); }
+.pf-toggle.is-on .pf-toggle-thumb { transform: translateX(16px); }
+.pf-toggle-text { font-size: 12px; color: var(--text); line-height: 1.4; }
+.pf-toggle-off { color: var(--text2); font-style: italic; }
+
+/* Watchlist */
+.pf-watch-empty {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.pf-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-watch-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--border);
+}
+.pf-watch-code { font-size: 13px; font-weight: 700; color: var(--text); }
+.pf-watch-sec { font-size: 12px; color: var(--text2); }
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -6539,6 +6721,10 @@ body[data-page="admin"] .orb { display: none !important; }
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
         </button>
+        <button class="calc-tab" data-tab="profile">
+          <span class="calc-tab-icon">👤</span>
+          <span>Profile</span>
+        </button>
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -6670,6 +6856,14 @@ body[data-page="admin"] .orb { display: none !important; }
         <div class="calc-body">
           <div id="freeRoomsContent">
             <!-- Rendered dynamically by freeRoomsTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-tab-panel" id="tabProfile">
+        <div class="calc-body">
+          <div id="profileContent">
+            <!-- Rendered dynamically by profileTab.js -->
           </div>
         </div>
       </div>
@@ -6852,6 +7046,21 @@ function installReviewIdentityHooks({ getCurrentUser, isAuthReady }) {
 
   window._shohoj_isAuthReady = function() {
     return isAuthReady();
+  };
+
+  // Read-only identity snapshot for the Profile account hub. photoURL is passed
+  // through the same isSafeAvatarUrl guard the signed-in pill uses, so a hostile
+  // Google identity payload can't inject an arbitrary image/URL into the page.
+  window._shohoj_userProfile = function() {
+    const u = getCurrentUser();
+    if (!u) return { signedIn: false, uid: null, email: null, displayName: null, photoURL: null };
+    return {
+      signedIn:    true,
+      uid:         u.uid || null,
+      email:       u.email || null,
+      displayName: u.displayName || null,
+      photoURL:    isSafeAvatarUrl(u.photoURL) ? u.photoURL : null,
+    };
   };
 }
 
@@ -7743,15 +7952,18 @@ window._shohoj_showToast = showToast;
 // falls back to in-tab alerts only and prompts sign-in. The doc is fully
 // overwritten each sync; `email` is pinned to the user's own address (enforced
 // again by firestore.rules) so a watch can only ever notify its own owner.
-window._shohoj_syncSeatAlerts = async function(sections) {
+window._shohoj_syncSeatAlerts = async function(sections, enabled) {
   if (!currentUser || !currentUser.email || !db) return false;
   try {
     const list = (Array.isArray(sections) ? sections : []).slice(0, 50)
       .map(s => ({ id: Number(s.id), code: String(s.code || ''), name: String(s.name || '') }))
       .filter(s => Number.isFinite(s.id));
+    // The caller (Seats tab) owns the on/off preference and passes the resolved
+    // flag; fall back to the old "armed when watching" rule if omitted.
+    const armed = typeof enabled === 'boolean' ? enabled : list.length > 0;
     await setDoc(doc(db, 'seatAlertWatches', currentUser.uid), {
       email:     currentUser.email,
-      enabled:   list.length > 0,
+      enabled:   armed,
       sections:  list,
       updatedAt: serverTimestamp(),
     });
@@ -21533,6 +21745,11 @@ const SEATS_RESULT_LIMIT = 40;
 const SEATS_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const SEATS_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
 
+// Independent on/off switch for the email channel of seat-drop alerts, toggled
+// from the Profile tab. Stored as '0' (off) / '1' (on); absent → on, so existing
+// users keep today's always-armed behavior.
+const SEAT_ALERT_PREF_KEY = 'shohoj_seat_alerts_enabled';
+
 const _seats = {
   loading: false,
   error: null,
@@ -21544,12 +21761,15 @@ const _seats = {
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
   watches: [],         // WatchEntry[] — persisted seat-drop watchlist
+  alertsEnabled: true, // email channel on/off (Profile toggle); default armed
   live: false,         // subscribed to the shared live poller yet?
 };
 
 // Restore the watchlist before anything renders so a persisted watch keeps
 // alerting across reloads — even if the student never opens the Seats tab.
 try { _seats.watches = parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY)); } catch { /* storage off */ }
+// Restore the email-alert preference (absent → armed).
+try { _seats.alertsEnabled = localStorage.getItem(SEAT_ALERT_PREF_KEY) !== '0'; } catch { /* storage off */ }
 
 registerAction('seats:refresh',         () => _seatsRefresh(true));
 registerAction('seats:clearCache',      () => { clearConnectFeedCache(); _seatsRefresh(true); });
@@ -21612,7 +21832,32 @@ function _seatsSaveWatches() {
 function _seatsSyncCloud() {
   if (typeof window === 'undefined' || typeof window._shohoj_syncSeatAlerts !== 'function') return;
   const payload = _seats.watches.map(w => ({ id: w.sectionId, code: w.courseCode, name: w.sectionName }));
-  try { window._shohoj_syncSeatAlerts(payload); } catch { /* ignore */ }
+  // The cron Worker emails only when enabled is true: gate it on both the user's
+  // preference and actually having something to watch.
+  const enabled = _seats.alertsEnabled && payload.length > 0;
+  try { window._shohoj_syncSeatAlerts(payload, enabled); } catch { /* ignore */ }
+}
+
+// ── Seat-alert preference (driven by the Profile account hub) ──────────────────
+function _seatsSaveAlertPref() {
+  try { localStorage.setItem(SEAT_ALERT_PREF_KEY, _seats.alertsEnabled ? '1' : '0'); } catch { /* storage off */ }
+}
+
+// Cross-module reads for the Profile tab, exposed as globals to avoid a circular
+// import (the codebase's standard _shohoj_* bridge). The watchlist snapshot is
+// intentionally lightweight — just what Profile needs to label each watch.
+if (typeof window !== 'undefined') {
+  window._shohoj_getSeatWatches = () => _seats.watches.map(w => ({
+    sectionId: w.sectionId, courseCode: w.courseCode, sectionName: w.sectionName,
+  }));
+  window._shohoj_seatAlertsEnabled = () => _seats.alertsEnabled;
+  // Flip the email channel without touching the watchlist: persist locally and
+  // re-sync so Firestore's enabled flag (and thus the cron Worker) follows now.
+  window._shohoj_setSeatAlertsEnabled = (on) => {
+    _seats.alertsEnabled = !!on;
+    _seatsSaveAlertPref();
+    _seatsSyncCloud();
+  };
 }
 
 function _seatsFindSection(sectionId) {
@@ -21998,6 +22243,9 @@ function _seatsEmailNote() {
     ? window._shohoj_seatAlertIdentity()
     : { signedIn: false, email: null };
   if (id.signedIn) {
+    if (!_seats.alertsEnabled) {
+      return '✉️ Email alerts are paused — turn them back on from your Profile.';
+    }
     return `✉️ Also emailing ${id.email} if a seat opens while Shohoj is closed.`;
   }
   return '✉️ Sign in with your BRACU email to get alerts even when Shohoj is closed.';
@@ -22030,6 +22278,177 @@ function _seatsAgeLabel(fetchedAt) {
   if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)} min ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
   return new Date(fetchedAt).toLocaleString();
+}
+
+// ── js/ui/profileTab.js ─────────────────────────────────────────
+// js/ui/profileTab.js
+// Profile account hub (#196). A signed-in student's data lives in scattered
+// places (routine in localStorage, seat watches, reviews); this tab is the
+// single home for it. This is the SKELETON: auth gate + account header + sign
+// out. Routine summary, seat watchlist + alert toggle, and reviews land in
+// follow-up commits.
+//
+// Hard non-goal (see the issue): never render a BRACU CONNECT credential field.
+// This tab only ever shows data the student already gave us or that arrives via
+// user-initiated import elsewhere.
+
+// Read identity through the global installed by review-service.js. Kept behind
+// typeof guards so the module is import-safe in a bare Node test (no window).
+function _profile() {
+  return (typeof window !== 'undefined' && typeof window._shohoj_userProfile === 'function')
+    ? window._shohoj_userProfile()
+    : { signedIn: false, uid: null, email: null, displayName: null, photoURL: null };
+}
+
+function _authReady() {
+  return (typeof window !== 'undefined' && typeof window._shohoj_isAuthReady === 'function')
+    ? !!window._shohoj_isAuthReady()
+    : true;
+}
+
+// Seat watchlist + email-alert preference, read from the Seats tab's globals.
+function _seatAlerts() {
+  const watches = (typeof window !== 'undefined' && typeof window._shohoj_getSeatWatches === 'function')
+    ? (window._shohoj_getSeatWatches() || [])
+    : [];
+  const alertsEnabled = (typeof window !== 'undefined' && typeof window._shohoj_seatAlertsEnabled === 'function')
+    ? !!window._shohoj_seatAlertsEnabled()
+    : true;
+  return { watches, alertsEnabled };
+}
+
+// ── Pure view builders (exported for unit tests) ──────────────────────────────
+
+function profileLoadingHtml() {
+  return `
+    <div class="pf-empty">
+      <div class="pf-empty-icon">⏳</div>
+      <div class="pf-empty-title">Checking your sign-in…</div>
+      <div class="pf-empty-sub">If you already have an active Shohoj session, your profile will unlock automatically.</div>
+    </div>`;
+}
+
+function profileSignedOutHtml() {
+  return `
+    <div class="pf-empty">
+      <div class="pf-empty-icon">🔒</div>
+      <div class="pf-empty-title">Sign in to view your profile</div>
+      <div class="pf-empty-sub">Your saved routine, seat watchlist, and reviews live here once you sign in with your BRACU G-Suite account.</div>
+      <button class="pf-signin-btn" data-action="auth:signin">
+        <span class="pf-signin-icon">👤</span>
+        Sign in with Google
+      </button>
+    </div>`;
+}
+
+// Seat-drop alerts card: the email on/off switch (acceptance #3) plus the
+// watchlist it governs. Pure — takes { watches, alertsEnabled } so it's unit
+// testable without the Seats tab.
+function seatAlertsSectionHtml(seatAlerts) {
+  const watches = Array.isArray(seatAlerts?.watches) ? seatAlerts.watches : [];
+  const on = !!seatAlerts?.alertsEnabled;
+  const n = watches.length;
+
+  const list = n === 0
+    ? `<div class="pf-watch-empty">You're not watching any sections yet. Add them from the <strong>Seats</strong> tab.</div>`
+    : `<ul class="pf-watch-list">${watches.map(w => `
+        <li class="pf-watch-item">
+          <span class="pf-watch-code">${escHtml(w.courseCode || '')}</span>
+          <span class="pf-watch-sec">Section ${escHtml(w.sectionName || '')}</span>
+        </li>`).join('')}</ul>`;
+
+  return `
+    <section class="pf-card">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">🪑 Seat alerts</h3>
+        <span class="pf-card-count">${n} watched</span>
+      </div>
+      <button class="pf-toggle ${on ? 'is-on' : ''}" data-action="profile:toggleAlerts"
+              role="switch" aria-checked="${on ? 'true' : 'false'}">
+        <span class="pf-toggle-track" aria-hidden="true"><span class="pf-toggle-thumb"></span></span>
+        <span class="pf-toggle-text">Email me when a watched seat opens${on ? '' : ' <span class="pf-toggle-off">(paused)</span>'}</span>
+      </button>
+      ${list}
+    </section>`;
+}
+
+function profileSignedInHtml(profile, seatAlerts) {
+  const p = profile || {};
+  const name = p.displayName ? String(p.displayName) : 'BRACU student';
+  const email = p.email ? String(p.email) : '';
+  const initial = (name.trim()[0] || '?').toUpperCase();
+  const avatar = p.photoURL
+    ? `<img class="pf-avatar-img" src="${escAttr(p.photoURL)}" alt="" referrerpolicy="no-referrer" width="56" height="56">`
+    : `<div class="pf-avatar-fallback" aria-hidden="true">${escHtml(initial)}</div>`;
+
+  return `
+    <div class="pf-hub">
+      <div class="pf-header">
+        <div class="pf-avatar">${avatar}</div>
+        <div class="pf-identity">
+          <div class="pf-name">${escHtml(name)}</div>
+          ${email ? `<div class="pf-email">${escHtml(email)}</div>` : ''}
+        </div>
+        <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
+      </div>
+      <div class="pf-sections">
+        ${seatAlertsSectionHtml(seatAlerts)}
+        <div class="pf-section-stub">
+          <span class="pf-section-stub-icon">🗓️</span>
+          <span>Your routine summary and reviews will appear here.</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── DOM wiring ────────────────────────────────────────────────────────────────
+
+function renderProfileTab() {
+  if (typeof document === 'undefined') return;
+  const root = document.getElementById('profileContent');
+  if (!root) return;
+
+  if (!_authReady()) {
+    // Static markup, no interpolation.
+    // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+    root.innerHTML = profileLoadingHtml();
+    return;
+  }
+
+  const profile = _profile();
+  // Every interpolation in these builders goes through escHtml/escAttr.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  root.innerHTML = profile.signedIn
+    ? profileSignedInHtml(profile, _seatAlerts())
+    : profileSignedOutHtml();
+}
+
+// Sign out via the auth layer; it tears down the session and dispatches
+// shohoj:auth-changed, which repaints this tab back to the signed-out prompt.
+registerAction('profile:signout', () => {
+  if (typeof window !== 'undefined' && typeof window._shohoj_signOut === 'function') {
+    window._shohoj_signOut();
+  }
+});
+
+// Flip the email-alert preference via the Seats tab (which persists it and
+// re-syncs Firestore), then repaint so the switch reflects the new state.
+registerAction('profile:toggleAlerts', () => {
+  if (typeof window !== 'undefined'
+      && typeof window._shohoj_setSeatAlertsEnabled === 'function'
+      && typeof window._shohoj_seatAlertsEnabled === 'function') {
+    window._shohoj_setSeatAlertsEnabled(!window._shohoj_seatAlertsEnabled());
+  }
+  renderProfileTab();
+});
+
+// Auth can resolve or flip after the tab first paints (slow Firebase init, or
+// the student signs in/out from the header pill). Repaint so the gate is always
+// honest. Cheap enough to run regardless of which tab is active.
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:auth-changed', renderProfileTab);
 }
 
 // ── js/ui/render.js ─────────────────────────────────────────────
@@ -26387,6 +26806,7 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
+  profile:    'tabProfile',
 };
 
 let _activeCalcTab = 'calculator';
@@ -26455,6 +26875,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
+  if (tabId === 'profile') {
+    renderProfileTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -26479,6 +26902,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/routine'))  return 'routine';
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
+  if (hash.startsWith('#calculator/profile'))   return 'profile';
 
   // Then check sessionStorage
   try {

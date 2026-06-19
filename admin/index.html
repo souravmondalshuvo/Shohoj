@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-FxUuI+6H1AxeVYmx2P3uidCgBFYGnnMxCqhIv5Pcudc=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-UdO2q7/JFkY0cTsTRDFqa2N4x59JdLO1+QBu8qmjK/Y=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6237,6 +6237,188 @@ body[data-page="admin"] .orb { display: none !important; }
   .seats-section-schedule, .seats-section-room { grid-column: 1 / -1; }
 }
 
+/* ═══ Profile tab (#196) ═══ */
+.pf-empty {
+  padding: 40px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pf-empty-icon { font-size: 32px; opacity: 0.8; margin-bottom: 4px; }
+.pf-empty-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-empty-sub {
+  font-size: 12px;
+  color: var(--text2);
+  max-width: 320px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.pf-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #06140b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.pf-signin-btn:hover { filter: brightness(1.08); }
+.pf-signin-icon { font-size: 15px; }
+
+.pf-hub { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.pf-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border2);
+}
+.pf-avatar { flex-shrink: 0; }
+.pf-avatar-img,
+.pf-avatar-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: block;
+}
+.pf-avatar-img { object-fit: cover; border: 1px solid var(--border); }
+.pf-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--border);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+}
+.pf-identity { flex: 1; min-width: 0; }
+.pf-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-email {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pf-signout-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.pf-signout-btn:hover { border-color: var(--border); color: var(--text); }
+
+.pf-sections { display: flex; flex-direction: column; gap: 12px; }
+.pf-section-stub {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--border2);
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pf-section-stub-icon { font-size: 18px; flex-shrink: 0; }
+
+/* Profile cards (seat alerts, and future routine/reviews) */
+.pf-card {
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pf-card-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-card-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+/* Email-alert switch */
+.pf-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.pf-toggle-track {
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border2);
+  position: relative;
+  transition: background 0.2s;
+}
+.pf-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.pf-toggle.is-on .pf-toggle-track { background: var(--accent); }
+.pf-toggle.is-on .pf-toggle-thumb { transform: translateX(16px); }
+.pf-toggle-text { font-size: 12px; color: var(--text); line-height: 1.4; }
+.pf-toggle-off { color: var(--text2); font-style: italic; }
+
+/* Watchlist */
+.pf-watch-empty {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  padding: 4px 0;
+}
+.pf-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pf-watch-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--border);
+}
+.pf-watch-code { font-size: 13px; font-weight: 700; color: var(--text); }
+.pf-watch-sec { font-size: 12px; color: var(--text2); }
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
@@ -6377,6 +6559,21 @@ function installReviewIdentityHooks({ getCurrentUser, isAuthReady }) {
 
   window._shohoj_isAuthReady = function() {
     return isAuthReady();
+  };
+
+  // Read-only identity snapshot for the Profile account hub. photoURL is passed
+  // through the same isSafeAvatarUrl guard the signed-in pill uses, so a hostile
+  // Google identity payload can't inject an arbitrary image/URL into the page.
+  window._shohoj_userProfile = function() {
+    const u = getCurrentUser();
+    if (!u) return { signedIn: false, uid: null, email: null, displayName: null, photoURL: null };
+    return {
+      signedIn:    true,
+      uid:         u.uid || null,
+      email:       u.email || null,
+      displayName: u.displayName || null,
+      photoURL:    isSafeAvatarUrl(u.photoURL) ? u.photoURL : null,
+    };
   };
 }
 
@@ -7268,15 +7465,18 @@ window._shohoj_showToast = showToast;
 // falls back to in-tab alerts only and prompts sign-in. The doc is fully
 // overwritten each sync; `email` is pinned to the user's own address (enforced
 // again by firestore.rules) so a watch can only ever notify its own owner.
-window._shohoj_syncSeatAlerts = async function(sections) {
+window._shohoj_syncSeatAlerts = async function(sections, enabled) {
   if (!currentUser || !currentUser.email || !db) return false;
   try {
     const list = (Array.isArray(sections) ? sections : []).slice(0, 50)
       .map(s => ({ id: Number(s.id), code: String(s.code || ''), name: String(s.name || '') }))
       .filter(s => Number.isFinite(s.id));
+    // The caller (Seats tab) owns the on/off preference and passes the resolved
+    // flag; fall back to the old "armed when watching" rule if omitted.
+    const armed = typeof enabled === 'boolean' ? enabled : list.length > 0;
     await setDoc(doc(db, 'seatAlertWatches', currentUser.uid), {
       email:     currentUser.email,
-      enabled:   list.length > 0,
+      enabled:   armed,
       sections:  list,
       updatedAt: serverTimestamp(),
     });
