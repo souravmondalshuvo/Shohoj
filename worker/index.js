@@ -497,11 +497,38 @@ async function handleUpload(request, env, origin, ctx) {
   return jsonResponse({ ok: true, id: paperId, path }, { status: 200 }, env, origin);
 }
 
+// Resend's onboarding sender only delivers to the Resend account owner, so
+// treating it (or a missing value) as a usable sender silently drops mail for
+// every real recipient. Production must set EMAIL_FROM to a verified-domain
+// sender. Keep this as a substring check so it also catches a display-name form
+// like "Shohoj <onboarding@resend.dev>".
+export const RESEND_TEST_SENDER = 'onboarding@resend.dev';
+
+// Resolve and validate the From header. Returns { ok, from, reason }; never
+// falls back to a hardcoded sender so misconfiguration fails loud, not silent.
+export function resolveEmailFrom(env) {
+  const raw = typeof env?.EMAIL_FROM === 'string' ? env.EMAIL_FROM.trim() : '';
+  if (!raw) return { ok: false, from: '', reason: 'EMAIL_FROM is not set' };
+  if (raw.toLowerCase().includes(RESEND_TEST_SENDER)) {
+    return {
+      ok: false,
+      from: raw,
+      reason: 'EMAIL_FROM uses the Resend test sender, which only delivers to the Resend account owner; set a verified-domain sender',
+    };
+  }
+  return { ok: true, from: raw, reason: '' };
+}
+
 async function notifyAdminOfUpload(env, info) {
   if (!env.RESEND_API_KEY || !env.ADMIN_EMAIL) return;
+  const sender = resolveEmailFrom(env);
+  if (!sender.ok) {
+    console.error(`admin upload notify skipped: ${sender.reason}`);
+    return;
+  }
   const sizeMb = (info.fileSize / (1024 * 1024)).toFixed(2);
   const modUrl = env.ADMIN_MODERATION_URL || '';
-  const from = env.EMAIL_FROM || 'Shohoj <onboarding@resend.dev>';
+  const from = sender.from;
   const typeLabel = info.type ? info.type.charAt(0).toUpperCase() + info.type.slice(1) : '';
   const titleStr  = info.title || '(untitled)';
   const subject = sanitizeHeaderValue(
@@ -843,13 +870,26 @@ export function buildSeatAlertEmail(drops) {
   return { subject, html };
 }
 
+// Is the seat-alert email channel fully configured? Both an API key and a real
+// (non-test) sender are required; missing either means we must fail safe rather
+// than report alerts as operational. Pure so it's unit-testable.
+export function seatAlertEmailConfig(env) {
+  const hasKey = !!(env && env.RESEND_API_KEY);
+  const sender = resolveEmailFrom(env);
+  return {
+    ok: hasKey && sender.ok,
+    from: sender.from,
+    reason: !hasKey ? 'RESEND_API_KEY is not set' : sender.reason,
+  };
+}
+
 async function resendSeatAlert(env, to, subject, html) {
-  if (!env.RESEND_API_KEY) return false;
-  const from = env.EMAIL_FROM || 'Shohoj <onboarding@resend.dev>';
+  const cfg = seatAlertEmailConfig(env);
+  if (!cfg.ok) return false;
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html }),
+    body: JSON.stringify({ from: cfg.from, to: [to], subject, html }),
   });
   if (!res.ok) {
     console.error(`Resend ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`);
@@ -892,22 +932,36 @@ async function firestorePatchFields(env, token, path, obj) {
 }
 
 // Poll the feed once, fan out over every user's watchlist, email on drops, and
-// persist updated state. Resolves to a small summary for logging.
+// persist updated state. Resolves to a small summary for logging. All counts are
+// aggregate — no UID or email is returned or logged.
 export async function runSeatAlertCron(env) {
+  // Fail safe before any I/O: if mail can't be delivered, do nothing and report
+  // it, rather than reading watches and silently dropping every email.
+  const cfg = seatAlertEmailConfig(env);
+  if (!cfg.ok) {
+    return { configured: false, reason: cfg.reason, users: 0, watches: 0, transitions: 0, emailed: 0, failed: 0 };
+  }
+
   const feedRes = await fetch(SEAT_FEED_URL, { headers: { Accept: 'application/json' } });
   if (!feedRes.ok) throw new Error(`Feed fetch ${feedRes.status}`);
   const seatMap = parseFeedSeatMap(await feedRes.json());
-  if (seatMap.size === 0) return { users: 0, emailed: 0 };
+  if (seatMap.size === 0) {
+    return { configured: true, feedEmpty: true, users: 0, watches: 0, transitions: 0, emailed: 0, failed: 0 };
+  }
 
   const token = await getServiceAccountAccessToken(env);
   const watchDocs = await firestoreListAll(env, token, SEAT_ALERT_WATCHES);
 
-  let emailed = 0;
+  let watches = 0;      // active watch docs actually processed
+  let transitions = 0;  // full→open drops detected across all users
+  let emailed = 0;      // users successfully emailed this run
+  let failed = 0;       // users whose drop email failed to send
   for (const { id: uid, fields } of watchDocs) {
     if (fields.enabled === false) continue;
     const email = typeof fields.email === 'string' ? fields.email : '';
     const sections = Array.isArray(fields.sections) ? fields.sections : [];
     if (!email || sections.length === 0) continue;
+    watches += 1;
 
     const state = await firestoreGetFields(env, token, `${SEAT_ALERT_STATE}/${uid}`);
     const firstRun = state === null;
@@ -916,15 +970,23 @@ export async function runSeatAlertCron(env) {
     const { drops, nextSeen, changed } = detectSeatDrops(sections, seatMap, priorSeen);
 
     // First run has no baseline → seed state silently, never email.
+    let delivered = true;
     if (!firstRun && drops.length > 0) {
+      transitions += drops.length;
       const { subject, html } = buildSeatAlertEmail(drops);
-      if (await resendSeatAlert(env, email, subject, html)) emailed += 1;
+      delivered = await resendSeatAlert(env, email, subject, html);
+      if (delivered) emailed += 1; else failed += 1;
     }
-    if (firstRun || changed) {
+
+    // Only advance persisted state when delivery succeeded (or there was nothing
+    // to deliver). A transient Resend failure must not "consume" the transition:
+    // leaving state untouched means the next tick re-detects the same drop and
+    // retries, instead of silently swallowing the alert.
+    if (delivered && (firstRun || changed)) {
       await firestorePatchFields(env, token, `${SEAT_ALERT_STATE}/${uid}`, { seen: nextSeen, updatedAt: new Date() });
     }
   }
-  return { users: watchDocs.length, emailed };
+  return { configured: true, users: watchDocs.length, watches, transitions, emailed, failed };
 }
 
 export default {
@@ -932,7 +994,14 @@ export default {
     ctx.waitUntil((async () => {
       try {
         const r = await runSeatAlertCron(env);
-        console.log(`seat-alert cron: users=${r.users} emailed=${r.emailed}`);
+        if (!r.configured) {
+          // Loud, non-PII operational error — alerts are NOT being delivered.
+          console.error(`seat-alert cron: email channel not configured — ${r.reason}; skipped (no emails sent)`);
+          return;
+        }
+        console.log(
+          `seat-alert cron: users=${r.users} watches=${r.watches} transitions=${r.transitions} emailed=${r.emailed} failed=${r.failed}`,
+        );
       } catch (e) {
         console.error('seat-alert cron failed:', e?.message || e);
       }
