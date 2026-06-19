@@ -6,11 +6,16 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-19
+
 ### Added
 - Seat-drop **email alerts** that reach you even with Shohoj closed: when signed in, your Seat Status watchlist syncs to Firestore, and a new cron-triggered Worker handler polls the live feed centrally (one fetch for all users), edge-detects watched sections going full→open, and emails you via Resend. Reuses the Worker's existing service-account wiring; per-user state lives in a client-closed `seatAlertState` collection. Delivery requires a Resend-verified `EMAIL_FROM` sender (SPF + DKIM; see `worker/README.md`) — until that is set the cron still runs but safely skips sends and logs an operational error.
 - Routine Builder auto-suggest now prefers **compact days**: a new `gapWeight` factor penalizes idle time between consecutive same-day classes, so packed schedules rank above gappy ones. A "Compact days" toggle (on by default) drives it and re-ranks live, and each suggestion card shows the combination's total gap time (or "compact" when gap-free).
 - Seat-drop alerts on the Seat Status tab: watch a full section and Shohoj polls the live CONNECT feed in the background (while open), then fires a browser notification and an in-app toast the moment a seat opens. Watchlist persists across reloads; transition detection lives in the unit-tested `src/core/seatWatch.ts` core.
 - Faculty reviews for two new Pharmacy faculty (KMP, MKS) and several CSE hardware faculty (TSE plus extended profiles for AQT, NFS, RAO, TAV), covering PHB201, PHB105, and the CSE251 hardware courses.
+- **Routine Builder** tab: assemble a clash-free weekly schedule from the live CONNECT section feed, with overlap-split grid, inline faculty ratings, time-of-day / day-off filters, `.ics` calendar export with class + exam reminders, and QR / link sharing of a routine.
+- **Free Rooms** finder: an all-rooms status board (free / in class / in lab + room type) computed from the scheduled timetable, with a per-room full-week availability modal.
+- **Profile** account hub (#196): an auth-gated tab that brings a signed-in student's scattered data into one home — account header, seat watchlist with an independent email-alert on/off toggle, saved-routine + semester-plan snapshot, and the student's own reviews. Signed-out users get a sign-in prompt. No BRACU CONNECT credential field exists anywhere; the "your reviews" list uses a privacy-preserving local receipt so no UID-indexed query can de-anonymize a review.
 
 ### Changed
 - `CONTRIBUTING.md` now documents logical-change commits as the default workflow, with strict one-file-per-commit reserved for explicit requests.
@@ -87,7 +92,8 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 Initial tagged snapshot. Refer to git history for the changes that
 landed before the changelog existed.
 
-[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.1.0-alpha...v0.2.0
