@@ -7,7 +7,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
-- Seat-drop **email alerts** that reach you even with Shohoj closed: when signed in, your Seat Status watchlist syncs to Firestore, and a new cron-triggered Worker handler polls the live feed centrally (one fetch for all users), edge-detects watched sections going full→open, and emails you via Resend. Reuses the Worker's existing Resend + service-account wiring; per-user state lives in a client-closed `seatAlertState` collection. Deploy is one cron line in `wrangler.toml` — no new secrets.
+- Seat-drop **email alerts** that reach you even with Shohoj closed: when signed in, your Seat Status watchlist syncs to Firestore, and a new cron-triggered Worker handler polls the live feed centrally (one fetch for all users), edge-detects watched sections going full→open, and emails you via Resend. Reuses the Worker's existing service-account wiring; per-user state lives in a client-closed `seatAlertState` collection. Delivery requires a Resend-verified `EMAIL_FROM` sender (SPF + DKIM; see `worker/README.md`) — until that is set the cron still runs but safely skips sends and logs an operational error.
 - Routine Builder auto-suggest now prefers **compact days**: a new `gapWeight` factor penalizes idle time between consecutive same-day classes, so packed schedules rank above gappy ones. A "Compact days" toggle (on by default) drives it and re-ranks live, and each suggestion card shows the combination's total gap time (or "compact" when gap-free).
 - Seat-drop alerts on the Seat Status tab: watch a full section and Shohoj polls the live CONNECT feed in the background (while open), then fires a browser notification and an in-app toast the moment a seat opens. Watchlist persists across reloads; transition detection lives in the unit-tested `src/core/seatWatch.ts` core.
 - Faculty reviews for two new Pharmacy faculty (KMP, MKS) and several CSE hardware faculty (TSE plus extended profiles for AQT, NFS, RAO, TAV), covering PHB201, PHB105, and the CSE251 hardware courses.
@@ -18,6 +18,11 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 - Dropped the dead `validReviewPayload` helper from `firestore.rules`.
+
+### Fixed
+- Seat-alert (and admin-upload) emails no longer silently fall back to the Resend test sender (`onboarding@resend.dev`), which only delivers to the Resend account owner — so real students received nothing while the cron still logged success. The Worker now treats a missing or test `EMAIL_FROM` as *not configured*, skips sends, and logs a loud operational error instead. **Action required before alerts deliver:** set `EMAIL_FROM` to a Resend-verified sender (see `worker/README.md`).
+- A temporary Resend failure no longer advances a user's seat-alert transition state, so a failed full→open email is retried on the next cron tick instead of being lost forever.
+- Cron logging is now privacy-safe and richer (`users / watches / transitions / emailed / failed` counts; no UIDs or emails).
 
 ### Security
 - The client busts out of frames on load to prevent clickjacking.
