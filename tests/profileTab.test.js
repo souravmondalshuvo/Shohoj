@@ -48,6 +48,8 @@ function expect(actual) {
     profileSignedOutHtml,
     profileSignedInHtml,
     seatAlertsSectionHtml,
+    routineSummarySectionHtml,
+    reviewsSectionHtml,
   } = await import('../js/ui/profileTab.js');
 
   console.log('\nProfile tab view builders:');
@@ -166,6 +168,86 @@ function expect(actual) {
     expect(html).toContain('🪑 Seat alerts');
     expect(html).toContain('PHY111');
     expect(html).toContain('data-action="profile:toggleAlerts"');
+  });
+
+  test('routine card: empty routine + empty plan show friendly prompts and 0 counts', () => {
+    const html = routineSummarySectionHtml({ pickedCourses: [], plannerCourses: [] });
+    expect(html).toContain('🗓️ Routine');
+    expect(html).toContain('0 courses');
+    expect(html).toContain('No saved routine yet');
+    expect(html).toContain('No courses planned');
+  });
+
+  test('routine card: lists picked sections and planner courses as chips', () => {
+    const html = routineSummarySectionHtml({ pickedCourses: ['CSE220', 'MAT110'], plannerCourses: ['PHY111'] });
+    expect(html).toContain('2 courses');
+    expect(html).toContain('>CSE220<');
+    expect(html).toContain('>MAT110<');
+    expect(html).toContain('Semester plan');
+    expect(html).toContain('1 course');
+    expect(html).toContain('>PHY111<');
+  });
+
+  test('routine card: singular vs plural count and no credential surface', () => {
+    const html = routineSummarySectionHtml({ pickedCourses: ['CSE110'], plannerCourses: [] });
+    expect(html).toContain('1 course');
+    expect(html).notToContain('1 courses');
+    expect(html).notToContain('<input');
+    expect(html.toLowerCase()).notToContain('connect');
+  });
+
+  test('routine card escapes hostile course codes', () => {
+    const html = routineSummarySectionHtml({ pickedCourses: ['<img src=x>'], plannerCourses: [] });
+    expect(html).notToContain('<img src=x>');
+    expect(html).toContain('&lt;img src=x&gt;');
+  });
+
+  test('reviews card: empty state prompts the user to write one', () => {
+    const html = reviewsSectionHtml([]);
+    expect(html).toContain('✍️ Your reviews');
+    expect(html).toContain('0 written');
+    expect(html).toContain("You haven't written any reviews yet");
+  });
+
+  test('reviews card: lists each review with faculty, course and semester', () => {
+    const html = reviewsSectionHtml([
+      { facultyInitials: 'ABC', courseCode: 'CSE220', semester: 'Spring 2026' },
+      { facultyInitials: 'XYZ', courseCode: 'MAT110', semester: '' },
+    ]);
+    expect(html).toContain('2 written');
+    expect(html).toContain('ABC');
+    expect(html).toContain('CSE220');
+    expect(html).toContain('Spring 2026');
+    expect(html).toContain('XYZ');
+    expect(html).toContain('pseudonymous');
+  });
+
+  test('reviews card escapes hostile review fields', () => {
+    const html = reviewsSectionHtml([{ facultyInitials: '<b>x</b>', courseCode: '"><img>', semester: '' }]);
+    expect(html).notToContain('<b>x</b>');
+    expect(html).notToContain('"><img>');
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+  });
+
+  test('signed-in view embeds the routine and reviews cards', () => {
+    const html = profileSignedInHtml(
+      { signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null },
+      { watches: [], alertsEnabled: true },
+      { pickedCourses: ['CSE110'], plannerCourses: [] },
+      [{ facultyInitials: 'ABC', courseCode: 'CSE110', semester: 'Fall 2025' }],
+    );
+    expect(html).toContain('🗓️ Routine');
+    expect(html).toContain('✍️ Your reviews');
+    expect(html).toContain('CSE110');
+    expect(html).toContain('ABC');
+    expect(html).notToContain('routine summary and reviews will appear here');
+  });
+
+  test('signed-in view tolerates missing routine/reviews args (renders empty cards)', () => {
+    const html = profileSignedInHtml({ signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null });
+    expect(html).toContain('🗓️ Routine');
+    expect(html).toContain('✍️ Your reviews');
+    expect(html).notToContain('<input');
   });
 
   console.log('\n──────────────────────────────────────────────────');
