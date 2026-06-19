@@ -13,13 +13,13 @@
 
 <p align="center">
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  <img src="https://img.shields.io/badge/Status-v0.3%20Recruiter%20Demo-2ECC71?style=flat-square" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-v0.5.0-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-200%20unit%2Fworker%20%2B%2045%20rules%20%2B%207%20E2E-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-480%20unit%2Fworker%20%2B%2054%20rules%20%2B%2041%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -112,6 +112,40 @@ Nobody was building a solution. So I decided to build it myself.
 ---
 
 ## Features — What's Live Today
+
+### 🗓️ Routine Builder (New)
+
+Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it.
+
+- **Auto-suggest** — generates valid section combinations for your chosen courses, ranked to prefer **compact days** (a `gapWeight` factor penalizes idle time between same-day classes); each suggestion shows its total gap time
+- **Conflict detection** — overlapping sections are split and flagged in a weekly grid; faculty ratings surface inline on each section
+- **Calendar export** — download an `.ics` with class + exam reminders, or share a scannable QR / link of your routine
+- **Time-of-day & day-off filters** — narrow sections to your availability before building
+
+### 🪑 Seat Status & Seat-Drop Alerts (New)
+
+Live seat availability across every section, with a watchlist that tells you the moment a full section opens.
+
+- **Live seat lookup** — capacity / consumed / room / schedule pulled from the public CONNECT feed (one cached fetch serves the whole app)
+- **In-browser alerts** — watch a full section and get a browser notification + in-app toast when a seat frees up while Shohoj is open
+- **Email alerts** — a cron-triggered Cloudflare Worker polls the feed centrally and emails you on a real full→open transition, even with Shohoj closed (requires an operator-configured verified email sender; fails safe and logs when unconfigured)
+
+### 🏫 Free Rooms (New)
+
+Find empty classrooms right now or across the week, computed from the live timetable.
+
+- **All-rooms status board** — every room labelled free / in class / in lab, with its room type
+- **Weekly availability** — click a room to see its full-week free/busy grid in a modal
+- **Feed-aware** — derived purely from the scheduled timetable; no ad-hoc booking data is invented
+
+### 👤 Profile (New)
+
+A signed-in student's account hub — one home for data otherwise scattered across tabs. Gated on the existing Firebase auth; signed-out users see a sign-in prompt.
+
+- **Account header** — name, BRACU email, safe avatar, sign out
+- **Seat watchlist + email-alert toggle** — see what you're watching and arm/pause email alerts independently
+- **Routine + planner snapshot** and **your reviews** — read locally; the reviews list uses a privacy-preserving local receipt so no UID-indexed query can de-anonymize a review
+- **Hard non-goal** — Shohoj never collects or stores BRACU CONNECT credentials; there is no such field anywhere
 
 ### 📅 Semester Planner (New)
 
