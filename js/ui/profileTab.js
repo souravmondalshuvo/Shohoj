@@ -1,9 +1,8 @@
 // js/ui/profileTab.js
 // Profile account hub (#196). A signed-in student's data lives in scattered
 // places (routine in localStorage, seat watches, reviews); this tab is the
-// single home for it. This is the SKELETON: auth gate + account header + sign
-// out. Routine summary, seat watchlist + alert toggle, and reviews land in
-// follow-up commits.
+// single home for it: auth gate + account header + seat watchlist & email-alert
+// toggle + saved-routine/planner summary + the student's own reviews + sign out.
 //
 // Hard non-goal (see the issue): never render a BRACU CONNECT credential field.
 // This tab only ever shows data the student already gave us or that arrives via
@@ -35,6 +34,55 @@ function _seatAlerts() {
     ? !!window._shohoj_seatAlertsEnabled()
     : true;
   return { watches, alertsEnabled };
+}
+
+// Saved routine + semester-plan snapshot — read locally, no network. The
+// Routine tab persists { picks: { COURSE: sectionId|null } } under this key
+// (see routineTab.js), and the planner exposes its course codes via a global.
+// Both are data the student already entered; nothing here touches CONNECT.
+const PF_ROUTINE_STORAGE_KEY = 'shohoj_routine_v1';
+function _routineSummary() {
+  let pickedCourses = [];
+  try {
+    const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(PF_ROUTINE_STORAGE_KEY) : null;
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const picks = (parsed && parsed.picks && typeof parsed.picks === 'object') ? parsed.picks : {};
+      pickedCourses = Object.entries(picks)
+        .filter(([, v]) => typeof v === 'number')
+        .map(([code]) => String(code).toUpperCase())
+        .sort();
+    }
+  } catch { pickedCourses = []; }
+
+  let plannerCourses = [];
+  try {
+    if (typeof window !== 'undefined' && typeof window._shohoj_getPlanCourses === 'function') {
+      plannerCourses = (window._shohoj_getPlanCourses() || [])
+        .map(c => String(c || '').toUpperCase())
+        .filter(Boolean);
+    }
+  } catch { plannerCourses = []; }
+
+  return { pickedCourses, plannerCourses };
+}
+
+// Reviews the student has written, read from a privacy-preserving local receipt
+// (see firebase.js submitReview). Public review docs deliberately store NO uid —
+// authorship is only a non-reversible sha256(uid|initials|course) in the doc id
+// — so there is no uid-indexed query that could de-anonymize a review. We keep a
+// per-uid local list of what *this* browser submitted instead.
+const PF_MY_REVIEWS_KEY = 'shohoj_my_reviews_v1';
+function _myReviews() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const uid = (typeof window !== 'undefined' && typeof window._shohoj_currentUid === 'function')
+      ? window._shohoj_currentUid()
+      : null;
+    if (!uid) return [];
+    const all = JSON.parse(localStorage.getItem(PF_MY_REVIEWS_KEY) || '{}');
+    return Array.isArray(all[uid]) ? all[uid] : [];
+  } catch { return []; }
 }
 
 // ── Pure view builders (exported for unit tests) ──────────────────────────────
@@ -92,7 +140,58 @@ export function seatAlertsSectionHtml(seatAlerts) {
     </section>`;
 }
 
-export function profileSignedInHtml(profile, seatAlerts) {
+// Saved-routine + semester-plan card. Pure — takes { pickedCourses, plannerCourses }.
+export function routineSummarySectionHtml(summary) {
+  const picked = Array.isArray(summary?.pickedCourses) ? summary.pickedCourses : [];
+  const planned = Array.isArray(summary?.plannerCourses) ? summary.plannerCourses : [];
+  const nR = picked.length;
+  const nP = planned.length;
+
+  const routineBody = nR === 0
+    ? `<div class="pf-watch-empty">No saved routine yet. Pick sections on the <strong>Routine</strong> tab.</div>`
+    : `<div class="pf-chips">${picked.map(c => `<span class="pf-chip">${escHtml(c)}</span>`).join('')}</div>`;
+
+  const plannerBody = nP === 0
+    ? `<div class="pf-watch-empty">No courses planned. Add them on the <strong>Planner</strong> tab.</div>`
+    : `<div class="pf-chips">${planned.map(c => `<span class="pf-chip pf-chip-plan">${escHtml(c)}</span>`).join('')}</div>`;
+
+  return `
+    <section class="pf-card">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">🗓️ Routine</h3>
+        <span class="pf-card-count">${nR} course${nR === 1 ? '' : 's'}</span>
+      </div>
+      ${routineBody}
+      <div class="pf-subhead">Semester plan <span class="pf-card-count">${nP} course${nP === 1 ? '' : 's'}</span></div>
+      ${plannerBody}
+    </section>`;
+}
+
+// "Your reviews" card. Pure — takes an array of { facultyInitials, courseCode, semester }.
+export function reviewsSectionHtml(reviews) {
+  const list = Array.isArray(reviews) ? reviews : [];
+  const n = list.length;
+
+  const body = n === 0
+    ? `<div class="pf-watch-empty">You haven't written any reviews yet. Rate a faculty from the <strong>Reviews</strong> tab.</div>`
+    : `<ul class="pf-watch-list">${list.map(r => `
+        <li class="pf-watch-item">
+          <span class="pf-watch-code">${escHtml(r.facultyInitials || '')}</span>
+          <span class="pf-watch-sec">${escHtml(r.courseCode || '')}${r.semester ? ` · ${escHtml(r.semester)}` : ''}</span>
+        </li>`).join('')}</ul>`;
+
+  return `
+    <section class="pf-card">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">✍️ Your reviews</h3>
+        <span class="pf-card-count">${n} written</span>
+      </div>
+      ${body}
+      ${n > 0 ? `<div class="pf-note">Reviews are pseudonymous and can't be edited after posting. This list is kept privately in this browser.</div>` : ''}
+    </section>`;
+}
+
+export function profileSignedInHtml(profile, seatAlerts, routine, reviews) {
   const p = profile || {};
   const name = p.displayName ? String(p.displayName) : 'BRACU student';
   const email = p.email ? String(p.email) : '';
@@ -113,10 +212,8 @@ export function profileSignedInHtml(profile, seatAlerts) {
       </div>
       <div class="pf-sections">
         ${seatAlertsSectionHtml(seatAlerts)}
-        <div class="pf-section-stub">
-          <span class="pf-section-stub-icon">🗓️</span>
-          <span>Your routine summary and reviews will appear here.</span>
-        </div>
+        ${routineSummarySectionHtml(routine)}
+        ${reviewsSectionHtml(reviews)}
       </div>
     </div>`;
 }
@@ -141,7 +238,7 @@ export function renderProfileTab() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = profile.signedIn
-    ? profileSignedInHtml(profile, _seatAlerts())
+    ? profileSignedInHtml(profile, _seatAlerts(), _routineSummary(), _myReviews())
     : profileSignedOutHtml();
 }
 
