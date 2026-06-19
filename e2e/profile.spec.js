@@ -79,6 +79,30 @@ test('toggling the email-alert switch flips and persists the preference', async 
   await expect.poll(() => page.evaluate(() => localStorage.getItem('shohoj_seat_alerts_enabled'))).toBe('1');
 });
 
+test('the routine and reviews cards render the student\'s saved data', async ({ page }) => {
+  await boot(page, () => {
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+    });
+    // Firebase is blocked, so the identity global is otherwise absent — stub the
+    // uid the reviews receipt is keyed on, and preseed the local data sources.
+    window._shohoj_currentUid = () => 'u1';
+    localStorage.setItem('shohoj_routine_v1', JSON.stringify({ picks: { CSE220: 12345, MAT110: 678 } }));
+    localStorage.setItem('shohoj_my_reviews_v1', JSON.stringify({
+      u1: [{ facultyInitials: 'ABC', courseCode: 'CSE220', semester: 'Spring 2026' }],
+    }));
+  });
+  const content = page.locator('#profileContent');
+  await expect(content).toContainText('🗓️ Routine');
+  await expect(content.locator('.pf-chip', { hasText: 'CSE220' })).toBeVisible();
+  await expect(content.locator('.pf-chip', { hasText: 'MAT110' })).toBeVisible();
+  await expect(content).toContainText('✍️ Your reviews');
+  await expect(content).toContainText('ABC');
+  await expect(content).toContainText('Spring 2026');
+  // The stub stays a single home — still no credential field.
+  await expect(content.locator('input')).toHaveCount(0);
+});
+
 test('opening #calculator/profile restores the Profile tab directly', async ({ page }) => {
   await page.addInitScript(() => {
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
