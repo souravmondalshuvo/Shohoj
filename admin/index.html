@@ -6430,6 +6430,28 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .pf-note { font-size: 11px; color: var(--text2); line-height: 1.5; }
 
+/* Last-synced line in the account header */
+.pf-synced { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Danger zone */
+.pf-danger { border-color: rgba(231,76,60,0.4); }
+.pf-danger .pf-card-title { color: #e74c3c; }
+.pf-danger-body { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.pf-danger-btn {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e74c3c;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(231,76,60,0.5);
+  background: rgba(231,76,60,0.06);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pf-danger-btn:hover { background: rgba(231,76,60,0.12); border-color: rgba(231,76,60,0.8); }
+
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" integrity="sha512-SIMGYRUjwY8+gKg7nn9EItdD8LCADSDfJNutF9TPrvEo86sQmFMh6MyralfIyhADlajSxqc7G0gs7+MwWF/ogQ==" crossorigin="anonymous"></script>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
