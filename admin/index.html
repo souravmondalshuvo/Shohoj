@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-HchYZBwRxM8Yc/W8GAWG9lJ9Q9lSIozIbDrrCNU3k30=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-HGFRHucXIfUpafkkAG83M08w4o7YUWNSOCpvz5x/mi0=' 'sha256-0BJAuJ3aYarmP1jz26waGr0TPSejiUvixulAa8QGpq4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -6784,6 +6784,15 @@ function startRealtimeSync(uid) {
       return;
     }
 
+    // We have unsynced local changes queued (debounced save not yet flushed),
+    // so local is ahead of cloud. Reloading now would clobber the user's
+    // in-progress edit (e.g. a transcript import) with the stale cloud copy.
+    // Let our pending write win instead.
+    if (_cloudSaveTimer || _queuedCloudSnap) {
+      console.log('[Shohoj] Pending local save — ignoring snapshot to avoid clobber');
+      return;
+    }
+
     if (!snap.exists()) return;
     const raw = snap.data()?.data;
     if (!raw) return;
@@ -7352,8 +7361,11 @@ function initAuth() {
       const localFingerprint = getDataFingerprint(localRaw);
       const cloudFingerprint = getDataFingerprint(JSON.stringify(cloudData));
       if (localFingerprint === cloudFingerprint) {
+        // Local already equals cloud, so nothing was applied and there is no
+        // echo-back save to skip. Do NOT arm shohoj_skip_first_save here — that
+        // flag would silently swallow the user's first real save after sign-in
+        // (e.g. a transcript import), leaving the cloud stuck on the old data.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        sessionStorage.setItem('shohoj_skip_first_save', '1');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
