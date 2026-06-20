@@ -40,6 +40,11 @@ function expect(actual) {
         throw new Error(`Expected ${JSON.stringify(actual)} not to contain ${JSON.stringify(expected)}`);
       }
     },
+    toBe(expected) {
+      if (actual !== expected) {
+        throw new Error(`Expected ${JSON.stringify(actual)} to be ${JSON.stringify(expected)}`);
+      }
+    },
   };
 }
 
@@ -50,6 +55,8 @@ function expect(actual) {
     seatAlertsSectionHtml,
     routineSummarySectionHtml,
     reviewsSectionHtml,
+    dangerZoneSectionHtml,
+    pfFormatLastSync,
   } = await import('../js/ui/profileTab.js');
 
   console.log('\nProfile tab view builders:');
@@ -248,6 +255,57 @@ function expect(actual) {
     expect(html).toContain('🗓️ Routine');
     expect(html).toContain('✍️ Your reviews');
     expect(html).notToContain('<input');
+  });
+
+  test('danger-zone card offers a delete-cloud action and no credential surface', () => {
+    const html = dangerZoneSectionHtml();
+    expect(html).toContain('⚠️ Danger zone');
+    expect(html).toContain('data-action="profile:deleteCloud"');
+    expect(html).toContain('Delete cloud data');
+    expect(html).notToContain('<input');
+    expect(html.toLowerCase()).notToContain('connect');
+  });
+
+  test('danger-zone copy reassures that local data on this device is kept', () => {
+    const html = dangerZoneSectionHtml();
+    expect(html).toContain('this device');
+    expect(html).toContain("can't be undone");
+  });
+
+  test('signed-in view embeds the danger zone', () => {
+    const html = profileSignedInHtml(
+      { signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null },
+      { watches: [], alertsEnabled: true },
+    );
+    expect(html).toContain('⚠️ Danger zone');
+    expect(html).toContain('data-action="profile:deleteCloud"');
+  });
+
+  test('pfFormatLastSync: never-synced / invalid timestamps read as "Not synced yet"', () => {
+    expect(pfFormatLastSync(null)).toBe('Not synced yet');
+    expect(pfFormatLastSync(0)).toBe('Not synced yet');
+    expect(pfFormatLastSync(NaN)).toBe('Not synced yet');
+  });
+
+  test('pfFormatLastSync: recent / minutes / hours / days buckets', () => {
+    const now = 1_000_000_000_000;
+    expect(pfFormatLastSync(now - 5_000, now)).toBe('Synced just now');
+    expect(pfFormatLastSync(now - 5 * 60_000, now)).toBe('Synced 5m ago');
+    expect(pfFormatLastSync(now - 3 * 3_600_000, now)).toBe('Synced 3h ago');
+    expect(pfFormatLastSync(now - 2 * 86_400_000, now)).toBe('Synced 2d ago');
+  });
+
+  test('signed-in header surfaces the last-synced line from a timestamp', () => {
+    const now = 1_000_000_000_000;
+    const html = profileSignedInHtml(
+      { signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null },
+      { watches: [], alertsEnabled: true }, { pickedCourses: [], plannerCourses: [] }, [],
+      now - 10 * 60_000,
+    );
+    expect(html).toContain('pf-synced');
+    // The label itself is computed against the real clock at render; just assert
+    // the line exists and renders some "Synced …"/"Not synced" copy without throwing.
+    expect(html.includes('Synced') || html.includes('Not synced')).toBe(true);
   });
 
   console.log('\n──────────────────────────────────────────────────');
