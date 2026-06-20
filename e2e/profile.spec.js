@@ -6,13 +6,13 @@ import { expect, test } from '@playwright/test';
 // identity globals are absent, so the tab falls back to its signed-out gate;
 // the signed-in case stubs window._shohoj_userProfile via an init script.
 
-async function boot(page, initScript) {
+async function boot(page, initScript, initArg) {
   page.on('dialog', d => d.accept());
   await page.addInitScript(() => {
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
     window.Chart = window.Chart || class { destroy() {} };
   });
-  if (initScript) await page.addInitScript(initScript);
+  if (initScript) await page.addInitScript(initScript, initArg);
   await page.route('https://**/*', route => route.abort());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.locator('.calc-tab[data-tab="profile"]').click();
@@ -112,6 +112,55 @@ test('opening #calculator/profile restores the Profile tab directly', async ({ p
   await page.goto('/#calculator/profile', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#tabProfile')).toHaveClass(/active/);
   await expect(page.locator('#profileContent')).toContainText('Sign in to view your profile');
+});
+
+// ── Danger zone (#232) ────────────────────────────────────────────────────────
+// Stub the globals the delete handler reaches for: a confirm modal whose verdict
+// we control, a delete that records it was called, and a toast we can read. The
+// handler must only call delete when the confirm resolves truthy. The verdict +
+// delete result are passed as a serializable arg (closures don't cross initScript).
+function dangerStub(arg) {
+  window._shohoj_userProfile = () => ({
+    signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+  });
+  window.__deleteCalls = 0;
+  window.__lastToast = null;
+  window._shohoj_confirmModal = () => Promise.resolve(arg.confirmVerdict);
+  window._shohoj_deleteCloudData = () => { window.__deleteCalls++; return Promise.resolve(arg.deleteResult); };
+  window._shohoj_showToast = (msg, isErr) => { window.__lastToast = { msg, isErr: !!isErr }; };
+}
+
+test('the signed-in view shows a Danger zone with a delete-cloud control', async ({ page }) => {
+  await boot(page, signedInStub);
+  const content = page.locator('#profileContent');
+  await expect(content).toContainText('Danger zone');
+  await expect(content.locator('[data-action="profile:deleteCloud"]')).toBeVisible();
+  // Still a credential-free surface.
+  await expect(content.locator('input')).toHaveCount(0);
+});
+
+test('confirming the delete calls _shohoj_deleteCloudData exactly once and toasts success', async ({ page }) => {
+  await boot(page, dangerStub, { confirmVerdict: true, deleteResult: true });
+  await page.locator('#profileContent [data-action="profile:deleteCloud"]').click();
+  await expect.poll(() => page.evaluate(() => window.__deleteCalls)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__lastToast && window.__lastToast.isErr)).toBe(false);
+});
+
+test('dismissing the confirm fires nothing — no delete, no toast', async ({ page }) => {
+  await boot(page, dangerStub, { confirmVerdict: false, deleteResult: true });
+  await page.locator('#profileContent [data-action="profile:deleteCloud"]').click();
+  // Give the async handler a tick; it must short-circuit before the delete call.
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(() => window.__deleteCalls)).toBe(0);
+  expect(await page.evaluate(() => window.__lastToast)).toBeNull();
+});
+
+test('a failed delete surfaces a generic error toast with no backend detail', async ({ page }) => {
+  await boot(page, dangerStub, { confirmVerdict: true, deleteResult: false });
+  await page.locator('#profileContent [data-action="profile:deleteCloud"]').click();
+  await expect.poll(() => page.evaluate(() => window.__lastToast && window.__lastToast.isErr)).toBe(true);
+  const msg = await page.evaluate(() => window.__lastToast.msg);
+  expect(msg).not.toMatch(/firestore|firebase|permission|network|undefined|null/i);
 });
 
 test('the avatar falls back to the name initial when there is no photo', async ({ page }) => {
