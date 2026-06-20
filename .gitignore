@@ -24,3 +24,7 @@ dist/
 
 # Scraped CONNECT section data — input artifact, re-fetched as needed.
 bracu-section.json
+
+# Python bytecode cache (build3.py is imported by the build/test scripts).
+__pycache__/
+*.pyc
