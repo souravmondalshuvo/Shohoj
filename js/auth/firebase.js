@@ -200,6 +200,15 @@ function startRealtimeSync(uid) {
       return;
     }
 
+    // We have unsynced local changes queued (debounced save not yet flushed),
+    // so local is ahead of cloud. Reloading now would clobber the user's
+    // in-progress edit (e.g. a transcript import) with the stale cloud copy.
+    // Let our pending write win instead.
+    if (_cloudSaveTimer || _queuedCloudSnap) {
+      console.log('[Shohoj] Pending local save — ignoring snapshot to avoid clobber');
+      return;
+    }
+
     if (!snap.exists()) return;
     const raw = snap.data()?.data;
     if (!raw) return;
@@ -768,8 +777,11 @@ export function initAuth() {
       const localFingerprint = getDataFingerprint(localRaw);
       const cloudFingerprint = getDataFingerprint(JSON.stringify(cloudData));
       if (localFingerprint === cloudFingerprint) {
+        // Local already equals cloud, so nothing was applied and there is no
+        // echo-back save to skip. Do NOT arm shohoj_skip_first_save here — that
+        // flag would silently swallow the user's first real save after sign-in
+        // (e.g. a transcript import), leaving the cloud stuck on the old data.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        sessionStorage.setItem('shohoj_skip_first_save', '1');
         setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
       }
 
