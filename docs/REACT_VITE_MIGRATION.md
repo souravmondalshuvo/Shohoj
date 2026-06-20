@@ -42,6 +42,12 @@ making future UI work easier.
      `DEPARTMENTS`) stays in the vanilla JS modules and is passed into the typed
      core as `CourseCatalog` / `PrerequisiteMap` params rather than duplicated.
      Parity guarded by `tests/typedCoreParity.test.js`.
+   - Done so far: the pure faculty-initials helpers from `js/core/faculty.js`
+     (`normalizeInitials`, `isValidInitials`) are ported to
+     `src/core/faculty.ts`. The runtime profile cache (the module-level Map and
+     its upsert/lookup/suggest helpers) stays in the vanilla JS module because
+     it is mutable runtime state tied to the Firestore data layer, not pure
+     academic logic. Parity guarded by `tests/typedCoreParity.test.js`.
 
 3. Introduce Vite without changing the product UI. **(in progress)**
    - Add Vite as a build path beside the current `build3.py` deploy path.

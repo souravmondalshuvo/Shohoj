@@ -58,6 +58,7 @@ import {
   paperTimestampMs,
   validatePaperUpload,
 } from '../js/core/papers.js';
+import { isValidInitials, normalizeInitials } from '../js/core/faculty.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -73,6 +74,7 @@ const coreFiles = [
   'papers.ts',
   'helpers.ts',
   'catalog.ts',
+  'faculty.ts',
 ];
 
 function rewriteLocalImports(output) {
@@ -134,6 +136,7 @@ const typedReviews = await import(pathToFileURL(path.join(tempDir, 'reviews.mjs'
 const typedPapers = await import(pathToFileURL(path.join(tempDir, 'papers.mjs')));
 const typedHelpers = await import(pathToFileURL(path.join(tempDir, 'helpers.mjs')));
 const typedCatalog = await import(pathToFileURL(path.join(tempDir, 'catalog.mjs')));
+const typedFaculty = await import(pathToFileURL(path.join(tempDir, 'faculty.mjs')));
 
 console.log('\nTyped core parity:');
 
@@ -507,6 +510,17 @@ test('typed getCourseDept matches current JS department resolution', () => {
   ];
   for (const code of codes) {
     assert.equal(typedCatalog.getCourseDept(code), getCourseDept(code));
+  }
+});
+
+test('typed faculty initials helpers match current JS normalization', () => {
+  const inputs = [
+    'abc', 'ABC', '  a.b.c  ', 'a1b2c3', 'TOOLONGINITIALS', 'a', 'AB',
+    'Dr. X. Y.', '', '   ', '12345', null, undefined, 42, { toString() { return 'zz'; } },
+  ];
+  for (const raw of inputs) {
+    assert.equal(typedFaculty.normalizeInitials(raw), normalizeInitials(raw));
+    assert.equal(typedFaculty.isValidInitials(raw), isValidInitials(raw));
   }
 });
 
