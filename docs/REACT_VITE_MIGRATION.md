@@ -35,6 +35,13 @@ making future UI work easier.
      (`confirmDestructive`, `getStartSeason`, `getStartYear`) stay in the
      vanilla JS module so the typed core has no DOM/Firebase imports. Parity
      guarded by `tests/typedCoreParity.test.js`.
+   - Done so far: the course-code classification logic from `js/core/catalog.js`
+     (`getCoursePrefix`, `getCourseDept`, and the `PREFIX_DEPT_MAP` / `DEPT_META`
+     lookup tables) is ported to `src/core/catalog.ts`. The bulk catalog /
+     prerequisite / department DATA (`COURSE_DB`, `ALL_COURSES`, `PREREQS`,
+     `DEPARTMENTS`) stays in the vanilla JS modules and is passed into the typed
+     core as `CourseCatalog` / `PrerequisiteMap` params rather than duplicated.
+     Parity guarded by `tests/typedCoreParity.test.js`.
 
 3. Introduce Vite without changing the product UI. **(in progress)**
    - Add Vite as a build path beside the current `build3.py` deploy path.
