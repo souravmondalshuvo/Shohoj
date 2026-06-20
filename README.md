@@ -55,6 +55,7 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CD pipeline, local dev, Worker deploy, admin claim |
+| [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md) | Script + shot-by-shot storyboard for the 55-second walkthrough (video pending) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and notable changes |
 | [v0.3.0 release notes](docs/RELEASE_NOTES_v0.3.0.md) | Recruiter Demo Release summary and verification |
 
