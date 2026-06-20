@@ -23,6 +23,19 @@ import {
   normalizeGradePoint,
 } from '../js/core/calculator.js';
 import { ALL_COURSES, COURSE_DB, PREREQS } from '../js/core/catalog.js';
+import {
+  SEASON_ORDER,
+  countSemesters,
+  escAttr,
+  escHtml,
+  generateSemesterNames,
+  getCurrentSeason,
+  getLastCompletedSemester,
+  ordinalSup,
+  sanitizeRestoredState,
+  sanitizeSemName,
+  stripTags,
+} from '../js/core/helpers.js';
 import { parseTranscriptText } from '../js/import/parser.js';
 import {
   aggregateByFaculty,
@@ -50,6 +63,7 @@ const coreFiles = [
   'transcript.ts',
   'reviews.ts',
   'papers.ts',
+  'helpers.ts',
 ];
 
 function rewriteLocalImports(output) {
@@ -109,6 +123,7 @@ const typedPlanner = await import(pathToFileURL(path.join(tempDir, 'planner.mjs'
 const typedTranscript = await import(pathToFileURL(path.join(tempDir, 'transcript.mjs')));
 const typedReviews = await import(pathToFileURL(path.join(tempDir, 'reviews.mjs')));
 const typedPapers = await import(pathToFileURL(path.join(tempDir, 'papers.mjs')));
+const typedHelpers = await import(pathToFileURL(path.join(tempDir, 'helpers.mjs')));
 
 console.log('\nTyped core parity:');
 
@@ -345,6 +360,120 @@ test('typed paper type + timestamp helpers match current JS', () => {
   ];
   for (const stamp of stamps) {
     assert.equal(typedPapers.paperTimestampMs(stamp), paperTimestampMs(stamp));
+  }
+});
+
+test('typed SEASON_ORDER matches current JS season ordering', () => {
+  assert.deepEqual([...typedHelpers.SEASON_ORDER], [...SEASON_ORDER]);
+});
+
+test('typed HTML escaping matches current JS escHtml/escAttr', () => {
+  const inputs = [
+    `Tom & Jerry <script>alert("x")</script> 'quoted'`,
+    '<sup>1</sup> & <b>bold</b>',
+    '',
+    null,
+    undefined,
+    42,
+    { toString() { return 'obj&<>'; } },
+  ];
+  for (const input of inputs) {
+    assert.equal(typedHelpers.escHtml(input), escHtml(input));
+    assert.equal(typedHelpers.escAttr(input), escAttr(input));
+  }
+});
+
+test('typed ordinalSup matches current JS ordinal suffixes', () => {
+  for (const n of [0, 1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 100, 101, 111, 112, 113, 121]) {
+    assert.equal(typedHelpers.ordinalSup(n), ordinalSup(n));
+  }
+});
+
+test('typed sanitizeSemName matches current JS <sup> stripping', () => {
+  for (const name of ['Fall 2024 (1<sup>st</sup> Semester)', 'plain', '', 42, null]) {
+    assert.equal(typedHelpers.sanitizeSemName(name), sanitizeSemName(name));
+  }
+});
+
+test('typed stripTags matches current JS repeated tag removal', () => {
+  for (const s of ['<b>bold</b>', '<<b>b>nested', 'plain text', '', 99, null, '<a href="x">link</a> & text']) {
+    assert.equal(typedHelpers.stripTags(s), stripTags(s));
+  }
+});
+
+test('typed sanitizeRestoredState matches current JS restore validation', () => {
+  const payloads = [
+    null,
+    undefined,
+    'not-an-object',
+    { semesters: 'nope' },
+    { currentDept: 'cse!!', semesters: [] },
+    {
+      currentDept: 'CSE',
+      semesterCounter: 'bad',
+      planCourses: ['CSE220', 'nope', 'MAT110', 123],
+      semesters: [
+        null,
+        { id: 'x' },
+        {
+          id: 1,
+          name: 'Fall <sup>1</sup>',
+          courses: [
+            { name: 'PL I', credits: 3, grade: 'A', gradePoint: '4', faculty: 'abcdefgh' },
+            'garbage',
+            { name: 7, credits: 'x', grade: 9, gradePoint: 'NT' },
+          ],
+        },
+        { id: 2, summary: true, summaryCGPA: 3.5, summaryCredits: 30 },
+        { id: 3, summary: true, summaryCGPA: 9, summaryCredits: 30 },
+        { id: 4, courses: 'not-array' },
+      ],
+    },
+  ];
+  for (const payload of payloads) {
+    const typed = typedHelpers.sanitizeRestoredState(structuredClone(payload));
+    const plain = sanitizeRestoredState(structuredClone(payload));
+    assert.deepEqual(typed, plain);
+  }
+});
+
+test('typed season-window helpers match current JS date logic', () => {
+  assert.equal(typedHelpers.getCurrentSeason(), getCurrentSeason());
+  assert.deepEqual(typedHelpers.getLastCompletedSemester(), getLastCompletedSemester());
+  assert.deepEqual(
+    typedHelpers.getLastCompletedSemester(['Spring', 'Fall']),
+    getLastCompletedSemester(['Spring', 'Fall']),
+  );
+});
+
+test('typed countSemesters matches current JS semester counting', () => {
+  const cases = [
+    ['Fall', 2022, 'Spring', 2024, undefined],
+    ['Spring', '2023', 'Fall', '2023', undefined],
+    ['Summer', 2024, 'Summer', 2024, undefined],
+    ['Spring', 2022, 'Fall', 2021, undefined],
+    ['Fall', 2023, 'Spring', 2025, ['Spring', 'Fall']],
+  ];
+  for (const [ss, sy, es, ey, seasons] of cases) {
+    assert.equal(
+      typedHelpers.countSemesters(ss, sy, es, ey, seasons),
+      countSemesters(ss, sy, es, ey, seasons),
+    );
+  }
+});
+
+test('typed generateSemesterNames matches current JS naming', () => {
+  const cases = [
+    ['Fall', 2022, 5, undefined],
+    ['Spring', '2023', 4, ['Spring', 'Fall']],
+    ['Bogus', 2024, 3, undefined],
+    ['Summer', 2024, 0, undefined],
+  ];
+  for (const [ss, sy, count, seasons] of cases) {
+    assert.deepEqual(
+      typedHelpers.generateSemesterNames(ss, sy, count, seasons),
+      generateSemesterNames(ss, sy, count, seasons),
+    );
   }
 });
 
