@@ -85,7 +85,33 @@ function _myReviews() {
   } catch { return []; }
 }
 
+// "Last synced" timestamp — firebase.js stamps localStorage on every successful
+// cloud write/read (see LAST_SYNC_KEY). Read locally, no network. Returns a unix
+// ms timestamp or null when the device has never synced.
+const PF_LAST_SYNC_KEY = 'shohoj_last_sync';
+function _lastSync() {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(PF_LAST_SYNC_KEY);
+    if (!raw) return null;
+    const ts = parseInt(raw, 10);
+    return Number.isFinite(ts) ? ts : null;
+  } catch { return null; }
+}
+
 // ── Pure view builders (exported for unit tests) ──────────────────────────────
+
+// Relative "last synced" label. Pure — takes the timestamp and a clock so the
+// unit test is deterministic. Null/invalid → an em-dash placeholder.
+export function pfFormatLastSync(ts, now = Date.now()) {
+  if (!Number.isFinite(ts) || ts <= 0) return 'Not synced yet';
+  const diff = Math.floor((now - ts) / 1000);
+  if (diff < 0)      return 'Synced just now';
+  if (diff < 60)     return 'Synced just now';
+  if (diff < 3600)   return `Synced ${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400)  return `Synced ${Math.floor(diff / 3600)}h ago`;
+  return `Synced ${Math.floor(diff / 86400)}d ago`;
+}
 
 export function profileLoadingHtml() {
   return `
@@ -191,7 +217,26 @@ export function reviewsSectionHtml(reviews) {
     </section>`;
 }
 
-export function profileSignedInHtml(profile, seatAlerts, routine, reviews) {
+// Danger-zone card: lets the student delete their cloud copy. Pure and static —
+// no interpolation, no inputs, no CONNECT surface. The destructive action is
+// gated behind a confirm step in the profile:deleteCloud handler below; this
+// builder only paints the button + warning copy. The student's local data on
+// this device is deliberately left untouched (mirrors deleteCloudDataSilent).
+export function dangerZoneSectionHtml() {
+  return `
+    <section class="pf-card pf-danger">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">⚠️ Danger zone</h3>
+      </div>
+      <div class="pf-danger-body">
+        Delete the copy of your Shohoj data stored in the cloud. Your saved data on
+        <strong>this device</strong> stays untouched. This can't be undone.
+      </div>
+      <button class="pf-danger-btn" data-action="profile:deleteCloud">Delete cloud data</button>
+    </section>`;
+}
+
+export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync) {
   const p = profile || {};
   const name = p.displayName ? String(p.displayName) : 'BRACU student';
   const email = p.email ? String(p.email) : '';
@@ -207,6 +252,7 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews) {
         <div class="pf-identity">
           <div class="pf-name">${escHtml(name)}</div>
           ${email ? `<div class="pf-email">${escHtml(email)}</div>` : ''}
+          <div class="pf-synced" title="When your cloud data last synced to this device">${escHtml(pfFormatLastSync(lastSync))}</div>
         </div>
         <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
       </div>
@@ -214,6 +260,7 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews) {
         ${seatAlertsSectionHtml(seatAlerts)}
         ${routineSummarySectionHtml(routine)}
         ${reviewsSectionHtml(reviews)}
+        ${dangerZoneSectionHtml()}
       </div>
     </div>`;
 }
@@ -238,7 +285,7 @@ export function renderProfileTab() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = profile.signedIn
-    ? profileSignedInHtml(profile, _seatAlerts(), _routineSummary(), _myReviews())
+    ? profileSignedInHtml(profile, _seatAlerts(), _routineSummary(), _myReviews(), _lastSync())
     : profileSignedOutHtml();
 }
 
@@ -257,6 +304,44 @@ registerAction('profile:toggleAlerts', () => {
       && typeof window._shohoj_setSeatAlertsEnabled === 'function'
       && typeof window._shohoj_seatAlertsEnabled === 'function') {
     window._shohoj_setSeatAlertsEnabled(!window._shohoj_seatAlertsEnabled());
+  }
+  renderProfileTab();
+});
+
+// Delete the student's cloud copy, gated behind an explicit confirm. The destructive
+// call only fires once the student confirms; dismissing does nothing. We surface a
+// generic toast either way — never the underlying Firestore/SDK error — and repaint
+// so the "last synced" line reflects the cleared state.
+registerAction('profile:deleteCloud', async () => {
+  if (typeof window === 'undefined') return;
+
+  const confirmFn = (typeof window._shohoj_confirmModal === 'function')
+    ? window._shohoj_confirmModal
+    : ({ body }) => Promise.resolve((typeof window.confirm === 'function') ? window.confirm(body) : false);
+
+  const confirmed = await confirmFn({
+    icon:          '🗑️',
+    title:         'Delete cloud data?',
+    body:          "This permanently deletes your Shohoj data from the cloud. Your data on this device stays untouched. This can't be undone.",
+    confirmLabel:  'Delete cloud data',
+    confirmDanger: true,
+  });
+  if (!confirmed) return; // nothing fires without confirmation
+
+  let ok = false;
+  try {
+    if (typeof window._shohoj_deleteCloudData === 'function') {
+      ok = await window._shohoj_deleteCloudData();
+    }
+  } catch {
+    ok = false; // swallow backend detail; the toast below stays generic
+  }
+
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast(
+      ok ? 'Cloud data deleted.' : '⚠ Couldn’t delete cloud data — please try again.',
+      !ok,
+    );
   }
   renderProfileTab();
 });
