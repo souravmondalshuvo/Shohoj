@@ -27,6 +27,14 @@ making future UI work easier.
      helpers free of DOM and Firebase imports.
    - Keep all shared types in `src/core/types.ts` or nearby domain-specific
      files.
+   - Done so far: the browser-free helpers from `js/core/helpers.js`
+     (`escHtml`/`escAttr`, `ordinalSup`, `sanitizeSemName`, `stripTags`,
+     `sanitizeRestoredState`, and the season-window helpers `getCurrentSeason` /
+     `getLastCompletedSemester` / `countSemesters` / `generateSemesterNames`)
+     are ported to `src/core/helpers.ts`. The DOM-bound helpers
+     (`confirmDestructive`, `getStartSeason`, `getStartYear`) stay in the
+     vanilla JS module so the typed core has no DOM/Firebase imports. Parity
+     guarded by `tests/typedCoreParity.test.js`.
 
 3. Introduce Vite without changing the product UI. **(in progress)**
    - Add Vite as a build path beside the current `build3.py` deploy path.
