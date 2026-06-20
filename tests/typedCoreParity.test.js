@@ -22,7 +22,15 @@ import {
   isRepeatEligible,
   normalizeGradePoint,
 } from '../js/core/calculator.js';
-import { ALL_COURSES, COURSE_DB, PREREQS } from '../js/core/catalog.js';
+import {
+  ALL_COURSES,
+  COURSE_DB,
+  DEPT_META,
+  PREFIX_DEPT_MAP,
+  PREREQS,
+  getCourseDept,
+  getCoursePrefix,
+} from '../js/core/catalog.js';
 import {
   SEASON_ORDER,
   countSemesters,
@@ -64,6 +72,7 @@ const coreFiles = [
   'reviews.ts',
   'papers.ts',
   'helpers.ts',
+  'catalog.ts',
 ];
 
 function rewriteLocalImports(output) {
@@ -124,6 +133,7 @@ const typedTranscript = await import(pathToFileURL(path.join(tempDir, 'transcrip
 const typedReviews = await import(pathToFileURL(path.join(tempDir, 'reviews.mjs')));
 const typedPapers = await import(pathToFileURL(path.join(tempDir, 'papers.mjs')));
 const typedHelpers = await import(pathToFileURL(path.join(tempDir, 'helpers.mjs')));
+const typedCatalog = await import(pathToFileURL(path.join(tempDir, 'catalog.mjs')));
 
 console.log('\nTyped core parity:');
 
@@ -474,6 +484,29 @@ test('typed generateSemesterNames matches current JS naming', () => {
       typedHelpers.generateSemesterNames(ss, sy, count, seasons),
       generateSemesterNames(ss, sy, count, seasons),
     );
+  }
+});
+
+test('typed catalog lookup tables match current JS data', () => {
+  assert.deepEqual(typedCatalog.PREFIX_DEPT_MAP, PREFIX_DEPT_MAP);
+  assert.deepEqual(typedCatalog.DEPT_META, DEPT_META);
+});
+
+test('typed getCoursePrefix matches current JS prefix extraction', () => {
+  const codes = ['CSE110', 'MAT092', 'CST333', 'ENG101', 'A1B2', '110', '', 'cse110', 'X', null, undefined, 12345];
+  for (const code of codes) {
+    assert.equal(typedCatalog.getCoursePrefix(code), getCoursePrefix(code));
+  }
+});
+
+test('typed getCourseDept matches current JS department resolution', () => {
+  const codes = [
+    'CSE110', 'EEE101', 'MAT110', 'PHY111', 'ACT201', 'ENG101', 'HST200',
+    'SOC101', 'ANT101', 'ARC101', 'PHB101', 'LAW101', 'BNG103', 'POL101',
+    'CST101', 'CST333', 'cst333', 'XYZ999', 'ZZ100', '', '123', null,
+  ];
+  for (const code of codes) {
+    assert.equal(typedCatalog.getCourseDept(code), getCourseDept(code));
   }
 });
 
