@@ -80,8 +80,8 @@
 {"initials":"FMK","name":"Md. Saif Mokarrom","email":"ext.md.saif.mokarrom@bracu.ac.bd","dept":"CSE","courses":["CSE420","CSE422L"]}
 {"initials":"ANWE","name":"Abdullah Nayem Wasi Emran","email":"abdullah.nayem@bracu.ac.bd","dept":"CSE","courses":["CSE230","CSE421"]}
 {"initials":"ASAK","name":"Arnob Saha Ankon","email":"arnob.ankon@bracu.ac.bd","dept":"CSE","courses":["CSE260","CSE423"]}
-{"initials":"KMP","name":"Kazi Milenur Rahman Prattay","email":"milenur.prattay@bracu.ac.bd","dept":"PHB","courses":["PHB201"]}
-{"initials":"MKS","name":"Mohammad Kawsar Sharif Siam","email":"sharif.siam@bracu.ac.bd","dept":"PHB","courses":["PHB105"]}
+{"initials":"KMP","name":"Kazi Milenur Rahman Prattay","email":"milenur.prattay@bracu.ac.bd","dept":"PHR","courses":["PHB201"]}
+{"initials":"MKS","name":"Mohammad Kawsar Sharif Siam","email":"sharif.siam@bracu.ac.bd","dept":"PHR","courses":["PHB105"]}
 {"initials":"TSE","name":"Tasneem Mazhar","email":"tasneem.mazhar@bracu.ac.bd","dept":"CSE","courses":["CSE251","CSE350"]}
 {"initials":"MMR","name":"Dr. Mir Mozibor Rahman","email":"mir.mozib@bracu.ac.bd","dept":"MPS","courses":["MAT101","MAT091","MAT092","MAT110","MAT120"]}
 {"initials":"FAB","name":"Fardousi Ara Begum","email":"flucky08@bracu.ac.bd","dept":"MPS","courses":["MAT101","MAT110"]}
@@ -97,20 +97,20 @@
 {"initials":"EMNH","name":"Emon Hossain","email":"emon.hossain@bracu.ac.bd","dept":"MPS","courses":["MAT211","MAT215","MAT216"]}
 {"initials":"KHZ","name":"Kazi Hafizur Rahman","email":"hafizur.rahman@bracu.ac.bd","dept":"MPS","courses":["MAT216"]}
 {"initials":"SHY","name":"Shathy Khan","email":"","dept":"MPS","courses":["MAT216"]}
-{"initials": "FAM", "name": "Fariah Amin", "email": "fariah.amin@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "SOM", "name": "Samira Osmany", "email": "samira.osmany@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "TFC", "name": "Tarannum Fatema Chowdhury", "email": "tarannum.fatema@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "JUL", "name": "Md. Julhas Uddin", "email": "julhas@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "NZA", "name": "Nazneen Zafar", "email": "nzafar@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "KAR", "name": "Abdul Karim", "email": "abdul.karim@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "BNR", "name": "Bineeta Rahman", "email": "bineeta.rahman@bracu.ac.bd", "dept": "BIL", "courses": ["ENG101"]}
-{"initials": "FZS", "name": "Dr. Syeda Farzana Sultana", "email": "farzana.sultana@bracu.ac.bd", "dept": "ENH", "courses": ["ENG101", "ENG102", "ENG334", "ENG434"]}
-{"initials": "RIC", "name": "Md. Raisul Islam Chowdhury", "email": "rislam@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
-{"initials": "LIR", "name": "Liza Reshmin", "email": "lreshmin@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
-{"initials": "PUP", "name": "Priti Paul", "email": "priti.paul@bracu.ac.bd", "dept": "BIL", "courses": ["ENG102"]}
-{"initials": "AHMR", "name": "Ahnaf Md. Shafee Rahman", "email": "", "dept": "BIL", "courses": ["ENG114"]}
-{"initials": "ACW", "name": "Professor Afsan Chowdhury", "email": "", "dept": "ENH", "courses": ["HST103"]}
+{"initials": "FAM", "name": "Fariah Amin", "email": "fariah.amin@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "SOM", "name": "Samira Osmany", "email": "samira.osmany@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "TFC", "name": "Tarannum Fatema Chowdhury", "email": "tarannum.fatema@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "JUL", "name": "Md. Julhas Uddin", "email": "julhas@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "NZA", "name": "Nazneen Zafar", "email": "nzafar@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "KAR", "name": "Abdul Karim", "email": "abdul.karim@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "BNR", "name": "Bineeta Rahman", "email": "bineeta.rahman@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101"]}
+{"initials": "FZS", "name": "Dr. Syeda Farzana Sultana", "email": "farzana.sultana@bracu.ac.bd", "dept": "ENG", "courses": ["ENG101", "ENG102", "ENG334", "ENG434"]}
+{"initials": "RIC", "name": "Md. Raisul Islam Chowdhury", "email": "rislam@bracu.ac.bd", "dept": "ENG", "courses": ["ENG102"]}
+{"initials": "LIR", "name": "Liza Reshmin", "email": "lreshmin@bracu.ac.bd", "dept": "ENG", "courses": ["ENG102"]}
+{"initials": "PUP", "name": "Priti Paul", "email": "priti.paul@bracu.ac.bd", "dept": "ENG", "courses": ["ENG102"]}
+{"initials": "AHMR", "name": "Ahnaf Md. Shafee Rahman", "email": "", "dept": "ENG", "courses": ["ENG114"]}
+{"initials": "ACW", "name": "Professor Afsan Chowdhury", "email": "", "dept": "ENG", "courses": ["HST103"]}
 {"initials": "HKU", "name": "Himel Kundu Utsha", "email": "himel.kundu@bracu.ac.bd", "dept": "EEE", "courses": ["EEE103"]}
 {"initials": "SKBR", "name": "Md Saif Kabir", "email": "saif.kabir@bracu.ac.bd", "dept": "EEE", "courses": ["EEE203", "ECE203"]}
 {"initials": "TKT", "name": "Tasmin Kamal Tulka", "email": "tasmin.tulka@bracu.ac.bd", "dept": "MPS", "courses": ["APE103", "PHY112"]}
-{"initials": "SNU", "name": "Sadia Noor Mou", "email": "sadia.noor@bracu.ac.bd", "dept": "BIO", "courses": ["BTE155", "BTE201", "BTE307", "BCH102", "BIO101", "BTE311"]}
+{"initials": "SNU", "name": "Sadia Noor Mou", "email": "sadia.noor@bracu.ac.bd", "dept": "MPS", "courses": ["BTE155", "BTE201", "BTE307", "BCH102", "BIO101", "BTE311"]}
