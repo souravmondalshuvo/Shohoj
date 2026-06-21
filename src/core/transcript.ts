@@ -107,7 +107,7 @@ export function normalizeTranscriptLine(line: string): string {
   normalized = normalized.replace(/^(SEMESTER|PROGRAM)\s*:\s*/i, '$1: ');
   normalized = normalized.replace(/\b(SPRING|SUMMER|FALL)(\d{4})\b/gi, '$1 $2');
   normalized = normalized.replace(/^([A-Z]{2,4}\d{3}[A-Z]?)(?=[A-Z])/, '$1 ');
-  normalized = normalized.replace(/([A-Za-z\)])(?=\d+\.\d+)/g, '$1 ');
+  normalized = normalized.replace(/([A-Za-z)])(?=\d+\.\d+)/g, '$1 ');
   normalized = normalized.replace(/(\d+\.\d+)(?=F\s*\(\s*NT\s*\)|[A-Z][+-]?)/g, '$1 ');
   normalized = normalized.replace(/(F\s*\(\s*NT\s*\)|[A-Z][+-]?)(?=\d+\.\d+)/g, '$1 ');
   normalized = normalized.replace(/F\s*\(\s*NT\s*\)/gi, 'F(NT)');
@@ -368,7 +368,7 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
   const codeMarkerRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
   const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
   const partialRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
-  const contRe = /^([A-Za-z][A-Za-z\s&:,\(\)\-\.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  const contRe = /^([A-Za-z][A-Za-z\s&:,()\-.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
   const creditsGradeGpOnlyRe = /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
 
   const semesters: TranscriptSemester[] = [];
@@ -402,7 +402,7 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
 
     if (skipNextFragment) {
       skipNextFragment = false;
-      if (/^[A-Z][A-Z\s&:,\(\)\-\.]+$/.test(line)) continue;
+      if (/^[A-Z][A-Z\s&:,()\-.]+$/.test(line)) continue;
     }
 
     const codeMarker = line.match(codeMarkerRe);
