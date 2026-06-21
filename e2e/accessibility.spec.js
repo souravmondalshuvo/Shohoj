@@ -11,24 +11,14 @@ import AxeBuilder from '@axe-core/playwright';
 // operability, focus order, screen-reader comprehension, or whether labels are
 // *meaningful*. Those still need a human pass with a real keyboard + SR.
 //
-// Known exceptions (documented per acceptance #2):
-//
-// 1. We scope the scan to the app shell and EXCLUDE the landing `.hero` and the
-//    global `<footer>` (see EXCLUDED_REGIONS). Those are persistent marketing /
-//    chrome, not the "key tabs" this smoke test targets, and they carry two
-//    pre-existing serious findings tracked for a separate design pass:
-//      - color-contrast on `.hero .stat-label` (muted label on dark bg ≈ 3.3:1)
-//      - color-contrast + link-in-text-block on the footer attribution links
-//    Folding a brand-palette change into this test-infra spec would be scope
-//    creep; the exclusion keeps the per-tab gate honest without hiding tab bugs.
-//
-// 2. No axe RULES are globally disabled — DISABLED_RULES stays empty. Prefer
-//    fixing markup (e.g. the select-name aria-labels added with this spec) over
-//    muting a rule. If a rule ever must be disabled, add it here WITH a reason.
+// No axe RULES are globally disabled — DISABLED_RULES stays empty. Prefer fixing
+// markup (e.g. the select-name aria-labels added with this spec) over muting a
+// rule. If a rule ever must be disabled, add it here WITH a reason.
 const DISABLED_RULES = [];
 
-// Persistent non-tab chrome carved out of the scan (see exception #1 above).
-const EXCLUDED_REGIONS = ['.hero', 'footer'];
+// Nothing is carved out of the scan: the whole page — including the landing
+// `.hero` and global `<footer>` chrome — is in scope for every tab.
+const EXCLUDED_REGIONS = [];
 
 // Only these impacts fail the build.
 const BLOCKING_IMPACTS = new Set(['serious', 'critical']);
