@@ -115,6 +115,11 @@ export default tseslint.config(
     },
     rules: {
       ...SOFT_RULES,
+      // Defer to the TS-aware unused-vars rule: the base `no-unused-vars`
+      // double-reports and false-positives on parameter names inside
+      // type-position function signatures (e.g. `fn: (value: T) => U`), which
+      // are not runtime bindings.
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': 'warn',
       // The typed core intentionally uses `any` in a couple of spots for the
       // loosely-shaped restored-state it maps (see src/core/helpers.ts). That's
