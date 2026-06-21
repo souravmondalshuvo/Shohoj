@@ -416,11 +416,13 @@ Every current feature, mapped to its Phase-5 migration group:
 - [x] No circular deps; domain primitives free of React/Firebase/DOM (Result/errors/notifications are pure; only ErrorBoundary imports React)
 
 ### Phase 2 — Versioned user-data & state migration
-- [ ] Inventory all localStorage + Firestore-backed state
-- [ ] `StoredShohojStateV1`/`V2` typed schemas + version field
-- [ ] Pure migration functions; pre-migration backup; validation
-- [ ] Cloud-sync conflict protections preserved
-- [ ] Tests: first sign-in, same-data, newer-local, newer-cloud, pending save, offline, multi-device, corrupt, legacy migration
+- [x] Inventory all localStorage + Firestore-backed state (§6/§7 of this doc)
+- [x] `StoredShohojStateV1`/`V2` typed schemas + version field — `src/core/types/storage.ts`
+- [x] Pure migration functions; pre-migration backup; validation — `src/services/storage/{migrate,backup,keyValueStore}.ts`
+- [x] Cloud-sync conflict protections preserved — `src/services/storage/syncDecision.ts` (faithful pure extraction of `js/auth/firebase.js`, line-cited)
+- [x] Tests: first sign-in, same-data, newer-local, newer-cloud, pending save, offline, multi-device, corrupt, legacy migration — `tests/{storageMigrate,syncDecision}.test.js` (33 tests)
+
+  **Scope note:** The synced "main state" doc (`shohoj_cgpa_v1` → Firestore `users/{uid}.data`) holds only calculator + planner state (`semesters`, `currentDept`, `startSeason/Year`, `planCourses`). Theme (`shohoj_theme`), active tab, seat watchlist (Firestore `seatAlertWatches/{uid}`), and profile/review receipts (`shohoj_my_reviews_v1`) are persisted **separately** by their own modules and are not part of the `shohoj_cgpa_v1` snapshot. Those keys are untouched by this migration and get typed persistence when their features migrate in Phase 5. **Wiring:** the pure migration + decision functions are not yet called by the live `firebase.js`/`state.js` (which keep working unchanged); they are wired in during Phase 5G/6 alongside the typed Firebase boundary. **Behavior preserved exactly:** conflicts still resolve by fingerprint + the user's migration-modal choice, never an automatic newest-wins rule.
 
 ### Phase 3 — Pure domain logic → TS
 - [ ] Remaining `js/core` logic typed (faculty, calculator consumers, dispatch)
