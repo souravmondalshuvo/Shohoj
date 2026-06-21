@@ -243,7 +243,7 @@
 
             <!-- Step 1: Department -->
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <select id="deptSelect" class="start-form-select start-form-select--dept">
+              <select id="deptSelect" class="start-form-select start-form-select--dept" aria-label="Select your department">
                 <option value="" disabled selected>— Select your department —</option>
                 <option value="ANT">B.S.S. in Anthropology (ANT)</option>
                 <option value="ARC">B.Arch. in Architecture (ARC)</option>
@@ -273,13 +273,13 @@
 
             <!-- Step 2: Starting semester (appears after dept chosen) -->
             <div id="startSemRow" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-              <select id="startSeason" class="start-form-select">
+              <select id="startSeason" class="start-form-select" aria-label="Starting semester season">
                 <option value="" disabled selected>— Season —</option>
                 <option value="Spring">Spring</option>
                 <option value="Summer">Summer</option>
                 <option value="Fall">Fall</option>
               </select>
-              <select id="startYear" class="start-form-select">
+              <select id="startYear" class="start-form-select" aria-label="Starting semester year">
                 <option value="" disabled selected>— Year —</option>
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
