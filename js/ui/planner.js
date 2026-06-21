@@ -99,7 +99,7 @@ function renderImpactPreview(totalCredits) {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 12px;border-radius:8px;background:rgba(86,180,233,0.05);border:1px solid rgba(86,180,233,0.15);flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);">
         <span>If all planned courses earn</span>
-        <select data-action="pl:impactGrade" style="
+        <select data-action="pl:impactGrade" aria-label="Assumed grade for all planned courses" style="
           padding:3px 8px;border-radius:6px;border:1px solid var(--border);
           background:var(--glass);color:var(--text);
           font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
