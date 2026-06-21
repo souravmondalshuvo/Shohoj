@@ -51,6 +51,20 @@ auto-runner: `firestore.rules.test.js` (`npm run test:rules`, needs the
 Firestore emulator) and `productionBundleSmoke.test.js` (`npm run test:bundle`,
 needs a built bundle).
 
+### Accessibility smoke checks
+
+`e2e/accessibility.spec.js` runs [axe-core](https://github.com/dequelabs/axe-core)
+over the key tabs (Calculator, Planner, Routine, Seats, Reviews, Profile) in the
+demo / signed-out state and **fails on serious/critical violations only**. It runs
+as part of `npm run test:e2e`.
+
+> **This is a smoke test, not a substitute for manual review.** Automated tooling
+> catches only a fraction of WCAG issues — it can't judge keyboard operability,
+> focus order, screen-reader comprehension, or whether labels are *meaningful*.
+> Changes that touch interactive UI still need a manual keyboard + screen-reader
+> pass. Known exceptions (the landing hero and footer chrome are excluded from the
+> per-tab scan) are documented at the top of the spec.
+
 ## Workflow
 
 Use an issue-first workflow:
