@@ -175,6 +175,9 @@ function cleanOptionalFacultyInitials(value) {
 // controlled string that ends up in an outbound HTTP header value (e.g. the
 // Resend email subject line).
 function sanitizeHeaderValue(s, max = 200) {
+  // Matching control characters is the whole point here (CR/LF header injection
+  // defence), so no-control-regex is intentionally disabled for this line.
+  // eslint-disable-next-line no-control-regex
   return String(s ?? '').replace(/[\x00-\x1F\x7F]/g, ' ').slice(0, max);
 }
 
