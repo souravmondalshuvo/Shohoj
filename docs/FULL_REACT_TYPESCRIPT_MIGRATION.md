@@ -408,12 +408,12 @@ Every current feature, mapped to its Phase-5 migration group:
 - [x] Phase committed separately
 
 ### Phase 1 — Final architecture
-- [ ] Target `src/` structure (app/components/core/features/services/state/hooks/config/styles/test)
-- [ ] Strict TS config retained/extended; path aliases where they help
-- [ ] `vite.config.js` → `vite.config.ts` (when practical)
-- [ ] Playwright config → TS (when practical)
-- [ ] Typed Result/error classes; React error boundaries; typed toast system
-- [ ] No circular deps; domain logic free of React/Firebase/DOM
+- [~] Target `src/` structure — `core/`, `state/`, `app/` established; `components/features/services/hooks/config/styles/test` materialise as later phases fill them (empty dirs intentionally not committed)
+- [x] Strict TS config retained (`strict: true` already on). **Variation:** path aliases deferred to Phase 4/5 so the bare-Node `.ts` test runner keeps working without a resolver; added when feature code benefits
+- [ ] `vite.config.js` → `vite.config.ts` — **deferred to Phase 10** (natural place during the final Vite build restructure; converting now adds risk with no parity benefit)
+- [ ] Playwright config → TS — **deferred to Phase 11** (alongside the CI E2E rework)
+- [x] Typed Result/error classes; React error boundary; typed toast/notification model — `src/core/result.ts`, `src/core/errors.ts`, `src/app/ErrorBoundary.tsx`, `src/state/notifications.ts` (React provider + auto-dismiss timers land in Phase 4)
+- [x] No circular deps; domain primitives free of React/Firebase/DOM (Result/errors/notifications are pure; only ErrorBoundary imports React)
 
 ### Phase 2 — Versioned user-data & state migration
 - [ ] Inventory all localStorage + Firestore-backed state
