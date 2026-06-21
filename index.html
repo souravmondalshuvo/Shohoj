@@ -312,7 +312,7 @@
     .hero-stats { display: flex; gap: 3rem; justify-content: center; margin-top: 4rem; animation: fadeUp 0.6s 0.4s ease both; }
     .stat { text-align: center; }
     .stat-num { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800; color: var(--green); }
-    .stat-label { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .stat-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
     section { max-width: 900px; margin: 0 auto; padding: 5rem 2rem; position: relative; z-index: 1; width: 100%; }
@@ -510,9 +510,9 @@
     footer { border-top: 1px solid var(--border); text-align: center; padding: 2.5rem; position: relative; z-index: 1; background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
     .footer-logo { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; color: var(--text); margin-bottom: 0.4rem; }
     .footer-logo span { color: var(--green); }
-    footer p { font-size: 13px; color: var(--text3); }
-    footer a { color: var(--green); text-decoration: none; }
-    footer a.feedback-pill { display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border:1px solid var(--text3);border-radius:20px;color:var(--text3);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:0.02em;transition:background 0.2s,border-color 0.2s,color 0.2s; }
+    footer p { font-size: 13px; color: var(--text2); }
+    footer a { color: var(--green); text-decoration: underline; text-underline-offset: 2px; }
+    footer a.feedback-pill { display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border:1px solid var(--text2);border-radius:20px;color:var(--text2);text-decoration:none;font-size:12px;font-weight:600;letter-spacing:0.02em;transition:background 0.2s,border-color 0.2s,color 0.2s; }
     footer a.feedback-pill:hover { background:var(--accent);border-color:var(--accent);color:var(--bg); }
 
     #scroll-progress { position: fixed; top: 0; left: 0; z-index: 200; height: 2px; width: 0%; background: linear-gradient(90deg, var(--green-dim), var(--green), #a8ffcb); box-shadow: 0 0 10px rgba(46,204,113,0.7); pointer-events: none; transition: width 0.08s linear; }
