@@ -13,9 +13,19 @@ npm ci
 2. Run the core validation checks:
 
 ```bash
+npm run lint
 npm run typecheck
 npm test
 ```
+
+`npm run lint` runs ESLint over the source (`js/`, `src/`, `tests/`, `e2e/`,
+`scripts/`, `worker/`). The config (`eslint.config.js`) is tuned for
+*correctness*, not style — there is no auto-formatter, so the linter never
+reformats your code. It **fails on errors** (undeclared globals, unreachable
+code, duplicate keys, …) and **prints warnings** (unused variables, empty
+blocks) without blocking. Generated and vendored paths — `js/qr-data.js`,
+`js/vendor/**`, the built `shohoj.html`/`admin.html`, and `dist/**` — are
+excluded.
 
 3. For browser and deploy-path changes, also run:
 
