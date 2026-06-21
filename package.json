@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:vite": "npm run build:vite && playwright test --config=playwright.vite.config.js",
     "test:bundle": "node tests/productionBundleSmoke.test.js",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "set:admin": "node scripts/set_admin_claim.js",
     "config:local": "node scripts/generate_runtime_config.js"
@@ -25,16 +26,20 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@firebase/rules-unit-testing": "^5.0.0",
     "@playwright/test": "^1.60.0",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",
+    "eslint": "^9.39.4",
     "firebase": "^12.0.0",
     "firebase-admin": "^13.0.0",
     "firebase-tools": "^15.22.0",
+    "globals": "^17.6.0",
     "qrcode-generator": "^2.0.4",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1",
     "vite": "^8.0.16"
   },
   "dependencies": {
