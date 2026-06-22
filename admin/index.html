@@ -5661,15 +5661,27 @@ body[data-page="admin"] .orb { display: none !important; }
   background: #5b9dff;
 }
 .routine-grid-day-header--today {
-  color: #5b9dff;
+  color: #d6e6ff;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 3px;
+  padding: 0 4px;
+  border: 1px solid rgba(91,157,255,0.55);
+  border-bottom: 2px solid #5b9dff;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, rgba(91,157,255,0.30), rgba(91,157,255,0.13));
+  box-shadow: inset 0 1px rgba(214,230,255,0.18), 0 0 14px rgba(91,157,255,0.12);
 }
-/* Tint behind the current day's column. Sits under the blocks and row
-   separators (it's first in the grid's DOM), so today reads as the focal
-   point without dimming the other days. Blue ties it to the today header
-   and the now-line. */
+/* The current day's column stays visible around classes and in empty time
+   slots. It sits under blocks and separators, preserving their legibility. */
 .routine-grid-today-col {
-  background: rgba(91,157,255,0.08);
-  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(91,157,255,0.20), rgba(91,157,255,0.09) 26%, rgba(91,157,255,0.05));
+  border-left: 2px solid rgba(91,157,255,0.70);
+  border-right: 1px solid rgba(91,157,255,0.32);
+  border-radius: 7px;
+  box-shadow: inset 0 1px rgba(91,157,255,0.30), 0 0 18px rgba(91,157,255,0.07);
   pointer-events: none;
 }
 .routine-grid-block {
