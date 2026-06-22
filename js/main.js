@@ -96,6 +96,10 @@ window._shohoj_setSemesters = function(semesters) {
   saveState();
 };
 window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
+// The catalog list (code/name/full/credits) for the island's autocomplete. The
+// data stays in JS; the island reads it through this bridge and matches with the
+// typed searchCourses helper.
+window._shohoj_courseCatalog = ALL_COURSES;
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
