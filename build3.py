@@ -71,8 +71,9 @@ MAIN_JS_FILES = [
     'js/core/routineSuggestions.js',
     'js/core/routinePlannerImport.js',
     'js/core/routineExport.js',
-    # Vendored QR generator (defines a top-level `qrcode`; used by routineTab)
-    'js/vendor/qrcode.js',
+    # QR generator from the installed qrcode-generator package (defines a
+    # top-level `qrcode` once `export default` is stripped; used by routineTab)
+    'node_modules/qrcode-generator/dist/qrcode.mjs',
     # Shared live-feed poller (used by routineTab/freeRoomsTab/seatsTab)
     'js/ui/feedLive.js',
     'js/ui/routineTab.js',
