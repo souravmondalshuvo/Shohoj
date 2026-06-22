@@ -340,10 +340,9 @@
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
         </button>
-        <button class="calc-tab" data-tab="profile">
-          <span class="calc-tab-icon">👤</span>
-          <span>Profile</span>
-        </button>
+        <!-- Profile is intentionally not in the tab strip: it's reached from the
+             top-right account pill (see updateAuthUI in js/auth/firebase.js). The
+             #tabProfile panel and the #calculator/profile hash route still work. -->
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
