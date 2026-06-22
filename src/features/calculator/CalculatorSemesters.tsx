@@ -15,12 +15,14 @@
 
 import { useMemo, useState } from 'react';
 
-import { gpaCoreGetRetakenKeys as getRetakenKeys } from '../../core/gpa';
+import { gpaCoreGetRetakenKeys as getRetakenKeys, gpaCoreNormalizeGradePoint as normalizeGradePoint } from '../../core/gpa';
+import { detectGrade } from '../../core/grades';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import SemesterBlock from './SemesterBlock';
 import SummaryBlock from './SummaryBlock';
 import SummaryForm from './SummaryForm';
 import type { SummaryValues } from './SummaryForm';
+import type { CourseSuggestion } from './courseSearch';
 import { addCourse, removeCourse, removeSemester, updateCourse } from './mutations';
 import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
 import { useCalculatorInputs } from './calculatorBridge';
@@ -29,6 +31,7 @@ declare global {
   interface Window {
     _shohoj_setSemesters?: (semesters: SemesterEntry[]) => void;
     _shohoj_isKnownCourse?: (code: string) => boolean;
+    _shohoj_courseCatalog?: CourseSuggestion[];
     _shohoj_loadDemoMode?: () => void;
     addSemester?: () => void;
     openRateForCourse?: (semId: number, idx: number) => void;
@@ -44,6 +47,7 @@ export default function CalculatorSemesters() {
 
   const commit = (next: SemesterEntry[]) => window._shohoj_setSemesters?.(next);
   const isKnownCode = (code: string) => window._shohoj_isKnownCourse?.(code) ?? false;
+  const [catalog] = useState<CourseSuggestion[]>(() => window._shohoj_courseCatalog ?? []);
 
   const retakenKeys = useMemo(() => getRetakenKeys(semesters), [semesters]);
   const now = useMemo(() => new Date(), []);
@@ -138,12 +142,31 @@ export default function CalculatorSemesters() {
             isFuture={isFutureSemester(sem.name, now)}
             retakenKeys={retakenKeys}
             isKnownCode={isKnownCode}
+            catalog={catalog}
             onAddCourse={() => commit(addCourse(semesters, sem.id))}
             onRemoveSemester={() => commit(removeSemester(semesters, sem.id))}
-            onCourseNameChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { name: value }))}
-            onCourseGradePointChange={(idx, value) =>
-              commit(updateCourse(semesters, sem.id, idx, { gradePoint: value }))
+            onCourseNamePick={(idx, course) =>
+              commit(updateCourse(semesters, sem.id, idx, { name: course.full, credits: course.credits, grade: '', gradePoint: '' }))
             }
+            onCourseNameResolve={(idx, course, text) => {
+              const name = course ? course.full : text;
+              const credits = course ? course.credits : 0;
+              const identityChanged = (sem.courses[idx]?.name ?? '') !== name;
+              commit(
+                updateCourse(semesters, sem.id, idx, {
+                  name,
+                  credits,
+                  ...(identityChanged ? { grade: '', gradePoint: '' } : {}),
+                }),
+              );
+            }}
+            onCourseGradePointChange={(idx, value) =>
+              commit(updateCourse(semesters, sem.id, idx, { gradePoint: value, grade: detectGrade(value) }))
+            }
+            onCourseGradePointBlur={(idx, e) => {
+              const norm = normalizeGradePoint(e.target.value, 'blur');
+              commit(updateCourse(semesters, sem.id, idx, { gradePoint: norm, grade: detectGrade(norm) }));
+            }}
             onCoursePassFailChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { grade: value }))}
             onRateCourse={(idx) => window.openRateForCourse?.(sem.id, idx)}
             onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
