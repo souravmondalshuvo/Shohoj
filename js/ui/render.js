@@ -414,6 +414,10 @@ function _isFutureSem(semName) {
 }
 
 export function renderSemesters() {
+  // Phase 5B: when the React calculator island owns #semestersContainer it
+  // renders the list and the legacy DOM build must stand down so the two don't
+  // fight. Inert until the island opts in by setting this flag.
+  if (typeof window !== 'undefined' && window.__SHOHOJ_REACT_SEMESTERS__) return;
   const container = document.getElementById('semestersContainer');
   const hasSummary = state.semesters.some(s => s.summary);
   const hasNonSummary = state.semesters.some(s => !s.summary);
