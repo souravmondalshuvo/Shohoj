@@ -437,8 +437,11 @@ let _activeCalcTab = 'calculator';
 
 function _moveTabSlider(tabId) {
   const slider = document.getElementById('calcTabSlider');
-  const btn    = document.querySelector(`.calc-tab[data-tab="${tabId}"]`);
-  if (!slider || !btn) return;
+  if (!slider) return;
+  const btn = document.querySelector(`.calc-tab[data-tab="${tabId}"]`);
+  // Some tabs (Profile) have no strip button — they're reached from the account
+  // pill. Collapse the slider so it doesn't linger under the previous tab.
+  if (!btn) { slider.style.width = '0px'; return; }
   slider.style.left  = btn.offsetLeft + 'px';
   slider.style.width = btn.offsetWidth + 'px';
 }
