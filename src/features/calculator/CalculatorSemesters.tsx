@@ -23,7 +23,7 @@ import SummaryBlock from './SummaryBlock';
 import SummaryForm from './SummaryForm';
 import type { SummaryValues } from './SummaryForm';
 import type { CourseSuggestion } from './courseSearch';
-import { addCourse, removeCourse, removeSemester, updateCourse } from './mutations';
+import { addCourse, removeCourse, removeSemester, reorderSemesters, updateCourse } from './mutations';
 import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
 import { useCalculatorInputs } from './calculatorBridge';
 
@@ -44,6 +44,8 @@ export default function CalculatorSemesters() {
   const { semesters } = useCalculatorInputs();
   const [summaryFormVisible, setSummaryFormVisible] = useState(false);
   const [summaryEditId, setSummaryEditId] = useState<number | null>(null);
+  const [dragSrcId, setDragSrcId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
 
   const commit = (next: SemesterEntry[]) => window._shohoj_setSemesters?.(next);
   const isKnownCode = (code: string) => window._shohoj_isKnownCourse?.(code) ?? false;
@@ -170,6 +172,22 @@ export default function CalculatorSemesters() {
             onCoursePassFailChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { grade: value }))}
             onRateCourse={(idx) => window.openRateForCourse?.(sem.id, idx)}
             onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
+            isDragOver={dragOverId === sem.id && dragSrcId !== null && dragSrcId !== sem.id}
+            onDragStartBlock={() => setDragSrcId(sem.id)}
+            onDragOverBlock={() => {
+              if (sem.id !== dragSrcId) setDragOverId(sem.id);
+            }}
+            onDropBlock={() => {
+              if (dragSrcId !== null && dragSrcId !== sem.id) {
+                commit(reorderSemesters(semesters, dragSrcId, sem.id));
+              }
+              setDragSrcId(null);
+              setDragOverId(null);
+            }}
+            onDragEndBlock={() => {
+              setDragSrcId(null);
+              setDragOverId(null);
+            }}
           />
         ),
       )}
