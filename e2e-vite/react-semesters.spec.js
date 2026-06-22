@@ -59,3 +59,31 @@ test('a React mutation flows through the write path and re-renders', async ({ pa
   // _shohoj_setSemesters → recalc → bridge → React re-render works end to end.
   await expect.poll(() => fallBlock.locator('input[id^="course-input-"]').count()).toBe(before + 1);
 });
+
+test('autocomplete fills name + credits, and the grade point auto-detects a letter', async ({ page }) => {
+  await boot(page);
+  await page.locator('#heroDemoBtn').click();
+
+  const container = page.locator('#semestersContainer');
+  const fallBlock = container.locator('.semester-block', { hasText: 'Fall 2024' }).first();
+  await expect(fallBlock).toBeVisible();
+
+  // Add a blank course and type a code into it.
+  await fallBlock.getByRole('button', { name: '+ Add course' }).click();
+  const lastRow = fallBlock.locator('.course-row:not(.course-header)').last();
+  const nameInput = lastRow.locator('input[id^="course-input-"]');
+  await nameInput.fill('CSE220');
+
+  // Suggestions appear; pick the CSE220 one (mousedown-driven).
+  const suggestion = fallBlock.locator('.suggestion-item', { hasText: 'CSE220' }).first();
+  await expect(suggestion).toBeVisible();
+  await suggestion.click();
+
+  // Name filled to the catalog full name and credits resolved to 3.
+  await expect(nameInput).toHaveValue(/CSE220/);
+  await expect(lastRow.locator('.credits-static')).toHaveText('3');
+
+  // Typing a grade point auto-detects the letter (3.7 → A-).
+  await lastRow.locator('input[inputmode="decimal"]').fill('3.7');
+  await expect(lastRow.locator('.grade-letter')).toHaveText('A-');
+});
