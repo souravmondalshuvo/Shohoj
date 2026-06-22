@@ -431,7 +431,9 @@ Every current feature, mapped to its Phase-5 migration group:
 - [x] Parity tests for migrated module — `tests/typedCoreParity.test.js` covers `faculty.ts`; legacy `js/core/faculty.js` retained as the live module until its consumers migrate (Phase 5)
 
 ### Phase 4 — React application shell
-- [ ] Main + admin React entries, providers, typed central state, theme/auth/firebase/toast/modal providers, error boundaries, tab shell, mobile nav, demo mode, signed-in/out states
+- [~] Providers being built incrementally on the typed models from Phases 1–2:
+  - [x] Toast provider — `src/state/NotificationProvider.tsx` (context + `useNotifications` hook, id generation, wall clock, per-kind auto-dismiss timers cancelled on dismiss/clear/unmount; pure reducer unchanged). Component-level tests land with the RTL/jsdom toolchain in Phase 8.
+- [ ] Remaining: main + admin React entries, typed central state, theme/auth/firebase/modal providers, error-boundary wiring, tab shell, mobile nav, demo mode, signed-in/out states
 
 ### Phase 5 — Feature migration (A→H, risk order)
 - [ ] 5A shell/common · [ ] 5B calculator · [ ] 5C transcript · [ ] 5D planning · [ ] 5E schedule · [ ] 5F community · [ ] 5G auth/sync · [ ] 5H admin
