@@ -58,6 +58,16 @@ import {
   paperTimestampMs,
   validatePaperUpload,
 } from '../js/core/papers.js';
+import {
+  clearFacultyCache,
+  getFacultyProfile,
+  hasFacultyProfile,
+  isValidInitials,
+  listKnownFaculty,
+  normalizeInitials as normalizeInitialsFaculty,
+  suggestFaculty,
+  upsertFacultyProfile,
+} from '../js/core/faculty.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
@@ -73,6 +83,7 @@ const coreFiles = [
   'papers.ts',
   'helpers.ts',
   'catalog.ts',
+  'faculty.ts',
 ];
 
 function rewriteLocalImports(output) {
@@ -134,6 +145,7 @@ const typedReviews = await import(pathToFileURL(path.join(tempDir, 'reviews.mjs'
 const typedPapers = await import(pathToFileURL(path.join(tempDir, 'papers.mjs')));
 const typedHelpers = await import(pathToFileURL(path.join(tempDir, 'helpers.mjs')));
 const typedCatalog = await import(pathToFileURL(path.join(tempDir, 'catalog.mjs')));
+const typedFaculty = await import(pathToFileURL(path.join(tempDir, 'faculty.mjs')));
 
 console.log('\nTyped core parity:');
 
@@ -507,6 +519,64 @@ test('typed getCourseDept matches current JS department resolution', () => {
   ];
   for (const code of codes) {
     assert.equal(typedCatalog.getCourseDept(code), getCourseDept(code));
+  }
+});
+
+const FACULTY_INITIALS_INPUTS = [
+  'abc', '  Md ', 'A', 'AB', 'ABCDEFG', 'A1B2C3D4', 'cse-faculty',
+  '', '   ', null, undefined, 42, 'AbCdEf', 'a.b.c',
+];
+
+test('typed faculty normalizeInitials matches current JS', () => {
+  for (const raw of FACULTY_INITIALS_INPUTS) {
+    assert.equal(typedFaculty.normalizeInitials(raw), normalizeInitialsFaculty(raw));
+  }
+});
+
+test('typed faculty isValidInitials matches current JS', () => {
+  for (const raw of FACULTY_INITIALS_INPUTS) {
+    assert.equal(typedFaculty.isValidInitials(raw), isValidInitials(raw));
+  }
+});
+
+const FACULTY_UPSERTS = [
+  null,
+  'not-an-object',
+  { name: 'No Initials' },
+  { initials: '!!', name: 'Bad Initials' },
+  {
+    initials: 'abc', name: 'Dr. ABC', dept: 'CSE', courses: ['CSE110'],
+    ratings: { teaching: 5, marking: 4, behavior: 5, difficulty: 2, workload: 3 }, reviewCount: 7,
+  },
+  { initials: 'ABC', email: 'abc@bracu.ac.bd', reviewCount: 9 }, // merge onto existing ABC
+  { initials: 'xyz', name: 'Prof. XYZ Wong', dept: 'EEE' },
+  { initials: 'mnp', name: 'Aileen ABCDEF' },
+];
+
+function driveFacultyCache(upsert, clear) {
+  clear();
+  for (const profile of FACULTY_UPSERTS) upsert(profile);
+}
+
+test('typed faculty cache upsert/get/has/list match current JS', () => {
+  driveFacultyCache(typedFaculty.upsertFacultyProfile, typedFaculty.clearFacultyCache);
+  driveFacultyCache(upsertFacultyProfile, clearFacultyCache);
+
+  for (const initials of ['ABC', 'abc', 'xyz', 'MNP', 'zzz', '']) {
+    assert.deepEqual(typedFaculty.getFacultyProfile(initials), getFacultyProfile(initials));
+    assert.equal(typedFaculty.hasFacultyProfile(initials), hasFacultyProfile(initials));
+  }
+  assert.deepEqual(typedFaculty.listKnownFaculty(), listKnownFaculty());
+});
+
+test('typed faculty suggestFaculty matches current JS', () => {
+  driveFacultyCache(typedFaculty.upsertFacultyProfile, typedFaculty.clearFacultyCache);
+  driveFacultyCache(upsertFacultyProfile, clearFacultyCache);
+
+  const queries = [['A', undefined], ['ab', undefined], ['XYZ', undefined],
+    ['ABCDEF', undefined], ['z', undefined], ['', undefined], ['a', 1]];
+  for (const [query, limit] of queries) {
+    assert.deepEqual(typedFaculty.suggestFaculty(query, limit), suggestFaculty(query, limit));
   }
 });
 
