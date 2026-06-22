@@ -1,0 +1,197 @@
+// src/features/calculator/CalculatorSemesters.tsx
+//
+// Phase 5B container island (React-owned path). Reads the shared semester list
+// from the bridge and renders the whole #semestersContainer: summary form,
+// summary block, semester blocks, the inline add-semester button, and the empty
+// state. All editing flows through the pure `mutations` helpers + the typed
+// `_shohoj_setSemesters` write path (which persists + rebroadcasts, re-rendering
+// this island). Summary create/edit is React-owned via the same path; calendar-
+// aware semester creation and demo data delegate to the legacy globals because
+// that data stays in JS.
+//
+// Interim: the course-name autocomplete dropdown and grade-point auto-detection
+// are the next increment, so name/grade-point edits here are plain field writes.
+// Not the default UI yet — mounted only behind the opt-in flag.
+
+import { useMemo, useState } from 'react';
+
+import { gpaCoreGetRetakenKeys as getRetakenKeys } from '../../core/gpa';
+import type { SemesterEntry, SemesterSeason } from '../../core/types';
+import SemesterBlock from './SemesterBlock';
+import SummaryBlock from './SummaryBlock';
+import SummaryForm from './SummaryForm';
+import type { SummaryValues } from './SummaryForm';
+import { addCourse, removeCourse, removeSemester, updateCourse } from './mutations';
+import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
+import { useCalculatorInputs } from './calculatorBridge';
+
+declare global {
+  interface Window {
+    _shohoj_setSemesters?: (semesters: SemesterEntry[]) => void;
+    _shohoj_isKnownCourse?: (code: string) => boolean;
+    _shohoj_loadDemoMode?: () => void;
+    addSemester?: () => void;
+    openRateForCourse?: (semId: number, idx: number) => void;
+  }
+}
+
+const DEFAULT_SEASONS: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
+
+export default function CalculatorSemesters() {
+  const { semesters } = useCalculatorInputs();
+  const [summaryFormVisible, setSummaryFormVisible] = useState(false);
+  const [summaryEditId, setSummaryEditId] = useState<number | null>(null);
+
+  const commit = (next: SemesterEntry[]) => window._shohoj_setSemesters?.(next);
+  const isKnownCode = (code: string) => window._shohoj_isKnownCourse?.(code) ?? false;
+
+  const retakenKeys = useMemo(() => getRetakenKeys(semesters), [semesters]);
+  const now = useMemo(() => new Date(), []);
+
+  const hasSummary = semesters.some((s) => s.summary);
+  const nonSummary = semesters.filter((s) => !s.summary);
+
+  // The real-world "current" semester id, only meaningful in summary view.
+  const currentSemId = useMemo(() => {
+    if (!hasSummary) return null;
+    const cur = getCurrentSemesterForDeptSeasons(now, DEFAULT_SEASONS);
+    const match = semesters.find((sem) => {
+      if (sem.summary || sem.running) return false;
+      const parsed = parseSemesterSeasonYear(sem.name);
+      return parsed && parsed.season === cur.season && parsed.year === cur.year;
+    });
+    return match ? match.id : null;
+  }, [semesters, hasSummary, now]);
+
+  const closeSummaryForm = () => {
+    setSummaryFormVisible(false);
+    setSummaryEditId(null);
+  };
+
+  const submitSummary = (values: SummaryValues) => {
+    if (summaryEditId !== null) {
+      commit(
+        semesters.map((s) =>
+          s.id === summaryEditId
+            ? { ...s, summaryCGPA: values.cgpa, summaryAttempted: values.attempted, summaryCredits: values.credits }
+            : s,
+        ),
+      );
+    } else {
+      const nextId = semesters.reduce((max, s) => Math.max(max, s.id), -1) + 1;
+      commit([
+        {
+          id: nextId,
+          name: 'Past Semesters',
+          summary: true,
+          summaryCGPA: values.cgpa,
+          summaryAttempted: values.attempted,
+          summaryCredits: values.credits,
+          courses: [],
+          running: false,
+        },
+        ...semesters,
+      ]);
+    }
+    closeSummaryForm();
+  };
+
+  const editingSummary =
+    summaryEditId !== null ? semesters.find((s) => s.id === summaryEditId && s.summary) : null;
+
+  return (
+    <>
+      {summaryFormVisible && (
+        <SummaryForm
+          initial={
+            editingSummary
+              ? {
+                  cgpa: editingSummary.summaryCGPA ?? 0,
+                  attempted: editingSummary.summaryAttempted ?? 0,
+                  credits: editingSummary.summaryCredits ?? 0,
+                }
+              : null
+          }
+          onSubmit={submitSummary}
+          onCancel={closeSummaryForm}
+        />
+      )}
+
+      {semesters.map((sem) =>
+        sem.summary ? (
+          <SummaryBlock
+            key={sem.id}
+            cgpa={sem.summaryCGPA ?? 0}
+            attempted={sem.summaryAttempted ?? 0}
+            credits={sem.summaryCredits ?? 0}
+            onEdit={() => {
+              setSummaryEditId(sem.id);
+              setSummaryFormVisible(true);
+            }}
+            onRemove={() => commit(removeSemester(semesters, sem.id))}
+          />
+        ) : (
+          <SemesterBlock
+            key={sem.id}
+            sem={sem}
+            isCurrentSem={sem.id === currentSemId}
+            isFuture={isFutureSemester(sem.name, now)}
+            retakenKeys={retakenKeys}
+            isKnownCode={isKnownCode}
+            onAddCourse={() => commit(addCourse(semesters, sem.id))}
+            onRemoveSemester={() => commit(removeSemester(semesters, sem.id))}
+            onCourseNameChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { name: value }))}
+            onCourseGradePointChange={(idx, value) =>
+              commit(updateCourse(semesters, sem.id, idx, { gradePoint: value }))
+            }
+            onCoursePassFailChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { grade: value }))}
+            onRateCourse={(idx) => window.openRateForCourse?.(sem.id, idx)}
+            onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
+          />
+        ),
+      )}
+
+      {hasSummary && nonSummary.length > 0 && (
+        <button
+          type="button"
+          className="btn-add-course"
+          style={{ width: '100%', marginTop: 4, padding: 10, fontSize: 13, fontWeight: 600, borderRadius: 10 }}
+          onClick={() => window.addSemester?.()}
+        >
+          + Add Semester
+        </button>
+      )}
+
+      {nonSummary.length === 0 && !summaryFormVisible && (
+        <div className="empty-state">
+          <div className="empty-state-icon">🎓</div>
+          <div className="empty-state-title">Ready to go!</div>
+          <div className="empty-state-sub">
+            Add your first semester, import your transcript, or start from your current CGPA.
+          </div>
+          <div className="empty-state-actions">
+            <button type="button" className="btn-sample" onClick={() => window._shohoj_loadDemoMode?.()}>
+              Try Demo Mode
+            </button>
+            <button type="button" className="btn-sample-ghost" onClick={() => window.addSemester?.()}>
+              + Add semester
+            </button>
+            {!hasSummary && (
+              <button
+                type="button"
+                className="btn-sample-ghost"
+                style={{ borderColor: 'rgba(46,204,113,0.4)', color: 'var(--green)' }}
+                onClick={() => {
+                  setSummaryEditId(null);
+                  setSummaryFormVisible(true);
+                }}
+              >
+                📊 Start from CGPA
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
