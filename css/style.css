@@ -5621,27 +5621,24 @@ body[data-page="admin"] .orb { display: none !important; }
   background: #5b9dff;
 }
 .routine-grid-day-header--today {
-  color: #d6e6ff;
+  color: #cfe0ff;
+  font-weight: 600;
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 3px;
   padding: 0 4px;
-  border: 1px solid rgba(91,157,255,0.55);
-  border-bottom: 2px solid #5b9dff;
-  border-radius: 7px 7px 3px 3px;
-  background: linear-gradient(180deg, rgba(91,157,255,0.30), rgba(91,157,255,0.13));
-  box-shadow: inset 0 1px rgba(214,230,255,0.18), 0 0 14px rgba(91,157,255,0.12);
+  border-bottom: 2px solid rgba(91,157,255,0.65);
+  border-radius: 3px;
 }
-/* The current day's column stays visible around classes and in empty time
-   slots. It sits under blocks and separators, preserving their legibility. */
+/* The current day's column gets a barely-there wash and a thin accent edge —
+   just enough to anchor the eye without pulling focus from the class blocks.
+   It sits under blocks and separators, preserving their legibility. */
 .routine-grid-today-col {
-  background: linear-gradient(180deg, rgba(91,157,255,0.20), rgba(91,157,255,0.09) 26%, rgba(91,157,255,0.05));
-  border-left: 2px solid rgba(91,157,255,0.70);
-  border-right: 1px solid rgba(91,157,255,0.32);
-  border-radius: 7px;
-  box-shadow: inset 0 1px rgba(91,157,255,0.30), 0 0 18px rgba(91,157,255,0.07);
+  background: rgba(91,157,255,0.07);
+  border-left: 2px solid rgba(91,157,255,0.50);
+  border-radius: 3px;
   pointer-events: none;
 }
 .routine-grid-block {
