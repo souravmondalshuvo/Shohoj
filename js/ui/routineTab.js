@@ -8,7 +8,7 @@
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
 import { buildRoutineICS } from '../core/calendarExport.js';
-import qrcode from '../vendor/qrcode.js';
+import qrcode from 'qrcode-generator';
 import {
   emptyRoutineState,
   pickCourse,
