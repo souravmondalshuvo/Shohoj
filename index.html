@@ -545,6 +545,17 @@
     <p style="margin-top:10px;font-size:13px;"><a href="#" class="feedback-pill js-open-feedback">💬 feedback</a><span style="color:var(--text3);margin:0 8px;">·</span><a href="#" class="js-open-coffee">☕ buy me a coffee</a></p>
   </footer>
 
+  <!-- dev/e2e import map — resolves bare module specifiers for the raw-ESM path
+       (plain http.server, no bundler). Production strips this in build3.py, which
+       inlines qrcode-generator directly, so this only serves the un-bundled path. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "qrcode-generator": "/node_modules/qrcode-generator/dist/qrcode.mjs"
+    }
+  }
+  </script>
+
   <!-- Firebase auth init — loaded as module so it can import from firebase.js -->
   <script type="module">
     import { initAuth, saveToCloud, currentUser } from './js/auth/firebase.js';
