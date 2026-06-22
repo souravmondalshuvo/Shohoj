@@ -40,6 +40,13 @@ function _frRoomTypeKey(room) {
 function _frRoomTypeLabel(room) {
   return FR_ROOM_TYPES[_frRoomTypeKey(room)];
 }
+// A slot reads as a lab session if the feed tagged it 'lab', OR it's held in a
+// lab room. Some lab-only courses (studios, MIC/ARC labs) stuff their whole
+// session into classSchedules with a lab roomName and no labSchedules array, so
+// it arrives tagged 'theory'; the room type is the reliable signal there.
+function _frIsLabOccupant(room, kind) {
+  return kind === 'lab' || _frRoomTypeKey(room) === 'L';
+}
 
 function _frClampMinute(m) {
   return Math.max(CAMPUS_START_MIN, Math.min(CAMPUS_END_MIN - 1, m));
@@ -284,9 +291,10 @@ function _frRoomCardHTML(room) {
       ? 'free rest of day'
       : `free until ${_frMin2hhmm(until)}`;
   } else {
-    stateClass = occ.kind === 'lab' ? 'is-lab' : 'is-class';
+    const isLab = _frIsLabOccupant(room, occ.kind);
+    stateClass = isLab ? 'is-lab' : 'is-class';
     const sec = occ.sectionName ? `${occ.courseCode} Section ${occ.sectionName}` : occ.courseCode;
-    statusLabel = `${occ.kind === 'lab' ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
+    statusLabel = `${isLab ? 'in lab' : 'in class'} · ${sec} · until ${_frMin2hhmm(occ.endMin)}`;
   }
   return `
     <button type="button" class="freerooms-card ${stateClass}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-haspopup="dialog" title="${escAttr(room)} — view weekly availability">
@@ -304,12 +312,13 @@ function _frDayTimeline(room, day) {
   const busy = busyOnDay(_frStore.index, room, day)
     .map(i => {
       const sec = i.sectionName ? `${i.courseCode} Section ${i.sectionName}` : i.courseCode;
+      const isLab = _frIsLabOccupant(room, i.kind);
       return {
         startMin: Math.max(i.startMin, CAMPUS_START_MIN),
         endMin: Math.min(i.endMin, CAMPUS_END_MIN),
         busy: true,
-        lab: i.kind === 'lab',
-        label: i.kind === 'lab' ? `${sec} · lab` : sec,
+        lab: isLab,
+        label: isLab ? `${sec} · lab` : sec,
       };
     })
     .filter(s => s.endMin > s.startMin);
