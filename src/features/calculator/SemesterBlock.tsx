@@ -41,6 +41,13 @@ export interface SemesterBlockProps {
   readonly onCoursePassFailChange: (idx: number, value: string) => void;
   readonly onRateCourse: (idx: number) => void;
   readonly onRemoveCourse: (idx: number) => void;
+
+  /** This block is the current drag-over target (adds the .drag-over class). */
+  readonly isDragOver?: boolean;
+  readonly onDragStartBlock?: () => void;
+  readonly onDragOverBlock?: () => void;
+  readonly onDropBlock?: () => void;
+  readonly onDragEndBlock?: () => void;
 }
 
 export default function SemesterBlock({
@@ -59,6 +66,11 @@ export default function SemesterBlock({
   onCoursePassFailChange,
   onRateCourse,
   onRemoveCourse,
+  isDragOver = false,
+  onDragStartBlock,
+  onDragOverBlock,
+  onDropBlock,
+  onDragEndBlock,
 }: SemesterBlockProps) {
   const isRunning = !!sem.running;
   const gpa = calcSemesterGpa(sem);
@@ -67,9 +79,27 @@ export default function SemesterBlock({
 
   return (
     <div
-      className={`semester-block lg-surface${isRunning ? ' semester-running' : ''}`}
+      className={`semester-block lg-surface${isRunning ? ' semester-running' : ''}${isDragOver ? ' drag-over' : ''}`}
       id={`sem-${sem.id}`}
       draggable={!isRunning}
+      onDragStart={isRunning ? undefined : onDragStartBlock}
+      onDragOver={
+        isRunning
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              onDragOverBlock?.();
+            }
+      }
+      onDrop={
+        isRunning
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              onDropBlock?.();
+            }
+      }
+      onDragEnd={onDragEndBlock}
     >
       <div className="lg-shine" />
       <div className="semester-head">
