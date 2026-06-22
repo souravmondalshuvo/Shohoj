@@ -412,6 +412,15 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
     if qr_strip:
         html = html.replace(qr_strip, '')
 
+    # Strip the dev/e2e import map; production inlines qrcode-generator directly,
+    # so the bare specifier never appears in the bundled output and a stray
+    # import map would only add an un-hashable CSP surface.
+    html = re.sub(
+        r'\s*<!-- dev/e2e import map[\s\S]*?</script>',
+        '',
+        html,
+    )
+
     # Strip the <script src="...runtime-config.js"> tag from the template;
     # its window assignments are already bundled into the main JS payload.
     html = re.sub(
