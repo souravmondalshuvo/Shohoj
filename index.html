@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-HGFRHucXIfUpafkkAG83M08w4o7YUWNSOCpvz5x/mi0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-3qLrxee2Kz/W2Xz5GbrOdE16/vAdJ3qhU0hDXh1D3sg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-HGFRHucXIfUpafkkAG83M08w4o7YUWNSOCpvz5x/mi0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-CynfcXJJ6s7mtyxyn3vFngjeIPYNymP0g8D7irQuv80='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5664,27 +5664,24 @@ body[data-page="admin"] .orb { display: none !important; }
   background: #5b9dff;
 }
 .routine-grid-day-header--today {
-  color: #d6e6ff;
+  color: #cfe0ff;
+  font-weight: 600;
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 3px;
   padding: 0 4px;
-  border: 1px solid rgba(91,157,255,0.55);
-  border-bottom: 2px solid #5b9dff;
-  border-radius: 7px 7px 3px 3px;
-  background: linear-gradient(180deg, rgba(91,157,255,0.30), rgba(91,157,255,0.13));
-  box-shadow: inset 0 1px rgba(214,230,255,0.18), 0 0 14px rgba(91,157,255,0.12);
+  border-bottom: 2px solid rgba(91,157,255,0.65);
+  border-radius: 3px;
 }
-/* The current day's column stays visible around classes and in empty time
-   slots. It sits under blocks and separators, preserving their legibility. */
+/* The current day's column gets a barely-there wash and a thin accent edge —
+   just enough to anchor the eye without pulling focus from the class blocks.
+   It sits under blocks and separators, preserving their legibility. */
 .routine-grid-today-col {
-  background: linear-gradient(180deg, rgba(91,157,255,0.20), rgba(91,157,255,0.09) 26%, rgba(91,157,255,0.05));
-  border-left: 2px solid rgba(91,157,255,0.70);
-  border-right: 1px solid rgba(91,157,255,0.32);
-  border-radius: 7px;
-  box-shadow: inset 0 1px rgba(91,157,255,0.30), 0 0 18px rgba(91,157,255,0.07);
+  background: rgba(91,157,255,0.07);
+  border-left: 2px solid rgba(91,157,255,0.50);
+  border-radius: 3px;
   pointer-events: none;
 }
 .routine-grid-block {
@@ -23140,6 +23137,10 @@ function _isFutureSem(semName) {
 }
 
 function renderSemesters() {
+  // Phase 5B: when the React calculator island owns #semestersContainer it
+  // renders the list and the legacy DOM build must stand down so the two don't
+  // fight. Inert until the island opts in by setting this flag.
+  if (typeof window !== 'undefined' && window.__SHOHOJ_REACT_SEMESTERS__) return;
   const container = document.getElementById('semestersContainer');
   const hasSummary = state.semesters.some(s => s.summary);
   const hasNonSummary = state.semesters.some(s => !s.summary);
@@ -26765,6 +26766,25 @@ window._shohoj_getCgpaInputs = () => ({
   startSeason: getStartSeason(),
   startYear: getStartYear(),
 });
+
+// Typed write path for the React calculator island (Phase 5B): the island
+// replaces state.semesters then this recomputes + persists exactly like the
+// legacy mutators. recalc() broadcasts shohoj:recalc, which the island's bridge
+// listens to; renderSemesters() early-returns once the island owns the
+// container. Catalog membership is exposed so the island can gate rate-ability
+// without bundling the catalog data (which stays in JS).
+window._shohoj_setSemesters = function(semesters) {
+  if (!Array.isArray(semesters)) return;
+  state.semesters = semesters;
+  renderSemesters();
+  recalc();
+  saveState();
+};
+window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
+// The catalog list (code/name/full/credits) for the island's autocomplete. The
+// data stays in JS; the island reads it through this bridge and matches with the
+// typed searchCourses helper.
+window._shohoj_courseCatalog = ALL_COURSES;
 
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
