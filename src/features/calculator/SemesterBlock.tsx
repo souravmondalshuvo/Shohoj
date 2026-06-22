@@ -15,6 +15,7 @@ import {
 import { normalizeInitials } from '../../core/faculty';
 import type { SemesterEntry } from '../../core/types';
 import CourseRow from './CourseRow';
+import type { CourseSuggestion } from './courseSearch';
 import { gpaBadgeColors } from './colors';
 import { getReviewableCourseCode } from './reviewableCourse';
 
@@ -28,12 +29,13 @@ export interface SemesterBlockProps {
   readonly retakenKeys: ReadonlySet<string>;
   /** Catalog membership check for rate-ability (bulk catalog data stays in JS). */
   readonly isKnownCode: (code: string) => boolean;
+  /** Catalog list for the course-name autocomplete. */
+  readonly catalog: readonly CourseSuggestion[];
 
   readonly onAddCourse: () => void;
   readonly onRemoveSemester: () => void;
-  readonly onCourseNameChange: (idx: number, value: string) => void;
-  readonly onCourseNameKeyDown?: (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => void;
-  readonly onCourseNameBlur?: (idx: number, e: React.FocusEvent<HTMLInputElement>) => void;
+  readonly onCourseNamePick: (idx: number, course: CourseSuggestion) => void;
+  readonly onCourseNameResolve: (idx: number, course: CourseSuggestion | null, text: string) => void;
   readonly onCourseGradePointChange: (idx: number, value: string) => void;
   readonly onCourseGradePointBlur?: (idx: number, e: React.FocusEvent<HTMLInputElement>) => void;
   readonly onCoursePassFailChange: (idx: number, value: string) => void;
@@ -47,11 +49,11 @@ export default function SemesterBlock({
   isFuture = false,
   retakenKeys,
   isKnownCode,
+  catalog,
   onAddCourse,
   onRemoveSemester,
-  onCourseNameChange,
-  onCourseNameKeyDown,
-  onCourseNameBlur,
+  onCourseNamePick,
+  onCourseNameResolve,
   onCourseGradePointChange,
   onCourseGradePointBlur,
   onCoursePassFailChange,
@@ -155,9 +157,9 @@ export default function SemesterBlock({
               isRetaken={retakenKeys.has(`${sem.id}-${i}`)}
               canRate={canRate}
               faculty={canRate && facInit ? { initials: facInit, courseCode } : null}
-              onNameChange={(v) => onCourseNameChange(i, v)}
-              onNameKeyDown={onCourseNameKeyDown ? (e) => onCourseNameKeyDown(i, e) : undefined}
-              onNameBlur={onCourseNameBlur ? (e) => onCourseNameBlur(i, e) : undefined}
+              catalog={catalog}
+              onNamePick={(course) => onCourseNamePick(i, course)}
+              onNameResolve={(course, text) => onCourseNameResolve(i, course, text)}
               onGradePointChange={(v) => onCourseGradePointChange(i, v)}
               onGradePointBlur={onCourseGradePointBlur ? (e) => onCourseGradePointBlur(i, e) : undefined}
               onPassFailChange={(v) => onCoursePassFailChange(i, v)}
