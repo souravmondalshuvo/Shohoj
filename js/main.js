@@ -82,6 +82,21 @@ window._shohoj_getCgpaInputs = () => ({
   startYear: getStartYear(),
 });
 
+// Typed write path for the React calculator island (Phase 5B): the island
+// replaces state.semesters then this recomputes + persists exactly like the
+// legacy mutators. recalc() broadcasts shohoj:recalc, which the island's bridge
+// listens to; renderSemesters() early-returns once the island owns the
+// container. Catalog membership is exposed so the island can gate rate-ability
+// without bundling the catalog data (which stays in JS).
+window._shohoj_setSemesters = function(semesters) {
+  if (!Array.isArray(semesters)) return;
+  state.semesters = semesters;
+  renderSemesters();
+  recalc();
+  saveState();
+};
+window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
+
 const LOCAL_CLEAR_KEYS = [
   STORAGE_KEY,
   'shohoj_theme',
