@@ -434,7 +434,9 @@ Every current feature, mapped to its Phase-5 migration group:
 - [~] Providers being built incrementally on the typed models from Phases 1–2:
   - [x] Toast provider — `src/state/NotificationProvider.tsx` (context + `useNotifications` hook, id generation, wall clock, per-kind auto-dismiss timers cancelled on dismiss/clear/unmount; pure reducer unchanged). Component-level tests land with the RTL/jsdom toolchain in Phase 8.
   - [x] Theme provider — pure model `src/state/theme.ts` (parity with `js/main.js`: `shohoj_theme` key, dark default, validation, toggle; unit-tested in `tests/theme.test.js`) + `src/state/ThemeProvider.tsx` (context + `useTheme`, reads storage before first paint, reflects `<html data-theme>` + localStorage, storage-failure tolerant).
+  - [x] Composition root — `src/app/AppProviders.tsx` (ErrorBoundary > ThemeProvider > NotificationProvider). **Decision: islands-first with small composed contexts** — each island wraps its tree in `<AppProviders>`; no single React root or tab shell until the Phase 13 cutover. Not yet wired into the existing `cgpa-summary-entry` island (those components consume neither theme nor toast yet — wrapping happens when the first island needs a provider, to avoid spinning up unused providers per root).
 - [ ] Remaining: main + admin React entries, typed central state, auth/firebase/modal providers, error-boundary wiring, tab shell, mobile nav, demo mode, signed-in/out states
+  - [ ] Cross-root `useTheme()` reactivity (storage-event sync) — deferred until the first React theme toggle ships
 
 ### Phase 5 — Feature migration (A→H, risk order)
 - [ ] 5A shell/common · [ ] 5B calculator · [ ] 5C transcript · [ ] 5D planning · [ ] 5E schedule · [ ] 5F community · [ ] 5G auth/sync · [ ] 5H admin
