@@ -87,3 +87,19 @@ test('autocomplete fills name + credits, and the grade point auto-detects a lett
   await lastRow.locator('input[inputmode="decimal"]').fill('3.7');
   await expect(lastRow.locator('.grade-letter')).toHaveText('A-');
 });
+
+test('removing a semester drops it through the write path', async ({ page }) => {
+  await boot(page);
+  await page.locator('#heroDemoBtn').click();
+
+  const container = page.locator('#semestersContainer');
+  await expect(container.locator('.semester-label', { hasText: 'Fall 2024' })).toBeVisible();
+  await expect(container.locator('.semester-label', { hasText: 'Spring 2025' })).toBeVisible();
+
+  const fallBlock = container.locator('.semester-block', { hasText: 'Fall 2024' }).first();
+  await fallBlock.getByRole('button', { name: 'Remove' }).click();
+
+  // Removed via mutations.removeSemester → _shohoj_setSemesters → re-render.
+  await expect(container.locator('.semester-label', { hasText: 'Fall 2024' })).toHaveCount(0);
+  await expect(container.locator('.semester-label', { hasText: 'Spring 2025' })).toBeVisible();
+});
