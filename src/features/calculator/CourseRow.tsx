@@ -10,6 +10,8 @@
 
 import type { CourseEntry } from '../../core/types';
 import { gradeLetterColor } from './colors';
+import CourseNameInput from './CourseNameInput';
+import type { CourseSuggestion } from './courseSearch';
 
 /** Credit values the legacy UI treats as "normal"; anything else flags a dot. */
 const NORMAL_CREDITS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 6, 8, 10, 12];
@@ -31,10 +33,11 @@ export interface CourseRowProps {
   readonly faculty?: CourseRowFaculty | null;
   /** Course is a valid, graded catalog course → reviewing is allowed. */
   readonly canRate?: boolean;
+  /** Catalog list for the name autocomplete. */
+  readonly catalog: readonly CourseSuggestion[];
 
-  readonly onNameChange: (value: string) => void;
-  readonly onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  readonly onNameBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  readonly onNamePick: (course: CourseSuggestion) => void;
+  readonly onNameResolve: (course: CourseSuggestion | null, text: string) => void;
   readonly onGradePointChange: (value: string) => void;
   readonly onGradePointBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   readonly onPassFailChange: (value: string) => void;
@@ -49,9 +52,9 @@ export default function CourseRow({
   isRetaken = false,
   faculty = null,
   canRate = false,
-  onNameChange,
-  onNameKeyDown,
-  onNameBlur,
+  catalog,
+  onNamePick,
+  onNameResolve,
   onGradePointChange,
   onGradePointBlur,
   onPassFailChange,
@@ -79,17 +82,12 @@ export default function CourseRow({
   return (
     <div className={`course-row${isRetaken ? ' retaken' : ''}`}>
       <div className="course-input-wrap" style={{ position: 'relative' }}>
-        <input
-          type="text"
-          placeholder="Type course code / title"
+        <CourseNameInput
           id={`course-input-${semId}-${index}`}
           value={name}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          onChange={(e) => onNameChange(e.target.value)}
-          onKeyDown={onNameKeyDown}
-          onBlur={onNameBlur}
+          catalog={catalog}
+          onPick={onNamePick}
+          onResolve={onNameResolve}
         />
         {isRetaken && <span className="retaken-badge">{supersedeLabel}</span>}
       </div>
