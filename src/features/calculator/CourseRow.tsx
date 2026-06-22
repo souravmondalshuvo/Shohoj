@@ -1,0 +1,184 @@
+// src/features/calculator/CourseRow.tsx
+//
+// Phase 5B presentational island building block: one course row, ported from
+// the template-string row in js/ui/render.js. Class names, element ids, and
+// structure are preserved verbatim so the existing e2e selectors keep matching
+// when this replaces the legacy renderer. It is purely presentational — all
+// state lives in the shared calculator state and every interaction is a typed
+// callback prop; the parent (the semesters-container island, a later increment)
+// owns wiring those to the bridge. Not yet mounted into the live DOM.
+
+import type { CourseEntry } from '../../core/types';
+import { gradeLetterColor } from './colors';
+
+/** Credit values the legacy UI treats as "normal"; anything else flags a dot. */
+const NORMAL_CREDITS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 6, 8, 10, 12];
+
+export interface CourseRowFaculty {
+  /** Normalized faculty initials shown on the chip. */
+  readonly initials: string;
+  /** Catalog course code the review is keyed to. */
+  readonly courseCode: string;
+}
+
+export interface CourseRowProps {
+  readonly semId: number;
+  readonly index: number;
+  readonly course: CourseEntry;
+  /** This row's grade is superseded by a later retake/repeat. */
+  readonly isRetaken?: boolean;
+  /** Show the faculty chip (rated faculty known); else show the "+ Rate" pill if canRate. */
+  readonly faculty?: CourseRowFaculty | null;
+  /** Course is a valid, graded catalog course → reviewing is allowed. */
+  readonly canRate?: boolean;
+
+  readonly onNameChange: (value: string) => void;
+  readonly onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  readonly onNameBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  readonly onGradePointChange: (value: string) => void;
+  readonly onGradePointBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  readonly onPassFailChange: (value: string) => void;
+  readonly onRate: () => void;
+  readonly onRemove: () => void;
+}
+
+export default function CourseRow({
+  semId,
+  index,
+  course,
+  isRetaken = false,
+  faculty = null,
+  canRate = false,
+  onNameChange,
+  onNameKeyDown,
+  onNameBlur,
+  onGradePointChange,
+  onGradePointBlur,
+  onPassFailChange,
+  onRate,
+  onRemove,
+}: CourseRowProps) {
+  const name = course.name ?? '';
+  const grade = (course.grade ?? '') as string;
+  const trimmedName = name.trim();
+  const supersedeLabel = grade === 'F' || grade === 'F(NT)' ? 'Retaken' : 'Repeated';
+
+  const showCreditDot = !!trimmedName && course.credits > 0 && !NORMAL_CREDITS.includes(course.credits);
+  const isPassFailSlot = course.credits === 0 && trimmedName !== '';
+  const showChip = canRate && !!faculty?.initials;
+
+  // Mirrors render.js: the gradePoint field shows NT, an explicit gradePoint,
+  // the grade's default points, or empty — in that precedence.
+  const gradePointValue =
+    grade === 'F(NT)'
+      ? 'NT'
+      : course.gradePoint !== undefined && course.gradePoint !== ''
+        ? String(course.gradePoint)
+        : '';
+
+  return (
+    <div className={`course-row${isRetaken ? ' retaken' : ''}`}>
+      <div className="course-input-wrap" style={{ position: 'relative' }}>
+        <input
+          type="text"
+          placeholder="Type course code / title"
+          id={`course-input-${semId}-${index}`}
+          value={name}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          onChange={(e) => onNameChange(e.target.value)}
+          onKeyDown={onNameKeyDown}
+          onBlur={onNameBlur}
+        />
+        {isRetaken && <span className="retaken-badge">{supersedeLabel}</span>}
+      </div>
+
+      <span className="credits-static-wrap">
+        <span className="credits-static">{course.credits}</span>
+        {showCreditDot && (
+          <span className="credit-error-dot" title={`Unusual credit value: ${course.credits}`} />
+        )}
+      </span>
+
+      {isPassFailSlot ? (
+        grade === 'F(NT)' ? (
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#e74c3c',
+              textAlign: 'center',
+              padding: '4px 6px',
+              background: 'rgba(231,76,60,0.10)',
+              borderRadius: 6,
+              border: '1px solid rgba(231,76,60,0.25)',
+            }}
+          >
+            NT
+          </span>
+        ) : (
+          <select
+            className="pf-select"
+            value={grade === 'P' || grade === 'F' ? grade : ''}
+            onChange={(e) => onPassFailChange(e.target.value)}
+          >
+            <option value="" disabled>
+              Pass / Fail
+            </option>
+            <option value="P">P - Pass</option>
+            <option value="F">F - Fail</option>
+          </select>
+        )
+      ) : (
+        <input
+          type="text"
+          inputMode="decimal"
+          placeholder="0.0 – 4.0"
+          value={gradePointValue}
+          onChange={(e) => onGradePointChange(e.target.value)}
+          onBlur={onGradePointBlur}
+          style={{ textAlign: 'center' }}
+        />
+      )}
+
+      <span
+        className="grade-letter"
+        id={`gl-${semId}-${index}`}
+        style={{
+          color: gradeLetterColor(grade),
+          visibility: course.credits === 0 && grade !== 'P' && grade !== 'F' ? 'hidden' : undefined,
+        }}
+      >
+        {grade || '—'}
+      </span>
+
+      <div className="course-row-actions">
+        {showChip ? (
+          <button
+            type="button"
+            className="course-faculty-chip"
+            data-fac={faculty.initials}
+            data-ccode={faculty.courseCode}
+            title={`${faculty.initials} — view or edit your review`}
+            onClick={onRate}
+          >
+            <span className="fac-init">{faculty.initials}</span>
+            <span className="fac-score" data-score>
+              –
+            </span>
+          </button>
+        ) : (
+          canRate && (
+            <button type="button" className="course-rate-pill" title="Rate this faculty" onClick={onRate}>
+              + Rate
+            </button>
+          )
+        )}
+        <button type="button" className="btn-remove-course" onClick={onRemove}>
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
