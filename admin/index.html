@@ -5663,6 +5663,15 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-grid-day-header--today {
   color: #5b9dff;
 }
+/* Tint behind the current day's column. Sits under the blocks and row
+   separators (it's first in the grid's DOM), so today reads as the focal
+   point without dimming the other days. Blue ties it to the today header
+   and the now-line. */
+.routine-grid-today-col {
+  background: rgba(91,157,255,0.08);
+  border-radius: 6px;
+  pointer-events: none;
+}
 .routine-grid-block {
   margin: 1px 2px;
   border-radius: 6px;
