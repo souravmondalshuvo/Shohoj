@@ -273,11 +273,12 @@ Pure domain logic (Phase 3) lands under `src/core/`; UI (Phase 5) under
 | `js/core/routineExport.js` | `src/core/routineExport.ts` | ✅ |
 | `js/core/calendarExport.js` | `src/core/calendarExport.ts` | ✅ |
 | `js/core/departments.js` | (data) → consumed by `src/core/catalog.ts` | data stays JS |
-| `js/core/faculty.js` | `src/core/reviews.ts` / new `src/core/faculty.ts` | ⬜ pending |
-| `js/core/calculator.js` | `src/core/gpa.ts` consumers | ⬜ pending |
+| `js/core/faculty.js` | `src/core/faculty.ts` | ✅ |
+| `js/core/calculator.js` | `src/core/gpa.ts` consumers | ✅ pure surface in `gpa.ts`; remaining DOM handlers (`autoDetectGrade`, `onGradePointBlur`, `onPFChange`) are Phase 5B |
 | `js/core/state.js` | `src/state/` + `src/services/storage/` | ⬜ Phase 2 |
 | `js/core/dispatch.js` | retire (replace globals w/ typed events/context) | ⬜ Phase 5 |
-| `js/vendor/qrcode.js` + `js/qr-data.js` | installed `qrcode-generator` pkg | ⬜ Phase 3 (replace vendored runtime) |
+| `js/vendor/qrcode.js` | installed `qrcode-generator` pkg | ✅ removed; both build paths use the pkg |
+| `js/qr-data.js` | (data) payment QR images (`_shohoj_bkash_qr` / `_shohoj_rocket_qr`) | data stays JS — not the QR generator |
 | `js/ui/render.js` | `src/features/calculator/*` | ⬜ Phase 5B |
 | `js/ui/planner.js` | `src/features/planner/*` | ⬜ Phase 5D |
 | `js/ui/simulator.js` | `src/features/simulator/*` | ⬜ Phase 5D |
@@ -425,9 +426,9 @@ Every current feature, mapped to its Phase-5 migration group:
   **Scope note:** The synced "main state" doc (`shohoj_cgpa_v1` → Firestore `users/{uid}.data`) holds only calculator + planner state (`semesters`, `currentDept`, `startSeason/Year`, `planCourses`). Theme (`shohoj_theme`), active tab, seat watchlist (Firestore `seatAlertWatches/{uid}`), and profile/review receipts (`shohoj_my_reviews_v1`) are persisted **separately** by their own modules and are not part of the `shohoj_cgpa_v1` snapshot. Those keys are untouched by this migration and get typed persistence when their features migrate in Phase 5. **Wiring:** the pure migration + decision functions are not yet called by the live `firebase.js`/`state.js` (which keep working unchanged); they are wired in during Phase 5G/6 alongside the typed Firebase boundary. **Behavior preserved exactly:** conflicts still resolve by fingerprint + the user's migration-modal choice, never an automatic newest-wins rule.
 
 ### Phase 3 — Pure domain logic → TS
-- [ ] Remaining `js/core` logic typed (faculty, calculator consumers, dispatch)
-- [ ] Replace vendored QR runtime with `qrcode-generator` pkg (tested)
-- [ ] Parity tests for every migrated module; remove legacy module only when no consumer remains
+- [x] Remaining pure `js/core` logic typed — `src/core/faculty.ts` was the last pure module; `calculator.js`'s pure surface already lives in `gpa.ts` (its leftover handlers are DOM-bound → Phase 5B), and `dispatch.js` retirement is Phase 5
+- [x] Replace vendored QR runtime with `qrcode-generator` pkg — `js/vendor/qrcode.js` removed; `routineTab.js` + `build3.py` use the package directly (verified via build3.py, `test:bundle`, and `build:vite`). Note: `js/qr-data.js` is unrelated payment-QR image data, not the generator
+- [x] Parity tests for migrated module — `tests/typedCoreParity.test.js` covers `faculty.ts`; legacy `js/core/faculty.js` retained as the live module until its consumers migrate (Phase 5)
 
 ### Phase 4 — React application shell
 - [ ] Main + admin React entries, providers, typed central state, theme/auth/firebase/toast/modal providers, error boundaries, tab shell, mobile nav, demo mode, signed-in/out states
