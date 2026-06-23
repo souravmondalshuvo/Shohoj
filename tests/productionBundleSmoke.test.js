@@ -33,6 +33,7 @@ const firebaseStubs = {
   `,
   'firebase-auth.js': `
     export class GoogleAuthProvider {
+      static credential(idToken) { return { idToken }; }
       setCustomParameters() {}
     }
     export function getAuth() {
@@ -43,6 +44,9 @@ const firebaseStubs = {
       return () => {};
     }
     export async function signInWithPopup() {
+      return { user: null };
+    }
+    export async function signInWithCredential() {
       return { user: null };
     }
     export async function signOut() {}
