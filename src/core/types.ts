@@ -82,3 +82,13 @@ export interface TranscriptParseResult {
   semesters: TranscriptSemester[];
   detectedDept: string | null;
 }
+
+/**
+ * Student identity scraped from a BRACU grade sheet's header (Student ID + Name).
+ * Both are best-effort: a layout the regexes don't recognise yields null rather
+ * than a wrong guess. Sourced only from the student's own user-initiated import.
+ */
+export interface StudentIdentity {
+  studentId: string | null;
+  studentName: string | null;
+}
