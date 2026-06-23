@@ -797,13 +797,15 @@ function _gridHTML(routine, clashMap) {
   `;
   }).join('');
 
-  // Faint tint behind the current day's column, anchoring the eye on "today".
-  // Renders nothing when today isn't among the displayed days (e.g. weekend or
-  // a day with no classes in range). Screen-only — the PNG export is a static
-  // artifact where the viewer's "today" no longer matches.
+  // Shade every day *except* today, so the current day reads as the bright one
+  // without painting an accent bar on it. Renders nothing when today isn't among
+  // the displayed days (e.g. weekend or a day with no classes in range), leaving
+  // all columns equally lit. Screen-only — the PNG export is a static artifact
+  // where the viewer's "today" no longer matches.
   const todayIdx = layout.days.indexOf(today);
-  const todayCol = todayIdx >= 0
-    ? `<div class="routine-grid-today-col" style="grid-column: ${todayIdx + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`
+  const dimCols = todayIdx >= 0
+    ? layout.days.map((d, i) => i === todayIdx ? ''
+        : `<div class="routine-grid-dim-col" style="grid-column: ${i + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`).join('')
     : '';
 
   // Time labels every 2 rows (= every hour).
@@ -832,11 +834,11 @@ function _gridHTML(routine, clashMap) {
         <button class="btn-secondary btn-sm" data-action="routine:exportPng" title="Download this schedule as a PNG image">⬇ Export PNG</button>
       </div>
       <div class="routine-grid" style="${gridStyle}">
-        ${todayCol}
         ${rowSep.join('')}
         ${dayHeaders}
         ${timeLabels.join('')}
         ${blocks}
+        ${dimCols}
         ${_nowLineHTML(layout)}
       </div>
     </div>
