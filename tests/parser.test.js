@@ -4,7 +4,7 @@
  * Tests the text-extraction logic that runs after pdf.js extracts raw text.
  */
 
-import { parseTranscriptText } from '../js/import/parser.js';
+import { parseTranscriptText, detectStudentIdentity } from '../js/import/parser.js';
 
 // ── Inline the parser logic ──────────────────────────────────────────────────
 // Mirrors js/import/parser.js — detectDepartment and parseBlobFallback.
@@ -372,6 +372,41 @@ test('P maps to null (not counted in GPA)', () => {
 test('I (Incomplete) maps to null (not counted in GPA)', () => {
   const GRADES = { 'I': null };
   expect(GRADES['I']).toBeNull();
+});
+
+// ── STUDENT IDENTITY (Student ID + Name from the grade-sheet header) ─────────
+console.log('\nStudent identity extraction:');
+
+test('pulls Student ID and Name from a labelled header', () => {
+  const text = 'BRAC University GRADE SHEET Student ID: 20301234 Name: Ayesha Rahman PROGRAM: Computer Science and Engineering';
+  const id = detectStudentIdentity(text);
+  expect(id.studentId).toBe('20301234');
+  expect(id.studentName).toBe('Ayesha Rahman');
+});
+
+test('handles ID/Name without colons and extra whitespace', () => {
+  const text = 'Student ID   20109999\n  Name   MD RAKIBUL HASAN  \nSEMESTER: FALL 2022';
+  const id = detectStudentIdentity(text);
+  expect(id.studentId).toBe('20109999');
+  expect(id.studentName).toBe('MD RAKIBUL HASAN');
+});
+
+test('Name capture stops at the next label, not swallowing the sheet', () => {
+  const text = 'Name: Jane Doe Program: BBA Student ID: 18204567';
+  const id = detectStudentIdentity(text);
+  expect(id.studentName).toBe('Jane Doe');
+  expect(id.studentId).toBe('18204567');
+});
+
+test('returns nulls when the header has no ID/Name (no wrong guess)', () => {
+  const id = detectStudentIdentity('SEMESTER: FALL 2022 CSE110 Programming Language I 3.00 A 4.00');
+  expect(id.studentId).toBeNull();
+  expect(id.studentName).toBeNull();
+});
+
+test('empty / non-string input is safe', () => {
+  expect(detectStudentIdentity('').studentId).toBeNull();
+  expect(detectStudentIdentity(null).studentName).toBeNull();
 });
 
 // ── SUMMARY ──────────────────────────────────────────────────────────────────
