@@ -58,6 +58,7 @@ function expect(actual) {
     dangerZoneSectionHtml,
     academicProfileSectionHtml,
     pfFormatLastSync,
+    pfCleanName,
   } = await import('../js/ui/profileTab.js');
 
   console.log('\nProfile tab view builders:');
@@ -337,6 +338,22 @@ function expect(actual) {
     expect(html).toContain('Fall 2023');
     expect(html).toContain('1 course');    // singular
     expect(html).toContain('2 semesters'); // history count
+  });
+
+  test('academic card strips a trailing student-level token off the stored name', () => {
+    const html = academicProfileSectionHtml({
+      sid: '24201402', name: 'Sourav Mondal UNDERGRADUATE',
+      program: 'B.Sc. in CSE', cgpa: 2.39, earnedCredits: 48, semesters: [],
+    });
+    expect(html).toContain('Sourav Mondal');
+    expect(html).notToContain('UNDERGRADUATE');
+  });
+
+  test('pfCleanName drops UNDERGRADUATE/GRADUATE suffixes, keeps clean names', () => {
+    expect(pfCleanName('Sourav Mondal UNDERGRADUATE')).toBe('Sourav Mondal');
+    expect(pfCleanName('Jane Doe GRADUATE')).toBe('Jane Doe');
+    expect(pfCleanName('Ayesha Rahman')).toBe('Ayesha Rahman');
+    expect(pfCleanName('')).toBe('');
   });
 
   test('academic card: missing CGPA degrades to an em-dash, not a crash', () => {
