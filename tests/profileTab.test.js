@@ -56,6 +56,7 @@ function expect(actual) {
     routineSummarySectionHtml,
     reviewsSectionHtml,
     dangerZoneSectionHtml,
+    academicProfileSectionHtml,
     pfFormatLastSync,
   } = await import('../js/ui/profileTab.js');
 
@@ -306,6 +307,65 @@ function expect(actual) {
     // The label itself is computed against the real clock at render; just assert
     // the line exists and renders some "Synced …"/"Not synced" copy without throwing.
     expect(html.includes('Synced') || html.includes('Not synced')).toBe(true);
+  });
+
+  console.log('\nAcademic-profile card:');
+
+  test('academic card: no snapshot shows the import CTA, no credential surface', () => {
+    const empty = academicProfileSectionHtml(null);
+    expect(empty).toContain('🎓 Academic profile');
+    expect(empty).toContain('Import your transcript');
+    expect(empty).notToContain('<input');
+    expect(empty.toLowerCase()).notToContain('password');
+  });
+
+  test('academic card: renders SID, name, program, CGPA, credits and semester history', () => {
+    const html = academicProfileSectionHtml({
+      sid: '20301234', name: 'Ayesha Rahman',
+      program: 'B.Sc. in Computer Science and Engineering (CSE)',
+      cgpa: 3.745, earnedCredits: 96,
+      semesters: [
+        { name: 'Fall 2023', courses: [{ name: 'CSE110', credits: 3, grade: 'A' }] },
+        { name: 'Spring 2024', courses: [{}, {}] },
+      ],
+    });
+    expect(html).toContain('20301234');
+    expect(html).toContain('Ayesha Rahman');
+    expect(html).toContain('Computer Science and Engineering');
+    expect(html).toContain('3.75');        // CGPA rounded to 2 dp
+    expect(html).toContain('96');          // credits earned
+    expect(html).toContain('Fall 2023');
+    expect(html).toContain('1 course');    // singular
+    expect(html).toContain('2 semesters'); // history count
+  });
+
+  test('academic card: missing CGPA degrades to an em-dash, not a crash', () => {
+    const html = academicProfileSectionHtml({ sid: '20301234', cgpa: null, earnedCredits: 0, semesters: [] });
+    expect(html).toContain('20301234');
+    expect(html).toContain('—');
+  });
+
+  test('academic card escapes hostile transcript fields', () => {
+    const html = academicProfileSectionHtml({
+      sid: '1', name: '<img src=x onerror=alert(1)>', program: '', cgpa: 4, earnedCredits: 0,
+      semesters: [{ name: '"><script>', courses: [] }],
+    });
+    expect(html).notToContain('<img src=x onerror=alert(1)>');
+    expect(html).notToContain('"><script>');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  test('signed-in view embeds the academic card and honours includeSeatAlerts:false', () => {
+    const html = profileSignedInHtml(
+      { signedIn: true, displayName: 'Z', email: 'z@g.bracu.ac.bd', photoURL: null },
+      { watches: [{ sectionId: 9, courseCode: 'PHY111', sectionName: '03' }], alertsEnabled: true },
+      { pickedCourses: [], plannerCourses: [] }, [], null,
+      { sid: '20301234', name: 'Z', program: '', cgpa: 3.5, earnedCredits: 30, semesters: [] },
+      { includeSeatAlerts: false },
+    );
+    expect(html).toContain('🎓 Academic profile');
+    expect(html).toContain('20301234');
+    expect(html).notToContain('🪑 Seat alerts');
   });
 
   console.log('\n──────────────────────────────────────────────────');
