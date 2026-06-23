@@ -13,3 +13,4 @@ window._shohoj_firebase_config = {
 };
 window._shohoj_papers_worker_url = '__PAPERS_WORKER_URL__';
 window._shohoj_recaptcha_v3_site_key = '__RECAPTCHA_V3_SITE_KEY__';
+window._shohoj_google_client_id = '__GOOGLE_OAUTH_CLIENT_ID__';
