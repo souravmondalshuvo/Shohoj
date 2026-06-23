@@ -13,6 +13,8 @@ import {
   documentId,
   getDoc,
   getDocs,
+  GoogleAuthProvider,
+  googleClientId,
   onAuthStateChanged,
   onSnapshot,
   orderBy,
@@ -21,6 +23,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  signInWithCredential,
   signInWithPopup,
   signOut,
   startAfter,
@@ -587,6 +590,84 @@ export async function signOutUser() {
   }
 }
 
+// ── Google One Tap ────────────────────────────────────────────────────────────
+// Surfaces Google's One Tap prompt to signed-out visitors so first-time users
+// can sign in without hunting for the button. Restricted to BRACU G-Suite via
+// the `hd` hint; the credential is exchanged for a Firebase session, after which
+// the existing onAuthStateChanged domain guard + sync flow take over unchanged.
+// Fully disabled (no-op) when no client ID is configured. Closing the prompt
+// triggers Google's own cooldown, so it won't nag on every reload.
+let _oneTapReady    = null;   // Promise — resolves true once GIS is initialized
+let _oneTapPrompted = false;  // already auto-prompted this page-load
+
+function _loadGisScript() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) { resolve(); return; }
+    const existing = document.getElementById('gsiClient');
+    if (existing) {
+      existing.addEventListener('load',  () => resolve());
+      existing.addEventListener('error', reject);
+      return;
+    }
+    const s = document.createElement('script');
+    s.id = 'gsiClient';
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload  = () => resolve();
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function _onOneTapCredential(response) {
+  const idToken = response?.credential;
+  if (!idToken || !auth) return;
+  try {
+    // onAuthStateChanged enforces the BRACU domain + runs the sync flow.
+    await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+  } catch (e) {
+    console.error('[Shohoj] One Tap sign-in failed:', e);
+  }
+}
+
+function _initOneTap() {
+  if (_oneTapReady) return _oneTapReady;
+  if (!googleClientId || !auth) { _oneTapReady = Promise.resolve(false); return _oneTapReady; }
+  _oneTapReady = _loadGisScript().then(() => {
+    if (!window.google?.accounts?.id) return false;
+    window.google.accounts.id.initialize({
+      client_id:             googleClientId,
+      callback:              _onOneTapCredential,
+      auto_select:           false,            // never silently sign in
+      cancel_on_tap_outside: true,
+      context:               'signin',
+      hd:                    'g.bracu.ac.bd',  // only surface BRACU accounts
+      use_fedcm_for_prompt:  true,             // required path on modern Chrome
+    });
+    return true;
+  }).catch(e => {
+    console.warn('[Shohoj] One Tap unavailable:', e?.message || e);
+    return false;
+  });
+  return _oneTapReady;
+}
+
+async function maybePromptOneTap() {
+  if (!googleClientId || !auth) return;
+  if (currentUser || _oneTapPrompted) return;
+  _oneTapPrompted = true;
+  const ok = await _initOneTap();
+  if (!ok || currentUser || !window.google?.accounts?.id) return;
+  try { window.google.accounts.id.prompt(); }
+  catch (e) { console.warn('[Shohoj] One Tap prompt failed:', e?.message || e); }
+}
+
+function dismissOneTap() {
+  if (!window.google?.accounts?.id) return;
+  try { window.google.accounts.id.cancel(); } catch (_e) {}
+}
+
 // ── Init auth ─────────────────────────────────────────────────────────────────
 export function initAuth() {
   restoreSyncLabel();
@@ -629,6 +710,7 @@ export function initAuth() {
     setAuthBtnLoading(false);
 
     if (user) {
+      dismissOneTap();  // close any visible prompt now that we're signed in
       // ── 30-day session expiry ────────────────────────────────────────────
       let sessionStart = null;
       try { sessionStart = parseInt(localStorage.getItem(SESSION_START_KEY)); } catch(e) {}
@@ -722,6 +804,7 @@ export function initAuth() {
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
       const parsed = parseStoredState(raw, 'local');
       showNudgeBanner(parsed?.semesters?.length > 0);
+      maybePromptOneTap();  // auto-surface One Tap for signed-out visitors
     }
   });
 }
