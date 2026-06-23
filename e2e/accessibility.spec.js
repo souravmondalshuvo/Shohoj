@@ -45,16 +45,7 @@ async function loadDemo(page) {
 }
 
 async function openTab(page, tab) {
-  if (tab === 'profile') {
-    // Profile has no tab-strip button (it's reached from the account pill). The
-    // page is already loaded here, so a hash-only navigation wouldn't re-run the
-    // boot-time tab restore — switch via the exposed API instead. Scroll the
-    // panel into view so the scan covers the same state as the click-opened tabs.
-    await page.evaluate(() => window.switchCalcTab('profile'));
-    await page.locator('#tabProfile').scrollIntoViewIfNeeded();
-  } else {
-    await page.locator(`.calc-tab[data-tab="${tab}"]`).click();
-  }
+  await page.locator(`.calc-tab[data-tab="${tab}"]`).click();
   await expect(page.locator(`#tab${tab[0].toUpperCase()}${tab.slice(1)}`)).toHaveClass(/active/);
 }
 
@@ -81,7 +72,6 @@ const TAB_IDS = {
   Routine: 'routine',
   Seats: 'seats',
   Reviews: 'reviews',
-  Profile: 'profile',
 };
 
 for (const [label, tab] of Object.entries(TAB_IDS)) {
@@ -94,3 +84,19 @@ for (const [label, tab] of Object.entries(TAB_IDS)) {
     expect(violations, `serious/critical a11y violations on the ${label} tab:\n${formatViolations(violations)}`).toEqual([]);
   });
 }
+
+// Profile is its own page now (reached from the account pill), not a tab. Scan
+// its signed-out gate — the state a fresh visitor lands on (Firebase blocked, so
+// the identity globals are absent and the page shows the sign-in prompt).
+test('Profile page has no serious/critical accessibility violations (signed-out)', async ({ page }) => {
+  await page.route('https://**/*', route => route.abort());
+  page.on('dialog', dialog => dialog.accept());
+  await page.addInitScript(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch {}
+  });
+  await page.goto('/profile/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#profilePageContent')).toContainText('Sign in to view your profile');
+
+  const violations = await blockingViolations(page);
+  expect(violations, `serious/critical a11y violations on the Profile page:\n${formatViolations(violations)}`).toEqual([]);
+});
