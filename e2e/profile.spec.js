@@ -14,8 +14,10 @@ async function boot(page, initScript, initArg) {
   });
   if (initScript) await page.addInitScript(initScript, initArg);
   await page.route('https://**/*', route => route.abort());
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="profile"]').click();
+  // Profile was removed from the tab strip — it's reached from the account pill
+  // or the #calculator/profile hash route. Open it via the hash route, which
+  // lands directly on the Profile tab.
+  await page.goto('/#calculator/profile', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#tabProfile')).toHaveClass(/active/);
 }
 
