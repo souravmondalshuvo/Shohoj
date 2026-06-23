@@ -6,6 +6,7 @@ inlines CSS, inlines firebase.js as a <script type="module"> block,
 and produces self-contained HTML files:
     shohoj.html         — main site (from index.html)
     admin.html          — admin dashboard (from admin/index.html)
+    profile.html        — account hub + academic profile (from profile/index.html)
 
 Usage:
     python3 build3.py
@@ -79,7 +80,6 @@ MAIN_JS_FILES = [
     'js/ui/routineTab.js',
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
-    'js/ui/profileTab.js',  # after seatsTab: reads its _shohoj_getSeatWatches/* globals
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
@@ -110,6 +110,19 @@ ADMIN_JS_FILES = [
     'js/ui/adminDashboard.js',
     'js/animations/cursor.js',
     'js/admin-entry.js',
+]
+
+# Dedicated /profile/ page: account hub + transcript-derived academic profile.
+# Like admin, a slim bundle — just the profile view, dispatch, helpers and the
+# cursor. Auth + the _shohoj_* identity globals come from the Firebase module
+# (loaded separately, below). The seat-alerts card is omitted on this page.
+PROFILE_JS_FILES = [
+    'js/config/runtime-config.js',
+    'js/core/helpers.js',
+    'js/core/dispatch.js',
+    'js/ui/profileTab.js',
+    'js/animations/cursor.js',
+    'js/profile-entry.js',
 ]
 
 # Firebase auth uses CDN ES module imports, so it must stay as type="module"
@@ -147,6 +160,16 @@ PAGES = [
         # Admin page loads two module scripts — firebase.js (kept as module)
         # and admin-entry.js (which needs the bundled JS instead).
         'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']\.\./js/admin-entry\.js["\'][^>]*>\s*</script>',
+        'qr_strip': None,
+    },
+    {
+        'template': 'profile/index.html',
+        'output': 'profile.html',
+        'js_files': PROFILE_JS_FILES,
+        'inject_seeds': False,
+        'css_pattern': r'<link\s+[^>]*href=["\']\.\./css/style\.css["\'][^>]*/?>',
+        # Like admin: firebase.js stays a module, profile-entry.js becomes bundled JS.
+        'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']\.\./js/profile-entry\.js["\'][^>]*>\s*</script>',
         'qr_strip': None,
     },
 ]
@@ -512,7 +535,7 @@ def build():
             qr_strip=page['qr_strip'],
         )
 
-    print(f'   Main JS files: {len(MAIN_JS_FILES)} · Admin JS files: {len(ADMIN_JS_FILES)}')
+    print(f'   Main JS files: {len(MAIN_JS_FILES)} · Admin JS files: {len(ADMIN_JS_FILES)} · Profile JS files: {len(PROFILE_JS_FILES)}')
     print(f'   CSS inlined from: {CSS_FILE}')
     print(f'   Firebase inlined: {", ".join(FIREBASE_JS_FILES)}')
 
