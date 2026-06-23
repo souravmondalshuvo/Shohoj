@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-18ZvSUs9lLOtNvqXGDz/18qs2Z9sM17JjjsX3EDe0oA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Q/DKzCnQnxuMk/NIhmMw6y4ZKh0xV2GP3bfp4TaPVYE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-18ZvSUs9lLOtNvqXGDz/18qs2Z9sM17JjjsX3EDe0oA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-LWp6PPPMVgQ7fluiq5go+JQUDzB9lMATSs8ergRRhlA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20956,13 +20956,15 @@ function _gridHTML(routine, clashMap) {
   `;
   }).join('');
 
-  // Faint tint behind the current day's column, anchoring the eye on "today".
-  // Renders nothing when today isn't among the displayed days (e.g. weekend or
-  // a day with no classes in range). Screen-only — the PNG export is a static
-  // artifact where the viewer's "today" no longer matches.
+  // Shade every day *except* today, so the current day reads as the bright one
+  // without painting an accent bar on it. Renders nothing when today isn't among
+  // the displayed days (e.g. weekend or a day with no classes in range), leaving
+  // all columns equally lit. Screen-only — the PNG export is a static artifact
+  // where the viewer's "today" no longer matches.
   const todayIdx = layout.days.indexOf(today);
-  const todayCol = todayIdx >= 0
-    ? `<div class="routine-grid-today-col" style="grid-column: ${todayIdx + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`
+  const dimCols = todayIdx >= 0
+    ? layout.days.map((d, i) => i === todayIdx ? ''
+        : `<div class="routine-grid-dim-col" style="grid-column: ${i + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`).join('')
     : '';
 
   // Time labels every 2 rows (= every hour).
@@ -20991,11 +20993,11 @@ function _gridHTML(routine, clashMap) {
         <button class="btn-secondary btn-sm" data-action="routine:exportPng" title="Download this schedule as a PNG image">⬇ Export PNG</button>
       </div>
       <div class="routine-grid" style="${gridStyle}">
-        ${todayCol}
         ${rowSep.join('')}
         ${dayHeaders}
         ${timeLabels.join('')}
         ${blocks}
+        ${dimCols}
         ${_nowLineHTML(layout)}
       </div>
     </div>
