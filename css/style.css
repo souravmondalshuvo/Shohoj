@@ -6408,8 +6408,64 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .pf-note { font-size: 11px; color: var(--text2); line-height: 1.5; }
 
+/* Academic-profile card: CGPA/credits stat tiles + identity key/value rows */
+.pf-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pf-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2, rgba(255, 255, 255, 0.03));
+}
+.pf-stat-num { font-size: 22px; font-weight: 800; color: var(--green); line-height: 1.1; }
+.pf-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+.pf-details { display: flex; flex-direction: column; gap: 6px; }
+.pf-detail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.pf-detail-key { color: var(--text3); flex: 0 0 auto; }
+.pf-detail-val { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
+
 /* Last-synced line in the account header */
 .pf-synced { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Dedicated /profile/ page shell (mirrors the standalone admin page layout) */
+.pf-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+.pf-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.pf-back {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  text-decoration: none;
+}
+.pf-back:hover { color: var(--green); }
+.pf-page-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
 
 /* Danger zone */
 .pf-danger { border-color: rgba(231,76,60,0.4); }
