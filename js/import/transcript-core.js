@@ -86,7 +86,7 @@ export function detectStudentIdentity(text) {
             compact.match(/\bID\s*:?\s*(\d{8})\b/i);
         if (idMatch)
             studentId = idMatch[1];
-        const nameMatch = compact.match(/\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS)\b|$)/i);
+        const nameMatch = compact.match(/\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS|UNDERGRADUATE|UNDERGRAD|POSTGRADUATE|GRADUATE)\b|$)/i);
         if (nameMatch) {
             const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
             if (cleaned && !/^\d+$/.test(cleaned))
