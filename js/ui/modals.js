@@ -2,7 +2,8 @@ import { GRADES } from '../core/grades.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
-import { parseTranscriptText, parseBlobFallback } from '../import/parser.js';
+import { parseTranscriptText, parseBlobFallback, detectStudentIdentity } from '../import/parser.js';
+import { calculateCgpaTotals } from '../core/gpa-core.js';
 import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, stripTags } from '../core/helpers.js';
 import { resetPlayground } from './playground.js';
@@ -12,6 +13,37 @@ import { registerAction } from '../core/dispatch.js';
 
 registerAction('modals:hideImport', () => hideImportModal());
 registerAction('modals:applyImport', () => applyImport());
+
+// Snapshot of the student's transcript-derived academic profile, read by the
+// dedicated Profile page (js/ui/profileTab.js). Written only on a confirmed
+// import — never from CONNECT, never from credentials. Stale-by-design: it
+// reflects the imported grade sheet, not later what-if edits in the calculator.
+const PROFILE_SNAPSHOT_KEY = 'shohoj_connect_profile_v1';
+
+function persistAcademicProfile(data) {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const semesters = Array.isArray(data.semesters) ? data.semesters : [];
+    const totals = calculateCgpaTotals(semesters, { includeRunning: false });
+    const snapshot = {
+      sid:           data.studentId   || null,
+      name:          data.studentName || null,
+      program:       data.detectedDept || null,
+      cgpa:          totals.cgpa,
+      earnedCredits: totals.earnedCredits || 0,
+      semesters: semesters.map(s => ({
+        name: s.name || '',
+        courses: (s.courses || []).map(c => ({
+          name:    c.name    || '',
+          credits: c.credits || 0,
+          grade:   c.grade   || '',
+        })),
+      })),
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(PROFILE_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch { /* storage unavailable — the Profile card just shows its empty state */ }
+}
 
 function getModalTheme() {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -197,6 +229,13 @@ export async function importTranscriptPDF(inputEl) {
       }
     }
 
+    // Best-effort Student ID + Name from the grade-sheet header. Carried on the
+    // parsed object so it flows through _pendingImport into applyImport, where the
+    // Profile snapshot is written only once the student confirms the import.
+    const identity = detectStudentIdentity(fullText);
+    parsed.studentId   = identity.studentId;
+    parsed.studentName = identity.studentName;
+
     // ── Post-parse cleanup: names, credits ─────────────────────────────
     parsed.semesters.forEach(sem => {
       sem.courses.forEach(c => {
@@ -357,6 +396,7 @@ export function applyImport() {
 
   window._shohoj_renderAndRecalc();
   saveState();
+  persistAcademicProfile(data);
 
   const calc = document.getElementById('calculator');
   if (calc) {
