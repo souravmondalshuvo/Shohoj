@@ -99,6 +99,21 @@ function _lastSync() {
   } catch { return null; }
 }
 
+// Transcript-derived academic profile (SID, name, program, CGPA, semester
+// history), written by the import flow (see modals.js persistAcademicProfile).
+// Read locally — never from CONNECT, never from credentials. Absent until the
+// student imports their own grade sheet, in which case the card shows a CTA.
+const PF_PROFILE_SNAPSHOT_KEY = 'shohoj_connect_profile_v1';
+function _academicProfile() {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(PF_PROFILE_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    return (p && typeof p === 'object') ? p : null;
+  } catch { return null; }
+}
+
 // ── Pure view builders (exported for unit tests) ──────────────────────────────
 
 // Relative "last synced" label. Pure — takes the timestamp and a clock so the
@@ -236,7 +251,76 @@ export function dangerZoneSectionHtml() {
     </section>`;
 }
 
-export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync) {
+// Academic-profile card: the student's transcript-derived identity (SID, name,
+// program) plus CGPA, credits earned and semester history. Pure — takes the
+// snapshot object (or null). Empty/partial snapshots fall back to the import CTA.
+// No <input>, no CONNECT credential surface — this only reflects an already-
+// imported grade sheet that lives in this browser.
+export function academicProfileSectionHtml(profile) {
+  const p = (profile && typeof profile === 'object') ? profile : null;
+  const hasData = !!p && (p.sid || p.name || (Array.isArray(p.semesters) && p.semesters.length));
+
+  if (!hasData) {
+    return `
+      <section class="pf-card">
+        <div class="pf-card-head">
+          <h3 class="pf-card-title">🎓 Academic profile</h3>
+        </div>
+        <div class="pf-watch-empty">
+          Import your BRACU grade sheet to see your student ID, program, CGPA and
+          semester history here. It's parsed on your device — nothing is uploaded.
+        </div>
+        <a class="pf-signin-btn" href="../#calculator">
+          <span class="pf-signin-icon">📄</span>
+          Import your transcript
+        </a>
+      </section>`;
+  }
+
+  const cgpa = (typeof p.cgpa === 'number' && Number.isFinite(p.cgpa)) ? p.cgpa.toFixed(2) : '—';
+  const credits = Number.isFinite(p.earnedCredits) ? p.earnedCredits : 0;
+
+  const rows = [];
+  if (p.sid)     rows.push(['Student ID', p.sid]);
+  if (p.name)    rows.push(['Name', p.name]);
+  if (p.program) rows.push(['Program', p.program]);
+  const detailRows = rows.map(([k, v]) =>
+    `<div class="pf-detail-row"><span class="pf-detail-key">${escHtml(k)}</span><span class="pf-detail-val">${escHtml(String(v))}</span></div>`
+  ).join('');
+
+  const semesters = Array.isArray(p.semesters) ? p.semesters : [];
+  const semList = semesters.length === 0 ? '' : `
+      <div class="pf-subhead">Semester history <span class="pf-card-count">${semesters.length} semester${semesters.length === 1 ? '' : 's'}</span></div>
+      <ul class="pf-watch-list">${semesters.map(s => {
+        const n = Array.isArray(s.courses) ? s.courses.length : 0;
+        return `
+        <li class="pf-watch-item">
+          <span class="pf-watch-code">${escHtml(s.name || '')}</span>
+          <span class="pf-watch-sec">${n} course${n === 1 ? '' : 's'}</span>
+        </li>`;
+      }).join('')}</ul>`;
+
+  return `
+    <section class="pf-card">
+      <div class="pf-card-head">
+        <h3 class="pf-card-title">🎓 Academic profile</h3>
+        <span class="pf-card-count">CGPA ${escHtml(cgpa)}</span>
+      </div>
+      <div class="pf-stats">
+        <div class="pf-stat"><div class="pf-stat-num">${escHtml(cgpa)}</div><div class="pf-stat-label">CGPA</div></div>
+        <div class="pf-stat"><div class="pf-stat-num">${escHtml(String(credits))}</div><div class="pf-stat-label">Credits earned</div></div>
+      </div>
+      <div class="pf-details">${detailRows}</div>
+      ${semList}
+      <div class="pf-note">From your imported transcript — stored only in this browser.</div>
+    </section>`;
+}
+
+// opts.includeSeatAlerts (default true) lets the dedicated Profile page drop the
+// seat-alerts card: that card needs the Seats tab's live runtime globals, which
+// aren't loaded standalone — the Seats tab still owns the watchlist + toggle.
+export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync, academic, opts = {}) {
+  const includeSeatAlerts = opts.includeSeatAlerts !== false;
   const p = profile || {};
   const name = p.displayName ? String(p.displayName) : 'BRACU student';
   const email = p.email ? String(p.email) : '';
@@ -257,7 +341,8 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastS
         <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
       </div>
       <div class="pf-sections">
-        ${seatAlertsSectionHtml(seatAlerts)}
+        ${academicProfileSectionHtml(academic)}
+        ${includeSeatAlerts ? seatAlertsSectionHtml(seatAlerts) : ''}
         ${routineSummarySectionHtml(routine)}
         ${reviewsSectionHtml(reviews)}
         ${dangerZoneSectionHtml()}
@@ -267,9 +352,9 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastS
 
 // ── DOM wiring ────────────────────────────────────────────────────────────────
 
-export function renderProfileTab() {
+export function renderProfileTab(hostId = 'profileContent', opts = {}) {
   if (typeof document === 'undefined') return;
-  const root = document.getElementById('profileContent');
+  const root = document.getElementById(hostId);
   if (!root) return;
 
   if (!_authReady()) {
@@ -285,7 +370,7 @@ export function renderProfileTab() {
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   root.innerHTML = profile.signedIn
-    ? profileSignedInHtml(profile, _seatAlerts(), _routineSummary(), _myReviews(), _lastSync())
+    ? profileSignedInHtml(profile, _seatAlerts(), _routineSummary(), _myReviews(), _lastSync(), _academicProfile(), opts)
     : profileSignedOutHtml();
 }
 
@@ -350,5 +435,8 @@ registerAction('profile:deleteCloud', async () => {
 // the student signs in/out from the header pill). Repaint so the gate is always
 // honest. Cheap enough to run regardless of which tab is active.
 if (typeof window !== 'undefined') {
-  window.addEventListener('shohoj:auth-changed', renderProfileTab);
+  // Call with no args so the default host id is used — the listener receives an
+  // Event object that must not be mistaken for a host id. The dedicated Profile
+  // page (profile-entry.js) wires its own repaint into #profilePageHost.
+  window.addEventListener('shohoj:auth-changed', () => renderProfileTab());
 }
