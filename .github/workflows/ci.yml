@@ -79,6 +79,7 @@ jobs:
         run: |
           test -s shohoj.html
           test -s admin.html
+          test -s profile.html
           # Fail if bare ES module syntax leaked into the non-module bundle
           # (firebase.js is kept as type="module"; other bundled JS must not be).
           # Also fail if 'unsafe-inline' is still present in the script-src
@@ -90,7 +91,7 @@ jobs:
           python3 - <<'PY'
           import re, sys
           ok = True
-          for path in ('shohoj.html', 'admin.html'):
+          for path in ('shohoj.html', 'admin.html', 'profile.html'):
               html = open(path, encoding='utf-8').read()
               stripped = re.sub(
                   r'<script\s+type=["\']module["\'][\s\S]*?</script>',
