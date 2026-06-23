@@ -90,9 +90,10 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin
-          cp shohoj.html _deploy/index.html
-          cp admin.html  _deploy/admin/index.html
+          mkdir -p _deploy/admin _deploy/profile
+          cp shohoj.html  _deploy/index.html
+          cp admin.html   _deploy/admin/index.html
+          cp profile.html _deploy/profile/index.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
