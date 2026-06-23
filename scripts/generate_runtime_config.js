@@ -33,6 +33,13 @@ const REQUIRED_KEYS = [
   'RECAPTCHA_V3_SITE_KEY',
 ];
 
+// Keys that may be left blank. Their placeholder is replaced with whatever is
+// in .env.local (possibly empty); the app feature-detects and no-ops when the
+// value is absent. GOOGLE_OAUTH_CLIENT_ID gates the Google One Tap prompt.
+const OPTIONAL_KEYS = [
+  'GOOGLE_OAUTH_CLIENT_ID',
+];
+
 function parseEnv(text) {
   const env = {};
   for (const rawLine of text.split(/\r?\n/)) {
@@ -70,8 +77,8 @@ if (missing.length) {
 }
 
 let output = await readFile(templatePath, 'utf8');
-for (const key of REQUIRED_KEYS) {
-  output = output.split(`__${key}__`).join(env[key]);
+for (const key of [...REQUIRED_KEYS, ...OPTIONAL_KEYS]) {
+  output = output.split(`__${key}__`).join(env[key] || '');
 }
 
 await writeFile(outputPath, output, 'utf8');
