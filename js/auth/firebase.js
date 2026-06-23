@@ -1078,13 +1078,10 @@ function updateAuthUI(user) {
     btn.style.cssText = '';
     btn.disabled      = false;
     btn.title         = 'View your profile';
-    // The account pill is the entry point to the Profile tab (there's no Profile
-    // button in the tab strip). Sign-out lives inside that page's header, so the
-    // pill no longer pops a sign-out modal of its own.
-    btn.onclick       = () => {
-      if (typeof window.switchCalcTab === 'function') window.switchCalcTab('profile');
-      document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
+    // The account pill is the entry point to the dedicated Profile page (the same
+    // relative path convention as the admin link). Sign-out lives inside that
+    // page's header, so the pill no longer pops a sign-out modal of its own.
+    btn.onclick       = () => { window.location.href = 'profile/'; };
     btn.ondblclick    = null;
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
