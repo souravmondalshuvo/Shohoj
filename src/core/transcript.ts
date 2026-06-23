@@ -117,7 +117,7 @@ export function detectStudentIdentity(text: string): StudentIdentity {
     if (idMatch) studentId = idMatch[1];
 
     const nameMatch = compact.match(
-      /\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS)\b|$)/i,
+      /\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS|UNDERGRADUATE|UNDERGRAD|POSTGRADUATE|GRADUATE)\b|$)/i,
     );
     if (nameMatch) {
       const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
