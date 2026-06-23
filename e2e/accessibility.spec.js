@@ -45,7 +45,16 @@ async function loadDemo(page) {
 }
 
 async function openTab(page, tab) {
-  await page.locator(`.calc-tab[data-tab="${tab}"]`).click();
+  if (tab === 'profile') {
+    // Profile has no tab-strip button (it's reached from the account pill). The
+    // page is already loaded here, so a hash-only navigation wouldn't re-run the
+    // boot-time tab restore — switch via the exposed API instead. Scroll the
+    // panel into view so the scan covers the same state as the click-opened tabs.
+    await page.evaluate(() => window.switchCalcTab('profile'));
+    await page.locator('#tabProfile').scrollIntoViewIfNeeded();
+  } else {
+    await page.locator(`.calc-tab[data-tab="${tab}"]`).click();
+  }
   await expect(page.locator(`#tab${tab[0].toUpperCase()}${tab.slice(1)}`)).toHaveClass(/active/);
 }
 
