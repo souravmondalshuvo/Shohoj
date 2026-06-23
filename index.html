@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-18ZvSUs9lLOtNvqXGDz/18qs2Z9sM17JjjsX3EDe0oA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-IkIEfPOoi5g8G9fPRAyOd/tn6aD+1oTtzAzbQuH7ZRQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-18ZvSUs9lLOtNvqXGDz/18qs2Z9sM17JjjsX3EDe0oA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Q/DKzCnQnxuMk/NIhmMw6y4ZKh0xV2GP3bfp4TaPVYE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5675,14 +5675,14 @@ body[data-page="admin"] .orb { display: none !important; }
   border-bottom: 2px solid rgba(91,157,255,0.65);
   border-radius: 3px;
 }
-/* The current day's column gets a barely-there wash and a thin accent edge —
-   just enough to anchor the eye without pulling focus from the class blocks.
-   It sits under blocks and separators, preserving their legibility. */
-.routine-grid-today-col {
-  background: rgba(91,157,255,0.07);
-  border-left: 2px solid rgba(91,157,255,0.50);
-  border-radius: 3px;
+/* Every day except today gets a soft dark wash, so the current day reads as the
+   bright one with no accent bar of its own. Sits above the blocks (z-index 1)
+   to gently shade them, but below the now-line (3); hovering a block lifts it to
+   z-index 2, restoring full colour. Pointer-events off so clicks pass through. */
+.routine-grid-dim-col {
+  background: rgba(6,12,9,0.42);
   pointer-events: none;
+  z-index: 1;
 }
 .routine-grid-block {
   margin: 1px 2px;
@@ -6294,36 +6294,45 @@ body[data-page="admin"] .orb { display: none !important; }
 .pf-signin-btn:hover { filter: brightness(1.08); }
 .pf-signin-icon { font-size: 15px; }
 
-.pf-hub { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+.pf-hub { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 .pf-header {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--border2);
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(46,204,113,0.16), transparent 58%),
+    linear-gradient(180deg, rgba(46,204,113,0.06), rgba(255,255,255,0.015));
 }
-.pf-avatar { flex-shrink: 0; }
+.pf-avatar { position: relative; flex-shrink: 0; }
 .pf-avatar-img,
 .pf-avatar-fallback {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   display: block;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(46,204,113,0.45), 0 6px 18px rgba(0,0,0,0.35);
 }
-.pf-avatar-img { object-fit: cover; border: 1px solid var(--border); }
+.pf-avatar-img { object-fit: cover; }
 .pf-avatar-fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--border);
-  color: var(--text);
-  font-size: 22px;
-  font-weight: 700;
+  background: linear-gradient(150deg, var(--accent), #1f8f4e);
+  color: #06140b;
+  font-size: 24px;
+  font-weight: 800;
 }
 .pf-identity { flex: 1; min-width: 0; }
 .pf-name {
-  font-size: 16px;
-  font-weight: 700;
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -6353,24 +6362,40 @@ body[data-page="admin"] .orb { display: none !important; }
 
 .pf-sections { display: flex; flex-direction: column; gap: 12px; }
 
-/* Profile cards (seat alerts, and future routine/reviews) */
+/* Profile cards (academic, seat alerts, routine, reviews) */
 .pf-card {
+  position: relative;
   border: 1px solid var(--border2);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0));
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.pf-card:hover {
+  border-color: var(--border);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
 }
 .pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.pf-card-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--text); }
+.pf-card-title {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
 .pf-card-count {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text2);
-  padding: 3px 9px;
+  font-weight: 700;
+  color: var(--accent);
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--border);
+  background: rgba(46,204,113,0.12);
+  border: 1px solid var(--border);
 }
 
 /* Email-alert switch */
@@ -6451,62 +6476,158 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .pf-note { font-size: 11px; color: var(--text2); line-height: 1.5; }
 
-/* Academic-profile card: CGPA/credits stat tiles + identity key/value rows */
-.pf-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+/* Academic-profile card: CGPA gauge + mini stats, identity list, term timeline */
+.pf-acard-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
 }
-.pf-stat {
+.pf-gauge {
+  --pf-pct: 0;
+  --pf-color: var(--accent);
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--pf-color) calc(var(--pf-pct) * 1%), var(--border2) 0);
+}
+.pf-gauge::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+.pf-gauge-core {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 12px 8px;
+  justify-content: center;
+}
+.pf-gauge-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 25px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+.pf-gauge-cap { font-size: 10px; color: var(--text3); margin-top: 3px; letter-spacing: 0.5px; }
+.pf-gauge--high { --pf-color: #2ECC71; }
+.pf-gauge--good { --pf-color: #6dd36d; }
+.pf-gauge--mid  { --pf-color: #e6b800; }
+.pf-gauge--low  { --pf-color: #e67e22; }
+.pf-gauge--na   { --pf-color: var(--border2); }
+
+.pf-minis { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 140px; }
+.pf-mini {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg2, rgba(255, 255, 255, 0.03));
+  background: rgba(46,204,113,0.045);
 }
-.pf-stat-num { font-size: 22px; font-weight: 800; color: var(--green); line-height: 1.1; }
-.pf-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
-.pf-details { display: flex; flex-direction: column; gap: 6px; }
+.pf-mini-num { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; color: var(--text); }
+.pf-mini-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); }
+
+.pf-details {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overflow: hidden;
+}
 .pf-detail-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  padding: 10px 14px;
   font-size: 13px;
+  border-bottom: 1px solid var(--border2);
 }
+.pf-detail-row:last-child { border-bottom: none; }
 .pf-detail-key { color: var(--text3); flex: 0 0 auto; }
 .pf-detail-val { color: var(--text); font-weight: 600; text-align: right; word-break: break-word; }
+
+/* Semester history timeline — relative course-load bars per term */
+.pf-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pf-tl-item {
+  display: grid;
+  grid-template-columns: 10px 96px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.pf-tl-item + .pf-tl-item { border-top: 1px solid var(--border2); }
+.pf-tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46,204,113,0.16);
+}
+.pf-tl-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.pf-tl-bar { height: 6px; border-radius: 999px; background: var(--border2); overflow: hidden; }
+.pf-tl-fill {
+  display: block;
+  height: 100%;
+  width: calc(var(--pf-w) * 1%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #6dd36d);
+}
+.pf-tl-count { font-size: 11px; font-weight: 600; color: var(--text2); white-space: nowrap; }
 
 /* Last-synced line in the account header */
 .pf-synced { font-size: 11px; color: var(--text3); margin-top: 2px; }
 
 /* Dedicated /profile/ page shell (mirrors the standalone admin page layout) */
 .pf-page {
+  position: relative;
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 16px 64px;
+}
+.pf-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(80% 50% at 50% 0%, rgba(46,204,113,0.10), transparent 70%);
 }
 .pf-page-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 .pf-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text2);
   text-decoration: none;
+  padding: 7px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  transition: border-color 0.2s, color 0.2s;
 }
-.pf-back:hover { color: var(--green); }
+.pf-back:hover { color: var(--green); border-color: var(--border); }
 .pf-page-title {
   font-family: 'Syne', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -12330,7 +12451,7 @@ function detectStudentIdentity(text) {
             compact.match(/\bID\s*:?\s*(\d{8})\b/i);
         if (idMatch)
             studentId = idMatch[1];
-        const nameMatch = compact.match(/\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS)\b|$)/i);
+        const nameMatch = compact.match(/\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS|UNDERGRADUATE|UNDERGRAD|POSTGRADUATE|GRADUATE)\b|$)/i);
         if (nameMatch) {
             const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
             if (cleaned && !/^\d+$/.test(cleaned))
