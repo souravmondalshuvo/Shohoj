@@ -67,6 +67,7 @@ jobs:
           GA_MEASUREMENT_ID:           ${{ secrets.GA_MEASUREMENT_ID }}
           PAPERS_WORKER_URL:           ${{ secrets.PAPERS_WORKER_URL }}
           RECAPTCHA_V3_SITE_KEY:       ${{ secrets.RECAPTCHA_V3_SITE_KEY }}
+          GOOGLE_OAUTH_CLIENT_ID:      ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
         run: |
           cp js/config/runtime-config.template.js js/config/runtime-config.js
           for key in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID \
@@ -80,6 +81,11 @@ jobs:
             fi
             # Use a delimiter unlikely to appear in any value.
             sed -i "s|__${key}__|${value}|g" js/config/runtime-config.js
+          done
+          # Optional secrets: substitute when set, otherwise blank the
+          # placeholder so the app feature-detects and disables the feature.
+          for key in GOOGLE_OAUTH_CLIENT_ID; do
+            sed -i "s|__${key}__|${!key}|g" js/config/runtime-config.js
           done
 
       - name: Build
