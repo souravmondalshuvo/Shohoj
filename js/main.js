@@ -60,7 +60,6 @@ import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
-import { renderProfileTab } from './ui/profileTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -430,7 +429,6 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
-  profile:    'tabProfile',
 };
 
 let _activeCalcTab = 'calculator';
@@ -439,8 +437,8 @@ function _moveTabSlider(tabId) {
   const slider = document.getElementById('calcTabSlider');
   if (!slider) return;
   const btn = document.querySelector(`.calc-tab[data-tab="${tabId}"]`);
-  // Some tabs (Profile) have no strip button — they're reached from the account
-  // pill. Collapse the slider so it doesn't linger under the previous tab.
+  // Defensive: a tab with no strip button collapses the slider so it doesn't
+  // linger under the previously active tab.
   if (!btn) { slider.style.width = '0px'; return; }
   slider.style.left  = btn.offsetLeft + 'px';
   slider.style.width = btn.offsetWidth + 'px';
@@ -502,9 +500,6 @@ function switchCalcTab(tabId) {
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
-  if (tabId === 'profile') {
-    renderProfileTab();
-  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -529,7 +524,6 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/routine'))  return 'routine';
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
-  if (hash.startsWith('#calculator/profile'))   return 'profile';
 
   // Then check sessionStorage
   try {
