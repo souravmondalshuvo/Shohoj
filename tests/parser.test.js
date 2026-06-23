@@ -398,6 +398,13 @@ test('Name capture stops at the next label, not swallowing the sheet', () => {
   expect(id.studentId).toBe('18204567');
 });
 
+test('Name capture drops a trailing student-level token (UNDERGRADUATE)', () => {
+  const text = 'Student ID: 24201402 Name: Sourav Mondal UNDERGRADUATE PROGRAM: B.Sc. in Computer Science and Engineering (CSE)';
+  const id = detectStudentIdentity(text);
+  expect(id.studentName).toBe('Sourav Mondal');
+  expect(id.studentId).toBe('24201402');
+});
+
 test('returns nulls when the header has no ID/Name (no wrong guess)', () => {
   const id = detectStudentIdentity('SEMESTER: FALL 2022 CSE110 Programming Language I 3.00 A 4.00');
   expect(id.studentId).toBeNull();
