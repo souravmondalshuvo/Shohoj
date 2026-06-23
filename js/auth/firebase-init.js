@@ -4,6 +4,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithPopup,
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -34,6 +35,7 @@ export {
   documentId,
   getDoc,
   getDocs,
+  GoogleAuthProvider,
   onAuthStateChanged,
   onSnapshot,
   orderBy,
@@ -41,6 +43,7 @@ export {
   query,
   serverTimestamp,
   setDoc,
+  signInWithCredential,
   signInWithPopup,
   signOut,
   startAfter,
@@ -48,6 +51,17 @@ export {
 };
 
 export const firebaseConfig = window._shohoj_firebase_config;
+
+// Google OAuth Web client ID for the One Tap prompt. Optional — empty when the
+// GOOGLE_OAUTH_CLIENT_ID secret/placeholder was left blank, in which case One
+// Tap is disabled and the explicit sign-in button/banner remain the only path.
+const _rawGoogleClientId = window._shohoj_google_client_id;
+export const googleClientId =
+  (typeof _rawGoogleClientId === 'string'
+    && _rawGoogleClientId
+    && !_rawGoogleClientId.startsWith('__'))
+    ? _rawGoogleClientId
+    : null;
 
 export const firebaseAvailable = !!(
   firebaseConfig
