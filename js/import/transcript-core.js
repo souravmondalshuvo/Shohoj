@@ -77,6 +77,24 @@ export function detectDepartment(text) {
     }
     return null;
 }
+export function detectStudentIdentity(text) {
+    const compact = String(text || '').replace(/\s+/g, ' ').trim();
+    let studentId = null;
+    let studentName = null;
+    if (compact) {
+        const idMatch = compact.match(/STUDENT\s*ID\s*:?\s*(\d{7,8})\b/i) ||
+            compact.match(/\bID\s*:?\s*(\d{8})\b/i);
+        if (idMatch)
+            studentId = idMatch[1];
+        const nameMatch = compact.match(/\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS)\b|$)/i);
+        if (nameMatch) {
+            const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
+            if (cleaned && !/^\d+$/.test(cleaned))
+                studentName = cleaned;
+        }
+    }
+    return { studentId, studentName };
+}
 export function normalizeTranscriptLine(line) {
     let normalized = String(line || '').replace(/\u00a0/g, ' ').trim();
     if (!normalized)
