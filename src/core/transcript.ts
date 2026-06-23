@@ -1,4 +1,4 @@
-import type { TranscriptParseResult, TranscriptSemester } from './types';
+import type { StudentIdentity, TranscriptParseResult, TranscriptSemester } from './types';
 
 export const DEPARTMENT_LABELS = {
   CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
@@ -97,6 +97,35 @@ export function detectDepartment(text: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Pull the Student ID and Name out of a BRACU grade sheet's header. Best-effort:
+ * a header layout the regexes don't recognise yields null rather than a wrong
+ * guess, and the Name capture stops at the next known label so it can't swallow
+ * the rest of the sheet. The ID is the standard 7–8 digit BRACU student number.
+ */
+export function detectStudentIdentity(text: string): StudentIdentity {
+  const compact = String(text || '').replace(/\s+/g, ' ').trim();
+  let studentId: string | null = null;
+  let studentName: string | null = null;
+
+  if (compact) {
+    const idMatch =
+      compact.match(/STUDENT\s*ID\s*:?\s*(\d{7,8})\b/i) ||
+      compact.match(/\bID\s*:?\s*(\d{8})\b/i);
+    if (idMatch) studentId = idMatch[1];
+
+    const nameMatch = compact.match(
+      /\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS)\b|$)/i,
+    );
+    if (nameMatch) {
+      const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
+      if (cleaned && !/^\d+$/.test(cleaned)) studentName = cleaned;
+    }
+  }
+
+  return { studentId, studentName };
 }
 
 export function normalizeTranscriptLine(line: string): string {
