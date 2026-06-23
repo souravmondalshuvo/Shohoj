@@ -128,6 +128,18 @@ export function pfFormatLastSync(ts, now = Date.now()) {
   return `Synced ${Math.floor(diff / 86400)}d ago`;
 }
 
+// Defensive strip of a trailing student-level token (UNDERGRADUATE / GRADUATE /
+// POSTGRADUATE) that older imports swallowed into the stored name. The parser
+// now stops before it (see detectStudentIdentity), but snapshots saved before
+// that fix still carry it — so clean at render time too, so existing profiles
+// read correctly without forcing a re-import. Pure; exported for unit tests.
+export function pfCleanName(name) {
+  return String(name || '')
+    .replace(/\s+(?:UNDER\s*GRAD(?:UATE)?|POST\s*GRADUATE|GRADUATE)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function profileLoadingHtml() {
   return `
     <div class="pf-empty">
@@ -277,38 +289,68 @@ export function academicProfileSectionHtml(profile) {
       </section>`;
   }
 
-  const cgpa = (typeof p.cgpa === 'number' && Number.isFinite(p.cgpa)) ? p.cgpa.toFixed(2) : '—';
+  const cgpaNum = (typeof p.cgpa === 'number' && Number.isFinite(p.cgpa)) ? p.cgpa : null;
+  const cgpa = cgpaNum !== null ? cgpaNum.toFixed(2) : '—';
   const credits = Number.isFinite(p.earnedCredits) ? p.earnedCredits : 0;
+  const semesters = Array.isArray(p.semesters) ? p.semesters : [];
+
+  // CGPA gauge geometry + standing band on the 4.0 scale (drives the ring fill
+  // and colour). Clamped so a stray out-of-range value can't overflow the ring.
+  const pct = cgpaNum !== null ? Math.max(0, Math.min(100, (cgpaNum / 4) * 100)) : 0;
+  const band = cgpaNum === null ? 'na'
+    : cgpaNum >= 3.5 ? 'high'
+    : cgpaNum >= 3.0 ? 'good'
+    : cgpaNum >= 2.5 ? 'mid'
+    : 'low';
 
   const rows = [];
   if (p.sid)     rows.push(['Student ID', p.sid]);
-  if (p.name)    rows.push(['Name', p.name]);
+  if (p.name)    rows.push(['Name', pfCleanName(p.name)]);
   if (p.program) rows.push(['Program', p.program]);
   const detailRows = rows.map(([k, v]) =>
     `<div class="pf-detail-row"><span class="pf-detail-key">${escHtml(k)}</span><span class="pf-detail-val">${escHtml(String(v))}</span></div>`
   ).join('');
 
-  const semesters = Array.isArray(p.semesters) ? p.semesters : [];
+  // Course count per semester drives a relative bar; the busiest term sets 100%.
+  const maxCourses = semesters.reduce(
+    (m, s) => Math.max(m, Array.isArray(s.courses) ? s.courses.length : 0), 0) || 1;
   const semList = semesters.length === 0 ? '' : `
       <div class="pf-subhead">Semester history <span class="pf-card-count">${semesters.length} semester${semesters.length === 1 ? '' : 's'}</span></div>
-      <ul class="pf-watch-list">${semesters.map(s => {
+      <ul class="pf-timeline">${semesters.map(s => {
         const n = Array.isArray(s.courses) ? s.courses.length : 0;
+        const w = Math.round((n / maxCourses) * 100);
         return `
-        <li class="pf-watch-item">
-          <span class="pf-watch-code">${escHtml(s.name || '')}</span>
-          <span class="pf-watch-sec">${n} course${n === 1 ? '' : 's'}</span>
+        <li class="pf-tl-item">
+          <span class="pf-tl-dot" aria-hidden="true"></span>
+          <span class="pf-tl-name">${escHtml(s.name || '')}</span>
+          <span class="pf-tl-bar" aria-hidden="true"><span class="pf-tl-fill" style="--pf-w:${w}"></span></span>
+          <span class="pf-tl-count">${n} course${n === 1 ? '' : 's'}</span>
         </li>`;
       }).join('')}</ul>`;
 
   return `
-    <section class="pf-card">
+    <section class="pf-card pf-acard">
       <div class="pf-card-head">
         <h3 class="pf-card-title">🎓 Academic profile</h3>
         <span class="pf-card-count">CGPA ${escHtml(cgpa)}</span>
       </div>
-      <div class="pf-stats">
-        <div class="pf-stat"><div class="pf-stat-num">${escHtml(cgpa)}</div><div class="pf-stat-label">CGPA</div></div>
-        <div class="pf-stat"><div class="pf-stat-num">${escHtml(String(credits))}</div><div class="pf-stat-label">Credits earned</div></div>
+      <div class="pf-acard-top">
+        <div class="pf-gauge pf-gauge--${band}" style="--pf-pct:${pct.toFixed(1)}">
+          <div class="pf-gauge-core">
+            <span class="pf-gauge-num">${escHtml(cgpa)}</span>
+            <span class="pf-gauge-cap">/ 4.00</span>
+          </div>
+        </div>
+        <div class="pf-minis">
+          <div class="pf-mini">
+            <span class="pf-mini-num">${escHtml(String(credits))}</span>
+            <span class="pf-mini-label">Credits earned</span>
+          </div>
+          <div class="pf-mini">
+            <span class="pf-mini-num">${escHtml(String(semesters.length))}</span>
+            <span class="pf-mini-label">Semester${semesters.length === 1 ? '' : 's'}</span>
+          </div>
+        </div>
       </div>
       <div class="pf-details">${detailRows}</div>
       ${semList}
