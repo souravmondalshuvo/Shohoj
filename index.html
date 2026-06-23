@@ -340,9 +340,8 @@
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
         </button>
-        <!-- Profile is intentionally not in the tab strip: it's reached from the
-             top-right account pill (see updateAuthUI in js/auth/firebase.js). The
-             #tabProfile panel and the #calculator/profile hash route still work. -->
+        <!-- Profile is not a tab: the top-right account pill opens the dedicated
+             /profile/ page (see updateAuthUI in js/auth/firebase.js). -->
       </div>
 
       <!-- ═══ TAB 1: CALCULATOR ═══ -->
@@ -474,14 +473,6 @@
         <div class="calc-body">
           <div id="freeRoomsContent">
             <!-- Rendered dynamically by freeRoomsTab.js -->
-          </div>
-        </div>
-      </div>
-
-      <div class="calc-tab-panel" id="tabProfile">
-        <div class="calc-body">
-          <div id="profileContent">
-            <!-- Rendered dynamically by profileTab.js -->
           </div>
         </div>
       </div>
