@@ -16,11 +16,11 @@ import { registerAction } from '../core/dispatch.js';
 
 registerAction('grp:signin',       () => window._shohoj_signIn?.());
 registerAction('grp:refresh',      () => _load(true));
-registerAction('grp:toggleCreate', () => { _state.showCreate = !_state.showCreate; _state.createMsg = ''; _render(); });
-registerAction('grp:createMode',   el => { _state.createMode = el.dataset.mode; _render(); });
+registerAction('grp:toggleCreate', () => { _gs.showCreate = !_gs.showCreate; _gs.createMsg = ''; _render(); });
+registerAction('grp:createMode',   el => { _gs.createMode = el.dataset.mode; _render(); });
 registerAction('grp:submit',       () => _submit());
-registerAction('grp:courseFilter', el => { _state.courseFilter = el.value; _renderList(); });
-registerAction('grp:modeFilter',   el => { _state.modeFilter = el.dataset.mode; _renderList(); });
+registerAction('grp:courseFilter', el => { _gs.courseFilter = el.value; _renderList(); });
+registerAction('grp:modeFilter',   el => { _gs.modeFilter = el.dataset.mode; _renderList(); });
 registerAction('grp:join',         el => _join(el.dataset.id));
 registerAction('grp:leave',        el => _leave(el.dataset.id));
 registerAction('grp:delete',       el => _delete(el.dataset.id, el.dataset.label));
@@ -28,7 +28,7 @@ registerAction('grp:report',       el => _report(el.dataset.id, el.dataset.label
 registerAction('grp:toggleRoster', el => _toggleRoster(el.dataset.id));
 
 // ── State ───────────────────────────────────────────────────────────────────
-const _state = {
+const _gs = {
   loading: false,
   loaded: false,
   groups: [],
@@ -97,22 +97,22 @@ function _timeAgo(g) {
 
 // ── Data ────────────────────────────────────────────────────────────────────
 async function _load(force = false) {
-  if (_state.loading) return;
-  if (_state.loaded && !force) { _render(); return; }
-  _state.loading = true;
+  if (_gs.loading) return;
+  if (_gs.loaded && !force) { _render(); return; }
+  _gs.loading = true;
   _render();
   try {
     const [groups, memberships] = await Promise.all([
       fetchStudyGroups(),
       fetchMyMemberships(),
     ]);
-    _state.groups = Array.isArray(groups) ? groups : [];
-    _state.myGroupIds = new Set((memberships || []).map(m => m.groupId).filter(Boolean));
-    _state.loaded = true;
+    _gs.groups = Array.isArray(groups) ? groups : [];
+    _gs.myGroupIds = new Set((memberships || []).map(m => m.groupId).filter(Boolean));
+    _gs.loaded = true;
   } catch (e) {
-    _state.groups = [];
+    _gs.groups = [];
   }
-  _state.loading = false;
+  _gs.loading = false;
   _render();
 }
 
@@ -128,7 +128,7 @@ export function renderGroupsTab() {
     _html(root, _signInPrompt());
     return;
   }
-  if (!_state.loaded && !_state.loading) { _load(); return; }
+  if (!_gs.loaded && !_gs.loading) { _load(); return; }
   _render();
 }
 
@@ -162,10 +162,10 @@ function _render() {
       </div>
       <div style="display:flex;gap:8px;">
         <button data-action="grp:refresh" title="Refresh" style="padding:8px 12px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
-        <button data-action="grp:toggleCreate" style="padding:8px 14px;border-radius:9px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_state.showCreate ? 'Close' : '+ Post a group'}</button>
+        <button data-action="grp:toggleCreate" style="padding:8px 14px;border-radius:9px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
       </div>
     </div>
-    ${_state.showCreate ? _createForm(t) : ''}
+    ${_gs.showCreate ? _createForm(t) : ''}
     ${_filters(t)}
     <div id="groupsList"></div>
   `));
@@ -181,7 +181,7 @@ function _createForm(t) {
     </label>`;
   const inputStyle = `width:100%;padding:9px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;`;
   const modePills = MODES.map(m => {
-    const on = m === _state.createMode;
+    const on = m === _gs.createMode;
     return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:8px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
   }).join('');
   return `
@@ -193,21 +193,21 @@ function _createForm(t) {
       ${field('When / where (optional)', `<input id="grpSchedule" maxlength="120" placeholder="e.g. Sun & Tue, 4–6pm, Library 3rd floor" style="${inputStyle}" />`)}
       ${field('Contact link (group chat)', `<input id="grpContact" maxlength="300" placeholder="https://m.me/… or https://discord.gg/…" style="${inputStyle}" />`)}
       ${field(`Capacity (${MIN_CAPACITY}–${MAX_CAPACITY})`, `<input id="grpCapacity" type="number" min="${MIN_CAPACITY}" max="${MAX_CAPACITY}" value="6" style="${inputStyle}max-width:120px;" />`)}
-      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_state.submitting ? 'opacity:0.6;' : ''}">${_state.submitting ? 'Posting…' : 'Post study group'}</button>
-      ${_state.createMsg ? `<div style="text-align:center;font-size:13px;margin-top:10px;color:${_state.createErr ? t.danger : t.accent};">${escHtml(_state.createMsg)}</div>` : ''}
+      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
+      ${_gs.createMsg ? `<div style="text-align:center;font-size:13px;margin-top:10px;color:${_gs.createErr ? t.danger : t.accent};">${escHtml(_gs.createMsg)}</div>` : ''}
     </div>`;
 }
 
 // ── Render: filters ───────────────────────────────────────────────────────────
 function _filters(t) {
   const pills = ['all', ...MODES].map(m => {
-    const on = m === _state.modeFilter;
+    const on = m === _gs.modeFilter;
     const label = m === 'all' ? 'All' : MODE_LABELS[m];
     return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
   }).join('');
   return `
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-      <input data-action="grp:courseFilter" value="${escAttr(_state.courseFilter)}" placeholder="Filter by course code…"
+      <input data-action="grp:courseFilter" value="${escAttr(_gs.courseFilter)}" placeholder="Filter by course code…"
         style="flex:1;min-width:160px;padding:8px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" />
       <div style="display:flex;gap:6px;flex-wrap:wrap;">${pills}</div>
     </div>`;
@@ -215,9 +215,9 @@ function _filters(t) {
 
 // ── Render: list ──────────────────────────────────────────────────────────────
 function _visibleGroups() {
-  const q = _state.courseFilter.trim().toUpperCase();
-  return _state.groups.filter(g => {
-    if (_state.modeFilter !== 'all' && g.mode !== _state.modeFilter) return false;
+  const q = _gs.courseFilter.trim().toUpperCase();
+  return _gs.groups.filter(g => {
+    if (_gs.modeFilter !== 'all' && g.mode !== _gs.modeFilter) return false;
     if (q && !String(g.courseCode || '').toUpperCase().includes(q)) return false;
     return true;
   });
@@ -227,13 +227,13 @@ function _renderList() {
   const el = document.getElementById('groupsList');
   if (!el) return;
   const t = _t();
-  if (_state.loading) {
+  if (_gs.loading) {
     _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
     return;
   }
   const groups = _visibleGroups();
   if (groups.length === 0) {
-    const msg = _state.groups.length === 0
+    const msg = _gs.groups.length === 0
       ? 'No study groups yet. Be the first to post one!'
       : 'No groups match your filters.';
     _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">${escHtml(msg)}</div>`);
@@ -245,9 +245,9 @@ function _renderList() {
 
 function _groupCard(g, t) {
   const uid = _currentUid();
-  const joined = _state.myGroupIds.has(g.id);
+  const joined = _gs.myGroupIds.has(g.id);
   const isCreator = uid && g.creatorUid === uid;
-  const roster = _state.rosters.get(g.id);
+  const roster = _gs.rosters.get(g.id);
   const count = (joined && Array.isArray(roster)) ? roster.length : null;
   const sum = summarizeMembers(count, g.capacity);
 
@@ -260,7 +260,7 @@ function _groupCard(g, t) {
     : `<button data-action="grp:join" data-id="${escAttr(g.id)}" ${full ? 'disabled' : ''} style="padding:7px 14px;border-radius:8px;border:none;background:${full ? t.border : t.accent};color:${full ? t.text3 : '#000'};font-size:12px;font-weight:700;cursor:${full ? 'not-allowed' : 'pointer'};font-family:inherit;">${full ? 'Full' : 'Join'}</button>`;
 
   const rosterBtn = joined
-    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_state.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
+    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
     : '';
 
   const delBtn = isCreator
@@ -273,7 +273,7 @@ function _groupCard(g, t) {
     ? `<a href="${escAttr(g.contactLink)}" target="_blank" rel="noopener noreferrer nofollow" style="font-size:12px;color:${t.accent};font-weight:700;text-decoration:none;word-break:break-all;">🔗 Open group chat</a>`
     : '';
 
-  const rosterPanel = (joined && _state.expanded.has(g.id)) ? _rosterPanel(g, t) : '';
+  const rosterPanel = (joined && _gs.expanded.has(g.id)) ? _rosterPanel(g, t) : '';
 
   return `
     <div style="border:1px solid ${t.border};background:${t.cardBg};border-radius:12px;padding:14px 16px;margin-bottom:12px;">
@@ -298,7 +298,7 @@ function _groupCard(g, t) {
 }
 
 function _rosterPanel(g, t) {
-  const roster = _state.rosters.get(g.id);
+  const roster = _gs.rosters.get(g.id);
   if (!Array.isArray(roster)) {
     return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid ${t.border};font-size:12px;color:${t.text3};">Loading members…</div>`;
   }
@@ -315,31 +315,31 @@ function _rosterPanel(g, t) {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function _submit() {
-  if (_state.submitting) return;
+  if (_gs.submitting) return;
   const get = id => document.getElementById(id)?.value || '';
   const draft = {
     courseCode: get('grpCourse'),
     title: get('grpTitle'),
     description: get('grpDesc'),
-    mode: _state.createMode,
+    mode: _gs.createMode,
     schedule: get('grpSchedule'),
     contactLink: get('grpContact'),
     capacity: Number(get('grpCapacity')),
   };
   const err = validateGroupDraft(draft);
-  if (err) { _state.createMsg = err; _state.createErr = true; _render(); return; }
+  if (err) { _gs.createMsg = err; _gs.createErr = true; _render(); return; }
 
-  _state.submitting = true; _state.createMsg = ''; _render();
+  _gs.submitting = true; _gs.createMsg = ''; _render();
   const res = await createStudyGroup(draft);
-  _state.submitting = false;
+  _gs.submitting = false;
   if (res?.ok) {
-    _state.showCreate = false;
-    _state.createMode = MODES[1];
-    _state.createMsg = '';
+    _gs.showCreate = false;
+    _gs.createMode = MODES[1];
+    _gs.createMsg = '';
     await _load(true);
   } else {
-    _state.createMsg = res?.error || 'Could not post group.';
-    _state.createErr = true;
+    _gs.createMsg = res?.error || 'Could not post group.';
+    _gs.createErr = true;
     _render();
   }
 }
@@ -348,8 +348,8 @@ async function _join(groupId) {
   if (!groupId) return;
   const res = await joinStudyGroup(groupId);
   if (res?.ok) {
-    _state.myGroupIds.add(groupId);
-    _state.rosters.delete(groupId);
+    _gs.myGroupIds.add(groupId);
+    _gs.rosters.delete(groupId);
     _renderList();
   } else if (res?.error) {
     _toast(res.error);
@@ -360,9 +360,9 @@ async function _leave(groupId) {
   if (!groupId) return;
   const res = await leaveStudyGroup(groupId);
   if (res?.ok) {
-    _state.myGroupIds.delete(groupId);
-    _state.expanded.delete(groupId);
-    _state.rosters.delete(groupId);
+    _gs.myGroupIds.delete(groupId);
+    _gs.expanded.delete(groupId);
+    _gs.rosters.delete(groupId);
     _renderList();
   } else if (res?.error) {
     _toast(res.error);
@@ -374,8 +374,8 @@ async function _delete(groupId, label) {
   if (!confirmDestructive('Delete this study group?', label || 'this group')) return;
   const res = await deleteStudyGroup(groupId);
   if (res?.ok) {
-    _state.groups = _state.groups.filter(g => g.id !== groupId);
-    _state.myGroupIds.delete(groupId);
+    _gs.groups = _gs.groups.filter(g => g.id !== groupId);
+    _gs.myGroupIds.delete(groupId);
     _renderList();
   } else if (res?.error) {
     _toast(res.error);
@@ -394,16 +394,16 @@ async function _report(groupId, label) {
 
 async function _toggleRoster(groupId) {
   if (!groupId) return;
-  if (_state.expanded.has(groupId)) {
-    _state.expanded.delete(groupId);
+  if (_gs.expanded.has(groupId)) {
+    _gs.expanded.delete(groupId);
     _renderList();
     return;
   }
-  _state.expanded.add(groupId);
+  _gs.expanded.add(groupId);
   _renderList();
-  if (!_state.rosters.has(groupId)) {
+  if (!_gs.rosters.has(groupId)) {
     const members = await fetchGroupMembers(groupId);
-    _state.rosters.set(groupId, Array.isArray(members) ? members : []);
+    _gs.rosters.set(groupId, Array.isArray(members) ? members : []);
     _renderList();
   }
 }
