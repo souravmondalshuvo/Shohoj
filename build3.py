@@ -46,6 +46,7 @@ MAIN_JS_FILES = [
     'js/core/faculty.js',
     'js/core/reviews.js',
     'js/core/papers.js',
+    'js/core/studyGroups.js',
     # Import
     'js/import/transcript-core.js',
     'js/import/parser.js',
@@ -80,6 +81,7 @@ MAIN_JS_FILES = [
     'js/ui/routineTab.js',
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
+    'js/ui/groupsTab.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
