@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-18ZvSUs9lLOtNvqXGDz/18qs2Z9sM17JjjsX3EDe0oA=' 'sha256-JQVuKsfVY+3pwGI5sPNMeBUrm6SffsRZK5qomQUZOhU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-pPT/5j3z/qNFFpo+iSCbDVl9te4/Ix3wT8zlA6CrJJU=' 'sha256-JQVuKsfVY+3pwGI5sPNMeBUrm6SffsRZK5qomQUZOhU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -2504,6 +2504,112 @@ input, select, textarea,
   .auth-signin-label { display: none !important; }
   .auth-btn-signed-in  { padding: 4px 6px 4px 4px !important; }
   .auth-btn-signed-out { padding: 5px 8px !important; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   ACCOUNT DROPDOWN MENU — opened by the signed-in pill.
+   Positioned `fixed` from JS (top/left) against the pill rect.
+   ══════════════════════════════════════════════════════════ */
+.account-menu {
+  position: fixed;
+  z-index: 99990;
+  min-width: 232px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transform-origin: top right;
+  animation: accountMenuIn 0.16s ease;
+}
+@keyframes accountMenuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.account-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.account-menu-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(46, 204, 113, 0.55);
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--green);
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+}
+.account-menu-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.account-menu-id { min-width: 0; }
+.account-menu-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-menu-email {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s !important;
+}
+.account-menu-item:hover,
+.account-menu-item:focus {
+  background: var(--glass2);
+  outline: none;
+}
+.account-menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgba(46, 204, 113, 0.45); }
+.account-menu-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1;
+}
+.account-menu-item.is-danger { color: #e74c3c; }
+.account-menu-item.is-danger:hover,
+.account-menu-item.is-danger:focus { background: rgba(231, 76, 60, 0.12); }
+.account-menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -7960,8 +8066,167 @@ function _toggleAdminNavBtn() {
   btn.classList.toggle('is-admin', _isAdminUser());
 }
 
+// ── Account dropdown menu ─────────────────────────────────────────────────────
+// The signed-in account pill opens this lightweight menu (Profile / Seat
+// watchlist / Admin / Sign out) instead of navigating straight to the Profile
+// page, so the common actions — especially sign-out — are one click away
+// without a full page navigation. The menu is appended to <body> and positioned
+// `fixed` against the pill's bounding rect so the nav's backdrop-filter/overflow
+// can't clip it and it stays glued to the pill on scroll/resize. Identity fields
+// (displayName / email / photoURL) come from Google's identity data and are
+// outside our trust boundary, so they're written via textContent / guarded src,
+// never innerHTML. Icons are emoji set via textContent, matching the calc tabs.
+let _accountMenuEl      = null;
+let _accountMenuCleanup = null;
+
+function _closeAccountMenu() {
+  if (_accountMenuCleanup) { _accountMenuCleanup(); _accountMenuCleanup = null; }
+  if (_accountMenuEl) { _accountMenuEl.remove(); _accountMenuEl = null; }
+  const btn = document.getElementById('authBtn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function _positionAccountMenu(btn, menu) {
+  const r = btn.getBoundingClientRect();
+  const margin = 8;
+  const width = menu.offsetWidth;
+  let left = Math.round(r.right - width);              // anchor menu's right edge to pill's
+  const maxLeft = window.innerWidth - width - margin;
+  if (left > maxLeft) left = maxLeft;
+  if (left < margin)  left = margin;
+  menu.style.top  = `${Math.round(r.bottom + 6)}px`;
+  menu.style.left = `${left}px`;
+}
+
+function _accountMenuKeyNav(e, menu) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+  e.preventDefault();
+  const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+  if (!items.length) return;
+  const idx = items.indexOf(document.activeElement);
+  let next;
+  if (e.key === 'ArrowDown')    next = idx < 0 ? 0 : (idx + 1) % items.length;
+  else if (e.key === 'ArrowUp') next = idx <= 0 ? items.length - 1 : idx - 1;
+  else if (e.key === 'Home')    next = 0;
+  else                          next = items.length - 1;
+  items[next].focus();
+}
+
+function _buildAccountMenu(user) {
+  const menu = document.createElement('div');
+  menu.className = 'account-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Account menu');
+
+  // Identity header — avatar + name + email.
+  const header = document.createElement('div');
+  header.className = 'account-menu-header';
+  const av = document.createElement('div');
+  av.className = 'account-menu-avatar';
+  if (isSafeAvatarUrl(user.photoURL)) {
+    const img = document.createElement('img');
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.src = user.photoURL;
+    img.alt = '';
+    av.appendChild(img);
+  } else {
+    av.classList.add('is-fallback');
+    av.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+  }
+  const idBlock = document.createElement('div');
+  idBlock.className = 'account-menu-id';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'account-menu-name';
+  nameEl.textContent = user.displayName || 'Signed in';
+  const emailEl = document.createElement('div');
+  emailEl.className = 'account-menu-email';
+  emailEl.textContent = user.email || '';
+  idBlock.appendChild(nameEl);
+  idBlock.appendChild(emailEl);
+  header.appendChild(av);
+  header.appendChild(idBlock);
+  menu.appendChild(header);
+
+  const addItem = (emoji, label, onActivate, opts = {}) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'account-menu-item' + (opts.danger ? ' is-danger' : '');
+    item.setAttribute('role', 'menuitem');
+    item.tabIndex = -1;
+    const ic = document.createElement('span');
+    ic.className = 'account-menu-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = emoji;
+    const lb = document.createElement('span');
+    lb.className = 'account-menu-label';
+    lb.textContent = label;
+    item.appendChild(ic);
+    item.appendChild(lb);
+    item.addEventListener('click', () => { _closeAccountMenu(); onActivate(); });
+    menu.appendChild(item);
+    return item;
+  };
+  const addSep = () => {
+    const sep = document.createElement('div');
+    sep.className = 'account-menu-sep';
+    menu.appendChild(sep);
+  };
+
+  addItem('👤', 'View profile', () => { window.location.href = 'profile/'; });
+  addItem('🪑', 'Seat watchlist', () => {
+    if (typeof window.switchCalcTab === 'function') {
+      window.switchCalcTab('seats');
+      document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.location.href = './#calculator/seats';
+    }
+  });
+  if (_isAdminUser()) {
+    addItem('🛡️', 'Admin dashboard', () => { window.location.href = 'admin/'; });
+  }
+  addSep();
+  addItem('🚪', 'Sign out', () => { signOutUser(); }, { danger: true });
+
+  return menu;
+}
+
+function _toggleAccountMenu(user) {
+  if (_accountMenuEl) { _closeAccountMenu(); return; }
+  const btn = document.getElementById('authBtn');
+  if (!btn) return;
+
+  const menu = _buildAccountMenu(user);
+  document.body.appendChild(menu);
+  _accountMenuEl = menu;
+  btn.setAttribute('aria-expanded', 'true');
+  _positionAccountMenu(btn, menu);
+  menu.querySelector('[role="menuitem"]')?.focus();
+
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) _closeAccountMenu();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { _closeAccountMenu(); btn.focus(); return; }
+    _accountMenuKeyNav(e, menu);
+  };
+  const reposition = () => { if (_accountMenuEl) _positionAccountMenu(btn, _accountMenuEl); };
+  // Defer the outside-click listener so the click that opened the menu doesn't
+  // immediately close it.
+  setTimeout(() => document.addEventListener('click', onDocClick), 0);
+  document.addEventListener('keydown', onKey);
+  window.addEventListener('resize', reposition);
+  window.addEventListener('scroll', reposition, true);
+  _accountMenuCleanup = () => {
+    document.removeEventListener('click', onDocClick);
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', reposition);
+    window.removeEventListener('scroll', reposition, true);
+  };
+}
+
 function updateAuthUI(user) {
   _toggleAdminNavBtn();
+  _closeAccountMenu();   // drop any open menu before repainting the pill
   const btn = document.getElementById('authBtn');
   if (!btn) return;
 
@@ -7969,11 +8234,13 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-in magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = 'View your profile';
-    // The account pill is the entry point to the dedicated Profile page (the same
-    // relative path convention as the admin link). Sign-out lives inside that
-    // page's header, so the pill no longer pops a sign-out modal of its own.
-    btn.onclick       = () => { window.location.href = 'profile/'; };
+    btn.title         = 'Account menu';
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', 'false');
+    // The pill opens the account menu (Profile / Seat watchlist / Admin / Sign
+    // out) rather than navigating straight to the Profile page, so sign-out and
+    // the other actions are reachable in one click. See _buildAccountMenu.
+    btn.onclick       = (e) => { e.preventDefault(); e.stopPropagation(); _toggleAccountMenu(user); };
     btn.ondblclick    = null;
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
@@ -8025,6 +8292,8 @@ function updateAuthUI(user) {
     btn.style.cssText = '';
     btn.disabled      = false;
     btn.title         = 'Sign in with your BRACU G-Suite account';
+    btn.removeAttribute('aria-haspopup');
+    btn.removeAttribute('aria-expanded');
     btn.onclick       = signInWithGoogle;
     btn.ondblclick    = null;
     btn.innerHTML = `
