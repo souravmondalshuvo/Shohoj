@@ -2467,6 +2467,112 @@ input, select, textarea,
 }
 
 /* ══════════════════════════════════════════════════════════
+   ACCOUNT DROPDOWN MENU — opened by the signed-in pill.
+   Positioned `fixed` from JS (top/left) against the pill rect.
+   ══════════════════════════════════════════════════════════ */
+.account-menu {
+  position: fixed;
+  z-index: 99990;
+  min-width: 232px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transform-origin: top right;
+  animation: accountMenuIn 0.16s ease;
+}
+@keyframes accountMenuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.account-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.account-menu-avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(46, 204, 113, 0.55);
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--green);
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+}
+.account-menu-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.account-menu-id { min-width: 0; }
+.account-menu-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-menu-email {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s !important;
+}
+.account-menu-item:hover,
+.account-menu-item:focus {
+  background: var(--glass2);
+  outline: none;
+}
+.account-menu-item:focus-visible { box-shadow: inset 0 0 0 2px rgba(46, 204, 113, 0.45); }
+.account-menu-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1;
+}
+.account-menu-item.is-danger { color: #e74c3c; }
+.account-menu-item.is-danger:hover,
+.account-menu-item.is-danger:focus { background: rgba(231, 76, 60, 0.12); }
+.account-menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════
    CALCULATOR TABS — three-pane navigation
    Calculator | Planner | Playground
    ══════════════════════════════════════════════════════════ */
