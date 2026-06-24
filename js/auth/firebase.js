@@ -1526,14 +1526,13 @@ window._shohoj_createStudyGroup = async function({ courseCode, title, descriptio
   }
 };
 
-window._shohoj_fetchStudyGroups = async function({ courseCode } = {}) {
+window._shohoj_fetchStudyGroups = async function() {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'studyGroups');
-    const code = String(courseCode || '').toUpperCase().trim();
-    const q = code
-      ? query(col, where('courseCode', '==', code), orderBy('createdAt', 'desc'), qLimit(200))
-      : query(col, orderBy('createdAt', 'desc'), qLimit(200));
+    // The board is capped at 200 recent groups; course/mode filtering is done
+    // client-side (substring match) in groupsTab, so no server-side course
+    // filter (or its composite index) is needed.
+    const q = query(collection(db, 'studyGroups'), orderBy('createdAt', 'desc'), qLimit(200));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
