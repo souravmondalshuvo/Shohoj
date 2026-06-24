@@ -1497,6 +1497,209 @@ window._shohoj_toggleUpvote = async function(feedbackId, currentlyUpvoted) {
   }
 };
 
+// ── Study group finder hooks (Phase 2 community) ──────────────────────────────
+// Direct client writes gated by firestore.rules (studyGroups / studyGroupMembers
+// / studyGroupReports). No Worker — the group doc carries no file or hash, and
+// each member doc pins the joiner's own verified email so a join can't publish
+// someone else's address.
+window._shohoj_createStudyGroup = async function({ courseCode, title, description, mode, schedule, contactLink, capacity }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  try {
+    const data = {
+      courseCode: String(courseCode || '').toUpperCase().trim(),
+      title: String(title || '').trim().slice(0, 80),
+      mode: String(mode || '').toLowerCase(),
+      contactLink: String(contactLink || '').trim().slice(0, 300),
+      capacity: Math.round(Number(capacity) || 0),
+      creatorUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    };
+    const desc = String(description || '').trim();
+    if (desc) data.description = desc.slice(0, 500);
+    const sched = String(schedule || '').trim();
+    if (sched) data.schedule = sched.slice(0, 120);
+    const ref = await addDoc(collection(db, 'studyGroups'), data);
+    return { ok: true, id: ref.id };
+  } catch (e) {
+    console.error('[Shohoj] createStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Create failed' };
+  }
+};
+
+window._shohoj_fetchStudyGroups = async function({ courseCode } = {}) {
+  if (!currentUser) return [];
+  try {
+    const col = collection(db, 'studyGroups');
+    const code = String(courseCode || '').toUpperCase().trim();
+    const q = code
+      ? query(col, where('courseCode', '==', code), orderBy('createdAt', 'desc'), qLimit(200))
+      : query(col, orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchStudyGroups failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchMyGroupMemberships = async function() {
+  if (!currentUser) return [];
+  try {
+    const q = query(
+      collection(db, 'studyGroupMembers'),
+      where('uid', '==', currentUser.uid),
+      qLimit(500),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchMyGroupMemberships failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchGroupMembers = async function(groupId) {
+  if (!currentUser || !groupId) return [];
+  try {
+    const q = query(
+      collection(db, 'studyGroupMembers'),
+      where('groupId', '==', String(groupId)),
+      orderBy('joinedAt', 'asc'),
+      qLimit(50),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    // Non-members are denied the roster by rules — surface as a locked roster.
+    console.warn('[Shohoj] fetchGroupMembers failed:', e?.message || e);
+    return [];
+  }
+};
+
+window._shohoj_joinStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const memberId = `${groupId}_${currentUser.uid}`;
+    await setDoc(doc(db, 'studyGroupMembers', memberId), {
+      groupId: String(groupId),
+      uid: currentUser.uid,
+      email: currentUser.email,
+      joinedAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] joinStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Join failed' };
+  }
+};
+
+window._shohoj_leaveStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroupMembers', `${groupId}_${currentUser.uid}`));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] leaveStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Leave failed' };
+  }
+};
+
+window._shohoj_deleteStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroups', String(groupId)));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_reportStudyGroup = async function({ groupId, reason }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const reportId = `${currentUser.uid}_${groupId}`;
+    await setDoc(doc(db, 'studyGroupReports', reportId), {
+      groupId: String(groupId),
+      reason: String(reason || '').slice(0, 300),
+      reporterUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] reportStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
+  }
+};
+
+// Admin moderation for study groups.
+window._shohoj_fetchStudyGroupReports = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const q = query(collection(db, 'studyGroupReports'), orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchStudyGroupReports failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_deleteStudyGroupReport = async function(reportId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroupReports', reportId));
+    _writeAdminLog('delete_study_group_report', 'studyGroupReport', reportId);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroupReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_adminDeleteStudyGroup = async function(groupId, meta) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroups', String(groupId)));
+    _writeAdminLog('delete_study_group', 'studyGroup', groupId, (meta && typeof meta === 'object') ? meta : null);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] adminDeleteStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deleteStudyGroupByReport = async function(reportId, groupId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const groupRef = doc(db, 'studyGroups', String(groupId));
+    const groupSnap = await getDoc(groupRef);
+    if (!groupSnap.exists()) {
+      const reportRes = await window._shohoj_deleteStudyGroupReport(reportId);
+      if (!reportRes?.ok) return reportRes;
+      return { ok: true, missingGroup: true };
+    }
+    const delRes = await window._shohoj_adminDeleteStudyGroup(groupId, { reportId });
+    if (!delRes?.ok) return delRes;
+    const reportRes = await window._shohoj_deleteStudyGroupReport(reportId);
+    if (!reportRes?.ok) {
+      return { ok: false, error: reportRes.error || 'Group deleted, but report dismissal failed' };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroupByReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
 // ── Past papers & notes library (Phase 2) ──────────────────────────────────
 window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 } = {}) {
   if (!currentUser || !courseCode) return [];
