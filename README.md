@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-480%20unit%2Fworker%20%2B%2054%20rules%20%2B%2041%20E2E-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-493%20unit%2Fworker%20%2B%2068%20rules%20%2B%2041%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -225,6 +225,17 @@ In-app product feedback for bugs, feature ideas, and general comments.
 - **Private upvote state** — upvote documents are readable only by the voter or admins, so the UI shows your own vote state rather than exposing global voter data
 - **Admin cleanup** — admin-claim moderators can remove abusive or duplicate feedback
 
+### 🧑‍🤝‍🧑 Study Group Finder (New)
+
+Post a study group for a course, find classmates, and join open groups — all gated behind BRACU G-Suite sign-in.
+
+- **Post & browse** — create a group with a course code, name, description, meeting mode (online / in-person / hybrid), schedule, capacity, and a group-chat invite link; browse and filter the board by course code or mode
+- **Two-tier connect** — the contact link is the public connect path (visible to every BRACU user), while the member email roster is **member-only**: you join to see who's in, and to be seen, so emails stay opt-in
+- **Join / leave** — one tap to join or leave; each membership doc pins your own verified BRACU email, so joining can never publish someone else's address
+- **Immutable once posted** — group docs can't be edited after creation (no bait-and-switch on a joined roster); creators can delete their own group, admins can delete any
+- **Report flow** — every group has a Report action writing to an admin-only `studyGroupReports` queue, capped at one report per user per group
+- **Hard non-goal** — Shohoj never collects BRACU CONNECT credentials; the only contact field is a user-supplied public chat link
+
 ### 🛡️ Admin Dashboard (New)
 
 A separate admin shell at `/admin/` for moderation and audit work.
@@ -429,6 +440,11 @@ Firestore (rules-enforced for browser clients)
   ├── appFeedbackUpvotes/{feedbackId_uid}
   │                          — private per-user upvote state
   ├── facultyProfiles/{init} — admin-seeded faculty directory
+  ├── studyGroups/{groupId}  — study group finder posts (immutable)
+  ├── studyGroupMembers/{groupId_uid}
+  │                          — member-only roster (own email pinned)
+  ├── studyGroupReports/{uid_groupId}
+  │                          — study group moderation queue (admin-read)
   └── adminLogs/{id}         — admin action audit trail
 
 Cloudflare Worker (auth-proxy, BRACU email + admin claim)
@@ -454,7 +470,7 @@ Shohoj has been through a security audit and the following protections are in pl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable by BRACU accounts, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic SHA-256 hash of `uid + faculty + course`, which reduces cross-review linkage compared with a single reusable user hash.
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
@@ -493,8 +509,7 @@ Shohoj has been through a security audit and the following protections are in pl
 | Past Papers & Notes library        | ✅ Live     |
 | Feedback board                     | ✅ Live     |
 | Admin moderation dashboard         | ✅ Live     |
-| Interview experience board         | ⏳ Planned  |
-| Study group finder                 | ⏳ Planned  |
+| Study group finder                 | ✅ Live     |
 
 ### Phase 3 — Campus Life
 
@@ -502,7 +517,7 @@ Interactive campus map, cafeteria guide, bus routes & timings, lost & found boar
 
 ### Phase 4 — Career & Opportunities
 
-Internship listings, alumni directory, resume review board, company hiring history.
+Internship listings, alumni directory, interview experience board, resume review board, company hiring history.
 
 ### Phase 5 — Marketplace
 
@@ -566,7 +581,8 @@ Shohoj/
 │   │   ├── dispatch.js           Delegated UI action registry
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
 │   │   ├── papers.js             Past-paper validation and storage hooks
-│   │   └── reviews.js            Review submission & fetch layer, aggregation helpers
+│   │   ├── reviews.js            Review submission & fetch layer, aggregation helpers
+│   │   └── studyGroups.js        Study group validation + Firestore hook wrappers
 │   ├── ui/
 │   │   ├── render.js             Semester rendering, drag-drop reorder, faculty input
 │   │   ├── suggestions.js        Course autocomplete suggestion portal
@@ -580,6 +596,7 @@ Shohoj/
 │   │   ├── papersTab.js          Past Papers & Notes browse/upload/report UI
 │   │   ├── previewModal.js       Shared paper preview modal
 │   │   ├── feedback.js           Feedback modal and board
+│   │   ├── groupsTab.js          Study Group Finder — post/browse/join/report, member roster
 │   │   ├── adminDashboard.js     Admin moderation dashboard
 │   │   ├── tracker.js            Degree Progress Tracker with timeline
 │   │   └── modals.js             Transcript import modal, PDF export
@@ -610,7 +627,8 @@ Shohoj/
 │   ├── tracker.test.js           4 tests — degree progress and graduation estimate
 │   ├── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
 │   ├── adminDashboard.test.js    3 tests — admin stat rendering helpers
-│   └── firestore.rules.test.js   45 tests — emulator-driven security rules checks
+│   ├── studyGroups.test.js       13 tests — draft validation, mode/course checks, member summary
+│   └── firestore.rules.test.js   68 tests — emulator-driven security rules checks
 ├── e2e/
 │   └── shohoj.spec.js            Playwright E2E tests for demo, CGPA, planner, mobile, export/import
 ├── src/
@@ -747,6 +765,14 @@ Additional notes on Repeat:
 - Pending paper metadata is visible only to the uploader and admins. Other students can read paper metadata only after approval.
 - File previews are best-effort. If a browser cannot render a PDF inline, use "Open in new tab."
 
+### Study Group Finder
+
+- Posting, joining, and browsing all require sign-in with a `@g.bracu.ac.bd` account, enforced both client-side and by Firestore security rules.
+- **Capacity is advisory.** Firestore rules cannot count members atomically (the same limitation as feedback upvotes), so the joined/capacity figure and the "Full" state are best-effort client-side checks — a group can occasionally exceed its stated capacity under a race.
+- **The contact link is public to all BRACU users** and is user-supplied. Rules require an `https://` URL and the UI escapes it, but Shohoj can't vouch for where a link leads — report a bad or malicious link and an admin will remove the group.
+- The member email roster is visible only to fellow members; non-members see capacity and the contact link but not who has joined.
+- Group posts are **immutable** once created — there is no edit flow. To change details, delete the group and post a new one. Deleting a group does not auto-remove member docs (rules only let each user delete their own membership); orphaned memberships are harmless and simply don't render.
+
 ### Degree Progress Tracker
 
 - Graduation estimate assumes your **current credit-per-semester pace** remains constant. One unusually light or heavy semester will skew the estimate temporarily.
@@ -781,6 +807,9 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `paperReports/{uid_paperId}` | Firestore | Admin-only paper reports, deduplicated per user per paper              |
 | `appFeedback/{id}`        | Firestore    | Feedback board entries                                                  |
 | `appFeedbackUpvotes/{feedbackId_uid}` | Firestore | Private per-user upvote state, readable by owner/admin only       |
+| `studyGroups/{groupId}`   | Firestore    | Study group posts — course, mode, schedule, public contact link, capacity; immutable after create |
+| `studyGroupMembers/{groupId_uid}` | Firestore | Member roster — own BRACU email pinned, readable by fellow members/admin only |
+| `studyGroupReports/{uid_groupId}` | Firestore | Admin-only study group reports, deduplicated per user per group |
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 
@@ -804,6 +833,7 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | Course Difficulty Map                           | 🔶 Live — aggregates grow with the review corpus        |
 | Past Papers & Notes                             | 🔶 Live — moderated community library                   |
 | Feedback Board                                  | ✅ Production-ready                                     |
+| Study Group Finder                              | 🔶 Live — capacity is advisory; contact links are user-supplied |
 | Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
 
 ---
