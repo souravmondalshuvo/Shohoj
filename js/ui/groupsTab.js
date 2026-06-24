@@ -31,6 +31,7 @@ registerAction('grp:toggleRoster', el => _toggleRoster(el.dataset.id));
 const _gs = {
   loading: false,
   loaded: false,
+  error: false,
   groups: [],
   myGroupIds: new Set(),   // groupIds the current user has joined
   rosters: new Map(),      // groupId -> [member docs] (member-only, lazy)
@@ -100,6 +101,7 @@ async function _load(force = false) {
   if (_gs.loading) return;
   if (_gs.loaded && !force) { _render(); return; }
   _gs.loading = true;
+  _gs.error = false;
   _render();
   try {
     const [groups, memberships] = await Promise.all([
@@ -111,6 +113,7 @@ async function _load(force = false) {
     _gs.loaded = true;
   } catch (e) {
     _gs.groups = [];
+    _gs.error = true;
   }
   _gs.loading = false;
   _render();
@@ -231,6 +234,13 @@ function _renderList() {
     _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
     return;
   }
+  if (_gs.error) {
+    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
+      Couldn't load study groups.
+      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
+    </div>`);
+    return;
+  }
   const groups = _visibleGroups();
   if (groups.length === 0) {
     const msg = _gs.groups.length === 0
@@ -253,11 +263,13 @@ function _groupCard(g, t) {
 
   const modeBadge = `<span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${t.text3};border:1px solid ${t.border};border-radius:6px;padding:2px 7px;">${escHtml(MODE_LABELS[g.mode] || g.mode || '')}</span>`;
   const joinedBadge = joined ? `<span style="font-size:10px;font-weight:700;color:${t.accent};">✓ Joined</span>` : '';
-  const full = sum.isFull && !joined;
 
+  // Capacity is advisory (rules can't count members atomically, and non-members
+  // can't read the roster to know the live count), so the Join button is never
+  // hard-disabled — the "N / cap joined" label is the only capacity signal.
   const joinBtn = joined
     ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
-    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" ${full ? 'disabled' : ''} style="padding:7px 14px;border-radius:8px;border:none;background:${full ? t.border : t.accent};color:${full ? t.text3 : '#000'};font-size:12px;font-weight:700;cursor:${full ? 'not-allowed' : 'pointer'};font-family:inherit;">${full ? 'Full' : 'Join'}</button>`;
+    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
 
   const rosterBtn = joined
     ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
