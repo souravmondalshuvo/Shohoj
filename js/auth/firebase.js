@@ -1151,8 +1151,167 @@ function _toggleAdminNavBtn() {
   btn.classList.toggle('is-admin', _isAdminUser());
 }
 
+// ── Account dropdown menu ─────────────────────────────────────────────────────
+// The signed-in account pill opens this lightweight menu (Profile / Seat
+// watchlist / Admin / Sign out) instead of navigating straight to the Profile
+// page, so the common actions — especially sign-out — are one click away
+// without a full page navigation. The menu is appended to <body> and positioned
+// `fixed` against the pill's bounding rect so the nav's backdrop-filter/overflow
+// can't clip it and it stays glued to the pill on scroll/resize. Identity fields
+// (displayName / email / photoURL) come from Google's identity data and are
+// outside our trust boundary, so they're written via textContent / guarded src,
+// never innerHTML. Icons are emoji set via textContent, matching the calc tabs.
+let _accountMenuEl      = null;
+let _accountMenuCleanup = null;
+
+function _closeAccountMenu() {
+  if (_accountMenuCleanup) { _accountMenuCleanup(); _accountMenuCleanup = null; }
+  if (_accountMenuEl) { _accountMenuEl.remove(); _accountMenuEl = null; }
+  const btn = document.getElementById('authBtn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function _positionAccountMenu(btn, menu) {
+  const r = btn.getBoundingClientRect();
+  const margin = 8;
+  const width = menu.offsetWidth;
+  let left = Math.round(r.right - width);              // anchor menu's right edge to pill's
+  const maxLeft = window.innerWidth - width - margin;
+  if (left > maxLeft) left = maxLeft;
+  if (left < margin)  left = margin;
+  menu.style.top  = `${Math.round(r.bottom + 6)}px`;
+  menu.style.left = `${left}px`;
+}
+
+function _accountMenuKeyNav(e, menu) {
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+  e.preventDefault();
+  const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+  if (!items.length) return;
+  const idx = items.indexOf(document.activeElement);
+  let next;
+  if (e.key === 'ArrowDown')    next = idx < 0 ? 0 : (idx + 1) % items.length;
+  else if (e.key === 'ArrowUp') next = idx <= 0 ? items.length - 1 : idx - 1;
+  else if (e.key === 'Home')    next = 0;
+  else                          next = items.length - 1;
+  items[next].focus();
+}
+
+function _buildAccountMenu(user) {
+  const menu = document.createElement('div');
+  menu.className = 'account-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', 'Account menu');
+
+  // Identity header — avatar + name + email.
+  const header = document.createElement('div');
+  header.className = 'account-menu-header';
+  const av = document.createElement('div');
+  av.className = 'account-menu-avatar';
+  if (isSafeAvatarUrl(user.photoURL)) {
+    const img = document.createElement('img');
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.src = user.photoURL;
+    img.alt = '';
+    av.appendChild(img);
+  } else {
+    av.classList.add('is-fallback');
+    av.textContent = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+  }
+  const idBlock = document.createElement('div');
+  idBlock.className = 'account-menu-id';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'account-menu-name';
+  nameEl.textContent = user.displayName || 'Signed in';
+  const emailEl = document.createElement('div');
+  emailEl.className = 'account-menu-email';
+  emailEl.textContent = user.email || '';
+  idBlock.appendChild(nameEl);
+  idBlock.appendChild(emailEl);
+  header.appendChild(av);
+  header.appendChild(idBlock);
+  menu.appendChild(header);
+
+  const addItem = (emoji, label, onActivate, opts = {}) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'account-menu-item' + (opts.danger ? ' is-danger' : '');
+    item.setAttribute('role', 'menuitem');
+    item.tabIndex = -1;
+    const ic = document.createElement('span');
+    ic.className = 'account-menu-icon';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = emoji;
+    const lb = document.createElement('span');
+    lb.className = 'account-menu-label';
+    lb.textContent = label;
+    item.appendChild(ic);
+    item.appendChild(lb);
+    item.addEventListener('click', () => { _closeAccountMenu(); onActivate(); });
+    menu.appendChild(item);
+    return item;
+  };
+  const addSep = () => {
+    const sep = document.createElement('div');
+    sep.className = 'account-menu-sep';
+    menu.appendChild(sep);
+  };
+
+  addItem('👤', 'View profile', () => { window.location.href = 'profile/'; });
+  addItem('🪑', 'Seat watchlist', () => {
+    if (typeof window.switchCalcTab === 'function') {
+      window.switchCalcTab('seats');
+      document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.location.href = './#calculator/seats';
+    }
+  });
+  if (_isAdminUser()) {
+    addItem('🛡️', 'Admin dashboard', () => { window.location.href = 'admin/'; });
+  }
+  addSep();
+  addItem('🚪', 'Sign out', () => { signOutUser(); }, { danger: true });
+
+  return menu;
+}
+
+function _toggleAccountMenu(user) {
+  if (_accountMenuEl) { _closeAccountMenu(); return; }
+  const btn = document.getElementById('authBtn');
+  if (!btn) return;
+
+  const menu = _buildAccountMenu(user);
+  document.body.appendChild(menu);
+  _accountMenuEl = menu;
+  btn.setAttribute('aria-expanded', 'true');
+  _positionAccountMenu(btn, menu);
+  menu.querySelector('[role="menuitem"]')?.focus();
+
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) _closeAccountMenu();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { _closeAccountMenu(); btn.focus(); return; }
+    _accountMenuKeyNav(e, menu);
+  };
+  const reposition = () => { if (_accountMenuEl) _positionAccountMenu(btn, _accountMenuEl); };
+  // Defer the outside-click listener so the click that opened the menu doesn't
+  // immediately close it.
+  setTimeout(() => document.addEventListener('click', onDocClick), 0);
+  document.addEventListener('keydown', onKey);
+  window.addEventListener('resize', reposition);
+  window.addEventListener('scroll', reposition, true);
+  _accountMenuCleanup = () => {
+    document.removeEventListener('click', onDocClick);
+    document.removeEventListener('keydown', onKey);
+    window.removeEventListener('resize', reposition);
+    window.removeEventListener('scroll', reposition, true);
+  };
+}
+
 function updateAuthUI(user) {
   _toggleAdminNavBtn();
+  _closeAccountMenu();   // drop any open menu before repainting the pill
   const btn = document.getElementById('authBtn');
   if (!btn) return;
 
@@ -1160,11 +1319,13 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-in magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = 'View your profile';
-    // The account pill is the entry point to the dedicated Profile page (the same
-    // relative path convention as the admin link). Sign-out lives inside that
-    // page's header, so the pill no longer pops a sign-out modal of its own.
-    btn.onclick       = () => { window.location.href = 'profile/'; };
+    btn.title         = 'Account menu';
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', 'false');
+    // The pill opens the account menu (Profile / Seat watchlist / Admin / Sign
+    // out) rather than navigating straight to the Profile page, so sign-out and
+    // the other actions are reachable in one click. See _buildAccountMenu.
+    btn.onclick       = (e) => { e.preventDefault(); e.stopPropagation(); _toggleAccountMenu(user); };
     btn.ondblclick    = null;
 
     const firstName = user.displayName?.split(' ')[0] || 'Account';
@@ -1216,6 +1377,8 @@ function updateAuthUI(user) {
     btn.style.cssText = '';
     btn.disabled      = false;
     btn.title         = 'Sign in with your BRACU G-Suite account';
+    btn.removeAttribute('aria-haspopup');
+    btn.removeAttribute('aria-expanded');
     btn.onclick       = signInWithGoogle;
     btn.ondblclick    = null;
     btn.innerHTML = `
