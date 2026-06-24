@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-pPT/5j3z/qNFFpo+iSCbDVl9te4/Ix3wT8zlA6CrJJU=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-HMCtMgYyeXl9mOccVEyx4aWYPpJj/vfx/RVaaveluss='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-AvpryLqy4QXg0FjRwbnQUnjTdb+mkr5330lFcIHP4gM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ftyRU0etANcEmgsRt3jflLNgJoqGZNzqmVj0B4M0g8o='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7055,6 +7055,10 @@ body[data-page="admin"] .orb { display: none !important; }
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
         </button>
+        <button class="calc-tab" data-tab="groups">
+          <span class="calc-tab-icon">🧑‍🤝‍🧑</span>
+          <span>Groups</span>
+        </button>
         <!-- Profile is not a tab: the top-right account pill opens the dedicated
              /profile/ page (see updateAuthUI in js/auth/firebase.js). -->
       </div>
@@ -7188,6 +7192,15 @@ body[data-page="admin"] .orb { display: none !important; }
         <div class="calc-body">
           <div id="freeRoomsContent">
             <!-- Rendered dynamically by freeRoomsTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB: STUDY GROUPS ═══ -->
+      <div class="calc-tab-panel" id="tabGroups">
+        <div class="calc-body">
+          <div id="groupsContent">
+            <!-- Rendered dynamically by groupsTab.js -->
           </div>
         </div>
       </div>
@@ -8887,6 +8900,208 @@ window._shohoj_toggleUpvote = async function(feedbackId, currentlyUpvoted) {
   } catch (e) {
     console.error('[Shohoj] toggleUpvote failed:', e);
     return { ok: false, error: e.message || 'Failed' };
+  }
+};
+
+// ── Study group finder hooks (Phase 2 community) ──────────────────────────────
+// Direct client writes gated by firestore.rules (studyGroups / studyGroupMembers
+// / studyGroupReports). No Worker — the group doc carries no file or hash, and
+// each member doc pins the joiner's own verified email so a join can't publish
+// someone else's address.
+window._shohoj_createStudyGroup = async function({ courseCode, title, description, mode, schedule, contactLink, capacity }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  try {
+    const data = {
+      courseCode: String(courseCode || '').toUpperCase().trim(),
+      title: String(title || '').trim().slice(0, 80),
+      mode: String(mode || '').toLowerCase(),
+      contactLink: String(contactLink || '').trim().slice(0, 300),
+      capacity: Math.round(Number(capacity) || 0),
+      creatorUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    };
+    const desc = String(description || '').trim();
+    if (desc) data.description = desc.slice(0, 500);
+    const sched = String(schedule || '').trim();
+    if (sched) data.schedule = sched.slice(0, 120);
+    const ref = await addDoc(collection(db, 'studyGroups'), data);
+    return { ok: true, id: ref.id };
+  } catch (e) {
+    console.error('[Shohoj] createStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Create failed' };
+  }
+};
+
+window._shohoj_fetchStudyGroups = async function() {
+  if (!currentUser) return [];
+  try {
+    // The board is capped at 200 recent groups; course/mode filtering is done
+    // client-side (substring match) in groupsTab, so no server-side course
+    // filter (or its composite index) is needed.
+    const q = query(collection(db, 'studyGroups'), orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchStudyGroups failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchMyGroupMemberships = async function() {
+  if (!currentUser) return [];
+  try {
+    const q = query(
+      collection(db, 'studyGroupMembers'),
+      where('uid', '==', currentUser.uid),
+      qLimit(500),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchMyGroupMemberships failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_fetchGroupMembers = async function(groupId) {
+  if (!currentUser || !groupId) return [];
+  try {
+    const q = query(
+      collection(db, 'studyGroupMembers'),
+      where('groupId', '==', String(groupId)),
+      orderBy('joinedAt', 'asc'),
+      qLimit(50),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    // Non-members are denied the roster by rules — surface as a locked roster.
+    console.warn('[Shohoj] fetchGroupMembers failed:', e?.message || e);
+    return [];
+  }
+};
+
+window._shohoj_joinStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const memberId = `${groupId}_${currentUser.uid}`;
+    await setDoc(doc(db, 'studyGroupMembers', memberId), {
+      groupId: String(groupId),
+      uid: currentUser.uid,
+      email: currentUser.email,
+      joinedAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] joinStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Join failed' };
+  }
+};
+
+window._shohoj_leaveStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroupMembers', `${groupId}_${currentUser.uid}`));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] leaveStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Leave failed' };
+  }
+};
+
+window._shohoj_deleteStudyGroup = async function(groupId) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroups', String(groupId)));
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_reportStudyGroup = async function({ groupId, reason }) {
+  if (!currentUser) return { ok: false, error: 'Not signed in' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const reportId = `${currentUser.uid}_${groupId}`;
+    await setDoc(doc(db, 'studyGroupReports', reportId), {
+      groupId: String(groupId),
+      reason: String(reason || '').slice(0, 300),
+      reporterUid: currentUser.uid,
+      createdAt: serverTimestamp(),
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] reportStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Report failed' };
+  }
+};
+
+// Admin moderation for study groups.
+window._shohoj_fetchStudyGroupReports = async function() {
+  if (!_isAdminUser()) return [];
+  try {
+    const q = query(collection(db, 'studyGroupReports'), orderBy('createdAt', 'desc'), qLimit(200));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchStudyGroupReports failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_deleteStudyGroupReport = async function(reportId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroupReports', reportId));
+    _writeAdminLog('delete_study_group_report', 'studyGroupReport', reportId);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroupReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_adminDeleteStudyGroup = async function(groupId, meta) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    await deleteDoc(doc(db, 'studyGroups', String(groupId)));
+    _writeAdminLog('delete_study_group', 'studyGroup', groupId, (meta && typeof meta === 'object') ? meta : null);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] adminDeleteStudyGroup failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
+  }
+};
+
+window._shohoj_deleteStudyGroupByReport = async function(reportId, groupId) {
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  if (!reportId) return { ok: false, error: 'Missing report id' };
+  if (!groupId) return { ok: false, error: 'Missing group id' };
+  try {
+    const groupRef = doc(db, 'studyGroups', String(groupId));
+    const groupSnap = await getDoc(groupRef);
+    if (!groupSnap.exists()) {
+      const reportRes = await window._shohoj_deleteStudyGroupReport(reportId);
+      if (!reportRes?.ok) return reportRes;
+      return { ok: true, missingGroup: true };
+    }
+    const delRes = await window._shohoj_adminDeleteStudyGroup(groupId, { reportId });
+    if (!delRes?.ok) return delRes;
+    const reportRes = await window._shohoj_deleteStudyGroupReport(reportId);
+    if (!reportRes?.ok) {
+      return { ok: false, error: reportRes.error || 'Group deleted, but report dismissal failed' };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] deleteStudyGroupByReport failed:', e);
+    return { ok: false, error: e.message || 'Delete failed' };
   }
 };
 
@@ -12629,6 +12844,178 @@ async function deletePaperReport(reportId) {
     return { ok: false, error: 'Unavailable' };
   }
   return window._shohoj_deletePaperReport(reportId);
+}
+
+// ── js/core/studyGroups.js ──────────────────────────────────────
+// ── js/core/studyGroups.js ────────────────────────────────────────────────────
+// Pure data layer for the Study Group Finder. Wraps the Firestore hooks that
+// firebase.js exposes on window._shohoj_* so the rest of the bundled code can
+// post, browse, join, and report study groups without touching Firebase
+// directly. Mirrors js/core/papers.js. Keep this framework-free and testable —
+// validation here is a UX courtesy; firestore.rules is the real gate.
+
+const GROUP_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+const HTTPS_LINK_RE = /^https:\/\/[^\s]+$/i;
+
+const MODES = ['online', 'in-person', 'hybrid'];
+const MODE_LABELS = {
+  online: 'Online',
+  'in-person': 'In-person',
+  hybrid: 'Hybrid',
+};
+
+const TITLE_MIN = 3;
+const TITLE_MAX = 80;
+const DESCRIPTION_MAX = 500;
+const SCHEDULE_MAX = 120;
+const CONTACT_LINK_MAX = 300;
+const MIN_CAPACITY = 2;
+const MAX_CAPACITY = 50;
+
+function normalizeCourseCode(raw) {
+  return String(raw || '').toUpperCase().trim();
+}
+
+function isKnownCourseCode(raw) {
+  const code = normalizeCourseCode(raw);
+  return GROUP_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+}
+
+function isValidMode(m) {
+  return MODES.includes(String(m || '').toLowerCase());
+}
+
+// Returns an error string, or null when the draft is valid.
+function validateGroupDraft({ courseCode, title, description, mode, schedule, contactLink, capacity }) {
+  if (!isKnownCourseCode(courseCode)) return 'Unknown course code';
+
+  const cleanTitle = String(title || '').trim();
+  if (cleanTitle.length < TITLE_MIN) return `Title must be at least ${TITLE_MIN} characters`;
+  if (cleanTitle.length > TITLE_MAX) return `Title must be ${TITLE_MAX} characters or less`;
+
+  const cleanDesc = String(description || '').trim();
+  if (cleanDesc.length > DESCRIPTION_MAX) return `Description must be ${DESCRIPTION_MAX} characters or less`;
+
+  if (!isValidMode(mode)) return 'Pick a meeting mode';
+
+  const cleanSchedule = String(schedule || '').trim();
+  if (cleanSchedule.length > SCHEDULE_MAX) return `Schedule must be ${SCHEDULE_MAX} characters or less`;
+
+  const cleanLink = String(contactLink || '').trim();
+  if (!HTTPS_LINK_RE.test(cleanLink)) return 'Contact link must be a full https:// URL';
+  if (cleanLink.length > CONTACT_LINK_MAX) return `Contact link must be ${CONTACT_LINK_MAX} characters or less`;
+
+  const cap = Number(capacity);
+  if (!Number.isInteger(cap)) return 'Capacity must be a whole number';
+  if (cap < MIN_CAPACITY) return `Capacity must be at least ${MIN_CAPACITY}`;
+  if (cap > MAX_CAPACITY) return `Capacity must be ${MAX_CAPACITY} or less`;
+
+  return null;
+}
+
+// Member-count summary for a group card. memberCount may be null when the
+// caller isn't a member and can't read the roster (rules-gated).
+function summarizeMembers(memberCount, capacity) {
+  const cap = Number(capacity) || 0;
+  if (memberCount == null) {
+    return { label: `up to ${cap}`, isFull: false, spotsLeft: null, known: false };
+  }
+  const count = Math.max(0, Number(memberCount) || 0);
+  const spotsLeft = Math.max(0, cap - count);
+  return {
+    label: `${count} / ${cap} joined`,
+    isFull: count >= cap,
+    spotsLeft,
+    known: true,
+  };
+}
+
+function groupTimestampMs(g) {
+  if (!g || !g.createdAt) return 0;
+  if (typeof g.createdAt.toMillis === 'function') return g.createdAt.toMillis();
+  if (g.createdAt.seconds) return g.createdAt.seconds * 1000;
+  return 0;
+}
+
+// ── Firestore hook wrappers ─────────────────────────────────────────────────
+async function createStudyGroup(draft) {
+  if (typeof window._shohoj_createStudyGroup !== 'function') {
+    return { ok: false, error: 'Study groups unavailable' };
+  }
+  const err = validateGroupDraft(draft);
+  if (err) return { ok: false, error: err };
+  return window._shohoj_createStudyGroup({
+    courseCode: normalizeCourseCode(draft.courseCode),
+    title: String(draft.title).trim(),
+    description: String(draft.description || '').trim(),
+    mode: String(draft.mode).toLowerCase(),
+    schedule: String(draft.schedule || '').trim(),
+    contactLink: String(draft.contactLink).trim(),
+    capacity: Number(draft.capacity),
+  });
+}
+
+async function fetchStudyGroups() {
+  if (typeof window._shohoj_fetchStudyGroups !== 'function') return [];
+  return window._shohoj_fetchStudyGroups();
+}
+
+async function fetchMyMemberships() {
+  if (typeof window._shohoj_fetchMyGroupMemberships !== 'function') return [];
+  return window._shohoj_fetchMyGroupMemberships();
+}
+
+async function fetchGroupMembers(groupId) {
+  if (typeof window._shohoj_fetchGroupMembers !== 'function' || !groupId) return [];
+  return window._shohoj_fetchGroupMembers(groupId);
+}
+
+async function joinStudyGroup(groupId) {
+  if (typeof window._shohoj_joinStudyGroup !== 'function') {
+    return { ok: false, error: 'Join unavailable' };
+  }
+  return window._shohoj_joinStudyGroup(groupId);
+}
+
+async function leaveStudyGroup(groupId) {
+  if (typeof window._shohoj_leaveStudyGroup !== 'function') {
+    return { ok: false, error: 'Leave unavailable' };
+  }
+  return window._shohoj_leaveStudyGroup(groupId);
+}
+
+async function deleteStudyGroup(groupId) {
+  if (typeof window._shohoj_deleteStudyGroup !== 'function') {
+    return { ok: false, error: 'Delete unavailable' };
+  }
+  return window._shohoj_deleteStudyGroup(groupId);
+}
+
+async function reportStudyGroup(groupId, reason) {
+  if (typeof window._shohoj_reportStudyGroup !== 'function') {
+    return { ok: false, error: 'Reporting unavailable' };
+  }
+  return window._shohoj_reportStudyGroup({ groupId, reason });
+}
+
+// ── Admin helpers ────────────────────────────────────────────────────────────
+async function fetchStudyGroupReports() {
+  if (typeof window._shohoj_fetchStudyGroupReports !== 'function') return [];
+  return window._shohoj_fetchStudyGroupReports();
+}
+
+async function deleteStudyGroupReport(reportId) {
+  if (typeof window._shohoj_deleteStudyGroupReport !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deleteStudyGroupReport(reportId);
+}
+
+async function deleteStudyGroupByReport(reportId, groupId) {
+  if (typeof window._shohoj_deleteStudyGroupByReport !== 'function') {
+    return { ok: false, error: 'Unavailable' };
+  }
+  return window._shohoj_deleteStudyGroupByReport(reportId, groupId);
 }
 
 // ── js/import/transcript-core.js ────────────────────────────────
@@ -22850,6 +23237,420 @@ function _seatsAgeLabel(fetchedAt) {
   return new Date(fetchedAt).toLocaleString();
 }
 
+// ── js/ui/groupsTab.js ──────────────────────────────────────────
+// ── js/ui/groupsTab.js ────────────────────────────────────────────────────────
+// Study Group Finder tab. BRACU students post a study group for a course, browse
+// and filter open groups, join/leave, reach each other through a public contact
+// link plus a member-only email roster, and report abuse. Theme-aware inline
+// styles (same approach as js/ui/feedback.js); all Firestore access flows through
+// the wrappers in js/core/studyGroups.js.
+
+registerAction('grp:signin',       () => window._shohoj_signIn?.());
+registerAction('grp:refresh',      () => _load(true));
+registerAction('grp:toggleCreate', () => { _gs.showCreate = !_gs.showCreate; _gs.createMsg = ''; _render(); });
+registerAction('grp:createMode',   el => { _gs.createMode = el.dataset.mode; _render(); });
+registerAction('grp:submit',       () => _submit());
+registerAction('grp:courseFilter', el => { _gs.courseFilter = el.value; _renderList(); });
+registerAction('grp:modeFilter',   el => { _gs.modeFilter = el.dataset.mode; _renderList(); });
+registerAction('grp:join',         el => _join(el.dataset.id));
+registerAction('grp:leave',        el => _leave(el.dataset.id));
+registerAction('grp:delete',       el => _delete(el.dataset.id, el.dataset.label));
+registerAction('grp:report',       el => _report(el.dataset.id, el.dataset.label));
+registerAction('grp:toggleRoster', el => _toggleRoster(el.dataset.id));
+
+// ── State ───────────────────────────────────────────────────────────────────
+const _gs = {
+  loading: false,
+  loaded: false,
+  error: false,
+  groups: [],
+  myGroupIds: new Set(),   // groupIds the current user has joined
+  rosters: new Map(),      // groupId -> [member docs] (member-only, lazy)
+  expanded: new Set(),     // groupIds whose roster panel is open
+  courseFilter: '',
+  modeFilter: 'all',
+  showCreate: false,
+  createMode: MODES[1],    // 'in-person'
+  submitting: false,
+  createMsg: '',
+  createErr: false,
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function _isSignedIn() {
+  return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+}
+function _currentUid() {
+  return window._shohoj_currentUid?.() || null;
+}
+function _isAuthReady() {
+  return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
+}
+
+function _t() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  return dark ? {
+    border: 'rgba(46,204,113,0.22)', text: '#e8f0ea', text2: '#a8c4ad', text3: '#6a9070',
+    inputBg: 'rgba(46,204,113,0.07)', accent: '#2ecc71', cardBg: 'rgba(46,204,113,0.04)',
+    danger: '#e74c3c',
+  } : {
+    border: 'rgba(0,0,0,0.12)', text: '#0d2914', text2: '#2d5a3d', text3: '#5a8a6a',
+    inputBg: 'rgba(46,204,113,0.05)', accent: '#27ae60', cardBg: 'rgba(46,204,113,0.03)',
+    danger: '#e74c3c',
+  };
+}
+
+// Single annotated innerHTML sink — all markup is escaped via escHtml/escAttr
+// before reaching here, so the assignment is safe.
+function _html(el, markup) {
+  if (!el) return;
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  el.innerHTML = markup;
+}
+
+function _toast(msg) {
+  if (typeof window._shohoj_showToast === 'function') window._shohoj_showToast(msg);
+  else alert(msg);
+}
+
+function _timeAgo(g) {
+  const ms = groupTimestampMs(g);
+  if (!ms) return '';
+  const diff = Date.now() - ms;
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor(diff / 60000);
+  if (d > 0) return `${d}d ago`;
+  if (h > 0) return `${h}h ago`;
+  if (m > 0) return `${m}m ago`;
+  return 'just now';
+}
+
+// ── Data ────────────────────────────────────────────────────────────────────
+async function _load(force = false) {
+  if (_gs.loading) return;
+  if (_gs.loaded && !force) { _render(); return; }
+  _gs.loading = true;
+  _gs.error = false;
+  _render();
+  try {
+    const [groups, memberships] = await Promise.all([
+      fetchStudyGroups(),
+      fetchMyMemberships(),
+    ]);
+    _gs.groups = Array.isArray(groups) ? groups : [];
+    _gs.myGroupIds = new Set((memberships || []).map(m => m.groupId).filter(Boolean));
+    _gs.loaded = true;
+  } catch (e) {
+    _gs.groups = [];
+    _gs.error = true;
+  }
+  _gs.loading = false;
+  _render();
+}
+
+// ── Render: shell ─────────────────────────────────────────────────────────────
+function renderGroupsTab() {
+  const root = document.getElementById('groupsContent');
+  if (!root) return;
+  if (!_isAuthReady()) {
+    _html(root, _wrap(`<div style="text-align:center;padding:40px 0;color:${_t().text3};font-size:13px;">Loading…</div>`));
+    return;
+  }
+  if (!_isSignedIn()) {
+    _html(root, _signInPrompt());
+    return;
+  }
+  if (!_gs.loaded && !_gs.loading) { _load(); return; }
+  _render();
+}
+
+function _wrap(inner) {
+  return `<div style="max-width:760px;margin:0 auto;">${inner}</div>`;
+}
+
+function _signInPrompt() {
+  const t = _t();
+  return _wrap(`
+    <div style="text-align:center;padding:48px 16px;color:${t.text2};">
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${t.text};margin-bottom:8px;">🧑‍🤝‍🧑 Study Group Finder</div>
+      <p style="font-size:14px;line-height:1.6;margin:0 auto 18px;max-width:380px;">
+        Sign in with your BRACU email to post a study group, find classmates for a course, and join open groups.
+      </p>
+      <button data-action="grp:signin" style="padding:10px 18px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
+    </div>
+  `);
+}
+
+function _render() {
+  const root = document.getElementById('groupsContent');
+  if (!root) return;
+  if (!_isSignedIn()) { _html(root, _signInPrompt()); return; }
+  const t = _t();
+  _html(root, _wrap(`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${t.text};">🧑‍🤝‍🧑 Study Groups</div>
+        <div style="font-size:12px;color:${t.text3};margin-top:2px;">Find classmates for a course, or post your own group.</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button data-action="grp:refresh" title="Refresh" style="padding:8px 12px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
+        <button data-action="grp:toggleCreate" style="padding:8px 14px;border-radius:9px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
+      </div>
+    </div>
+    ${_gs.showCreate ? _createForm(t) : ''}
+    ${_filters(t)}
+    <div id="groupsList"></div>
+  `));
+  _renderList();
+}
+
+// ── Render: create form ───────────────────────────────────────────────────────
+function _createForm(t) {
+  const field = (label, inner) => `
+    <label style="display:block;margin-bottom:10px;">
+      <span style="display:block;font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${t.text3};margin-bottom:4px;">${label}</span>
+      ${inner}
+    </label>`;
+  const inputStyle = `width:100%;padding:9px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;`;
+  const modePills = MODES.map(m => {
+    const on = m === _gs.createMode;
+    return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:8px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
+  }).join('');
+  return `
+    <div style="border:1px solid ${t.border};background:${t.cardBg};border-radius:12px;padding:16px;margin-bottom:16px;">
+      ${field('Course code', `<input id="grpCourse" placeholder="e.g. CSE220" style="${inputStyle}" />`)}
+      ${field('Group name', `<input id="grpTitle" maxlength="80" placeholder="e.g. Algorithms midterm grind" style="${inputStyle}" />`)}
+      ${field('Description (optional)', `<textarea id="grpDesc" maxlength="500" placeholder="What you'll work on, who it's for…" style="${inputStyle}min-height:64px;resize:vertical;line-height:1.5;"></textarea>`)}
+      ${field('Meeting mode', `<div style="display:flex;gap:6px;">${modePills}</div>`)}
+      ${field('When / where (optional)', `<input id="grpSchedule" maxlength="120" placeholder="e.g. Sun & Tue, 4–6pm, Library 3rd floor" style="${inputStyle}" />`)}
+      ${field('Contact link (group chat)', `<input id="grpContact" maxlength="300" placeholder="https://m.me/… or https://discord.gg/…" style="${inputStyle}" />`)}
+      ${field(`Capacity (${MIN_CAPACITY}–${MAX_CAPACITY})`, `<input id="grpCapacity" type="number" min="${MIN_CAPACITY}" max="${MAX_CAPACITY}" value="6" style="${inputStyle}max-width:120px;" />`)}
+      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
+      ${_gs.createMsg ? `<div style="text-align:center;font-size:13px;margin-top:10px;color:${_gs.createErr ? t.danger : t.accent};">${escHtml(_gs.createMsg)}</div>` : ''}
+    </div>`;
+}
+
+// ── Render: filters ───────────────────────────────────────────────────────────
+function _filters(t) {
+  const pills = ['all', ...MODES].map(m => {
+    const on = m === _gs.modeFilter;
+    const label = m === 'all' ? 'All' : MODE_LABELS[m];
+    return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
+  }).join('');
+  return `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+      <input data-action="grp:courseFilter" value="${escAttr(_gs.courseFilter)}" placeholder="Filter by course code…"
+        style="flex:1;min-width:160px;padding:8px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" />
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">${pills}</div>
+    </div>`;
+}
+
+// ── Render: list ──────────────────────────────────────────────────────────────
+function _visibleGroups() {
+  const q = _gs.courseFilter.trim().toUpperCase();
+  return _gs.groups.filter(g => {
+    if (_gs.modeFilter !== 'all' && g.mode !== _gs.modeFilter) return false;
+    if (q && !String(g.courseCode || '').toUpperCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function _renderList() {
+  const el = document.getElementById('groupsList');
+  if (!el) return;
+  const t = _t();
+  if (_gs.loading) {
+    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
+    return;
+  }
+  if (_gs.error) {
+    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
+      Couldn't load study groups.
+      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
+    </div>`);
+    return;
+  }
+  const groups = _visibleGroups();
+  if (groups.length === 0) {
+    const msg = _gs.groups.length === 0
+      ? 'No study groups yet. Be the first to post one!'
+      : 'No groups match your filters.';
+    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">${escHtml(msg)}</div>`);
+    return;
+  }
+  const sorted = [...groups].sort((a, b) => groupTimestampMs(b) - groupTimestampMs(a));
+  _html(el, sorted.map(g => _groupCard(g, t)).join(''));
+}
+
+function _groupCard(g, t) {
+  const uid = _currentUid();
+  const joined = _gs.myGroupIds.has(g.id);
+  const isCreator = uid && g.creatorUid === uid;
+  const roster = _gs.rosters.get(g.id);
+  const count = (joined && Array.isArray(roster)) ? roster.length : null;
+  const sum = summarizeMembers(count, g.capacity);
+
+  const modeBadge = `<span style="font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${t.text3};border:1px solid ${t.border};border-radius:6px;padding:2px 7px;">${escHtml(MODE_LABELS[g.mode] || g.mode || '')}</span>`;
+  const joinedBadge = joined ? `<span style="font-size:10px;font-weight:700;color:${t.accent};">✓ Joined</span>` : '';
+
+  // Capacity is advisory (rules can't count members atomically, and non-members
+  // can't read the roster to know the live count), so the Join button is never
+  // hard-disabled — the "N / cap joined" label is the only capacity signal.
+  const joinBtn = joined
+    ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
+    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
+
+  const rosterBtn = joined
+    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
+    : '';
+
+  const delBtn = isCreator
+    ? `<button data-action="grp:delete" data-id="${escAttr(g.id)}" data-label="${escAttr(g.title || g.courseCode || 'this group')}" title="Delete your group" style="background:none;border:none;cursor:pointer;color:rgba(231,76,60,0.6);font-size:12px;font-weight:700;font-family:inherit;">Delete</button>`
+    : `<button data-action="grp:report" data-id="${escAttr(g.id)}" data-label="${escAttr(g.title || g.courseCode || 'this group')}" title="Report this group" style="background:none;border:none;cursor:pointer;color:${t.text3};font-size:12px;font-weight:700;font-family:inherit;">Report</button>`;
+
+  const desc = g.description ? `<div style="font-size:13px;color:${t.text};line-height:1.5;margin:6px 0;word-break:break-word;">${escHtml(g.description)}</div>` : '';
+  const schedule = g.schedule ? `<div style="font-size:12px;color:${t.text2};margin-bottom:4px;">🕑 ${escHtml(g.schedule)}</div>` : '';
+  const contact = g.contactLink
+    ? `<a href="${escAttr(g.contactLink)}" target="_blank" rel="noopener noreferrer nofollow" style="font-size:12px;color:${t.accent};font-weight:700;text-decoration:none;word-break:break-all;">🔗 Open group chat</a>`
+    : '';
+
+  const rosterPanel = (joined && _gs.expanded.has(g.id)) ? _rosterPanel(g, t) : '';
+
+  return `
+    <div style="border:1px solid ${t.border};background:${t.cardBg};border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+        <span style="font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:${t.accent};">${escHtml(g.courseCode || '')}</span>
+        ${modeBadge}
+        <span style="font-size:11px;color:${t.text3};">${escHtml(sum.label)}</span>
+        ${joinedBadge}
+        <span style="font-size:11px;color:${t.text3};margin-left:auto;">${escHtml(_timeAgo(g))}</span>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:${t.text};word-break:break-word;">${escHtml(g.title || 'Untitled group')}</div>
+      ${desc}
+      ${schedule}
+      ${contact}
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        ${joinBtn}
+        ${rosterBtn}
+        <span style="margin-left:auto;">${delBtn}</span>
+      </div>
+      ${rosterPanel}
+    </div>`;
+}
+
+function _rosterPanel(g, t) {
+  const roster = _gs.rosters.get(g.id);
+  if (!Array.isArray(roster)) {
+    return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid ${t.border};font-size:12px;color:${t.text3};">Loading members…</div>`;
+  }
+  if (roster.length === 0) {
+    return `<div style="margin-top:12px;padding-top:12px;border-top:1px solid ${t.border};font-size:12px;color:${t.text3};">No members yet.</div>`;
+  }
+  const rows = roster.map(m => `<div style="font-size:12px;color:${t.text2};padding:3px 0;word-break:break-all;">${escHtml(m.email || '—')}</div>`).join('');
+  return `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${t.border};">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:${t.text3};margin-bottom:6px;">Members</div>
+      ${rows}
+    </div>`;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+async function _submit() {
+  if (_gs.submitting) return;
+  const get = id => document.getElementById(id)?.value || '';
+  const draft = {
+    courseCode: get('grpCourse'),
+    title: get('grpTitle'),
+    description: get('grpDesc'),
+    mode: _gs.createMode,
+    schedule: get('grpSchedule'),
+    contactLink: get('grpContact'),
+    capacity: Number(get('grpCapacity')),
+  };
+  const err = validateGroupDraft(draft);
+  if (err) { _gs.createMsg = err; _gs.createErr = true; _render(); return; }
+
+  _gs.submitting = true; _gs.createMsg = ''; _render();
+  const res = await createStudyGroup(draft);
+  _gs.submitting = false;
+  if (res?.ok) {
+    _gs.showCreate = false;
+    _gs.createMode = MODES[1];
+    _gs.createMsg = '';
+    await _load(true);
+  } else {
+    _gs.createMsg = res?.error || 'Could not post group.';
+    _gs.createErr = true;
+    _render();
+  }
+}
+
+async function _join(groupId) {
+  if (!groupId) return;
+  const res = await joinStudyGroup(groupId);
+  if (res?.ok) {
+    _gs.myGroupIds.add(groupId);
+    _gs.rosters.delete(groupId);
+    _renderList();
+  } else if (res?.error) {
+    _toast(res.error);
+  }
+}
+
+async function _leave(groupId) {
+  if (!groupId) return;
+  const res = await leaveStudyGroup(groupId);
+  if (res?.ok) {
+    _gs.myGroupIds.delete(groupId);
+    _gs.expanded.delete(groupId);
+    _gs.rosters.delete(groupId);
+    _renderList();
+  } else if (res?.error) {
+    _toast(res.error);
+  }
+}
+
+async function _delete(groupId, label) {
+  if (!groupId) return;
+  if (!confirmDestructive('Delete this study group?', label || 'this group')) return;
+  const res = await deleteStudyGroup(groupId);
+  if (res?.ok) {
+    _gs.groups = _gs.groups.filter(g => g.id !== groupId);
+    _gs.myGroupIds.delete(groupId);
+    _renderList();
+  } else if (res?.error) {
+    _toast(res.error);
+  }
+}
+
+async function _report(groupId, label) {
+  if (!groupId) return;
+  const reason = window.prompt(`Report "${label || 'this group'}" — what's wrong? (spam, abuse, dead link…)`);
+  if (reason == null) return;
+  const trimmed = reason.trim();
+  if (trimmed.length < 3) { _toast('Please add a short reason.'); return; }
+  const res = await reportStudyGroup(groupId, trimmed);
+  _toast(res?.ok ? 'Reported. Thanks — an admin will review it.' : (res?.error || 'Report failed.'));
+}
+
+async function _toggleRoster(groupId) {
+  if (!groupId) return;
+  if (_gs.expanded.has(groupId)) {
+    _gs.expanded.delete(groupId);
+    _renderList();
+    return;
+  }
+  _gs.expanded.add(groupId);
+  _renderList();
+  if (!_gs.rosters.has(groupId)) {
+    const members = await fetchGroupMembers(groupId);
+    _gs.rosters.set(groupId, Array.isArray(members) ? members : []);
+    _renderList();
+  }
+}
+
 // ── js/ui/render.js ─────────────────────────────────────────────
 registerAction('render:editSummary',     el => showSummaryForm(Number(el.dataset.semId)));
 registerAction('render:removeSemester',  el => removeSemester(Number(el.dataset.semId)));
@@ -27267,6 +28068,7 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
+  groups:     'tabGroups',
 };
 
 let _activeCalcTab = 'calculator';
@@ -27338,6 +28140,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
+  if (tabId === 'groups') {
+    renderGroupsTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -27362,6 +28167,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/routine'))  return 'routine';
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
+  if (hash.startsWith('#calculator/groups'))    return 'groups';
 
   // Then check sessionStorage
   try {
