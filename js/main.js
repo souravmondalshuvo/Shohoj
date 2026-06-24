@@ -60,6 +60,7 @@ import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
+import { renderGroupsTab } from './ui/groupsTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 
 import { initReveal }     from './animations/reveal.js';
@@ -429,6 +430,7 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
+  groups:     'tabGroups',
 };
 
 let _activeCalcTab = 'calculator';
@@ -500,6 +502,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
   }
+  if (tabId === 'groups') {
+    renderGroupsTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -524,6 +529,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/routine'))  return 'routine';
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
+  if (hash.startsWith('#calculator/groups'))    return 'groups';
 
   // Then check sessionStorage
   try {
