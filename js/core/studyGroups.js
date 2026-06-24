@@ -108,9 +108,9 @@ export async function createStudyGroup(draft) {
   });
 }
 
-export async function fetchStudyGroups(opts = {}) {
+export async function fetchStudyGroups() {
   if (typeof window._shohoj_fetchStudyGroups !== 'function') return [];
-  return window._shohoj_fetchStudyGroups(opts);
+  return window._shohoj_fetchStudyGroups();
 }
 
 export async function fetchMyMemberships() {
