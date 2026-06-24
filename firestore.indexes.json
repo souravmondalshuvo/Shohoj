@@ -60,14 +60,6 @@
       ]
     },
     {
-      "collectionGroup": "studyGroups",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "courseCode", "order": "ASCENDING" },
-        { "fieldPath": "createdAt",  "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "studyGroupMembers",
       "queryScope": "COLLECTION",
       "fields": [
