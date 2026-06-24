@@ -601,6 +601,138 @@ async function run() {
     await assertFails(setDoc(doc(db, 'seatAlertState', BRACU_UID), { seen: {} }));
   });
 
+  // ── Study group finder ───────────────────────────────────────────────
+  const groupDoc = (extra = {}) => ({
+    courseCode: 'CSE220',
+    title: 'Algorithms grind',
+    mode: 'in-person',
+    contactLink: 'https://m.me/example',
+    capacity: 6,
+    creatorUid: BRACU_UID,
+    createdAt: serverTimestamp(),
+    ...extra,
+  });
+
+  const seedGroup = async (id = 'grp1', data = {}) => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'studyGroups', id), {
+        courseCode: 'CSE220', title: 'Seeded', mode: 'online',
+        contactLink: 'https://m.me/x', capacity: 6,
+        creatorUid: BRACU_UID, createdAt: new Date(), ...data,
+      });
+    });
+  };
+
+  const seedMember = async (groupId, uid, email) => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'studyGroupMembers', `${groupId}_${uid}`), {
+        groupId, uid, email, joinedAt: new Date(),
+      });
+    });
+  };
+
+  await test('BRACU user can create and read a valid study group', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'studyGroups', 'grp1'), groupDoc()));
+    await assertSucceeds(getDoc(doc(db, 'studyGroups', 'grp1')));
+  });
+
+  await test('study group with creatorUid != caller is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroups', 'grp1'), groupDoc({ creatorUid: OTHER_BRACU_UID })));
+  });
+
+  await test('study group with bad mode / non-https link / bad capacity is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroups', 'g_a'), groupDoc({ mode: 'remote' })));
+    await assertFails(setDoc(doc(db, 'studyGroups', 'g_b'), groupDoc({ contactLink: 'http://m.me/x' })));
+    await assertFails(setDoc(doc(db, 'studyGroups', 'g_c'), groupDoc({ capacity: 1 })));
+    await assertFails(setDoc(doc(db, 'studyGroups', 'g_d'), groupDoc({ capacity: 99 })));
+  });
+
+  await test('non-BRACU user cannot create a study group', async () => {
+    const db = outsiderCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroups', 'grp1'), groupDoc({ creatorUid: OUTSIDE_UID })));
+  });
+
+  await test('study group update is denied (immutable once posted)', async () => {
+    await seedGroup('grp1');
+    const db = bracuCtx().firestore();
+    await assertFails(updateDoc(doc(db, 'studyGroups', 'grp1'), { title: 'edited' }));
+  });
+
+  await test('creator can delete own group; a different user cannot', async () => {
+    await seedGroup('grp1', { creatorUid: BRACU_UID });
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(deleteDoc(doc(other, 'studyGroups', 'grp1')));
+    await assertSucceeds(deleteDoc(doc(bracuCtx().firestore(), 'studyGroups', 'grp1')));
+  });
+
+  await test('admin can delete any study group', async () => {
+    await seedGroup('grp1');
+    await assertSucceeds(deleteDoc(doc(adminCtx().firestore(), 'studyGroups', 'grp1')));
+  });
+
+  await test('joining pins own email and uses the {groupId}_{uid} id', async () => {
+    await seedGroup('grp1');
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'studyGroupMembers', `grp1_${BRACU_UID}`),
+      { groupId: 'grp1', uid: BRACU_UID, email: BRACU_EMAIL, joinedAt: serverTimestamp() }));
+  });
+
+  await test('joining with a foreign email is rejected', async () => {
+    await seedGroup('grp1');
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroupMembers', `grp1_${BRACU_UID}`),
+      { groupId: 'grp1', uid: BRACU_UID, email: OTHER_BRACU_EMAIL, joinedAt: serverTimestamp() }));
+  });
+
+  await test('joining a nonexistent group is rejected', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroupMembers', `ghost_${BRACU_UID}`),
+      { groupId: 'ghost', uid: BRACU_UID, email: BRACU_EMAIL, joinedAt: serverTimestamp() }));
+  });
+
+  await test('member doc id must equal {groupId}_{uid}', async () => {
+    await seedGroup('grp1');
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'studyGroupMembers', `grp1_${OTHER_BRACU_UID}`),
+      { groupId: 'grp1', uid: BRACU_UID, email: BRACU_EMAIL, joinedAt: serverTimestamp() }));
+  });
+
+  await test('self + fellow members can read the roster; non-members cannot', async () => {
+    await seedGroup('grp1');
+    await seedMember('grp1', BRACU_UID, BRACU_EMAIL);
+    await seedMember('grp1', OTHER_BRACU_UID, OTHER_BRACU_EMAIL);
+    await assertSucceeds(getDoc(doc(bracuCtx().firestore(), 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertSucceeds(getDoc(doc(other, 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+    const stranger = bracuCtx('third_bracu', 'third@g.bracu.ac.bd').firestore();
+    await assertFails(getDoc(doc(stranger, 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+  });
+
+  await test('a member can leave (delete own) but not delete another member', async () => {
+    await seedGroup('grp1');
+    await seedMember('grp1', BRACU_UID, BRACU_EMAIL);
+    await seedMember('grp1', OTHER_BRACU_UID, OTHER_BRACU_EMAIL);
+    const me = bracuCtx().firestore();
+    await assertFails(deleteDoc(doc(me, 'studyGroupMembers', `grp1_${OTHER_BRACU_UID}`)));
+    await assertSucceeds(deleteDoc(doc(me, 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+  });
+
+  await test('study group report: deterministic id, real group, admin-only read', async () => {
+    await seedGroup('grp1');
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'studyGroupReports', `${BRACU_UID}_grp1`),
+      { groupId: 'grp1', reason: 'spam group', reporterUid: BRACU_UID, createdAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(db, 'studyGroupReports', 'weird_grp1'),
+      { groupId: 'grp1', reason: 'spam group', reporterUid: BRACU_UID, createdAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(db, 'studyGroupReports', `${BRACU_UID}_ghost`),
+      { groupId: 'ghost', reason: 'spam group', reporterUid: BRACU_UID, createdAt: serverTimestamp() }));
+    await assertFails(getDoc(doc(db, 'studyGroupReports', `${BRACU_UID}_grp1`)));
+    await assertSucceeds(getDoc(doc(adminCtx().firestore(), 'studyGroupReports', `${BRACU_UID}_grp1`)));
+  });
+
   await testEnv.cleanup();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);
