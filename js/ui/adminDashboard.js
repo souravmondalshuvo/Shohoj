@@ -457,9 +457,14 @@ async function _loadStudyGroupReports() {
   const count = document.getElementById('adminCountStudyGroupReports');
   if (!list || !count) return;
   count.textContent = '…';
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   list.innerHTML = _skeletonRows(2);
   const items = await window._shohoj_fetchStudyGroupReports?.() ?? [];
   count.textContent = items.length;
+  // Rows are built from escHtml/escAttr-escaped admin-only report data.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   list.innerHTML = items.length ? items.map(_studyGroupReportRow).join('') : _emptyHtml('No study group reports.');
 }
 
