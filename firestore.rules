@@ -191,7 +191,9 @@ service cloud.firestore {
           || a == 'delete_review'
           || a == 'delete_paper_report'
           || a == 'delete_review_report'
-          || a == 'delete_feedback';
+          || a == 'delete_feedback'
+          || a == 'delete_study_group'
+          || a == 'delete_study_group_report';
     }
 
     function validAdminLogPayload(d) {
@@ -245,6 +247,104 @@ service cloud.firestore {
     // a client; the cron Worker reaches it with a service-account token.
     match /seatAlertState/{uid} {
       allow read, write: if false;
+    }
+
+    // ── Study group finder (Phase 2 community) ───────────────────────────
+    // A BRACU student posts a study group for a course; other students browse
+    // and join. Direct client writes, gated below (no Worker). The contact
+    // invite link is public to all BRACU users (the primary "connect" path);
+    // the member email roster lives in studyGroupMembers and is readable only
+    // to fellow members. Group docs are immutable once created (no update) —
+    // edits would let a creator bait-and-switch a joined roster.
+    function validStudyGroupMode(m) {
+      return m == 'online' || m == 'in-person' || m == 'hybrid';
+    }
+
+    function validStudyGroupPayload(d) {
+      return d.keys().hasOnly(['courseCode','title','description','mode','schedule','contactLink','capacity','creatorUid','createdAt'])
+        && d.keys().hasAll(['courseCode','title','mode','contactLink','capacity','creatorUid','createdAt'])
+        && d.courseCode is string
+        && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
+        && d.title is string
+        && d.title.size() >= 3
+        && d.title.size() <= 80
+        && (!('description' in d) || (d.description is string && d.description.size() <= 500))
+        && validStudyGroupMode(d.mode)
+        && (!('schedule' in d) || (d.schedule is string && d.schedule.size() <= 120))
+        && d.contactLink is string
+        && d.contactLink.matches('^https://.*')
+        && d.contactLink.size() <= 300
+        && d.capacity is int
+        && d.capacity >= 2
+        && d.capacity <= 50
+        && d.creatorUid is string
+        && d.creatorUid == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    match /studyGroups/{groupId} {
+      allow read:   if isBracuUser();
+      allow create: if isVerifiedBracuGoogleUser()
+        && validStudyGroupPayload(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (isVerifiedBracuGoogleUser() && resource.data.creatorUid == request.auth.uid);
+    }
+
+    // Per-user membership. Doc ID is `{groupId}_{uid}`; the email is pinned to
+    // the caller's verified token email (like seatAlertWatches) so joining can
+    // never publish someone else's address. A member doc is readable by the
+    // owner, an admin, or a FELLOW MEMBER of the same group (the exists() check)
+    // — non-members see only the join count-gated state, so emails stay opt-in.
+    function validStudyGroupMemberPayload(d, groupId) {
+      return d.keys().hasOnly(['groupId','uid','email','joinedAt'])
+        && d.keys().hasAll(['groupId','uid','email','joinedAt'])
+        && d.groupId is string
+        && d.groupId == groupId
+        && d.uid is string
+        && d.uid == request.auth.uid
+        && d.email is string
+        && d.email == request.auth.token.email
+        && exists(/databases/$(database)/documents/studyGroups/$(groupId))
+        && d.joinedAt == request.time;
+    }
+
+    match /studyGroupMembers/{memberId} {
+      allow read: if isAdmin()
+        || (isVerifiedBracuGoogleUser() && resource.data.uid == request.auth.uid)
+        || (isVerifiedBracuGoogleUser()
+            && exists(/databases/$(database)/documents/studyGroupMembers/$(resource.data.groupId + '_' + request.auth.uid)));
+      allow create: if isVerifiedBracuGoogleUser()
+        && memberId == request.resource.data.groupId + '_' + request.auth.uid
+        && validStudyGroupMemberPayload(request.resource.data, request.resource.data.groupId);
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (isVerifiedBracuGoogleUser() && resource.data.uid == request.auth.uid);
+    }
+
+    // Abuse flagging, mirrors paperReports: write-only from the client, one
+    // report per user per group, must point at a real group; admins triage.
+    function validStudyGroupReportPayload(d) {
+      return d.keys().hasOnly(['groupId','reason','reporterUid','createdAt'])
+        && d.keys().hasAll(['groupId','reason','reporterUid','createdAt'])
+        && d.groupId is string
+        && d.groupId.size() > 0
+        && exists(/databases/$(database)/documents/studyGroups/$(d.groupId))
+        && d.reason is string
+        && d.reason.size() >= 3
+        && d.reason.size() <= 300
+        && d.reporterUid is string
+        && d.reporterUid == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    match /studyGroupReports/{reportId} {
+      allow read:   if isAdmin();
+      allow create: if isBracuUser()
+        && validStudyGroupReportPayload(request.resource.data)
+        && reportId == request.auth.uid + '_' + request.resource.data.groupId;
+      allow update: if false;
+      allow delete: if isAdmin();
     }
 
     // ── Catch-all: deny everything else ──────────────────────────────────
