@@ -544,8 +544,10 @@ async function _refresh(force = false) {
     // result instead of going stale until their own next poll.
     broadcastFeedResult(result, _applyLiveFeed);
     if (force) _flashNote('✓ Refreshed from CONNECT');
-  } catch (e) {
-    _store.error = e && e.message ? e.message : 'Failed to load Connect feed.';
+  } catch {
+    // Never surface raw exception text in the DOM (CodeQL js/xss-through-exception):
+    // the message isn't actionable for users and can leak internals. Show a fixed string.
+    _store.error = 'Failed to load Connect feed.';
   } finally {
     _store.loading = false;
     _rerender();
