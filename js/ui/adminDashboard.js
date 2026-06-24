@@ -205,6 +205,14 @@ function _shellHtml(opts = {}) {
 
         <section class="admin-mod-section">
           <header class="admin-mod-section-head">
+            <h2>⚑ Study group reports</h2>
+            <span class="admin-dash-count" id="adminCountStudyGroupReports">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListStudyGroupReports">${_skeletonRows(2)}</div>
+        </section>
+
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
             <h2>💬 Feedback</h2>
             <span class="admin-dash-count" id="adminCountFeedback">…</span>
           </header>
@@ -371,6 +379,25 @@ function _reviewReportRow(r) {
   `;
 }
 
+function _studyGroupReportRow(r) {
+  const target = `group ${String(r.groupId || '').slice(0, 12)}...`;
+  return `
+    <div class="admin-dash-row" data-id="${escAttr(r.id)}">
+      <div class="admin-dash-row-main">
+        <div class="admin-dash-row-head">
+          <span class="admin-dash-tag">group · ${escHtml(String(r.groupId).slice(0, 12))}…</span>
+        </div>
+        <div class="admin-dash-row-title">${escHtml(r.reason || '(no reason)')}</div>
+        <div class="admin-dash-row-meta">${escHtml(_adminFormatDate(r.createdAt))}</div>
+      </div>
+      <div class="admin-dash-row-actions">
+        <button data-act="delete-group-by-report" data-id="${escAttr(r.id)}" data-group-id="${escAttr(r.groupId)}" data-label="${escAttr(target)}" class="admin-dash-btn--danger">Delete group</button>
+        <button data-act="dismiss-group-report" data-id="${escAttr(r.id)}">Dismiss</button>
+      </div>
+    </div>
+  `;
+}
+
 function _feedbackRow(f) {
   const tag = (f.type || 'general').toUpperCase();
   const author = f.anonymous ? 'anonymous' : (f.uid ? `uid ${String(f.uid).slice(0, 8)}…` : '—');
@@ -423,6 +450,17 @@ async function _loadReviewReports() {
   const items = await window._shohoj_fetchReviewReports?.() ?? [];
   count.textContent = items.length;
   list.innerHTML = items.length ? items.map(_reviewReportRow).join('') : _emptyHtml('No review reports.');
+}
+
+async function _loadStudyGroupReports() {
+  const list = document.getElementById('adminListStudyGroupReports');
+  const count = document.getElementById('adminCountStudyGroupReports');
+  if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(2);
+  const items = await window._shohoj_fetchStudyGroupReports?.() ?? [];
+  count.textContent = items.length;
+  list.innerHTML = items.length ? items.map(_studyGroupReportRow).join('') : _emptyHtml('No study group reports.');
 }
 
 async function _loadFeedback() {
@@ -632,6 +670,7 @@ async function _refreshAll() {
       _loadPapers(),
       _loadPaperReports(),
       _loadReviewReports(),
+      _loadStudyGroupReports(),
       _loadFeedback(),
     ]);
   } finally {
@@ -712,6 +751,20 @@ async function _onAction(e) {
       if (!res?.ok) return _adminToast(res?.error || 'Dismiss failed');
       _loadReviewReports();
       _loadStatsAndCharts();
+      return;
+    }
+    if (act === 'delete-group-by-report') {
+      if (!confirmDestructive('Delete the reported study group and this report?', btn.dataset.label)) return;
+      const res = await window._shohoj_deleteStudyGroupByReport?.(btn.dataset.id, btn.dataset.groupId);
+      if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
+      _adminToast(res.missingGroup ? 'Report dismissed; group was already gone.' : 'Group and report deleted.');
+      _loadStudyGroupReports();
+      return;
+    }
+    if (act === 'dismiss-group-report') {
+      const res = await window._shohoj_deleteStudyGroupReport?.(btn.dataset.id);
+      if (!res?.ok) return _adminToast(res?.error || 'Dismiss failed');
+      _loadStudyGroupReports();
       return;
     }
     if (act === 'delete-feedback') {
