@@ -340,6 +340,10 @@
           <span class="calc-tab-icon">🚪</span>
           <span>Free Rooms</span>
         </button>
+        <button class="calc-tab" data-tab="groups">
+          <span class="calc-tab-icon">🧑‍🤝‍🧑</span>
+          <span>Groups</span>
+        </button>
         <!-- Profile is not a tab: the top-right account pill opens the dedicated
              /profile/ page (see updateAuthUI in js/auth/firebase.js). -->
       </div>
@@ -473,6 +477,15 @@
         <div class="calc-body">
           <div id="freeRoomsContent">
             <!-- Rendered dynamically by freeRoomsTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB: STUDY GROUPS ═══ -->
+      <div class="calc-tab-panel" id="tabGroups">
+        <div class="calc-body">
+          <div id="groupsContent">
+            <!-- Rendered dynamically by groupsTab.js -->
           </div>
         </div>
       </div>
