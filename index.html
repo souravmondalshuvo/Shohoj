@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-AvpryLqy4QXg0FjRwbnQUnjTdb+mkr5330lFcIHP4gM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-yeROaOZ+UdTcSzHk2akFewDrVLeqr9M4hCnRtc1bGig='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-kadOTRemUiXUISIqlBhY3cRGSfWEKhy0Wqj8q8K4Nik='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4550,6 +4550,13 @@ input, select, textarea,
 }
 .papers-empty h3 { margin: 0 0 8px; }
 .papers-empty p { margin: 0 0 14px; }
+
+.papers-retry-btn {
+  margin-left: 8px; padding: 5px 14px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06);
+  color: inherit; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+[data-theme="light"] .papers-retry-btn { border-color: rgba(0,0,0,0.18); background: rgba(0,0,0,0.05); }
 
 .paper-card {
   border: 1px solid rgba(255,255,255,0.10);
@@ -9120,8 +9127,11 @@ window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
+    // Re-throw so the UI can show a load-error state instead of an empty
+    // library: a missing composite index (courseCode + approved + createdAt)
+    // is otherwise indistinguishable from "no papers".
     console.warn('[Shohoj] fetchPapersByCourse failed:', e);
-    return [];
+    throw e;
   }
 };
 
@@ -9133,8 +9143,11 @@ window._shohoj_fetchRecentPapers = async function(n = 30) {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
+    // Re-throw so the UI can show a load-error state instead of an empty
+    // library: a missing composite index (approved + createdAt) is otherwise
+    // indistinguishable from "no papers".
     console.warn('[Shohoj] fetchRecentPapers failed:', e);
-    return [];
+    throw e;
   }
 };
 
@@ -16230,6 +16243,7 @@ function _openPreviewModalIframe({ url, title, mimeType, path }) {
 // approved papers. Upload and reporting flows hang off this view.
 
 registerAction('papers:signin', () => window._shohoj_signIn && window._shohoj_signIn());
+registerAction('papers:retry', () => _loadList());
 
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
@@ -16244,6 +16258,7 @@ let _state = {
   type: 'all',
   papers: [],
   loading: false,
+  error: false,
 };
 
 function _formatBytes(n) {
@@ -16574,40 +16589,56 @@ async function _onListClick(e) {
   }
 }
 
+// Pure list-body builder. Returns the inner HTML for #papersList given a state
+// snapshot, so the loading / error / empty / populated branches are unit-testable
+// without a DOM. A swallowed query failure (error) must read differently from a
+// genuinely empty library (no papers) — see _loadList.
+function papersListHtml(state) {
+  if (state.loading) return _skeletonList(6);
+
+  if (state.error) {
+    return `
+      <div class="papers-empty-list">
+        Couldn't load papers.
+        <button class="papers-retry-btn" data-action="papers:retry">Retry</button>
+      </div>
+    `;
+  }
+
+  const filtered = state.type === 'all'
+    ? state.papers
+    : state.papers.filter(p => p.type === state.type);
+
+  if (!filtered.length) {
+    return state.query
+      ? _emptyList(`No papers found for ${state.query}. Be the first to upload one!`)
+      : _emptyList('No papers yet. Upload yours to get the library started.');
+  }
+
+  return filtered.map(_paperCard).join('');
+}
+
 function _renderList() {
   const list = document.getElementById('papersList');
   if (!list) return;
-
-  if (_state.loading) {
-    list.innerHTML = _skeletonList(6);
-    return;
-  }
-
-  const filtered = _state.type === 'all'
-    ? _state.papers
-    : _state.papers.filter(p => p.type === _state.type);
-
-  if (!filtered.length) {
-    if (_state.query) {
-      list.innerHTML = _emptyList(`No papers found for ${_state.query}. Be the first to upload one!`);
-    } else {
-      list.innerHTML = _emptyList('No papers yet. Upload yours to get the library started.');
-    }
-    return;
-  }
-
-  list.innerHTML = filtered.map(_paperCard).join('');
+  list.innerHTML = papersListHtml(_state);
 }
 
 async function _loadList() {
   _state.loading = true;
+  _state.error = false;
   _renderList();
-  if (_state.query && isKnownCourseCode(_state.query)) {
-    _state.papers = await fetchPapersByCourse(_state.query);
-  } else if (_state.query) {
+  try {
+    if (_state.query && isKnownCourseCode(_state.query)) {
+      _state.papers = await fetchPapersByCourse(_state.query);
+    } else if (_state.query) {
+      _state.papers = [];
+    } else {
+      _state.papers = await fetchRecentPapers(30);
+    }
+  } catch {
     _state.papers = [];
-  } else {
-    _state.papers = await fetchRecentPapers(30);
+    _state.error = true;
   }
   _state.loading = false;
   _renderList();
