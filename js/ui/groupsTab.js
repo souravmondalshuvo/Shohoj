@@ -70,8 +70,11 @@ function _t() {
 }
 
 // Single annotated innerHTML sink — all markup is escaped via escHtml/escAttr
-// before reaching here, so the assignment is safe.
-function _html(el, markup) {
+// before reaching here, so the assignment is safe. Named _setHtml (not _html)
+// because the production bundle concatenates every module into one scope, and
+// routineTab.js already declares a top-level `function _html()`; a colliding
+// name silently overwrites it and breaks the Routine tab.
+function _setHtml(el, markup) {
   if (!el) return;
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
@@ -124,11 +127,11 @@ export function renderGroupsTab() {
   const root = document.getElementById('groupsContent');
   if (!root) return;
   if (!_isAuthReady()) {
-    _html(root, _wrap(`<div style="text-align:center;padding:40px 0;color:${_t().text3};font-size:13px;">Loading…</div>`));
+    _setHtml(root, _wrap(`<div style="text-align:center;padding:40px 0;color:${_t().text3};font-size:13px;">Loading…</div>`));
     return;
   }
   if (!_isSignedIn()) {
-    _html(root, _signInPrompt());
+    _setHtml(root, _signInPrompt());
     return;
   }
   if (!_gs.loaded && !_gs.loading) { _load(); return; }
@@ -155,9 +158,9 @@ function _signInPrompt() {
 function _render() {
   const root = document.getElementById('groupsContent');
   if (!root) return;
-  if (!_isSignedIn()) { _html(root, _signInPrompt()); return; }
+  if (!_isSignedIn()) { _setHtml(root, _signInPrompt()); return; }
   const t = _t();
-  _html(root, _wrap(`
+  _setHtml(root, _wrap(`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
       <div>
         <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:${t.text};">🧑‍🤝‍🧑 Study Groups</div>
@@ -231,11 +234,11 @@ function _renderList() {
   if (!el) return;
   const t = _t();
   if (_gs.loading) {
-    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
+    _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
     return;
   }
   if (_gs.error) {
-    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
+    _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
       Couldn't load study groups.
       <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
     </div>`);
@@ -246,11 +249,11 @@ function _renderList() {
     const msg = _gs.groups.length === 0
       ? 'No study groups yet. Be the first to post one!'
       : 'No groups match your filters.';
-    _html(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">${escHtml(msg)}</div>`);
+    _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">${escHtml(msg)}</div>`);
     return;
   }
   const sorted = [...groups].sort((a, b) => groupTimestampMs(b) - groupTimestampMs(a));
-  _html(el, sorted.map(g => _groupCard(g, t)).join(''));
+  _setHtml(el, sorted.map(g => _groupCard(g, t)).join(''));
 }
 
 function _groupCard(g, t) {
