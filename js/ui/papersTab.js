@@ -396,22 +396,34 @@ function _renderList() {
   list.innerHTML = papersListHtml(_state);
 }
 
+// Monotonic load sequence. shohoj:auth-changed fires repeatedly during Firestore
+// sync, so multiple _loadList() calls can overlap; only the newest may paint, or
+// a slow stale fetch could clobber a fresher result (or an empty list).
+let _loadSeq = 0;
+
 async function _loadList() {
+  const seq = ++_loadSeq;
   _state.loading = true;
   _state.error = false;
   _renderList();
+  let papers = [];
+  let error = false;
   try {
     if (_state.query && isKnownCourseCode(_state.query)) {
-      _state.papers = await fetchPapersByCourse(_state.query);
+      papers = await fetchPapersByCourse(_state.query);
     } else if (_state.query) {
-      _state.papers = [];
+      papers = [];
     } else {
-      _state.papers = await fetchRecentPapers(30);
+      papers = await fetchRecentPapers(30);
     }
   } catch {
-    _state.papers = [];
-    _state.error = true;
+    papers = [];
+    error = true;
   }
+  // A newer load superseded this one — drop the stale result.
+  if (seq !== _loadSeq) return;
+  _state.papers = papers;
+  _state.error = error;
   _state.loading = false;
   _renderList();
 }
@@ -689,7 +701,11 @@ export async function renderPapersTab() {
     root.innerHTML = _papersSignInPrompt();
     return;
   }
-  _renderShell();
+  // Only build the shell when it isn't already mounted. Rebuilding it on every
+  // shohoj:auth-changed (which fires repeatedly during Firestore sync) tore down
+  // #papersList mid-load and raced the async paint, leaving the list blank even
+  // though the fetch succeeded. Reuse the existing shell and just refresh.
+  if (!document.getElementById('papersList')) _renderShell();
   await _loadList();
 }
 
