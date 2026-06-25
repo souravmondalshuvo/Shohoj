@@ -1714,8 +1714,11 @@ window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
+    // Re-throw so the UI can show a load-error state instead of an empty
+    // library: a missing composite index (courseCode + approved + createdAt)
+    // is otherwise indistinguishable from "no papers".
     console.warn('[Shohoj] fetchPapersByCourse failed:', e);
-    return [];
+    throw e;
   }
 };
 
@@ -1727,8 +1730,11 @@ window._shohoj_fetchRecentPapers = async function(n = 30) {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
+    // Re-throw so the UI can show a load-error state instead of an empty
+    // library: a missing composite index (approved + createdAt) is otherwise
+    // indistinguishable from "no papers".
     console.warn('[Shohoj] fetchRecentPapers failed:', e);
-    return [];
+    throw e;
   }
 };
 
