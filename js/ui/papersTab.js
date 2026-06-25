@@ -15,6 +15,7 @@ import { registerAction } from '../core/dispatch.js';
 import { openPreviewModal } from './previewModal.js';
 
 registerAction('papers:signin', () => window._shohoj_signIn && window._shohoj_signIn());
+registerAction('papers:retry', () => _loadList());
 
 function _isSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
@@ -29,6 +30,7 @@ let _state = {
   type: 'all',
   papers: [],
   loading: false,
+  error: false,
 };
 
 function _formatBytes(n) {
@@ -359,40 +361,56 @@ async function _onListClick(e) {
   }
 }
 
+// Pure list-body builder. Returns the inner HTML for #papersList given a state
+// snapshot, so the loading / error / empty / populated branches are unit-testable
+// without a DOM. A swallowed query failure (error) must read differently from a
+// genuinely empty library (no papers) — see _loadList.
+export function papersListHtml(state) {
+  if (state.loading) return _skeletonList(6);
+
+  if (state.error) {
+    return `
+      <div class="papers-empty-list">
+        Couldn't load papers.
+        <button class="papers-retry-btn" data-action="papers:retry">Retry</button>
+      </div>
+    `;
+  }
+
+  const filtered = state.type === 'all'
+    ? state.papers
+    : state.papers.filter(p => p.type === state.type);
+
+  if (!filtered.length) {
+    return state.query
+      ? _emptyList(`No papers found for ${state.query}. Be the first to upload one!`)
+      : _emptyList('No papers yet. Upload yours to get the library started.');
+  }
+
+  return filtered.map(_paperCard).join('');
+}
+
 function _renderList() {
   const list = document.getElementById('papersList');
   if (!list) return;
-
-  if (_state.loading) {
-    list.innerHTML = _skeletonList(6);
-    return;
-  }
-
-  const filtered = _state.type === 'all'
-    ? _state.papers
-    : _state.papers.filter(p => p.type === _state.type);
-
-  if (!filtered.length) {
-    if (_state.query) {
-      list.innerHTML = _emptyList(`No papers found for ${_state.query}. Be the first to upload one!`);
-    } else {
-      list.innerHTML = _emptyList('No papers yet. Upload yours to get the library started.');
-    }
-    return;
-  }
-
-  list.innerHTML = filtered.map(_paperCard).join('');
+  list.innerHTML = papersListHtml(_state);
 }
 
 async function _loadList() {
   _state.loading = true;
+  _state.error = false;
   _renderList();
-  if (_state.query && isKnownCourseCode(_state.query)) {
-    _state.papers = await fetchPapersByCourse(_state.query);
-  } else if (_state.query) {
+  try {
+    if (_state.query && isKnownCourseCode(_state.query)) {
+      _state.papers = await fetchPapersByCourse(_state.query);
+    } else if (_state.query) {
+      _state.papers = [];
+    } else {
+      _state.papers = await fetchRecentPapers(30);
+    }
+  } catch {
     _state.papers = [];
-  } else {
-    _state.papers = await fetchRecentPapers(30);
+    _state.error = true;
   }
   _state.loading = false;
   _renderList();
