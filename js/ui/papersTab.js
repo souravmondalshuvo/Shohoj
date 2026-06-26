@@ -161,13 +161,14 @@ function _renderShell() {
       <div class="papers-list" id="papersList"></div>
     </div>
   `;
-  document.getElementById('papersSearchInput').addEventListener('input', _onSearchInput);
-  document.getElementById('papersTypeFilter').addEventListener('change', _onTypeChange);
-  document.getElementById('papersUploadBtn').addEventListener('click', _openUploadModal);
-  const modBtn = document.getElementById('papersModBtn');
-  if (modBtn) modBtn.addEventListener('click', _openModerationPanel);
-  const list = document.getElementById('papersList');
-  list.addEventListener('click', _onListClick);
+  // Null-safe wiring: a throw here (e.g. an element missing during a re-render
+  // race) would reject renderPapersTab before it reaches _loadList(), leaving the
+  // shell mounted with a permanently empty #papersList.
+  document.getElementById('papersSearchInput')?.addEventListener('input', _onSearchInput);
+  document.getElementById('papersTypeFilter')?.addEventListener('change', _onTypeChange);
+  document.getElementById('papersUploadBtn')?.addEventListener('click', _openUploadModal);
+  document.getElementById('papersModBtn')?.addEventListener('click', _openModerationPanel);
+  document.getElementById('papersList')?.addEventListener('click', _onListClick);
 }
 
 // ── Admin moderation panel ───────────────────────────────────────────────────
@@ -387,7 +388,15 @@ export function papersListHtml(state) {
       : _emptyList('No papers yet. Upload yours to get the library started.');
   }
 
-  return filtered.map(_paperCard).join('');
+  // Per-card guard: one malformed paper must not throw and blank the whole list.
+  return filtered.map(p => {
+    try {
+      return _paperCard(p);
+    } catch (e) {
+      console.error('[Shohoj] paper card render failed:', p && p.id, e);
+      return '';
+    }
+  }).join('');
 }
 
 function _renderList() {
@@ -693,19 +702,22 @@ function _papersAuthLoadingState() {
 export async function renderPapersTab() {
   const root = document.getElementById('papersContent');
   if (!root) return;
+  const shellMounted = !!document.getElementById('papersList');
+  // Only show the auth-loading / sign-in placeholders before the shell is up.
+  // Once it's mounted, a transient auth flap (auth-changed fires repeatedly during
+  // Firestore sync) must not wipe the list back to a placeholder.
   if (!_isAuthReady()) {
-    root.innerHTML = _papersAuthLoadingState();
+    if (!shellMounted) root.innerHTML = _papersAuthLoadingState();
     return;
   }
   if (!_isSignedIn()) {
     root.innerHTML = _papersSignInPrompt();
     return;
   }
-  // Only build the shell when it isn't already mounted. Rebuilding it on every
-  // shohoj:auth-changed (which fires repeatedly during Firestore sync) tore down
-  // #papersList mid-load and raced the async paint, leaving the list blank even
-  // though the fetch succeeded. Reuse the existing shell and just refresh.
-  if (!document.getElementById('papersList')) _renderShell();
+  // Build the shell only when it isn't already mounted; otherwise reuse it and
+  // just refresh the list. Rebuilding on every auth-changed tore down #papersList
+  // mid-load and raced the async paint, leaving the list blank.
+  if (!shellMounted) _renderShell();
   await _loadList();
 }
 
