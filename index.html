@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ePmuf3gG35BOhur67t4x87iPE2AZT7acffZB1Rzmdzw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ukQPUzOoNb7lSNPguGOxSoRqj6hUzjYdFKJh/WDfn4Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16392,7 +16392,7 @@ function _renderShell() {
   // Null-safe wiring: a throw here (e.g. an element missing during a re-render
   // race) would reject renderPapersTab before it reaches _loadList(), leaving the
   // shell mounted with a permanently empty #papersList.
-  document.getElementById('papersSearchInput')?.addEventListener('input', _onSearchInput);
+  document.getElementById('papersSearchInput')?.addEventListener('input', _onPapersSearchInput);
   document.getElementById('papersTypeFilter')?.addEventListener('change', _onTypeChange);
   document.getElementById('papersUploadBtn')?.addEventListener('click', _openUploadModal);
   document.getElementById('papersModBtn')?.addEventListener('click', _openModerationPanel);
@@ -16538,7 +16538,7 @@ function _reportRow(r) {
 }
 
 let _searchDebounce = null;
-function _onSearchInput(e) {
+function _onPapersSearchInput(e) {
   _state.query = String(e.target.value || '').toUpperCase().trim();
   clearTimeout(_searchDebounce);
   _searchDebounce = setTimeout(_loadList, 250);
@@ -16546,7 +16546,7 @@ function _onSearchInput(e) {
 
 function _onTypeChange(e) {
   _state.type = e.target.value;
-  _renderList();
+  _renderPapersList();
 }
 
 async function _onListClick(e) {
@@ -16627,7 +16627,7 @@ function papersListHtml(state) {
   }).join('');
 }
 
-function _renderList() {
+function _renderPapersList() {
   const list = document.getElementById('papersList');
   if (!list) return;
   list.innerHTML = papersListHtml(_state);
@@ -16642,7 +16642,7 @@ async function _loadList() {
   const seq = ++_loadSeq;
   _state.loading = true;
   _state.error = false;
-  _renderList();
+  _renderPapersList();
   let papers = [];
   let error = false;
   try {
@@ -16662,7 +16662,7 @@ async function _loadList() {
   _state.papers = papers;
   _state.error = error;
   _state.loading = false;
-  _renderList();
+  _renderPapersList();
 }
 
 // ── Upload modal ─────────────────────────────────────────────────────────────
