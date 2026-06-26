@@ -164,7 +164,7 @@ function _renderShell() {
   // Null-safe wiring: a throw here (e.g. an element missing during a re-render
   // race) would reject renderPapersTab before it reaches _loadList(), leaving the
   // shell mounted with a permanently empty #papersList.
-  document.getElementById('papersSearchInput')?.addEventListener('input', _onSearchInput);
+  document.getElementById('papersSearchInput')?.addEventListener('input', _onPapersSearchInput);
   document.getElementById('papersTypeFilter')?.addEventListener('change', _onTypeChange);
   document.getElementById('papersUploadBtn')?.addEventListener('click', _openUploadModal);
   document.getElementById('papersModBtn')?.addEventListener('click', _openModerationPanel);
@@ -310,7 +310,7 @@ function _reportRow(r) {
 }
 
 let _searchDebounce = null;
-function _onSearchInput(e) {
+function _onPapersSearchInput(e) {
   _state.query = String(e.target.value || '').toUpperCase().trim();
   clearTimeout(_searchDebounce);
   _searchDebounce = setTimeout(_loadList, 250);
@@ -318,7 +318,7 @@ function _onSearchInput(e) {
 
 function _onTypeChange(e) {
   _state.type = e.target.value;
-  _renderList();
+  _renderPapersList();
 }
 
 async function _onListClick(e) {
@@ -399,7 +399,7 @@ export function papersListHtml(state) {
   }).join('');
 }
 
-function _renderList() {
+function _renderPapersList() {
   const list = document.getElementById('papersList');
   if (!list) return;
   list.innerHTML = papersListHtml(_state);
@@ -414,7 +414,7 @@ async function _loadList() {
   const seq = ++_loadSeq;
   _state.loading = true;
   _state.error = false;
-  _renderList();
+  _renderPapersList();
   let papers = [];
   let error = false;
   try {
@@ -434,7 +434,7 @@ async function _loadList() {
   _state.papers = papers;
   _state.error = error;
   _state.loading = false;
-  _renderList();
+  _renderPapersList();
 }
 
 // ── Upload modal ─────────────────────────────────────────────────────────────
