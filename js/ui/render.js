@@ -305,7 +305,7 @@ function renderSummaryForm() {
               -moz-appearance:textfield;
             "
             data-action="render:clearBorder"
-            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+            data-enter-action="render:confirmSummary"
           />
         </div>
 
@@ -326,7 +326,7 @@ function renderSummaryForm() {
               -moz-appearance:textfield;
             "
             data-action="render:clearBorder"
-            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+            data-enter-action="render:confirmSummary"
           />
         </div>
 
@@ -347,7 +347,7 @@ function renderSummaryForm() {
               -moz-appearance:textfield;
             "
             data-action="render:clearBorder"
-            onkeydown="if(event.key==='Enter')window._shohoj_confirmSummaryForm()"
+            data-enter-action="render:confirmSummary"
           />
         </div>
 
