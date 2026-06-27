@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ukQPUzOoNb7lSNPguGOxSoRqj6hUzjYdFKJh/WDfn4Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ukQPUzOoNb7lSNPguGOxSoRqj6hUzjYdFKJh/WDfn4Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -134,6 +134,35 @@
       66%  { transform: translate(-20px,50px) scale(0.97); }
       100% { transform: translate(30px,20px) scale(1.03); }
     }
+
+    /* Maintenance notice — fixed bottom toast, sits above the nav (z-index 100). */
+    .maintenance-banner {
+      position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+      z-index: 200;
+      display: flex; align-items: center; gap: 12px;
+      max-width: min(560px, calc(100vw - 32px));
+      padding: 12px 14px 12px 16px;
+      background: var(--glass);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 13.5px; line-height: 1.45;
+    }
+    .maintenance-banner[hidden] { display: none; }
+    .maintenance-banner__icon { font-size: 18px; flex-shrink: 0; }
+    .maintenance-banner__text { flex: 1; }
+    .maintenance-banner__text strong { color: var(--accent); font-weight: 600; }
+    .maintenance-banner__close {
+      flex-shrink: 0;
+      width: 26px; height: 26px;
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 16px; line-height: 1; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .maintenance-banner__close:hover { background: var(--glass-hover); }
 
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -6773,6 +6802,39 @@ body[data-page="admin"] .orb { display: none !important; }
        gitignored so values stay sourced from one place. -->
   </head>
 <body>
+  <!-- Maintenance notice — informational toast, auto-hides after the window in
+       the inline script below. Dismissable; respects a per-visitor opt-out. -->
+  <div id="maintenanceBanner" class="maintenance-banner" role="status" hidden>
+    <span class="maintenance-banner__icon" aria-hidden="true">🔧</span>
+    <span class="maintenance-banner__text">Shohoj is under maintenance through <strong>June&nbsp;30</strong>. Some features may be unstable — please bear with us. Back to normal on July&nbsp;1. 🙏</span>
+    <button id="maintenanceBannerClose" class="maintenance-banner__close" type="button" aria-label="Dismiss maintenance notice">&times;</button>
+  </div>
+  <script>
+    (function () {
+      // Show the notice until the start of 2026-07-01 (local time), unless this
+      // visitor has dismissed it. Build hashes this inline block into the CSP.
+      var END = new Date(2026, 6, 1, 0, 0, 0).getTime(); // month is 0-indexed: 6 = July
+      var DISMISS_KEY = 'shohoj_maint_dismissed_2026_06';
+      function init() {
+        var banner = document.getElementById('maintenanceBanner');
+        if (!banner || Date.now() >= END) return;
+        try { if (localStorage.getItem(DISMISS_KEY)) return; } catch (e) {}
+        banner.hidden = false;
+        var close = document.getElementById('maintenanceBannerClose');
+        if (close) {
+          close.addEventListener('click', function () {
+            banner.hidden = true;
+            try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) {}
+          });
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
   <div id="scroll-progress"></div>
   <!-- LIQUID GLASS SVG FILTER -->
   <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
