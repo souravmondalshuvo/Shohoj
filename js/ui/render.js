@@ -517,9 +517,7 @@ export function renderSemesters() {
               id="course-input-${sem.id}-${i}"
               value="${escAttr(c.name)}"
               autocomplete="off" autocorrect="off" spellcheck="false"
-              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}"
-              onkeydown="onCourseKey(event,${sem.id},${i})"
-              onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
+              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}" />
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
@@ -539,7 +537,6 @@ export function renderSemesters() {
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')))}"
                 data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
-                onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
           }
           <span class="grade-letter" id="gl-${sem.id}-${i}"
