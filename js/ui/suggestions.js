@@ -14,12 +14,15 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   const top  = rect.bottom + 4;
   const left = rect.left;
   const w    = rect.width;
-  // XSS FIX: escape c.full, c.code, c.name before inserting into HTML
+  // XSS FIX: escape c.full, c.code, c.name before inserting into HTML.
+  // Selection is wired via a delegated mousedown listener (see initSuggestions);
+  // inline on* handlers are blocked by the production bundle's hardened CSP.
   let html = `<div class="course-suggestions" id="sug-${semId}-${cIdx}"
     style="top:${top}px;left:${left}px;width:${w}px;">`;
   html += matches.map((c, i) => `
     <div class="suggestion-item" data-idx="${i}"
-      onmousedown="pickSuggestion(${semId},${cIdx},'${escAttr(c.full)}',${c.credits})">
+      data-sem-id="${semId}" data-c-idx="${cIdx}"
+      data-full="${escAttr(c.full)}" data-credits="${c.credits}">
       <span class="suggestion-code">${escHtml(c.code)}</span>
       <span class="suggestion-name">${escHtml(c.name)}</span>
       <span class="suggestion-credits">${c.credits} cr</span>
@@ -117,7 +120,7 @@ export function onCourseKey(e, semId, cIdx) {
     idx = Math.max(idx - 1, 0);
   } else if (e.key === 'Enter' && active) {
     e.preventDefault();
-    active.dispatchEvent(new MouseEvent('mousedown'));
+    active.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     return;
   } else if (e.key === 'Escape') {
     portal.innerHTML = ''; return;
@@ -160,4 +163,46 @@ export function initSuggestionsScrollHandler() {
   window.addEventListener('scroll', () => {
     if (activeInput && getPortal().innerHTML) getPortal().innerHTML = '';
   }, { passive: true });
+
+  // ── CSP-safe event wiring ────────────────────────────────────────────────
+  // The production bundle hardens its CSP and drops 'unsafe-inline' from
+  // script-src, which blocks inline on* handler attributes (hashes don't cover
+  // event handlers). So the course-row interactions — picking a suggestion,
+  // keyboard nav, and resolving a typed code on blur — are delegated here
+  // instead of via onmousedown/onkeydown/onblur in the markup.
+
+  // Pick a suggestion. mousedown (not click) so it fires before the input
+  // blurs; preventDefault keeps focus on the input until pickSuggestion runs.
+  getPortal().addEventListener('mousedown', e => {
+    const item = e.target.closest('.suggestion-item');
+    if (!item) return;
+    e.preventDefault();
+    pickSuggestion(
+      Number(item.dataset.semId),
+      Number(item.dataset.cIdx),
+      item.dataset.full,
+      Number(item.dataset.credits)
+    );
+  });
+
+  // Keyboard navigation within a course input's suggestion list.
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (el && el.dataset && el.dataset.action === 'render:courseInput') {
+      onCourseKey(e, Number(el.dataset.semId), Number(el.dataset.idx));
+    }
+  });
+
+  // Blur handling for course inputs (resolve typed code) and grade-point
+  // inputs (commit grade). focusout is used because blur does not bubble.
+  document.addEventListener('focusout', e => {
+    const el = e.target;
+    if (!el || !el.dataset) return;
+    if (el.dataset.action === 'render:courseInput') {
+      onCourseBlur(e, Number(el.dataset.semId), Number(el.dataset.idx));
+      setTimeout(() => closeSuggestions(), 180);
+    } else if (el.dataset.action === 'render:autoDetectGrade') {
+      window.onGradePointBlur?.(Number(el.dataset.semId), Number(el.dataset.idx), el);
+    }
+  });
 }
