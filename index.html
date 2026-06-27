@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-ukQPUzOoNb7lSNPguGOxSoRqj6hUzjYdFKJh/WDfn4Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-cPNa5OZM9DWDJClaqMKBZ6jRXjzL1+IbUKcrDMsK9oY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13707,12 +13707,15 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   const top  = rect.bottom + 4;
   const left = rect.left;
   const w    = rect.width;
-  // XSS FIX: escape c.full, c.code, c.name before inserting into HTML
+  // XSS FIX: escape c.full, c.code, c.name before inserting into HTML.
+  // Selection is wired via a delegated mousedown listener (see initSuggestions);
+  // inline on* handlers are blocked by the production bundle's hardened CSP.
   let html = `<div class="course-suggestions" id="sug-${semId}-${cIdx}"
     style="top:${top}px;left:${left}px;width:${w}px;">`;
   html += matches.map((c, i) => `
     <div class="suggestion-item" data-idx="${i}"
-      onmousedown="pickSuggestion(${semId},${cIdx},'${escAttr(c.full)}',${c.credits})">
+      data-sem-id="${semId}" data-c-idx="${cIdx}"
+      data-full="${escAttr(c.full)}" data-credits="${c.credits}">
       <span class="suggestion-code">${escHtml(c.code)}</span>
       <span class="suggestion-name">${escHtml(c.name)}</span>
       <span class="suggestion-credits">${c.credits} cr</span>
@@ -13810,7 +13813,7 @@ function onCourseKey(e, semId, cIdx) {
     idx = Math.max(idx - 1, 0);
   } else if (e.key === 'Enter' && active) {
     e.preventDefault();
-    active.dispatchEvent(new MouseEvent('mousedown'));
+    active.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     return;
   } else if (e.key === 'Escape') {
     portal.innerHTML = ''; return;
@@ -13853,6 +13856,48 @@ function initSuggestionsScrollHandler() {
   window.addEventListener('scroll', () => {
     if (activeInput && getPortal().innerHTML) getPortal().innerHTML = '';
   }, { passive: true });
+
+  // ── CSP-safe event wiring ────────────────────────────────────────────────
+  // The production bundle hardens its CSP and drops 'unsafe-inline' from
+  // script-src, which blocks inline on* handler attributes (hashes don't cover
+  // event handlers). So the course-row interactions — picking a suggestion,
+  // keyboard nav, and resolving a typed code on blur — are delegated here
+  // instead of via onmousedown/onkeydown/onblur in the markup.
+
+  // Pick a suggestion. mousedown (not click) so it fires before the input
+  // blurs; preventDefault keeps focus on the input until pickSuggestion runs.
+  getPortal().addEventListener('mousedown', e => {
+    const item = e.target.closest('.suggestion-item');
+    if (!item) return;
+    e.preventDefault();
+    pickSuggestion(
+      Number(item.dataset.semId),
+      Number(item.dataset.cIdx),
+      item.dataset.full,
+      Number(item.dataset.credits)
+    );
+  });
+
+  // Keyboard navigation within a course input's suggestion list.
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (el && el.dataset && el.dataset.action === 'render:courseInput') {
+      onCourseKey(e, Number(el.dataset.semId), Number(el.dataset.idx));
+    }
+  });
+
+  // Blur handling for course inputs (resolve typed code) and grade-point
+  // inputs (commit grade). focusout is used because blur does not bubble.
+  document.addEventListener('focusout', e => {
+    const el = e.target;
+    if (!el || !el.dataset) return;
+    if (el.dataset.action === 'render:courseInput') {
+      onCourseBlur(e, Number(el.dataset.semId), Number(el.dataset.idx));
+      setTimeout(() => closeSuggestions(), 180);
+    } else if (el.dataset.action === 'render:autoDetectGrade') {
+      window.onGradePointBlur?.(Number(el.dataset.semId), Number(el.dataset.idx), el);
+    }
+  });
 }
 
 // ── js/ui/tracker.js ────────────────────────────────────────────
@@ -24278,9 +24323,7 @@ function renderSemesters() {
               id="course-input-${sem.id}-${i}"
               value="${escAttr(c.name)}"
               autocomplete="off" autocorrect="off" spellcheck="false"
-              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}"
-              onkeydown="onCourseKey(event,${sem.id},${i})"
-              onblur="onCourseBlur(event,${sem.id},${i});setTimeout(()=>closeSuggestions('sug-${sem.id}-${i}'),180)" />
+              data-action="render:courseInput" data-sem-id="${sem.id}" data-idx="${i}" />
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
@@ -24300,7 +24343,6 @@ function renderSemesters() {
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
                 value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')))}"
                 data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
-                onblur="onGradePointBlur(${sem.id},${i},this)"
                 style="text-align:center;" />`
           }
           <span class="grade-letter" id="gl-${sem.id}-${i}"
