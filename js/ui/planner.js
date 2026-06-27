@@ -519,8 +519,6 @@ export function renderPlanner() {
           outline:none;box-sizing:border-box;
           transition:border-color 0.2s;
         "
-        onfocus="this.style.borderColor='rgba(46,204,113,0.55)'"
-        onblur="this.style.borderColor=''"
       />
       <div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;">
         ${filterBtn('all', 'All', allCount)}
