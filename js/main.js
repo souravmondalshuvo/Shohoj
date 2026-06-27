@@ -18,7 +18,7 @@ import {
   renderSemesters, addSemester, addRunningSemester,
   removeSemester, addCourse, removeCourse,
   loadSampleData, onDeptSelect, onStartSemConfirm,
-  showSummaryForm, hideSummaryForm, confirmSummaryForm,
+  showSummaryForm, hideSummaryForm,
   openRateForCourse
 } from './ui/render.js';
 
@@ -252,7 +252,6 @@ window.openReviewsDirectory = openReviewsDirectory;
 // Summary block
 window._shohoj_showSummaryForm    = showSummaryForm;
 window._shohoj_hideSummaryForm    = hideSummaryForm;
-window._shohoj_confirmSummaryForm = confirmSummaryForm;
 window._shohoj_editSummary        = (id) => showSummaryForm(id);
 
 // ── THEME ─────────────────────────────────────────────────────────────────────
