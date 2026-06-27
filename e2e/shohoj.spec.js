@@ -109,6 +109,48 @@ test('mobile layout avoids page-level horizontal scroll', async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+// Drives the production bundle (shohoj.html), whose CSP drops 'unsafe-inline'
+// from script-src. Inline event-handler attributes are inert there, so this
+// proves the summary-form Enter key is wired via the CSP-safe delegated
+// keydown listener (data-enter-action) rather than an inline onkeydown.
+test('summary form Enter confirms under the bundle CSP', async ({ page }) => {
+  await page.route('https://**/*', route => route.abort());
+  page.on('dialog', dialog => dialog.accept());
+  // Pin "now" to the past so a future start semester (Fall 2026) generates no
+  // past semesters, leaving the empty state where "Start from CGPA" lives.
+  await page.clock.setFixedTime(new Date('2021-06-01T12:00:00'));
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    window.Chart = window.Chart || class { destroy() {} };
+  });
+  await page.goto('/shohoj.html', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#heroDemoBtn')).toBeVisible();
+
+  // Step 1 + 2: set department and a future starting semester to reach the
+  // empty state (no past semesters are generated).
+  await page.locator('#deptSelect').selectOption('CSE');
+  await expect(page.locator('#startSemRow')).toBeVisible();
+  await page.locator('#startSeason').selectOption('Fall');
+  await page.locator('#startYear').selectOption('2026');
+  await page.locator('#startSemConfirmBtn').click();
+
+  // Open the "Start from CGPA" summary form.
+  await page.locator('[data-action="render:showSummaryForm"]').click();
+  await expect(page.locator('#summaryFormBlock')).toBeVisible();
+
+  // Fill the inputs and submit by pressing Enter (not the Confirm button).
+  await page.locator('#summaryCgpaInput').fill('3.30');
+  await page.locator('#summaryAttemptedInput').fill('45');
+  const credits = page.locator('#summaryCreditsInput');
+  await credits.fill('42');
+  await credits.press('Enter');
+
+  // Enter confirmed the form: it closes and a "Past Semesters" block appears.
+  await expect(page.locator('#summaryFormBlock')).toHaveCount(0);
+  await expect(page.locator('#semestersContainer')).toContainText('Past Semesters');
+});
+
 test('export and import controls do not throw', async ({ page }) => {
   await boot(page);
   await loadDemoMode(page);
