@@ -51,6 +51,39 @@
   <script src="js/config/runtime-config.js"></script>
 </head>
 <body>
+  <!-- Maintenance notice — informational toast, auto-hides after the window in
+       the inline script below. Dismissable; respects a per-visitor opt-out. -->
+  <div id="maintenanceBanner" class="maintenance-banner" role="status" hidden>
+    <span class="maintenance-banner__icon" aria-hidden="true">🔧</span>
+    <span class="maintenance-banner__text">Shohoj is under maintenance through <strong>June&nbsp;30</strong>. Some features may be unstable — please bear with us. Back to normal on July&nbsp;1. 🙏</span>
+    <button id="maintenanceBannerClose" class="maintenance-banner__close" type="button" aria-label="Dismiss maintenance notice">&times;</button>
+  </div>
+  <script>
+    (function () {
+      // Show the notice until the start of 2026-07-01 (local time), unless this
+      // visitor has dismissed it. Build hashes this inline block into the CSP.
+      var END = new Date(2026, 6, 1, 0, 0, 0).getTime(); // month is 0-indexed: 6 = July
+      var DISMISS_KEY = 'shohoj_maint_dismissed_2026_06';
+      function init() {
+        var banner = document.getElementById('maintenanceBanner');
+        if (!banner || Date.now() >= END) return;
+        try { if (localStorage.getItem(DISMISS_KEY)) return; } catch (e) {}
+        banner.hidden = false;
+        var close = document.getElementById('maintenanceBannerClose');
+        if (close) {
+          close.addEventListener('click', function () {
+            banner.hidden = true;
+            try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) {}
+          });
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
   <div id="scroll-progress"></div>
   <!-- LIQUID GLASS SVG FILTER -->
   <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
