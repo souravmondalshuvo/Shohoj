@@ -66,11 +66,13 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npm run test:e2e
-
+      # Build the production bundle before E2E so tests can exercise the
+      # CSP-hardened shohoj.html (e.g. the summary-form Enter-key test).
       - name: Build bundle (smoke test)
         run: python3 build3.py
+
+      - name: Run E2E tests
+        run: npm run test:e2e
 
       - name: Run production bundle smoke test
         run: npm run test:bundle
