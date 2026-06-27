@@ -26,10 +26,22 @@ function _dispatch(event) {
   if (typeof fn === 'function') fn(el, event);
 }
 
+// Enter-to-submit, CSP-safe. An element can carry data-enter-action to run a
+// registered action when Enter is pressed inside it (replaces inline
+// onkeydown="...Enter..." attributes, which the bundle's CSP blocks).
+function _dispatchEnter(event) {
+  if (event.key !== 'Enter') return;
+  const el = event.target.closest('[data-enter-action]');
+  if (!el) return;
+  const fn = _actions[el.dataset.enterAction];
+  if (typeof fn === 'function') fn(el, event);
+}
+
 if (typeof document !== 'undefined') {
   ['click', 'change', 'input'].forEach(type => {
     document.addEventListener(type, _dispatch);
   });
+  document.addEventListener('keydown', _dispatchEnter);
 }
 
 // Expose globally so modules can register without importing (e.g. firebase.js
