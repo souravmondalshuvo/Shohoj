@@ -4130,6 +4130,8 @@ input, select, textarea,
   line-height: 1.6;
   max-width: 340px;
 }
+/* Planner search input focus accent (CSP-safe replacement for inline onfocus/onblur) */
+#plannerSearchInput:focus { border-color: rgba(46,204,113,0.55); }
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 480px) {
