@@ -25,11 +25,11 @@ const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
 const REVIEW_COUNT_SCAN_LIMIT = 1000;
 
-function _isSignedIn() {
+function _rvtIsSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
 }
 
-function _isAuthReady() {
+function _rvtIsAuthReady() {
   return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
 }
 
@@ -75,12 +75,12 @@ export async function renderReviewsTab() {
   const root = document.getElementById('reviewsContent');
   if (!root) return;
 
-  if (!_isAuthReady()) {
+  if (!_rvtIsAuthReady()) {
     root.innerHTML = _authLoadingState();
     return;
   }
 
-  if (!_isSignedIn()) {
+  if (!_rvtIsSignedIn()) {
     root.innerHTML = _signInPrompt();
     return;
   }
@@ -727,7 +727,7 @@ async function _renderFacultyPage(root, initials, courseFilter, token) {
         </div>
         <div class="rv-tab-aggcard-count">${scoped.length} review${scoped.length !== 1 ? 's' : ''}</div>
       </div>
-      <div class="rv-tab-aggcard-stars">${_starBar(overall)}</div>
+      <div class="rv-tab-aggcard-stars">${_rvtStarBar(overall)}</div>
       ${limited ? `<div class="rv-tab-limited-note">Limited data — take averages with a grain of salt.</div>` : ''}
       <div class="rv-tab-dimgroup">
         <div class="rv-tab-dimgroup-title">Faculty</div>
@@ -900,7 +900,7 @@ function _facultyCardHtml(g, courseScope = '') {
       </div>
       ${name ? `<div class="rv-tab-facultycard-name">${escHtml(name)}</div>` : ''}
       ${showAgg
-        ? `<div class="rv-tab-facultycard-stars">${_starBar(g.overall)}</div>`
+        ? `<div class="rv-tab-facultycard-stars">${_rvtStarBar(g.overall)}</div>`
         : `<div class="rv-tab-facultycard-stars rv-tab-muted">Too few reviews — aggregate hidden</div>`
       }
       ${limited && showAgg
@@ -935,7 +935,7 @@ function _facultyDirectoryRowHtml(g, courseScope = '') {
         ${knownOnly
           ? `<span class="rv-tab-directory-status rv-tab-directory-status-muted">No reviews yet</span>`
           : (hasAgg
-            ? `<span class="rv-tab-directory-score">${_starBar(g.overall)}</span>`
+            ? `<span class="rv-tab-directory-score">${_rvtStarBar(g.overall)}</span>`
             : `<span class="rv-tab-directory-status">Limited data</span>`)}
       </div>
     </div>`;
@@ -1020,7 +1020,7 @@ function _dimCell(label, value, inverse = false) {
     </div>`;
 }
 
-function _starBar(score) {
+function _rvtStarBar(score) {
   if (score === null || score === undefined || isNaN(score)) {
     return `<span class="rv-tab-muted">No ratings yet</span>`;
   }
