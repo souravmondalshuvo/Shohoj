@@ -66,6 +66,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # build3.py flattens every module into one script scope, so two modules
+      # declaring the same top-level name silently keep only the last one. Guard
+      # against that before building (static check, fails on unsafe collisions).
+      - name: Check bundle identifier collisions
+        run: npm run check:collisions
+
       # Build the production bundle before E2E so tests can exercise the
       # CSP-hardened shohoj.html (e.g. the summary-form Enter-key test).
       - name: Build bundle (smoke test)
