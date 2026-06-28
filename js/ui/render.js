@@ -352,6 +352,7 @@ function renderSummaryForm() {
         </div>
 
         <button
+          class="summary-confirm-btn"
           data-action="render:confirmSummary"
           style="
             background:var(--green);color:#0b0f0d;
@@ -360,8 +361,6 @@ function renderSummaryForm() {
             height:40px;white-space:nowrap;flex-shrink:0;
             transition:transform 0.15s,box-shadow 0.15s;
           "
-          onmouseenter="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 16px rgba(46,204,113,0.35)'"
-          onmouseleave="this.style.transform='';this.style.boxShadow=''"
         >Confirm →</button>
 
       </div>
