@@ -1,5 +1,13 @@
 # Full React + TypeScript + Vite Migration — Audit & Plan
 
+> **Reconciled (2026-06-28):** the canonical, machine-checked phase tracker is now
+> [`architecture/MIGRATION_ROADMAP.md`](architecture/MIGRATION_ROADMAP.md), backed by
+> [`architecture/CURRENT_STATE.md`](architecture/CURRENT_STATE.md),
+> [`architecture/TARGET_ARCHITECTURE.md`](architecture/TARGET_ARCHITECTURE.md),
+> [`architecture/RISK_REGISTER.md`](architecture/RISK_REGISTER.md) and
+> [`architecture/TEST_MATRIX.md`](architecture/TEST_MATRIX.md). This document is retained as
+> the long-form narrative plan; phase **status** is tracked in the roadmap, not here.
+>
 > **Status:** Phase 0 (audit + baseline) complete. No application behavior changed.
 > **Branch:** `refactor/full-react-typescript-vite-migration`
 > **Date:** 2026-06-21
