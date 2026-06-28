@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for the Free Rooms tab: day + time picker driving the
 // free-room list, and per-room free windows. Reuses the mock-CONNECT-feed
@@ -51,7 +52,7 @@ async function boot(page) {
     return route.abort();
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="freerooms"]').click();
+  await selectCalcTab(page, "freerooms");
   await expect(page.locator('#tabFreeRooms')).toHaveClass(/active/);
   await expect(page.locator('#freeRoomsContent')).toContainText('Free Rooms');
 }
