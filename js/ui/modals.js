@@ -301,16 +301,12 @@ export async function importTranscriptPDF(inputEl) {
       </div>
       ${parsed.detectedDept ? `<div style="margin-bottom:12px;font-size:12px;color:${t2.text2}">🎓 Department detected: <strong style="color:#1DB954">${escHtml(parsed.detectedDept)}</strong></div>` : ''}
       <div style="display:flex;gap:10px">
-        <button data-action="modals:applyImport"
-          onmouseenter="this.style.background='#17a348';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(46,204,113,0.35)'"
-          onmouseleave="this.style.background='#1DB954';this.style.transform='';this.style.boxShadow=''"
+        <button data-action="modals:applyImport" class="import-confirm-btn"
           style="flex:1;background:#1DB954;color:#0b0f0d;border:none;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s">
           ✅ Import Now
         </button>
-        <button data-action="modals:hideImport"
-          onmouseenter="this.style.background='${t2.cancelHover}'"
-          onmouseleave="this.style.background='${t2.cancelBg}'"
-          style="background:${t2.cancelBg};color:${t2.cancelText};border:1px solid ${t2.cancelBorder};border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s">
+        <button data-action="modals:hideImport" class="import-cancel-btn"
+          style="background:${t2.cancelBg};color:${t2.cancelText};border:1px solid ${t2.cancelBorder};border-radius:10px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;--import-cancel-hover:${t2.cancelHover}">
           Cancel
         </button>
       </div>`);
