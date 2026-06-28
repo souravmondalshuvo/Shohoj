@@ -128,4 +128,53 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+
+  // ── Clean-architecture boundary (Phase 2) ──────────────────────────────────
+  // The domain layer (src/core) must stay pure: no UI framework, no backend
+  // SDK, no browser ambient globals. The same academic logic then runs
+  // unchanged in Node tests, React, and a Worker. Infrastructure adapters
+  // (Firebase, DOM, Cloudflare) belong outside src/core, behind ports. These
+  // are correctness boundaries, so they are errors (CI-blocking), unlike the
+  // style-leaning SOFT_RULES above.
+  {
+    files: ['src/core/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          { name: 'react', message: 'Domain (src/core) must not import React — keep UI in features/*/components.' },
+          { name: 'react-dom', message: 'Domain (src/core) must not import react-dom.' },
+          { name: 'firebase', message: 'Domain (src/core) must not import Firebase — depend on a repository port; Firestore lives in infrastructure adapters.' },
+          { name: 'firebase-admin', message: 'Domain (src/core) must not import firebase-admin.' },
+        ],
+        patterns: [
+          { group: ['firebase/*', '@firebase/*', 'firebase-admin/*'], message: 'Domain (src/core) must not import the Firebase SDK — depend on a repository port.' },
+        ],
+      }],
+      'no-restricted-globals': ['error',
+        { name: 'window', message: 'Domain (src/core) must not touch window — pass values in or use a port.' },
+        { name: 'document', message: 'Domain (src/core) must not touch the DOM.' },
+        { name: 'localStorage', message: 'Domain (src/core) must not touch localStorage — use a storage port (src/services/storage).' },
+        { name: 'sessionStorage', message: 'Domain (src/core) must not touch sessionStorage.' },
+        { name: 'navigator', message: 'Domain (src/core) must not touch navigator.' },
+      ],
+    },
+  },
+
+  // Documented boundary exception (tech debt): connectFeedClient.ts is an
+  // infrastructure-flavored CDN client that currently lives in src/core. Its API
+  // is already port-injectable (`options.storage: StorageLike`); it only NAMES
+  // `localStorage` as an ambient default. Relocating it to platform/infrastructure
+  // is tracked for Phase 6 (seats/free-rooms). Until then, allow localStorage in
+  // this one file while keeping every other boundary (React/Firebase/window/DOM)
+  // enforced. New domain modules get no such exception.
+  {
+    files: ['src/core/connectFeedClient.ts'],
+    rules: {
+      'no-restricted-globals': ['error',
+        { name: 'window', message: 'Domain (src/core) must not touch window.' },
+        { name: 'document', message: 'Domain (src/core) must not touch the DOM.' },
+        { name: 'navigator', message: 'Domain (src/core) must not touch navigator.' },
+      ],
+    },
+  },
 );
