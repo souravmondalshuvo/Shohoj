@@ -31,6 +31,8 @@ function _dispatch(event) {
 // onkeydown="...Enter..." attributes, which the bundle's CSP blocks).
 function _dispatchEnter(event) {
   if (event.key !== 'Enter') return;
+  // keydown can fire with document/window as target, which lack closest().
+  if (!event.target || typeof event.target.closest !== 'function') return;
   const el = event.target.closest('[data-enter-action]');
   if (!el) return;
   const fn = _actions[el.dataset.enterAction];
