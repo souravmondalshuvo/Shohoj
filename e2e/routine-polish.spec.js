@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Verifies the Routine Builder polish pass: numeric section ordering (full
 // sections sink), a sort toggle, the column legend + humanized seat/exam text,
@@ -80,7 +81,7 @@ async function boot(page) {
     return route.abort();
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="routine"]').click();
+  await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
   await expect(page.locator('#routineCourseInput')).toBeVisible();
 }
