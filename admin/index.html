@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-afkUelW2og77WdyvdlLNVjZQ38nKakc9BIVVoPGIA1A='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-9LO9hRHa+wuQZ+JuHhpF1y/RQD0+KUe5FtctBUwNeNw=' 'sha256-l+XHynj6xE4fOZoiIbicP7dnXia8DDW/8oUjSNuj2mk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -4170,6 +4170,8 @@ input, select, textarea,
   line-height: 1.6;
   max-width: 340px;
 }
+/* Planner search input focus accent (CSP-safe replacement for inline onfocus/onblur) */
+#plannerSearchInput:focus { border-color: rgba(46,204,113,0.55); }
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 480px) {
@@ -9388,10 +9390,24 @@ function _dispatch(event) {
   if (typeof fn === 'function') fn(el, event);
 }
 
+// Enter-to-submit, CSP-safe. An element can carry data-enter-action to run a
+// registered action when Enter is pressed inside it (replaces inline
+// onkeydown="...Enter..." attributes, which the bundle's CSP blocks).
+function _dispatchEnter(event) {
+  if (event.key !== 'Enter') return;
+  // keydown can fire with document/window as target, which lack closest().
+  if (!event.target || typeof event.target.closest !== 'function') return;
+  const el = event.target.closest('[data-enter-action]');
+  if (!el) return;
+  const fn = _actions[el.dataset.enterAction];
+  if (typeof fn === 'function') fn(el, event);
+}
+
 if (typeof document !== 'undefined') {
   ['click', 'change', 'input'].forEach(type => {
     document.addEventListener(type, _dispatch);
   });
+  document.addEventListener('keydown', _dispatchEnter);
 }
 
 // Expose globally so modules can register without importing (e.g. firebase.js
