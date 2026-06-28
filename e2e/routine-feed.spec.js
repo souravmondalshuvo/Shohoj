@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Regression guard for the CSP/feed bug fixed in #135: the Routine tab fetches
 // https://usis-cdn.eniamza.com/connect.json, which must be allowed by the page's
@@ -86,7 +87,7 @@ async function bootRoutine(page, feedMode = 'ok') {
   });
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="routine"]').click();
+  await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
 }
 
