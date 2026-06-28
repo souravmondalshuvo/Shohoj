@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:vite": "npm run build:vite && playwright test --config=playwright.vite.config.js",
     "test:bundle": "node tests/productionBundleSmoke.test.js",
+    "test:csp": "node tests/cspInlineHandlers.test.js",
     "lint": "eslint .",
     "validate:data": "node scripts/validate_data.mjs",
     "typecheck": "tsc --noEmit",
