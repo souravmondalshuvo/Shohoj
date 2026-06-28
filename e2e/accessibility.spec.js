@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Automated accessibility smoke checks (#238). These scan the key tabs with
 // axe-core in the demo / signed-out state and fail ONLY on serious/critical
@@ -45,7 +46,7 @@ async function loadDemo(page) {
 }
 
 async function openTab(page, tab) {
-  await page.locator(`.calc-tab[data-tab="${tab}"]`).click();
+  await selectCalcTab(page, tab);
   await expect(page.locator(`#tab${tab[0].toUpperCase()}${tab.slice(1)}`)).toHaveClass(/active/);
 }
 
