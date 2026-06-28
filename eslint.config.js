@@ -39,6 +39,7 @@ export default tseslint.config(
       'shohoj.html',          // build3.py artifact
       'admin.html',           // build3.py artifact
       'dist/**',              // vite build output
+      'dist-shell/**',        // vite shell build output (vite.shell.config.js)
       'node_modules/**',
       'test-results/**',      // playwright output
       'playwright-report/**',
