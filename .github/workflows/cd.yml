@@ -94,6 +94,9 @@ jobs:
       - name: Run production bundle smoke test
         run: npm run test:bundle
 
+      - name: Run CSP inline-handler guard
+        run: npm run test:csp
+
       - name: Prepare deploy folder
         run: |
           mkdir -p _deploy/admin _deploy/profile
