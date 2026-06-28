@@ -2623,15 +2623,13 @@ input, select, textarea,
   box-shadow:
     0 8px 32px rgba(0,0,0,0.28),
     inset 0 1px 0 rgba(255,255,255,0.14);
-  /* Nine tabs no longer fit every desktop window. Scroll instead of clipping —
-     without this, mid-width windows cut Seats in half and hide Free Rooms
-     entirely (the ≤640px breakpoint already scrolls; this covers 641px+). */
-  overflow-x: auto;
-  scrollbar-width: none;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
+  /* Grouping collapsed the bar to five top-level items, so it fits without
+     scrolling. overflow must stay visible (NOT auto) — the dropdown menus are
+     absolutely positioned below the bar and any overflow clip would hide them.
+     On narrow widths the items wrap to a second row instead of scrolling. */
+  overflow: visible;
+  flex-wrap: wrap;
 }
-.calc-tabs::-webkit-scrollbar { display: none; }
 [data-theme="light"] .calc-tabs {
   background: rgba(255,255,255,0.45);
   border-color: rgba(255,255,255,0.7);
@@ -2717,6 +2715,102 @@ input, select, textarea,
 }
 .calc-tab-badge.visible {
   display: inline-block;
+}
+
+/* ── Tab dropdown groups ─────────────────────────────────── */
+/* A group is a flex item in the bar; its trigger pill fills it and the menu
+   drops out of flow directly beneath. */
+.calc-tab-group {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+}
+.calc-tab-group .calc-tab-trigger {
+  width: 100%;
+}
+
+.calc-tab-caret {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform 0.22s ease, opacity 0.22s;
+}
+.calc-tab-group.open .calc-tab-caret {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+/* The menu sits flush under the trigger (top:100%, no margin gap) so the pointer
+   can travel from pill to item without crossing dead space — any gap there fires
+   the group's mouseleave and snaps the menu shut mid-reach. The 8px top padding
+   gives the first item visual breathing room instead. mouseleave only fires when
+   leaving the whole group subtree, which the menu (a descendant) is part of. */
+.calc-tab-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  padding-top: 8px;
+  background: rgba(20, 28, 24, 0.72);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.12);
+  z-index: 30;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+}
+.calc-tab-group.open .calc-tab-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+[data-theme="light"] .calc-tab-menu {
+  background: rgba(255,255,255,0.86);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.9);
+}
+
+.calc-tab-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  text-align: left;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s;
+}
+.calc-tab-menu-item:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+}
+[data-theme="light"] .calc-tab-menu-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+.calc-tab-menu-item.active {
+  color: var(--green);
+  background: rgba(46,204,113,0.14);
+}
+.calc-tab-menu-item .calc-tab-icon {
+  font-size: 15px;
 }
 
 /* ── Tab panels ──────────────────────────────────────────── */
@@ -4143,6 +4237,8 @@ input, select, textarea,
     border-radius: 16px;
   }
   .calc-tab-slider { display: none; }
+  /* Groups are grid cells too; the trigger fills its cell. */
+  .calc-tab-group { display: flex; }
   .calc-tab {
     min-width: 0;
     padding: 8px 6px;
@@ -4150,9 +4246,12 @@ input, select, textarea,
     gap: 3px;
     border-radius: 12px;
   }
-  .calc-tab.active {
+  .calc-tab.active,
+  .calc-tab-trigger.active {
     background: rgba(46,204,113,0.15);
   }
+  /* Menus drop full-width-ish and left-aligned under their cell. */
+  .calc-tab-menu { left: 0; min-width: 150px; }
   .calc-tab-icon {
     font-size: 13px;
   }
@@ -4779,26 +4878,14 @@ input, select, textarea,
   }
 }
 
-/* Tab bar horizontal-scroll layout: only between the ≤480px grid and the
-   desktop layout, so it can't override the grid's min-width: 0 reset. */
+/* Between the ≤480px grid and the desktop layout: the five top-level items wrap
+   to a second row when they don't fit, instead of scrolling — so the dropdown
+   menus stay fully visible (a scroll container would clip them). */
 @media (min-width: 481px) and (max-width: 640px) {
   .calc-tabs {
     justify-content: flex-start;
-    overflow-x: auto;
     margin: 10px 0.8rem 12px;
     border-radius: 16px;
-    scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .calc-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .calc-tab {
-    flex: 0 0 auto;
-    min-width: 108px;
-    scroll-snap-align: start;
   }
 
   .calc-tab-slider {
