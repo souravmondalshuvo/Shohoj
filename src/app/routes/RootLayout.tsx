@@ -11,6 +11,8 @@ import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
 import { AuthProvider } from '../providers/AuthProvider';
+import { ModalProvider } from '../providers/ModalProvider';
+import { RuntimeConfigProvider } from '../providers/RuntimeConfigProvider';
 
 interface NavItem {
   readonly to: string;
@@ -40,11 +42,13 @@ const NAV: readonly NavItem[] = [
 export function RootLayout() {
   return (
     <AppProviders label="App shell">
-      <AuthProvider>
-        <a className="shell-skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <header className="shell-header">
+      <RuntimeConfigProvider>
+        <AuthProvider>
+          <ModalProvider>
+            <a className="shell-skip-link" href="#main-content">
+              Skip to content
+            </a>
+            <header className="shell-header">
           <nav className="shell-nav" aria-label="Primary">
             {NAV.map((item) => (
               <NavLink
@@ -60,10 +64,12 @@ export function RootLayout() {
             ))}
           </nav>
         </header>
-        <main id="main-content" className="shell-main" tabIndex={-1}>
-          <Outlet />
-        </main>
-      </AuthProvider>
+            <main id="main-content" className="shell-main" tabIndex={-1}>
+              <Outlet />
+            </main>
+          </ModalProvider>
+        </AuthProvider>
+      </RuntimeConfigProvider>
     </AppProviders>
   );
 }
