@@ -854,7 +854,7 @@ function showNudgeBanner(show) {
   `;
   banner.innerHTML = `
     <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button data-action="auth:signin" style="
+    <button data-action="auth:signin" class="gauth-reauth-btn" style="
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 16px;border-radius:8px;
       background:rgba(255,255,255,0.07);
@@ -863,9 +863,7 @@ function showNudgeBanner(show) {
       font-size:13px;font-weight:600;cursor:pointer;
       white-space:nowrap;flex-shrink:0;
       transition:background 0.2s,border-color 0.2s;
-    "
-    onmouseenter="this.style.background='rgba(255,255,255,0.13)';this.style.borderColor='rgba(255,255,255,0.25)'"
-    onmouseleave="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.14)'">
+    ">
       <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
         <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
         <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
