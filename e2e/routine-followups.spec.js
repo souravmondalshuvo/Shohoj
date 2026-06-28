@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser-level coverage for the recent Routine Builder feature work:
 //   - section time filters (avoid-day, no-early)            [#164]
@@ -72,7 +73,7 @@ async function setupFeed(page) {
 async function boot(page) {
   await setupFeed(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="routine"]').click();
+  await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
   await expect(page.locator('#routineCourseInput')).toBeVisible();
 }
