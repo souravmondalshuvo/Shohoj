@@ -28,6 +28,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXCLUDE = new Set([
   'firestore.rules.test.js',   // needs the Firestore emulator → npm run test:rules
   'productionBundleSmoke.test.js', // needs a built bundle → npm run test:bundle
+  'cspInlineHandlers.test.js', // needs a built bundle → npm run test:csp
 ]);
 
 // Directories scanned for `*.test.js`. Add a directory here once; individual
