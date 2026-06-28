@@ -12,6 +12,7 @@ import { createRoot } from 'react-dom/client';
 
 import { AppProviders } from '../app/AppProviders';
 import CalculatorSemesters from '../features/calculator/CalculatorSemesters';
+import { createFlagSet, searchParamSource, recordSource } from '../platform/configuration/flags';
 
 declare global {
   interface Window {
@@ -20,13 +21,30 @@ declare global {
   }
 }
 
+// Opt-in for the React semesters island, resolved through the typed flag
+// registry instead of ad-hoc global reads: `?reactSemesters=1` (query) or
+// window.__SHOHOJ_REACT_SEMESTERS_OPTIN__ === true (programmatic). Default stays
+// false so the legacy path is untouched for every user.
+const ISLAND_FLAGS = {
+  reactSemesters: {
+    default: false,
+    description: 'Opt into the React CalculatorSemesters island (Phase 5B).',
+  },
+} as const;
+
 function optedIn(): boolean {
+  let search = '';
   try {
-    if (new URLSearchParams(window.location.search).get('reactSemesters') === '1') return true;
+    search = window.location.search;
   } catch {
     /* location unavailable */
   }
-  return window.__SHOHOJ_REACT_SEMESTERS_OPTIN__ === true;
+  return createFlagSet(ISLAND_FLAGS, [
+    searchParamSource(search),
+    recordSource({
+      reactSemesters: window.__SHOHOJ_REACT_SEMESTERS_OPTIN__ === true ? true : undefined,
+    }),
+  ]).isEnabled('reactSemesters');
 }
 
 function mount() {
