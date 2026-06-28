@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 async function boot(page, viewport) {
   if (viewport) await page.setViewportSize(viewport);
@@ -93,7 +94,7 @@ test('semester planner opens with demo plan courses', async ({ page }) => {
   await boot(page);
   await loadDemoMode(page);
 
-  await page.locator('.calc-tab[data-tab="planner"]').click();
+  await selectCalcTab(page, "planner");
   await expect(page.locator('#tabPlanner')).toHaveClass(/active/);
   await expect(page.locator('#plannerContent')).toContainText('CSE221');
 });
