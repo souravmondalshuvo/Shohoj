@@ -10,6 +10,26 @@ import { createBrowserRouter } from 'react-router';
 
 import { RootLayout } from '../routes/RootLayout';
 import { RouteError } from '../routes/RouteError';
+import { RoutePlaceholder } from '../routes/RoutePlaceholder';
+import { AdminRoute } from '../routes/AdminRoute';
+import { RequireAdmin } from './RequireAdmin';
+
+// Routes whose feature hasn't migrated yet share the placeholder element; real
+// routes (Home, Calculator) lazy-load. Each swaps to its own lazy module as it
+// migrates in Phase 5/6.
+const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
+  ['transcript', 'Transcript'],
+  ['planner', 'Planner'],
+  ['degree-progress', 'Degree progress'],
+  ['routine', 'Routine'],
+  ['rooms', 'Free rooms'],
+  ['seats', 'Seat status'],
+  ['reviews', 'Reviews'],
+  ['papers', 'Past papers'],
+  ['groups', 'Study groups'],
+  ['feedback', 'Feedback'],
+  ['profile', 'Profile'],
+];
 
 export const router = createBrowserRouter([
   {
@@ -19,6 +39,18 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: () => import('../routes/HomeRoute') },
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
+      ...PLACEHOLDERS.map(([path, title]) => ({
+        path,
+        element: <RoutePlaceholder title={title} />,
+      })),
+      {
+        path: 'admin',
+        element: (
+          <RequireAdmin>
+            <AdminRoute />
+          </RequireAdmin>
+        ),
+      },
       { path: '*', lazy: () => import('../routes/NotFoundRoute') },
     ],
   },
