@@ -132,6 +132,7 @@
     .planner-search-input:focus { border-color: rgba(46,204,113,0.55) !important; }
     .import-confirm-btn:hover { background: #17a348 !important; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(46,204,113,0.35); }
     .import-cancel-btn:hover { background: var(--import-cancel-hover) !important; }
+    .summary-confirm-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(46,204,113,0.35); }
 
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
