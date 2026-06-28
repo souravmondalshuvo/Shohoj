@@ -509,6 +509,7 @@ export function renderPlanner() {
       </div>
       <input type="text" placeholder="Search by course code or name..."
         id="plannerSearchInput"
+        class="planner-search-input"
         value="${escAttr(_searchQuery)}"
         data-action="pl:search"
         style="
