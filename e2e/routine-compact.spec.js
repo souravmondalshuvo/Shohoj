@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for compact-day auto-suggest (#183): the "Compact days"
 // toggle feeds a gap penalty into ranking, suggestion cards surface each
@@ -52,7 +53,7 @@ async function boot(page) {
     return route.abort();
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="routine"]').click();
+  await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
   await expect(page.locator('#routineCourseInput')).toBeVisible();
   for (const code of ['AAA101', 'BBB102']) {
