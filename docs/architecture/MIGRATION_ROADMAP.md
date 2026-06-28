@@ -9,7 +9,7 @@
 |---|---|---|---|
 | **0** | Audit & reconciliation | This doc set exists; current state verified | ✅ done (2026-06-28) |
 | **1** | Stabilize the production build | Collision guard in CI; all unsafe collisions fixed; bundle regression coverage | 🟡 **in progress** (this PR) |
-| 2 | Shared foundations | Strict TS config; error/result/schema/logging/flags/config-boundary primitives; dependency-boundary lint; small UI primitives (no CSS rewrite) | ⬜ |
+| 2 | Shared foundations | Strict TS config; error/result/schema/logging/flags/config-boundary primitives; dependency-boundary lint; small UI primitives (no CSS rewrite) | 🟡 **in progress** — done: dependency-boundary lint, zod→Result validation, structured logger, typed feature flags. Remaining: typed runtime-config boundary, island-flag wiring, small UI primitives, stricter TS flags |
 | 3 | React app shell | RR Framework Mode; layouts; route error boundaries; auth/theme/notification/modal/config providers; nav; protected admin; lazy routes | ⬜ |
 | 4 | State & persistence | Wire versioned local-data migration into the live path; pre-migration backup; corrupt-state recovery; preserve cloud/local conflict + first-sign-in guards; never overwrite academic data | ⬜ |
 | 5 | Calculator cutover | Full parity (semesters, summary, edit, autocomplete, retakes, statuses, import, planner, demo, PDF, cloud restore, mobile, a11y); drop legacy globals; default only after unit+component+vite-e2e+bundle pass and rollback intact | ⬜ |
