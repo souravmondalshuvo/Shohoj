@@ -34,20 +34,20 @@ const bundlePath = path.join(repoRoot, 'shohoj.html');
 // `el.onclick = fn` (no quote) or `setAttribute('onclick', …)` (no `=`).
 const HANDLER_RE = /\son([a-z]+)\s*=\s*("(?:[^"]*)"|'(?:[^']*)')/g;
 
-// Strip comments before scanning so handler-like text in documentation (e.g. a
-// JS comment that mentions `onkeydown="…"`, as in dispatch.js) isn't mistaken
-// for a real handler. Covers HTML <!-- -->, CSS/JS /* */, and JS // line
-// comments. The // rule is URL-safe: it only fires at start-of-line or after a
-// non-colon char, so `https://…` is preserved.
-function stripComments(text) {
-  return text
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:])\/\/[^\n]*/gm, '$1');
+// Ignore handler-like text inside JS line comments before scanning — e.g.
+// dispatch.js documents `onkeydown="…"` to explain the CSP rule, and that
+// mention must not be mistaken for a real handler. Only `//` line comments are
+// stripped (the realistic case); it's URL-safe, firing only at start-of-line or
+// after a non-colon char so `https://…` survives. Paired delimiters (<!-- -->,
+// /* */) are deliberately not stripped: no bundle comment of those kinds carries
+// handler syntax, and regex-stripping them trips CodeQL's incomplete-multi-
+// character-sanitization query for no real benefit in a trusted-input scan.
+function stripLineComments(text) {
+  return text.replace(/(^|[^:])\/\/[^\n]*/gm, '$1');
 }
 
 function scanInlineHandlers(html) {
-  const source = stripComments(html);
+  const source = stripLineComments(html);
   const found = new Map(); // attr+value -> count
   let match;
   HANDLER_RE.lastIndex = 0;
