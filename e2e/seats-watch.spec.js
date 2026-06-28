@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for seat-drop alerts on the Seat Status tab: watching a full
 // section, the "Watching" panel, removing a watch, and — the point of the
@@ -50,7 +51,7 @@ async function boot(page) {
     return route.abort();
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="seats"]').click();
+  await selectCalcTab(page, "seats");
   await expect(page.locator('#tabSeats')).toHaveClass(/active/);
   await page.locator('#seatsCourseInput').fill('CSE220');
   await expect(page.locator('.seats-section-row')).toHaveCount(2);
