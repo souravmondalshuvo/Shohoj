@@ -434,24 +434,86 @@ const TAB_MAP = {
 
 let _activeCalcTab = 'calculator';
 
+// Wire the dropdown groups in the tab bar. Desktop (fine pointer + hover) opens
+// a group on hover OR click; touch/coarse pointers open on click only. Clicking
+// outside the bar or pressing Escape closes everything.
+function initTabGroups() {
+  const tabs = document.getElementById('calcTabs');
+  if (!tabs) return;
+  const groups = Array.from(tabs.querySelectorAll('.calc-tab-group'));
+  if (!groups.length) return;
+
+  const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  // mouseleave closes on a short delay, not instantly: the pointer briefly
+  // crosses dead space when travelling from the trigger to a menu item, and a
+  // layout shift (e.g. the Planner badge widening the Plan pill) can move the
+  // trigger out from under a stationary cursor. A grace period lets the pointer
+  // re-enter the group before the menu snaps shut.
+  let closeTimer;
+  const setOpen = (group, open) => {
+    group.classList.toggle('open', open);
+    group.querySelector('.calc-tab-trigger')?.setAttribute('aria-expanded', String(open));
+  };
+  const open = (group) => { clearTimeout(closeTimer); closeAll(group); setOpen(group, true); };
+  const closeAll = (except) => groups.forEach(g => { if (g !== except) setOpen(g, false); });
+  const scheduleClose = (group) => {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => setOpen(group, false), 180);
+  };
+
+  groups.forEach(group => {
+    const trigger = group.querySelector('.calc-tab-trigger');
+    if (!trigger) return;
+    trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      // Hover devices: hover already opens it, so a click just guarantees open.
+      // Coarse pointers have no hover, so the click toggles.
+      if (canHover || !group.classList.contains('open')) open(group);
+      else setOpen(group, false);
+    });
+    if (canHover) {
+      group.addEventListener('mouseenter', () => open(group));
+      group.addEventListener('mouseleave', () => scheduleClose(group));
+    }
+  });
+
+  document.addEventListener('click', e => { if (!tabs.contains(e.target)) closeAll(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+}
+
 function _moveTabSlider(tabId) {
   const slider = document.getElementById('calcTabSlider');
   if (!slider) return;
-  const btn = document.querySelector(`.calc-tab[data-tab="${tabId}"]`);
-  // Defensive: a tab with no strip button collapses the slider so it doesn't
-  // linger under the previously active tab.
-  if (!btn) { slider.style.width = '0px'; return; }
-  slider.style.left  = btn.offsetLeft + 'px';
-  slider.style.width = btn.offsetWidth + 'px';
+  // The active tab may be a single top-level button (Calculator/Groups) or a
+  // menu item inside a dropdown group; in the latter case the slider tracks the
+  // group's trigger pill, not the (possibly hidden) menu item.
+  const item = document.querySelector(`#calcTabs [data-tab="${tabId}"]`);
+  if (!item) { slider.style.width = '0px'; return; }
+  const group = item.closest('.calc-tab-group');
+  const target = group ? group.querySelector('.calc-tab-trigger') : item;
+  if (!target) { slider.style.width = '0px'; return; }
+  // offsetLeft is measured against the offset parent: the bar for single tabs,
+  // the (position:relative) group for a trigger — so add the group's own offset.
+  const left = group ? group.offsetLeft + target.offsetLeft : target.offsetLeft;
+  slider.style.left  = left + 'px';
+  slider.style.width = target.offsetWidth + 'px';
 }
 
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
   _activeCalcTab = tabId;
 
-  // Update tab buttons
-  document.querySelectorAll('.calc-tab').forEach(btn => {
+  // Update tab buttons — single tabs and menu items both carry data-tab.
+  document.querySelectorAll('#calcTabs [data-tab]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  // A group's trigger pill reflects the active state of whichever child tab is
+  // selected, so the bar shows where you are even with the menu closed.
+  document.querySelectorAll('#calcTabs .calc-tab-group').forEach(group => {
+    const has = !!group.querySelector(`[data-tab="${tabId}"]`);
+    const trigger = group.querySelector('.calc-tab-trigger');
+    if (trigger) trigger.classList.toggle('active', has);
   });
 
   _moveTabSlider(tabId);
@@ -762,9 +824,15 @@ function _wireInlineReplacements() {
   on('startSemConfirmBtn', 'click', () => onStartSemConfirm());
 
   // Calculator tab strip (replaces inline onclick on each .calc-tab button).
-  document.querySelectorAll('.calc-tab[data-tab]').forEach(btn => {
-    btn.addEventListener('click', () => switchCalcTab(btn.dataset.tab));
+  // Selecting any tab — single or inside a dropdown — switches and then closes
+  // any open group so the menu doesn't linger over the panel.
+  document.querySelectorAll('#calcTabs [data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchCalcTab(btn.dataset.tab);
+      btn.closest('.calc-tab-group')?.classList.remove('open');
+    });
   });
+  initTabGroups();
 
   // Transcript import / export / clear-data buttons.
   on('importPdfBtn', 'click', () => {
