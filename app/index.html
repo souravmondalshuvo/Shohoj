@@ -21,6 +21,25 @@
       .shell-page { padding: 24px 16px; max-width: 720px; }
       .shell-muted { color: #5a8a6a; }
       .shell-route-error { padding: 24px 16px; }
+      .shell-btn {
+        font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #0d2914;
+      }
+      .shell-btn--primary { background: #27ae60; border-color: #27ae60; color: #fff; }
+      .shell-btn--danger { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+      .shell-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+        display: flex; align-items: center; justify-content: center; padding: 16px;
+      }
+      .shell-modal {
+        background: #fff; border-radius: 12px; padding: 20px; max-width: 420px;
+        width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+      }
+      .shell-modal-title { margin: 0 0 8px; font-size: 18px; }
+      .shell-modal-message { margin: 0 0 16px; color: #2d5a3d; }
+      .shell-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
   <body>
