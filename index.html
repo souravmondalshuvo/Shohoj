@@ -334,45 +334,74 @@
       </div>
 
       <!-- ═══ TAB BAR ═══ -->
+      <!-- Grouped nav: two single tabs (Calculator, Groups) flank three dropdown
+           groups (Plan / Courses / Campus). Keeps the top level to 5 items so it
+           never has to scroll, and new tools drop into a group instead of
+           widening the bar. The .calc-tab-menu items carry data-tab exactly like
+           a flat tab, so switchCalcTab/restoreCalcTab are unchanged per-tab. -->
       <div class="calc-tabs" id="calcTabs">
         <div class="calc-tab-slider" id="calcTabSlider"></div>
+
         <button class="calc-tab active" data-tab="calculator">
           <span class="calc-tab-icon">🧮</span>
           <span>Calculator</span>
         </button>
-        <button class="calc-tab" data-tab="planner">
-          <span class="calc-tab-icon">📅</span>
-          <span>Planner</span>
-          <span class="calc-tab-badge" id="plannerTabBadge"></span>
-        </button>
-        <button class="calc-tab" data-tab="playground">
-          <span class="calc-tab-icon">🔮</span>
-          <span>Playground</span>
-        </button>
-        <button class="calc-tab" data-tab="difficulty">
-          <span class="calc-tab-icon">🗺️</span>
-          <span>Difficulty</span>
-        </button>
-        <button class="calc-tab" data-tab="reviews">
-          <span class="calc-tab-icon">⭐</span>
-          <span>Reviews</span>
-        </button>
-        <button class="calc-tab" data-tab="papers">
-          <span class="calc-tab-icon">📚</span>
-          <span>Papers</span>
-        </button>
-        <button class="calc-tab" data-tab="routine">
-          <span class="calc-tab-icon">🗓️</span>
-          <span>Routine</span>
-        </button>
-        <button class="calc-tab" data-tab="seats">
-          <span class="calc-tab-icon">🪑</span>
-          <span>Seats</span>
-        </button>
-        <button class="calc-tab" data-tab="freerooms">
-          <span class="calc-tab-icon">🚪</span>
-          <span>Free Rooms</span>
-        </button>
+
+        <div class="calc-tab-group" data-group="plan">
+          <button class="calc-tab calc-tab-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="calc-tab-icon">📅</span>
+            <span>Plan</span>
+            <span class="calc-tab-badge" id="plannerTabBadge"></span>
+            <span class="calc-tab-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="calc-tab-menu" role="menu">
+            <button class="calc-tab-menu-item" data-tab="planner" role="menuitem">
+              <span class="calc-tab-icon">📅</span><span>Planner</span>
+            </button>
+            <button class="calc-tab-menu-item" data-tab="playground" role="menuitem">
+              <span class="calc-tab-icon">🔮</span><span>Playground</span>
+            </button>
+            <button class="calc-tab-menu-item" data-tab="routine" role="menuitem">
+              <span class="calc-tab-icon">🗓️</span><span>Routine</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="calc-tab-group" data-group="courses">
+          <button class="calc-tab calc-tab-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="calc-tab-icon">📚</span>
+            <span>Courses</span>
+            <span class="calc-tab-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="calc-tab-menu" role="menu">
+            <button class="calc-tab-menu-item" data-tab="reviews" role="menuitem">
+              <span class="calc-tab-icon">⭐</span><span>Reviews</span>
+            </button>
+            <button class="calc-tab-menu-item" data-tab="difficulty" role="menuitem">
+              <span class="calc-tab-icon">🗺️</span><span>Difficulty</span>
+            </button>
+            <button class="calc-tab-menu-item" data-tab="papers" role="menuitem">
+              <span class="calc-tab-icon">📚</span><span>Papers</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="calc-tab-group" data-group="campus">
+          <button class="calc-tab calc-tab-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="calc-tab-icon">🏫</span>
+            <span>Campus</span>
+            <span class="calc-tab-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="calc-tab-menu" role="menu">
+            <button class="calc-tab-menu-item" data-tab="seats" role="menuitem">
+              <span class="calc-tab-icon">🪑</span><span>Seats</span>
+            </button>
+            <button class="calc-tab-menu-item" data-tab="freerooms" role="menuitem">
+              <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
+            </button>
+          </div>
+        </div>
+
         <button class="calc-tab" data-tab="groups">
           <span class="calc-tab-icon">🧑‍🤝‍🧑</span>
           <span>Groups</span>
