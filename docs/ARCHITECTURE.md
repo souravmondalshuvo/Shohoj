@@ -1,5 +1,11 @@
 # Architecture
 
+> **Canonical references (2026-06-28):** for the verified current system see
+> [`architecture/CURRENT_STATE.md`](architecture/CURRENT_STATE.md); for the end-state and
+> plan see [`architecture/TARGET_ARCHITECTURE.md`](architecture/TARGET_ARCHITECTURE.md) and
+> [`architecture/MIGRATION_ROADMAP.md`](architecture/MIGRATION_ROADMAP.md). This page is a
+> high-level overview; where it disagrees with the `architecture/` set, that set wins.
+
 Shohoj is a mostly static web app served from GitHub Pages, with Firebase Auth,
 Firestore, and one maintained Cloudflare Worker for R2 paper files. There is no
 traditional app server; the Worker is the only backend code in this repo.
