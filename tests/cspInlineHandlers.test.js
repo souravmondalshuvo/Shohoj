@@ -34,10 +34,24 @@ const bundlePath = path.join(repoRoot, 'shohoj.html');
 // `el.onclick = fn` (no quote) or `setAttribute('onclick', …)` (no `=`).
 const HANDLER_RE = /\son([a-z]+)\s*=\s*("(?:[^"]*)"|'(?:[^']*)')/g;
 
+// Strip comments before scanning so handler-like text in documentation (e.g. a
+// JS comment that mentions `onkeydown="…"`, as in dispatch.js) isn't mistaken
+// for a real handler. Covers HTML <!-- -->, CSS/JS /* */, and JS // line
+// comments. The // rule is URL-safe: it only fires at start-of-line or after a
+// non-colon char, so `https://…` is preserved.
+function stripComments(text) {
+  return text
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/gm, '$1');
+}
+
 function scanInlineHandlers(html) {
+  const source = stripComments(html);
   const found = new Map(); // attr+value -> count
   let match;
-  while ((match = HANDLER_RE.exec(html)) !== null) {
+  HANDLER_RE.lastIndex = 0;
+  while ((match = HANDLER_RE.exec(source)) !== null) {
     const attr = `on${match[1]}`;
     const value = match[2].slice(1, -1);
     const key = `${attr}=${value}`;
