@@ -1,5 +1,10 @@
 # React/Vite Migration Sequence
 
+> **Superseded (2026-06-28):** this early sequencing note is retained for history. The
+> authoritative phase plan is now [`architecture/MIGRATION_ROADMAP.md`](architecture/MIGRATION_ROADMAP.md)
+> (with [`architecture/TARGET_ARCHITECTURE.md`](architecture/TARGET_ARCHITECTURE.md)). Follow
+> the roadmap where the two differ.
+
 Shohoj should move to React and Vite only after the v0.4 TypeScript logic
 migration is stable. The goal is to protect the existing working product while
 making future UI work easier.
