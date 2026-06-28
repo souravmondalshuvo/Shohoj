@@ -10,6 +10,7 @@
 import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
+import { AuthProvider } from '../providers/AuthProvider';
 
 interface NavItem {
   readonly to: string;
@@ -17,37 +18,52 @@ interface NavItem {
   readonly end?: boolean;
 }
 
-// Mirrors the target route map; routes are added as features migrate.
+// The target route map. Routes resolve to placeholders until each feature
+// migrates (Phase 5/6); the nav is the full map from the start.
 const NAV: readonly NavItem[] = [
   { to: '/', label: 'Home', end: true },
   { to: '/calculator', label: 'Calculator' },
+  { to: '/transcript', label: 'Transcript' },
+  { to: '/planner', label: 'Planner' },
+  { to: '/degree-progress', label: 'Degree' },
+  { to: '/routine', label: 'Routine' },
+  { to: '/rooms', label: 'Rooms' },
+  { to: '/seats', label: 'Seats' },
+  { to: '/reviews', label: 'Reviews' },
+  { to: '/papers', label: 'Papers' },
+  { to: '/groups', label: 'Groups' },
+  { to: '/feedback', label: 'Feedback' },
+  { to: '/profile', label: 'Profile' },
+  { to: '/admin', label: 'Admin' },
 ];
 
 export function RootLayout() {
   return (
     <AppProviders label="App shell">
-      <a className="shell-skip-link" href="#main-content">
-        Skip to content
-      </a>
-      <header className="shell-header">
-        <nav className="shell-nav" aria-label="Primary">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      <main id="main-content" className="shell-main" tabIndex={-1}>
-        <Outlet />
-      </main>
+      <AuthProvider>
+        <a className="shell-skip-link" href="#main-content">
+          Skip to content
+        </a>
+        <header className="shell-header">
+          <nav className="shell-nav" aria-label="Primary">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </header>
+        <main id="main-content" className="shell-main" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </AuthProvider>
     </AppProviders>
   );
 }
