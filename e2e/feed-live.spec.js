@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for the shared live-feed poller (js/ui/feedLive.js): seat
 // counts and watch alerts must update on their own — no Refresh click — once a
@@ -52,7 +53,7 @@ async function boot(page) {
     return route.abort();
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.locator('.calc-tab[data-tab="seats"]').click();
+  await selectCalcTab(page, "seats");
   await expect(page.locator('#tabSeats')).toHaveClass(/active/);
   await page.locator('#seatsCourseInput').fill('CSE220');
   await expect(page.locator('.seats-section-row')).toHaveCount(2);
@@ -104,7 +105,7 @@ test('a live poll updates the routine tab section rows in place', async ({ page 
   const { setSeats01 } = await boot(page);
 
   // Move to the Routine tab and add CSE220 — its section rows show live seats.
-  await page.locator('.calc-tab[data-tab="routine"]').click();
+  await selectCalcTab(page, "routine");
   await page.locator('#routineCourseInput').fill('CSE220');
   await page.locator('[data-action="routine:addFromSuggest"]').click();
   const row01 = page.locator('.routine-section-row', { hasText: 'Section 01' });
