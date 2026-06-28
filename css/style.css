@@ -121,6 +121,18 @@
     }
     .maintenance-banner__close:hover { background: var(--glass-hover); }
 
+    /* CSP-safe hover/focus styling. The hardened production CSP drops
+       'unsafe-inline' from script-src, which blocks inline on* handlers
+       (onmouseenter/onmouseleave/onfocus/onblur), so these effects — previously
+       done with inline handlers — are expressed as :hover/:focus rules instead.
+       Base styles stay inline; leaving/blurring reverts to them automatically.
+       !important is required because these elements set their base background/
+       border inline, and inline styles otherwise outrank a class pseudo rule. */
+    .gauth-reauth-btn:hover { background: rgba(255,255,255,0.13) !important; border-color: rgba(255,255,255,0.25) !important; }
+    .planner-search-input:focus { border-color: rgba(46,204,113,0.55) !important; }
+    .import-confirm-btn:hover { background: #17a348 !important; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(46,204,113,0.35); }
+    .import-cancel-btn:hover { background: var(--import-cancel-hover) !important; }
+
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
