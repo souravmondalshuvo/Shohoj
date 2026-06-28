@@ -16,8 +16,8 @@ import { registerAction } from '../core/dispatch.js';
 
 registerAction('grp:signin',       () => window._shohoj_signIn?.());
 registerAction('grp:refresh',      () => _load(true));
-registerAction('grp:toggleCreate', () => { _gs.showCreate = !_gs.showCreate; _gs.createMsg = ''; _render(); });
-registerAction('grp:createMode',   el => { _gs.createMode = el.dataset.mode; _render(); });
+registerAction('grp:toggleCreate', () => { _gs.showCreate = !_gs.showCreate; _gs.createMsg = ''; _grpRender(); });
+registerAction('grp:createMode',   el => { _gs.createMode = el.dataset.mode; _grpRender(); });
 registerAction('grp:submit',       () => _submit());
 registerAction('grp:courseFilter', el => { _gs.courseFilter = el.value; _renderList(); });
 registerAction('grp:modeFilter',   el => { _gs.modeFilter = el.dataset.mode; _renderList(); });
@@ -46,17 +46,17 @@ const _gs = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function _isSignedIn() {
+function _grpIsSignedIn() {
   return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
 }
 function _currentUid() {
   return window._shohoj_currentUid?.() || null;
 }
-function _isAuthReady() {
+function _grpIsAuthReady() {
   return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
 }
 
-function _t() {
+function _grpTheme() {
   const dark = document.documentElement.dataset.theme === 'dark';
   return dark ? {
     border: 'rgba(46,204,113,0.22)', text: '#e8f0ea', text2: '#a8c4ad', text3: '#6a9070',
@@ -81,12 +81,12 @@ function _setHtml(el, markup) {
   el.innerHTML = markup;
 }
 
-function _toast(msg) {
+function _grpToast(msg) {
   if (typeof window._shohoj_showToast === 'function') window._shohoj_showToast(msg);
   else alert(msg);
 }
 
-function _timeAgo(g) {
+function _grpTimeAgo(g) {
   const ms = groupTimestampMs(g);
   if (!ms) return '';
   const diff = Date.now() - ms;
@@ -102,10 +102,10 @@ function _timeAgo(g) {
 // ── Data ────────────────────────────────────────────────────────────────────
 async function _load(force = false) {
   if (_gs.loading) return;
-  if (_gs.loaded && !force) { _render(); return; }
+  if (_gs.loaded && !force) { _grpRender(); return; }
   _gs.loading = true;
   _gs.error = false;
-  _render();
+  _grpRender();
   try {
     const [groups, memberships] = await Promise.all([
       fetchStudyGroups(),
@@ -119,31 +119,31 @@ async function _load(force = false) {
     _gs.error = true;
   }
   _gs.loading = false;
-  _render();
+  _grpRender();
 }
 
 // ── Render: shell ─────────────────────────────────────────────────────────────
 export function renderGroupsTab() {
   const root = document.getElementById('groupsContent');
   if (!root) return;
-  if (!_isAuthReady()) {
-    _setHtml(root, _wrap(`<div style="text-align:center;padding:40px 0;color:${_t().text3};font-size:13px;">Loading…</div>`));
+  if (!_grpIsAuthReady()) {
+    _setHtml(root, _wrap(`<div style="text-align:center;padding:40px 0;color:${_grpTheme().text3};font-size:13px;">Loading…</div>`));
     return;
   }
-  if (!_isSignedIn()) {
-    _setHtml(root, _signInPrompt());
+  if (!_grpIsSignedIn()) {
+    _setHtml(root, _grpSignInPrompt());
     return;
   }
   if (!_gs.loaded && !_gs.loading) { _load(); return; }
-  _render();
+  _grpRender();
 }
 
 function _wrap(inner) {
   return `<div style="max-width:760px;margin:0 auto;">${inner}</div>`;
 }
 
-function _signInPrompt() {
-  const t = _t();
+function _grpSignInPrompt() {
+  const t = _grpTheme();
   return _wrap(`
     <div style="text-align:center;padding:48px 16px;color:${t.text2};">
       <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${t.text};margin-bottom:8px;">🧑‍🤝‍🧑 Study Group Finder</div>
@@ -155,11 +155,11 @@ function _signInPrompt() {
   `);
 }
 
-function _render() {
+function _grpRender() {
   const root = document.getElementById('groupsContent');
   if (!root) return;
-  if (!_isSignedIn()) { _setHtml(root, _signInPrompt()); return; }
-  const t = _t();
+  if (!_grpIsSignedIn()) { _setHtml(root, _grpSignInPrompt()); return; }
+  const t = _grpTheme();
   _setHtml(root, _wrap(`
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
       <div>
@@ -232,7 +232,7 @@ function _visibleGroups() {
 function _renderList() {
   const el = document.getElementById('groupsList');
   if (!el) return;
-  const t = _t();
+  const t = _grpTheme();
   if (_gs.loading) {
     _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">Loading study groups…</div>`);
     return;
@@ -297,7 +297,7 @@ function _groupCard(g, t) {
         ${modeBadge}
         <span style="font-size:11px;color:${t.text3};">${escHtml(sum.label)}</span>
         ${joinedBadge}
-        <span style="font-size:11px;color:${t.text3};margin-left:auto;">${escHtml(_timeAgo(g))}</span>
+        <span style="font-size:11px;color:${t.text3};margin-left:auto;">${escHtml(_grpTimeAgo(g))}</span>
       </div>
       <div style="font-size:15px;font-weight:700;color:${t.text};word-break:break-word;">${escHtml(g.title || 'Untitled group')}</div>
       ${desc}
@@ -342,9 +342,9 @@ async function _submit() {
     capacity: Number(get('grpCapacity')),
   };
   const err = validateGroupDraft(draft);
-  if (err) { _gs.createMsg = err; _gs.createErr = true; _render(); return; }
+  if (err) { _gs.createMsg = err; _gs.createErr = true; _grpRender(); return; }
 
-  _gs.submitting = true; _gs.createMsg = ''; _render();
+  _gs.submitting = true; _gs.createMsg = ''; _grpRender();
   const res = await createStudyGroup(draft);
   _gs.submitting = false;
   if (res?.ok) {
@@ -355,7 +355,7 @@ async function _submit() {
   } else {
     _gs.createMsg = res?.error || 'Could not post group.';
     _gs.createErr = true;
-    _render();
+    _grpRender();
   }
 }
 
@@ -367,7 +367,7 @@ async function _join(groupId) {
     _gs.rosters.delete(groupId);
     _renderList();
   } else if (res?.error) {
-    _toast(res.error);
+    _grpToast(res.error);
   }
 }
 
@@ -380,7 +380,7 @@ async function _leave(groupId) {
     _gs.rosters.delete(groupId);
     _renderList();
   } else if (res?.error) {
-    _toast(res.error);
+    _grpToast(res.error);
   }
 }
 
@@ -393,7 +393,7 @@ async function _delete(groupId, label) {
     _gs.myGroupIds.delete(groupId);
     _renderList();
   } else if (res?.error) {
-    _toast(res.error);
+    _grpToast(res.error);
   }
 }
 
@@ -402,9 +402,9 @@ async function _report(groupId, label) {
   const reason = window.prompt(`Report "${label || 'this group'}" — what's wrong? (spam, abuse, dead link…)`);
   if (reason == null) return;
   const trimmed = reason.trim();
-  if (trimmed.length < 3) { _toast('Please add a short reason.'); return; }
+  if (trimmed.length < 3) { _grpToast('Please add a short reason.'); return; }
   const res = await reportStudyGroup(groupId, trimmed);
-  _toast(res?.ok ? 'Reported. Thanks — an admin will review it.' : (res?.error || 'Report failed.'));
+  _grpToast(res?.ok ? 'Reported. Thanks — an admin will review it.' : (res?.error || 'Report failed.'));
 }
 
 async function _toggleRoster(groupId) {
