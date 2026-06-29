@@ -53,6 +53,17 @@ async function openTab(page, tab) {
 // Scan the whole page (axe ignores hidden elements, so this effectively covers
 // the active tab + persistent chrome) and return only the blocking violations.
 async function blockingViolations(page) {
+  // Freeze CSS transitions/animations before scanning so axe measures the
+  // *settled* UI, not a mid-animation frame. The .reveal scroll-in animation
+  // fades section titles via opacity 0→1; caught mid-transition, axe computes a
+  // blended foreground (e.g. #4e5551) against the dark background and reports a
+  // transient color-contrast violation — a flaky failure. Forcing transitions
+  // off snaps elements to their final (full-opacity, full-contrast) values.
+  await page.addStyleTag({
+    content: '*,*::before,*::after{transition:none!important;animation:none!important;}',
+  });
+  await page.waitForTimeout(50);
+
   let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
   for (const region of EXCLUDED_REGIONS) builder = builder.exclude(region);
   if (DISABLED_RULES.length) builder = builder.disableRules(DISABLED_RULES);
