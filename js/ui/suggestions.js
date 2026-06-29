@@ -3,6 +3,11 @@ import { state } from '../core/state.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
 let activeInput = null;
+// When suggestions are (re)shown we briefly ignore scroll-driven closes: focusing
+// or typing into an input near the fold makes the browser auto-scroll it into
+// view, and that programmatic scroll would otherwise wipe the list the user just
+// opened (a UX papercut, and the source of a flaky e2e — see repro-suggestion).
+let lastSuggestionShownAt = 0;
 
 function getPortal() {
   return document.getElementById('suggestions-portal');
@@ -29,6 +34,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
     </div>`).join('');
   html += '</div>';
   portal.innerHTML = html;
+  lastSuggestionShownAt = Date.now();
 }
 
 export function onCourseBlur(e, semId, cIdx) {
@@ -160,8 +166,15 @@ export function pickSuggestion(semId, cIdx, fullName, credits) {
 }
 
 export function initSuggestionsScrollHandler() {
+  // Close the (absolutely-positioned) suggestion list on a genuine user scroll,
+  // but ignore the programmatic auto-scroll that immediately follows opening it
+  // (focusing/typing an input near the fold). Without this grace window that
+  // auto-scroll wipes the list the moment it appears.
+  const SCROLL_CLOSE_GRACE_MS = 500;
   window.addEventListener('scroll', () => {
-    if (activeInput && getPortal().innerHTML) getPortal().innerHTML = '';
+    if (!activeInput || !getPortal().innerHTML) return;
+    if (Date.now() - lastSuggestionShownAt < SCROLL_CLOSE_GRACE_MS) return;
+    getPortal().innerHTML = '';
   }, { passive: true });
 
   // ── CSP-safe event wiring ────────────────────────────────────────────────
