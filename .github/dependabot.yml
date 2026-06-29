@@ -1,0 +1,25 @@
+# Dependabot configuration
+#
+# Security ALERTS (notifications) stay active — they are controlled in the
+# GitHub UI, not here. This file only governs Dependabot's pull requests.
+#
+# open-pull-requests-limit: 0 suppresses all version-update PRs so that
+# dependency bumps stop cluttering the contributor list, while Dependabot
+# still runs its checks. Bump dependencies manually instead.
+#
+# NOTE: This does NOT stop Dependabot *security-update* PRs. Those are a
+# separate toggle under Settings -> Code security & analysis and must be
+# disabled in the GitHub UI for truly zero PRs.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: "npm"
+    directory: "/worker"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
