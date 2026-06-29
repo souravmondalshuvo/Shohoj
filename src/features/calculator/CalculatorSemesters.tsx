@@ -25,31 +25,21 @@ import type { SummaryValues } from './SummaryForm';
 import type { CourseSuggestion } from './courseSearch';
 import { addCourse, removeCourse, removeSemester, reorderSemesters, updateCourse } from './mutations';
 import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
-import { useCalculatorInputs } from './calculatorBridge';
-
-declare global {
-  interface Window {
-    _shohoj_setSemesters?: (semesters: SemesterEntry[]) => void;
-    _shohoj_isKnownCourse?: (code: string) => boolean;
-    _shohoj_courseCatalog?: CourseSuggestion[];
-    _shohoj_loadDemoMode?: () => void;
-    addSemester?: () => void;
-    openRateForCourse?: (semId: number, idx: number) => void;
-  }
-}
+import { useCalculatorBridge } from './calculatorBridge';
 
 const DEFAULT_SEASONS: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
 
 export default function CalculatorSemesters() {
-  const { semesters } = useCalculatorInputs();
+  const bridge = useCalculatorBridge();
+  const { semesters } = bridge.useInputs();
   const [summaryFormVisible, setSummaryFormVisible] = useState(false);
   const [summaryEditId, setSummaryEditId] = useState<number | null>(null);
   const [dragSrcId, setDragSrcId] = useState<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
 
-  const commit = (next: SemesterEntry[]) => window._shohoj_setSemesters?.(next);
-  const isKnownCode = (code: string) => window._shohoj_isKnownCourse?.(code) ?? false;
-  const [catalog] = useState<CourseSuggestion[]>(() => window._shohoj_courseCatalog ?? []);
+  const commit = (next: SemesterEntry[]) => bridge.commit(next);
+  const isKnownCode = (code: string) => bridge.isKnownCode(code);
+  const [catalog] = useState<CourseSuggestion[]>(() => [...bridge.catalog]);
 
   const retakenKeys = useMemo(() => getRetakenKeys(semesters), [semesters]);
   const now = useMemo(() => new Date(), []);
@@ -170,7 +160,7 @@ export default function CalculatorSemesters() {
               commit(updateCourse(semesters, sem.id, idx, { gradePoint: norm, grade: detectGrade(norm) }));
             }}
             onCoursePassFailChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { grade: value }))}
-            onRateCourse={(idx) => window.openRateForCourse?.(sem.id, idx)}
+            onRateCourse={(idx) => bridge.rateForCourse(sem.id, idx)}
             onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
             isDragOver={dragOverId === sem.id && dragSrcId !== null && dragSrcId !== sem.id}
             onDragStartBlock={() => setDragSrcId(sem.id)}
@@ -197,7 +187,7 @@ export default function CalculatorSemesters() {
           type="button"
           className="btn-add-course"
           style={{ width: '100%', marginTop: 4, padding: 10, fontSize: 13, fontWeight: 600, borderRadius: 10 }}
-          onClick={() => window.addSemester?.()}
+          onClick={() => bridge.addSemester()}
         >
           + Add Semester
         </button>
@@ -211,10 +201,10 @@ export default function CalculatorSemesters() {
             Add your first semester, import your transcript, or start from your current CGPA.
           </div>
           <div className="empty-state-actions">
-            <button type="button" className="btn-sample" onClick={() => window._shohoj_loadDemoMode?.()}>
+            <button type="button" className="btn-sample" onClick={() => bridge.loadDemo()}>
               Try Demo Mode
             </button>
-            <button type="button" className="btn-sample-ghost" onClick={() => window.addSemester?.()}>
+            <button type="button" className="btn-sample-ghost" onClick={() => bridge.addSemester()}>
               + Add semester
             </button>
             {!hasSummary && (
