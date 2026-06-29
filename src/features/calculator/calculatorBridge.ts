@@ -12,9 +12,10 @@
 // Reads only for now; a typed write path (a `_shohoj_setSemesters` legacy
 // setter) lands with the first island that mutates semesters.
 
-import { useSyncExternalStore } from 'react';
+import { createContext, useContext, useSyncExternalStore } from 'react';
 
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
+import type { CourseSuggestion } from './courseSearch';
 
 export interface CalculatorInputs {
   readonly semesters: readonly SemesterEntry[];
@@ -30,6 +31,12 @@ declare global {
       startYear: string;
     };
     _shohoj_recalc?: () => void;
+    _shohoj_setSemesters?: (semesters: SemesterEntry[]) => void;
+    _shohoj_isKnownCourse?: (code: string) => boolean;
+    _shohoj_courseCatalog?: CourseSuggestion[];
+    _shohoj_loadDemoMode?: () => void;
+    addSemester?: () => void;
+    openRateForCourse?: (semId: number, idx: number) => void;
   }
 }
 
@@ -87,4 +94,67 @@ export function useCalculatorInputs(): CalculatorInputs {
 /** Ask the legacy app to recompute + re-broadcast (after an island mutates state). */
 export function requestRecalc(): void {
   if (typeof window !== 'undefined') window._shohoj_recalc?.();
+}
+
+// ---------------------------------------------------------------------------
+// Injectable bridge (Phase 5B route wiring)
+//
+// CalculatorSemesters needs more than reads: it commits new semester lists,
+// queries the course catalog, adds calendar-aware semesters, loads demo data,
+// and opens the rate-course modal. On the legacy/island path all of these are
+// window globals. To render the same component against the React-shell reducer
+// container (which has no legacy app), the whole surface is funnelled through
+// this one typed bridge. The default is `legacyWindowBridge`, so the opt-in
+// island path — which renders <CalculatorSemesters /> without a provider — keeps
+// its exact current behavior. The shell route supplies a reducer-backed bridge.
+// ---------------------------------------------------------------------------
+
+export interface CalculatorBridge {
+  /** Reactive, tear-free read of the current calculator inputs. */
+  useInputs(): CalculatorInputs;
+  /** Replace the semester list (legacy: _shohoj_setSemesters → persist + recalc). */
+  commit(semesters: SemesterEntry[]): void;
+  /** Whether a course code is in the catalog (legacy: _shohoj_isKnownCourse). */
+  isKnownCode(code: string): boolean;
+  /** Course catalog backing the autocomplete (legacy: _shohoj_courseCatalog). */
+  readonly catalog: readonly CourseSuggestion[];
+  /** Calendar-aware add-semester (legacy: window.addSemester). */
+  addSemester(): void;
+  /** Load demo data (legacy: _shohoj_loadDemoMode). */
+  loadDemo(): void;
+  /** Open the rate-course modal for a course (legacy: openRateForCourse). */
+  rateForCourse(semId: number, index: number): void;
+}
+
+/** Default bridge: delegates the whole surface to the legacy window globals. */
+export const legacyWindowBridge: CalculatorBridge = {
+  useInputs: useCalculatorInputs,
+  commit(semesters) {
+    window._shohoj_setSemesters?.(semesters);
+  },
+  isKnownCode(code) {
+    return window._shohoj_isKnownCourse?.(code) ?? false;
+  },
+  get catalog() {
+    return (typeof window !== 'undefined' && window._shohoj_courseCatalog) || [];
+  },
+  addSemester() {
+    window.addSemester?.();
+  },
+  loadDemo() {
+    window._shohoj_loadDemoMode?.();
+  },
+  rateForCourse(semId, index) {
+    window.openRateForCourse?.(semId, index);
+  },
+};
+
+const CalculatorBridgeContext = createContext<CalculatorBridge>(legacyWindowBridge);
+
+/** Provider for an injected calculator bridge (the shell route uses this). */
+export const CalculatorBridgeProvider = CalculatorBridgeContext.Provider;
+
+/** Current calculator bridge — `legacyWindowBridge` unless a provider overrides it. */
+export function useCalculatorBridge(): CalculatorBridge {
+  return useContext(CalculatorBridgeContext);
 }
