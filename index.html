@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-ZTAdLCZR0+sMDenAQbTdwXvmmLJT/VU6kl4jpKE3AA4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-gBMVqnMx5bCQeYERCw2yVBOcvcVml/78LRD02XlEwPk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-ZTAdLCZR0+sMDenAQbTdwXvmmLJT/VU6kl4jpKE3AA4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-AdZeQ+A42rzM8D2NDFsyXJ3quCjYaAG+17Xsrnr6Rdk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13839,6 +13839,11 @@ function drawTrendChart(canvas, data) {
 
 // ── js/ui/suggestions.js ────────────────────────────────────────
 let activeInput = null;
+// When suggestions are (re)shown we briefly ignore scroll-driven closes: focusing
+// or typing into an input near the fold makes the browser auto-scroll it into
+// view, and that programmatic scroll would otherwise wipe the list the user just
+// opened (a UX papercut, and the source of a flaky e2e — see repro-suggestion).
+let lastSuggestionShownAt = 0;
 
 function getPortal() {
   return document.getElementById('suggestions-portal');
@@ -13865,6 +13870,7 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
     </div>`).join('');
   html += '</div>';
   portal.innerHTML = html;
+  lastSuggestionShownAt = Date.now();
 }
 
 function onCourseBlur(e, semId, cIdx) {
@@ -13996,8 +14002,15 @@ function pickSuggestion(semId, cIdx, fullName, credits) {
 }
 
 function initSuggestionsScrollHandler() {
+  // Close the (absolutely-positioned) suggestion list on a genuine user scroll,
+  // but ignore the programmatic auto-scroll that immediately follows opening it
+  // (focusing/typing an input near the fold). Without this grace window that
+  // auto-scroll wipes the list the moment it appears.
+  const SCROLL_CLOSE_GRACE_MS = 500;
   window.addEventListener('scroll', () => {
-    if (activeInput && getPortal().innerHTML) getPortal().innerHTML = '';
+    if (!activeInput || !getPortal().innerHTML) return;
+    if (Date.now() - lastSuggestionShownAt < SCROLL_CLOSE_GRACE_MS) return;
+    getPortal().innerHTML = '';
   }, { passive: true });
 
   // ── CSP-safe event wiring ────────────────────────────────────────────────
