@@ -1,0 +1,117 @@
+// src/features/calculator/calculatorState.ts
+//
+// Calculator feature/domain state for the React shell (Phase 5). The legacy
+// island reads the calculator through window._shohoj_* globals; the shell has no
+// legacy app, so the calculator owns its own semester state here instead — a
+// pure reducer over the existing immutable mutations, loaded from and persisted
+// through the Phase 4 safe persistence engine. No React/DOM/window: the reducer
+// and load/persist helpers are unit-testable in isolation.
+
+import type { CourseEntry, SemesterEntry } from '../../core/types';
+import type { Result } from '../../core/result.ts';
+import type { StorageError } from '../../core/errors.ts';
+import type { KeyValueStore } from '../../services/storage/keyValueStore.ts';
+import {
+  loadAcademicState,
+  saveAcademicState,
+  type LoadStatus,
+} from '../../services/storage/academicStateStore.ts';
+import {
+  addCourse,
+  blankCourse,
+  removeCourse,
+  removeSemester,
+  reorderSemesters,
+  updateCourse,
+} from './mutations.ts';
+
+export interface CalculatorState {
+  readonly semesters: SemesterEntry[];
+  readonly startSeason: string;
+  readonly startYear: string;
+}
+
+export const EMPTY_CALCULATOR_STATE: CalculatorState = {
+  semesters: [],
+  startSeason: '',
+  startYear: '',
+};
+
+export type CalculatorAction =
+  | { type: 'addSemester' }
+  | { type: 'removeSemester'; id: number }
+  | { type: 'addCourse'; semId: number }
+  | { type: 'removeCourse'; semId: number; index: number }
+  | { type: 'updateCourse'; semId: number; index: number; patch: Partial<CourseEntry> }
+  | { type: 'reorderSemesters'; srcId: number; tgtId: number }
+  | { type: 'setStart'; startSeason: string; startYear: string }
+  | { type: 'replace'; state: CalculatorState };
+
+function nextSemesterId(semesters: readonly SemesterEntry[]): number {
+  return semesters.reduce((max, s) => Math.max(max, s.id), 0) + 1;
+}
+
+/** Pure reducer over the calculator state, built on the immutable mutations. */
+export function calculatorReducer(state: CalculatorState, action: CalculatorAction): CalculatorState {
+  switch (action.type) {
+    case 'addSemester':
+      return {
+        ...state,
+        semesters: [...state.semesters, { id: nextSemesterId(state.semesters), courses: [blankCourse()] }],
+      };
+    case 'removeSemester':
+      return { ...state, semesters: removeSemester(state.semesters, action.id) };
+    case 'addCourse':
+      return { ...state, semesters: addCourse(state.semesters, action.semId) };
+    case 'removeCourse':
+      return { ...state, semesters: removeCourse(state.semesters, action.semId, action.index) };
+    case 'updateCourse':
+      return { ...state, semesters: updateCourse(state.semesters, action.semId, action.index, action.patch) };
+    case 'reorderSemesters':
+      return { ...state, semesters: reorderSemesters(state.semesters, action.srcId, action.tgtId) };
+    case 'setStart':
+      return { ...state, startSeason: action.startSeason, startYear: action.startYear };
+    case 'replace':
+      return action.state;
+    default:
+      return state;
+  }
+}
+
+export interface LoadedCalculatorState {
+  readonly state: CalculatorState;
+  /** From the persistence engine: 'loaded' | 'empty' | 'corrupt'. */
+  readonly status: LoadStatus;
+}
+
+/**
+ * Load the calculator's initial state through the Phase 4 engine (which backs up
+ * + migrates + never overwrites). On empty/corrupt, returns empty state so the
+ * calculator opens cleanly while the stored raw is preserved for recovery.
+ */
+export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState {
+  const result = loadAcademicState(store);
+  if (result.status === 'loaded' && result.state !== null) {
+    return {
+      state: {
+        semesters: result.state.semesters ?? [],
+        startSeason: result.state.startSeason ?? '',
+        startYear: result.state.startYear ?? '',
+      },
+      status: 'loaded',
+    };
+  }
+  return { state: EMPTY_CALCULATOR_STATE, status: result.status };
+}
+
+/** Persist the calculator state through the Phase 4 engine (stamps schema version). */
+export function persistCalculatorState(
+  store: KeyValueStore,
+  state: CalculatorState,
+): Result<void, StorageError> {
+  return saveAcademicState(store, {
+    semesters: state.semesters,
+    startSeason: state.startSeason,
+    startYear: state.startYear,
+  });
+}
