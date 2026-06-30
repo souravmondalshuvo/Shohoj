@@ -6,6 +6,9 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- **Phase 5C — typed course catalogue + accessible autocomplete (React Router shell).** The shell `/calculator` route now reads the real BRACU course catalogue (the same data the shipping app uses, imported once through a typed boundary — not duplicated) and offers a production-quality course-name autocomplete: deterministic ranked suggestions (code/title, case- and whitespace-insensitive), full keyboard navigation, mouse selection, Escape-to-close, and a WAI-ARIA combobox/listbox so it works with screen readers. Selecting a course fills the canonical course identity and official credits; changing course clears grade data that no longer applies, while re-picking the same course keeps valid grades. Free-text (uncatalogued) courses stay fully usable. Search and course-selection logic are pure and unit-tested; the flow is covered end to end (search/select/reload/keyboard/axe). Migration-only: the legacy production calculator, its bundle, and the React-island path are unchanged. See `docs/architecture/decisions/0001-calculator-catalogue-search-boundary.md`.
+
 ## [0.5.0] — 2026-06-19
 
 ### Added
