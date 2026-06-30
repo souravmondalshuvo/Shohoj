@@ -62,7 +62,11 @@ calculator keeps state in memory + cloud (Firestore), not localStorage.
   Parity with legacy is asserted by `tests/typedCoreParity.test.js`.
 - `src/features/calculator/*.tsx` — React calculator (semesters, course rows, summary,
   autocomplete) behind an **opt-in flag**, Vite-built, **not present in `shohoj.html`**.
-  Still calls some legacy globals via `calculatorBridge.ts`.
+  Island path still calls some legacy globals via `calculatorBridge.ts`; the React Router
+  shell `/calculator` route injects a reducer-backed bridge instead. Phase 5C: the shell
+  bridge now uses the real typed BRACU catalogue (`catalog.ts` adapts the shipping
+  `js/core/catalog.js` `ALL_COURSES` via `js/core/catalog.d.ts`) with a pure deterministic
+  `courseSearch` + an accessible WAI-ARIA combobox `CourseNameInput`.
 - `src/services/storage/` — `keyValueStore`, `migrate` (versioned), `backup`,
   `syncDecision`. **Migration utilities exist but are not wired into the live legacy
   persistence path.**
