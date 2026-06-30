@@ -154,3 +154,13 @@ jobs:
           npm run build:vite
           test -s dist/index.html
           test -s dist/admin/index.html
+
+      - name: Shell build (non-deploying smoke check)
+        run: |
+          # Compile-check the React Router shell (vite.shell.config.js → dist-shell/).
+          # Like the Vite build above, this output is NOT deployed — gh-pages ships
+          # the build3.py bundle. The full shell e2e (test:e2e:shell) runs locally,
+          # matching how the island e2e (test:e2e:vite) is treated; CI guards the
+          # build so a broken shell entry can't merge.
+          npm run build:shell
+          test -s dist-shell/app/index.html
