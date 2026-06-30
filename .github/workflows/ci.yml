@@ -163,4 +163,7 @@ jobs:
           # matching how the island e2e (test:e2e:vite) is treated; CI guards the
           # build so a broken shell entry can't merge.
           npm run build:shell
-          test -s dist-shell/app/index.html
+          # Accept either layout so this stays green regardless of merge order with
+          # the root-served-shell fix (PR #298), which moves the entry from
+          # dist-shell/app/index.html to dist-shell/index.html.
+          test -s dist-shell/index.html || test -s dist-shell/app/index.html
