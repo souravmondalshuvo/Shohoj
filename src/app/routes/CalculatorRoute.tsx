@@ -8,14 +8,16 @@
 // same component the opt-in island mounts, only here the bridge is reducer-backed
 // instead of window-backed.
 //
-// Interim: the course catalog, demo data, and rate-course modal stay on the
-// legacy page for now, so the shell bridge leaves those inert (empty catalog,
-// no-op demo/rate). They port in a later Phase 5 increment.
+// Phase 5C: the course catalog + isKnownCode now use the real typed BRACU
+// catalogue (src/features/calculator/catalog.ts → the same data the legacy page
+// ships). Demo data and the rate-course modal stay inert here (no-op) — they
+// depend on legacy-only data/flows and port in a later Phase 5 increment.
 
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
+import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog';
 import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
 import {
   calculatorReducer,
@@ -52,8 +54,8 @@ export function Component() {
         startYear: state.startYear,
       }),
       commit: (semesters: SemesterEntry[]) => dispatch({ type: 'replace', state: { ...state, semesters } }),
-      isKnownCode: () => false,
-      catalog: [],
+      isKnownCode: isKnownCourseCode,
+      catalog: BRACU_COURSE_CATALOG,
       addSemester: () => dispatch({ type: 'addSemester' }),
       loadDemo: () => {},
       rateForCourse: () => {},
