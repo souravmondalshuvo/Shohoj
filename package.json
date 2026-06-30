@@ -15,6 +15,7 @@
     "build:vite": "vite build",
     "build:shell": "vite build --config vite.shell.config.js",
     "preview": "vite preview",
+    "preview:shell": "vite preview --config vite.shell.config.js",
     "test:rules": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/firestore.rules.test.js\"",
     "test:e2e": "playwright test",
     "test:e2e:vite": "npm run build:vite && playwright test --config=playwright.vite.config.js",
