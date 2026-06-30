@@ -23,6 +23,7 @@ import SummaryBlock from './SummaryBlock';
 import SummaryForm from './SummaryForm';
 import type { SummaryValues } from './SummaryForm';
 import type { CourseSuggestion } from './courseSearch';
+import { coursePickPatch, courseResolvePatch } from './courseSelection';
 import { addCourse, removeCourse, removeSemester, reorderSemesters, updateCourse } from './mutations';
 import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
 import { useCalculatorBridge } from './calculatorBridge';
@@ -138,20 +139,13 @@ export default function CalculatorSemesters() {
             onAddCourse={() => commit(addCourse(semesters, sem.id))}
             onRemoveSemester={() => commit(removeSemester(semesters, sem.id))}
             onCourseNamePick={(idx, course) =>
-              commit(updateCourse(semesters, sem.id, idx, { name: course.full, credits: course.credits, grade: '', gradePoint: '' }))
+              commit(updateCourse(semesters, sem.id, idx, coursePickPatch(course)))
             }
-            onCourseNameResolve={(idx, course, text) => {
-              const name = course ? course.full : text;
-              const credits = course ? course.credits : 0;
-              const identityChanged = (sem.courses[idx]?.name ?? '') !== name;
+            onCourseNameResolve={(idx, course, text) =>
               commit(
-                updateCourse(semesters, sem.id, idx, {
-                  name,
-                  credits,
-                  ...(identityChanged ? { grade: '', gradePoint: '' } : {}),
-                }),
-              );
-            }}
+                updateCourse(semesters, sem.id, idx, courseResolvePatch(sem.courses[idx]?.name ?? '', course, text)),
+              )
+            }
             onCourseGradePointChange={(idx, value) =>
               commit(updateCourse(semesters, sem.id, idx, { gradePoint: value, grade: detectGrade(value) }))
             }
