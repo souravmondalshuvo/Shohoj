@@ -8,19 +8,27 @@
 // catalog/demo/rate are inert in the shell for now, so this covers the wired
 // surface: add-semester, add-course, and persistence to localStorage.
 //
-// The shell is reached by loading the built index and navigating in-app — a deep
-// link to /calculator 404s on a static server (base/basename mismatch, tracked
-// separately), but client-side navigation works, which is how the shell runs.
+// The shell builds to dist-shell/index.html with base '/' and the router resolves
+// absolute paths on initial load, so the route is reached by deep-linking
+// /calculator directly (the SPA preview server falls back to index.html).
 
 import { expect, test } from '@playwright/test';
 
 async function gotoCalculator(page) {
   await page.addInitScript(() => localStorage.clear());
-  await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
-  await page.getByRole('link', { name: 'Calculator', exact: true }).click();
+  await page.goto('/calculator', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'CGPA Calculator' })).toBeVisible();
   return page.locator('#semestersContainer');
 }
+
+test('the served root resolves to Home on initial load', async ({ page }) => {
+  // Regression: the shell builds to dist-shell/index.html with base '/', so the
+  // root pathname matches the index route. Before the base/root fix the entry
+  // loaded at a nested path and matched only the catch-all NotFound route.
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { name: 'Shohoj', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0);
+});
 
 test('the shell calculator route mounts the React container', async ({ page }) => {
   const container = await gotoCalculator(page);
