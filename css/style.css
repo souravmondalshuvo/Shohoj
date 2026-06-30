@@ -99,9 +99,14 @@
       display: flex; align-items: center; gap: 12px;
       max-width: min(560px, calc(100vw - 32px));
       padding: 12px 14px 12px 16px;
-      background: var(--glass);
-      backdrop-filter: blur(18px) saturate(160%);
-      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      /* Opaque surface (not translucent --glass): the banner floats over the
+         animated green orbs, and a see-through background let those orbs bleed
+         through, dropping text contrast below WCAG AA and flagging axe
+         non-deterministically (the show-through colour shifts as the orbs move).
+         An opaque --bg pairs with --text at a fixed, AA-passing ratio in both
+         themes, so backdrop-filter — which would only blur hidden content — is
+         dropped. */
+      background: var(--bg);
       border: 1px solid var(--border);
       border-radius: 14px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.35);
@@ -111,7 +116,11 @@
     .maintenance-banner[hidden] { display: none; }
     .maintenance-banner__icon { font-size: 18px; flex-shrink: 0; }
     .maintenance-banner__text { flex: 1; }
-    .maintenance-banner__text strong { color: var(--accent); font-weight: 600; }
+    /* Emphasis via weight only — inherit the theme-aware --text color. The accent
+       green (#2ECC71) has near-zero contrast against the banner's green-tinted
+       backdrop (axe flagged 1.02:1, below WCAG AA 4.5:1), whereas --text already
+       passes for the surrounding banner body text. */
+    .maintenance-banner__text strong { color: var(--text); font-weight: 700; }
     .maintenance-banner__close {
       flex-shrink: 0;
       width: 26px; height: 26px;
