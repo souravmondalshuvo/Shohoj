@@ -12,7 +12,7 @@
 | 2 | Shared foundations | Strict TS config; error/result/schema/logging/flags/config-boundary primitives; dependency-boundary lint; small UI primitives (no CSS rewrite) | ✅ **done** — dependency-boundary lint, zod→Result validation, structured logger, typed feature flags, typed runtime-config boundary, stricter TS flags (noFallthroughCasesInSwitch / forceConsistentCasingInFileNames / noImplicitOverride), and the React-semesters island opt-in wired through the flag registry. Deferred (with rationale): **UI primitives → Phase 3** (no real consumers until the React shell exists); **stricter flags** exactOptionalPropertyTypes / noPropertyAccessFromIndexSignature / noUncheckedIndexedAccess → land with Phase 5/6 (fixes touch React prop contracts + the feed client) |
 | 3 | React app shell | RR Framework Mode; layouts; route error boundaries; auth/theme/notification/modal/config providers; nav; protected admin; lazy routes; **small UI primitives** (deferred from Phase 2 — build alongside their first real consumers) | 🟡 **in progress** — SPA React Router shell skeleton landed: isolated `vite.shell.config.js` → `dist-shell/` (never touches build3.py or the islands), root layout + provider stack + nav + skip link, route-level error element, lazy/code-split routes (Home, Calculator placeholder, 404). Added: typed AuthProvider (useSyncExternalStore + injectable source port; pure snapshot normalization, unit-tested), RequireAdmin client-side guard (server-side authz stays the real boundary), full route map (14 routes, placeholders for unmigrated features) + nav. Added: ModalProvider (typed, promise-based `useConfirm`, focus-trapped + Escape/backdrop, aria-modal), RuntimeConfigProvider (`useRuntimeConfig`/`useCapabilities` over the Phase 2 config boundary; offline degradation, unit-tested), first `shared/ui` primitive (Button) consumed by the dialog + Home. Provider stack complete. Remaining: RR Framework-Mode (loaders/actions) per route — lands with real data routes in Phase 5/6 |
 | 4 | State & persistence | Wire versioned local-data migration into the live path; pre-migration backup; corrupt-state recovery; preserve cloud/local conflict + first-sign-in guards; never overwrite academic data | 🟡 **in progress** — safe persistence engine built + heavily tested: guarded `localStorage` adapter (degrades to memory), composed `loadAcademicState`/`saveAcademicState` over the existing backup + versioned-migrate + validate pieces, encoding the safety policy (backup-once before migrate; corrupt/unusable → recover to empty but NEVER overwrite the stored raw; load never writes; save stamps the schema version). Reuses the existing forward-compat (unknown-field-preserving) migrate/sync-decision/backup modules. Pending (needs a live consumer + sign-off): wiring into the calculator route at Phase 5 cutover, multi-device/cloud-conflict end-to-end, and not touching the live legacy JS until then |
-| 5 | Calculator cutover | Full parity (semesters, summary, edit, autocomplete, retakes, statuses, import, planner, demo, PDF, cloud restore, mobile, a11y); drop legacy globals; default only after unit+component+vite-e2e+bundle pass and rollback intact | ⬜ |
+| 5 | Calculator cutover | Full parity (semesters, summary, edit, autocomplete, retakes, statuses, import, planner, demo, PDF, cloud restore, mobile, a11y); drop legacy globals; default only after unit+component+vite-e2e+bundle pass and rollback intact | 🟡 **in progress** — **5A/5B** landed: pure reducer + mutations + Phase-4 persistence wired into the shell `/calculator` route; `CalculatorSemesters` renders through an injected `CalculatorBridge` (island keeps the legacy window bridge). **5C** (this PR): real typed BRACU catalogue + accessible WAI-ARIA combobox autocomplete on the shell route — see Phase 5C detail. Remaining: demo, faculty-rating flow, full GPA/CGPA results UI, summary/dashboard parity, simulator/grade-changer/reverse-solver, retake strategy, transcript import, PDF export, planner integration, cloud restore/conflict parity, full mobile + final a11y parity, then production cutover |
 | 6 | Feature migration (risk order) | transcript → planner/degree-progress → simulator/playground → routine → seats/watchlist → free-rooms → reviews/difficulty → papers → groups → feedback → profile → admin | ⬜ |
 | 7 | Firebase & server boundaries | Typed init/Auth adapter/Firestore repos; server token verification; preserve App Check, rules, deterministic review IDs, review immutability, paper owner paths, admin claims; Firebase failure can't break offline calculator | ⬜ |
 | 8 | Cloudflare full-stack | Cloudflare Vite integration; sensitive ops behind Worker routes/actions; preserve R2 + seat-alert cron; typed env bindings; local Worker dev/tests; keep current Worker deployable; no duplicated business rules | ⬜ |
@@ -41,6 +41,39 @@ unsafe collisions → production-bundle regression coverage → migration-docume
 
 **Out of scope for Phase 1:** any React/Vite cutover, state rewiring, new features, CSS, or
 Firestore/Worker changes. Those are Phases 2+.
+
+## Phase 5C detail (this PR) — typed catalogue + accessible autocomplete
+
+**Scope:** replace ONLY the course-catalogue placeholders on the shell `/calculator`
+route (`catalog: []`, `isKnownCode: () => false`) and ship a production-quality,
+accessible autocomplete. No other Phase 5 work.
+
+1. **One catalogue, no duplication.** `src/features/calculator/catalog.ts` imports the
+   shipping `ALL_COURSES` from `js/core/catalog.js` through `js/core/catalog.d.ts`,
+   validates + dedupes + freezes it once at module load. The bridge now supplies the real
+   `BRACU_COURSE_CATALOG` + `isKnownCourseCode`. See
+   `docs/architecture/decisions/0001-calculator-catalogue-search-boundary.md`.
+2. **Pure deterministic search.** `courseSearch.ts` ranks matches in a fixed,
+   locale-independent order (exact-code → code-prefix → code-substring → exact-title →
+   title-prefix → title-substring), over a precomputed immutable view (`prepareCatalog`)
+   so per-keystroke search never re-normalises the catalogue. De-duped, capped, no mutation.
+3. **Pure selection invariants.** `courseSelection.ts` owns the grade-reset-on-identity-
+   change rules (selecting a course fills canonical identity + official credits; an
+   identity change clears stale grade/grade-point; re-picking the same course preserves
+   grades; unknown free text never inherits credits) — lifted out of the JSX.
+4. **Accessible combobox.** `CourseNameInput.tsx` implements the WAI-ARIA combobox/listbox
+   pattern (`role`, `aria-expanded/controls/activedescendant`, `aria-selected`, keyboard
+   nav, mouse-down selection, Escape, blur safety). Suggestion UI state never enters
+   academic state; persistence stays on the Phase 4 engine.
+5. **Tests:** pure units (search ranking/normalisation/dedupe/limit/mutation-safety,
+   selection invariants, catalogue adapter) + shell E2E (search/select by mouse and
+   keyboard, Escape, reload-restore, unknown-input safety, axe).
+
+**Out of scope (still ⬜ in Phase 5):** demo mode, faculty-rating flow, full GPA/CGPA
+results UI, summary/dashboard parity, simulator, grade changer, reverse solver, retake
+strategy, transcript import, PDF export, planner integration, cloud restore/conflict
+parity, full mobile parity, final a11y parity, production cutover. No `build3.py`, legacy,
+CSP, island, or Firestore changes.
 
 ## Guardrails (every phase)
 
