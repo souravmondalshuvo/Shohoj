@@ -18,8 +18,8 @@
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
-  <img src="https://img.shields.io/badge/Courses-851%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-493%20unit%2Fworker%20%2B%2068%20rules%20%2B%2041%20E2E-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Courses-857%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
+  <img src="https://img.shields.io/badge/Tests-535%20unit%2Fworker%20%2B%2068%20rules%20%2B%2065%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -315,7 +315,7 @@ Visual timeline of your degree journey — credits earned vs total required, sem
 
 ### 🔍 Course Autocomplete
 
-Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **851 courses** across all **16 departments**. Credits auto-fill when you pick a course.
+Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **857 courses** across all **16 departments**. Credits auto-fill when you pick a course.
 
 <p align="center">
   <img src="assets/screenshots/autocomplete.png" alt="Course Autocomplete" width="700" />
@@ -392,7 +392,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Pharmacy                            | PHR  | 164     | Bi (Sp+Su) | 🟢 Full support |
 | Law                                 | LLB  | 135     | Bi (Sp+Fa) | 🟢 Full support |
 
-**Total: 851 courses in catalog** (including GED/common courses shared across departments)
+**Total: 857 courses in catalog** (including GED/common courses shared across departments)
 
 ---
 
@@ -406,7 +406,7 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
 | Charts      | [Chart.js](https://www.chartjs.org/) v4.4.0           | Admin dashboard and analytics visualizations           |
 | Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete and server-mediated review writes |
-| Build       | Python (`build3.py`)                                  | Bundles all modules into a single deployable HTML file |
+| Build       | Python (`build3.py`)                                  | Bundles all modules into deployable HTML files (shohoj / admin / profile) |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
 | Testing     | Node.js + Playwright + `@firebase/rules-unit-testing` | Unit tests across app logic and Worker validation, browser E2E tests, plus Firestore rules tests against the Firebase emulator |
 | CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
@@ -416,7 +416,7 @@ CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...
 
 **Deployment pipeline:** every push to `main` triggers CI (tests) followed by CD (build + deploy). If tests fail, the live site is never touched. The built `shohoj.html` is deployed to the `gh-pages` branch as `index.html` and served by GitHub Pages.
 
-The React/Vite migration is planned after the v0.4 TypeScript logic migration, so the current vanilla JS app stays stable while pure academic logic is typed first.
+The TypeScript/React migration is now underway and lives alongside the shipping app under `src/` — a parallel, typed implementation comprising a typed domain core (parity-tested against the legacy logic), a React calculator island, and a React Router shell that hosts the migrated `/calculator` route. All of it is **opt-in and not yet the default UI**: the vanilla `js/` app is still what `build3.py` bundles and ships, so production stays stable while the rewrite is validated incrementally. See [docs/architecture/](docs/architecture/) for the migration roadmap, target architecture, and decision records.
 
 ### Architecture at a glance
 
@@ -425,7 +425,7 @@ Browser
   │
   │ loads runtime-config.js (Firebase web config, generated from secrets)
   ▼
-GitHub Pages — bundled HTML/CSS/JS (shohoj.html, admin/index.html)
+GitHub Pages — bundled HTML/CSS/JS (shohoj.html, admin.html, profile.html)
   │
   │ Firebase Auth (BRACU @g.bracu.ac.bd sign-in)
   │ App Check (reCAPTCHA v3)
@@ -552,6 +552,8 @@ Shohoj/
 │   └── screenshots/
 ├── admin/
 │   └── index.html                Admin shell source
+├── profile/
+│   └── index.html                Profile account-hub shell source
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism, auth UI
 ├── data/
@@ -576,7 +578,7 @@ Shohoj/
 │   │   ├── helpers.js            Semester utilities, escHtml/escAttr, sanitizers
 │   │   ├── state.js              Shared state object, localStorage persistence
 │   │   ├── departments.js        16 department definitions with preset semesters
-│   │   ├── catalog.js            Full BRACU course database (851 courses)
+│   │   ├── catalog.js            Full BRACU course database (857 courses)
 │   │   ├── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
 │   │   ├── dispatch.js           Delegated UI action registry
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
@@ -621,8 +623,8 @@ Shohoj/
 ├── firebase.json                 Firestore emulator config
 ├── tests/
 │   ├── calculator.test.js        55 tests — GPA engine, retake/repeat policies, grade detection
-│   ├── parser.test.js            24 tests — department detection, semester parsing, blob parser
-│   ├── planner.test.js           13 tests — prereq resolution, plan validation
+│   ├── parser.test.js            30 tests — department detection, semester parsing, blob parser
+│   ├── planner.test.js           15 tests — prereq resolution, plan validation
 │   ├── render.test.js            8 tests — semester rendering, reorder, recruiter demo fixture
 │   ├── tracker.test.js           4 tests — degree progress and graduation estimate
 │   ├── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
@@ -630,21 +632,38 @@ Shohoj/
 │   ├── studyGroups.test.js       13 tests — draft validation, mode/course checks, member summary
 │   └── firestore.rules.test.js   68 tests — emulator-driven security rules checks
 ├── e2e/
-│   └── shohoj.spec.js            Playwright E2E tests for demo, CGPA, planner, mobile, export/import
-├── src/
-│   └── core/grades.ts            TypeScript foundation for the future migration
+│   └── shohoj.spec.js            Playwright E2E for the legacy bundled app — demo, CGPA, planner, mobile, export/import
+├── e2e-shell/                    Playwright E2E for the React Router shell (/calculator route + ARIA autocomplete)
+├── e2e-vite/                     Playwright E2E for the Vite island build
+├── src/                          TypeScript/React migration — opt-in, NOT the default shipping UI
+│   ├── core/                     Typed ports of domain logic (gpa, grades, catalog, reviews, planner, routine*, seats, rooms…), parity-tested vs js/ via tests/typedCoreParity.test.js
+│   ├── features/calculator/      React calculator — semesters, course rows, summary, ARIA combobox autocomplete; shell bridge reads the real typed catalogue
+│   ├── app/                      React Router shell — providers, routes, routing (hosts the migrated /calculator route)
+│   ├── services/storage/         Versioned typed persistence (keyValueStore, migrate, backup, syncDecision) — not yet wired into the legacy path
+│   ├── state/                    Theme + Notification providers (with pure theme.ts / notifications.ts)
+│   ├── platform/                 Runtime config, feature flags, capabilities, logger
+│   ├── react/                    Island entry points + CGPA summary/meter components
+│   ├── firebase/firebase-entry.js  Firebase island entry point
+│   └── shared/                   Shared UI (Button) and validation schema
+├── docs/
+│   └── architecture/             Migration roadmap, current state, target architecture, risk register, test matrix, ADRs
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                Runs unit tests + Firestore rules tests on push and pull request
 │       ├── cd.yml                Builds and deploys GitHub Pages on push to main
 │       └── deploy-worker.yml     Tests and deploys the Cloudflare Worker
 ├── index.html                    Main HTML shell
-├── playwright.config.js          Local Playwright web-server and browser config
+├── playwright.config.js          Playwright config for the legacy bundled app E2E
+├── playwright.shell.config.js    Playwright config for the React Router shell E2E
+├── playwright.vite.config.js     Playwright config for the Vite island build E2E
+├── vite.config.js                Vite multi-entry island build config
+├── vite.shell.config.js          Vite config for the React Router shell
+├── eslint.config.js              Flat ESLint config (correctness-only)
 ├── tsconfig.json                 Strict no-emit TypeScript check config
-├── package.json                  Unit, rules, E2E, typecheck, and local config scripts
+├── package.json                  Unit, rules, E2E, typecheck, build, and local config scripts
 ├── README.md
 ├── LICENSE
-└── build3.py                     Build script — outputs shohoj.html and admin.html
+└── build3.py                     Build script — outputs shohoj.html, admin.html, and profile.html
 ```
 
 ---
@@ -682,7 +701,7 @@ npm run test:rules
 
 ```bash
 python3 build3.py
-# Outputs shohoj.html and admin.html — ready to deploy
+# Outputs shohoj.html, admin.html, and profile.html — ready to deploy
 ```
 
 > **Note:** You don't need to run the build manually before pushing — the CD pipeline does it automatically on every push to `main`. Run it locally only if you want to preview the bundled output.
@@ -822,7 +841,7 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | CGPA Calculator                                 | ✅ Production-ready                                     |
 | PDF Transcript Import                           | ✅ Production-ready                                     |
 | PDF Grade Report Export                         | ✅ Production-ready                                     |
-| Course Autocomplete (851 courses)               | ✅ Production-ready                                     |
+| Course Autocomplete (857 courses)               | ✅ Production-ready                                     |
 | Cloud Sync (Firebase)                           | ✅ Production-ready                                     |
 | CGPA Playground (Grade Changer, Reverse Solver) | ✅ Production-ready                                     |
 | CGPA Goal Simulator                             | ✅ Production-ready                                     |
