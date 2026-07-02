@@ -16,6 +16,10 @@
 // Phase 5D: the CGPA results section (headline, meter, standing, credit totals)
 // renders below the entry UI from the same injected bridge — the shell shows
 // live results with no window globals.
+//
+// Add-semester controls (#307): footer buttons add completed/running semesters
+// with calendar-aware names computed at dispatch time by the pure naming module
+// (the reducer stays clock-free; the clock enters only here).
 
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
@@ -29,6 +33,10 @@ import {
   loadCalculatorState,
   persistCalculatorState,
 } from '../../features/calculator/calculatorState';
+import {
+  nextCompletedSemesterName,
+  nextRunningSemesterName,
+} from '../../features/calculator/semesterNaming.ts';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 
 export function Component() {
@@ -61,12 +69,16 @@ export function Component() {
       commit: (semesters: SemesterEntry[]) => dispatch({ type: 'replace', state: { ...state, semesters } }),
       isKnownCode: isKnownCourseCode,
       catalog: BRACU_COURSE_CATALOG,
-      addSemester: () => dispatch({ type: 'addSemester' }),
+      addSemester: () => dispatch({ type: 'addSemester', name: nextCompletedSemesterName(state, new Date()) }),
+      addRunningSemester: () =>
+        dispatch({ type: 'addRunningSemester', name: nextRunningSemesterName(state, new Date()) }),
       loadDemo: () => {},
       rateForCourse: () => {},
     }),
     [state],
   );
+
+  const hasSemesters = state.semesters.some(s => !s.summary);
 
   return (
     <section className="shell-page">
@@ -76,6 +88,18 @@ export function Component() {
           <CalculatorSemesters />
         </div>
         <CalculatorResults />
+        {hasSemesters && (
+          <div className="calc-footer lg-panel">
+            <div className="footer-btn-group">
+              <button type="button" className="btn-add-semester" onClick={() => bridge.addSemester()}>
+                + Add Semester
+              </button>
+              <button type="button" className="btn-running-sem" onClick={() => bridge.addRunningSemester()}>
+                🎯 Running Semester
+              </button>
+            </div>
+          </div>
+        )}
       </CalculatorBridgeProvider>
     </section>
   );
