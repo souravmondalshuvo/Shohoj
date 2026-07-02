@@ -32,11 +32,13 @@ import CalculatorResults from '../../features/calculator/CalculatorResults.tsx';
 import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
 import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog';
 import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
+import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
 import {
   calculatorReducer,
   loadCalculatorState,
   persistCalculatorState,
 } from '../../features/calculator/calculatorState';
+import { deptSeasonsFor } from '../../features/calculator/departments.ts';
 import { demoCalculatorState } from '../../features/calculator/demoData.ts';
 import {
   nextCompletedSemesterName,
@@ -52,18 +54,21 @@ export function Component() {
   const confirm = useConfirm();
   const { notify } = useNotifications();
 
-  const [state, dispatch] = useReducer(calculatorReducer, undefined, () => loadCalculatorState(store).state);
+  const loaded = useMemo(() => loadCalculatorState(store), [store]);
+  const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
 
   // Persist on mutation only — skip the seed write so a corrupt raw value (which
-  // the load path preserves for recovery) isn't immediately overwritten.
+  // the load path preserves for recovery) isn't immediately overwritten. The
+  // loaded snapshot rides along so stored fields this route does not own
+  // (planCourses, semesterCounter, forward-compat keys) survive each save.
   const seeded = useRef(false);
   useEffect(() => {
     if (!seeded.current) {
       seeded.current = true;
       return;
     }
-    persistCalculatorState(store, state);
-  }, [store, state]);
+    persistCalculatorState(store, state, loaded.stored);
+  }, [store, state, loaded]);
 
   // Reducer-backed bridge. CalculatorSemesters only ever commits a fully-formed
   // semester list (it computes via the immutable mutations), so `commit` maps to
@@ -78,9 +83,16 @@ export function Component() {
       commit: (semesters: SemesterEntry[]) => dispatch({ type: 'replace', state: { ...state, semesters } }),
       isKnownCode: isKnownCourseCode,
       catalog: BRACU_COURSE_CATALOG,
-      addSemester: () => dispatch({ type: 'addSemester', name: nextCompletedSemesterName(state, new Date()) }),
+      addSemester: () =>
+        dispatch({
+          type: 'addSemester',
+          name: nextCompletedSemesterName(state, new Date(), deptSeasonsFor(state.currentDept)),
+        }),
       addRunningSemester: () =>
-        dispatch({ type: 'addRunningSemester', name: nextRunningSemesterName(state, new Date()) }),
+        dispatch({
+          type: 'addRunningSemester',
+          name: nextRunningSemesterName(state, new Date(), deptSeasonsFor(state.currentDept)),
+        }),
       loadDemo: () => {
         void (async () => {
           if (state.semesters.length > 0) {
@@ -104,9 +116,26 @@ export function Component() {
 
   const hasSemesters = state.semesters.some(s => !s.summary);
 
+  // Legacy onDeptSelect parity: keep the start season if the new department's
+  // calendar offers it, otherwise clear it back to the placeholder.
+  const onDeptChange = (code: string) => {
+    dispatch({ type: 'setDept', currentDept: code });
+    const seasons = deptSeasonsFor(code) as readonly string[];
+    if (state.startSeason && !seasons.includes(state.startSeason)) {
+      dispatch({ type: 'setStart', startSeason: '', startYear: state.startYear });
+    }
+  };
+
   return (
     <section className="shell-page">
       <h1>CGPA Calculator</h1>
+      <CalculatorSetup
+        currentDept={state.currentDept}
+        startSeason={state.startSeason}
+        startYear={state.startYear}
+        onDeptChange={onDeptChange}
+        onStartChange={(season, year) => dispatch({ type: 'setStart', startSeason: season, startYear: year })}
+      />
       <CalculatorBridgeProvider value={bridge}>
         <div id="semestersContainer">
           <CalculatorSemesters />
