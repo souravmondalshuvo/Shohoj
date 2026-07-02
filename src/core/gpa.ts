@@ -1,6 +1,6 @@
-import { GRADES } from './grades';
-import type { GradeLetter } from './grades';
-import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types';
+import { GRADES } from './grades.ts';
+import type { GradeLetter } from './grades.ts';
+import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types.ts';
 
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
 
