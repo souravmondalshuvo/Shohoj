@@ -36,6 +36,7 @@ declare global {
     _shohoj_courseCatalog?: CourseSuggestion[];
     _shohoj_loadDemoMode?: () => void;
     addSemester?: () => void;
+    addRunningSemester?: () => void;
     openRateForCourse?: (semId: number, idx: number) => void;
   }
 }
@@ -120,6 +121,8 @@ export interface CalculatorBridge {
   readonly catalog: readonly CourseSuggestion[];
   /** Calendar-aware add-semester (legacy: window.addSemester). */
   addSemester(): void;
+  /** Add the single running semester (legacy: window.addRunningSemester). */
+  addRunningSemester(): void;
   /** Load demo data (legacy: _shohoj_loadDemoMode). */
   loadDemo(): void;
   /** Open the rate-course modal for a course (legacy: openRateForCourse). */
@@ -140,6 +143,9 @@ export const legacyWindowBridge: CalculatorBridge = {
   },
   addSemester() {
     window.addSemester?.();
+  },
+  addRunningSemester() {
+    window.addRunningSemester?.();
   },
   loadDemo() {
     window._shohoj_loadDemoMode?.();
