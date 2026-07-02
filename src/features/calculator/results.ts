@@ -9,8 +9,8 @@
 // definition. Values and cutoffs are copied verbatim from recalc(); presentation
 // (colors, copy, emoji) stays in the components.
 
-import { calculateCgpaTotals } from '../../core/gpa';
-import type { SemesterEntry, SemesterSeason } from '../../core/types';
+import { calculateCgpaTotals } from '../../core/gpa.ts';
+import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
 
 /** Structural twin of CalculatorInputs (calculatorBridge.ts) — kept separate so
  * this module never imports React through the bridge. */
