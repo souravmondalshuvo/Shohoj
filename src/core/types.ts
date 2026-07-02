@@ -1,4 +1,4 @@
-import type { GradeLetter } from './grades';
+import type { GradeLetter } from './grades.ts';
 
 export type CourseCode = string;
 export type DepartmentCode = string;
