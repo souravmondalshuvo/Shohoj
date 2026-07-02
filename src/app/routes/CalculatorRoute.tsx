@@ -44,11 +44,13 @@ import {
 } from '../../features/calculator/semesterNaming.ts';
 import { useConfirm } from '../providers/ModalProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
+import { useNotifications } from '../../state/NotificationProvider';
 
 export function Component() {
   // One store instance for the route's lifetime (load seed + every persist).
   const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
+  const { notify } = useNotifications();
 
   const [state, dispatch] = useReducer(calculatorReducer, undefined, () => loadCalculatorState(store).state);
 
@@ -91,11 +93,13 @@ export function Component() {
             if (!ok) return;
           }
           dispatch({ type: 'replace', state: demoCalculatorState() });
+          // Same copy loadSampleData() shows via _shohoj_showToast.
+          notify({ kind: 'success', message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.' });
         })();
       },
       rateForCourse: () => {},
     }),
-    [state, confirm],
+    [state, confirm, notify],
   );
 
   const hasSemesters = state.semesters.some(s => !s.summary);
