@@ -21,6 +21,10 @@ export interface CalculatorInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: SemesterSeason | '';
   readonly startYear: string;
+  /** Department code ('' when unset). The legacy window bridge maps this to ''
+   * — _shohoj_getCgpaInputs doesn't expose it, and no island renders the
+   * dept-dependent dashboard pieces; the shell route supplies the real value. */
+  readonly currentDept: string;
 }
 
 declare global {
@@ -42,7 +46,7 @@ declare global {
 }
 
 const RECALC_EVENT = 'shohoj:recalc';
-const EMPTY: CalculatorInputs = { semesters: [], startSeason: '', startYear: '' };
+const EMPTY: CalculatorInputs = { semesters: [], startSeason: '', startYear: '', currentDept: '' };
 
 // One cached snapshot shared by all subscribers (there is one legacy state).
 // Rebuilt only on recalc events and at subscribe time, so getSnapshot returns a
@@ -57,6 +61,7 @@ function buildSnapshot(): CalculatorInputs {
     semesters: raw.semesters ?? [],
     startSeason: raw.startSeason ?? '',
     startYear: raw.startYear ?? '',
+    currentDept: '',
   };
 }
 
