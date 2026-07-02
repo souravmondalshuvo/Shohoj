@@ -8,6 +8,7 @@
 // and load/persist helpers are unit-testable in isolation.
 
 import type { CourseEntry, SemesterEntry } from '../../core/types';
+import type { StoredShohojStateV1 } from '../../core/types/storage.ts';
 import type { Result } from '../../core/result.ts';
 import type { StorageError } from '../../core/errors.ts';
 import type { KeyValueStore } from '../../services/storage/keyValueStore.ts';
@@ -29,12 +30,15 @@ export interface CalculatorState {
   readonly semesters: SemesterEntry[];
   readonly startSeason: string;
   readonly startYear: string;
+  /** Department code (e.g. "CSE"); '' until the user picks one. */
+  readonly currentDept: string;
 }
 
 export const EMPTY_CALCULATOR_STATE: CalculatorState = {
   semesters: [],
   startSeason: '',
   startYear: '',
+  currentDept: '',
 };
 
 export type CalculatorAction =
@@ -46,6 +50,7 @@ export type CalculatorAction =
   | { type: 'updateCourse'; semId: number; index: number; patch: Partial<CourseEntry> }
   | { type: 'reorderSemesters'; srcId: number; tgtId: number }
   | { type: 'setStart'; startSeason: string; startYear: string }
+  | { type: 'setDept'; currentDept: string }
   | { type: 'replace'; state: CalculatorState };
 
 function nextSemesterId(semesters: readonly SemesterEntry[]): number {
@@ -86,6 +91,8 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
       return { ...state, semesters: reorderSemesters(state.semesters, action.srcId, action.tgtId) };
     case 'setStart':
       return { ...state, startSeason: action.startSeason, startYear: action.startYear };
+    case 'setDept':
+      return { ...state, currentDept: action.currentDept };
     case 'replace':
       return action.state;
     default:
@@ -97,6 +104,10 @@ export interface LoadedCalculatorState {
   readonly state: CalculatorState;
   /** From the persistence engine: 'loaded' | 'empty' | 'corrupt'. */
   readonly status: LoadStatus;
+  /** The full stored snapshot (when loaded), so fields this feature does not
+   * own — planCourses, semesterCounter, forward-compat keys — survive a
+   * persist instead of being silently dropped. */
+  readonly stored: StoredShohojStateV1 | null;
 }
 
 /**
@@ -112,21 +123,31 @@ export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState
         semesters: result.state.semesters ?? [],
         startSeason: result.state.startSeason ?? '',
         startYear: result.state.startYear ?? '',
+        currentDept: result.state.currentDept ?? '',
       },
       status: 'loaded',
+      stored: result.state,
     };
   }
-  return { state: EMPTY_CALCULATOR_STATE, status: result.status };
+  return { state: EMPTY_CALCULATOR_STATE, status: result.status, stored: null };
 }
 
-/** Persist the calculator state through the Phase 4 engine (stamps schema version). */
+/**
+ * Persist the calculator state through the Phase 4 engine (stamps schema
+ * version). `base` is the snapshot returned by loadCalculatorState — spreading
+ * it first preserves stored fields this feature does not own (planCourses,
+ * semesterCounter, unknown forward-compat keys) instead of dropping them.
+ */
 export function persistCalculatorState(
   store: KeyValueStore,
   state: CalculatorState,
+  base?: StoredShohojStateV1 | null,
 ): Result<void, StorageError> {
   return saveAcademicState(store, {
+    ...(base ?? {}),
     semesters: state.semesters,
     startSeason: state.startSeason,
     startYear: state.startYear,
+    currentDept: state.currentDept,
   });
 }
