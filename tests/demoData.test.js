@@ -16,6 +16,7 @@ test('demo state mirrors the legacy recruiter dataset', () => {
   assert.deepEqual(state.semesters.map(s => s.name), ['Fall 2024', 'Spring 2025']);
   assert.equal(state.startSeason, 'Fall');
   assert.equal(state.startYear, '2024');
+  assert.equal(state.currentDept, 'CSE'); // loadSampleData() parity (#313)
 
   const fall = state.semesters[0];
   assert.deepEqual(
