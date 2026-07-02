@@ -89,7 +89,9 @@ const coreFiles = [
 function rewriteLocalImports(output) {
   return output.replace(/from\s+(['"])(\.\/[^'"]+)\1/g, (_match, quote, specifier) => {
     if (/\.[cm]?js$/.test(specifier)) return `from ${quote}${specifier}${quote}`;
-    return `from ${quote}${specifier}.mjs${quote}`;
+    // Explicit .ts extensions (the node-runner import convention) map to the
+    // transpiled sibling, matching the outFile rename below.
+    return `from ${quote}${specifier.replace(/\.ts$/, '')}.mjs${quote}`;
   });
 }
 
