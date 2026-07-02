@@ -12,10 +12,15 @@
 // catalogue (src/features/calculator/catalog.ts → the same data the legacy page
 // ships). Demo data and the rate-course modal stay inert here (no-op) — they
 // depend on legacy-only data/flows and port in a later Phase 5 increment.
+//
+// Phase 5D: the CGPA results section (headline, meter, standing, credit totals)
+// renders below the entry UI from the same injected bridge — the shell shows
+// live results with no window globals.
 
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
+import CalculatorResults from '../../features/calculator/CalculatorResults.tsx';
 import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
 import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog';
 import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
@@ -66,11 +71,12 @@ export function Component() {
   return (
     <section className="shell-page">
       <h1>CGPA Calculator</h1>
-      <div id="semestersContainer">
-        <CalculatorBridgeProvider value={bridge}>
+      <CalculatorBridgeProvider value={bridge}>
+        <div id="semestersContainer">
           <CalculatorSemesters />
-        </CalculatorBridgeProvider>
-      </div>
+        </div>
+        <CalculatorResults />
+      </CalculatorBridgeProvider>
     </section>
   );
 }
