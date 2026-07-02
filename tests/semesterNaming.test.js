@@ -110,3 +110,31 @@ test('running name after a summary block keeps the ordinal form', () => {
   // Clock: Summer 2026; start Spring 2026 → Summer 2026 is the 2nd semester.
   assert.equal(name, 'Summer 2026 (2nd Semester) (Running)');
 });
+
+// ── Department calendars (#313) ───────────────────────────────────────────────
+
+const PHR = ['Spring', 'Summer']; // two-season Pharmacy calendar
+const LAW = ['Spring', 'Fall'];
+
+test('a two-season calendar advances and wraps without the missing season', () => {
+  const sems = [
+    semester('Spring 2025 (1st Semester)'),
+    semester('Summer 2025 (2nd Semester)'),
+  ];
+  // PHR: after Summer comes Spring of the next year — never Fall.
+  const name = nextCompletedSemesterName(inputs(sems, 'Spring', '2025'), NOW, PHR);
+  assert.equal(name, 'Spring 2026 (3rd Semester)');
+});
+
+test('running name steps along the department calendar', () => {
+  const sems = [semester('Spring 2025 (1st Semester)')];
+  assert.equal(nextRunningSemesterName(inputs(sems, 'Spring', '2025'), NOW, LAW), 'Fall 2025 (Running)');
+  assert.equal(nextRunningSemesterName(inputs(sems, 'Spring', '2025'), NOW, PHR), 'Summer 2025 (Running)');
+});
+
+test('ordinals count along the department calendar, not the global one', () => {
+  const sems = [semester('Summary', { summary: true }), semester('Fall 2025 (2nd Semester)')];
+  // LAW from Spring 2025: Spring'25=1st, Fall'25=2nd, Spring'26=3rd.
+  const name = nextCompletedSemesterName(inputs(sems, 'Spring', '2025'), NOW, LAW);
+  assert.equal(name, 'Spring 2026 (3rd Semester)');
+});
