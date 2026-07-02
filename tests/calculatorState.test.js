@@ -30,6 +30,23 @@ test('addSemester appends a semester with a fresh id and one blank course', () =
   assert.equal(next.semesters[1].courses[0].name, '');
 });
 
+test('addSemester carries the computed name onto the new semester', () => {
+  const next = calculatorReducer(base(), { type: 'addSemester', name: 'Summer 2023 (2nd Semester)' });
+  assert.equal(next.semesters[1].name, 'Summer 2023 (2nd Semester)');
+  assert.ok(!next.semesters[1].running);
+});
+
+test('addRunningSemester adds one named running semester, second is a no-op', () => {
+  const one = calculatorReducer(base(), { type: 'addRunningSemester', name: 'Fall 2023 (Running)' });
+  assert.equal(one.semesters.length, 2);
+  assert.equal(one.semesters[1].name, 'Fall 2023 (Running)');
+  assert.equal(one.semesters[1].running, true);
+  assert.equal(one.semesters[1].courses.length, 1);
+
+  const two = calculatorReducer(one, { type: 'addRunningSemester', name: 'Spring 2024 (Running)' });
+  assert.equal(two, one); // unchanged state reference — a true no-op
+});
+
 test('addCourse / removeCourse (keeps the last) / updateCourse', () => {
   let s = calculatorReducer(base(), { type: 'addCourse', semId: 1 });
   assert.equal(s.semesters[0].courses.length, 2);
