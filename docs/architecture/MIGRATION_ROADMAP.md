@@ -12,7 +12,7 @@
 | 2 | Shared foundations | Strict TS config; error/result/schema/logging/flags/config-boundary primitives; dependency-boundary lint; small UI primitives (no CSS rewrite) | ✅ **done** — dependency-boundary lint, zod→Result validation, structured logger, typed feature flags, typed runtime-config boundary, stricter TS flags (noFallthroughCasesInSwitch / forceConsistentCasingInFileNames / noImplicitOverride), and the React-semesters island opt-in wired through the flag registry. Deferred (with rationale): **UI primitives → Phase 3** (no real consumers until the React shell exists); **stricter flags** exactOptionalPropertyTypes / noPropertyAccessFromIndexSignature / noUncheckedIndexedAccess → land with Phase 5/6 (fixes touch React prop contracts + the feed client) |
 | 3 | React app shell | RR Framework Mode; layouts; route error boundaries; auth/theme/notification/modal/config providers; nav; protected admin; lazy routes; **small UI primitives** (deferred from Phase 2 — build alongside their first real consumers) | 🟡 **in progress** — SPA React Router shell skeleton landed: isolated `vite.shell.config.js` → `dist-shell/` (never touches build3.py or the islands), root layout + provider stack + nav + skip link, route-level error element, lazy/code-split routes (Home, Calculator placeholder, 404). Added: typed AuthProvider (useSyncExternalStore + injectable source port; pure snapshot normalization, unit-tested), RequireAdmin client-side guard (server-side authz stays the real boundary), full route map (14 routes, placeholders for unmigrated features) + nav. Added: ModalProvider (typed, promise-based `useConfirm`, focus-trapped + Escape/backdrop, aria-modal), RuntimeConfigProvider (`useRuntimeConfig`/`useCapabilities` over the Phase 2 config boundary; offline degradation, unit-tested), first `shared/ui` primitive (Button) consumed by the dialog + Home. Provider stack complete. Remaining: RR Framework-Mode (loaders/actions) per route — lands with real data routes in Phase 5/6 |
 | 4 | State & persistence | Wire versioned local-data migration into the live path; pre-migration backup; corrupt-state recovery; preserve cloud/local conflict + first-sign-in guards; never overwrite academic data | 🟡 **in progress** — safe persistence engine built + heavily tested: guarded `localStorage` adapter (degrades to memory), composed `loadAcademicState`/`saveAcademicState` over the existing backup + versioned-migrate + validate pieces, encoding the safety policy (backup-once before migrate; corrupt/unusable → recover to empty but NEVER overwrite the stored raw; load never writes; save stamps the schema version). Reuses the existing forward-compat (unknown-field-preserving) migrate/sync-decision/backup modules. Pending (needs a live consumer + sign-off): wiring into the calculator route at Phase 5 cutover, multi-device/cloud-conflict end-to-end, and not touching the live legacy JS until then |
-| 5 | Calculator cutover | Full parity (semesters, summary, edit, autocomplete, retakes, statuses, import, planner, demo, PDF, cloud restore, mobile, a11y); drop legacy globals; default only after unit+component+vite-e2e+bundle pass and rollback intact | 🟡 **in progress** — **5A/5B** landed: pure reducer + mutations + Phase-4 persistence wired into the shell `/calculator` route; `CalculatorSemesters` renders through an injected `CalculatorBridge` (island keeps the legacy window bridge). **5C** (this PR): real typed BRACU catalogue + accessible WAI-ARIA combobox autocomplete on the shell route — see Phase 5C detail. Remaining: demo, faculty-rating flow, full GPA/CGPA results UI, summary/dashboard parity, simulator/grade-changer/reverse-solver, retake strategy, transcript import, PDF export, planner integration, cloud restore/conflict parity, full mobile + final a11y parity, then production cutover |
+| 5 | Calculator cutover | Full parity (semesters, summary, edit, autocomplete, retakes, statuses, import, planner, demo, PDF, cloud restore, mobile, a11y); drop legacy globals; default only after unit+component+vite-e2e+bundle pass and rollback intact | 🟡 **in progress** — **5A/5B** landed: pure reducer + mutations + Phase-4 persistence wired into the shell `/calculator` route; `CalculatorSemesters` renders through an injected `CalculatorBridge` (island keeps the legacy window bridge). **5C** landed: real typed BRACU catalogue + accessible WAI-ARIA combobox autocomplete on the shell route — see Phase 5C detail. **5D** (this PR): pure CGPA results model + bridge-driven results section (headline, meter, standing, incomplete warning, credit totals) on the shell route; the three results islands now share the same model — see Phase 5D detail. Remaining: demo, faculty-rating flow, add-semester/running-semester controls on the shell, dashboard parity (degree tracker, GPA trend chart), simulator/grade-changer/reverse-solver, retake strategy, transcript import, PDF export, planner integration, cloud restore/conflict parity, full mobile + final a11y parity, then production cutover |
 | 6 | Feature migration (risk order) | transcript → planner/degree-progress → simulator/playground → routine → seats/watchlist → free-rooms → reviews/difficulty → papers → groups → feedback → profile → admin | ⬜ |
 | 7 | Firebase & server boundaries | Typed init/Auth adapter/Firestore repos; server token verification; preserve App Check, rules, deterministic review IDs, review immutability, paper owner paths, admin claims; Firebase failure can't break offline calculator | ⬜ |
 | 8 | Cloudflare full-stack | Cloudflare Vite integration; sensitive ops behind Worker routes/actions; preserve R2 + seat-alert cron; typed env bindings; local Worker dev/tests; keep current Worker deployable; no duplicated business rules | ⬜ |
@@ -42,7 +42,7 @@ unsafe collisions → production-bundle regression coverage → migration-docume
 **Out of scope for Phase 1:** any React/Vite cutover, state rewiring, new features, CSS, or
 Firestore/Worker changes. Those are Phases 2+.
 
-## Phase 5C detail (this PR) — typed catalogue + accessible autocomplete
+## Phase 5C detail — typed catalogue + accessible autocomplete
 
 **Scope:** replace ONLY the course-catalogue placeholders on the shell `/calculator`
 route (`catalog: []`, `isKnownCode: () => false`) and ship a production-quality,
@@ -74,6 +74,38 @@ results UI, summary/dashboard parity, simulator, grade changer, reverse solver, 
 strategy, transcript import, PDF export, planner integration, cloud restore/conflict
 parity, full mobile parity, final a11y parity, production cutover. No `build3.py`, legacy,
 CSP, island, or Firestore changes.
+
+## Phase 5D detail (this PR) — pure results model + bridge-driven results UI
+
+**Scope:** compute and render the CGPA results on the shell `/calculator` route —
+headline, meter, academic standing, incomplete-grades warning, credit totals — from the
+injected bridge only. No other Phase 5 work.
+
+1. **One results model.** `src/features/calculator/results.ts` mirrors every computation
+   `recalc()` (js/main.js) makes before touching the DOM: projected/completed CGPA,
+   headline label, meter percent + status kind (including the recovery status's
+   projected-figure quirk, mirrored deliberately), standing cutoffs (BRACU Summer 2022+
+   probation policy), incomplete-semester counting, credit totals. Pure, presentation-free,
+   node-testable.
+2. **Three consumers, one definition.** The composed shell section
+   (`CalculatorResults.tsx`) renders from the model over `useCalculatorBridge()`; the
+   existing `CgpaSummary` / `CgpaMeter` / `CgpaCreditTotals` islands were refactored onto
+   the same model via the default `legacyWindowBridge`, deleting their duplicated
+   threshold logic while keeping rendered output identical. Meter/standing wording lives
+   once, in `CalculatorResults.tsx`; headline colors reuse `gpaBadgeColors`.
+3. **Core resolvability.** `src/core/gpa.ts`/`types.ts` imports gained explicit `.ts`
+   extensions (the node-runner convention) so unit tests can traverse the GPA core; the
+   typed-core parity transpiler maps them.
+4. **Tests:** model units (every meter/standing threshold at exact boundaries, headline
+   label, incomplete counting, credit formatting) + shell E2E (empty invite state, live
+   results after grading, reload-recompute, incomplete warning, axe scan).
+
+**Out of scope (still ⬜ in Phase 5):** demo mode, faculty-rating flow,
+add-semester/running-semester controls on the shell, degree tracker, GPA trend chart,
+simulator, grade changer, reverse solver, retake strategy, transcript import, PDF export,
+planner integration, cloud restore/conflict parity, full mobile parity, final a11y parity
+(shell still ships no visual system — color-contrast lands with it), production cutover.
+No `build3.py`, legacy, CSP, or Firestore changes.
 
 ## Guardrails (every phase)
 
