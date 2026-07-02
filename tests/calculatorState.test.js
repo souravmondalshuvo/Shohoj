@@ -107,4 +107,42 @@ test('load on corrupt storage yields empty state (status corrupt), raw preserved
   assert.equal(store.getItem('shohoj_cgpa_v1'), '{ not json'); // never overwritten
 });
 
+test('setDept updates the department code (#313)', () => {
+  const s = calculatorReducer(EMPTY_CALCULATOR_STATE, { type: 'setDept', currentDept: 'CSE' });
+  assert.equal(s.currentDept, 'CSE');
+  assert.equal(EMPTY_CALCULATOR_STATE.currentDept, '');
+});
+
+test('currentDept round-trips through persistence (#313)', () => {
+  const store = new MemoryKeyValueStore();
+  persistCalculatorState(store, { ...base(), currentDept: 'PHR' });
+  const loaded = loadCalculatorState(store);
+  assert.equal(loaded.state.currentDept, 'PHR');
+});
+
+test('persist preserves stored fields the calculator does not own (#313)', () => {
+  const store = new MemoryKeyValueStore();
+  // A legacy-style snapshot with planner + forward-compat data.
+  store.setItem('shohoj_cgpa_v1', JSON.stringify({
+    semesters: [{ id: 1, name: 'Spring 2023', courses: [{ name: 'CSE110', credits: 3, grade: 'A' }] }],
+    startSeason: 'Spring',
+    startYear: '2023',
+    currentDept: 'CSE',
+    planCourses: ['CSE220', 'CSE221'],
+    semesterCounter: 7,
+    futureField: { keep: true },
+  }));
+
+  const loaded = loadCalculatorState(store);
+  const mutated = calculatorReducer(loaded.state, { type: 'addSemester', name: 'Summer 2023' });
+  persistCalculatorState(store, mutated, loaded.stored);
+
+  const raw = JSON.parse(store.getItem('shohoj_cgpa_v1'));
+  assert.deepEqual(raw.planCourses, ['CSE220', 'CSE221']);
+  assert.equal(raw.semesterCounter, 7);
+  assert.deepEqual(raw.futureField, { keep: true });
+  assert.equal(raw.semesters.length, 2); // the live fields still win
+  assert.equal(raw.currentDept, 'CSE');
+});
+
 console.log('calculator state container tests passed');
