@@ -66,7 +66,11 @@ calculator keeps state in memory + cloud (Firestore), not localStorage.
   shell `/calculator` route injects a reducer-backed bridge instead. Phase 5C: the shell
   bridge now uses the real typed BRACU catalogue (`catalog.ts` adapts the shipping
   `js/core/catalog.js` `ALL_COURSES` via `js/core/catalog.d.ts`) with a pure deterministic
-  `courseSearch` + an accessible WAI-ARIA combobox `CourseNameInput`.
+  `courseSearch` + an accessible WAI-ARIA combobox `CourseNameInput`. Phase 5D: the shell
+  route renders CGPA results (headline, meter, standing, incomplete warning, credit
+  totals) via `CalculatorResults.tsx` from the pure `results.ts` model — the same model
+  the `CgpaSummary`/`CgpaMeter`/`CgpaCreditTotals` islands now consume, so the recalc()
+  threshold logic has one typed definition.
 - `src/services/storage/` — `keyValueStore`, `migrate` (versioned), `backup`,
   `syncDecision`. **Migration utilities exist but are not wired into the live legacy
   persistence path.**
