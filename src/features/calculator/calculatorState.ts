@@ -38,7 +38,8 @@ export const EMPTY_CALCULATOR_STATE: CalculatorState = {
 };
 
 export type CalculatorAction =
-  | { type: 'addSemester' }
+  | { type: 'addSemester'; name?: string }
+  | { type: 'addRunningSemester'; name: string }
   | { type: 'removeSemester'; id: number }
   | { type: 'addCourse'; semId: number }
   | { type: 'removeCourse'; semId: number; index: number }
@@ -57,7 +58,21 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
     case 'addSemester':
       return {
         ...state,
-        semesters: [...state.semesters, { id: nextSemesterId(state.semesters), courses: [blankCourse()] }],
+        semesters: [
+          ...state.semesters,
+          { id: nextSemesterId(state.semesters), name: action.name, courses: [blankCourse()] },
+        ],
+      };
+    case 'addRunningSemester':
+      // Legacy parity (addRunningSemester in js/ui/render.js): at most one
+      // running semester; a second request is a no-op.
+      if (state.semesters.some(s => s.running)) return state;
+      return {
+        ...state,
+        semesters: [
+          ...state.semesters,
+          { id: nextSemesterId(state.semesters), name: action.name, running: true, courses: [blankCourse()] },
+        ],
       };
     case 'removeSemester':
       return { ...state, semesters: removeSemester(state.semesters, action.id) };
