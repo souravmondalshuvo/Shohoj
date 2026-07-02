@@ -9,13 +9,17 @@
 // The status/standing wording lives here (single presentation source; the
 // CgpaMeter island imports meterStatusMessage from this module).
 //
-// Out of scope for 5D (later Phase 5 increments): GPA trend chart, degree
-// tracker, simulator/playground, department credits-remaining.
+// #315 adds the dashboard pieces in legacy order: the degree tracker after
+// the meter, the GPA trend chart after the standing box.
+// Out of scope (later Phase 5 increments): simulator/playground, department
+// credits-remaining.
 
 import type { ReactNode } from 'react';
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import { gpaBadgeColors } from './colors.ts';
+import DegreeTracker from './DegreeTracker.tsx';
+import GpaTrendChart from './GpaTrendChart.tsx';
 import {
   computeCalculatorResults,
   formatCredits,
@@ -158,6 +162,8 @@ export default function CalculatorResults() {
         <div className="meter-status">{meterStatusMessage(results.meterStatus)}</div>
       </div>
 
+      <DegreeTracker />
+
       {standing && (
         <div className={`standing-box lg-panel ${standing.className}`}>
           <div className="lg-shine"></div>
@@ -171,6 +177,8 @@ export default function CalculatorResults() {
           </div>
         </div>
       )}
+
+      <GpaTrendChart />
 
       <div className="calc-footer-stats">
         <div className="footer-stat">
