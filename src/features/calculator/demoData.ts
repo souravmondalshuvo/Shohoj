@@ -1,21 +1,17 @@
 // src/features/calculator/demoData.ts
 //
 // Typed demo dataset for the shell's "Try Demo Mode" (#309), mirroring
-// getRecruiterDemoSemesters() + the loadSampleData() start-semester writes in
-// js/ui/render.js exactly (same semesters, courses, grades, credits, faculty,
-// start Fall 2024). Built fresh on every call so reducer state never aliases
-// module constants.
-//
-// Deviations (documented in the roadmap): the legacy demo also selects the CSE
-// department — the shell has no department state until the dept/start setup
-// slice — and shows a success toast, which waits on a shell notification
-// viewport.
+// getRecruiterDemoSemesters() + the loadSampleData() writes in js/ui/render.js
+// exactly: same semesters, courses, grades, credits, faculty, start Fall 2024,
+// and the CSE department pre-select (#313). Built fresh on every call so
+// reducer state never aliases module constants.
 
 import type { CalculatorState } from './calculatorState.ts';
 
-/** Fresh demo calculator state: two graded semesters + the Fall 2024 start. */
+/** Fresh demo state: two graded semesters, Fall 2024 start, CSE department. */
 export function demoCalculatorState(): CalculatorState {
   return {
+    currentDept: 'CSE',
     semesters: [
       {
         id: 1,
