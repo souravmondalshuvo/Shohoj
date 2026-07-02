@@ -20,6 +20,10 @@
 // Add-semester controls (#307): footer buttons add completed/running semesters
 // with calendar-aware names computed at dispatch time by the pure naming module
 // (the reducer stays clock-free; the clock enters only here).
+//
+// Demo mode (#309): Try Demo Mode replaces the state with the typed demo
+// dataset, asking first through the shell confirm modal when data exists
+// (parity with loadSampleData()'s confirm() guard).
 
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 
@@ -33,15 +37,18 @@ import {
   loadCalculatorState,
   persistCalculatorState,
 } from '../../features/calculator/calculatorState';
+import { demoCalculatorState } from '../../features/calculator/demoData.ts';
 import {
   nextCompletedSemesterName,
   nextRunningSemesterName,
 } from '../../features/calculator/semesterNaming.ts';
+import { useConfirm } from '../providers/ModalProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 
 export function Component() {
   // One store instance for the route's lifetime (load seed + every persist).
   const store = useMemo(() => createBrowserStore(), []);
+  const confirm = useConfirm();
 
   const [state, dispatch] = useReducer(calculatorReducer, undefined, () => loadCalculatorState(store).state);
 
@@ -72,10 +79,23 @@ export function Component() {
       addSemester: () => dispatch({ type: 'addSemester', name: nextCompletedSemesterName(state, new Date()) }),
       addRunningSemester: () =>
         dispatch({ type: 'addRunningSemester', name: nextRunningSemesterName(state, new Date()) }),
-      loadDemo: () => {},
+      loadDemo: () => {
+        void (async () => {
+          if (state.semesters.length > 0) {
+            const ok = await confirm({
+              title: 'Load demo data?',
+              message: 'This will replace your current data with demo data.',
+              confirmLabel: 'Load demo',
+              danger: true,
+            });
+            if (!ok) return;
+          }
+          dispatch({ type: 'replace', state: demoCalculatorState() });
+        })();
+      },
       rateForCourse: () => {},
     }),
-    [state],
+    [state, confirm],
   );
 
   const hasSemesters = state.semesters.some(s => !s.summary);
