@@ -79,6 +79,7 @@ export function Component() {
         semesters: state.semesters,
         startSeason: state.startSeason as SemesterSeason | '',
         startYear: state.startYear,
+        currentDept: state.currentDept,
       }),
       commit: (semesters: SemesterEntry[]) => dispatch({ type: 'replace', state: { ...state, semesters } }),
       isKnownCode: isKnownCourseCode,
