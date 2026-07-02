@@ -10,6 +10,7 @@
 import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
+import { NotificationViewport } from '../NotificationViewport';
 import { AuthProvider } from '../providers/AuthProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider } from '../providers/RuntimeConfigProvider';
@@ -67,6 +68,7 @@ export function RootLayout() {
             <main id="main-content" className="shell-main" tabIndex={-1}>
               <Outlet />
             </main>
+            <NotificationViewport />
           </ModalProvider>
         </AuthProvider>
       </RuntimeConfigProvider>
