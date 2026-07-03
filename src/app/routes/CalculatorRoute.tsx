@@ -29,6 +29,12 @@
 // A successful submit writes the normalized initials onto the course so the
 // faculty chip renders, and toasts. Submission runs through the window-hook
 // boundary, so the standalone shell degrades exactly like signed-out legacy.
+//
+// Transcript import (#323): the footer button, the empty state and the
+// simulator nudge all open one TranscriptImport flow (bridge.importTranscript
+// → the imperative handle, the shell's analogue of the legacy hidden
+// #transcriptFileInput). A confirmed import replaces the calculator state via
+// the pure applyImport mapping and toasts.
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
@@ -43,6 +49,9 @@ import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
 import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/reviewSubmit';
+import TranscriptImport, {
+  type TranscriptImportHandle,
+} from '../../features/calculator/TranscriptImport.tsx';
 import {
   calculatorReducer,
   loadCalculatorState,
@@ -58,6 +67,13 @@ import { useConfirm } from '../providers/ModalProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { useNotifications } from '../../state/NotificationProvider';
 
+// Catalogue lookup for the transcript import's post-parse cleanup (the legacy
+// COURSE_DB[code] access). Built once at module scope from the typed catalogue.
+const COURSE_BY_CODE = new Map(
+  BRACU_COURSE_CATALOG.map((c) => [c.code, { full: c.full, credits: c.credits }]),
+);
+const lookupCourse = (code: string) => COURSE_BY_CODE.get(code) ?? null;
+
 export function Component() {
   // One store instance for the route's lifetime (load seed + every persist).
   const store = useMemo(() => createBrowserStore(), []);
@@ -69,6 +85,9 @@ export function Component() {
 
   // The course the review modal is open for (null = closed).
   const [rateTarget, setRateTarget] = useState<{ semId: number; index: number } | null>(null);
+
+  // The transcript-import flow (hidden picker + dialogs); triggers call open().
+  const transcriptImportRef = useRef<TranscriptImportHandle>(null);
 
   // Persist on mutation only — skip the seed write so a corrupt raw value (which
   // the load path preserves for recovery) isn't immediately overwritten. The
@@ -137,6 +156,7 @@ export function Component() {
         }
         setRateTarget({ semId, index });
       },
+      importTranscript: () => transcriptImportRef.current?.open(),
     }),
     [state, confirm, notify],
   );
@@ -184,10 +204,24 @@ export function Component() {
               <button type="button" className="btn-running-sem" onClick={() => bridge.addRunningSemester()}>
                 🎯 Running Semester
               </button>
+              <button type="button" className="btn-import-pdf" onClick={() => bridge.importTranscript()}>
+                📄 Import Transcript
+              </button>
             </div>
           </div>
         )}
       </CalculatorBridgeProvider>
+      <TranscriptImport
+        ref={transcriptImportRef}
+        lookupCourse={lookupCourse}
+        onImport={(imported) => {
+          dispatch({ type: 'replace', state: imported });
+          notify({
+            kind: 'success',
+            message: `Imported ${imported.semesters.length} semester${imported.semesters.length !== 1 ? 's' : ''} from your transcript.`,
+          });
+        }}
+      />
       {rateTarget && rateCourse && rateCourseCode && (
         <RateFacultyModal
           courseCode={rateCourseCode}
