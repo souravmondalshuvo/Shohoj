@@ -132,6 +132,8 @@ export interface CalculatorBridge {
   loadDemo(): void;
   /** Open the rate-course modal for a course (legacy: openRateForCourse). */
   rateForCourse(semId: number, index: number): void;
+  /** Open the transcript-import picker (legacy: click #transcriptFileInput). */
+  importTranscript(): void;
 }
 
 /** Default bridge: delegates the whole surface to the legacy window globals. */
@@ -157,6 +159,10 @@ export const legacyWindowBridge: CalculatorBridge = {
   },
   rateForCourse(semId, index) {
     window.openRateForCourse?.(semId, index);
+  },
+  importTranscript() {
+    // The legacy page's one hidden picker; sim:importTranscript does the same.
+    document.getElementById('transcriptFileInput')?.click();
   },
 };
 
