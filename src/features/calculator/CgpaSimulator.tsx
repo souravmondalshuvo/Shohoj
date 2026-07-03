@@ -6,8 +6,8 @@
 // requirement minus earned credits, respecting a manual override exactly like
 // recalc()'s dataset.auto rule), the outcome cards, the Smart Retake & Repeat
 // table with accessible row toggles, the stacked-impact box and the legend.
-// Deviation (documented): the legacy summary-only nudge also offers transcript
-// import — a later slice — so the shell renders only "+ Add Past Semester".
+// The summary-only nudge offers both legacy actions: transcript import
+// (bridge.importTranscript, #323) and "+ Add Past Semester".
 
 import { useEffect, useRef, useState } from 'react';
 
@@ -393,6 +393,9 @@ export default function CgpaSimulator() {
                 <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>
                   You&apos;re using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake &amp; Repeat Strategy</strong>, add your past semester courses with grades.
                 </div>
+                <button type="button" className="sim-nudge-btn" onClick={() => bridge.importTranscript()}>
+                  📄 Import Transcript
+                </button>{' '}
                 <button type="button" className="sim-nudge-btn" onClick={() => bridge.addSemester()}>
                   + Add Past Semester
                 </button>
