@@ -40,6 +40,17 @@ export default function CourseNameInput({ id, value, catalog, onPick, onResolve 
   const [open, setOpen] = useState(false);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // The deferred blur commit below must call the LATEST resolve handler:
+  // parents build onResolve as a closure over their current semester list, so
+  // when another commit lands inside the defer window (e.g. the grade-point
+  // onChange right after picking a course) the closure this timer captured is
+  // stale — firing it would replace shared state with a pre-commit snapshot,
+  // silently reverting that edit (#320).
+  const onResolveRef = useRef(onResolve);
+  useEffect(() => {
+    onResolveRef.current = onResolve;
+  }, [onResolve]);
+
   // Prepare the searchable view once per catalog identity (not per keystroke):
   // pre-lowercases ~850 codes/titles so typing stays responsive.
   const prepared = useMemo(() => prepareCatalog(catalog), [catalog]);
@@ -105,7 +116,7 @@ export default function CourseNameInput({ id, value, catalog, onPick, onResolve 
     blurTimer.current = setTimeout(() => {
       setOpen(false);
       setActiveIndex(-1);
-      onResolve(resolveExactCourse(text, catalog), text);
+      onResolveRef.current(resolveExactCourse(text, catalog), text);
     }, 150);
   }
 
