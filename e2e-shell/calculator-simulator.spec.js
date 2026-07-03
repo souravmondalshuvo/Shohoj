@@ -1,0 +1,92 @@
+// e2e-shell/calculator-simulator.spec.js
+//
+// #317: the CGPA Goal Simulator on the React Router shell's /calculator
+// route, against the built dist-shell/ output. Demo data keeps the math
+// deterministic: CGPA 3.50 over 18 credits (63 points), CSE dept → remaining
+// credits auto-fill to 136 − 18 = 118.
+
+import { expect, test } from '@playwright/test';
+
+async function openWithDemo(page) {
+  await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.clear());
+  await page.getByRole('link', { name: 'Calculator', exact: true }).click();
+  await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
+  return page.getByTestId('cgpa-simulator');
+}
+
+test('remaining credits auto-fill from the department and a target yields a plan', async ({ page }) => {
+  const sim = await openWithDemo(page);
+
+  await expect(sim.getByText('Enter your target CGPA and remaining credits')).toBeVisible();
+  await expect(sim.getByLabel('Credits remaining:')).toHaveValue('118');
+
+  await sim.getByLabel('Target CGPA:').fill('3.8');
+  // needed = (3.8×136 − 63) / 118 = 3.846 → Very Hard, A/A- average.
+  await expect(sim.getByText('Avg GPA Needed')).toBeVisible();
+  await expect(sim.locator('.sim-ba-right .sim-ba-val')).toHaveText('3.85');
+  await expect(sim.getByText('🔴 Very Hard')).toBeVisible();
+  const planRows = sim.locator('.sim-plan-table tbody tr');
+  await expect(planRows.nth(0)).toContainText('14 sems');
+  await expect(planRows.nth(2)).toContainText('8 sems');
+  await expect(planRows.nth(0)).toContainText('A / A-');
+});
+
+test('an impossible target reports the all-A ceiling', async ({ page }) => {
+  const sim = await openWithDemo(page);
+  await sim.getByLabel('Target CGPA:').fill('4');
+  // ceiling = (4×118 + 63) / 136 = 3.93.
+  await expect(sim.getByText('Your Ceiling', { exact: true })).toBeVisible();
+  await expect(sim.locator('.sim-ba-val.red')).toHaveText('3.93');
+  await expect(sim.getByText(/out of reach/)).toBeVisible();
+});
+
+test('a sub-B course appears in the retake table and stacks into the impact box', async ({ page }) => {
+  const sim = await openWithDemo(page);
+
+  // Add a C-grade course (gp 2) to the first demo semester.
+  const container = page.locator('#semestersContainer');
+  await container.getByRole('button', { name: '+ Add course' }).first().click();
+  const input = container.getByRole('combobox').nth(3); // new row in semester 1
+  await input.click();
+  await input.fill('PHY112');
+  await container.getByRole('option', { name: /PHY112/ }).first().click();
+  const gp = container.getByPlaceholder('0.0 – 4.0').nth(3);
+  await gp.fill('2');
+  await gp.blur();
+
+  await sim.getByLabel('Target CGPA:').fill('3.8');
+  const row = sim.locator('.sim-retake-row');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('PHY112');
+  await expect(row.locator('.sim-strategy-badge')).toHaveText('Repeat'); // C, non-F
+
+  await row.click();
+  const impact = sim.getByTestId('sim-impact');
+  await expect(impact).toContainText('1 course selected');
+  // boost = 3×(3−2)/21 = 0.14.
+  await expect(impact).toContainText('+0.14 boost');
+  await row.click();
+  await expect(sim.getByTestId('sim-impact')).toHaveCount(0);
+});
+
+test('summary-only data shows the nudge instead of the retake table', async ({ page }) => {
+  await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.clear());
+  await page.getByRole('link', { name: 'Calculator', exact: true }).click();
+
+  const container = page.locator('#semestersContainer');
+  await container.getByRole('button', { name: '📊 Start from CGPA' }).click();
+  await container.getByPlaceholder('e.g. 3.30').fill('3.00');
+  await container.getByPlaceholder('e.g. 45').fill('60');
+  await container.getByPlaceholder('e.g. 42').fill('60');
+  await container.getByRole('button', { name: 'Confirm →' }).click();
+
+  const sim = page.getByTestId('cgpa-simulator');
+  // needed = (3.2×90 − 180)/30 = 3.6 → a reachable plan.
+  await sim.getByLabel('Target CGPA:').fill('3.2');
+  await sim.getByLabel('Credits remaining:').fill('30');
+  await expect(sim.getByText('Avg GPA Needed')).toBeVisible();
+  await expect(sim.getByTestId('sim-nudge')).toBeVisible();
+  await expect(sim.locator('.sim-retake-row')).toHaveCount(0);
+});
