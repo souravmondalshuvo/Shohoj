@@ -73,8 +73,10 @@ function lastCompletedSemesterAt(
 
 /** How many summary-covered semesters elapsed from the start to the last
  * real-world completed semester, beyond the explicitly-entered ones.
- * Mirrors estimateSummaryCompletedSemesters in tracker.js. */
-function estimateSummarySemesters(
+ * Mirrors estimateSummaryCompletedSemesters in tracker.js. Exported for the
+ * PDF report (#325), which calls it exactly like the legacy exportPDF —
+ * gated on a summary block existing, with completedSemCount 0. */
+export function estimateSummarySemesters(
   inputs: ProgressInputs,
   deptSeasons: readonly string[],
   completedSemCount: number,
