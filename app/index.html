@@ -85,6 +85,35 @@
       .sim-legend > span { display: flex; align-items: center; gap: 5px; }
       .sim-nudge { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: rgba(86,180,233,0.07); border: 1px solid rgba(86,180,233,0.22); display: flex; align-items: flex-start; gap: 10px; }
       .sim-nudge-btn { margin-top: 10px; padding: 7px 14px; border-radius: 8px; background: rgba(46,204,113,0.10); border: 1px solid rgba(46,204,113,0.25); color: #1c7c45; font-size: 12px; font-weight: 600; cursor: pointer; font: inherit; }
+      .rv-modal { max-width: 440px; max-height: 92vh; overflow-y: auto; }
+      .rv-subtitle { font-size: 12px; line-height: 1.5; }
+      .rv-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+      .rv-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #3a6b47; }
+      .rv-input {
+        font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px;
+        border: 1px solid rgba(46,204,113,0.28); background: rgba(0,0,0,0.04);
+        outline: none; box-sizing: border-box; font-size: 13px;
+      }
+      .rv-input:focus { border-color: rgba(46,204,113,0.55); }
+      .rv-initials { text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+      .rv-text { resize: vertical; min-height: 64px; }
+      .rv-count { font-size: 11px; color: #3a6b47; text-align: right; }
+      .rv-field-error, .rv-error { font-size: 12px; color: #e74c3c; }
+      .rv-error { margin-bottom: 10px; }
+      .rv-stars-box { border: 1px solid rgba(46,204,113,0.28); border-radius: 12px; padding: 2px 14px; margin-bottom: 14px; background: rgba(0,0,0,0.04); }
+      .rv-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+      .rv-row:last-of-type { border-bottom: none; }
+      .rv-row-label { flex: 1; min-width: 0; }
+      .rv-row-title { font-size: 13px; font-weight: 600; }
+      .rv-row-hint { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+      .rv-row-stars { display: flex; gap: 2px; flex-shrink: 0; }
+      .rv-star {
+        cursor: pointer; font-size: 20px; line-height: 1; padding: 2px; color: #999;
+        background: none; border: none; transition: color 0.15s, transform 0.1s; user-select: none;
+      }
+      .rv-star:hover { transform: scale(1.15); }
+      .rv-star.filled { color: #F0A500; }
+      .rv-star:focus-visible { outline: 2px solid #1c7c45; outline-offset: 1px; border-radius: 4px; }
       .shell-toast-viewport {
         position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
         display: flex; flex-direction: column; gap: 8px; z-index: 20;
