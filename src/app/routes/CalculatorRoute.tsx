@@ -10,8 +10,7 @@
 //
 // Phase 5C: the course catalog + isKnownCode now use the real typed BRACU
 // catalogue (src/features/calculator/catalog.ts → the same data the legacy page
-// ships). Demo data and the rate-course modal stay inert here (no-op) — they
-// depend on legacy-only data/flows and port in a later Phase 5 increment.
+// ships).
 //
 // Phase 5D: the CGPA results section (headline, meter, standing, credit totals)
 // renders below the entry UI from the same injected bridge — the shell shows
@@ -24,9 +23,16 @@
 // Demo mode (#309): Try Demo Mode replaces the state with the typed demo
 // dataset, asking first through the shell confirm modal when data exists
 // (parity with loadSampleData()'s confirm() guard).
+//
+// Faculty rating (#319): the semester rate pill opens RateFacultyModal via the
+// bridge, guarded like openRateForCourse (non-catalog course → error toast).
+// A successful submit writes the normalized initials onto the course so the
+// faculty chip renders, and toasts. Submission runs through the window-hook
+// boundary, so the standalone shell degrades exactly like signed-out legacy.
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
+import { normalizeInitials } from '../../core/faculty';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import CalculatorResults from '../../features/calculator/CalculatorResults.tsx';
 import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
@@ -34,6 +40,9 @@ import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculat
 import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
 import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
 import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
+import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
+import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
+import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/reviewSubmit';
 import {
   calculatorReducer,
   loadCalculatorState,
@@ -57,6 +66,9 @@ export function Component() {
 
   const loaded = useMemo(() => loadCalculatorState(store), [store]);
   const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
+
+  // The course the review modal is open for (null = closed).
+  const [rateTarget, setRateTarget] = useState<{ semId: number; index: number } | null>(null);
 
   // Persist on mutation only — skip the seed write so a corrupt raw value (which
   // the load path preserves for recovery) isn't immediately overwritten. The
@@ -111,10 +123,29 @@ export function Component() {
           notify({ kind: 'success', message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.' });
         })();
       },
-      rateForCourse: () => {},
+      rateForCourse: (semId: number, index: number) => {
+        // openRateForCourse parity: only a graded catalog course is rateable.
+        const sem = state.semesters.find((s) => s.id === semId);
+        const course = sem?.courses[index];
+        if (!course) return;
+        if (!getReviewableCourseCode(course.name, isKnownCourseCode)) {
+          notify({
+            kind: 'error',
+            message: 'Select a valid catalog course before submitting a faculty review.',
+          });
+          return;
+        }
+        setRateTarget({ semId, index });
+      },
     }),
     [state, confirm, notify],
   );
+
+  // Resolve the open modal's course from live state; a stale target (course
+  // removed while open) closes silently, like the legacy onSubmitted re-find.
+  const rateSem = rateTarget ? state.semesters.find((s) => s.id === rateTarget.semId) : undefined;
+  const rateCourse = rateTarget ? rateSem?.courses[rateTarget.index] : undefined;
+  const rateCourseCode = rateCourse ? getReviewableCourseCode(rateCourse.name, isKnownCourseCode) : '';
 
   const hasSemesters = state.semesters.some(s => !s.summary);
 
@@ -157,6 +188,27 @@ export function Component() {
           </div>
         )}
       </CalculatorBridgeProvider>
+      {rateTarget && rateCourse && rateCourseCode && (
+        <RateFacultyModal
+          courseCode={rateCourseCode}
+          semester={rateSem?.name ?? ''}
+          prefillInitials={rateCourse.faculty ?? ''}
+          onSubmit={(payload) => submitReview(payload, windowReviewSubmitEnv(isKnownCourseCode))}
+          onSubmitted={(payload) => {
+            const nextFac = normalizeInitials(payload.facultyInitials);
+            if (!nextFac) return;
+            dispatch({
+              type: 'updateCourse',
+              semId: rateTarget.semId,
+              index: rateTarget.index,
+              patch: { faculty: nextFac },
+            });
+            // The legacy modal's _shohoj_showToast on ok.
+            notify({ kind: 'success', message: 'Review submitted — thank you' });
+          }}
+          onClose={() => setRateTarget(null)}
+        />
+      )}
     </section>
   );
 }
