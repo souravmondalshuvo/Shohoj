@@ -163,6 +163,7 @@ export default function TranscriptImport({ lookupCourse, onImport, ref }: Transc
             </Button>
             <Button
               variant="primary"
+              autoFocus
               onClick={() => {
                 onImport(importedCalculatorState(phase.parsed));
                 close();
@@ -181,7 +182,7 @@ export default function TranscriptImport({ lookupCourse, onImport, ref }: Transc
             No semesters were detected. Make sure this is a BRACU official grade sheet PDF.
           </p>
           <div className="shell-modal-actions">
-            <Button variant="primary" onClick={close}>
+            <Button variant="primary" autoFocus onClick={close}>
               Close
             </Button>
           </div>
@@ -195,7 +196,7 @@ export default function TranscriptImport({ lookupCourse, onImport, ref }: Transc
             {phase.message}
           </p>
           <div className="shell-modal-actions">
-            <Button variant="primary" onClick={close}>
+            <Button variant="primary" autoFocus onClick={close}>
               Close
             </Button>
           </div>
