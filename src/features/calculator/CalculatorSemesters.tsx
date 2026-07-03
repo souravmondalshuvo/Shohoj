@@ -201,6 +201,9 @@ export default function CalculatorSemesters() {
             <button type="button" className="btn-sample-ghost" onClick={() => bridge.addSemester()}>
               + Add semester
             </button>
+            <button type="button" className="btn-sample-ghost" onClick={() => bridge.importTranscript()}>
+              📄 Import Transcript
+            </button>
             {!hasSummary && (
               <button
                 type="button"
