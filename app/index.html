@@ -114,6 +114,20 @@
       .rv-star:hover { transform: scale(1.15); }
       .rv-star.filled { color: #F0A500; }
       .rv-star:focus-visible { outline: 2px solid #1c7c45; outline-offset: 1px; border-radius: 4px; }
+      .ti-modal { max-width: 460px; max-height: 92vh; overflow-y: auto; }
+      .ti-table {
+        width: 100%; border-collapse: collapse; margin-bottom: 12px;
+        border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;
+      }
+      .ti-table th {
+        padding: 6px 8px; text-align: left; font-size: 10px; color: rgba(0,0,0,0.45);
+        text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(0,0,0,0.12);
+      }
+      .ti-table td { padding: 4px 8px; font-size: 12px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+      .ti-table tr:last-child td { border-bottom: none; }
+      .ti-table th:not(:first-child), .ti-table td:not(:first-child) { text-align: center; }
+      .ti-table td:last-child { color: #1c7c45; font-weight: 600; }
+      .ti-dept { font-size: 12px; color: #2d5a3d; margin: 0 0 12px; }
       .shell-toast-viewport {
         position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
         display: flex; flex-direction: column; gap: 8px; z-index: 20;
