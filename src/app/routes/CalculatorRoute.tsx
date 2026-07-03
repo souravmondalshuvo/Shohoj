@@ -33,6 +33,7 @@ import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
 import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog';
 import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
 import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
+import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import {
   calculatorReducer,
   loadCalculatorState,
@@ -142,6 +143,7 @@ export function Component() {
           <CalculatorSemesters />
         </div>
         <CalculatorResults />
+        <CgpaSimulator />
         {hasSemesters && (
           <div className="calc-footer lg-panel">
             <div className="footer-btn-group">
