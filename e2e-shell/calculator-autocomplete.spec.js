@@ -132,6 +132,29 @@ test('unknown free-text input does not crash the route', async ({ page }) => {
   expect(errors, 'no uncaught page errors').toEqual([]);
 });
 
+test('a grade entered right after a pick survives the deferred blur commit (#320)', async ({ page }) => {
+  const container = await openCalculator(page);
+  const input = await addSemesterWithCourse(container);
+
+  await input.click();
+  await input.fill(KNOWN_CODE);
+  await container.getByRole('option', { name: new RegExp(KNOWN_CODE) }).first().click();
+
+  // Grade immediately after the pick — inside the 150ms blur-defer window.
+  const gp = container.getByPlaceholder('0.0 – 4.0').first();
+  await gp.fill('3.3');
+  await gp.blur();
+
+  // Let the deferred resolve fire; the stale-closure bug reverted the grade here.
+  await page.waitForTimeout(400);
+  await expect(gp).toHaveValue('3.3');
+  const stored = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('shohoj_cgpa_v1')).semesters[0].courses[0],
+  );
+  expect(stored.grade).toBe('B+');
+  expect(stored.gradePoint).toBe('3.3');
+});
+
 test('the open combobox has no axe accessibility violations', async ({ page }) => {
   const container = await openCalculator(page);
   const input = await addSemesterWithCourse(container);
