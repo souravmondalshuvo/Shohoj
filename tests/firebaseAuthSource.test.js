@@ -1,0 +1,173 @@
+// tests/firebaseAuthSource.test.js — unit tests for the Firebase-backed
+// AuthSource (#331) over a fake backend: snapshot transitions, the legacy
+// BRACU enforcement matrix, sign-in error semantics, and event emission.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  createFirebaseAuthSource,
+  evaluateBracuAccess,
+  REJECTED_MESSAGE,
+  SIGN_IN_FAILED_MESSAGE,
+} from '../src/platform/auth/firebaseAuthSource.ts';
+
+const CONFIG = {
+  apiKey: 'k',
+  authDomain: 'a',
+  projectId: 'p',
+  storageBucket: 'b',
+  messagingSenderId: 'm',
+  appId: 'i',
+};
+
+const GOOGLE_CLAIMS = { email_verified: true, firebase: { sign_in_provider: 'google.com' } };
+
+function fakeUser({ uid = 'u1', email, verified = true, claims = GOOGLE_CLAIMS, tokenFails = false } = {}) {
+  return {
+    uid,
+    email,
+    emailVerified: verified,
+    getIdTokenResult: async () => {
+      if (tokenFails) throw new Error('network');
+      return { claims };
+    },
+  };
+}
+
+function fakeBackend() {
+  const calls = { signOut: 0, popup: 0 };
+  let authListener = null;
+  const backend = {
+    onAuthStateChanged(next) {
+      authListener = next;
+      return () => {};
+    },
+    async signInWithGooglePopup() {
+      calls.popup += 1;
+      if (backend.popupError) throw backend.popupError;
+    },
+    async signOut() {
+      calls.signOut += 1;
+    },
+    popupError: null,
+    fire: (user) => authListener?.(user),
+  };
+  return { backend, calls };
+}
+
+async function sourceWithBackend() {
+  const { backend, calls } = fakeBackend();
+  const source = createFirebaseAuthSource({ config: CONFIG, loadBackend: async () => backend });
+  const events = [];
+  source.onEvent((e) => events.push(e));
+  const changes = [];
+  source.subscribe(() => changes.push(source.get()));
+  await Promise.resolve(); // let the backend load settle
+  await Promise.resolve();
+  return { source, backend, calls, events, changes };
+}
+
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test('evaluateBracuAccess: the legacy enforcement matrix', () => {
+  const ok = { email: 'x@g.bracu.ac.bd', emailVerified: true };
+  assert.deepEqual(evaluateBracuAccess(ok, GOOGLE_CLAIMS), { allowed: true, isAdmin: false });
+  // Non-BRACU email → rejected.
+  assert.equal(evaluateBracuAccess({ email: 'x@gmail.com', emailVerified: true }, GOOGLE_CLAIMS).allowed, false);
+  // Unverified (both signals false) → rejected.
+  assert.equal(
+    evaluateBracuAccess({ email: 'x@g.bracu.ac.bd', emailVerified: false }, { firebase: { sign_in_provider: 'google.com' } }).allowed,
+    false,
+  );
+  // Claim-side verification alone suffices (legacy ||).
+  assert.equal(
+    evaluateBracuAccess({ email: 'x@g.bracu.ac.bd', emailVerified: false }, GOOGLE_CLAIMS).allowed,
+    true,
+  );
+  // Non-Google provider → rejected.
+  assert.equal(
+    evaluateBracuAccess(ok, { email_verified: true, firebase: { sign_in_provider: 'password' } }).allowed,
+    false,
+  );
+  // The admin claim overrides everything and maps isAdmin.
+  assert.deepEqual(
+    evaluateBracuAccess({ email: 'x@gmail.com', emailVerified: false }, { admin: true }),
+    { allowed: true, isAdmin: true },
+  );
+  // No claims at all (failed token read) → rejected without the admin override.
+  assert.equal(evaluateBracuAccess(ok, null).allowed, false);
+});
+
+test('starts LOADING, settles ANONYMOUS on a null user', async () => {
+  const { source, backend } = await sourceWithBackend();
+  assert.equal(source.get().status, 'loading');
+  backend.fire(null);
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+});
+
+test('an allowed BRACU user authenticates with uid/email/isAdmin', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'student@g.bracu.ac.bd' }));
+  await settle();
+  assert.deepEqual(source.get(), {
+    status: 'authenticated',
+    uid: 'u1',
+    email: 'student@g.bracu.ac.bd',
+    isAdmin: false,
+  });
+});
+
+test('a rejected account is signed out with the legacy toast copy', async () => {
+  const { source, backend, calls, events } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'outsider@gmail.com' }));
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+  assert.equal(calls.signOut, 1);
+  assert.deepEqual(events, [{ type: 'rejected', message: REJECTED_MESSAGE }]);
+});
+
+test('a failed token read falls through to enforcement (rejected, legacy null-claims path)', async () => {
+  const { source, backend, events } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'student@g.bracu.ac.bd', tokenFails: true, verified: true }));
+  await settle();
+  // emailVerified true but provider unknown (null claims) → rejected.
+  assert.equal(source.get().status, 'anonymous');
+  assert.equal(events[0]?.type, 'rejected');
+});
+
+test('the admin claim keeps a non-BRACU account signed in as admin', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'ops@example.com', claims: { admin: true } }));
+  await settle();
+  assert.equal(source.get().status, 'authenticated');
+  assert.equal(source.get().isAdmin, true);
+});
+
+test('signIn: popup-closed is swallowed; other failures emit the legacy copy', async () => {
+  const { source, backend, events } = await sourceWithBackend();
+  backend.popupError = { code: 'auth/popup-closed-by-user' };
+  await source.signIn();
+  assert.deepEqual(events, []);
+
+  backend.popupError = new Error('network down');
+  await source.signIn();
+  assert.deepEqual(events, [{ type: 'sign-in-failed', message: SIGN_IN_FAILED_MESSAGE }]);
+});
+
+test('a backend that fails to load settles ANONYMOUS and fails sign-in gracefully', async () => {
+  const source = createFirebaseAuthSource({
+    config: CONFIG,
+    loadBackend: async () => {
+      throw new Error('sdk unavailable');
+    },
+  });
+  const events = [];
+  source.onEvent((e) => events.push(e));
+  source.subscribe(() => {});
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+  await source.signIn();
+  assert.deepEqual(events, [{ type: 'sign-in-failed', message: SIGN_IN_FAILED_MESSAGE }]);
+});
