@@ -17,14 +17,43 @@
 // modules (router, routes, features) live in src/, a sibling of root, so
 // server.fs.allow grants the dev server access across the root boundary.
 
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const RUNTIME_CONFIG_PATH = resolve(import.meta.dirname, 'js/config/runtime-config.js');
+const RUNTIME_CONFIG_STUB =
+  '// No generated runtime config (js/config/runtime-config.js missing at build '
+  + 'time) — the shell runs offline. Run `npm run config:local` and rebuild for '
+  + 'cloud capabilities.\n';
+
+// Serve (dev) and emit (build) the generated, gitignored runtime config as
+// /runtime-config.js — the same file the legacy index.html loads (#329). When
+// it hasn't been generated (fresh clone, CI) a comment stub ships instead, so
+// app/index.html's script tag always resolves and the shell degrades to the
+// offline capability set with no boot noise.
+function shellRuntimeConfig() {
+  const source = () =>
+    existsSync(RUNTIME_CONFIG_PATH) ? readFileSync(RUNTIME_CONFIG_PATH, 'utf8') : RUNTIME_CONFIG_STUB;
+  return {
+    name: 'shohoj:shell-runtime-config',
+    configureServer(server) {
+      server.middlewares.use('/runtime-config.js', (_req, res) => {
+        res.setHeader('Content-Type', 'text/javascript');
+        res.end(source());
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'runtime-config.js', source: source() });
+    },
+  };
+}
+
 export default defineConfig({
   root: resolve(import.meta.dirname, 'app'),
   base: '/',
-  plugins: [react()],
+  plugins: [react(), shellRuntimeConfig()],
   server: {
     port: 5174,
     fs: { allow: [resolve(import.meta.dirname)] },
