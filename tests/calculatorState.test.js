@@ -20,6 +20,7 @@ const base = () => ({
   semesters: [{ id: 1, name: 'Spring 2023', courses: [{ name: 'CSE110', credits: 3, grade: 'A' }] }],
   startSeason: 'Spring',
   startYear: '2023',
+  planCourses: [],
 });
 
 test('addSemester appends a semester with a fresh id and one blank course', () => {
@@ -146,3 +147,55 @@ test('persist preserves stored fields the calculator does not own (#313)', () =>
 });
 
 console.log('calculator state container tests passed');
+
+// ── Plan state (#327) ─────────────────────────────────────────────────────────
+
+test('addPlanCourse appends and dedupes; empty codes are ignored (#327)', () => {
+  let s = calculatorReducer(EMPTY_CALCULATOR_STATE, { type: 'addPlanCourse', code: 'CSE220' });
+  s = calculatorReducer(s, { type: 'addPlanCourse', code: 'CSE221' });
+  s = calculatorReducer(s, { type: 'addPlanCourse', code: 'CSE220' }); // dupe
+  s = calculatorReducer(s, { type: 'addPlanCourse', code: '' });
+  assert.deepEqual(s.planCourses, ['CSE220', 'CSE221']);
+});
+
+test('removePlanCourse and clearPlan (#327)', () => {
+  let s = { ...EMPTY_CALCULATOR_STATE, planCourses: ['CSE220', 'CSE221'] };
+  s = calculatorReducer(s, { type: 'removePlanCourse', code: 'CSE220' });
+  assert.deepEqual(s.planCourses, ['CSE221']);
+  s = calculatorReducer(s, { type: 'clearPlan' });
+  assert.deepEqual(s.planCourses, []);
+});
+
+test('promotePlan replaces the running semester and empties the plan (#327)', () => {
+  const start = {
+    ...EMPTY_CALCULATOR_STATE,
+    semesters: [
+      { id: 1, name: 'Fall 2024', courses: [{ name: 'CSE110', credits: 3, grade: 'A' }] },
+      { id: 2, name: 'Old Running', running: true, courses: [{ name: '', credits: 0, grade: '' }] },
+    ],
+    planCourses: ['CSE220'],
+  };
+  const courses = [{ name: 'Data Structures (CSE220)', credits: 3, grade: '', gradePoint: '' }];
+  const s = calculatorReducer(start, { type: 'promotePlan', name: 'Summer 2025 (Running)', courses });
+  assert.equal(s.semesters.filter(x => x.running).length, 1);
+  assert.equal(s.semesters.find(x => x.running).name, 'Summer 2025 (Running)');
+  assert.deepEqual(s.semesters.find(x => x.running).courses, courses);
+  assert.deepEqual(s.planCourses, []);
+  // An empty prefill is a no-op (legacy guard).
+  assert.equal(calculatorReducer(start, { type: 'promotePlan', name: 'X', courses: [] }), start);
+});
+
+test('setDept clears the plan; clearing the dept keeps it (#327)', () => {
+  const s = { ...EMPTY_CALCULATOR_STATE, planCourses: ['CSE220'] };
+  assert.deepEqual(calculatorReducer(s, { type: 'setDept', currentDept: 'EEE' }).planCourses, []);
+  assert.deepEqual(calculatorReducer(s, { type: 'setDept', currentDept: '' }).planCourses, ['CSE220']);
+});
+
+test('planCourses round-trip through persistence, junk filtered on load (#327)', () => {
+  const store = new MemoryKeyValueStore();
+  persistCalculatorState(store, { ...EMPTY_CALCULATOR_STATE, planCourses: ['CSE220', 'MAT120'] });
+  assert.deepEqual(loadCalculatorState(store).state.planCourses, ['CSE220', 'MAT120']);
+
+  store.setItem('shohoj_cgpa_v1', JSON.stringify({ semesters: [], planCourses: ['CSE220', 7, '', null] }));
+  assert.deepEqual(loadCalculatorState(store).state.planCourses, ['CSE220']);
+});
