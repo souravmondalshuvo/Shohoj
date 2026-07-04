@@ -56,3 +56,7 @@ test('the next added semester continues the demo calendar with an ordinal', () =
   const name = nextCompletedSemesterName(demoCalculatorState(), new Date(2026, 6, 2));
   assert.equal(name, 'Summer 2025 (3rd Semester)');
 });
+
+test('demo seeds the legacy DEMO_PLAN_COURSES (#327)', () => {
+  assert.deepEqual(demoCalculatorState().planCourses, ['CSE221', 'MAT120', 'PHY112']);
+});
