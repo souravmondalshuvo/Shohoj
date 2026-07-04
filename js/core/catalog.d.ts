@@ -22,3 +22,15 @@ export interface LegacyCourse {
 
 /** Every catalogue course, sorted by code (catalog.js `Object.values(...).sort`). */
 export const ALL_COURSES: readonly LegacyCourse[];
+
+/** The by-code course record the planner consumes (#327). */
+export const COURSE_DB: Readonly<Record<string, LegacyCourse | undefined>>;
+
+/** One prerequisite rule: hard (enforced) and soft (recommended) course codes. */
+export interface LegacyPrereqRule {
+  readonly hp?: readonly string[];
+  readonly sp?: readonly string[];
+}
+
+/** Prerequisite rules by course code (#327; the planner engine's map). */
+export const PREREQS: Readonly<Record<string, LegacyPrereqRule | undefined>>;
