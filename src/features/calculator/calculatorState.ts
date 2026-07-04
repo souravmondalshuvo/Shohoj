@@ -99,7 +99,13 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
     case 'setStart':
       return { ...state, startSeason: action.startSeason, startYear: action.startYear };
     case 'setDept':
-      return { ...state, currentDept: action.currentDept };
+      // Legacy onDeptSelect: picking a department resets the planner (its
+      // relevance/suggestions are dept-scoped); clearing to '' bails first.
+      return {
+        ...state,
+        currentDept: action.currentDept,
+        planCourses: action.currentDept ? [] : state.planCourses,
+      };
     case 'addPlanCourse':
       // Legacy addToPlan: adding an already-planned code is a no-op.
       if (!action.code || state.planCourses.includes(action.code)) return state;
