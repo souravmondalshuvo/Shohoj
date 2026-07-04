@@ -32,6 +32,8 @@ export interface CalculatorState {
   readonly startYear: string;
   /** Department code (e.g. "CSE"); '' until the user picks one. */
   readonly currentDept: string;
+  /** Planned course codes (#327) — the legacy planner's plan.courses. */
+  readonly planCourses: readonly string[];
 }
 
 export const EMPTY_CALCULATOR_STATE: CalculatorState = {
@@ -39,6 +41,7 @@ export const EMPTY_CALCULATOR_STATE: CalculatorState = {
   startSeason: '',
   startYear: '',
   currentDept: '',
+  planCourses: [],
 };
 
 export type CalculatorAction =
@@ -51,6 +54,10 @@ export type CalculatorAction =
   | { type: 'reorderSemesters'; srcId: number; tgtId: number }
   | { type: 'setStart'; startSeason: string; startYear: string }
   | { type: 'setDept'; currentDept: string }
+  | { type: 'addPlanCourse'; code: string }
+  | { type: 'removePlanCourse'; code: string }
+  | { type: 'clearPlan' }
+  | { type: 'promotePlan'; name: string; courses: CourseEntry[] }
   | { type: 'replace'; state: CalculatorState };
 
 function nextSemesterId(semesters: readonly SemesterEntry[]): number {
@@ -93,6 +100,32 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
       return { ...state, startSeason: action.startSeason, startYear: action.startYear };
     case 'setDept':
       return { ...state, currentDept: action.currentDept };
+    case 'addPlanCourse':
+      // Legacy addToPlan: adding an already-planned code is a no-op.
+      if (!action.code || state.planCourses.includes(action.code)) return state;
+      return { ...state, planCourses: [...state.planCourses, action.code] };
+    case 'removePlanCourse':
+      return { ...state, planCourses: state.planCourses.filter((c) => c !== action.code) };
+    case 'clearPlan':
+      return { ...state, planCourses: [] };
+    case 'promotePlan':
+      // Legacy promoteToRunning, atomically: any existing running semester is
+      // replaced (the UI confirms first), the plan becomes the one running
+      // semester's prefilled courses, and the plan empties.
+      if (action.courses.length === 0) return state;
+      return {
+        ...state,
+        semesters: [
+          ...state.semesters.filter((s) => !s.running),
+          {
+            id: nextSemesterId(state.semesters),
+            name: action.name,
+            running: true,
+            courses: action.courses,
+          },
+        ],
+        planCourses: [],
+      };
     case 'replace':
       return action.state;
     default:
@@ -105,8 +138,8 @@ export interface LoadedCalculatorState {
   /** From the persistence engine: 'loaded' | 'empty' | 'corrupt'. */
   readonly status: LoadStatus;
   /** The full stored snapshot (when loaded), so fields this feature does not
-   * own — planCourses, semesterCounter, forward-compat keys — survive a
-   * persist instead of being silently dropped. */
+   * own — semesterCounter, forward-compat keys — survive a persist instead of
+   * being silently dropped. (planCourses became reducer-owned in #327.) */
   readonly stored: StoredShohojStateV1 | null;
 }
 
@@ -124,6 +157,9 @@ export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState
         startSeason: result.state.startSeason ?? '',
         startYear: result.state.startYear ?? '',
         currentDept: result.state.currentDept ?? '',
+        planCourses: (result.state.planCourses ?? []).filter(
+          (c): c is string => typeof c === 'string' && c !== '',
+        ),
       },
       status: 'loaded',
       stored: result.state,
@@ -135,8 +171,8 @@ export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState
 /**
  * Persist the calculator state through the Phase 4 engine (stamps schema
  * version). `base` is the snapshot returned by loadCalculatorState — spreading
- * it first preserves stored fields this feature does not own (planCourses,
- * semesterCounter, unknown forward-compat keys) instead of dropping them.
+ * it first preserves stored fields this feature does not own (semesterCounter,
+ * unknown forward-compat keys) instead of dropping them.
  */
 export function persistCalculatorState(
   store: KeyValueStore,
@@ -149,5 +185,6 @@ export function persistCalculatorState(
     startSeason: state.startSeason,
     startYear: state.startYear,
     currentDept: state.currentDept,
+    planCourses: [...state.planCourses],
   });
 }
