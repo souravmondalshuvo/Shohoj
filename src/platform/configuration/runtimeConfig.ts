@@ -77,12 +77,16 @@ interface ShohojConfigGlobals {
 /**
  * Assemble the raw config object from `window._shohoj_*` globals. Kept separate
  * from validation so the pure path stays testable; pass a stub here in tests.
+ * Accepts any object (typically `window`, whose type declares none of these
+ * keys — TS's weak-type check would otherwise reject it) and reads the globals
+ * structurally.
  */
-export function runtimeConfigFromGlobals(source: ShohojConfigGlobals): unknown {
+export function runtimeConfigFromGlobals(source: object): unknown {
+  const globals = source as ShohojConfigGlobals;
   return {
-    firebase: source._shohoj_firebase_config,
-    papersWorkerUrl: source._shohoj_papers_worker_url,
-    recaptchaV3SiteKey: source._shohoj_recaptcha_v3_site_key,
-    googleClientId: source._shohoj_google_client_id,
+    firebase: globals._shohoj_firebase_config,
+    papersWorkerUrl: globals._shohoj_papers_worker_url,
+    recaptchaV3SiteKey: globals._shohoj_recaptcha_v3_site_key,
+    googleClientId: globals._shohoj_google_client_id,
   };
 }
