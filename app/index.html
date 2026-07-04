@@ -227,6 +227,11 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- The generated runtime config (window._shohoj_* globals) — served/emitted
+         by the vite.shell.config.js plugin; a comment stub when not generated,
+         so the shell degrades to the offline capability set. Loaded before the
+         module entry so the globals exist when providers read them. -->
+    <script src="/runtime-config.js"></script>
     <script type="module" src="./shell.tsx"></script>
   </body>
 </html>
