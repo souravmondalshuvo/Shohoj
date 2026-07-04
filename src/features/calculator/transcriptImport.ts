@@ -143,5 +143,7 @@ export function importedCalculatorState(parsed: ParsedTranscript): CalculatorSta
     if (/^\d{4}$/.test(year)) startYear = year;
   }
 
-  return { semesters, startSeason, startYear, currentDept };
+  // Legacy applyImport calls resetPlanner(): an import invalidates the plan
+  // (planned courses may now be completed), so it always comes back empty.
+  return { semesters, startSeason, startYear, currentDept, planCourses: [] };
 }
