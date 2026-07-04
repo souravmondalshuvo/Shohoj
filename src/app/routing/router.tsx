@@ -19,7 +19,6 @@ import { RequireAdmin } from './RequireAdmin';
 // migrates in Phase 5/6.
 const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['transcript', 'Transcript'],
-  ['planner', 'Planner'],
   ['degree-progress', 'Degree progress'],
   ['routine', 'Routine'],
   ['rooms', 'Free rooms'],
@@ -39,6 +38,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: () => import('../routes/HomeRoute') },
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
+      { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
