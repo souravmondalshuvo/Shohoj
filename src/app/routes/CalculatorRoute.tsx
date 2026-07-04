@@ -35,6 +35,10 @@
 // → the imperative handle, the shell's analogue of the legacy hidden
 // #transcriptFileInput). A confirmed import replaces the calculator state via
 // the pure applyImport mapping and toasts.
+//
+// PDF export (#325): the footer ⬇ Export PDF button loads the pinned jsPDF on
+// demand, builds the pure report from state and draws it (exportPDF parity).
+// Failures surface as error toasts instead of the legacy alert().
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
@@ -52,6 +56,9 @@ import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/r
 import TranscriptImport, {
   type TranscriptImportHandle,
 } from '../../features/calculator/TranscriptImport.tsx';
+import { loadJsPdf } from '../../features/calculator/jspdfLoader.ts';
+import { buildPdfReport } from '../../features/calculator/pdfReport.ts';
+import { drawPdfReport } from '../../features/calculator/pdfReportDraw.ts';
 import {
   calculatorReducer,
   loadCalculatorState,
@@ -206,6 +213,28 @@ export function Component() {
               </button>
               <button type="button" className="btn-import-pdf" onClick={() => bridge.importTranscript()}>
                 📄 Import Transcript
+              </button>
+              <button
+                type="button"
+                className="btn-export-pdf"
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      // The legacy 'No data to export' alert is unreachable here —
+                      // the footer only renders with semesters — but keep the guard.
+                      if (!state.semesters.length) return;
+                      const { jsPDF } = await loadJsPdf();
+                      drawPdfReport(new jsPDF({ unit: 'mm', format: 'a4' }), buildPdfReport(state, new Date()));
+                    } catch (err) {
+                      notify({
+                        kind: 'error',
+                        message: (err instanceof Error && err.message) || 'PDF export failed',
+                      });
+                    }
+                  })();
+                }}
+              >
+                ⬇ Export PDF
               </button>
             </div>
           </div>
