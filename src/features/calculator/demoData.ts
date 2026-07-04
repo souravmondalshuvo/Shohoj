@@ -12,6 +12,8 @@ import type { CalculatorState } from './calculatorState.ts';
 export function demoCalculatorState(): CalculatorState {
   return {
     currentDept: 'CSE',
+    // loadSampleData seeds the planner too (DEMO_PLAN_COURSES in render.js).
+    planCourses: ['CSE221', 'MAT120', 'PHY112'],
     semesters: [
       {
         id: 1,
