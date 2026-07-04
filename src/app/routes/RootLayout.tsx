@@ -14,6 +14,13 @@ import { NotificationViewport } from '../NotificationViewport';
 import { AuthProvider } from '../providers/AuthProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider } from '../providers/RuntimeConfigProvider';
+import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
+
+// Raw runtime config from the window._shohoj_* globals that /runtime-config.js
+// sets before the module entry runs (#329). Read once at module scope — the
+// generated config never changes within a page lifetime; missing/placeholder
+// values validate to the offline capability set exactly as before.
+const RAW_RUNTIME_CONFIG = typeof window !== 'undefined' ? runtimeConfigFromGlobals(window) : {};
 
 interface NavItem {
   readonly to: string;
@@ -43,7 +50,7 @@ const NAV: readonly NavItem[] = [
 export function RootLayout() {
   return (
     <AppProviders label="App shell">
-      <RuntimeConfigProvider>
+      <RuntimeConfigProvider rawConfig={RAW_RUNTIME_CONFIG}>
         <AuthProvider>
           <ModalProvider>
             <a className="shell-skip-link" href="#main-content">
