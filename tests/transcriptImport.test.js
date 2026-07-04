@@ -123,3 +123,8 @@ test('an unparseable transcript yields an empty result, not a throw', () => {
   assert.equal(state.startSeason, '');
   assert.equal(state.startYear, '');
 });
+
+test('an import always resets the plan (legacy resetPlanner parity, #327)', () => {
+  const state = importedCalculatorState(parseTranscriptForImport(LINE_TRANSCRIPT, lookup));
+  assert.deepEqual(state.planCourses, []);
+});
