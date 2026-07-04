@@ -13,8 +13,9 @@
 //
 // Pure module-level data: built once on import, never mutated, no React/DOM.
 
-import { ALL_COURSES } from '../../../js/core/catalog.js';
+import { ALL_COURSES, COURSE_DB, PREREQS } from '../../../js/core/catalog.js';
 import { createLogger } from '../../platform/observability/logger.ts';
+import type { CourseCatalog, PrerequisiteMap } from '../../core/types.ts';
 import type { CourseSuggestion } from './courseSearch.ts';
 
 const logger = createLogger({ base: { module: 'calculator.catalog' } });
@@ -66,3 +67,9 @@ const KNOWN_CODES: ReadonlySet<string> = new Set(
 export function isKnownCourseCode(code: string): boolean {
   return KNOWN_CODES.has(String(code ?? '').trim().toUpperCase());
 }
+
+/** The by-code course record (COURSE_DB), typed for the planner engine (#327). */
+export const BRACU_COURSE_DB: CourseCatalog = COURSE_DB;
+
+/** The prerequisite map (PREREQS), typed for the planner engine (#327). */
+export const BRACU_PREREQS: PrerequisiteMap = PREREQS;
