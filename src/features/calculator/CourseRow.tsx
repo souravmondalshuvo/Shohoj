@@ -12,6 +12,7 @@ import type { CourseEntry } from '../../core/types';
 import { gradeLetterColor } from './colors';
 import CourseNameInput from './CourseNameInput';
 import type { CourseSuggestion } from './courseSearch';
+import { useFacultyChipScore } from './FacultyReviewsProvider';
 
 /** Credit values the legacy UI treats as "normal"; anything else flags a dot. */
 const NORMAL_CREDITS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 6, 8, 10, 12];
@@ -69,6 +70,8 @@ export default function CourseRow({
   const showCreditDot = !!trimmedName && course.credits > 0 && !NORMAL_CREDITS.includes(course.credits);
   const isPassFailSlot = course.credits === 0 && trimmedName !== '';
   const showChip = canRate && !!faculty?.initials;
+  // Live aggregate score for the chip (–- until it loads / when unavailable).
+  const chipScore = useFacultyChipScore(faculty?.initials ?? '', faculty?.courseCode ?? '');
 
   // Mirrors render.js: the gradePoint field shows NT, an explicit gradePoint,
   // the grade's default points, or empty — in that precedence.
@@ -163,7 +166,7 @@ export default function CourseRow({
           >
             <span className="fac-init">{faculty.initials}</span>
             <span className="fac-score" data-score>
-              –
+              {chipScore}
             </span>
           </button>
         ) : (
