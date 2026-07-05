@@ -25,6 +25,7 @@ import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
 import { anonymousAuthSource } from '../../platform/auth/authSnapshot';
+import { FacultyReviewsProvider } from '../../features/calculator/FacultyReviewsProvider';
 import {
   createFirebaseAuthSource,
   type FirebaseAuthSource,
@@ -154,8 +155,12 @@ function ShellChrome() {
   return (
     <AuthProvider source={firebaseSource ?? anonymousAuthSource}>
       <ModalProvider>
-        {/* Cloud sync runs only on a configured shell; offline keeps chrome bare. */}
-        {config ? <CloudSyncProvider config={config}>{chrome}</CloudSyncProvider> : chrome}
+        {/* Live faculty chip scores (inert until a chip requests one; no repo
+            when offline → chips stay '–'). */}
+        <FacultyReviewsProvider>
+          {/* Cloud sync runs only on a configured shell; offline keeps chrome bare. */}
+          {config ? <CloudSyncProvider config={config}>{chrome}</CloudSyncProvider> : chrome}
+        </FacultyReviewsProvider>
       </ModalProvider>
     </AuthProvider>
   );
