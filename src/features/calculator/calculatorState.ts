@@ -8,10 +8,11 @@
 // and load/persist helpers are unit-testable in isolation.
 
 import type { CourseEntry, SemesterEntry } from '../../core/types';
-import type { StoredShohojStateV1 } from '../../core/types/storage.ts';
+import { STORAGE_KEY, type StoredShohojStateV1 } from '../../core/types/storage.ts';
 import type { Result } from '../../core/result.ts';
 import type { StorageError } from '../../core/errors.ts';
 import type { KeyValueStore } from '../../services/storage/keyValueStore.ts';
+import { announceLocalSave } from '../../services/cloudSync/saveAnnouncer.ts';
 import {
   loadAcademicState,
   saveAcademicState,
@@ -178,14 +179,16 @@ export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState
  * Persist the calculator state through the Phase 4 engine (stamps schema
  * version). `base` is the snapshot returned by loadCalculatorState — spreading
  * it first preserves stored fields this feature does not own (semesterCounter,
- * unknown forward-compat keys) instead of dropping them.
+ * unknown forward-compat keys) instead of dropping them. On a successful write
+ * the persisted snapshot is announced (#333) so a signed-in cloud shell can
+ * queue the debounced cloud save; offline shells have no subscriber.
  */
 export function persistCalculatorState(
   store: KeyValueStore,
   state: CalculatorState,
   base?: StoredShohojStateV1 | null,
 ): Result<void, StorageError> {
-  return saveAcademicState(store, {
+  const result = saveAcademicState(store, {
     ...(base ?? {}),
     semesters: state.semesters,
     startSeason: state.startSeason,
@@ -193,4 +196,11 @@ export function persistCalculatorState(
     currentDept: state.currentDept,
     planCourses: [...state.planCourses],
   });
+  // Announce the exact bytes now in the store, so the cloud copy matches local
+  // (the echo-skip fingerprint compare depends on byte parity).
+  if (result.ok) {
+    const written = store.getItem(STORAGE_KEY);
+    if (written !== null) announceLocalSave(written);
+  }
+  return result;
 }
