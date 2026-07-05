@@ -20,6 +20,7 @@ import { NavLink, Outlet } from 'react-router';
 import { AppProviders } from '../AppProviders';
 import { NotificationViewport } from '../NotificationViewport';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
+import { CloudSyncProvider } from '../providers/CloudSyncProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
@@ -121,33 +122,40 @@ function ShellChrome() {
     [config],
   );
 
+  const chrome = (
+    <>
+      <a className="shell-skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <header className="shell-header">
+        <nav className="shell-nav" aria-label="Primary">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <AuthControls source={firebaseSource} />
+        </nav>
+      </header>
+      <main id="main-content" className="shell-main" tabIndex={-1}>
+        <Outlet />
+      </main>
+      <NotificationViewport />
+    </>
+  );
+
   return (
     <AuthProvider source={firebaseSource ?? anonymousAuthSource}>
       <ModalProvider>
-        <a className="shell-skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <header className="shell-header">
-          <nav className="shell-nav" aria-label="Primary">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <AuthControls source={firebaseSource} />
-          </nav>
-        </header>
-        <main id="main-content" className="shell-main" tabIndex={-1}>
-          <Outlet />
-        </main>
-        <NotificationViewport />
+        {/* Cloud sync runs only on a configured shell; offline keeps chrome bare. */}
+        {config ? <CloudSyncProvider config={config}>{chrome}</CloudSyncProvider> : chrome}
       </ModalProvider>
     </AuthProvider>
   );
