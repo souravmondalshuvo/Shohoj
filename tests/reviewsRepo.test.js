@@ -1,0 +1,205 @@
+// tests/reviewsRepo.test.js — unit tests for the typed faculty-reviews read
+// repo (#335) over a fake Firestore backend. Covers paging/cursor, the
+// pageSize-vs-cap quirk, course uppercasing, the id probe, faculty-profile
+// chunking, and empty-input / failed-read guards.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createReviewsRepo, MAX_PAGE_SIZE } from '../src/platform/firebase/reviewsRepo.ts';
+
+const CONFIG = { apiKey: 'k', authDomain: 'a', projectId: 'p', storageBucket: 'b', messagingSenderId: 'm', appId: 'i' };
+
+// A fake backend over an in-memory review store. Reviews carry a numeric `seq`
+// standing in for createdAt (desc). The cursor round-tripped as `after` is the
+// last returned doc; the fake finds its position by id to emulate startAfter.
+function fakeBackend(reviews = [], profiles = new Map()) {
+  const calls = { byFaculty: [], byCourse: [], byId: [], profileChunks: [] };
+  const sortedDesc = (list) => [...list].sort((a, b) => b.seq - a.seq);
+  const sliceAfter = (list, after, limit) => {
+    let start = 0;
+    if (after) {
+      const idx = list.findIndex((r) => r.id === after.id);
+      start = idx >= 0 ? idx + 1 : 0;
+    }
+    const docs = list.slice(start, start + limit);
+    return { docs, last: docs.length ? docs[docs.length - 1] : null };
+  };
+  const backend = {
+    reviews,
+    profiles,
+    failAll: false,
+    async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
+      calls.byFaculty.push({ facultyInitials, courseCode, limit });
+      if (backend.failAll) throw new Error('offline');
+      const filtered = sortedDesc(
+        backend.reviews.filter(
+          (r) =>
+            r.facultyInitials === facultyInitials &&
+            (courseCode === undefined || r.courseCode === courseCode),
+        ),
+      );
+      return sliceAfter(filtered, after, limit);
+    },
+    async queryByCourse({ courseCode, limit, after }) {
+      calls.byCourse.push({ courseCode, limit });
+      if (backend.failAll) throw new Error('offline');
+      const filtered = sortedDesc(backend.reviews.filter((r) => r.courseCode === courseCode));
+      return sliceAfter(filtered, after, limit);
+    },
+    async getById(id) {
+      calls.byId.push(id);
+      if (backend.failAll) throw new Error('offline');
+      return backend.reviews.find((r) => r.id === id) ?? null;
+    },
+    async getFacultyProfiles(chunk) {
+      calls.profileChunks.push([...chunk]);
+      if (backend.failAll) throw new Error('offline');
+      return chunk
+        .filter((id) => backend.profiles.has(id))
+        .map((id) => ({ initials: id, ...backend.profiles.get(id) }));
+    },
+  };
+  return { backend, calls };
+}
+
+function repoWith(backend, { spyLoads } = {}) {
+  let loads = 0;
+  const repo = createReviewsRepo({
+    config: CONFIG,
+    loadBackend: async () => {
+      loads++;
+      return backend;
+    },
+  });
+  return spyLoads ? { repo, loads: () => loads } : repo;
+}
+
+const review = (id, facultyInitials, courseCode, seq) => ({
+  id,
+  facultyInitials,
+  courseCode,
+  seq,
+  ratings: { teaching: 5, marking: 4, behavior: 5 },
+});
+
+test('fetchByFaculty: newest-first, optional course narrowing, normalized inputs', async () => {
+  const { backend, calls } = fakeBackend([
+    review('r1', 'MRA', 'CSE110', 1),
+    review('r2', 'MRA', 'CSE111', 3),
+    review('r3', 'MRA', 'CSE110', 2),
+    review('r4', 'ZZZ', 'CSE110', 9),
+  ]);
+  const repo = repoWith(backend);
+
+  const all = await repo.fetchByFaculty({ facultyInitials: 'mra' }); // lowercase → normalized
+  assert.deepEqual(all.reviews.map((r) => r.id), ['r2', 'r3', 'r1']);
+  assert.equal(all.nextCursor, null);
+  assert.equal(calls.byFaculty[0].facultyInitials, 'MRA');
+
+  const scoped = await repo.fetchByFaculty({ facultyInitials: 'MRA', courseCode: 'cse110' });
+  assert.deepEqual(scoped.reviews.map((r) => r.id), ['r3', 'r1']);
+  assert.equal(calls.byFaculty[1].courseCode, 'CSE110');
+});
+
+test('fetchByFaculty: paging returns a cursor only on a full page, then walks it', async () => {
+  const reviews = Array.from({ length: 5 }, (_, i) => review(`r${i}`, 'MRA', 'CSE110', i));
+  const { backend } = fakeBackend(reviews);
+  const repo = repoWith(backend);
+
+  const page1 = await repo.fetchByFaculty({ facultyInitials: 'MRA', pageSize: 2 });
+  assert.deepEqual(page1.reviews.map((r) => r.id), ['r4', 'r3']);
+  assert.ok(page1.nextCursor, 'full page yields a cursor');
+
+  const page2 = await repo.fetchByFaculty({ facultyInitials: 'MRA', pageSize: 2, after: page1.nextCursor });
+  assert.deepEqual(page2.reviews.map((r) => r.id), ['r2', 'r1']);
+  assert.ok(page2.nextCursor);
+
+  const page3 = await repo.fetchByFaculty({ facultyInitials: 'MRA', pageSize: 2, after: page2.nextCursor });
+  assert.deepEqual(page3.reviews.map((r) => r.id), ['r0']);
+  assert.equal(page3.nextCursor, null, 'partial page ends paging');
+});
+
+test('fetchByFaculty: over-cap pageSize is limited to 200 and stops paging (legacy quirk)', async () => {
+  const reviews = Array.from({ length: MAX_PAGE_SIZE }, (_, i) => review(`r${i}`, 'MRA', 'CSE110', i));
+  const { backend, calls } = fakeBackend(reviews);
+  const repo = repoWith(backend);
+
+  const page = await repo.fetchByFaculty({ facultyInitials: 'MRA', pageSize: 500 });
+  assert.equal(calls.byFaculty[0].limit, MAX_PAGE_SIZE, 'limit capped at 200');
+  assert.equal(page.reviews.length, MAX_PAGE_SIZE);
+  // 200 docs !== requested 500 → nextCursor null even though more may exist.
+  assert.equal(page.nextCursor, null);
+});
+
+test('fetchByFaculty: empty initials short-circuits without loading the backend', async () => {
+  const { backend, calls } = fakeBackend([review('r1', 'MRA', 'CSE110', 1)]);
+  const { repo, loads } = repoWith(backend, { spyLoads: true });
+  const page = await repo.fetchByFaculty({ facultyInitials: '  ' });
+  assert.deepEqual(page, { reviews: [], nextCursor: null });
+  assert.equal(calls.byFaculty.length, 0);
+  assert.equal(loads(), 0, 'SDK never loads for a no-op');
+});
+
+test('fetchByCourse: uppercases the code, defaults pageSize to the 200 cap', async () => {
+  const { backend, calls } = fakeBackend([
+    review('r1', 'MRA', 'CSE110', 1),
+    review('r2', 'ZZZ', 'CSE110', 2),
+  ]);
+  const repo = repoWith(backend);
+
+  const page = await repo.fetchByCourse('cse110');
+  assert.deepEqual(page.reviews.map((r) => r.id), ['r2', 'r1']);
+  assert.equal(calls.byCourse[0].courseCode, 'CSE110');
+  assert.equal(calls.byCourse[0].limit, MAX_PAGE_SIZE);
+
+  const empty = await repo.fetchByCourse('');
+  assert.deepEqual(empty, { reviews: [], nextCursor: null });
+  assert.equal(calls.byCourse.length, 1, 'empty code short-circuits');
+});
+
+test('fetchById: hit, miss, and non-string guard', async () => {
+  const { backend, calls } = fakeBackend([review('CSE_CSE110_' + 'a'.repeat(64), 'CSE', 'CSE110', 1)]);
+  const repo = repoWith(backend);
+
+  const hit = await repo.fetchById('CSE_CSE110_' + 'a'.repeat(64));
+  assert.equal(hit.id, 'CSE_CSE110_' + 'a'.repeat(64));
+  assert.equal(await repo.fetchById('nope'), null);
+  assert.equal(await repo.fetchById(''), null);
+  assert.equal(await repo.fetchById(undefined), null);
+  assert.equal(calls.byId.length, 2, 'guarded ids never hit the backend');
+});
+
+test('fetchFacultyProfiles: dedupes, uppercases, chunks by 30, merges results', async () => {
+  const profiles = new Map();
+  for (let i = 0; i < 35; i++) profiles.set(`F${i}`, { count: i });
+  const { backend, calls } = fakeBackend([], profiles);
+  const repo = repoWith(backend);
+
+  const initials = [];
+  for (let i = 0; i < 35; i++) initials.push(`f${i}`, `f${i}`); // duplicated + lowercase
+  const out = await repo.fetchFacultyProfiles(initials);
+
+  assert.equal(out.length, 35);
+  assert.deepEqual(calls.profileChunks.map((c) => c.length), [30, 5], 'two chunks: 30 then 5');
+  assert.equal(out[0].initials, 'F0');
+});
+
+test('fetchFacultyProfiles: empty / all-blank input short-circuits', async () => {
+  const { backend, calls } = fakeBackend();
+  const { repo, loads } = repoWith(backend, { spyLoads: true });
+  assert.deepEqual(await repo.fetchFacultyProfiles([]), []);
+  assert.deepEqual(await repo.fetchFacultyProfiles(['', '  ']), []);
+  assert.equal(calls.profileChunks.length, 0);
+  assert.equal(loads(), 0);
+});
+
+test('failed reads degrade to empty results (legacy console.warn + empty parity)', async () => {
+  const { backend } = fakeBackend([review('r1', 'MRA', 'CSE110', 1)]);
+  backend.failAll = true;
+  const repo = repoWith(backend);
+  assert.deepEqual(await repo.fetchByFaculty({ facultyInitials: 'MRA' }), { reviews: [], nextCursor: null });
+  assert.deepEqual(await repo.fetchByCourse('CSE110'), { reviews: [], nextCursor: null });
+  assert.equal(await repo.fetchById('r1'), null);
+  assert.deepEqual(await repo.fetchFacultyProfiles(['MRA']), []);
+});
