@@ -6,15 +6,29 @@
 // Accessibility baked in from the start: a skip link, a labelled nav, and a
 // focusable <main>. This shell is built/served separately from the legacy
 // build3.py page; it owns no live feature behavior yet.
+//
+// Auth (#331): on a cloud-capable shell the AuthProvider runs the Firebase-
+// backed source (built inside the RuntimeConfigProvider from the VALIDATED
+// config; the SDK chunk loads on first subscribe) and the header shows
+// sign-in/out. Rejection and sign-in-failure events surface as the legacy
+// toast copy through the notification system. Offline shells keep the
+// anonymous source and render no auth UI at all.
 
+import { useEffect, useMemo } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
 import { NotificationViewport } from '../NotificationViewport';
-import { AuthProvider } from '../providers/AuthProvider';
+import { AuthProvider, useAuth } from '../providers/AuthProvider';
 import { ModalProvider } from '../providers/ModalProvider';
-import { RuntimeConfigProvider } from '../providers/RuntimeConfigProvider';
+import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
+import { anonymousAuthSource } from '../../platform/auth/authSnapshot';
+import {
+  createFirebaseAuthSource,
+  type FirebaseAuthSource,
+} from '../../platform/auth/firebaseAuthSource';
+import { useNotifications } from '../../state/NotificationProvider';
 
 // Raw runtime config from the window._shohoj_* globals that /runtime-config.js
 // sets before the module entry runs (#329). Read once at module scope — the
@@ -47,16 +61,73 @@ const NAV: readonly NavItem[] = [
   { to: '/admin', label: 'Admin' },
 ];
 
-export function RootLayout() {
+/** Sign-in/out controls (cloud shells only). `source` is null when offline. */
+function AuthControls({ source }: { readonly source: FirebaseAuthSource | null }) {
+  const auth = useAuth();
+  const { notify } = useNotifications();
+
+  // Rejection / sign-in-failure events → the legacy toast copy (sticky error).
+  useEffect(() => {
+    if (!source) return;
+    return source.onEvent((event) => {
+      notify({ kind: 'error', message: event.message });
+    });
+  }, [source, notify]);
+
+  if (!source) return null;
+
+  if (auth.status === 'loading') {
+    return (
+      <span className="shell-auth shell-auth-loading" role="status">
+        Checking sign-in…
+      </span>
+    );
+  }
+  if (auth.status === 'authenticated') {
+    return (
+      <span className="shell-auth">
+        <span className="shell-auth-email" title={auth.email ?? undefined}>
+          {auth.email ?? 'Signed in'}
+        </span>
+        <button type="button" className="shell-auth-btn" onClick={() => void source.signOut()}>
+          Sign out
+        </button>
+      </span>
+    );
+  }
   return (
-    <AppProviders label="App shell">
-      <RuntimeConfigProvider rawConfig={RAW_RUNTIME_CONFIG}>
-        <AuthProvider>
-          <ModalProvider>
-            <a className="shell-skip-link" href="#main-content">
-              Skip to content
-            </a>
-            <header className="shell-header">
+    <span className="shell-auth">
+      <button type="button" className="shell-auth-btn" onClick={() => void source.signIn()}>
+        Sign in
+      </button>
+    </span>
+  );
+}
+
+/** Builds the auth source from the validated config and renders the chrome. */
+function ShellChrome() {
+  const config = useRuntimeConfig();
+
+  // One source per page: the validated config is module-scope stable, so this
+  // memo effectively runs once. Offline (null config) keeps anonymous.
+  const firebaseSource = useMemo(
+    () =>
+      config
+        ? createFirebaseAuthSource({
+            config: config.firebase,
+            recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+          })
+        : null,
+    [config],
+  );
+
+  return (
+    <AuthProvider source={firebaseSource ?? anonymousAuthSource}>
+      <ModalProvider>
+        <a className="shell-skip-link" href="#main-content">
+          Skip to content
+        </a>
+        <header className="shell-header">
           <nav className="shell-nav" aria-label="Primary">
             {NAV.map((item) => (
               <NavLink
@@ -70,14 +141,23 @@ export function RootLayout() {
                 {item.label}
               </NavLink>
             ))}
+            <AuthControls source={firebaseSource} />
           </nav>
         </header>
-            <main id="main-content" className="shell-main" tabIndex={-1}>
-              <Outlet />
-            </main>
-            <NotificationViewport />
-          </ModalProvider>
-        </AuthProvider>
+        <main id="main-content" className="shell-main" tabIndex={-1}>
+          <Outlet />
+        </main>
+        <NotificationViewport />
+      </ModalProvider>
+    </AuthProvider>
+  );
+}
+
+export function RootLayout() {
+  return (
+    <AppProviders label="App shell">
+      <RuntimeConfigProvider rawConfig={RAW_RUNTIME_CONFIG}>
+        <ShellChrome />
       </RuntimeConfigProvider>
     </AppProviders>
   );
