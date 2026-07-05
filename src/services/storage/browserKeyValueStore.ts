@@ -57,3 +57,20 @@ export function createBrowserStore(): KeyValueStore {
   }
   return new MemoryKeyValueStore();
 }
+
+/**
+ * Best-effort sessionStorage store — same guards as {@link createBrowserStore},
+ * for the cloud-sync session flags (shohoj_cloud_applied / skip_first_save,
+ * #333), which the legacy app also keeps in sessionStorage.
+ */
+export function createSessionStore(): KeyValueStore {
+  try {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage !== null) {
+      sessionStorage.getItem('__shohoj_probe__');
+      return new BrowserKeyValueStore(sessionStorage);
+    }
+  } catch {
+    /* fall through to memory */
+  }
+  return new MemoryKeyValueStore();
+}
