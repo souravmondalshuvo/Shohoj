@@ -53,6 +53,7 @@ import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
 import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/reviewSubmit';
+import { useInvalidateFacultyChipScore } from '../../features/calculator/FacultyReviewsProvider';
 import TranscriptImport, {
   type TranscriptImportHandle,
 } from '../../features/calculator/TranscriptImport.tsx';
@@ -86,6 +87,7 @@ export function Component() {
   const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
   const { notify } = useNotifications();
+  const invalidateChipScore = useInvalidateFacultyChipScore();
 
   const loaded = useMemo(() => loadCalculatorState(store), [store]);
   const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
@@ -266,6 +268,8 @@ export function Component() {
               index: rateTarget.index,
               patch: { faculty: nextFac },
             });
+            // Legacy _facultyCourseAggCache.delete: the new review must re-aggregate.
+            invalidateChipScore(nextFac, rateCourseCode);
             // The legacy modal's _shohoj_showToast on ok.
             notify({ kind: 'success', message: 'Review submitted — thank you' });
           }}
