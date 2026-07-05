@@ -1,0 +1,286 @@
+// tests/cloudSyncEngine.test.js — scenario battery for the cloud-sync
+// orchestrator (#333). Every legacy sign-in/save/realtime branch runs against
+// fakes, asserting the exact side effects: which action fired, what got
+// written where, which toast, and whether a reload (applyRemote) happened.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  createCloudSyncEngine,
+  CLOUD_APPLIED_FLAG,
+  SKIP_FIRST_SAVE_FLAG,
+  STORAGE_KEY,
+  LAST_SYNC_KEY,
+  UPLOADED_MESSAGE,
+  MIGRATED_LOCAL_MESSAGE,
+  REMOTE_UPDATE_MESSAGE,
+  SAVE_FAILED_MESSAGE,
+} from '../src/services/cloudSync/cloudSyncEngine.ts';
+
+function memStore(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => map.set(k, String(v)),
+    removeItem: (k) => map.delete(k),
+    _map: map,
+  };
+}
+
+function fakeRepo() {
+  const state = { cloud: null, saved: [], deleted: [], failSave: false };
+  let snapshotHandler = null;
+  return {
+    repo: {
+      load: async () => state.cloud,
+      save: async (_uid, dataJson) => {
+        if (state.failSave) throw new Error('offline write');
+        state.saved.push(dataJson);
+        state.cloud = dataJson;
+      },
+      subscribe: (_uid, onData) => {
+        snapshotHandler = onData;
+        return () => {
+          snapshotHandler = null;
+        };
+      },
+      remove: async (uid) => state.deleted.push(uid),
+    },
+    state,
+    fire: (data, exists = true) => snapshotHandler?.(data, exists),
+    hasListener: () => snapshotHandler !== null,
+  };
+}
+
+function harness({ local = {}, session = {}, cloud = null, online = true, migrationChoice = 'local' } = {}) {
+  const { repo, state, fire, hasListener } = fakeRepo();
+  state.cloud = cloud;
+  const localStore = memStore(local);
+  const sessionStore = memStore(session);
+  const events = { notify: [], applyRemote: 0, prompts: 0 };
+  let clock = 10_000;
+
+  const engine = createCloudSyncEngine({
+    repo,
+    local: localStore,
+    session: sessionStore,
+    promptMigration: async () => {
+      events.prompts += 1;
+      return migrationChoice;
+    },
+    notify: (kind, message) => events.notify.push([kind, message]),
+    applyRemote: () => {
+      events.applyRemote += 1;
+    },
+    isOnline: () => online,
+    now: () => clock,
+    debounceMs: 50,
+    graceMs: 5000,
+    remoteApplyDelayMs: 0,
+  });
+
+  return {
+    engine,
+    state,
+    fire,
+    hasListener,
+    events,
+    localStore,
+    sessionStore,
+    advance: (ms) => {
+      clock += ms;
+    },
+  };
+}
+
+const flush = () => new Promise((r) => setTimeout(r, 0));
+const snap = (semesters, extra = {}) => JSON.stringify({ semesters, ...extra });
+
+// ── Sign-in matrix ────────────────────────────────────────────────────────────
+
+test('neither local nor cloud: marks synced, listens, no upload', async () => {
+  const h = harness();
+  await h.engine.start('u1');
+  assert.equal(h.sessionStore.getItem(CLOUD_APPLIED_FLAG), '1');
+  assert.deepEqual(h.state.saved, []);
+  assert.ok(h.hasListener());
+});
+
+test('cloud only: adopts cloud (writes local, reloads), no listener this page', async () => {
+  const h = harness({ cloud: snap([{ id: 1 }]) });
+  await h.engine.start('u1');
+  assert.equal(h.localStore.getItem(STORAGE_KEY), JSON.stringify(JSON.parse(snap([{ id: 1 }]))));
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), '1');
+  assert.equal(h.events.applyRemote, 1);
+  assert.equal(h.hasListener(), false);
+});
+
+test('local only: uploads immediately with the ✓ toast, keeps local, listens', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([{ id: 1 }]) } });
+  await h.engine.start('u1');
+  assert.deepEqual(h.state.saved, [JSON.stringify(JSON.parse(snap([{ id: 1 }])))]);
+  assert.deepEqual(h.events.notify, [['success', UPLOADED_MESSAGE]]);
+  assert.equal(h.sessionStore.getItem(CLOUD_APPLIED_FLAG), '1');
+  assert.ok(h.hasListener());
+  assert.equal(h.events.applyRemote, 0);
+});
+
+test('both + identical data: marks synced-equal, does NOT arm skip-first-save', async () => {
+  const same = snap([{ id: 1 }], { currentDept: 'CSE' });
+  const h = harness({ local: { [STORAGE_KEY]: same }, cloud: same });
+  await h.engine.start('u1');
+  assert.equal(h.events.prompts, 0);
+  assert.equal(h.sessionStore.getItem(CLOUD_APPLIED_FLAG), '1');
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), null); // the load-bearing distinction
+  assert.ok(h.hasListener());
+});
+
+test('both + cloud-applied flag set: arms skip-echo, no prompt', async () => {
+  const h = harness({
+    local: { [STORAGE_KEY]: snap([{ id: 1 }]) },
+    cloud: snap([{ id: 2 }]),
+    session: { [CLOUD_APPLIED_FLAG]: '1' },
+  });
+  await h.engine.start('u1');
+  assert.equal(h.events.prompts, 0);
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), '1');
+  assert.ok(h.hasListener());
+});
+
+test('both + local has zero semesters: adopts cloud without prompting', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([]) }, cloud: snap([{ id: 9 }]) });
+  await h.engine.start('u1');
+  assert.equal(h.events.prompts, 0);
+  assert.equal(h.events.applyRemote, 1);
+});
+
+test('both differ → migration modal → keep local uploads with its toast', async () => {
+  const h = harness({
+    local: { [STORAGE_KEY]: snap([{ id: 1 }]) },
+    cloud: snap([{ id: 2 }, { id: 3 }]),
+    migrationChoice: 'local',
+  });
+  await h.engine.start('u1');
+  assert.equal(h.events.prompts, 1);
+  assert.deepEqual(h.state.saved, [JSON.stringify(JSON.parse(snap([{ id: 1 }])))]);
+  assert.deepEqual(h.events.notify, [['success', MIGRATED_LOCAL_MESSAGE]]);
+  assert.equal(h.events.applyRemote, 0);
+  assert.ok(h.hasListener());
+});
+
+test('both differ → migration modal → keep cloud adopts and reloads', async () => {
+  const h = harness({
+    local: { [STORAGE_KEY]: snap([{ id: 1 }]) },
+    cloud: snap([{ id: 2 }]),
+    migrationChoice: 'cloud',
+  });
+  await h.engine.start('u1');
+  assert.equal(h.events.prompts, 1);
+  assert.equal(h.events.applyRemote, 1);
+  assert.equal(h.hasListener(), false); // reloading
+});
+
+// ── Debounced save + echo skip ────────────────────────────────────────────────
+
+test('queueSave debounces and persists the latest snapshot', async () => {
+  const h = harness();
+  await h.engine.start('u1'); // signed in
+  h.engine.queueSave(snap([{ id: 1 }]));
+  h.engine.queueSave(snap([{ id: 1 }, { id: 2 }]));
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, [snap([{ id: 1 }, { id: 2 }])]); // last wins, one write
+  assert.ok(h.localStore.getItem(LAST_SYNC_KEY));
+});
+
+test('queueSave consumes skip-first-save exactly once (echo of an applied cloud)', async () => {
+  const h = harness({ session: { [SKIP_FIRST_SAVE_FLAG]: '1' } });
+  await h.engine.start('u1');
+  h.engine.queueSave(snap([{ id: 1 }])); // the echo-back — skipped
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, []);
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), null);
+  // The next save goes through.
+  h.engine.queueSave(snap([{ id: 2 }]));
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, [snap([{ id: 2 }])]);
+});
+
+test('queueSave is a no-op while signed out', async () => {
+  const h = harness();
+  h.engine.queueSave(snap([{ id: 1 }])); // never started
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, []);
+});
+
+test('offline save is deferred (data stays local), reported', async () => {
+  const h = harness({ online: false });
+  await h.engine.start('u1');
+  const ok = await h.engine.saveNow(snap([{ id: 1 }]));
+  assert.equal(ok, false);
+  assert.deepEqual(h.state.saved, []);
+});
+
+test('a failed cloud write resets the guard and toasts the fallback copy', async () => {
+  const h = harness();
+  await h.engine.start('u1');
+  h.state.failSave = true;
+  const ok = await h.engine.saveNow(snap([{ id: 1 }]));
+  assert.equal(ok, false);
+  assert.deepEqual(h.events.notify, [['error', SAVE_FAILED_MESSAGE]]);
+});
+
+// ── Realtime snapshots ────────────────────────────────────────────────────────
+
+test('realtime: first snapshot ignored; a genuine other-device update applies + reloads', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([{ id: 1 }]) } });
+  await h.engine.start('u1'); // local-only upload → listens
+  await flush();
+
+  h.fire(snap([{ id: 1 }])); // first snapshot — always ignored
+  assert.equal(h.events.applyRemote, 0);
+
+  h.advance(6000); // past the own-write grace window
+  h.fire(snap([{ id: 1 }, { id: 2 }])); // real change from another device
+  await flush();
+  assert.equal(h.localStore.getItem(STORAGE_KEY), snap([{ id: 1 }, { id: 2 }]));
+  assert.deepEqual(h.events.notify.at(-1), ['info', REMOTE_UPDATE_MESSAGE]);
+  assert.equal(h.events.applyRemote, 1);
+});
+
+test('realtime: own-write grace, pending save, and identical data are all ignored', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([{ id: 1 }]) } });
+  await h.engine.start('u1');
+  await flush();
+  h.fire(snap([{ id: 1 }])); // consume the first-snapshot skip
+
+  // Within the grace window after our upload → ignored.
+  h.fire(snap([{ id: 9 }]));
+  assert.equal(h.events.applyRemote, 0);
+
+  // Past grace but a local save is queued → ignored (don't clobber local).
+  h.advance(6000);
+  h.engine.queueSave(snap([{ id: 5 }]));
+  h.fire(snap([{ id: 9 }]));
+  assert.equal(h.events.applyRemote, 0);
+  await new Promise((r) => setTimeout(r, 60)); // let the queued save flush
+
+  // Identical fingerprint → ignored.
+  h.advance(6000);
+  h.fire(h.localStore.getItem(STORAGE_KEY));
+  assert.equal(h.events.applyRemote, 0);
+});
+
+// ── Sign-out cleanup ──────────────────────────────────────────────────────────
+
+test('stop() detaches the listener, clears queued saves and the applied flag', async () => {
+  const h = harness({ session: { [CLOUD_APPLIED_FLAG]: '1' } });
+  await h.engine.start('u1');
+  await flush();
+  h.engine.queueSave(snap([{ id: 1 }]));
+  h.engine.stop();
+  assert.equal(h.hasListener(), false);
+  assert.equal(h.sessionStore.getItem(CLOUD_APPLIED_FLAG), null);
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, []); // the queued save was cancelled
+});
