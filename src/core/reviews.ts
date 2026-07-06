@@ -62,6 +62,48 @@ export function isValidReviewId(reviewId: unknown): boolean {
   return REVIEW_ID_RE.test(String(reviewId ?? '').trim());
 }
 
+/** SHA-256 → lowercase hex (js/core/reviews.js sha256Hex parity). */
+export async function sha256Hex(input: unknown): Promise<string> {
+  const data = new TextEncoder().encode(String(input ?? ''));
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Salted per-(user, faculty, course) hash — the doc-id suffix. Mirrors
+ * js/core/reviews.js reviewKeyHash byte-for-byte: `anon` uid fallback,
+ * normalized initials, and the code uppercased (NOT trimmed) inside the salt.
+ */
+export async function reviewKeyHash(
+  uid: unknown,
+  facultyInitials: unknown,
+  courseCode: unknown,
+): Promise<string> {
+  return sha256Hex(
+    `${uid || 'anon'}|${normalizeInitials(facultyInitials)}|${String(courseCode || '').toUpperCase()}`,
+  );
+}
+
+/**
+ * The canonical review doc id `${INITIALS}_${COURSE}_${hash}` a client probes
+ * with (the doc-id half of js/core/reviews.js buildReviewDoc). Segments use the
+ * normalized initials + course code the worker writes; the hash mirrors
+ * reviewKeyHash exactly, so this matches the server-authored id for clean input.
+ */
+export async function buildReviewDocId(
+  uid: unknown,
+  facultyInitials: unknown,
+  courseCode: unknown,
+): Promise<string> {
+  const initials = normalizeInitials(facultyInitials);
+  const code = normalizeCourseCode(courseCode);
+  // buildReviewDoc hashes the *normalized* values, not the raw args.
+  const hash = await reviewKeyHash(uid, initials, code);
+  return `${initials}_${code}_${hash}`;
+}
+
 export function buildReviewReportId(reviewId: unknown, uid: unknown): string {
   const safeReviewId = String(reviewId ?? '').trim();
   const safeUid = String(uid ?? '').trim();
