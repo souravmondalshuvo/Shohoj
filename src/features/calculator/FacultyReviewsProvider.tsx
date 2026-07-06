@@ -45,6 +45,8 @@ interface FacultyReviewsApi {
   fetchReviewById(id: string): Promise<ReviewDoc | null>;
   /** All reviews for a course (the course-reviews viewer); empty when no repo. */
   fetchReviewsByCourse(courseCode: string): Promise<ReviewDoc[]>;
+  /** The recent-reviews feed (the Browse Reviews directory); empty when no repo. */
+  fetchRecentReviews(limit?: number): Promise<ReviewDoc[]>;
 }
 
 const FacultyReviewsContext = createContext<FacultyReviewsApi | null>(null);
@@ -144,11 +146,19 @@ export function FacultyReviewsProvider({ repo, children }: FacultyReviewsProvide
     [resolvedRepo],
   );
 
+  const fetchRecentReviews = useCallback(
+    async (limit?: number): Promise<ReviewDoc[]> => {
+      if (!resolvedRepo) return [];
+      return resolvedRepo.fetchRecent(limit);
+    },
+    [resolvedRepo],
+  );
+
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse }),
-    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, version],
+    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews }),
+    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, version],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -182,4 +192,10 @@ export function useFetchReviewById(): (id: string) => Promise<ReviewDoc | null> 
 export function useFetchReviewsByCourse(): (courseCode: string) => Promise<ReviewDoc[]> {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback((code: string) => ctx?.fetchReviewsByCourse(code) ?? Promise.resolve([]), [ctx]);
+}
+
+/** Fetch the recent-reviews feed through the resolved repo (the Browse directory). */
+export function useFetchRecentReviews(): (limit?: number) => Promise<ReviewDoc[]> {
+  const ctx = useContext(FacultyReviewsContext);
+  return useCallback((limit) => ctx?.fetchRecentReviews(limit) ?? Promise.resolve([]), [ctx]);
 }
