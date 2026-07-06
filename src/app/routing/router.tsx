@@ -23,7 +23,6 @@ const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['routine', 'Routine'],
   ['rooms', 'Free rooms'],
   ['seats', 'Seat status'],
-  ['reviews', 'Reviews'],
   ['papers', 'Past papers'],
   ['groups', 'Study groups'],
   ['feedback', 'Feedback'],
@@ -39,6 +38,7 @@ export const router = createBrowserRouter([
       { index: true, lazy: () => import('../routes/HomeRoute') },
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
       { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
+      { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
