@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
-import type { RatingKey } from '../../core/reviews';
+import type { RatingKey, ReviewLike } from '../../core/reviews';
 import {
   RATING_FIELDS,
   REVIEW_TEXT_MAX,
@@ -43,6 +43,12 @@ export interface RateFacultyModalProps {
   readonly onSubmitted: (payload: ReviewPayload) => void;
   /** Close without submitting (Skip, ×, Escape, backdrop). */
   readonly onClose: () => void;
+  /**
+   * The existing-review probe (reviewProbe.ts). When omitted the form shows
+   * immediately (signed-out standalone); when present, an existing review
+   * renders read-only instead of the form (reviews are client-immutable).
+   */
+  readonly probe?: () => Promise<ReviewLike | null>;
 }
 
 const FOCUSABLE =
@@ -89,11 +95,30 @@ export default function RateFacultyModal({
   onSubmit,
   onSubmitted,
   onClose,
+  probe,
 }: RateFacultyModalProps) {
   const [draft, setDraft] = useState(() => emptyReviewDraft(prefillInitials));
   const [error, setError] = useState<string | null>(null);
   const [initialsError, setInitialsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // undefined = probing, null = none (show form), review = show read-only.
+  const [existing, setExisting] = useState<ReviewLike | null | undefined>(probe ? undefined : null);
+
+  // Probe once when the modal opens. `probe` is recreated each parent render, so
+  // read it through a ref and run on mount only (not on every identity change).
+  const probeRef = useRef(probe);
+  probeRef.current = probe;
+  useEffect(() => {
+    const run = probeRef.current;
+    if (!run) return;
+    let live = true;
+    void run().then((review) => {
+      if (live) setExisting(review ?? null);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const initialsRef = useRef<HTMLInputElement>(null);
@@ -172,10 +197,12 @@ export default function RateFacultyModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="rv-modal-title" className="shell-modal-title">
-          Rate your faculty
+          {existing ? 'Review already submitted' : 'Rate your faculty'}
         </h2>
         <p className="shell-modal-message rv-subtitle">
-          Pseudonymous to other students.
+          {existing
+            ? 'You already used your one public review slot for this faculty-course pair. To preserve review integrity, client-side editing is disabled.'
+            : 'Pseudonymous to other students.'}
           {courseCode && (
             <>
               <br />
@@ -185,6 +212,37 @@ export default function RateFacultyModal({
           )}
         </p>
 
+        {existing === undefined ? (
+          <p className="rv-probing" role="status">
+            Checking your reviews…
+          </p>
+        ) : existing ? (
+          <>
+            <div className="rv-existing" data-testid="existing-review">
+              <div className="rv-existing-heading">Existing Review</div>
+              <div className="rv-existing-ratings">
+                {RATING_FIELDS.map((field) => (
+                  <div key={field.key} className="rv-existing-row">
+                    <span className="rv-existing-label">{field.label}</span>
+                    <span className="rv-existing-value">{existing.ratings?.[field.key] ?? '—'}/5</span>
+                  </div>
+                ))}
+              </div>
+              {existing.text && (
+                <div className="rv-existing-note">
+                  <div className="rv-existing-heading">Your Note</div>
+                  <div className="rv-existing-text">{existing.text}</div>
+                </div>
+              )}
+            </div>
+            <div className="shell-modal-actions">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
         <div className="rv-field">
           <label className="rv-field-label" htmlFor="rv-initials">
             Faculty Initials
@@ -249,6 +307,8 @@ export default function RateFacultyModal({
             {submitting ? 'Submitting…' : 'Submit Review'}
           </Button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
