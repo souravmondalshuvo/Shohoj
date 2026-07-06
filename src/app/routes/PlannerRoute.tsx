@@ -14,9 +14,10 @@
 // and promote-to-running (validation-gated, confirm before replacing an
 // existing running semester, then navigate to /calculator).
 //
-// Deferred (documented): the ⭐ faculty-review buttons and "Browse Reviews"
-// (Firestore-read features — they arrive with the reviews/Firebase slice) and
-// the nav plan-count badge (shell chrome polish).
+// The ⭐ faculty-review button opens the read-only course-reviews viewer
+// (CourseReviewsModal, #343) over the typed read repo. Deferred (documented):
+// the "Browse Reviews" /reviews route (d3c-ii) and the nav plan-count badge
+// (shell chrome polish).
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -40,6 +41,7 @@ import {
   persistCalculatorState,
 } from '../../features/calculator/calculatorState.ts';
 import { deptSeasonsFor } from '../../features/calculator/departments.ts';
+import CourseReviewsModal from '../../features/calculator/CourseReviewsModal.tsx';
 import { getPlannerTotals } from '../../features/calculator/plannerTotals.ts';
 import { nextRunningSemesterName } from '../../features/calculator/semesterNaming.ts';
 import { useConfirm } from '../providers/ModalProvider';
@@ -89,6 +91,8 @@ export function Component() {
   const [filterMode, setFilterMode] = useState<PlannerFilterMode>('all');
   const [assumedGrade, setAssumedGrade] = useState<(typeof IMPACT_GRADES)[number]>('A');
   const [viewingPrereqs, setViewingPrereqs] = useState('');
+  // The course whose reviews modal is open (null = closed).
+  const [reviewingCourse, setReviewingCourse] = useState<{ code: string; name: string } | null>(null);
 
   const retakenKeys = useMemo(
     () =>
@@ -287,6 +291,14 @@ export function Component() {
                 <span className="pl-credits">{c.credits} cr</span>
                 <button
                   type="button"
+                  className="pl-icon-btn pl-reviews"
+                  title="See faculty reviews for this course"
+                  onClick={() => setReviewingCourse({ code: c.code, name: c.name })}
+                >
+                  ⭐
+                </button>
+                <button
+                  type="button"
                   className="pl-icon-btn"
                   title="View prerequisites"
                   onClick={() => setViewingPrereqs(viewingPrereqs === code ? '' : code)}
@@ -460,6 +472,14 @@ export function Component() {
             <span className="pl-credits">{c.credits} cr</span>
             <button
               type="button"
+              className="pl-icon-btn pl-reviews"
+              title="See faculty reviews for this course"
+              onClick={() => setReviewingCourse({ code: c.code, name: c.name })}
+            >
+              ⭐
+            </button>
+            <button
+              type="button"
               className="pl-icon-btn"
               title="View prerequisites"
               onClick={() => setViewingPrereqs(viewingPrereqs === c.code ? '' : c.code)}
@@ -490,6 +510,14 @@ export function Component() {
         Prerequisite data covers {prereqCoverage} courses across CSE, EEE, ECE, MAT, PHY, BBA, ECO,
         and ENG departments.
       </p>
+
+      {reviewingCourse && (
+        <CourseReviewsModal
+          courseCode={reviewingCourse.code}
+          courseName={reviewingCourse.name}
+          onClose={() => setReviewingCourse(null)}
+        />
+      )}
     </section>
   );
 }
