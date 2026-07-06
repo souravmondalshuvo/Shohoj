@@ -53,7 +53,12 @@ import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
 import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/reviewSubmit';
-import { useInvalidateFacultyChipScore } from '../../features/calculator/FacultyReviewsProvider';
+import { probeExistingReview } from '../../features/calculator/reviewProbe';
+import {
+  useFetchReviewById,
+  useInvalidateFacultyChipScore,
+} from '../../features/calculator/FacultyReviewsProvider';
+import { useAuth } from '../providers/AuthProvider';
 import TranscriptImport, {
   type TranscriptImportHandle,
 } from '../../features/calculator/TranscriptImport.tsx';
@@ -88,6 +93,18 @@ export function Component() {
   const confirm = useConfirm();
   const { notify } = useNotifications();
   const invalidateChipScore = useInvalidateFacultyChipScore();
+  const fetchReviewById = useFetchReviewById();
+  const auth = useAuth();
+  // The existing-review probe env: uid from the shell auth, falling back to the
+  // legacy window hook (also the e2e seam); fetch through the resolved repo.
+  const probeEnv = useMemo(
+    () => ({
+      currentUid: () =>
+        auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '',
+      fetchById: fetchReviewById,
+    }),
+    [auth.uid, fetchReviewById],
+  );
 
   const loaded = useMemo(() => loadCalculatorState(store), [store]);
   const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
@@ -258,6 +275,7 @@ export function Component() {
           courseCode={rateCourseCode}
           semester={rateSem?.name ?? ''}
           prefillInitials={rateCourse.faculty ?? ''}
+          probe={() => probeExistingReview(rateCourse.faculty ?? '', rateCourseCode, probeEnv)}
           onSubmit={(payload) => submitReview(payload, windowReviewSubmitEnv(isKnownCourseCode))}
           onSubmitted={(payload) => {
             const nextFac = normalizeInitials(payload.facultyInitials);
