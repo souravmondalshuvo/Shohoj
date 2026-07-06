@@ -44,6 +44,9 @@ const EMPTY_PAGE: ReviewPage = { reviews: [], nextCursor: null };
 /** Firestore's hard cap for a single reviews page (legacy Math.min(_, 200)). */
 export const MAX_PAGE_SIZE = 200;
 
+/** Cap for the recent-reviews feed (legacy Math.min(_, 1000)). */
+export const MAX_RECENT = 1000;
+
 /** The Firestore surface the repo needs (real SDK or a test fake). */
 export interface ReviewsBackend {
   /** where(facultyInitials ==) [+ where(courseCode ==)] orderBy createdAt desc. */
@@ -61,6 +64,8 @@ export interface ReviewsBackend {
   }): Promise<{ docs: ReviewDoc[]; last: ReviewCursor | null }>;
   /** A single facultyReviews doc by id, or null when absent. */
   getById(id: string): Promise<ReviewDoc | null>;
+  /** orderBy createdAt desc, limited — the recent-reviews feed. */
+  queryRecent(limit: number): Promise<ReviewDoc[]>;
   /** facultyProfiles for up to 30 ids via a single `in` query. */
   getFacultyProfiles(idsChunk: readonly string[]): Promise<FacultyProfileDoc[]>;
 }
@@ -80,6 +85,8 @@ export interface ReviewsRepo {
   ): Promise<ReviewPage>;
   /** The existing-review probe: a single review doc by canonical id, or null. */
   fetchById(id: string): Promise<ReviewDoc | null>;
+  /** The most recent reviews across all faculty (the directory feed). */
+  fetchRecent(limit?: number): Promise<ReviewDoc[]>;
   /** Faculty profile docs for the given initials (deduped, 30-id chunked). */
   fetchFacultyProfiles(initials: readonly string[]): Promise<FacultyProfileDoc[]>;
 }
@@ -138,6 +145,10 @@ async function defaultBackend(
     async getById(id) {
       const snap = await getDoc(doc(db, 'facultyReviews', id));
       return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    },
+    async queryRecent(limit) {
+      const snap = await getDocs(query(reviews, orderBy('createdAt', 'desc'), qLimit(limit)));
+      return snap.docs.map(toDoc);
     },
     async getFacultyProfiles(idsChunk) {
       const snap = await getDocs(
@@ -207,6 +218,15 @@ export function createReviewsRepo(options: ReviewsRepoOptions): ReviewsRepo {
         return await (await load()).getById(id);
       } catch {
         return null;
+      }
+    },
+
+    async fetchRecent(limit = 200) {
+      try {
+        // Legacy _shohoj_fetchRecentReviews cap: Math.min(n, 1000).
+        return await (await load()).queryRecent(Math.min(Math.max(limit, 0), MAX_RECENT));
+      } catch {
+        return [];
       }
     },
 
