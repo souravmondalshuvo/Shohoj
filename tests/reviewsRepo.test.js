@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createReviewsRepo, MAX_PAGE_SIZE } from '../src/platform/firebase/reviewsRepo.ts';
+import { createReviewsRepo, MAX_PAGE_SIZE, MAX_RECENT } from '../src/platform/firebase/reviewsRepo.ts';
 
 const CONFIG = { apiKey: 'k', authDomain: 'a', projectId: 'p', storageBucket: 'b', messagingSenderId: 'm', appId: 'i' };
 
@@ -14,7 +14,7 @@ const CONFIG = { apiKey: 'k', authDomain: 'a', projectId: 'p', storageBucket: 'b
 // standing in for createdAt (desc). The cursor round-tripped as `after` is the
 // last returned doc; the fake finds its position by id to emulate startAfter.
 function fakeBackend(reviews = [], profiles = new Map()) {
-  const calls = { byFaculty: [], byCourse: [], byId: [], profileChunks: [] };
+  const calls = { byFaculty: [], byCourse: [], byId: [], recent: [], profileChunks: [] };
   const sortedDesc = (list) => [...list].sort((a, b) => b.seq - a.seq);
   const sliceAfter = (list, after, limit) => {
     let start = 0;
@@ -51,6 +51,11 @@ function fakeBackend(reviews = [], profiles = new Map()) {
       calls.byId.push(id);
       if (backend.failAll) throw new Error('offline');
       return backend.reviews.find((r) => r.id === id) ?? null;
+    },
+    async queryRecent(limit) {
+      calls.recent.push(limit);
+      if (backend.failAll) throw new Error('offline');
+      return sortedDesc(backend.reviews).slice(0, limit);
     },
     async getFacultyProfiles(chunk) {
       calls.profileChunks.push([...chunk]);
@@ -201,5 +206,22 @@ test('failed reads degrade to empty results (legacy console.warn + empty parity)
   assert.deepEqual(await repo.fetchByFaculty({ facultyInitials: 'MRA' }), { reviews: [], nextCursor: null });
   assert.deepEqual(await repo.fetchByCourse('CSE110'), { reviews: [], nextCursor: null });
   assert.equal(await repo.fetchById('r1'), null);
+  assert.deepEqual(await repo.fetchRecent(), []);
   assert.deepEqual(await repo.fetchFacultyProfiles(['MRA']), []);
+});
+
+test('fetchRecent: newest-first, default limit, and the 1000 cap', async () => {
+  const reviews = Array.from({ length: 6 }, (_, i) => review(`r${i}`, 'MRA', 'CSE110', i));
+  const { backend, calls } = fakeBackend(reviews);
+  const repo = repoWith(backend);
+
+  const recent = await repo.fetchRecent();
+  assert.deepEqual(recent.map((r) => r.id), ['r5', 'r4', 'r3', 'r2', 'r1', 'r0']);
+  assert.equal(calls.recent[0], 200, 'default limit 200');
+
+  await repo.fetchRecent(50);
+  assert.equal(calls.recent[1], 50);
+
+  await repo.fetchRecent(5000);
+  assert.equal(calls.recent[2], MAX_RECENT, 'capped at 1000');
 });
