@@ -43,6 +43,8 @@ interface FacultyReviewsApi {
   invalidate(initials: string, courseCode: string): void;
   /** Fetch a review doc by canonical id (the existing-review probe); null when no repo. */
   fetchReviewById(id: string): Promise<ReviewDoc | null>;
+  /** All reviews for a course (the course-reviews viewer); empty when no repo. */
+  fetchReviewsByCourse(courseCode: string): Promise<ReviewDoc[]>;
 }
 
 const FacultyReviewsContext = createContext<FacultyReviewsApi | null>(null);
@@ -133,11 +135,20 @@ export function FacultyReviewsProvider({ repo, children }: FacultyReviewsProvide
     [resolvedRepo],
   );
 
+  const fetchReviewsByCourse = useCallback(
+    async (courseCode: string): Promise<ReviewDoc[]> => {
+      if (!resolvedRepo) return [];
+      const { reviews } = await resolvedRepo.fetchByCourse(courseCode);
+      return [...reviews];
+    },
+    [resolvedRepo],
+  );
+
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate, fetchReviewById }),
-    [request, labelFor, invalidate, fetchReviewById, version],
+    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse }),
+    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, version],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -165,4 +176,10 @@ export function useInvalidateFacultyChipScore(): (initials: string, courseCode: 
 export function useFetchReviewById(): (id: string) => Promise<ReviewDoc | null> {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback((id: string) => ctx?.fetchReviewById(id) ?? Promise.resolve(null), [ctx]);
+}
+
+/** Fetch a course's reviews through the resolved repo (the course-reviews viewer). */
+export function useFetchReviewsByCourse(): (courseCode: string) => Promise<ReviewDoc[]> {
+  const ctx = useContext(FacultyReviewsContext);
+  return useCallback((code: string) => ctx?.fetchReviewsByCourse(code) ?? Promise.resolve([]), [ctx]);
 }
