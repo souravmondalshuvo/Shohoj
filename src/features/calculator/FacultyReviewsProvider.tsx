@@ -27,7 +27,7 @@ import {
 } from 'react';
 
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews';
-import { createReviewsRepo, type ReviewsRepo } from '../../platform/firebase/reviewsRepo';
+import { createReviewsRepo, type ReviewDoc, type ReviewsRepo } from '../../platform/firebase/reviewsRepo';
 import { useRuntimeConfig } from '../../app/providers/RuntimeConfigProvider';
 import { CHIP_PLACEHOLDER, chipScoreLabel, computeChipAggregate } from './facultyChipScore';
 
@@ -41,6 +41,8 @@ interface FacultyReviewsApi {
   labelFor(initials: string, courseCode: string): string;
   /** Drop a pair's cache so the next request refetches (after a submit). */
   invalidate(initials: string, courseCode: string): void;
+  /** Fetch a review doc by canonical id (the existing-review probe); null when no repo. */
+  fetchReviewById(id: string): Promise<ReviewDoc | null>;
 }
 
 const FacultyReviewsContext = createContext<FacultyReviewsApi | null>(null);
@@ -123,11 +125,19 @@ export function FacultyReviewsProvider({ repo, children }: FacultyReviewsProvide
     bump((n) => n + 1);
   }, []);
 
+  const fetchReviewById = useCallback(
+    async (id: string): Promise<ReviewDoc | null> => {
+      if (!resolvedRepo) return null;
+      return resolvedRepo.fetchById(id);
+    },
+    [resolvedRepo],
+  );
+
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate }),
-    [request, labelFor, invalidate, version],
+    () => ({ request, labelFor, invalidate, fetchReviewById }),
+    [request, labelFor, invalidate, fetchReviewById, version],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -149,4 +159,10 @@ export function useFacultyChipScore(initials: string, courseCode: string): strin
 export function useInvalidateFacultyChipScore(): (initials: string, courseCode: string) => void {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback((initials: string, courseCode: string) => ctx?.invalidate(initials, courseCode), [ctx]);
+}
+
+/** Fetch a review by canonical id through the resolved repo (the modal probe). */
+export function useFetchReviewById(): (id: string) => Promise<ReviewDoc | null> {
+  const ctx = useContext(FacultyReviewsContext);
+  return useCallback((id: string) => ctx?.fetchReviewById(id) ?? Promise.resolve(null), [ctx]);
 }
