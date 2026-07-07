@@ -11,8 +11,10 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { useNotifications } from '../../state/NotificationProvider';
 import { buildCourseReviewGroups, type CourseReviewGroup } from './courseReviews';
 import { useFetchReviewsByCourse } from './FacultyReviewsProvider';
+import ReportReviewModal from './ReportReviewModal';
 
 export interface CourseReviewsModalProps {
   readonly courseCode: string;
@@ -30,7 +32,13 @@ const DIMENSIONS: readonly { readonly key: 'teaching' | 'marking' | 'behavior' |
 
 const fmt = (value: number | null) => (value !== null ? value.toFixed(1) : '—');
 
-function FacultyCard({ group }: { readonly group: CourseReviewGroup }) {
+function FacultyCard({
+  group,
+  onReport,
+}: {
+  readonly group: CourseReviewGroup;
+  readonly onReport: (reviewId: string) => void;
+}) {
   return (
     <div className="rv-cr-card" data-testid="course-review-card" data-fac={group.facultyInitials}>
       <div className="rv-cr-card-head">
@@ -51,9 +59,20 @@ function FacultyCard({ group }: { readonly group: CourseReviewGroup }) {
       </div>
       {group.snippets.length > 0 && (
         <div className="rv-cr-snippets">
-          {group.snippets.map((text, i) => (
-            <p key={i} className="rv-cr-snippet">
-              {text}
+          {group.snippets.map((snippet, i) => (
+            <p key={snippet.id ?? i} className="rv-cr-snippet">
+              {snippet.text}
+              {snippet.id && (
+                <button
+                  type="button"
+                  className="rv-cr-report"
+                  data-report={snippet.id}
+                  aria-label="Report this review"
+                  onClick={() => onReport(snippet.id as string)}
+                >
+                  Report
+                </button>
+              )}
             </p>
           ))}
         </div>
@@ -64,8 +83,11 @@ function FacultyCard({ group }: { readonly group: CourseReviewGroup }) {
 
 export default function CourseReviewsModal({ courseCode, courseName, onClose }: CourseReviewsModalProps) {
   const fetchByCourse = useFetchReviewsByCourse();
+  const { notify } = useNotifications();
   // undefined = loading; [] = none; groups = cards.
   const [groups, setGroups] = useState<CourseReviewGroup[] | undefined>(undefined);
+  // The review id the Report dialog is open for (null = closed).
+  const [reportReviewId, setReportReviewId] = useState<string | null>(null);
 
   // Fetch once on open. fetchByCourse is recreated on provider bumps, so read it
   // through a ref and key the effect on the (stable) course code.
@@ -87,6 +109,7 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
   }, [courseCode]);
 
   return (
+    <>
     <div
       className="shell-modal-backdrop"
       onClick={onClose}
@@ -124,7 +147,7 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
         ) : (
           <div className="rv-cr-list">
             {groups.map((group) => (
-              <FacultyCard key={group.facultyInitials} group={group} />
+              <FacultyCard key={group.facultyInitials} group={group} onReport={setReportReviewId} />
             ))}
           </div>
         )}
@@ -136,5 +159,14 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
         </div>
       </div>
     </div>
+
+    {reportReviewId && (
+      <ReportReviewModal
+        reviewId={reportReviewId}
+        onReported={() => notify({ kind: 'success', message: 'Report submitted — thanks' })}
+        onClose={() => setReportReviewId(null)}
+      />
+    )}
+    </>
   );
 }
