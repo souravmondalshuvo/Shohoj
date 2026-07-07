@@ -19,7 +19,7 @@ export function NotificationViewport() {
   const { items, dismiss } = useNotifications();
 
   return (
-    <div className="shell-toast-viewport" aria-label="Notifications">
+    <div className="shell-toast-viewport" role="region" aria-label="Notifications">
       {items.map((notification) => (
         <div
           key={notification.id}
