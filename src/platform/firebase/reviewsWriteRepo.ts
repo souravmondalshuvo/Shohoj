@@ -1,22 +1,25 @@
 // src/platform/firebase/reviewsWriteRepo.ts
 //
-// Typed submit relay for faculty reviews (Phase 5G/6, #347). The write
-// counterpart of the read repo (reviewsRepo.ts, #335): where reads hit Firestore
-// directly, a create is *denied* to clients by the Firestore rules, so the only
-// path is the Cloudflare Worker (`POST /reviews`, worker/index.js handleReview),
-// which mints the deterministic doc id server-side and writes with a service
-// account. This module is therefore a plain HTTP relay, not a Firestore backend:
-// it POSTs the review with the caller's Firebase ID token and maps the worker's
-// status codes to a typed result.
+// Typed write path for faculty reviews (Phase 5G/6). The write counterpart of
+// the read repo (reviewsRepo.ts, #335), holding the two client writes:
 //
-// Parity target: js/auth/firebase.js window._shohoj_submitReview — same request
-// body (facultyInitials/courseCode/semester/text/ratings), the same 409
-// "already reviewed" message, `.error` extraction on other failures, and the
-// `{ ok, id }` success shape. The workerUrl (config.papersWorkerUrl) and the
-// token getter are injected; the provider wiring (a later slice) supplies the
-// live values and `fetch` is injectable so the relay is unit-testable offline.
+//  - submitReviewRelay (#347): a *review create* is denied to clients by the
+//    Firestore rules, so it goes through the Cloudflare Worker (`POST /reviews`,
+//    worker/index.js handleReview), which mints the deterministic doc id
+//    server-side and writes with a service account. A plain HTTP relay.
+//  - createReviewReportRepo (#359): a *report* is a client-allowed write to the
+//    separate `reviewReports` collection, so it's a direct Firestore setDoc at
+//    the deterministic id (buildReviewReportId), lazy-loading the SDK like the
+//    read repo.
+//
+// Parity: js/auth/firebase.js window._shohoj_submitReview (relay body, 409
+// "already reviewed", `.error` extraction, `{ ok, id }`) and _shohoj_reportReview
+// + js/core/reviews.js reportReview (uid/id/reason validation, the
+// permission-denied message). Config, token getter, fetch, and the Firestore
+// backend are injected so both writes are unit-testable offline.
 
-import type { ReviewRatings } from '../../core/reviews.ts';
+import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
+import { buildReviewReportId, isValidReviewId, type ReviewRatings } from '../../core/reviews.ts';
 
 /** The review body posted to the worker (legacy _shohoj_submitReview payload). */
 export interface ReviewSubmission {
@@ -103,4 +106,95 @@ export async function submitReviewRelay(
   } catch (e) {
     return { ok: false, error: (e instanceof Error && e.message) || 'Submission failed' };
   }
+}
+
+// ── Report a review (direct Firestore write to `reviewReports`) ───────────────
+
+/** A report to file against a review (legacy _shohoj_reportReview args). */
+export interface ReviewReportInput {
+  readonly reviewId: string;
+  readonly reason: string;
+  /** The reporting user's uid; the report id + reporterUid derive from it. */
+  readonly uid: string;
+}
+
+/** The report outcome (same shape as a submit result; no id). */
+export type ReviewReportResult = ReviewSubmitResult;
+
+/** The Firestore surface the report write needs (real SDK or a test fake). */
+export interface ReviewReportBackend {
+  /** setDoc(reviewReports/{id}) with the report fields + a server createdAt. */
+  createReport(
+    id: string,
+    data: { reviewId: string; reason: string; reporterUid: string },
+  ): Promise<void>;
+}
+
+/** Legacy _shohoj_reportReview permission-denied copy. */
+const REPORT_DENIED_MESSAGE =
+  'Report could not be submitted. The review may have already been removed or you may have reported it already.';
+
+/** Max report reason length (legacy slice(0, 300)); min 3 chars after trim. */
+export const REPORT_REASON_MAX = 300;
+
+async function defaultReportBackend(
+  config: FirebaseConfig,
+  recaptchaV3SiteKey?: string,
+): Promise<ReviewReportBackend> {
+  const { loadFirebaseClient } = await import('./firebaseClient.ts');
+  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { getFirestore, doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+  const db = getFirestore(app);
+  return {
+    async createReport(id, data) {
+      await setDoc(doc(db, 'reviewReports', id), { ...data, createdAt: serverTimestamp() });
+    },
+  };
+}
+
+export interface ReviewReportRepoOptions {
+  readonly config: FirebaseConfig;
+  readonly recaptchaV3SiteKey?: string;
+  /** Injectable backend loader (tests); defaults to the lazy npm SDK. */
+  readonly loadBackend?: () => Promise<ReviewReportBackend>;
+}
+
+export interface ReviewReportRepo {
+  /** File a moderation report against a review; deterministic id, never throws. */
+  reportReview(input: ReviewReportInput): Promise<ReviewReportResult>;
+}
+
+/**
+ * Create the report repo; the Firestore SDK loads on first use, shared after.
+ * Mirrors js/core/reviews.js reportReview's guard order — signed-out and an
+ * invalid review reference fail before any load; a too-short reason is rejected;
+ * a Firestore permission-denied maps to the legacy moderation copy.
+ */
+export function createReviewReportRepo(options: ReviewReportRepoOptions): ReviewReportRepo {
+  const loadBackend =
+    options.loadBackend ?? (() => defaultReportBackend(options.config, options.recaptchaV3SiteKey));
+  let backend: Promise<ReviewReportBackend> | null = null;
+  const load = () => (backend ??= loadBackend());
+
+  return {
+    async reportReview({ reviewId, reason, uid }) {
+      if (!uid) return { ok: false, error: 'Sign in to report a review' };
+      if (!isValidReviewId(reviewId)) return { ok: false, error: 'Invalid review reference' };
+      const trimmed = String(reason ?? '').trim().slice(0, REPORT_REASON_MAX);
+      if (trimmed.length < 3) return { ok: false, error: 'Please describe the issue' };
+      try {
+        await (await load()).createReport(buildReviewReportId(reviewId, uid), {
+          reviewId: String(reviewId).trim(),
+          reason: trimmed,
+          reporterUid: uid,
+        });
+        return { ok: true };
+      } catch (e) {
+        if ((e as { code?: string } | null)?.code === 'permission-denied') {
+          return { ok: false, error: REPORT_DENIED_MESSAGE };
+        }
+        return { ok: false, error: (e instanceof Error && e.message) || 'Report failed' };
+      }
+    },
+  };
 }
