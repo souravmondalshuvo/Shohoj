@@ -52,11 +52,12 @@ import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
 import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
-import { submitReview, windowReviewSubmitEnv } from '../../features/calculator/reviewSubmit';
+import { submitReview } from '../../features/calculator/reviewSubmit';
 import { probeExistingReview } from '../../features/calculator/reviewProbe';
 import {
   useFetchReviewById,
   useInvalidateFacultyChipScore,
+  useSubmitReview,
 } from '../../features/calculator/FacultyReviewsProvider';
 import { useAuth } from '../providers/AuthProvider';
 import TranscriptImport, {
@@ -94,6 +95,7 @@ export function Component() {
   const { notify } = useNotifications();
   const invalidateChipScore = useInvalidateFacultyChipScore();
   const fetchReviewById = useFetchReviewById();
+  const submitToProvider = useSubmitReview();
   const auth = useAuth();
   // The existing-review probe env: uid from the shell auth, falling back to the
   // legacy window hook (also the e2e seam); fetch through the resolved repo.
@@ -276,7 +278,18 @@ export function Component() {
           semester={rateSem?.name ?? ''}
           prefillInitials={rateCourse.faculty ?? ''}
           probe={() => probeExistingReview(rateCourse.faculty ?? '', rateCourseCode, probeEnv)}
-          onSubmit={(payload) => submitReview(payload, windowReviewSubmitEnv(isKnownCourseCode))}
+          onSubmit={(payload) =>
+            submitReview(payload, {
+              isKnownCode: isKnownCourseCode,
+              // Transport is the typed provider relay (#353), not the legacy
+              // window hook — so the standalone shell submits for real.
+              hook: submitToProvider,
+              currentUid: () =>
+                auth.uid ||
+                (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') ||
+                '',
+            })
+          }
           onSubmitted={(payload) => {
             const nextFac = normalizeInitials(payload.facultyInitials);
             if (!nextFac) return;
