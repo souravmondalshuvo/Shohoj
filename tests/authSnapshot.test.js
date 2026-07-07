@@ -55,4 +55,8 @@ test('anonymous source returns ANONYMOUS and a no-op unsubscribe', () => {
   unsub();
 });
 
+test('anonymous source has no ID token', async () => {
+  assert.equal(await anonymousAuthSource.getIdToken(), null);
+});
+
 console.log('auth snapshot tests passed');
