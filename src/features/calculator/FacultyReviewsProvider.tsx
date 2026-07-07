@@ -28,7 +28,15 @@ import {
 
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews';
 import { createReviewsRepo, type ReviewDoc, type ReviewsRepo } from '../../platform/firebase/reviewsRepo';
+import {
+  submitReviewRelay,
+  type ReviewRelayOptions,
+  type ReviewSubmission,
+  type ReviewSubmitResult,
+} from '../../platform/firebase/reviewsWriteRepo';
+import { runReviewSubmit } from './reviewSubmitFlow';
 import { useRuntimeConfig } from '../../app/providers/RuntimeConfigProvider';
+import { useIdToken } from '../../app/providers/AuthProvider';
 import { CHIP_PLACEHOLDER, chipScoreLabel, computeChipAggregate } from './facultyChipScore';
 
 /** How many reviews the legacy chip fetch pulls per faculty+course. */
@@ -47,7 +55,15 @@ interface FacultyReviewsApi {
   fetchReviewsByCourse(courseCode: string): Promise<ReviewDoc[]>;
   /** The recent-reviews feed (the Browse Reviews directory); empty when no repo. */
   fetchRecentReviews(limit?: number): Promise<ReviewDoc[]>;
+  /** Submit a review through the worker relay; invalidates the pair's chip on ok. */
+  submitReview(submission: ReviewSubmission): Promise<ReviewSubmitResult>;
 }
+
+/** The relay call, injectable so tests drive submit without a live worker. */
+export type ReviewRelay = (
+  submission: ReviewSubmission,
+  options: ReviewRelayOptions,
+) => Promise<ReviewSubmitResult>;
 
 const FacultyReviewsContext = createContext<FacultyReviewsApi | null>(null);
 
@@ -64,11 +80,14 @@ const keyOf = (initials: string, courseCode: string) =>
 export interface FacultyReviewsProviderProps {
   /** Explicit repo (tests); otherwise resolved from window override / config. */
   readonly repo?: ReviewsRepo | null;
+  /** Explicit relay (tests); defaults to the live worker POST. */
+  readonly submitRelay?: ReviewRelay;
   readonly children: ReactNode;
 }
 
-export function FacultyReviewsProvider({ repo, children }: FacultyReviewsProviderProps) {
+export function FacultyReviewsProvider({ repo, submitRelay = submitReviewRelay, children }: FacultyReviewsProviderProps) {
   const config = useRuntimeConfig();
+  const getIdToken = useIdToken();
 
   // Resolve the repo once: an explicit prop wins (tests), then the e2e window
   // stub, then a config-built repo; null when the shell isn't configured.
@@ -154,11 +173,22 @@ export function FacultyReviewsProvider({ repo, children }: FacultyReviewsProvide
     [resolvedRepo],
   );
 
+  const submitReview = useCallback(
+    (submission: ReviewSubmission): Promise<ReviewSubmitResult> =>
+      runReviewSubmit(submission, {
+        relay: submitRelay,
+        workerUrl: config?.papersWorkerUrl,
+        getToken: getIdToken,
+        onSubmitted: invalidate,
+      }),
+    [submitRelay, config, getIdToken, invalidate],
+  );
+
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews }),
-    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, version],
+    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview }),
+    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, version],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -198,4 +228,19 @@ export function useFetchReviewsByCourse(): (courseCode: string) => Promise<Revie
 export function useFetchRecentReviews(): (limit?: number) => Promise<ReviewDoc[]> {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback((limit) => ctx?.fetchRecentReviews(limit) ?? Promise.resolve([]), [ctx]);
+}
+
+/**
+ * Submit a review through the provider's worker relay. Resolves `{ ok:false }`
+ * with the legacy signed-out message where no provider is mounted (standalone
+ * island), so callers get a uniform result shape.
+ */
+export function useSubmitReview(): (submission: ReviewSubmission) => Promise<ReviewSubmitResult> {
+  const ctx = useContext(FacultyReviewsContext);
+  return useCallback(
+    (submission: ReviewSubmission) =>
+      ctx?.submitReview(submission) ??
+      Promise.resolve({ ok: false, error: 'Sign in to submit a review' }),
+    [ctx],
+  );
 }
