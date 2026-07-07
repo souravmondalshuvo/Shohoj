@@ -7,9 +7,41 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { submitReviewRelay } from '../src/platform/firebase/reviewsWriteRepo.ts';
+import {
+  createReviewReportRepo,
+  submitReviewRelay,
+} from '../src/platform/firebase/reviewsWriteRepo.ts';
 
 const WORKER = 'https://worker.example';
+const CONFIG = { apiKey: 'k', authDomain: 'a', projectId: 'p', storageBucket: 'b', messagingSenderId: 'm', appId: 'i' };
+
+// A fake report backend recording createReport calls; can be told to reject.
+function fakeReportBackend({ error } = {}) {
+  const calls = [];
+  return {
+    calls,
+    backend: {
+      async createReport(id, data) {
+        calls.push({ id, data });
+        if (error) throw error;
+      },
+    },
+  };
+}
+
+function reportRepoWith(backend, { spyLoads } = {}) {
+  let loads = 0;
+  const repo = createReviewReportRepo({
+    config: CONFIG,
+    loadBackend: async () => {
+      loads++;
+      return backend;
+    },
+  });
+  return spyLoads ? { repo, loads: () => loads } : repo;
+}
+
+const VALID_ID = 'MRA_CSE110_' + 'a'.repeat(64);
 
 const submission = () => ({
   facultyInitials: 'MRA',
@@ -135,4 +167,68 @@ test('guards before any network call: missing workerUrl and missing token', asyn
   assert.deepEqual(noToken, { ok: false, error: 'Could not get auth token' });
 
   assert.equal(calls.length, 0, 'neither guard reaches fetch');
+});
+
+// ── createReviewReportRepo ────────────────────────────────────────────────────
+
+test('reportReview: writes reviewReports at the deterministic id with trimmed fields', async () => {
+  const { backend, calls } = fakeReportBackend();
+  const repo = reportRepoWith(backend);
+
+  const res = await repo.reportReview({ reviewId: VALID_ID, reason: '  spam review  ', uid: 'u1' });
+  assert.deepEqual(res, { ok: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].id, `u1_${VALID_ID}`, 'buildReviewReportId = uid_reviewId');
+  assert.deepEqual(calls[0].data, { reviewId: VALID_ID, reason: 'spam review', reporterUid: 'u1' });
+});
+
+test('reportReview: guards signed-out and an invalid id before loading the backend', async () => {
+  const { backend, calls } = fakeReportBackend();
+  const { repo, loads } = reportRepoWith(backend, { spyLoads: true });
+
+  assert.deepEqual(await repo.reportReview({ reviewId: VALID_ID, reason: 'bad', uid: '' }), {
+    ok: false,
+    error: 'Sign in to report a review',
+  });
+  assert.deepEqual(await repo.reportReview({ reviewId: 'not-an-id', reason: 'bad', uid: 'u1' }), {
+    ok: false,
+    error: 'Invalid review reference',
+  });
+  assert.equal(calls.length, 0);
+  assert.equal(loads(), 0, 'SDK never loads for a guarded call');
+});
+
+test('reportReview: a too-short reason is rejected (min 3 after trim)', async () => {
+  const { backend, calls } = fakeReportBackend();
+  const repo = reportRepoWith(backend);
+  assert.deepEqual(await repo.reportReview({ reviewId: VALID_ID, reason: ' x ', uid: 'u1' }), {
+    ok: false,
+    error: 'Please describe the issue',
+  });
+  assert.equal(calls.length, 0);
+});
+
+test('reportReview: reason is capped at 300 chars', async () => {
+  const { backend, calls } = fakeReportBackend();
+  const repo = reportRepoWith(backend);
+  await repo.reportReview({ reviewId: VALID_ID, reason: 'y'.repeat(400), uid: 'u1' });
+  assert.equal(calls[0].data.reason.length, 300);
+});
+
+test('reportReview: permission-denied maps to the legacy moderation copy', async () => {
+  const denied = Object.assign(new Error('denied'), { code: 'permission-denied' });
+  const { backend } = fakeReportBackend({ error: denied });
+  const repo = reportRepoWith(backend);
+  const res = await repo.reportReview({ reviewId: VALID_ID, reason: 'spam', uid: 'u1' });
+  assert.equal(res.ok, false);
+  assert.match(res.error, /already been removed or you may have reported it already/);
+});
+
+test('reportReview: an unexpected error degrades to a generic message, never throws', async () => {
+  const { backend } = fakeReportBackend({ error: new Error('offline') });
+  const repo = reportRepoWith(backend);
+  assert.deepEqual(await repo.reportReview({ reviewId: VALID_ID, reason: 'spam', uid: 'u1' }), {
+    ok: false,
+    error: 'offline',
+  });
 });
