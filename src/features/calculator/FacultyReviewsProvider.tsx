@@ -71,6 +71,8 @@ declare global {
   interface Window {
     /** e2e seam: a stub repo the provider uses in place of the config-built one. */
     __shohojReviewsRepo?: ReviewsRepo;
+    /** e2e seam: a stub relay driving submit without a live worker. */
+    __shohojSubmitRelay?: ReviewRelay;
   }
 }
 
@@ -85,9 +87,17 @@ export interface FacultyReviewsProviderProps {
   readonly children: ReactNode;
 }
 
-export function FacultyReviewsProvider({ repo, submitRelay = submitReviewRelay, children }: FacultyReviewsProviderProps) {
+export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyReviewsProviderProps) {
   const config = useRuntimeConfig();
   const getIdToken = useIdToken();
+
+  // Resolve the relay like the repo: an explicit prop wins, then the e2e window
+  // stub, then the live worker POST.
+  const resolvedSubmitRelay = useMemo<ReviewRelay>(() => {
+    if (submitRelay) return submitRelay;
+    if (typeof window !== 'undefined' && window.__shohojSubmitRelay) return window.__shohojSubmitRelay;
+    return submitReviewRelay;
+  }, [submitRelay]);
 
   // Resolve the repo once: an explicit prop wins (tests), then the e2e window
   // stub, then a config-built repo; null when the shell isn't configured.
@@ -176,12 +186,12 @@ export function FacultyReviewsProvider({ repo, submitRelay = submitReviewRelay, 
   const submitReview = useCallback(
     (submission: ReviewSubmission): Promise<ReviewSubmitResult> =>
       runReviewSubmit(submission, {
-        relay: submitRelay,
+        relay: resolvedSubmitRelay,
         workerUrl: config?.papersWorkerUrl,
         getToken: getIdToken,
         onSubmitted: invalidate,
       }),
-    [submitRelay, config, getIdToken, invalidate],
+    [resolvedSubmitRelay, config, getIdToken, invalidate],
   );
 
   // `version` is a dep so each bump yields a new value object → chips re-render
