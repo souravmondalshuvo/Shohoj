@@ -14,7 +14,7 @@
 // toast copy through the notification system. Offline shells keep the
 // anonymous source and render no auth UI at all.
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
@@ -109,6 +109,9 @@ function AuthControls({ source }: { readonly source: FirebaseAuthSource | null }
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
   const config = useRuntimeConfig();
+  // Mobile nav: the link list collapses behind a toggle under the CSS breakpoint
+  // (desktop shows the list and hides the toggle). Selecting a link closes it.
+  const [navOpen, setNavOpen] = useState(false);
 
   // One source per page: the validated config is module-scope stable, so this
   // memo effectively runs once. Offline (null config) keeps anonymous.
@@ -130,18 +133,33 @@ function ShellChrome() {
       </a>
       <header className="shell-header">
         <nav className="shell-nav" aria-label="Primary">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <button
+            type="button"
+            className="shell-nav-toggle"
+            aria-expanded={navOpen}
+            aria-controls="shell-nav-list"
+            onClick={() => setNavOpen((open) => !open)}
+          >
+            Menu
+          </button>
+          <div
+            id="shell-nav-list"
+            className={navOpen ? 'shell-nav-list shell-nav-list--open' : 'shell-nav-list'}
+          >
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
+                }
+                onClick={() => setNavOpen(false)}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
           <AuthControls source={firebaseSource} />
         </nav>
       </header>
