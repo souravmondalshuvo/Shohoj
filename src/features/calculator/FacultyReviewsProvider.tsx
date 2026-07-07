@@ -29,8 +29,11 @@ import {
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews';
 import { createReviewsRepo, type ReviewDoc, type ReviewsRepo } from '../../platform/firebase/reviewsRepo';
 import {
+  createReviewReportRepo,
   submitReviewRelay,
   type ReviewRelayOptions,
+  type ReviewReportRepo,
+  type ReviewReportResult,
   type ReviewSubmission,
   type ReviewSubmitResult,
 } from '../../platform/firebase/reviewsWriteRepo';
@@ -59,6 +62,8 @@ interface FacultyReviewsApi {
   fetchRecentReviews(limit?: number): Promise<ReviewDoc[]>;
   /** Submit a review through the worker relay; invalidates the pair's chip on ok. */
   submitReview(submission: ReviewSubmission): Promise<ReviewSubmitResult>;
+  /** Report a review for moderation (reviewReports write); no-op when signed out. */
+  reportReview(reviewId: string, reason: string): Promise<ReviewReportResult>;
 }
 
 /** The relay call, injectable so tests drive submit without a live worker. */
@@ -75,6 +80,8 @@ declare global {
     __shohojReviewsRepo?: ReviewsRepo;
     /** e2e seam: a stub relay driving submit without a live worker. */
     __shohojSubmitRelay?: ReviewRelay;
+    /** e2e seam: a stub report repo driving reports without Firestore. */
+    __shohojReportRepo?: ReviewReportRepo;
   }
 }
 
@@ -86,10 +93,12 @@ export interface FacultyReviewsProviderProps {
   readonly repo?: ReviewsRepo | null;
   /** Explicit relay (tests); defaults to the live worker POST. */
   readonly submitRelay?: ReviewRelay;
+  /** Explicit report repo (tests); otherwise window override / config. */
+  readonly reportRepo?: ReviewReportRepo | null;
   readonly children: ReactNode;
 }
 
-export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyReviewsProviderProps) {
+export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children }: FacultyReviewsProviderProps) {
   const config = useRuntimeConfig();
   const getIdToken = useIdToken();
   const auth = useAuth();
@@ -112,6 +121,14 @@ export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyR
     if (config) return createReviewsRepo({ config: config.firebase, recaptchaV3SiteKey: config.recaptchaV3SiteKey });
     return null;
   }, [repo, config]);
+
+  // The report repo resolves the same way (prop → e2e stub → config-built).
+  const resolvedReportRepo = useMemo<ReviewReportRepo | null>(() => {
+    if (reportRepo !== undefined) return reportRepo;
+    if (typeof window !== 'undefined' && window.__shohojReportRepo) return window.__shohojReportRepo;
+    if (config) return createReviewReportRepo({ config: config.firebase, recaptchaV3SiteKey: config.recaptchaV3SiteKey });
+    return null;
+  }, [reportRepo, config]);
 
   // Keyed label cache; a state version bump makes the context value change
   // identity so consumers (chips) re-render when labels land — the provider's
@@ -212,11 +229,20 @@ export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyR
     [resolvedSubmitRelay, config, getIdToken, invalidate, auth.uid, store],
   );
 
+  const reportReview = useCallback(
+    async (reviewId: string, reason: string): Promise<ReviewReportResult> => {
+      if (!resolvedReportRepo) return { ok: false, error: 'Sign in to report a review' };
+      const uid = auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
+      return resolvedReportRepo.reportReview({ reviewId, reason, uid });
+    },
+    [resolvedReportRepo, auth.uid],
+  );
+
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview }),
-    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, version],
+    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, reportReview }),
+    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, reportReview, version],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -269,6 +295,20 @@ export function useSubmitReview(): (submission: ReviewSubmission) => Promise<Rev
     (submission: ReviewSubmission) =>
       ctx?.submitReview(submission) ??
       Promise.resolve({ ok: false, error: 'Sign in to submit a review' }),
+    [ctx],
+  );
+}
+
+/**
+ * Report a review through the provider (the reviewReports write). Resolves the
+ * signed-out message where no provider/report repo is available.
+ */
+export function useReportReview(): (reviewId: string, reason: string) => Promise<ReviewReportResult> {
+  const ctx = useContext(FacultyReviewsContext);
+  return useCallback(
+    (reviewId: string, reason: string) =>
+      ctx?.reportReview(reviewId, reason) ??
+      Promise.resolve({ ok: false, error: 'Sign in to report a review' }),
     [ctx],
   );
 }
