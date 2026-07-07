@@ -38,6 +38,8 @@ export interface FirebaseUserLike {
   readonly email?: string | null;
   readonly emailVerified?: boolean;
   getIdTokenResult(forceRefresh?: boolean): Promise<{ claims: Record<string, unknown> }>;
+  /** The current ID token JWT (the real Firebase User exposes this). */
+  getIdToken(forceRefresh?: boolean): Promise<string>;
 }
 
 /** The auth surface the source needs (implemented by the real SDK or a fake). */
@@ -118,6 +120,9 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
   const eventListeners = new Set<(event: AuthEvent) => void>();
   let backend: AuthBackend | null = null;
   let starting: Promise<AuthBackend | null> | null = null;
+  // The current allowed user, retained so getIdToken can mint a fresh token for
+  // signed-in writes (the worker review relay). Cleared on sign-out/rejection.
+  let currentUser: FirebaseUserLike | null = null;
 
   const setSnapshot = (next: AuthSnapshot) => {
     snapshot = next;
@@ -129,6 +134,7 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
 
   const handleUser = async (user: FirebaseUserLike | null) => {
     if (user === null) {
+      currentUser = null;
       setSnapshot(ANONYMOUS);
       return;
     }
@@ -137,11 +143,13 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
     const token = await user.getIdTokenResult(true).catch(() => null);
     const verdict = evaluateBracuAccess(user, token?.claims ?? null);
     if (!verdict.allowed) {
+      currentUser = null;
       if (backend) await backend.signOut().catch(() => {});
       emit({ type: 'rejected', message: REJECTED_MESSAGE });
       setSnapshot(ANONYMOUS);
       return;
     }
+    currentUser = user;
     setSnapshot({
       status: 'authenticated',
       uid: user.uid,
@@ -179,6 +187,12 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
         listeners.delete(listener);
       };
     },
+    async getIdToken() {
+      // Legacy getCurrentUserIdToken parity: no user → null; a token read error
+      // (network, revoked session) degrades to null rather than throwing.
+      if (!currentUser) return null;
+      return currentUser.getIdToken().catch(() => null);
+    },
     onEvent(listener) {
       eventListeners.add(listener);
       return () => {
@@ -204,6 +218,7 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
       }
     },
     async signOut() {
+      currentUser = null;
       if (!backend) return;
       await backend.signOut().catch(() => {});
     },
