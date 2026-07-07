@@ -69,10 +69,17 @@ export interface AuthSource {
   get(): AuthSnapshot;
   /** Register for changes; returns an unsubscribe fn. */
   subscribe(listener: () => void): () => void;
+  /**
+   * The current Firebase ID token for authorizing signed-in writes (the worker
+   * review relay, papers upload, …), or null when signed out / unavailable.
+   * Never throws — mirrors legacy getCurrentUserIdToken's catch-to-null.
+   */
+  getIdToken(): Promise<string | null>;
 }
 
 /** Always-anonymous source (standalone shell / tests). */
 export const anonymousAuthSource: AuthSource = {
   get: () => ANONYMOUS,
   subscribe: () => () => {},
+  getIdToken: async () => null,
 };
