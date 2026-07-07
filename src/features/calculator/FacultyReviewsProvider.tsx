@@ -35,8 +35,10 @@ import {
   type ReviewSubmitResult,
 } from '../../platform/firebase/reviewsWriteRepo';
 import { runReviewSubmit } from './reviewSubmitFlow';
+import { recordMyReview } from './myReviewsReceipt';
 import { useRuntimeConfig } from '../../app/providers/RuntimeConfigProvider';
-import { useIdToken } from '../../app/providers/AuthProvider';
+import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
+import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { CHIP_PLACEHOLDER, chipScoreLabel, computeChipAggregate } from './facultyChipScore';
 
 /** How many reviews the legacy chip fetch pulls per faculty+course. */
@@ -90,6 +92,9 @@ export interface FacultyReviewsProviderProps {
 export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyReviewsProviderProps) {
   const config = useRuntimeConfig();
   const getIdToken = useIdToken();
+  const auth = useAuth();
+  // One store for the receipt writes over the provider's lifetime.
+  const store = useMemo(() => createBrowserStore(), []);
 
   // Resolve the relay like the repo: an explicit prop wins, then the e2e window
   // stub, then the live worker POST.
@@ -184,14 +189,27 @@ export function FacultyReviewsProvider({ repo, submitRelay, children }: FacultyR
   );
 
   const submitReview = useCallback(
-    (submission: ReviewSubmission): Promise<ReviewSubmitResult> =>
-      runReviewSubmit(submission, {
+    async (submission: ReviewSubmission): Promise<ReviewSubmitResult> => {
+      const result = await runReviewSubmit(submission, {
         relay: resolvedSubmitRelay,
         workerUrl: config?.papersWorkerUrl,
         getToken: getIdToken,
         onSubmitted: invalidate,
-      }),
-    [resolvedSubmitRelay, config, getIdToken, invalidate],
+      });
+      if (result.ok) {
+        // Legacy _recordMyReview: stamp the local receipt the Profile tab reads.
+        const uid = auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
+        recordMyReview(store, uid, {
+          id: result.id ?? null,
+          facultyInitials: submission.facultyInitials,
+          courseCode: submission.courseCode,
+          semester: submission.semester,
+          at: Date.now(),
+        });
+      }
+      return result;
+    },
+    [resolvedSubmitRelay, config, getIdToken, invalidate, auth.uid, store],
   );
 
   // `version` is a dep so each bump yields a new value object → chips re-render
