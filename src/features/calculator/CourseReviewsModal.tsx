@@ -6,14 +6,24 @@
 // (FacultyReviewsProvider) and shows one card per faculty — initials, review
 // count, overall score, the five dimension averages, and up to two latest
 // snippets (the pure courseReviews model). Loading and empty states included.
-// Deferred (documented): the card's "+ Add your rating" and per-review Report.
+// Per-review Report (#359) and the card's "+ Add your rating" (#363) are wired
+// here; the rating submit shares /calculator's typed path.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
 import { useNotifications } from '../../state/NotificationProvider';
+import { useAuth } from '../../app/providers/AuthProvider';
 import { buildCourseReviewGroups, type CourseReviewGroup } from './courseReviews';
-import { useFetchReviewsByCourse } from './FacultyReviewsProvider';
+import { isKnownCourseCode } from './catalog';
+import {
+  useFetchReviewById,
+  useFetchReviewsByCourse,
+  useSubmitReview,
+} from './FacultyReviewsProvider';
+import { probeExistingReview } from './reviewProbe';
+import { submitReview } from './reviewSubmit';
+import RateFacultyModal from './RateFacultyModal';
 import ReportReviewModal from './ReportReviewModal';
 
 export interface CourseReviewsModalProps {
@@ -35,9 +45,11 @@ const fmt = (value: number | null) => (value !== null ? value.toFixed(1) : '—'
 function FacultyCard({
   group,
   onReport,
+  onAddRating,
 }: {
   readonly group: CourseReviewGroup;
   readonly onReport: (reviewId: string) => void;
+  readonly onAddRating: (facultyInitials: string) => void;
 }) {
   return (
     <div className="rv-cr-card" data-testid="course-review-card" data-fac={group.facultyInitials}>
@@ -77,20 +89,47 @@ function FacultyCard({
           ))}
         </div>
       )}
+      <div className="rv-cr-card-actions">
+        <button
+          type="button"
+          className="rv-cr-add-rating"
+          onClick={() => onAddRating(group.facultyInitials)}
+        >
+          + Add your rating
+        </button>
+      </div>
     </div>
   );
 }
 
 export default function CourseReviewsModal({ courseCode, courseName, onClose }: CourseReviewsModalProps) {
   const fetchByCourse = useFetchReviewsByCourse();
+  const submitToProvider = useSubmitReview();
+  const fetchReviewById = useFetchReviewById();
+  const auth = useAuth();
   const { notify } = useNotifications();
   // undefined = loading; [] = none; groups = cards.
   const [groups, setGroups] = useState<CourseReviewGroup[] | undefined>(undefined);
   // The review id the Report dialog is open for (null = closed).
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
+  // The faculty initials the rating dialog is open for (null = closed).
+  const [rateInitials, setRateInitials] = useState<string | null>(null);
+  // Bumped after a submit to refetch so the new review appears.
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Fetch once on open. fetchByCourse is recreated on provider bumps, so read it
-  // through a ref and key the effect on the (stable) course code.
+  // uid from the shell auth with the window fallback (bundled page / e2e),
+  // matching /calculator's probe + submit wiring.
+  const currentUid = useCallback(
+    () => auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '',
+    [auth.uid],
+  );
+  const probeEnv = useMemo(
+    () => ({ currentUid, fetchById: fetchReviewById }),
+    [currentUid, fetchReviewById],
+  );
+
+  // Fetch on open and after a submit. fetchByCourse is recreated on provider
+  // bumps, so read it through a ref and key the effect on the course + reloadKey.
   const fetchRef = useRef(fetchByCourse);
   fetchRef.current = fetchByCourse;
   useEffect(() => {
@@ -106,7 +145,7 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
     return () => {
       live = false;
     };
-  }, [courseCode]);
+  }, [courseCode, reloadKey]);
 
   return (
     <>
@@ -147,7 +186,12 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
         ) : (
           <div className="rv-cr-list">
             {groups.map((group) => (
-              <FacultyCard key={group.facultyInitials} group={group} onReport={setReportReviewId} />
+              <FacultyCard
+                key={group.facultyInitials}
+                group={group}
+                onReport={setReportReviewId}
+                onAddRating={setRateInitials}
+              />
             ))}
           </div>
         )}
@@ -165,6 +209,28 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
         reviewId={reportReviewId}
         onReported={() => notify({ kind: 'success', message: 'Report submitted — thanks' })}
         onClose={() => setReportReviewId(null)}
+      />
+    )}
+
+    {rateInitials && (
+      <RateFacultyModal
+        courseCode={courseCode}
+        semester=""
+        prefillInitials={rateInitials}
+        probe={() => probeExistingReview(rateInitials, courseCode, probeEnv)}
+        onSubmit={(payload) =>
+          submitReview(payload, {
+            isKnownCode: isKnownCourseCode,
+            hook: submitToProvider,
+            currentUid,
+          })
+        }
+        onSubmitted={() => {
+          notify({ kind: 'success', message: 'Review submitted — thank you' });
+          // Refetch so the just-added review shows in the viewer.
+          setReloadKey((k) => k + 1);
+        }}
+        onClose={() => setRateInitials(null)}
       />
     )}
     </>
