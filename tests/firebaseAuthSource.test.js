@@ -23,7 +23,15 @@ const CONFIG = {
 
 const GOOGLE_CLAIMS = { email_verified: true, firebase: { sign_in_provider: 'google.com' } };
 
-function fakeUser({ uid = 'u1', email, verified = true, claims = GOOGLE_CLAIMS, tokenFails = false } = {}) {
+function fakeUser({
+  uid = 'u1',
+  email,
+  verified = true,
+  claims = GOOGLE_CLAIMS,
+  tokenFails = false,
+  idToken = 'jwt-123',
+  idTokenFails = false,
+} = {}) {
   return {
     uid,
     email,
@@ -31,6 +39,10 @@ function fakeUser({ uid = 'u1', email, verified = true, claims = GOOGLE_CLAIMS, 
     getIdTokenResult: async () => {
       if (tokenFails) throw new Error('network');
       return { claims };
+    },
+    getIdToken: async () => {
+      if (idTokenFails) throw new Error('token network error');
+      return idToken;
     },
   };
 }
@@ -170,4 +182,38 @@ test('a backend that fails to load settles ANONYMOUS and fails sign-in gracefull
   assert.equal(source.get().status, 'anonymous');
   await source.signIn();
   assert.deepEqual(events, [{ type: 'sign-in-failed', message: SIGN_IN_FAILED_MESSAGE }]);
+});
+
+test('getIdToken: null before sign-in, the token while signed in', async () => {
+  const { source, backend } = await sourceWithBackend();
+  assert.equal(await source.getIdToken(), null, 'no user yet → null');
+
+  backend.fire(fakeUser({ email: 'student@g.bracu.ac.bd', idToken: 'jwt-abc' }));
+  await settle();
+  assert.equal(await source.getIdToken(), 'jwt-abc');
+});
+
+test('getIdToken: null after sign-out clears the retained user', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'student@g.bracu.ac.bd' }));
+  await settle();
+  assert.equal(await source.getIdToken(), 'jwt-123');
+
+  backend.fire(null);
+  await settle();
+  assert.equal(await source.getIdToken(), null);
+});
+
+test('getIdToken: a rejected account is not retained (null)', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'outsider@gmail.com' }));
+  await settle();
+  assert.equal(await source.getIdToken(), null);
+});
+
+test('getIdToken: a token-read error degrades to null, never throws', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ email: 'student@g.bracu.ac.bd', idTokenFails: true }));
+  await settle();
+  assert.equal(await source.getIdToken(), null);
 });
