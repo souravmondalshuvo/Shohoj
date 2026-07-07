@@ -5,7 +5,8 @@
 // (the same seam the chip-score + probe specs use) drives fetchByCourse so the
 // viewer shows faculty cards for a course with reviews and the empty state for
 // one without. #359: each snippet's Report opens the report dialog, which files
-// through a stubbed window.__shohojReportRepo.
+// through a stubbed window.__shohojReportRepo. #363: a card's "+ Add your rating"
+// opens RateFacultyModal (prefilled) and submits through a stubbed relay.
 
 import { expect, test } from '@playwright/test';
 
@@ -115,4 +116,37 @@ test('a snippet Report opens the dialog and files a report via the stub repo', a
   expect(sent.reviewId).toBe('ABC_Great course');
   expect(sent.reason).toBe('This is spam');
   expect(sent.uid).toBe('e2e-uid');
+});
+
+test('a card + Add your rating opens the rate modal prefilled and submits via the relay', async ({ page }) => {
+  await installRepo(page);
+  await page.addInitScript(() => {
+    window._shohoj_currentUid = () => 'e2e-uid';
+    window.__shohojSubmitRelay = async (submission) => {
+      window.__lastReview = submission;
+      return { ok: true, id: 'e2e-id' };
+    };
+  });
+  const planner = await openPlannerWithDemo(page);
+  await planRowStar(planner, 'CSE221').click();
+
+  const viewer = page.getByTestId('course-reviews-modal');
+  await viewer.getByRole('button', { name: '+ Add your rating' }).first().click();
+
+  const rate = page.getByTestId('rate-faculty-modal');
+  await expect(rate).toBeVisible();
+  await expect(rate.getByLabel('Faculty Initials')).toHaveValue('ABC'); // prefilled from the card
+  await expect(rate.getByText('Course: CSE221')).toBeVisible(); //         course from the viewer
+  for (const dim of ['Teaching Quality', 'Marking Fairness', 'Behavior & Attitude', 'Course Difficulty', 'Workload']) {
+    await rate.getByRole('radio', { name: `5 stars for ${dim}` }).click();
+  }
+  await rate.getByRole('button', { name: 'Submit Review' }).click();
+
+  await expect(rate).toBeHidden();
+  await expect(page.getByText('Review submitted — thank you')).toBeVisible();
+
+  const sent = await page.evaluate(() => window.__lastReview);
+  expect(sent.facultyInitials).toBe('ABC');
+  expect(sent.courseCode).toBe('CSE221');
+  expect(sent.ratings.teaching).toBe(5);
 });
