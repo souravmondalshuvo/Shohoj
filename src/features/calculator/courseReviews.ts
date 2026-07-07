@@ -13,9 +13,16 @@ import type { FacultyAggregate, ReviewLike } from '../../core/reviews.ts';
 export const MAX_SNIPPETS = 2;
 export const SNIPPET_MAX = 220;
 
+/** A shown review snippet: the clamped text plus its review id (for Report). */
+export interface CourseReviewSnippet {
+  readonly text: string;
+  /** The review doc id, or null when the source review carried none. */
+  readonly id: string | null;
+}
+
 export interface CourseReviewGroup extends FacultyAggregate {
-  /** Up to MAX_SNIPPETS latest review texts, each clamped to SNIPPET_MAX. */
-  readonly snippets: readonly string[];
+  /** Up to MAX_SNIPPETS latest review snippets, each text clamped to SNIPPET_MAX. */
+  readonly snippets: readonly CourseReviewSnippet[];
 }
 
 function clampSnippet(text: string): string {
@@ -38,7 +45,7 @@ export function buildCourseReviewGroups(reviews: readonly ReviewLike[]): CourseR
           review.text.length > 0,
       )
       .slice(0, MAX_SNIPPETS)
-      .map((review) => clampSnippet(review.text as string));
+      .map((review) => ({ text: clampSnippet(review.text as string), id: review.id ?? null }));
     return { ...group, snippets };
   });
 }
