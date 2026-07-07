@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:vite": "npm run build:vite && playwright test --config=playwright.vite.config.js",
     "test:e2e:shell": "npm run build:shell && playwright test --config=playwright.shell.config.js",
+    "test:a11y": "npm run build:shell && playwright test --config=playwright.shell.config.js --grep @a11y",
     "test:bundle": "node tests/productionBundleSmoke.test.js",
     "test:csp": "node tests/cspInlineHandlers.test.js",
     "check:collisions": "python3 scripts/check_bundle_collisions.py",
