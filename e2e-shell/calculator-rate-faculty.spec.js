@@ -4,8 +4,9 @@
 // against the built dist-shell/ output. Demo data's courses all carry faculty
 // initials (chips); a freshly added graded course has none (the + Rate pill).
 // The standalone shell has no Firebase, so a real submit fails with the
-// signed-out message; the success path stubs the same window hooks the legacy
-// signed-in page provides (_shohoj_submitReview / _shohoj_currentUid).
+// signed-out message; the success path stubs the typed submit relay
+// (window.__shohojSubmitRelay) plus the uid hook (_shohoj_currentUid) the
+// signed-in guard reads.
 
 import { expect, test } from '@playwright/test';
 
@@ -79,12 +80,12 @@ test('a complete signed-out submit fails with the sign-in message', async ({ pag
   await expect(modal).toBeVisible(); // stays open for the user to see the error
 });
 
-test('a stubbed signed-in hook submits: initials land on the course as a chip + toast', async ({ page }) => {
+test('a stubbed signed-in relay submits: initials land on the course as a chip + toast', async ({ page }) => {
   await page.addInitScript(() => {
     window._shohoj_currentUid = () => 'e2e-uid';
-    window._shohoj_submitReview = async (payload) => {
-      window.__lastReview = payload;
-      return { ok: true };
+    window.__shohojSubmitRelay = async (submission) => {
+      window.__lastReview = submission;
+      return { ok: true, id: 'e2e-id' };
     };
   });
   const container = await openWithDemo(page);
