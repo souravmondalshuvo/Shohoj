@@ -16,6 +16,7 @@
 // empty inputs so the SDK never loads for a no-op call. Firestore RULES remain
 // the authorization boundary — this is a client convenience layer.
 
+import type { QueryConstraint } from 'firebase/firestore';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews.ts';
 import type { ReviewLike } from '../../core/reviews.ts';
@@ -122,7 +123,7 @@ async function defaultBackend(
 
   return {
     async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
-      const constraints = [where('facultyInitials', '==', facultyInitials)];
+      const constraints: QueryConstraint[] = [where('facultyInitials', '==', facultyInitials)];
       if (courseCode) constraints.push(where('courseCode', '==', courseCode));
       constraints.push(orderBy('createdAt', 'desc'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,7 +133,7 @@ async function defaultBackend(
       return { docs: snap.docs.map(toDoc), last: lastOf(snap.docs) };
     },
     async queryByCourse({ courseCode, limit, after }) {
-      const constraints = [
+      const constraints: QueryConstraint[] = [
         where('courseCode', '==', courseCode),
         orderBy('createdAt', 'desc'),
       ];
