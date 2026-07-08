@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../../shared/ui/Button';
 import { useNotifications } from '../../state/NotificationProvider';
 import { useAuth } from '../../app/providers/AuthProvider';
+import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 import { buildCourseReviewGroups, type CourseReviewGroup } from './courseReviews';
 import { isKnownCourseCode } from './catalog';
 import {
@@ -116,6 +117,8 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
   const [rateInitials, setRateInitials] = useState<string | null>(null);
   // Bumped after a submit to refetch so the new review appears.
   const [reloadKey, setReloadKey] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useRestoreFocus();
 
   // uid from the shell auth with the window fallback (bundled page / e2e),
   // matching /calculator's probe + submit wiring.
@@ -156,10 +159,13 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
         if (e.key === 'Escape') {
           e.stopPropagation();
           onClose();
+          return;
         }
+        trapTabKey(e, dialogRef);
       }}
     >
       <div
+        ref={dialogRef}
         className="shell-modal rv-cr-modal"
         role="dialog"
         aria-modal="true"
