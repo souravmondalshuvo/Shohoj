@@ -22,6 +22,7 @@ import {
 } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 
 export interface ConfirmOptions {
   readonly title: string;
@@ -40,9 +41,6 @@ interface PendingRequest {
 }
 
 const ModalContext = createContext<ConfirmFn | null>(null);
-
-const FOCUSABLE =
-  'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])';
 
 export function ModalProvider({ children }: { readonly children: ReactNode }) {
   const [pending, setPending] = useState<PendingRequest | null>(null);
@@ -82,16 +80,10 @@ function ConfirmDialog({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
-  const restoreFocusRef = useRef<Element | null>(null);
+  useRestoreFocus();
 
   useEffect(() => {
-    restoreFocusRef.current = document.activeElement;
     confirmRef.current?.focus();
-    return () => {
-      if (restoreFocusRef.current instanceof HTMLElement) {
-        restoreFocusRef.current.focus();
-      }
-    };
   }, []);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -100,20 +92,7 @@ function ConfirmDialog({
       onSettle(false);
       return;
     }
-    if (event.key !== 'Tab' || dialogRef.current === null) return;
-    const focusable = Array.from(
-      dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
-    );
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapTabKey(event, dialogRef);
   };
 
   return (
