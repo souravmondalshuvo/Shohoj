@@ -123,9 +123,11 @@ export default function RateFacultyModal({
   useRestoreFocus();
 
   useEffect(() => {
-    // Legacy: focus the first empty field.
-    initialsRef.current?.focus();
-  }, []);
+    // Legacy: focus the first empty field. The form (and this ref) only
+    // exists once `existing` settles to null, so re-run as that lands —
+    // a probe resolves after the initial mount effect would've already fired.
+    if (existing === null) initialsRef.current?.focus();
+  }, [existing]);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
