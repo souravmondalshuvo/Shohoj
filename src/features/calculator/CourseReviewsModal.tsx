@@ -119,6 +119,11 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
   const [reloadKey, setReloadKey] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   useRestoreFocus();
+  // No single primary field to focus (it's a viewer, not a form) — focus the
+  // dialog container itself so it's announced and Tab starts from the top.
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
 
   // uid from the shell auth with the window fallback (bundled page / e2e),
   // matching /calculator's probe + submit wiring.
@@ -166,6 +171,7 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
     >
       <div
         ref={dialogRef}
+        tabIndex={-1}
         className="shell-modal rv-cr-modal"
         role="dialog"
         aria-modal="true"
