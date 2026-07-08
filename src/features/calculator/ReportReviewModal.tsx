@@ -5,13 +5,14 @@
 // Send/Cancel, submitting the report through the provider (useReportReview →
 // reviewReports write). On success the parent toasts and closes; a failure shows
 // the message inline and keeps the dialog open. Shell dialog conventions
-// (role=dialog, labelled, Escape + backdrop close, focus the textarea on open
-// and restore on close), matching CourseReviewsModal.
+// (role=dialog, labelled, Tab trapped, Escape + backdrop close, focus the
+// textarea on open and restore on close), matching CourseReviewsModal.
 
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
 import { REPORT_REASON_MAX } from '../../platform/firebase/reviewsWriteRepo';
+import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 import { useReportReview } from './FacultyReviewsProvider';
 
 export interface ReportReviewModalProps {
@@ -27,14 +28,11 @@ export default function ReportReviewModal({ reviewId, onReported, onClose }: Rep
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const restoreFocusRef = useRef<Element | null>(null);
+  useRestoreFocus();
   useEffect(() => {
-    restoreFocusRef.current = document.activeElement;
     textareaRef.current?.focus();
-    return () => {
-      if (restoreFocusRef.current instanceof HTMLElement) restoreFocusRef.current.focus();
-    };
   }, []);
 
   const send = async () => {
@@ -59,10 +57,13 @@ export default function ReportReviewModal({ reviewId, onReported, onClose }: Rep
         if (e.key === 'Escape') {
           e.stopPropagation();
           onClose();
+          return;
         }
+        trapTabKey(e, dialogRef);
       }}
     >
       <div
+        ref={dialogRef}
         className="shell-modal rv-report-modal"
         role="dialog"
         aria-modal="true"
