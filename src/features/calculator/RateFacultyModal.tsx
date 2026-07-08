@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 import type { RatingKey, ReviewLike } from '../../core/reviews';
 import {
   RATING_FIELDS,
@@ -50,9 +51,6 @@ export interface RateFacultyModalProps {
    */
   readonly probe?: () => Promise<ReviewLike | null>;
 }
-
-const FOCUSABLE =
-  'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])';
 
 function StarRow({
   field,
@@ -122,17 +120,11 @@ export default function RateFacultyModal({
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const initialsRef = useRef<HTMLInputElement>(null);
-  const restoreFocusRef = useRef<Element | null>(null);
+  useRestoreFocus();
 
   useEffect(() => {
-    restoreFocusRef.current = document.activeElement;
     // Legacy: focus the first empty field.
     initialsRef.current?.focus();
-    return () => {
-      if (restoreFocusRef.current instanceof HTMLElement) {
-        restoreFocusRef.current.focus();
-      }
-    };
   }, []);
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -141,18 +133,7 @@ export default function RateFacultyModal({
       if (!submitting) onClose();
       return;
     }
-    if (event.key !== 'Tab' || dialogRef.current === null) return;
-    const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapTabKey(event, dialogRef);
   };
 
   const submit = async () => {
