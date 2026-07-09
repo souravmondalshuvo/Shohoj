@@ -201,13 +201,13 @@ export function Component() {
   const selectFloor = useCallback((next: number | null) => {
     setFloor(next);
     storeFloor(next);
-    setSelectedRoom((current) => {
-      if (current === null) return null;
-      const keep = next !== null && parseRoomCode(current)?.floor === next;
-      if (!keep) setSearchParams({}, { replace: true });
-      return keep ? current : null;
-    });
-  }, [setSearchParams]);
+    // Keep the selected room only when it lives on the newly focused floor.
+    setSelectedRoom((current) =>
+      current !== null && next !== null && parseRoomCode(current)?.floor === next
+        ? current
+        : null,
+    );
+  }, []);
 
   const selectRoom = useCallback((code: string) => {
     const parsed = parseRoomCode(code);
@@ -215,8 +215,17 @@ export function Component() {
     setFloor(parsed.floor);
     storeFloor(parsed.floor);
     setSelectedRoom(parsed.code);
-    setSearchParams({ room: parsed.code }, { replace: true });
-  }, [setSearchParams]);
+  }, []);
+
+  // Mirror the selection into ?room= so it's shareable — but only after the
+  // inbound deep link (if any) has been consumed, so we never clear it while
+  // the feed is still loading.
+  useEffect(() => {
+    if (!deepLinkConsumed.current) return;
+    if ((selectedRoom ?? null) !== (searchParams.get('room') ?? null)) {
+      setSearchParams(selectedRoom ? { room: selectedRoom } : {}, { replace: true });
+    }
+  }, [selectedRoom, searchParams, setSearchParams]);
 
   // Scene lifecycle — create once per model, tear down cleanly (StrictMode
   // double-mount safe: dispose removes the canvas and stops the loop).
