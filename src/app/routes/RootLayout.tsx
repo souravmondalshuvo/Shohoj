@@ -56,6 +56,7 @@ const NAV: readonly NavItem[] = [
   { to: '/rooms', label: 'Rooms' },
   { to: '/seats', label: 'Seats' },
   { to: '/reviews', label: 'Reviews' },
+  { to: '/campus', label: 'Campus' },
   { to: '/papers', label: 'Papers' },
   { to: '/groups', label: 'Groups' },
   { to: '/feedback', label: 'Feedback' },
