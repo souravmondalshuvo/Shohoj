@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ZTAdLCZR0+sMDenAQbTdwXvmmLJT/VU6kl4jpKE3AA4=' 'sha256-16eaMdns8QclteotFKjQIv+Z2jLsCxnp9QxwrB+8IoY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-TIl5uLIpIUIgcNXbu/4ut1+/AQZd2bHyT9o9s6hiGNk=' 'sha256-16eaMdns8QclteotFKjQIv+Z2jLsCxnp9QxwrB+8IoY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -8823,6 +8823,42 @@ window._shohoj_fetchMyPapers = async function() {
 // (approved == true OR uploaderUid == self OR admin). This closes the
 // path-guessing bypass where an attacker who guessed a storagePath could
 // download an unapproved file directly.
+// Map a file's leading magic bytes to a renderable MIME type. Pre-migration R2
+// objects can be served without a usable Content-Type (application/octet-stream
+// or empty), so `res.blob()` yields a typeless blob and the preview <iframe>
+// renders blank. Sniffing lets us re-tag the blob with a type the browser will
+// render inline. Returns null when the signature isn't a supported preview type.
+function _sniffPreviewMime(bytes) {
+  const b = bytes;
+  if (b.length < 4) return null;
+  // %PDF
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return 'application/pdf';
+  // PNG: 89 50 4E 47
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';
+  // JPEG: FF D8 FF
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';
+  // GIF: "GIF"
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
+  // WEBP: "RIFF"…"WEBP"
+  if (b.length >= 12 &&
+      b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';
+  return null;
+}
+
+// When the server hands back a generic/empty Content-Type, re-wrap the blob
+// with a sniffed type so the preview renders inline instead of blank.
+async function _retypeGenericBlob(blob) {
+  const t = (blob.type || '').toLowerCase();
+  if (t === 'application/pdf' || t.startsWith('image/')) return blob;
+  try {
+    const head = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+    const sniffed = _sniffPreviewMime(head);
+    if (sniffed) return new Blob([blob], { type: sniffed });
+  } catch { /* sniff failed — fall through to original blob */ }
+  return blob;
+}
+
 window._shohoj_paperDownloadUrl = async function(paperId) {
   if (!currentUser || !paperId) return null;
   const base = getPapersWorkerUrl();
@@ -8840,7 +8876,7 @@ window._shohoj_paperDownloadUrl = async function(paperId) {
       console.warn('[Shohoj] paperDownloadUrl: worker returned', res.status);
       return null;
     }
-    const blob = await res.blob();
+    const blob = await _retypeGenericBlob(await res.blob());
     const url = URL.createObjectURL(blob);
     setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
     return url;
