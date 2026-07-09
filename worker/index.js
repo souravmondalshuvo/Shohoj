@@ -148,6 +148,24 @@ export function safeFilename(name) {
   return String(name || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
 }
 
+// Map a file's leading magic bytes to a renderable MIME type. Used as a last
+// resort on /download when neither the Firestore doc nor the R2 object carries
+// a usable contentType (pre-migration objects): serving such a file as
+// application/octet-stream makes the browser preview render blank. `bytes` is a
+// Uint8Array of at least the first 12 bytes. Returns null when unrecognized.
+export function sniffMimeFromBytes(bytes) {
+  const b = bytes;
+  if (!b || b.length < 4) return null;
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return 'application/pdf';        // %PDF
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';              // PNG
+  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';                              // JPEG
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';                               // GIF
+  if (b.length >= 12 &&
+      b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';           // RIFF…WEBP
+  return null;
+}
+
 function uniqueUploadObjectName(filename) {
   const randomId = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2, 14);
   return `${Date.now()}-${randomId}-${filename}`;
@@ -657,11 +675,22 @@ async function handleDownload(request, env, origin) {
   // entry, in which case `obj.httpMetadata.contentType` is undefined and the
   // browser receives a typeless blob — that's what makes the preview iframe
   // render blank.
-  const fallbackType = String(fields.mimeType || '').match(/^(?:application\/pdf|image\/(?:png|jpeg|webp|gif))$/)
+  let contentType = String(fields.mimeType || '').match(/^(?:application\/pdf|image\/(?:png|jpeg|webp|gif))$/)
     ? fields.mimeType
     : (obj.httpMetadata?.contentType || 'application/octet-stream');
+  // Last resort for pre-migration objects with no authoritative type: buffer the
+  // object and sniff its magic bytes so the browser preview renders inline
+  // instead of blank. Uploads are capped at MAX_UPLOAD_BYTES, so buffering is
+  // bounded. arrayBuffer() consumes obj.body, so serve the buffer we read.
+  let body = obj.body;
+  if (contentType === 'application/octet-stream') {
+    const buf = await obj.arrayBuffer();
+    const sniffed = sniffMimeFromBytes(new Uint8Array(buf, 0, Math.min(12, buf.byteLength)));
+    if (sniffed) contentType = sniffed;
+    body = buf;
+  }
   const headers = new Headers(corsHeaders(env, origin));
-  headers.set('Content-Type', fallbackType);
+  headers.set('Content-Type', contentType);
   headers.set('Content-Length', String(obj.size));
   headers.set('Cache-Control', 'private, max-age=300');
   // Serve the exact declared type and forbid MIME-sniffing. Uploads are
@@ -672,7 +701,7 @@ async function handleDownload(request, env, origin) {
   // `inline` keeps the browser rendering in-place (iframe/<embed>) rather
   // than triggering a download dialog.
   headers.set('Content-Disposition', 'inline');
-  return new Response(obj.body, { status: 200, headers });
+  return new Response(body, { status: 200, headers });
 }
 
 async function handleDelete(request, env, origin) {
