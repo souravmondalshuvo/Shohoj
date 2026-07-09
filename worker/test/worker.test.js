@@ -17,6 +17,7 @@ import worker, {
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
+  sniffMimeFromBytes,
   validateReviewPayload,
   parseFeedSeatMap,
   detectSeatDrops,
@@ -171,6 +172,29 @@ async function makeServiceAccountJson() {
     assertEq(safeFilename(undefined), '');
     const long = 'a'.repeat(200) + '.pdf';
     assertEq(safeFilename(long).length, 80);
+  });
+
+  await test('sniffMimeFromBytes detects supported preview types', () => {
+    const u = (...bytes) => new Uint8Array(bytes);
+    assertEq(sniffMimeFromBytes(u(0x25, 0x50, 0x44, 0x46, 0x2D)), 'application/pdf'); // %PDF-
+    assertEq(sniffMimeFromBytes(u(0x89, 0x50, 0x4E, 0x47, 0x0D)), 'image/png');
+    assertEq(sniffMimeFromBytes(u(0xFF, 0xD8, 0xFF, 0xE0)), 'image/jpeg');
+    assertEq(sniffMimeFromBytes(u(0x47, 0x49, 0x46, 0x38, 0x39)), 'image/gif');
+    assertEq(
+      sniffMimeFromBytes(u(0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50)),
+      'image/webp',
+    );
+  });
+
+  await test('sniffMimeFromBytes returns null for unknown or short input', () => {
+    assertEq(sniffMimeFromBytes(new Uint8Array([0x00, 0x01, 0x02, 0x03])), null);
+    assertEq(sniffMimeFromBytes(new Uint8Array([0x25, 0x50])), null); // too short
+    assertEq(sniffMimeFromBytes(null), null);
+    // RIFF header without the WEBP tag (e.g. a WAV) must not match
+    assertEq(
+      sniffMimeFromBytes(new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45])),
+      null,
+    );
   });
 
   console.log('\nAuth payload policy:');
