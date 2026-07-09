@@ -39,6 +39,8 @@ export const router = createBrowserRouter([
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
       { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
       { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
+      // Campus map (#370): Three.js stays out of the entry chunk via `lazy`.
+      { path: 'campus', lazy: () => import('../routes/CampusRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
