@@ -25,6 +25,12 @@ export function useRestoreFocus(): void {
 /**
  * Keeps Tab/Shift+Tab cycling within `dialogRef`'s focusable elements. Call
  * from the dialog's onKeyDown alongside whatever Escape handling it needs.
+ *
+ * `dialogRef.current` itself may be the current focus (a viewer with no
+ * single primary field focuses its tabIndex={-1} container on open) — it's
+ * excluded from the FOCUSABLE query, so Shift+Tab from there is treated the
+ * same as Shift+Tab from `first`, or it'd fall through to native (undefined)
+ * behavior and escape the dialog.
  */
 export function trapTabKey(
   event: React.KeyboardEvent,
@@ -35,10 +41,11 @@ export function trapTabKey(
   if (focusable.length === 0) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || active === dialogRef.current)) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (!event.shiftKey && active === last) {
     event.preventDefault();
     first.focus();
   }
