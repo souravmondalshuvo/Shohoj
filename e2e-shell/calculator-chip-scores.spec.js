@@ -74,12 +74,14 @@ test('a chip shows the aggregate once three reviews exist, and hides it below', 
 test('submitting a review invalidates the pair and re-aggregates the chip', async ({ page }) => {
   await page.addInitScript(installRepo, { 'GHI|CSE220': null });
   await page.addInitScript(() => {
-    // GHI starts with two reviews → hidden; a third arrives via the submit hook.
+    // GHI starts with two reviews → hidden; a third arrives via the submit relay
+    // (#353: the modal submits through the typed provider, whose e2e seam is
+    // __shohojSubmitRelay — the legacy _shohoj_submitReview hook is not read).
     window.__reviewStore['GHI|CSE220'] = [window.__reviewRating(4), window.__reviewRating(4)];
     window._shohoj_currentUid = () => 'e2e-uid';
-    window._shohoj_submitReview = async (payload) => {
-      window.__reviewStore[`${payload.facultyInitials}|${payload.courseCode}`].push(window.__reviewRating(4));
-      return { ok: true };
+    window.__shohojSubmitRelay = async (submission) => {
+      window.__reviewStore[`${submission.facultyInitials}|${submission.courseCode}`].push(window.__reviewRating(4));
+      return { ok: true, id: 'e2e-id' };
     };
   });
 
