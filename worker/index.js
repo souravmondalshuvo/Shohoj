@@ -1021,6 +1021,90 @@ export async function runSeatAlertCron(env) {
   return { configured: true, users: watchDocs.length, watches, transitions, emailed, failed };
 }
 
+// ── Lost & found claim delivery (cron, #371) ─────────────────────────────────
+// The board's privacy model: posts show no contact info. A claim ("I found
+// this / this is mine") is a client-written doc in lostFoundClaims; this cron
+// joins it to the poster's client-unreadable contact doc and emails the
+// poster, sharing the claimer's (consenting) address so they can talk
+// directly. A claim doc is deleted only after Resend accepts the email —
+// a transient failure leaves it queued for the next tick, mirroring the
+// seat-alert retry semantics. Formatting is pure and exported for tests.
+
+const LOST_FOUND_POSTS    = 'lostFoundPosts';
+const LOST_FOUND_CONTACTS = 'lostFoundContacts';
+const LOST_FOUND_CLAIMS   = 'lostFoundClaims';
+
+export function buildLostFoundClaimEmail(post, claim) {
+  const kind = post.type === 'lost' ? 'lost' : 'found';
+  const verb = kind === 'lost' ? 'says they found it' : 'says it belongs to them';
+  const title = String(post.title || '(untitled)');
+  const subject = `Someone responded to your ${kind} item — ${title}`;
+  const note = typeof claim.note === 'string' && claim.note.trim() !== ''
+    ? `<p style="margin:12px 0;padding:10px 12px;background:#f5f5f5;border-radius:8px;">${escapeHtml(claim.note.trim())}</p>`
+    : '';
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;">
+      <h2 style="color:#1c7c45;">Your lost &amp; found post got a response</h2>
+      <p><strong>${escapeHtml(title)}</strong> — a fellow BRACU student ${verb}.</p>
+      ${note}
+      <p>Reply to them directly at
+        <a href="mailto:${escapeHtml(String(claim.fromEmail || ''))}">${escapeHtml(String(claim.fromEmail || ''))}</a>.
+        Shohoj never shows your email on the board; only they receive this address exchange.</p>
+      <p style="margin-top:16px;color:#999;font-size:12px;">You're getting this because someone responded to your post on the Shohoj lost &amp; found board. Delete the post to stop responses.</p>
+    </div>`;
+  return { subject, html };
+}
+
+async function firestoreDeleteDoc(env, token, path) {
+  const res = await fetch(`${firestoreDocsBase(env)}/${path}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  // 404 = already gone (a previous partially-failed tick); that's success.
+  if (!res.ok && res.status !== 404) throw new Error(`Firestore delete ${path} ${res.status}`);
+}
+
+export async function runLostFoundCron(env) {
+  const cfg = seatAlertEmailConfig(env);
+  if (!cfg.ok) {
+    return { configured: false, reason: cfg.reason, claims: 0, emailed: 0, failed: 0, dropped: 0 };
+  }
+
+  const token = await getServiceAccountAccessToken(env);
+  const claimDocs = await firestoreListAll(env, token, LOST_FOUND_CLAIMS);
+  if (claimDocs.length === 0) {
+    return { configured: true, claims: 0, emailed: 0, failed: 0, dropped: 0 };
+  }
+
+  let emailed = 0; // claims delivered and dequeued this run
+  let failed = 0;  // Resend rejections — left queued for retry
+  let dropped = 0; // malformed/orphaned claims removed without an email
+  for (const { id, fields } of claimDocs) {
+    const postId = typeof fields.postId === 'string' ? fields.postId : '';
+    const fromEmail = typeof fields.fromEmail === 'string' ? fields.fromEmail : '';
+    const post = postId ? await firestoreGetFields(env, token, `${LOST_FOUND_POSTS}/${postId}`) : null;
+    const contact = postId ? await firestoreGetFields(env, token, `${LOST_FOUND_CONTACTS}/${postId}`) : null;
+
+    // Post deleted / contact missing / junk claim → nothing deliverable; drop
+    // the queue doc so it can't loop forever.
+    if (!fromEmail || !post || !contact || typeof contact.email !== 'string' || !contact.email) {
+      await firestoreDeleteDoc(env, token, `${LOST_FOUND_CLAIMS}/${id}`);
+      dropped += 1;
+      continue;
+    }
+
+    const { subject, html } = buildLostFoundClaimEmail(post, fields);
+    const delivered = await resendSeatAlert(env, contact.email, subject, html);
+    if (delivered) {
+      await firestoreDeleteDoc(env, token, `${LOST_FOUND_CLAIMS}/${id}`);
+      emailed += 1;
+    } else {
+      failed += 1;
+    }
+  }
+  return { configured: true, claims: claimDocs.length, emailed, failed, dropped };
+}
+
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
@@ -1036,6 +1120,20 @@ export default {
         );
       } catch (e) {
         console.error('seat-alert cron failed:', e?.message || e);
+      }
+    })());
+    ctx.waitUntil((async () => {
+      try {
+        const r = await runLostFoundCron(env);
+        if (!r.configured) {
+          console.error(`lost-found cron: email channel not configured — ${r.reason}; skipped (no emails sent)`);
+          return;
+        }
+        if (r.claims > 0) {
+          console.log(`lost-found cron: claims=${r.claims} emailed=${r.emailed} failed=${r.failed} dropped=${r.dropped}`);
+        }
+      } catch (e) {
+        console.error('lost-found cron failed:', e?.message || e);
       }
     })());
   },
