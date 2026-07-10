@@ -288,6 +288,56 @@
       }
       .campus-error { padding: 16px 0; }
       .campus-other { margin-top: 16px; font-size: 13px; color: #2d5a3d; }
+      .lf-page { max-width: 720px; }
+      .lf-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+      .lf-filters { display: flex; gap: 4px; }
+      .lf-filter {
+        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; min-height: 44px;
+        border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); background: transparent; color: rgba(0,0,0,0.55);
+      }
+      .lf-filter--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: #1c7c45; }
+      .lf-filter:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .lf-form {
+        border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04);
+        border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .lf-type { border: none; margin: 0; padding: 0; display: flex; gap: 16px; align-items: center; font-size: 13px; }
+      .lf-type label { display: flex; align-items: center; gap: 6px; }
+      .lf-form-row { display: flex; flex-wrap: wrap; gap: 12px; }
+      .lf-form-row .lf-field { flex: 1; min-width: 180px; }
+      .lf-field { display: flex; flex-direction: column; gap: 4px; }
+      .lf-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #3a6b47; }
+      .lf-input {
+        font: inherit; font-size: 13px; width: 100%; padding: 9px 12px; border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.2); background: #fff; box-sizing: border-box;
+      }
+      .lf-input:focus { border-color: rgba(46,204,113,0.55); outline: none; }
+      .lf-note { resize: vertical; min-height: 56px; }
+      .lf-error { font-size: 12px; color: #e74c3c; }
+      .lf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+      .lf-item { border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 14px; }
+      .lf-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+      .lf-badge {
+        font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+        border-radius: 4px; padding: 2px 8px; border: 1px solid;
+      }
+      .lf-badge--lost { background: rgba(231,76,60,0.10); color: #e74c3c; border-color: rgba(231,76,60,0.28); }
+      .lf-badge--found { background: rgba(46,204,113,0.12); color: #1c7c45; border-color: rgba(46,204,113,0.30); }
+      .lf-title { font-size: 14px; }
+      .lf-age { margin-left: auto; font-size: 11px; }
+      .lf-desc { margin: 6px 0 0; font-size: 13px; color: #0d2914; }
+      .lf-where { margin: 4px 0 0; font-size: 12px; }
+      .lf-where a { color: #1c7c45; }
+      .lf-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      .lf-btn { min-height: 40px; padding: 6px 14px; font-size: 12px; }
+      .lf-claimed { font-size: 12px; font-weight: 600; color: #1c7c45; }
+      .lf-claim-box {
+        margin-top: 10px; padding: 12px; border-radius: 10px;
+        border: 1px solid rgba(86,180,233,0.25); background: rgba(86,180,233,0.05);
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .lf-privacy { font-size: 11px; margin: 0; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
