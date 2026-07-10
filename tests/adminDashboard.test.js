@@ -56,6 +56,7 @@ function expect(actual) {
   const {
     normalizeAdminStats,
     buildAdminStatsHtml,
+    buildLostFoundRowHtml,
   } = await import('../js/ui/adminDashboard.js');
 
   console.log('\nAdmin dashboard helpers:');
@@ -122,6 +123,41 @@ function expect(actual) {
     expect(html).toContain('Total reviews');
     expect(html).toContain('<div class="admin-stat-value">0</div>');
     expect(html).notToContain('<script>alert(1)</script>');
+  });
+
+  console.log('\nLost & found moderation rows (#371):');
+
+  test('buildLostFoundRowHtml renders badge, meta, and a delete action', () => {
+    const html = buildLostFoundRowHtml({
+      id: 'p1',
+      type: 'found',
+      title: 'Student ID card',
+      status: 'resolved',
+      locationHint: 'lift lobby',
+      roomCode: '09G-31T',
+      creatorUid: 'abcdef1234567890',
+      createdAt: 1751882400000,
+    });
+    expect(html).toContain('FOUND');
+    expect(html).toContain('Student ID card');
+    expect(html).toContain('uid abcdef12…');
+    expect(html).toContain('resolved');
+    expect(html).toContain('lift lobby · 09G-31T');
+    expect(html).toContain('data-act="delete-lostfound"');
+    expect(html).toContain('data-id="p1"');
+  });
+
+  test('buildLostFoundRowHtml escapes hostile content and tolerates sparse posts', () => {
+    const html = buildLostFoundRowHtml({
+      id: 'x',
+      type: 'lost',
+      title: '<img src=x onerror=alert(1)>',
+    });
+    expect(html).toContain('LOST');
+    expect(html).notToContain('<img src=x');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(html).toContain('data-act="delete-lostfound"');
+    expect(html).notToContain('undefined');
   });
 
   console.log('\n──────────────────────────────────────────────────');
