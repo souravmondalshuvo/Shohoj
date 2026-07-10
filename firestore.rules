@@ -347,6 +347,93 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Lost & found board (Phase 3, #371) ───────────────────────────────
+    // Privacy model: posts carry NO contact info. The poster's email lives in
+    // lostFoundContacts (never client-readable); a claim queues a Worker-sent
+    // email to the poster that shares the claimer's own address. Posts are
+    // immutable except the owner closing them (open → resolved) — edits would
+    // let a poster bait-and-switch after claims went out.
+    function validLostFoundType(t) {
+      return t == 'lost' || t == 'found';
+    }
+
+    function validLostFoundPostPayload(d) {
+      return d.keys().hasOnly(['type','title','description','locationHint','roomCode','status','creatorUid','createdAt'])
+        && d.keys().hasAll(['type','title','status','creatorUid','createdAt'])
+        && validLostFoundType(d.type)
+        && d.title is string
+        && d.title.size() >= 3
+        && d.title.size() <= 80
+        && (!('description' in d) || (d.description is string && d.description.size() <= 500))
+        && (!('locationHint' in d) || (d.locationHint is string && d.locationHint.size() <= 120))
+        && (!('roomCode' in d) || (d.roomCode is string && d.roomCode.matches('^[0-9]{2}[A-Z]-[0-9]{2,3}[A-Z]$')))
+        && d.status == 'open'
+        && d.creatorUid is string
+        && d.creatorUid == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    match /lostFoundPosts/{postId} {
+      allow read:   if isBracuUser();
+      allow create: if isVerifiedBracuGoogleUser()
+        && validLostFoundPostPayload(request.resource.data);
+      allow update: if isVerifiedBracuGoogleUser()
+        && resource.data.creatorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'resolved';
+      allow delete: if isAdmin()
+        || (isVerifiedBracuGoogleUser() && resource.data.creatorUid == request.auth.uid);
+    }
+
+    // Poster contact, keyed by post id. getAfter() ties creation to a post
+    // created by the same caller in the SAME batch, so nobody can attach a
+    // contact to someone else's post; only the cron Worker (service-account
+    // token, bypasses rules) ever reads it.
+    function validLostFoundContactPayload(d, postId) {
+      return d.keys().hasOnly(['email','uid','createdAt'])
+        && d.keys().hasAll(['email','uid','createdAt'])
+        && d.email is string
+        && d.email == request.auth.token.email
+        && d.uid is string
+        && d.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/lostFoundPosts/$(postId)).data.creatorUid == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    match /lostFoundContacts/{postId} {
+      allow read:   if false;
+      allow create: if isVerifiedBracuGoogleUser()
+        && validLostFoundContactPayload(request.resource.data, postId);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Claim queue ("I found this / this is mine"): write-only from clients,
+    // one claim per user per post via the deterministic id. The Worker
+    // consumes the queue and emails the poster; fromEmail is pinned to the
+    // claimer's verified token email so a claim can never spoof a sender.
+    function validLostFoundClaimPayload(d) {
+      return d.keys().hasOnly(['postId','fromUid','fromEmail','note','createdAt'])
+        && d.keys().hasAll(['postId','fromUid','fromEmail','createdAt'])
+        && d.postId is string
+        && exists(/databases/$(database)/documents/lostFoundPosts/$(d.postId))
+        && d.fromUid is string
+        && d.fromUid == request.auth.uid
+        && d.fromEmail is string
+        && d.fromEmail == request.auth.token.email
+        && (!('note' in d) || (d.note is string && d.note.size() <= 300))
+        && d.createdAt == request.time;
+    }
+
+    match /lostFoundClaims/{claimId} {
+      allow read:   if isAdmin();
+      allow create: if isVerifiedBracuGoogleUser()
+        && validLostFoundClaimPayload(request.resource.data)
+        && claimId == request.resource.data.postId + '_' + request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     // ── Catch-all: deny everything else ──────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
