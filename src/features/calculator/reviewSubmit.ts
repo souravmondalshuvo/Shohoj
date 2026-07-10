@@ -4,11 +4,11 @@
 // orchestration half of js/core/reviews.js submitReview, with the environment
 // injected. Validation mirrors the core's validateReview in the same order,
 // with catalog membership as a predicate (the record-shaped catalog data stays
-// on the legacy side, like reviewableCourse.ts). The transport is the same
-// signed-in window hook the legacy core uses — absent or signed out it fails
-// with the identical 'Sign in to submit a review', so the standalone shell
-// (no Firebase boot) behaves exactly like a signed-out legacy session. When
-// firebase.js is live on the page, submissions go through unchanged.
+// on the legacy side, like reviewableCourse.ts). CalculatorRoute builds the
+// environment: the transport is the typed provider relay (#353 — useSubmitReview
+// → runReviewSubmit → submitReviewRelay), not a window hook. Absent transport
+// or signed out it fails with the legacy 'Sign in to submit a review', so a
+// shell without cloud capability still degrades like a signed-out session.
 
 import { upsertFacultyProfile } from '../../core/faculty.ts';
 import { RATING_KEYS } from '../../core/reviews.ts';
@@ -20,21 +20,23 @@ export interface ReviewSubmitResult {
   readonly code?: string;
 }
 
-/** The signed-in Firestore write hook (window._shohoj_submitReview's shape). */
+/** The injected write transport (legacy window._shohoj_submitReview's shape). */
 export type ReviewSubmitHook = (payload: ReviewPayload) => Promise<ReviewSubmitResult | undefined>;
 
 export interface ReviewSubmitEnv {
   /** Catalog membership check (validateReview's `!catalog[code]` step). */
   readonly isKnownCode: (code: string) => boolean;
-  /** The transport, or null when unavailable (legacy: window._shohoj_submitReview). */
+  /** The transport (the provider relay), or null when unavailable. */
   readonly hook: ReviewSubmitHook | null;
   /** Current signed-in uid, or '' (legacy: window._shohoj_currentUid()). */
   readonly currentUid: () => string;
 }
 
+// The shell's only Window declaration for the legacy uid hook — still read by
+// CalculatorRoute, FacultyReviewsProvider and CourseReviewsModal as the
+// signed-in fallback (and the e2e uid seam).
 declare global {
   interface Window {
-    _shohoj_submitReview?: (payload: ReviewPayload) => Promise<ReviewSubmitResult | undefined>;
     _shohoj_currentUid?: () => string | null | undefined;
   }
 }
@@ -104,18 +106,4 @@ export async function submitReview(
   } catch (e) {
     return { ok: false, error: (e instanceof Error && e.message) || 'Submission failed' };
   }
-}
-
-/** The live environment: the same window hooks legacy submitReview reads. */
-export function windowReviewSubmitEnv(isKnownCode: (code: string) => boolean): ReviewSubmitEnv {
-  return {
-    isKnownCode,
-    get hook() {
-      return typeof window !== 'undefined' && typeof window._shohoj_submitReview === 'function'
-        ? window._shohoj_submitReview
-        : null;
-    },
-    currentUid: () =>
-      (typeof window !== 'undefined' && window._shohoj_currentUid?.()) || '',
-  };
 }
