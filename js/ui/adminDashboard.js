@@ -444,6 +444,7 @@ export function buildLostFoundRowHtml(p) {
           <span class="admin-dash-tag">${escHtml(tag)}</span>
         </div>
         <div class="admin-dash-row-title">${escHtml(p.title || '')}</div>
+        ${p.description ? `<div class="admin-dash-row-meta">${escHtml(p.description)}</div>` : ''}
         <div class="admin-dash-row-meta">${escHtml(author)} · ${escHtml(_adminFormatDate(p.createdAt))}${escHtml(status)}${where ? ` · ${escHtml(where)}` : ''}</div>
       </div>
       <div class="admin-dash-row-actions">
