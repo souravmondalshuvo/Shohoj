@@ -458,9 +458,14 @@ async function _loadLostFound() {
   const count = document.getElementById('adminCountLostFound');
   if (!list || !count) return;
   count.textContent = '…';
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   list.innerHTML = _skeletonRows(3);
   const items = await window._shohoj_fetchAllLostFound?.() ?? [];
   count.textContent = items.length;
+  // Rows are built from escHtml/escAttr-escaped post fields (see the XSS unit test).
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   list.innerHTML = items.length ? items.map(buildLostFoundRowHtml).join('') : _emptyHtml('No lost & found posts.');
 }
 
