@@ -25,6 +25,8 @@ import worker, {
   resolveEmailFrom,
   seatAlertEmailConfig,
   runSeatAlertCron,
+  buildLostFoundClaimEmail,
+  runLostFoundCron,
   RESEND_TEST_SENDER,
   SEAT_FEED_URL,
 } from '../index.js';
@@ -1015,13 +1017,138 @@ async function makeServiceAccountJson() {
 
   await test('scheduled(): runs via waitUntil and swallows a feed failure', async () => {
     const { handler } = cronRouter({ feedStatus: 503 });
-    let captured;
-    const ctx = { waitUntil(p) { captured = p; } };
+    const captured = [];
+    const ctx = { waitUntil(p) { captured.push(p); } };
     await withMockedFetch(handler, async () => {
       worker.scheduled({}, cronEnv(), ctx);
-      await captured; // must resolve, not reject — handler catches internally
+      // Both crons must resolve, not reject — the handler catches internally.
+      await Promise.all(captured);
     });
-    assert(true);
+    assert(captured.length >= 2, 'seat + lost&found crons both scheduled');
+  });
+
+  // ── Lost & found claim delivery (#371) ─────────────────────────────────
+
+  await test('buildLostFoundClaimEmail: subject reads per type, body escapes and links the sender', () => {
+    const lost = buildLostFoundClaimEmail(
+      { type: 'lost', title: 'Black umbrella' },
+      { fromEmail: 'finder@g.bracu.ac.bd', note: 'It has a <b>sticker</b>' },
+    );
+    assert(/lost item — Black umbrella/.test(lost.subject), lost.subject);
+    assert(lost.html.includes('says they found it'));
+    assert(lost.html.includes('&lt;b&gt;sticker&lt;/b&gt;'), 'note must be escaped');
+    assert(lost.html.includes('mailto:finder@g.bracu.ac.bd'));
+
+    const found = buildLostFoundClaimEmail(
+      { type: 'found', title: 'ID card <script>' },
+      { fromEmail: 'owner@g.bracu.ac.bd' },
+    );
+    assert(/found item/.test(found.subject));
+    assert(found.html.includes('says it belongs to them'));
+    assert(found.html.includes('&lt;script&gt;'), 'title must be escaped');
+  });
+
+  // Mock fetch router for the lost & found cron.
+  function lfRouter({ claims = [], posts = {}, contacts = {}, resend = async () => ({ ok: true }) }) {
+    const calls = { resend: [], deleted: [] };
+    const handler = async (input, init = {}) => {
+      const url = typeof input === 'string' ? input : input.url;
+      const method = (init.method || 'GET').toUpperCase();
+      if (url === 'https://oauth2.googleapis.com/token') return json({ access_token: 'sa-token', expires_in: 3600 });
+      if (url.startsWith(`${FS_BASE}/lostFoundClaims?`)) {
+        return json({ documents: claims.map(c => ({ name: `${FS_BASE}/lostFoundClaims/${c.id}`, fields: fsFields(c.fields) })) });
+      }
+      let m = url.match(/\/lostFoundClaims\/([^?]+)$/);
+      if (m && method === 'DELETE') { calls.deleted.push(decodeURIComponent(m[1])); return json({}); }
+      m = url.match(/\/lostFoundPosts\/([^?]+)$/);
+      if (m) {
+        const p = posts[decodeURIComponent(m[1])];
+        return p ? json({ name: url, fields: fsFields(p) }) : new Response('nf', { status: 404 });
+      }
+      m = url.match(/\/lostFoundContacts\/([^?]+)$/);
+      if (m) {
+        const c = contacts[decodeURIComponent(m[1])];
+        return c ? json({ name: url, fields: fsFields(c) }) : new Response('nf', { status: 404 });
+      }
+      if (url === 'https://api.resend.com/emails') {
+        const body = JSON.parse(init.body);
+        calls.resend.push(body);
+        const r = await resend(body);
+        return r.ok ? json({ id: 'email_1' }) : new Response(JSON.stringify({ error: 'x' }), { status: r.status || 500, headers: { 'Content-Type': 'application/json' } });
+      }
+      throw new Error(`unexpected fetch: ${method} ${url}`);
+    };
+    return { handler, calls };
+  }
+
+  const LF_CLAIM = { id: 'p1_u2', fields: { postId: 'p1', fromUid: 'u2', fromEmail: 'finder@g.bracu.ac.bd', note: 'red one?' } };
+  const LF_POST = { type: 'lost', title: 'Umbrella', status: 'open', creatorUid: 'u1' };
+  const LF_CONTACT = { email: 'poster@g.bracu.ac.bd', uid: 'u1' };
+
+  await test('lf cron: unconfigured email channel → no I/O', async () => {
+    const throwing = async () => { throw new Error('no fetch should happen when unconfigured'); };
+    await withMockedFetch(throwing, async () => {
+      const r = await runLostFoundCron(cronEnv({ RESEND_API_KEY: undefined }));
+      assert(!r.configured && /RESEND_API_KEY/.test(r.reason));
+    });
+  });
+
+  await test('lf cron: empty queue → zero counts, no emails', async () => {
+    const { handler, calls } = lfRouter({});
+    await withMockedFetch(handler, async () => {
+      const r = await runLostFoundCron(cronEnv());
+      assertEq(r.claims, 0);
+      assertEq(r.emailed, 0);
+    });
+    assertEq(calls.resend.length, 0);
+  });
+
+  await test('lf cron: delivers to the poster contact and dequeues the claim', async () => {
+    const { handler, calls } = lfRouter({
+      claims: [LF_CLAIM],
+      posts: { p1: LF_POST },
+      contacts: { p1: LF_CONTACT },
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runLostFoundCron(cronEnv());
+      assertEq(r.claims, 1);
+      assertEq(r.emailed, 1);
+      assertEq(r.failed, 0);
+      assertEq(r.dropped, 0);
+    });
+    assertEq(calls.resend.length, 1);
+    assertEq(calls.resend[0].to[0], 'poster@g.bracu.ac.bd');
+    assertEq(calls.resend[0].from, VERIFIED_SENDER);
+    assert(calls.resend[0].html.includes('finder@g.bracu.ac.bd'), 'shares the claimer address');
+    assertEq(calls.deleted.length, 1);
+    assertEq(calls.deleted[0], 'p1_u2');
+  });
+
+  await test('lf cron: Resend failure leaves the claim queued for retry', async () => {
+    const { handler, calls } = lfRouter({
+      claims: [LF_CLAIM],
+      posts: { p1: LF_POST },
+      contacts: { p1: LF_CONTACT },
+      resend: async () => ({ ok: false, status: 500 }),
+    });
+    await withMockedFetch(handler, async () => {
+      const r = await runLostFoundCron(cronEnv());
+      assertEq(r.emailed, 0);
+      assertEq(r.failed, 1);
+    });
+    assertEq(calls.deleted.length, 0, 'failed delivery must not dequeue');
+  });
+
+  await test('lf cron: orphaned claim (post gone) is dropped without an email', async () => {
+    const { handler, calls } = lfRouter({ claims: [LF_CLAIM], posts: {}, contacts: {} });
+    await withMockedFetch(handler, async () => {
+      const r = await runLostFoundCron(cronEnv());
+      assertEq(r.emailed, 0);
+      assertEq(r.dropped, 1);
+    });
+    assertEq(calls.resend.length, 0);
+    assertEq(calls.deleted.length, 1);
+    assertEq(calls.deleted[0], 'p1_u2');
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
