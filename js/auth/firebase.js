@@ -2220,3 +2220,38 @@ window._shohoj_adminDeleteFeedback = async function(feedbackId) {
     return { ok: false, error: e.message || 'Failed' };
   }
 };
+
+// Lost & found moderation (#371). Every post in the board's collection,
+// newest first — the dashboard shows all statuses (open/resolved) since
+// moderation may need to reach either.
+window._shohoj_fetchAllLostFound = async function() {
+  if (!currentUser) return [];
+  try {
+    const q = query(
+      collection(db, 'lostFoundPosts'),
+      orderBy('createdAt', 'desc'),
+      qLimit(200),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.warn('[Shohoj] fetchAllLostFound failed:', e);
+    return [];
+  }
+};
+
+window._shohoj_adminDeleteLostFound = async function(postId) {
+  if (!currentUser) return { ok: false };
+  if (!_isAdminUser()) return { ok: false, error: 'Unauthorized' };
+  try {
+    // The post and its (client-unreadable) contact doc share the id; rules
+    // allow admin delete on both. Deleting a missing contact is a no-op.
+    await deleteDoc(doc(db, 'lostFoundPosts', postId));
+    await deleteDoc(doc(db, 'lostFoundContacts', postId));
+    _writeAdminLog('delete_lostfound', 'lostFoundPosts', postId);
+    return { ok: true };
+  } catch (e) {
+    console.error('[Shohoj] adminDeleteLostFound failed:', e);
+    return { ok: false, error: e.message || 'Failed' };
+  }
+};
