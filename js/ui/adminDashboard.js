@@ -4,6 +4,7 @@
 //   • Pending paper uploads (approve / delete)
 //   • Reports — paper + review (delete reported item or dismiss report)
 //   • Feedback (delete)
+//   • Lost & found posts (delete; #371 — removes the hidden contact doc too)
 //
 // Reuses the global window._shohoj_* admin helpers from firebase.js.
 // Charts via Chart.js loaded from CDN in index.html.
@@ -219,6 +220,14 @@ function _shellHtml(opts = {}) {
           <div class="admin-dash-list" id="adminListFeedback">${_skeletonRows(3)}</div>
         </section>
 
+        <section class="admin-mod-section">
+          <header class="admin-mod-section-head">
+            <h2>🧳 Lost &amp; found</h2>
+            <span class="admin-dash-count" id="adminCountLostFound">…</span>
+          </header>
+          <div class="admin-dash-list" id="adminListLostFound">${_skeletonRows(3)}</div>
+        </section>
+
       </div>
     </div>
   `;
@@ -417,6 +426,42 @@ function _feedbackRow(f) {
       </div>
     </div>
   `;
+}
+
+// Pure row builder for a lost & found post (#371) — exported for unit tests.
+// No contact info exists on the post by design; the uid prefix + createdAt is
+// all the identity a moderator gets.
+export function buildLostFoundRowHtml(p) {
+  const tag = p.type === 'found' ? 'FOUND' : 'LOST';
+  const status = p.status === 'resolved' ? ' · resolved' : '';
+  const where = [p.locationHint, p.roomCode].filter(Boolean).join(' · ');
+  const author = p.creatorUid ? `uid ${String(p.creatorUid).slice(0, 8)}…` : '—';
+  const label = `${tag}: ${String(p.title || '').slice(0, 60)}`;
+  return `
+    <div class="admin-dash-row" data-id="${escAttr(p.id)}">
+      <div class="admin-dash-row-main">
+        <div class="admin-dash-row-head">
+          <span class="admin-dash-tag">${escHtml(tag)}</span>
+        </div>
+        <div class="admin-dash-row-title">${escHtml(p.title || '')}</div>
+        <div class="admin-dash-row-meta">${escHtml(author)} · ${escHtml(_adminFormatDate(p.createdAt))}${escHtml(status)}${where ? ` · ${escHtml(where)}` : ''}</div>
+      </div>
+      <div class="admin-dash-row-actions">
+        <button data-act="delete-lostfound" data-id="${escAttr(p.id)}" data-label="${escAttr(label)}" class="admin-dash-btn--danger">Delete</button>
+      </div>
+    </div>
+  `;
+}
+
+async function _loadLostFound() {
+  const list = document.getElementById('adminListLostFound');
+  const count = document.getElementById('adminCountLostFound');
+  if (!list || !count) return;
+  count.textContent = '…';
+  list.innerHTML = _skeletonRows(3);
+  const items = await window._shohoj_fetchAllLostFound?.() ?? [];
+  count.textContent = items.length;
+  list.innerHTML = items.length ? items.map(buildLostFoundRowHtml).join('') : _emptyHtml('No lost & found posts.');
 }
 
 async function _loadPapers() {
@@ -677,6 +722,7 @@ async function _refreshAll() {
       _loadReviewReports(),
       _loadStudyGroupReports(),
       _loadFeedback(),
+      _loadLostFound(),
     ]);
   } finally {
     if (btn) {
@@ -779,6 +825,14 @@ async function _onAction(e) {
       _adminToast('Deleted.');
       _loadFeedback();
       _loadStatsAndCharts();
+      return;
+    }
+    if (act === 'delete-lostfound') {
+      if (!confirmDestructive('Delete this lost & found post (and its contact record)?', btn.dataset.label || 'this post')) return;
+      const res = await window._shohoj_adminDeleteLostFound?.(btn.dataset.id);
+      if (!res?.ok) return _adminToast(res?.error || 'Delete failed');
+      _adminToast('Deleted.');
+      _loadLostFound();
       return;
     }
   } finally {
