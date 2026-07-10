@@ -37,6 +37,7 @@ import {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -731,6 +732,125 @@ async function run() {
       { groupId: 'ghost', reason: 'spam group', reporterUid: BRACU_UID, createdAt: serverTimestamp() }));
     await assertFails(getDoc(doc(db, 'studyGroupReports', `${BRACU_UID}_grp1`)));
     await assertSucceeds(getDoc(doc(adminCtx().firestore(), 'studyGroupReports', `${BRACU_UID}_grp1`)));
+  });
+
+  // ── Lost & found board (#371) ─────────────────────────────────────────
+
+  function lostFoundPost(extra = {}) {
+    return {
+      type: 'lost',
+      title: 'Black umbrella',
+      status: 'open',
+      creatorUid: BRACU_UID,
+      createdAt: serverTimestamp(),
+      ...extra,
+    };
+  }
+
+  // The client's real write shape: post + contact in one batch (getAfter tie).
+  async function seedLostFoundPost(id, uid = BRACU_UID, email = BRACU_EMAIL, extra = {}) {
+    const db = bracuCtx(uid, email).firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'lostFoundPosts', id), lostFoundPost({ creatorUid: uid, ...extra }));
+    batch.set(doc(db, 'lostFoundContacts', id), { email, uid, createdAt: serverTimestamp() });
+    await batch.commit();
+  }
+
+  await test('lost&found: post+contact batch succeeds; BRACU can read posts, outsiders cannot', async () => {
+    await assertSucceeds(seedLostFoundPost('lf1'));
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertSucceeds(getDoc(doc(other, 'lostFoundPosts', 'lf1')));
+    await assertFails(getDoc(doc(outsiderCtx().firestore(), 'lostFoundPosts', 'lf1')));
+  });
+
+  await test('lost&found: invalid post payloads are rejected', async () => {
+    const db = bracuCtx().firestore();
+    const put = (id, data) => setDoc(doc(db, 'lostFoundPosts', id), data);
+    await assertFails(put('bad1', lostFoundPost({ type: 'stolen' })));
+    await assertFails(put('bad2', lostFoundPost({ title: 'ab' })));
+    await assertFails(put('bad3', lostFoundPost({ status: 'resolved' })));
+    await assertFails(put('bad4', lostFoundPost({ creatorUid: OTHER_BRACU_UID })));
+    await assertFails(put('bad5', lostFoundPost({ contact: 'call me' })));
+    await assertFails(put('bad6', lostFoundPost({ roomCode: 'UB0000' })));
+    await assertSucceeds(put('ok1', lostFoundPost({ roomCode: '09G-31T', locationHint: 'lift lobby' })));
+  });
+
+  await test('lost&found: contact cannot attach to another user\'s post or a ghost post', async () => {
+    await seedLostFoundPost('lf1');
+    // Other user tries to plant a contact on lf1 (post exists, not theirs).
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(setDoc(doc(other, 'lostFoundContacts', 'lf1'),
+      { email: OTHER_BRACU_EMAIL, uid: OTHER_BRACU_UID, createdAt: serverTimestamp() }));
+    // Contact for a post that doesn't exist anywhere in the batch.
+    await assertFails(setDoc(doc(other, 'lostFoundContacts', 'ghost'),
+      { email: OTHER_BRACU_EMAIL, uid: OTHER_BRACU_UID, createdAt: serverTimestamp() }));
+    // Spoofed email inside an otherwise-valid batch.
+    const db = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'lostFoundPosts', 'lf2'), lostFoundPost({ creatorUid: OTHER_BRACU_UID }));
+    batch.set(doc(db, 'lostFoundContacts', 'lf2'),
+      { email: 'someoneelse@g.bracu.ac.bd', uid: OTHER_BRACU_UID, createdAt: serverTimestamp() });
+    await assertFails(batch.commit());
+  });
+
+  await test('lost&found: contact docs are readable by nobody from the client', async () => {
+    await seedLostFoundPost('lf1');
+    await assertFails(getDoc(doc(bracuCtx().firestore(), 'lostFoundContacts', 'lf1')));
+    await assertFails(getDoc(doc(adminCtx().firestore(), 'lostFoundContacts', 'lf1')));
+  });
+
+  await test('lost&found: owner can resolve, nothing else is editable', async () => {
+    await seedLostFoundPost('lf1');
+    const me = bracuCtx().firestore();
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(updateDoc(doc(other, 'lostFoundPosts', 'lf1'), { status: 'resolved' }));
+    await assertFails(updateDoc(doc(me, 'lostFoundPosts', 'lf1'), { title: 'edited' }));
+    await assertFails(updateDoc(doc(me, 'lostFoundPosts', 'lf1'), { status: 'open' }));
+    await assertSucceeds(updateDoc(doc(me, 'lostFoundPosts', 'lf1'), { status: 'resolved' }));
+  });
+
+  await test('lost&found: owner and admin can delete a post, other students cannot', async () => {
+    await seedLostFoundPost('lf1');
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(deleteDoc(doc(other, 'lostFoundPosts', 'lf1')));
+    await assertSucceeds(deleteDoc(doc(bracuCtx().firestore(), 'lostFoundPosts', 'lf1')));
+    await seedLostFoundPost('lf2');
+    await assertSucceeds(deleteDoc(doc(adminCtx().firestore(), 'lostFoundPosts', 'lf2')));
+  });
+
+  await test('lost&found: claims need a real post, a deterministic id, and a pinned sender', async () => {
+    await seedLostFoundPost('lf1');
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    const claim = (extra = {}) => ({
+      postId: 'lf1',
+      fromUid: OTHER_BRACU_UID,
+      fromEmail: OTHER_BRACU_EMAIL,
+      createdAt: serverTimestamp(),
+      ...extra,
+    });
+    await assertFails(setDoc(doc(other, 'lostFoundClaims', 'wrong_id'), claim()));
+    await assertFails(setDoc(doc(other, 'lostFoundClaims', `ghost_${OTHER_BRACU_UID}`),
+      claim({ postId: 'ghost' })));
+    await assertFails(setDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`),
+      claim({ fromEmail: 'spoof@g.bracu.ac.bd' })));
+    await assertFails(setDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`),
+      claim({ note: 'n'.repeat(301) })));
+    await assertSucceeds(setDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`),
+      claim({ note: 'Found it near the cafeteria.' })));
+  });
+
+  await test('lost&found: claims are admin-read/delete only', async () => {
+    await seedLostFoundPost('lf1');
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertSucceeds(setDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`), {
+      postId: 'lf1', fromUid: OTHER_BRACU_UID, fromEmail: OTHER_BRACU_EMAIL,
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(getDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
+    await assertFails(deleteDoc(doc(other, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
+    const admin = adminCtx().firestore();
+    await assertSucceeds(getDoc(doc(admin, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
+    await assertSucceeds(deleteDoc(doc(admin, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
   });
 
   await testEnv.cleanup();
