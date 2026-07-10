@@ -132,6 +132,7 @@ function expect(actual) {
       id: 'p1',
       type: 'found',
       title: 'Student ID card',
+      description: 'Found on a bench <b>outside</b> the library.',
       status: 'resolved',
       locationHint: 'lift lobby',
       roomCode: '09G-31T',
@@ -140,6 +141,7 @@ function expect(actual) {
     });
     expect(html).toContain('FOUND');
     expect(html).toContain('Student ID card');
+    expect(html).toContain('Found on a bench &lt;b&gt;outside&lt;/b&gt; the library.');
     expect(html).toContain('uid abcdef12…');
     expect(html).toContain('resolved');
     expect(html).toContain('lift lobby · 09G-31T');
