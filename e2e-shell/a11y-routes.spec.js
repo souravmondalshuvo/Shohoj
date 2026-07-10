@@ -117,3 +117,30 @@ test('@a11y Campus route (map over a seeded feed cache) has no serious/critical 
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Lost & Found route (board + form + claim box over stub seams) has no serious/critical violations', async ({ page }) => {
+  // Same seams as lost-found.spec.js: injected repo fake + identity stand-in.
+  await page.addInitScript(() => {
+    const now = Date.now();
+    const posts = [
+      { id: 'mine1', type: 'lost', title: 'My scientific calculator', status: 'open', creatorUid: 'u_me', createdAtMs: now - 60_000 },
+      { id: 'p1', type: 'lost', title: 'Black umbrella', description: 'Wooden handle', locationHint: 'lift lobby', roomCode: '09G-31T', status: 'open', creatorUid: 'u_other', createdAtMs: now - 3_600_000 },
+    ];
+    window.__shohojLostFoundIdentity = { uid: 'u_me', email: 'me@g.bracu.ac.bd' };
+    window.__shohojLostFoundRepo = {
+      async listRecent() { return posts.slice(); },
+      async createPost() { return 'x'; },
+      async resolvePost() {},
+      async deletePost() {},
+      async createClaim() {},
+    };
+  });
+  await page.goto('/lost-found', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('lostfound-list')).toBeVisible();
+  // Scan with the post form AND a claim box open — the interactive worst case.
+  await page.getByRole('button', { name: 'Report an item' }).click();
+  await page.getByRole('button', { name: 'I found this' }).click();
+  await expect(page.getByTestId('lostfound-claim-box')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
