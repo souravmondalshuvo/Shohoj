@@ -91,11 +91,10 @@ jobs:
       - name: Build
         run: python3 build3.py
 
-      # Standalone campus-map page (#383) — the shell's CampusRoute published
-      # at /campus/ ahead of the cutover. Needs no secrets: it reads only the
-      # public CONNECT CDN feed.
-      - name: Build campus page
-        run: npm run build:campus
+      # Standalone public pages (#383) — shell features published ahead of the
+      # cutover (/campus/ first; more pages join as vite.pages.config.js inputs).
+      - name: Build standalone pages
+        run: npm run build:pages
 
       - name: Run production bundle smoke test
         run: npm run test:bundle
@@ -105,11 +104,13 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin _deploy/profile _deploy/campus
+          mkdir -p _deploy/admin _deploy/profile
           cp shohoj.html  _deploy/index.html
           cp admin.html   _deploy/admin/index.html
           cp profile.html _deploy/profile/index.html
-          cp -R dist-campus/. _deploy/campus/
+          # Standalone pages keep their directory layout (campus/, bus/, …)
+          # and share one assets/ folder at the site root.
+          cp -R dist-pages/. _deploy/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
