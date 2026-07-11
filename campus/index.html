@@ -63,6 +63,12 @@
       }
       .campus-error { padding: 16px 0; }
       .campus-other { margin-top: 16px; font-size: 13px; color: #2d5a3d; }
+      .campus-wip {
+        margin: 16px 16px 0; padding: 10px 14px; max-width: 828px;
+        border: 1px solid rgba(240,165,0,0.35); border-radius: 10px;
+        background: rgba(240,165,0,0.08); color: #7a5a10; font-size: 13px; line-height: 1.5;
+      }
+      .campus-wip a { color: #7a5a10; font-weight: 600; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
@@ -70,6 +76,12 @@
     <header class="campus-topbar">
       <a href="../">← Shohoj</a>
     </header>
+    <!-- Removed when the v2 visual/interactivity upgrade (#385) ships. -->
+    <div class="campus-wip" role="note" data-testid="campus-wip">
+      🚧 <strong>Under development</strong> — the map and live room data work,
+      but richer visuals and interactions are on the way
+      (<a href="https://github.com/souravmondalshuvo/Shohoj/issues/385">follow progress</a>).
+    </div>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
   </body>
