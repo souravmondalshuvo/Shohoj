@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Campus Map — Shohoj</title>
+    <style>
+      /* Standalone campus-map page (#383): the shell's CampusRoute published at
+         /campus/ ahead of the full cutover. Styles are the campus slice of
+         app/index.html plus the shell primitives the route renders — keep the
+         two in sync until the cutover retires this page. */
+      body { margin: 0; font-family: system-ui, sans-serif; }
+      .campus-topbar { border-bottom: 1px solid rgba(0,0,0,0.12); padding: 12px 16px; }
+      .campus-topbar a { text-decoration: none; font-weight: 600; color: #1c7c45; }
+      .campus-topbar a:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-page { padding: 24px 16px; max-width: 720px; }
+      .shell-muted { color: #5a8a6a; }
+      .shell-btn {
+        font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #0d2914;
+        display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+      }
+      .shell-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .campus-page { max-width: 860px; }
+      .campus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: #2d5a3d; }
+      .campus-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
+      .campus-location { font-weight: 600; color: #1c7c45; }
+      .campus-floors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+      .campus-floor-btn {
+        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 12px; min-height: 44px;
+        border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #2d5a3d;
+      }
+      .campus-floor-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: #1c7c45; }
+      .campus-floor-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .campus-canvas {
+        height: min(420px, 60vh); border: 1px solid rgba(0,0,0,0.12); border-radius: 12px;
+        overflow: hidden; background: linear-gradient(rgba(46,204,113,0.04), rgba(86,180,233,0.05));
+        touch-action: none;
+      }
+      .campus-canvas canvas { display: block; width: 100%; height: 100%; }
+      .campus-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 11px; color: rgba(0,0,0,0.55); }
+      .campus-legend span { display: flex; align-items: center; gap: 5px; }
+      .campus-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: #9aa59e; flex-shrink: 0; }
+      .campus-dot--free { background: #27ae60; }
+      .campus-dot--busy { background: #e74c3c; }
+      .campus-dot--selected { background: #2d5a8a; }
+      .campus-room-panel { border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.05); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+      .campus-room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
+      .campus-room-status { margin: 6px 0 0; font-size: 13px; color: #0d2914; font-weight: 600; }
+      .campus-room-schedule { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: #2d5a3d; }
+      .campus-zone-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(0,0,0,0.45); margin: 12px 0 6px; }
+      .campus-zone-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
+      .campus-room-btn {
+        display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 600;
+        padding: 8px 10px; min-height: 44px; border-radius: 8px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.12); background: #fff; color: #0d2914;
+      }
+      .campus-room-btn--selected { border-color: #2d5a8a; background: rgba(86,180,233,0.10); }
+      .campus-room-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .campus-room-sr {
+        position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+      }
+      .campus-error { padding: 16px 0; }
+      .campus-other { margin-top: 16px; font-size: 13px; color: #2d5a3d; }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+    </style>
+    <script type="module" crossorigin src="./assets/index-mXNGe9nk.js"></script>
+  </head>
+  <body>
+    <header class="campus-topbar">
+      <a href="../">← Shohoj</a>
+    </header>
+    <div id="root"></div>
+  </body>
+</html>
