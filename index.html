@@ -399,6 +399,11 @@
             <button class="calc-tab-menu-item" data-tab="freerooms" role="menuitem">
               <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
             </button>
+            <!-- Standalone page (#383), not a tab: no data-tab, so the tab
+                 machinery ignores it and the anchor navigates to /campus/. -->
+            <a class="calc-tab-menu-item" href="campus/" role="menuitem">
+              <span class="calc-tab-icon">📍</span><span>Campus Map</span>
+            </a>
           </div>
         </div>
 
