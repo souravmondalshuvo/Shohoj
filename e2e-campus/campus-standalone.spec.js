@@ -58,6 +58,11 @@ test('?room= deep link selects the room without a basename', async ({ page }) =>
   await expect(page).toHaveURL(/room=07A-01C/);
 });
 
+test('shows the under-development note while #385 is open', async ({ page }) => {
+  await openCampus(page);
+  await expect(page.getByTestId('campus-wip')).toContainText('Under development');
+});
+
 test('top bar links back to the main site', async ({ page }) => {
   await openCampus(page);
   const back = page.getByRole('link', { name: '← Shohoj' });
