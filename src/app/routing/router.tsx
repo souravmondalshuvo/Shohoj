@@ -41,6 +41,8 @@ export const router = createBrowserRouter([
       { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
       // Campus map (#370): Three.js stays out of the entry chunk via `lazy`.
       { path: 'campus', lazy: () => import('../routes/CampusRoute') },
+      // Bus timetable (#372) — static transcribed data, no backend.
+      { path: 'bus', lazy: () => import('../routes/BusRoute') },
       { path: 'lost-found', lazy: () => import('../routes/LostFoundRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
