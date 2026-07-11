@@ -22,6 +22,7 @@ test-results/
 # Vite build output / cache — Vite runs beside build3.py (deploy still via gh-pages).
 dist/
 dist-shell/
+dist-campus/
 .vite/
 
 # Scraped CONNECT section data — input artifact, re-fetched as needed.
