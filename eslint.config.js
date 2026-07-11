@@ -40,6 +40,7 @@ export default tseslint.config(
       'admin.html',           // build3.py artifact
       'dist/**',              // vite build output
       'dist-shell/**',        // vite shell build output (vite.shell.config.js)
+      'dist-campus/**',       // vite campus page build output (vite.campus.config.js)
       'node_modules/**',
       'test-results/**',      // playwright output
       'playwright-report/**',
@@ -64,7 +65,7 @@ export default tseslint.config(
   // addInitScript callbacks (and the bundle-smoke harness) reference browser
   // globals, so both environments are in scope here.
   {
-    files: ['tests/**/*.js', 'e2e/**/*.js', 'e2e-vite/**/*.js', 'e2e-shell/**/*.js'],
+    files: ['tests/**/*.js', 'e2e/**/*.js', 'e2e-vite/**/*.js', 'e2e-shell/**/*.js', 'e2e-campus/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
