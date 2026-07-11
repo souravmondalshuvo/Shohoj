@@ -1,7 +1,7 @@
-// e2e-campus/campus-standalone.spec.js
+// e2e-pages/campus.spec.js
 //
-// The standalone campus-map page (#383) — dist-campus/ served as it will be on
-// Pages. Behavior depth lives in e2e-shell/campus-map.spec.js (same component);
+// The standalone campus-map page (#383) — served from the multi-page
+// dist-pages/ build at its production path, /campus/. Behavior depth lives in e2e-shell/campus-map.spec.js (same component);
 // this suite pins what is unique to the standalone mount: the page boots
 // without the shell, the ?room= deep link resolves without a router basename,
 // and the top bar links back to the main site. Feed stub matches the shell
@@ -28,7 +28,7 @@ const STUB_FEED = [
   section(2, 'CSE220', '09G-31T', [slot('TUESDAY', '11:00', '12:20')]),
 ];
 
-async function openCampus(page, path = '/') {
+async function openCampus(page, path = '/campus/') {
   await page.addInitScript(
     ({ key, payload }) => {
       localStorage.setItem(
@@ -50,7 +50,7 @@ test('boots standalone and renders floors from the feed', async ({ page }) => {
 });
 
 test('?room= deep link selects the room without a basename', async ({ page }) => {
-  await openCampus(page, '/?room=09G-31T');
+  await openCampus(page, '/campus/?room=09G-31T');
   await expect(page.getByTestId('campus-room-panel')).toContainText('09G-31T');
   // Selecting elsewhere keeps the URL shareable at the standalone mount point.
   await page.getByRole('button', { name: 'Floor 7' }).click();
