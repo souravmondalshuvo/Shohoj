@@ -14,23 +14,20 @@
 // toast copy through the notification system. Offline shells keep the
 // anonymous source and render no auth UI at all.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
+import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
-import { AuthProvider, useAuth } from '../providers/AuthProvider';
+import { AuthProvider } from '../providers/AuthProvider';
 import { CloudSyncProvider } from '../providers/CloudSyncProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
 import { anonymousAuthSource } from '../../platform/auth/authSnapshot';
 import { FacultyReviewsProvider } from '../../features/calculator/FacultyReviewsProvider';
-import {
-  createFirebaseAuthSource,
-  type FirebaseAuthSource,
-} from '../../platform/auth/firebaseAuthSource';
-import { useNotifications } from '../../state/NotificationProvider';
+import { createFirebaseAuthSource } from '../../platform/auth/firebaseAuthSource';
 
 // Raw runtime config from the window._shohoj_* globals that /runtime-config.js
 // sets before the module entry runs (#329). Read once at module scope — the
@@ -65,49 +62,6 @@ const NAV: readonly NavItem[] = [
   { to: '/profile', label: 'Profile' },
   { to: '/admin', label: 'Admin' },
 ];
-
-/** Sign-in/out controls (cloud shells only). `source` is null when offline. */
-function AuthControls({ source }: { readonly source: FirebaseAuthSource | null }) {
-  const auth = useAuth();
-  const { notify } = useNotifications();
-
-  // Rejection / sign-in-failure events → the legacy toast copy (sticky error).
-  useEffect(() => {
-    if (!source) return;
-    return source.onEvent((event) => {
-      notify({ kind: 'error', message: event.message });
-    });
-  }, [source, notify]);
-
-  if (!source) return null;
-
-  if (auth.status === 'loading') {
-    return (
-      <span className="shell-auth shell-auth-loading" role="status">
-        Checking sign-in…
-      </span>
-    );
-  }
-  if (auth.status === 'authenticated') {
-    return (
-      <span className="shell-auth">
-        <span className="shell-auth-email" title={auth.email ?? undefined}>
-          {auth.email ?? 'Signed in'}
-        </span>
-        <button type="button" className="shell-auth-btn" onClick={() => void source.signOut()}>
-          Sign out
-        </button>
-      </span>
-    );
-  }
-  return (
-    <span className="shell-auth">
-      <button type="button" className="shell-auth-btn" onClick={() => void source.signIn()}>
-        Sign in
-      </button>
-    </span>
-  );
-}
 
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
