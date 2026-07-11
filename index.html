@@ -7277,11 +7277,14 @@ body[data-page="admin"] .orb { display: none !important; }
             <button class="calc-tab-menu-item" data-tab="freerooms" role="menuitem">
               <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
             </button>
-            <!-- Standalone page (#383), not a tab: no data-tab, so the tab
-                 machinery ignores it and the anchor navigates to /campus/. -->
+            <!-- Standalone pages (#383), not tabs: no data-tab, so the tab
+                 machinery ignores them and the anchors navigate natively. -->
             <a class="calc-tab-menu-item" href="campus/" role="menuitem">
               <span class="calc-tab-icon">📍</span><span>Campus Map</span>
               <span class="calc-tab-menu-tag">WIP</span>
+            </a>
+            <a class="calc-tab-menu-item" href="bus/" role="menuitem">
+              <span class="calc-tab-icon">🚌</span><span>Bus</span>
             </a>
           </div>
         </div>
