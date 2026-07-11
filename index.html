@@ -2782,6 +2782,21 @@ input, select, textarea,
   display: inline-block;
 }
 
+/* Small status tag on a menu item (e.g. Campus Map WIP, #385) — amber so it
+   reads as "in progress", distinct from the green count badges. */
+.calc-tab-menu-tag {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: rgba(240,165,0,0.14);
+  color: #b07d1a;
+  border-radius: 8px;
+  padding: 2px 6px;
+  line-height: 1.3;
+}
+
 /* ── Tab dropdown groups ─────────────────────────────────── */
 /* A group is a flex item in the bar; its trigger pill fills it and the menu
    drops out of flow directly beneath. */
@@ -7266,6 +7281,7 @@ body[data-page="admin"] .orb { display: none !important; }
                  machinery ignores it and the anchor navigates to /campus/. -->
             <a class="calc-tab-menu-item" href="campus/" role="menuitem">
               <span class="calc-tab-icon">📍</span><span>Campus Map</span>
+              <span class="calc-tab-menu-tag">WIP</span>
             </a>
           </div>
         </div>
