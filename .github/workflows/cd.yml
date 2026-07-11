@@ -91,6 +91,12 @@ jobs:
       - name: Build
         run: python3 build3.py
 
+      # Standalone campus-map page (#383) — the shell's CampusRoute published
+      # at /campus/ ahead of the cutover. Needs no secrets: it reads only the
+      # public CONNECT CDN feed.
+      - name: Build campus page
+        run: npm run build:campus
+
       - name: Run production bundle smoke test
         run: npm run test:bundle
 
@@ -99,10 +105,11 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin _deploy/profile
+          mkdir -p _deploy/admin _deploy/profile _deploy/campus
           cp shohoj.html  _deploy/index.html
           cp admin.html   _deploy/admin/index.html
           cp profile.html _deploy/profile/index.html
+          cp -R dist-campus/. _deploy/campus/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
