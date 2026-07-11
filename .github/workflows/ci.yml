@@ -80,6 +80,12 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
+      # Unlike the shell/island builds below, the campus page (#383) IS
+      # deployed (CD ships dist-campus/ to /campus/), so CI runs its e2e —
+      # a broken standalone mount must not merge.
+      - name: Run campus page E2E tests
+        run: npm run test:e2e:campus
+
       - name: Run production bundle smoke test
         run: npm run test:bundle
 
