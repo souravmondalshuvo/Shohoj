@@ -35,6 +35,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         campus: resolve(import.meta.dirname, 'campus/index.html'),
+        bus: resolve(import.meta.dirname, 'bus/index.html'),
       },
     },
   },
