@@ -1,5 +1,5 @@
 /**
- * Procedural 3D campus scene for the /campus route (#370).
+ * Procedural 3D campus scene for the /campus route (#370, visuals #385).
  *
  * Renders the Merul Badda tower as stacked floor slabs generated purely from
  * the CampusModel (no hand-authored 3D asset): every floor that has rooms in
@@ -11,6 +11,12 @@
  * ring around the slab's center (the tower is built around a central void).
  * Room boxes recolor live from the free/busy status map.
  *
+ * The v2 look (#385) stays procedural: PBR materials under a sun + sky rig
+ * with soft shadows, a translucent glass envelope with architectural edge
+ * lines, and a ground plaza that the tower casts onto. The sky/sun mood
+ * follows the viewer's real clock (day / golden hour / night) — honest,
+ * like the free/busy data.
+ *
  * React-free on purpose: the route owns state and calls the returned handle;
  * the scene only reports clicks. The canvas is presentation-only — every
  * interaction here is mirrored by accessible DOM controls in the route.
@@ -19,11 +25,17 @@
 import {
     AmbientLight,
     BoxGeometry,
+    CircleGeometry,
     Color,
     DirectionalLight,
+    EdgesGeometry,
     Group,
+    HemisphereLight,
+    LineBasicMaterial,
+    LineSegments,
     Mesh,
-    MeshLambertMaterial,
+    MeshStandardMaterial,
+    PCFSoftShadowMap,
     PerspectiveCamera,
     Raycaster,
     Scene,
@@ -31,6 +43,7 @@ import {
     WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 import type { CampusModel, ParsedRoom } from '../../core/campusRooms';
 
@@ -72,17 +85,42 @@ const ROOM_SIZE = 1.7;
 const ROOM_H = 1.3;
 const ZONE_RING_RADIUS = 10;    // zone clusters sit on this ring
 const PODIUM_FLOORS_MIN = 1;    // render context floors from 1 upward
+const GROUND_RADIUS = 46;       // plaza disk the tower shadows onto
+const SHELL_MARGIN = 2.4;       // glass envelope overhang past the slabs
+
+/**
+ * Sky/sun mood for the viewer's local hour — day, golden hour, night. Pure
+ * and exported so the palette can be unit-tested without WebGL.
+ */
+export interface SkyMood {
+    /** Hemisphere sky color (also tints the glass envelope). */
+    sky: string;
+    /** Hemisphere ground bounce color. */
+    horizon: string;
+    sunColor: string;
+    sunIntensity: number;
+}
+
+export function skyMoodForHour(hour: number): SkyMood {
+    if (hour >= 20 || hour < 5) {
+        return { sky: '#42507a', horizon: '#232a3d', sunColor: '#b9ccff', sunIntensity: 0.55 };
+    }
+    if (hour < 8 || hour >= 17) {
+        return { sky: '#ffd9a0', horizon: '#efe6da', sunColor: '#ffc37a', sunIntensity: 1.05 };
+    }
+    return { sky: '#cfe8ff', horizon: '#edf4ee', sunColor: '#fff6e2', sunIntensity: 1.3 };
+}
 
 interface FloorEntry {
     floor: number;
     interactive: boolean;
     baseY: number;
-    mesh: Mesh<BoxGeometry, MeshLambertMaterial>;
+    mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
 }
 
 interface RoomEntry {
     room: ParsedRoom;
-    mesh: Mesh<BoxGeometry, MeshLambertMaterial>;
+    mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
 }
 
 /**
@@ -111,34 +149,103 @@ export function createCampusScene(
     const towerHeight = (maxFloor - PODIUM_FLOORS_MIN) * FLOOR_GAP;
 
     // --- Lights ------------------------------------------------------------
-    scene.add(new AmbientLight(0xffffff, 0.9));
-    const sun = new DirectionalLight(0xffffff, 1.4);
+    // Low ambient so the sun + hemisphere carry the modeling; the mood tracks
+    // the viewer's clock, so the building looks different at night than noon.
+    const mood = skyMoodForHour(new Date().getHours());
+    scene.add(new AmbientLight(0xffffff, 0.35));
+    const hemi = new HemisphereLight(new Color(mood.sky), new Color(mood.horizon), 0.7);
+    scene.add(hemi);
+    const sun = new DirectionalLight(new Color(mood.sunColor), mood.sunIntensity);
     sun.position.set(40, 70, 25);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -48;
+    sun.shadow.camera.right = 48;
+    sun.shadow.camera.top = 64;
+    sun.shadow.camera.bottom = -48;
+    sun.shadow.camera.near = 1;
+    sun.shadow.camera.far = 220;
+    sun.shadow.bias = -0.0005;
     scene.add(sun);
 
+    // --- Ground plaza --------------------------------------------------------
+    const groundGeometry = new CircleGeometry(GROUND_RADIUS, 56).rotateX(-Math.PI / 2);
+    const groundMaterial = new MeshStandardMaterial({
+        color: new Color('#f2f7f3'),
+        roughness: 1,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.55,
+    });
+    const ground = new Mesh(groundGeometry, groundMaterial);
+    ground.position.y = -SLAB_H * 1.6;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
     // --- Floor slabs ---------------------------------------------------------
-    const slabGeometry = new BoxGeometry(SLAB_W, SLAB_H, SLAB_D);
+    const slabGeometry = new RoundedBoxGeometry(SLAB_W, SLAB_H, SLAB_D, 2, 0.28);
     const floorGroup = new Group();
     scene.add(floorGroup);
 
     const floors: FloorEntry[] = [];
     for (let floor = PODIUM_FLOORS_MIN; floor <= maxFloor; floor++) {
         const interactive = dataFloors.has(floor);
-        const material = new MeshLambertMaterial({
+        const material = new MeshStandardMaterial({
             color: new Color(interactive ? colors.slab : colors.slabInactive),
+            roughness: 0.8,
+            metalness: 0.05,
             transparent: true,
         });
         const mesh = new Mesh(slabGeometry, material);
         const baseY = (floor - PODIUM_FLOORS_MIN) * FLOOR_GAP;
         mesh.position.set(0, baseY, 0);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         mesh.userData.floor = floor;
         mesh.userData.interactive = interactive;
         floorGroup.add(mesh);
         floors.push({ floor, interactive, baseY, mesh });
     }
 
+    // --- Glass envelope ------------------------------------------------------
+    // A translucent skin + crisp architectural edge lines make the slab stack
+    // read as one building. It fades almost out when a floor is focused so the
+    // exploded view stays legible. Kept out of floorGroup/roomGroup so the
+    // click raycaster never sees it.
+    const shellGeometry = new BoxGeometry(
+        SLAB_W + SHELL_MARGIN,
+        towerHeight + FLOOR_GAP * 2,
+        SLAB_D + SHELL_MARGIN,
+    );
+    const shellMaterial = new MeshStandardMaterial({
+        color: new Color(mood.sky),
+        transparent: true,
+        opacity: 0.1,
+        roughness: 0.15,
+        metalness: 0.25,
+        depthWrite: false,
+    });
+    const shell = new Mesh(shellGeometry, shellMaterial);
+    shell.position.y = towerHeight / 2;
+    shell.renderOrder = 2;
+    scene.add(shell);
+
+    const shellEdgesGeometry = new EdgesGeometry(shellGeometry);
+    const shellEdgesMaterial = new LineBasicMaterial({
+        color: new Color('#7fa9c9'),
+        transparent: true,
+        opacity: 0.35,
+    });
+    const shellEdges = new LineSegments(shellEdgesGeometry, shellEdgesMaterial);
+    shellEdges.position.copy(shell.position);
+    shellEdges.renderOrder = 3;
+    scene.add(shellEdges);
+
+    const SHELL_OPACITY = { tower: 0.1, focused: 0.03 };
+    const SHELL_EDGE_OPACITY = { tower: 0.35, focused: 0.1 };
+
     // --- Rooms (built per focused floor) ------------------------------------
-    const roomGeometry = new BoxGeometry(ROOM_SIZE, ROOM_H, ROOM_SIZE);
+    const roomGeometry = new RoundedBoxGeometry(ROOM_SIZE, ROOM_H, ROOM_SIZE, 2, 0.18);
     const roomGroup = new Group();
     scene.add(roomGroup);
 
@@ -178,8 +285,13 @@ export function createCampusScene(
             zone.rooms.forEach((room, roomIndex) => {
                 const col = roomIndex % 2;
                 const row = Math.floor(roomIndex / 2);
-                const material = new MeshLambertMaterial({
-                    color: new Color(roomColor(room)),
+                const color = new Color(roomColor(room));
+                const material = new MeshStandardMaterial({
+                    color,
+                    roughness: 0.55,
+                    metalness: 0.05,
+                    emissive: color.clone(),
+                    emissiveIntensity: 0.12,
                 });
                 const mesh = new Mesh(roomGeometry, material);
                 mesh.position.set(
@@ -187,6 +299,7 @@ export function createCampusScene(
                     slab.mesh.position.y + SLAB_H / 2 + ROOM_H / 2,
                     cz + (row - (zone.rooms.length / 2 - 0.5) / 2) * (ROOM_SIZE + 0.5),
                 );
+                mesh.castShadow = true;
                 mesh.userData.roomCode = room.code;
                 roomGroup.add(mesh);
                 roomEntries.push({ room, mesh });
@@ -196,7 +309,11 @@ export function createCampusScene(
 
     function refreshRoomColors(): void {
         for (const entry of roomEntries) {
-            entry.mesh.material.color.set(roomColor(entry.room));
+            const color = roomColor(entry.room);
+            entry.mesh.material.color.set(color);
+            entry.mesh.material.emissive.set(color);
+            entry.mesh.material.emissiveIntensity =
+                entry.room.code === highlightCode ? 0.55 : 0.12;
         }
     }
 
@@ -207,17 +324,25 @@ export function createCampusScene(
             f.mesh.position.y = f.baseY + (lifted ? EXPLODE_LIFT : 0);
             f.mesh.material.opacity =
                 focusedFloor === null ? 1 : isFocused ? 1 : lifted ? 0.18 : 0.55;
+            // Faded slabs must not throw full-strength shadows (shadow maps
+            // ignore opacity), so shadow casting follows visibility.
+            f.mesh.castShadow = f.mesh.material.opacity > 0.5;
             f.mesh.material.color.set(
                 isFocused ? colors.slabSelected
                     : f.interactive ? colors.slab : colors.slabInactive,
             );
         }
+        const focused = focusedFloor !== null;
+        shellMaterial.opacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
+        shellEdgesMaterial.opacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
         if (focusedFloor !== null) buildRooms(focusedFloor);
         else clearRooms();
     }
 
     // --- Renderer / camera / controls ---------------------------------------
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFSoftShadowMap;
     renderer.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(renderer.domElement);
 
@@ -313,6 +438,12 @@ export function createCampusScene(
             for (const f of floors) f.mesh.material.dispose();
             slabGeometry.dispose();
             roomGeometry.dispose();
+            groundGeometry.dispose();
+            groundMaterial.dispose();
+            shellGeometry.dispose();
+            shellMaterial.dispose();
+            shellEdgesGeometry.dispose();
+            shellEdgesMaterial.dispose();
             renderer.dispose();
             renderer.domElement.remove();
         },
