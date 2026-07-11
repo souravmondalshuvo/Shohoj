@@ -87,6 +87,14 @@ const ZONE_RING_RADIUS = 10;    // zone clusters sit on this ring
 const PODIUM_FLOORS_MIN = 1;    // render context floors from 1 upward
 const GROUND_RADIUS = 46;       // plaza disk the tower shadows onto
 const SHELL_MARGIN = 2.4;       // glass envelope overhang past the slabs
+const EASE_RATE = 7;            // exponential-damping rate for all transitions
+const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
+const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
+const IDLE_ORBIT_AFTER_MS = 9000;   // idle time before the camera starts drifting
+
+function easeOutCubic(x: number): number {
+    return 1 - Math.pow(1 - x, 3);
+}
 
 /**
  * Sky/sun mood for the viewer's local hour — day, golden hour, night. Pure
@@ -116,11 +124,20 @@ interface FloorEntry {
     interactive: boolean;
     baseY: number;
     mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
+    // Animation targets — the render loop eases position/opacity/color here.
+    targetY: number;
+    targetOpacity: number;
+    targetColor: Color;
 }
 
 interface RoomEntry {
     room: ParsedRoom;
     mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
+    // Pop-in animation state (ms clock of the render loop) and pulse phase.
+    spawnAt: number;
+    stagger: number;
+    phase: number;
+    pulsing: boolean;
 }
 
 /**
@@ -141,6 +158,12 @@ export function createCampusScene(
 
     const colors = options.colors;
     const scene = new Scene();
+
+    // One flag drives every animation decision: under prefers-reduced-motion
+    // all transitions snap, rooms appear at full size, nothing pulses, and the
+    // camera never drifts on its own.
+    const reducedMotion =
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
     const maxFloor = model.floors.length
         ? model.floors[model.floors.length - 1].floor
@@ -204,7 +227,15 @@ export function createCampusScene(
         mesh.userData.floor = floor;
         mesh.userData.interactive = interactive;
         floorGroup.add(mesh);
-        floors.push({ floor, interactive, baseY, mesh });
+        floors.push({
+            floor,
+            interactive,
+            baseY,
+            mesh,
+            targetY: baseY,
+            targetOpacity: 1,
+            targetColor: material.color.clone(),
+        });
     }
 
     // --- Glass envelope ------------------------------------------------------
@@ -243,6 +274,8 @@ export function createCampusScene(
 
     const SHELL_OPACITY = { tower: 0.1, focused: 0.03 };
     const SHELL_EDGE_OPACITY = { tower: 0.35, focused: 0.1 };
+    let shellTargetOpacity = SHELL_OPACITY.tower;
+    let shellEdgesTargetOpacity = SHELL_EDGE_OPACITY.tower;
 
     // --- Rooms (built per focused floor) ------------------------------------
     const roomGeometry = new RoundedBoxGeometry(ROOM_SIZE, ROOM_H, ROOM_SIZE, 2, 0.18);
@@ -296,24 +329,38 @@ export function createCampusScene(
                 const mesh = new Mesh(roomGeometry, material);
                 mesh.position.set(
                     cx + (col - 0.5) * (ROOM_SIZE + 0.5),
-                    slab.mesh.position.y + SLAB_H / 2 + ROOM_H / 2,
+                    // Rooms ride the slab's TARGET height so they land where
+                    // the eased slab settles instead of its mid-flight position.
+                    slab.targetY + SLAB_H / 2 + ROOM_H / 2,
                     cz + (row - (zone.rooms.length / 2 - 0.5) / 2) * (ROOM_SIZE + 0.5),
                 );
                 mesh.castShadow = true;
                 mesh.userData.roomCode = room.code;
+                if (!reducedMotion) mesh.scale.setScalar(0.001);
                 roomGroup.add(mesh);
-                roomEntries.push({ room, mesh });
+                roomEntries.push({
+                    room,
+                    mesh,
+                    spawnAt: performance.now(),
+                    stagger: Math.min(roomEntries.length * ROOM_STAGGER_SECONDS, 0.5),
+                    phase: roomEntries.length * 0.7,
+                    pulsing: false,
+                });
             });
         });
+        refreshRoomColors();
     }
 
     function refreshRoomColors(): void {
         for (const entry of roomEntries) {
             const color = roomColor(entry.room);
+            const highlighted = entry.room.code === highlightCode;
             entry.mesh.material.color.set(color);
             entry.mesh.material.emissive.set(color);
-            entry.mesh.material.emissiveIntensity =
-                entry.room.code === highlightCode ? 0.55 : 0.12;
+            entry.mesh.material.emissiveIntensity = highlighted ? 0.55 : 0.12;
+            // "In class" rooms breathe gently (render loop); highlight beats it.
+            entry.pulsing =
+                !highlighted && statusByCode.get(entry.room.code) === 'busy';
         }
     }
 
@@ -321,20 +368,20 @@ export function createCampusScene(
         for (const f of floors) {
             const isFocused = focusedFloor !== null && f.floor === focusedFloor;
             const lifted = focusedFloor !== null && f.floor > focusedFloor;
-            f.mesh.position.y = f.baseY + (lifted ? EXPLODE_LIFT : 0);
-            f.mesh.material.opacity =
+            f.targetY = f.baseY + (lifted ? EXPLODE_LIFT : 0);
+            f.targetOpacity =
                 focusedFloor === null ? 1 : isFocused ? 1 : lifted ? 0.18 : 0.55;
             // Faded slabs must not throw full-strength shadows (shadow maps
-            // ignore opacity), so shadow casting follows visibility.
-            f.mesh.castShadow = f.mesh.material.opacity > 0.5;
-            f.mesh.material.color.set(
+            // ignore opacity), so shadow casting follows the settled state.
+            f.mesh.castShadow = f.targetOpacity > 0.5;
+            f.targetColor.set(
                 isFocused ? colors.slabSelected
                     : f.interactive ? colors.slab : colors.slabInactive,
             );
         }
         const focused = focusedFloor !== null;
-        shellMaterial.opacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
-        shellEdgesMaterial.opacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
+        shellTargetOpacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
+        shellEdgesTargetOpacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
         if (focusedFloor !== null) buildRooms(focusedFloor);
         else clearRooms();
     }
@@ -351,10 +398,17 @@ export function createCampusScene(
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, towerHeight / 2, 0);
-    controls.enableDamping = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    controls.enableDamping = !reducedMotion;
     controls.maxPolarAngle = Math.PI * 0.52;
     controls.minDistance = 18;
     controls.maxDistance = 160;
+
+    // Idle drift: after a quiet spell the camera orbits slowly so the scene
+    // feels alive; any user touch (or a floor/room selection) parks it again.
+    controls.autoRotateSpeed = 0.5;
+    let lastInteraction = performance.now();
+    const markActive = () => { lastInteraction = performance.now(); };
+    controls.addEventListener('start', markActive);
 
     function resize(): void {
         const width = Math.max(container.clientWidth, 1);
@@ -369,7 +423,36 @@ export function createCampusScene(
         : null;
     resizeObserver?.observe(container);
 
-    renderer.setAnimationLoop(() => {
+    let lastTime = performance.now();
+    renderer.setAnimationLoop((time: number) => {
+        // Frame-rate-independent exponential damping; snaps under reduced motion.
+        const dt = Math.min((time - lastTime) / 1000, 0.1);
+        lastTime = time;
+        const k = reducedMotion ? 1 : 1 - Math.exp(-dt * EASE_RATE);
+
+        for (const f of floors) {
+            f.mesh.position.y += (f.targetY - f.mesh.position.y) * k;
+            f.mesh.material.opacity += (f.targetOpacity - f.mesh.material.opacity) * k;
+            f.mesh.material.color.lerp(f.targetColor, k);
+        }
+        shellMaterial.opacity += (shellTargetOpacity - shellMaterial.opacity) * k;
+        shellEdgesMaterial.opacity +=
+            (shellEdgesTargetOpacity - shellEdgesMaterial.opacity) * k;
+
+        if (!reducedMotion) {
+            for (const entry of roomEntries) {
+                const age = (time - entry.spawnAt) / 1000 - entry.stagger;
+                const scale = easeOutCubic(Math.min(Math.max(age / ROOM_POP_SECONDS, 0), 1));
+                entry.mesh.scale.setScalar(Math.max(0.001, scale));
+                if (entry.pulsing) {
+                    entry.mesh.material.emissiveIntensity =
+                        0.1 + 0.08 * (0.5 + 0.5 * Math.sin(time / 420 + entry.phase));
+                }
+            }
+        }
+
+        controls.autoRotate =
+            !reducedMotion && time - lastInteraction > IDLE_ORBIT_AFTER_MS;
         controls.update();
         renderer.render(scene, camera);
     });
@@ -418,6 +501,7 @@ export function createCampusScene(
     return {
         setFloor(floor) {
             focusedFloor = floor !== null && dataFloors.has(floor) ? floor : null;
+            markActive();
             applyFloorFocus();
         },
         setRoomStatus(status) {
@@ -426,6 +510,7 @@ export function createCampusScene(
         },
         setHighlight(code) {
             highlightCode = code ? code.trim().toUpperCase() : null;
+            markActive();
             refreshRoomColors();
         },
         dispose() {
