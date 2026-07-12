@@ -78,8 +78,17 @@ test('readRuntimeConfig: non-http papers URL fails', () => {
 });
 
 test('readRuntimeConfig: blank required value fails', () => {
-  const result = readRuntimeConfig({ ...COMPLETE, googleClientId: '   ' });
+  const result = readRuntimeConfig({ ...COMPLETE, recaptchaV3SiteKey: '   ' });
   assert.ok(isErr(result));
+});
+
+test('googleClientId is optional — the blanked CD secret still validates', () => {
+  // cd.yml blanks this optional secret when unset; that must disable only the
+  // Google-OAuth extras, never the whole cloud config (#390).
+  assert.ok(isOk(readRuntimeConfig({ ...COMPLETE, googleClientId: '' })));
+  const absent = { ...COMPLETE };
+  delete absent.googleClientId;
+  assert.ok(isOk(readRuntimeConfig(absent)));
 });
 
 test('measurementId is optional — absent analytics id still validates', () => {
