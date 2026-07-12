@@ -43,7 +43,11 @@ export const RuntimeConfigSchema = z.object({
     message: 'must be an absolute http(s) URL',
   }),
   recaptchaV3SiteKey: secret,
-  googleClientId: secret,
+  // Google OAuth client id is an OPTIONAL secret: cd.yml blanks it when the
+  // repo secret is unset so the app can feature-detect and disable just that
+  // feature. Requiring it here took every cloud page offline in production
+  // (found live on /lost-found/, #390) — same policy as measurementId above.
+  googleClientId: z.string().trim().optional(),
 });
 
 export type FirebaseConfig = z.infer<typeof FirebaseConfigSchema>;
