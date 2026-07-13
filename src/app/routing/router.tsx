@@ -24,7 +24,6 @@ const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['papers', 'Past papers'],
   ['groups', 'Study groups'],
   ['feedback', 'Feedback'],
-  ['profile', 'Profile'],
 ];
 
 export const router = createBrowserRouter([
@@ -46,6 +45,8 @@ export const router = createBrowserRouter([
       // Bus timetable (#372) — static transcribed data, no backend.
       { path: 'bus', lazy: () => import('../routes/BusRoute') },
       { path: 'lost-found', lazy: () => import('../routes/LostFoundRoute') },
+      // Account hub (#397 / #196) — auth-gated; signed-out shows a prompt.
+      { path: 'profile', lazy: () => import('../routes/ProfileRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
