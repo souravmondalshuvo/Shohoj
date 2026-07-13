@@ -38,6 +38,17 @@ import {
   SEAT_WATCH_STORAGE_KEY,
   type WatchEntry,
 } from '../../core/seatWatch';
+import { useSeatAlertSync } from '../providers/useSeatAlertSync';
+
+// Email-alert pref (managed on Profile; absent → armed). Read live so a toggle
+// there is honoured by the next watch change here.
+function alertsEnabled(): boolean {
+  try {
+    return localStorage.getItem('shohoj_seat_alerts_enabled') !== '0';
+  } catch {
+    return true;
+  }
+}
 
 const DAY_LABEL: Record<WeekdayName, string> = {
   SATURDAY: 'Sat',
@@ -101,12 +112,16 @@ export function Component() {
   }, [watches]);
 
   const atWatchLimit = watches.length >= MAX_WATCHES;
+  const syncSeatAlerts = useSeatAlertSync();
   const toggleWatch = (section: NormalizedSection) => {
-    setWatches((prev) =>
-      isWatched(prev, section.sectionId)
+    setWatches((prev) => {
+      const next = isWatched(prev, section.sectionId)
         ? removeWatch(prev, section.sectionId)
-        : addWatch(prev, section),
-    );
+        : addWatch(prev, section);
+      // Mirror the new set to the cron Worker (when signed in) so it can email.
+      syncSeatAlerts(next, alertsEnabled());
+      return next;
+    });
   };
 
   // Load the CONNECT feed once (cache-first, same client as RoutineRoute).
