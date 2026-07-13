@@ -1,4 +1,21 @@
-name: CI
+name: CI / CD
+
+# Single authoritative pipeline. Validation jobs run for every pull request and
+# every push. Deployment jobs (frontend, Worker, Firestore) live in the SAME
+# workflow and declare `needs:` on every validation job, so a deploy can only
+# start after the complete required suite has passed ON THE SAME COMMIT. Because
+# every job checks out ${{ github.sha }}, the exact commit that passed CI is the
+# commit that deploys — there is no second, independently-triggered CD run that
+# could ship an untested SHA.
+#
+# Why one workflow with `needs:` instead of a separate workflow_run CD:
+#   * The deploy jobs share this run's commit context, so exact-SHA deployment
+#     is guaranteed without re-deriving a head_sha.
+#   * A failed validation job blocks the deploy jobs automatically.
+#   * workflow_dispatch cannot bypass validation — manual runs still evaluate the
+#     same `needs:` graph.
+#   * No secrets are used by validation jobs, so fork PRs stay green and never
+#     receive deployment secrets (deploy jobs are gated to push + main).
 
 on:
   push:
@@ -7,82 +24,136 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-# Least privilege: this workflow only reads the repo to test and build.
+# Cancel superseded PR runs (safe — PRs never deploy). Pushes to main are NOT
+# cancelled at the workflow level so a run is never interrupted mid-publish; the
+# deploy jobs carry their own concurrency groups below so only the newest release
+# actually publishes.
+concurrency:
+  group: cicd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege by default: jobs may only read the repo. The frontend deploy
+# job opts into contents:write locally (it pushes the gh-pages branch). The
+# Worker and Firestore deploys authenticate to their own clouds and stay
+# read-only against GitHub.
 permissions:
   contents: read
 
 jobs:
+  # ===================== Validation (gates every deploy) =====================
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: npm
+      - run: npm ci
+      # ESLint is correctness-only (see eslint.config.js): errors fail the job,
+      # warnings are printed but don't block.
+      - run: npm run lint
 
-      - name: Install dependencies
-        run: npm ci
-
-      # ESLint is configured for correctness, not style (see eslint.config.js).
-      # The job fails on errors; warnings are printed but don't block.
-      - name: Run ESLint
-        run: npm run lint
-
-  test:
-    name: Tests & build
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+  validate-data:
+    name: Validate data
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          python-version: "3.x"
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run validate:data
 
-      - name: Set up Java (firebase emulator)
-        uses: actions/setup-java@v5
+  unit-tests:
+    name: Unit + Firestore rules tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      # `npm test` runs the unit suite AND the Firestore rules tests, which spin
+      # up the Firebase emulator (needs Java). Keep this here so rules changes
+      # are exercised before they can be deployed.
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
+      - run: npm ci
+      - run: npm test
 
-      - name: Install dependencies
+  worker-tests:
+    name: Worker tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install root dependencies
         run: npm ci
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
+      - name: Run worker tests
+        run: npm run test:worker
 
-      - name: Run full test suite
-        run: npm test
-
+  build-e2e:
+    name: Build + E2E + bundle guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       # build3.py flattens every module into one script scope, so two modules
       # declaring the same top-level name silently keep only the last one. Guard
-      # against that before building (static check, fails on unsafe collisions).
+      # against that before building.
       - name: Check bundle identifier collisions
         run: npm run check:collisions
 
-      # Build the production bundle before E2E so tests can exercise the
-      # CSP-hardened shohoj.html (e.g. the summary-form Enter-key test).
-      - name: Build bundle (smoke test)
+      # Build the production bundle before E2E so tests exercise the CSP-hardened
+      # shohoj.html (e.g. the summary-form Enter-key test).
+      - name: Build bundle
         run: python3 build3.py
 
       - name: Run E2E tests
         run: npm run test:e2e
 
-      # Unlike the shell/island builds below, the standalone pages (#383) ARE
-      # deployed (CD ships dist-pages/ next to the legacy bundle), so CI runs
-      # their e2e — a broken standalone mount must not merge.
+      # Standalone pages (#383) ARE deployed (CD ships dist-pages/), so a broken
+      # standalone mount must not merge.
       - name: Run standalone pages E2E tests
         run: npm run test:e2e:pages
 
@@ -97,14 +168,9 @@ jobs:
           test -s shohoj.html
           test -s admin.html
           test -s profile.html
-          # Fail if bare ES module syntax leaked into the non-module bundle
-          # (firebase.js is kept as type="module"; other bundled JS must not be).
-          # Also fail if 'unsafe-inline' is still present in the script-src
-          # CSP directive — build3.py is supposed to replace it with sha256
-          # hashes of every inline <script>. If it's still there, CSP can't
-          # block injected inline scripts and we lose XSS protection.
-          # Finally fail if `frame-ancestors` is missing — browser clickjacking
-          # protection.
+          # Fail if bare ES module syntax leaked into the non-module bundle, if
+          # 'unsafe-inline' survived in script-src (build3.py should replace it
+          # with sha256 hashes), or if frame-ancestors is missing (clickjacking).
           python3 - <<'PY'
           import re, sys
           ok = True
@@ -117,9 +183,6 @@ jobs:
               if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
                   print(f'ERROR: bare ES module syntax leaked into {path}', file=sys.stderr)
                   ok = False
-              # CSP content uses single quotes for keywords like 'self' /
-              # 'unsafe-inline'; capture the whole double-quoted attribute
-              # value so the inner singles don't terminate the match.
               csp_m = re.search(
                   r'<meta\s+http-equiv=["\']Content-Security-Policy["\']\s+content="([^"]*)"',
                   html, flags=re.IGNORECASE,
@@ -129,19 +192,16 @@ jobs:
                   ok = False
                   continue
               csp = csp_m.group(1)
-              # Find script-src directive
               script_src_m = re.search(r'(?:^|;)\s*script-src\s+([^;]+)', csp, flags=re.IGNORECASE)
               if not script_src_m:
                   print(f'ERROR: no script-src directive in {path} CSP', file=sys.stderr)
                   ok = False
               elif "'unsafe-inline'" in script_src_m.group(1):
-                  print(f'ERROR: script-src in {path} still contains \'unsafe-inline\' '
-                        '(build3.py harden_script_csp should have replaced it with hashes)',
+                  print(f'ERROR: script-src in {path} still contains \'unsafe-inline\'',
                         file=sys.stderr)
                   ok = False
               if not re.search(r'frame-ancestors\b', csp, flags=re.IGNORECASE):
-                  print(f'ERROR: CSP in {path} is missing frame-ancestors '
-                        '(needed to block clickjacking)', file=sys.stderr)
+                  print(f'ERROR: CSP in {path} is missing frame-ancestors', file=sys.stderr)
                   ok = False
           if not ok:
               sys.exit(1)
@@ -150,12 +210,9 @@ jobs:
 
       - name: Vite build (non-deploying smoke check)
         run: |
-          # Verify the Vite build path (docs/REACT_VITE_MIGRATION.md Step 3)
-          # compiles. This output is NOT deployed — gh-pages still ships the
-          # build3.py bundle. Vite needs a resolvable runtime-config.js; the
-          # template is valid JS and its __PLACEHOLDER__ tokens are fine for a
-          # build-compile check (the bundle is never served, so no secrets are
-          # needed — this also keeps fork PRs green).
+          # Verify the Vite build path compiles. This output is NOT deployed.
+          # The template's __PLACEHOLDER__ tokens are fine for a compile check
+          # (never served, no secrets — keeps fork PRs green).
           cp js/config/runtime-config.template.js js/config/runtime-config.js
           npm run build:vite
           test -s dist/index.html
@@ -163,27 +220,240 @@ jobs:
 
       - name: Shell build + E2E
         run: |
-          # Build and E2E the React Router shell (vite.shell.config.js → dist-shell/).
-          # The shell output is NOT deployed — gh-pages ships the build3.py bundle —
-          # but unlike the island (test:e2e:vite, still local-only), the shell now has
-          # full feature parity and is the Phase 13 cutover target. #365 therefore
-          # promotes the shell e2e from local-only to a CI gate: the accessibility axe
-          # smoke (serious/critical fail the build), the mobile/responsive parity
-          # specs, and every migrated feature slice must pass before merge.
-          #
-          # The Vite step above copies the runtime-config template into
-          # js/config/runtime-config.js (with unreplaced __PLACEHOLDER__ tokens).
-          # The shell must NOT bundle that: the cloud specs (runtime-config /
-          # auth-controls / cloud-sync) inject valid globals via addInitScript and
-          # rely on the comment stub — shipped only when the file is absent — not
-          # overwriting them (the template assigns window._shohoj_* directly).
-          # Remove it so build:shell ships the stub the specs document and expect.
+          # Build and E2E the React Router shell (Phase 13 cutover target). The
+          # shell output is NOT deployed but must pass a11y (serious/critical
+          # fail), mobile/responsive parity, and every migrated feature slice.
+          # Remove the template copied above so build:shell ships the runtime
+          # stub the cloud specs expect (they inject globals via addInitScript).
           rm -f js/config/runtime-config.js
           npm run build:shell
-          # Accept either layout so this stays green regardless of merge order with
-          # the root-served-shell fix (PR #298), which moves the entry from
-          # dist-shell/app/index.html to dist-shell/index.html.
           test -s dist-shell/index.html || test -s dist-shell/app/index.html
-          # Serve the build just produced (playwright.shell.config.js webServer runs
-          # `vite preview`) and run the full shell suite — no rebuild.
           npx playwright test --config=playwright.shell.config.js
+
+  # ============== Change detection for path-sensitive deploys ================
+
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      worker: ${{ steps.filter.outputs.worker }}
+      firestore: ${{ steps.filter.outputs.firestore }}
+    steps:
+      - uses: actions/checkout@v6
+      # dorny/paths-filter reliably diffs against the push base (or PR base) and
+      # falls back to "changed" on ambiguous history, so an unrelated frontend
+      # change never redeploys the Worker or Firestore rules.
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
+        id: filter
+        with:
+          filters: |
+            worker:
+              - 'worker/**'
+              - '.github/workflows/ci.yml'
+            firestore:
+              - 'firestore.rules'
+              - 'firestore.indexes.json'
+              - 'firebase.json'
+              - '.github/workflows/ci.yml'
+
+  # ========================= Deploy (main pushes only) =======================
+  # Every deploy job:
+  #   * needs ALL validation jobs (a red suite blocks the deploy),
+  #   * only runs on push to main (never on PRs, never from forks),
+  #   * checks out ${{ github.sha }} — the exact validated commit,
+  #   * uses the `production` GitHub environment (protection rules apply),
+  #   * carries its own concurrency group so only the newest release wins.
+
+  deploy-frontend:
+    name: Deploy frontend (GitHub Pages)
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://souravmondalshuvo.github.io/Shohoj/
+    # peaceiris/actions-gh-pages pushes the gh-pages branch with GITHUB_TOKEN.
+    permissions:
+      contents: write
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - run: npm ci
+
+      - name: Generate runtime config
+        env:
+          FIREBASE_API_KEY:            ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN:        ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID:         ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET:     ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+          FIREBASE_APP_ID:             ${{ secrets.FIREBASE_APP_ID }}
+          GA_MEASUREMENT_ID:           ${{ secrets.GA_MEASUREMENT_ID }}
+          PAPERS_WORKER_URL:           ${{ secrets.PAPERS_WORKER_URL }}
+          RECAPTCHA_V3_SITE_KEY:       ${{ secrets.RECAPTCHA_V3_SITE_KEY }}
+          GOOGLE_OAUTH_CLIENT_ID:      ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+        run: |
+          cp js/config/runtime-config.template.js js/config/runtime-config.js
+          # Required secrets: fail loudly if any are missing so we never ship a
+          # broken runtime config.
+          for key in FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID \
+                     FIREBASE_STORAGE_BUCKET FIREBASE_MESSAGING_SENDER_ID \
+                     FIREBASE_APP_ID GA_MEASUREMENT_ID PAPERS_WORKER_URL \
+                     RECAPTCHA_V3_SITE_KEY; do
+            value="${!key}"
+            if [ -z "$value" ]; then
+              echo "::error::Missing required secret $key"
+              exit 1
+            fi
+            sed -i "s|__${key}__|${value}|g" js/config/runtime-config.js
+          done
+          # Optional secrets: substitute when set, otherwise blank the
+          # placeholder so the app feature-detects and disables the feature.
+          for key in GOOGLE_OAUTH_CLIENT_ID; do
+            sed -i "s|__${key}__|${!key}|g" js/config/runtime-config.js
+          done
+
+      - name: Build production bundle
+        run: python3 build3.py
+
+      - name: Build standalone pages
+        run: npm run build:pages
+
+      # Production-only smoke + CSP checks AFTER runtime config is injected, so
+      # they validate the exact artifact being shipped.
+      - name: Run production bundle smoke test
+        run: npm run test:bundle
+      - name: Run CSP inline-handler guard
+        run: npm run test:csp
+
+      - name: Prepare deploy folder
+        run: |
+          mkdir -p _deploy/admin _deploy/profile
+          cp shohoj.html  _deploy/index.html
+          cp admin.html   _deploy/admin/index.html
+          cp profile.html _deploy/profile/index.html
+          # Standalone pages keep their directory layout and share assets/.
+          cp -R dist-pages/. _deploy/
+
+      - name: Generate version.json (build metadata)
+        env:
+          DEPLOY_TARGET: github-pages-production
+        run: node scripts/generate-version-json.mjs _deploy/version.json
+
+      # Keep the exact published package as an artifact so a known-good release
+      # can be re-deployed for rollback (see docs/ROLLBACK.md).
+      - name: Upload deploy package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pages-deploy-${{ github.sha }}
+          path: _deploy
+          retention-days: 30
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_deploy
+          publish_branch: gh-pages
+
+      # Post-deployment verification. Polls the live site until version.json
+      # reports this commit, then checks every critical route/asset/marker.
+      # A failure fails the job so a broken release is caught automatically.
+      - name: Post-deploy production smoke test
+        env:
+          BASE_URL: https://souravmondalshuvo.github.io/Shohoj/
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/smoke-production.mjs
+
+  deploy-worker:
+    name: Deploy Cloudflare Worker
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, changes]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.worker == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    concurrency:
+      group: worker-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+
+  deploy-firestore:
+    name: Deploy Firestore rules & indexes
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, changes]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.firestore == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      contents: read
+    concurrency:
+      group: firestore-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      # firebase-tools is a pinned devDependency, so `npx firebase` uses that
+      # exact version rather than an unpinned network fetch.
+      - run: npm ci
+      - name: Deploy rules & indexes
+        env:
+          # Short-lived service-account JSON, stored as a GitHub secret. See
+          # docs/GITHUB_SECURITY_SETTINGS.md for how to create and scope it.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          # Fail SAFE when auth is not configured: skip rather than crash the
+          # pipeline, and never deploy Firestore DATA — only rules and indexes.
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::warning::FIREBASE_SERVICE_ACCOUNT not configured — skipping Firestore rules/indexes deploy. See docs/GITHUB_SECURITY_SETTINGS.md."
+            exit 0
+          fi
+          # Write the key to a temp file the CLI reads via ADC; never printed.
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          PROJECT="${FIREBASE_PROJECT_ID:-shohoj}"
+          npx firebase deploy \
+            --only firestore:rules,firestore:indexes \
+            --project "$PROJECT" \
+            --non-interactive
+          rm -f "$RUNNER_TEMP/firebase-sa.json"
