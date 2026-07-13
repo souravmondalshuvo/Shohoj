@@ -6,9 +6,9 @@
 // stays disabled until the visual system integrates (the 5C/5D precedent shared
 // with the per-section scans in calculator-results / calculator-autocomplete).
 //
-// Profile is listed in #238 but is not a shell route yet (unmigrated) — add its
-// scan when the route lands (#397). Routine and seats migrated in #397 and are
-// scanned below.
+// Routine, seats, and profile all migrated in #397 and are scanned below, so the
+// #238 axe smoke now covers every route named there (profile is scanned in its
+// signed-in state via the RootLayout auth seam).
 
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -190,6 +190,25 @@ test('@a11y Seats route (search results with open/tight/full sections) has no se
   await expect(page.getByTestId('seats-page')).toBeVisible();
   await page.getByTestId('seats-search-input').fill('CSE110');
   await expect(page.getByTestId('seats-group-CSE110')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
+
+test('@a11y Profile route (signed-in account hub) has no serious/critical violations', async ({ page }) => {
+  // Auth-gated route: inject a signed-in auth source via the RootLayout e2e seam
+  // and a saved routine so the hub renders its real content (#397 / #196). Scan
+  // the authenticated worst case — account header + routine summary card.
+  await page.addInitScript(() => {
+    const snapshot = { status: 'authenticated', uid: 'u_test', email: 'student@g.bracu.ac.bd' };
+    window.__shohojAuthSource = {
+      get: () => snapshot,
+      subscribe: () => () => {},
+      getIdToken: async () => 'test-token',
+    };
+    localStorage.setItem('shohoj_routine_picks_v1', JSON.stringify({ picks: { CSE110: 1 } }));
+  });
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('profile-account')).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
