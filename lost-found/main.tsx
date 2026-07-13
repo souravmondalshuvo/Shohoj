@@ -72,7 +72,10 @@ function StandalonePage() {
     <AuthProvider source={firebaseSource ?? anonymousAuthSource}>
       <ModalProvider>
         <header className="lf-topbar">
-          <a href="../">← Shohoj</a>
+          <a className="pg-brand" href="../" aria-label="Back to Shohoj">
+            <span className="pg-brand-mark" aria-hidden="true">স</span>
+            <span className="pg-brand-text">Shohoj <span>সহজ</span></span>
+          </a>
           <AuthControls source={firebaseSource} />
         </header>
         <main>
