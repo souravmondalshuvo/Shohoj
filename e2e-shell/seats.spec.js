@@ -131,3 +131,27 @@ test('the watchlist is written to the shared storage key the Profile hub reads',
   expect(stored).toContain('"sectionId":2');
   expect(stored).toContain('"courseCode":"CSE110"');
 });
+
+test('watching while signed in syncs the set to the seat-alert repo', async ({ page }) => {
+  // Inject a signed-in identity + a capturing seat-alert repo (no Firestore).
+  await page.addInitScript(() => {
+    const snapshot = { status: 'authenticated', uid: 'u_test', email: 'nabila@g.bracu.ac.bd' };
+    window.__shohojAuthSource = { get: () => snapshot, subscribe: () => () => {}, getIdToken: async () => 't' };
+    window.__seatAlertCalls = [];
+    window.__shohojSeatAlertRepo = {
+      sync: (uid, email, enabled, sections) => {
+        window.__seatAlertCalls.push({ uid, email, enabled, sections });
+        return Promise.resolve();
+      },
+    };
+  });
+  await gotoSeats(page);
+  await page.getByTestId('seats-search-input').fill('CSE110');
+  await page.getByTestId('seats-watch-1').click();
+
+  await expect.poll(() => page.evaluate(() => window.__seatAlertCalls.length)).toBeGreaterThan(0);
+  const last = await page.evaluate(() => window.__seatAlertCalls[window.__seatAlertCalls.length - 1]);
+  expect(last.uid).toBe('u_test');
+  expect(last.enabled).toBe(true);
+  expect(last.sections).toEqual([{ id: 1, code: 'CSE110', name: '01' }]);
+});
