@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lost &amp; Found — Shohoj</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('shohoj_theme');
+          if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,11 +26,27 @@
          the cutover retires this page. */
       /* Shohoj brand layer (light theme) — matches the shell's app/index.html so
          this standalone page reads as the real app. Keep in sync with it. */
-      :root {
-        --green: #2ECC71; --gold: #F0A500; --bg: #d4edde;
-        --glass2: rgba(255,255,255,0.75); --border: rgba(46,204,113,0.25);
-        --text: #0d2914; --text2: #3a6b47;
+      :root, :root[data-theme="light"] {
+        --green: #2ECC71; --green-dim: #1a7a44; --gold: #F0A500;
+        --bg: #d4edde; --glass2: rgba(255,255,255,0.75);
         --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+        --c-text: #0d2914; --c-text-muted: #2d5a3d; --c-faint: rgba(0,0,0,0.5);
+        --c-green-ink: #1c7c45; --c-card: #ffffff; --c-surface: rgba(0,0,0,0.04);
+        --c-line: rgba(0,0,0,0.08); --c-border: rgba(0,0,0,0.12); --c-border2: rgba(0,0,0,0.15);
+        --c-border3: rgba(0,0,0,0.2); --border: rgba(46,204,113,0.25);
+        --text: var(--c-text); --text2: var(--c-text-muted);
+        --c-warn-ink: #b07d1a; --c-blue-ink: #2d5a8a; --c-danger-ink: #c0392b;
+        --header-bg: rgba(212,237,222,0.75);
+      }
+      :root[data-theme="dark"] {
+        --bg: #071009; --glass2: rgba(255,255,255,0.055);
+        --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+        --c-text: #e8f0ea; --c-text-muted: #9fc4ab; --c-faint: rgba(232,240,234,0.55);
+        --c-green-ink: #5fe0a0; --c-card: rgba(255,255,255,0.05); --c-surface: rgba(255,255,255,0.05);
+        --c-line: rgba(255,255,255,0.09); --c-border: rgba(46,204,113,0.2); --c-border2: rgba(46,204,113,0.24);
+        --c-border3: rgba(46,204,113,0.3); --border: rgba(46,204,113,0.22);
+        --c-warn-ink: #e8c06a; --c-blue-ink: #8fb8e8; --c-danger-ink: #ff8b7d;
+        --header-bg: rgba(9,18,12,0.8);
       }
       * { box-sizing: border-box; }
       body {
@@ -44,7 +68,7 @@
       .lf-topbar {
         position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
         padding: 12px 16px; border-bottom: 1px solid var(--border);
-        background: rgba(212,237,222,0.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       }
       .pg-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
       .pg-brand-mark {
@@ -58,23 +82,23 @@
 
       .shell-skip-link {
         position: absolute; left: -999px; top: 0;
-        background: #fff; padding: 8px 12px; z-index: 10;
+        background: var(--c-card); padding: 8px 12px; z-index: 10;
       }
 
       .shell-skip-link:focus { left: 8px; }
 
       .shell-auth { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; }
 
-      .shell-auth-loading { color: rgba(0,0,0,0.45); font-size: 12px; }
+      .shell-auth-loading { color: var(--c-faint); font-size: 12px; }
 
-      .shell-auth-email { color: #2d5a3d; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .shell-auth-email { color: var(--c-text-muted); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
       .shell-auth-btn {
         font: inherit; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px;
-        cursor: pointer; border: 1px solid rgba(46,204,113,0.35); background: rgba(46,204,113,0.08); color: #1c7c45;
+        cursor: pointer; border: 1px solid rgba(46,204,113,0.35); background: rgba(46,204,113,0.08); color: var(--c-green-ink);
       }
 
-      .shell-auth-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-auth-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 
       .shell-page {
         margin: 20px auto; padding: 24px; max-width: 720px; background: var(--glass2);
@@ -85,7 +109,7 @@
 
       .shell-btn {
         font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #0d2914;
+        border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text);
         display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
       }
 
@@ -93,7 +117,7 @@
 
       .shell-btn--danger { background: #e74c3c; border-color: #e74c3c; color: #fff; }
 
-      .shell-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 
       .shell-modal-backdrop {
         position: fixed; inset: 0; background: rgba(0,0,0,0.4);
@@ -101,13 +125,13 @@
       }
 
       .shell-modal {
-        background: #fff; border-radius: 12px; padding: 20px; max-width: 420px;
+        background: var(--c-card); border-radius: 12px; padding: 20px; max-width: 420px;
         width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25);
       }
 
       .shell-modal-title { margin: 0 0 8px; font-size: 18px; }
 
-      .shell-modal-message { margin: 0 0 16px; color: #2d5a3d; }
+      .shell-modal-message { margin: 0 0 16px; color: var(--c-text-muted); }
 
       .shell-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
@@ -119,24 +143,24 @@
 
       .shell-toast {
         display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-        border-radius: 10px; border: 1px solid; background: #fff; font-size: 14px;
+        border-radius: 10px; border: 1px solid; background: var(--c-card); font-size: 14px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.18);
       }
 
-      .shell-toast--success { border-color: #27ae60; color: #0d2914; }
+      .shell-toast--success { border-color: #27ae60; color: var(--c-text); }
 
-      .shell-toast--info { border-color: #2d5a8a; color: #0d1a29; }
+      .shell-toast--info { border-color: var(--c-blue-ink); color: var(--c-text); }
 
-      .shell-toast--warning { border-color: #b07d1a; color: #291f0d; }
+      .shell-toast--warning { border-color: var(--c-warn-ink); color: var(--c-text); }
 
-      .shell-toast--error { border-color: #c0392b; color: #290d0d; }
+      .shell-toast--error { border-color: var(--c-danger-ink); color: var(--c-text); }
 
       .shell-toast-dismiss {
         font: inherit; margin-left: auto; border: none; background: none;
         cursor: pointer; padding: 0 4px; color: inherit;
       }
 
-      .shell-toast-dismiss:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-toast-dismiss:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 
       .lf-page { max-width: 720px; }
 
@@ -146,12 +170,12 @@
 
       .lf-filter {
         font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; min-height: 44px;
-        border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); background: transparent; color: rgba(0,0,0,0.55);
+        border-radius: 6px; cursor: pointer; border: 1px solid var(--c-border2); background: transparent; color: var(--c-faint);
       }
 
-      .lf-filter--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: #1c7c45; }
+      .lf-filter--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
 
-      .lf-filter:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .lf-filter:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 
       .lf-form {
         border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04);
@@ -169,11 +193,11 @@
 
       .lf-field { display: flex; flex-direction: column; gap: 4px; }
 
-      .lf-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #3a6b47; }
+      .lf-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--c-text-muted); }
 
       .lf-input {
         font: inherit; font-size: 13px; width: 100%; padding: 9px 12px; border-radius: 8px;
-        border: 1px solid rgba(0,0,0,0.2); background: #fff; box-sizing: border-box;
+        border: 1px solid var(--c-border3); background: var(--c-card); box-sizing: border-box;
       }
 
       .lf-input:focus { border-color: rgba(46,204,113,0.55); outline: none; }
@@ -184,7 +208,7 @@
 
       .lf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 
-      .lf-item { border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px 14px; }
+      .lf-item { border: 1px solid var(--c-border); border-radius: 12px; padding: 12px 14px; }
 
       .lf-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 
@@ -195,23 +219,23 @@
 
       .lf-badge--lost { background: rgba(231,76,60,0.10); color: #e74c3c; border-color: rgba(231,76,60,0.28); }
 
-      .lf-badge--found { background: rgba(46,204,113,0.12); color: #1c7c45; border-color: rgba(46,204,113,0.30); }
+      .lf-badge--found { background: rgba(46,204,113,0.12); color: var(--c-green-ink); border-color: rgba(46,204,113,0.30); }
 
       .lf-title { font-size: 14px; }
 
       .lf-age { margin-left: auto; font-size: 11px; }
 
-      .lf-desc { margin: 6px 0 0; font-size: 13px; color: #0d2914; }
+      .lf-desc { margin: 6px 0 0; font-size: 13px; color: var(--c-text); }
 
       .lf-where { margin: 4px 0 0; font-size: 12px; }
 
-      .lf-where a { color: #1c7c45; }
+      .lf-where a { color: var(--c-green-ink); }
 
       .lf-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
       .lf-btn { min-height: 40px; padding: 6px 14px; font-size: 12px; }
 
-      .lf-claimed { font-size: 12px; font-weight: 600; color: #1c7c45; }
+      .lf-claimed { font-size: 12px; font-weight: 600; color: var(--c-green-ink); }
 
       .lf-claim-box {
         margin-top: 10px; padding: 12px; border-radius: 10px;
@@ -222,6 +246,14 @@
       .lf-privacy { font-size: 11px; margin: 0; }
 
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+      [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+      [data-theme="dark"] select,
+      [data-theme="dark"] textarea {
+        background: rgba(0,0,0,0.28); color: var(--c-text);
+        border: 1px solid var(--c-border); border-radius: 8px;
+      }
+      [data-theme="dark"] input::placeholder,
+      [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
     <script type="module" crossorigin src="../assets/lost-found-CKtQsg6D.js"></script>
     <link rel="modulepreload" crossorigin href="../assets/preload-helper-HclGiUj8.js">
