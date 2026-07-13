@@ -29,6 +29,28 @@ function seedRoutine(page, picks) {
   }, picks);
 }
 
+// Capture seat-alert sync() calls through the repo seam (no Firestore).
+function captureSeatAlerts(page) {
+  return page.addInitScript(() => {
+    window.__seatAlertCalls = [];
+    window.__shohojSeatAlertRepo = {
+      sync: (uid, email, enabled, sections) => {
+        window.__seatAlertCalls.push({ uid, email, enabled, sections });
+        return Promise.resolve();
+      },
+    };
+  });
+}
+
+function seedWatchOne(page) {
+  return page.addInitScript(() => {
+    localStorage.setItem(
+      'shohoj_seat_watch_v1',
+      JSON.stringify([{ sectionId: 1, courseCode: 'CSE110', sectionName: '01', addedAt: 1, hadSeat: true }]),
+    );
+  });
+}
+
 test('signed-out students see the sign-in prompt, not the hub', async ({ page }) => {
   await page.goto('/profile', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('profile-page')).toBeVisible();
@@ -102,4 +124,41 @@ test('no horizontal overflow at 360px in the signed-in hub', async ({ page }) =>
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(overflows, 'profile route overflows at 360px').toBe(false);
+});
+
+test('email-alert toggle defaults on; turning it off persists and syncs disabled', async ({ page }) => {
+  await captureSeatAlerts(page);
+  await signIn(page, 'nabila@g.bracu.ac.bd');
+  await seedWatchOne(page);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+
+  const toggle = page.getByTestId('profile-alert-toggle');
+  await expect(toggle).toBeChecked();
+  await expect(page.getByTestId('profile-alert-note')).toContainText('nabila@g.bracu.ac.bd');
+
+  await toggle.uncheck();
+  await expect(page.getByTestId('profile-alert-note')).toContainText('no emails');
+  const stored = await page.evaluate(() => localStorage.getItem('shohoj_seat_alerts_enabled'));
+  expect(stored).toBe('0');
+
+  // The last sync reflects the disabled flag + the watched section.
+  const calls = await page.evaluate(() => window.__seatAlertCalls);
+  const last = calls[calls.length - 1];
+  expect(last.enabled).toBe(false);
+  expect(last.uid).toBe('u_test');
+  expect(last.email).toBe('nabila@g.bracu.ac.bd');
+  expect(last.sections).toEqual([{ id: 1, code: 'CSE110', name: '01' }]);
+});
+
+test('signing in retroactively arms alerts for already-watched sections', async ({ page }) => {
+  await captureSeatAlerts(page);
+  await signIn(page);
+  await seedWatchOne(page);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('profile-watchlist')).toBeVisible();
+  // The mount sync pushed the watched section with the default (enabled) flag.
+  await expect.poll(() => page.evaluate(() => window.__seatAlertCalls.length)).toBeGreaterThan(0);
+  const first = await page.evaluate(() => window.__seatAlertCalls[0]);
+  expect(first.enabled).toBe(true);
+  expect(first.sections).toEqual([{ id: 1, code: 'CSE110', name: '01' }]);
 });
