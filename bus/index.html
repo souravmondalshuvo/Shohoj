@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Bus Routes &amp; Timings — Shohoj</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('shohoj_theme');
+          if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,11 +25,27 @@
          two in sync until the cutover retires this page. */
       /* Shohoj brand layer (light theme) — matches the shell's app/index.html so
          this standalone page reads as the real app. Keep in sync with it. */
-      :root {
-        --green: #2ECC71; --gold: #F0A500; --bg: #d4edde;
-        --glass2: rgba(255,255,255,0.75); --border: rgba(46,204,113,0.25);
-        --text: #0d2914; --text2: #3a6b47;
+      :root, :root[data-theme="light"] {
+        --green: #2ECC71; --green-dim: #1a7a44; --gold: #F0A500;
+        --bg: #d4edde; --glass2: rgba(255,255,255,0.75);
         --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+        --c-text: #0d2914; --c-text-muted: #2d5a3d; --c-faint: rgba(0,0,0,0.5);
+        --c-green-ink: #1c7c45; --c-card: #ffffff; --c-surface: rgba(0,0,0,0.04);
+        --c-line: rgba(0,0,0,0.08); --c-border: rgba(0,0,0,0.12); --c-border2: rgba(0,0,0,0.15);
+        --c-border3: rgba(0,0,0,0.2); --border: rgba(46,204,113,0.25);
+        --text: var(--c-text); --text2: var(--c-text-muted);
+        --c-warn-ink: #b07d1a; --c-blue-ink: #2d5a8a; --c-danger-ink: #c0392b;
+        --header-bg: rgba(212,237,222,0.75);
+      }
+      :root[data-theme="dark"] {
+        --bg: #071009; --glass2: rgba(255,255,255,0.055);
+        --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+        --c-text: #e8f0ea; --c-text-muted: #9fc4ab; --c-faint: rgba(232,240,234,0.55);
+        --c-green-ink: #5fe0a0; --c-card: rgba(255,255,255,0.05); --c-surface: rgba(255,255,255,0.05);
+        --c-line: rgba(255,255,255,0.09); --c-border: rgba(46,204,113,0.2); --c-border2: rgba(46,204,113,0.24);
+        --c-border3: rgba(46,204,113,0.3); --border: rgba(46,204,113,0.22);
+        --c-warn-ink: #e8c06a; --c-blue-ink: #8fb8e8; --c-danger-ink: #ff8b7d;
+        --header-bg: rgba(9,18,12,0.8);
       }
       * { box-sizing: border-box; }
       body {
@@ -42,7 +66,7 @@
       h1, h2, h3 { font-family: 'Syne','DM Sans',sans-serif; letter-spacing: -0.02em; }
       .campus-topbar {
         position: sticky; top: 0; z-index: 20; padding: 12px 16px; border-bottom: 1px solid var(--border);
-        background: rgba(212,237,222,0.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       }
       .pg-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
       .pg-brand-mark {
@@ -59,39 +83,47 @@
       }
       .shell-muted { color: var(--text2); }
       .bus-page { max-width: 860px; }
-      .bus-effective { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); color: #23445c; font-size: 12px; line-height: 1.6; }
-      .bus-today { font-size: 13px; font-weight: 600; color: #1c7c45; margin: 0 0 12px; }
+      .bus-effective { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); color: var(--c-blue-ink); font-size: 12px; line-height: 1.6; }
+      .bus-today { font-size: 13px; font-weight: 600; color: var(--c-green-ink); margin: 0 0 12px; }
       .bus-routes { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
       .bus-route-btn {
         font: inherit; font-size: 12px; font-weight: 600; padding: 8px 12px; min-height: 44px;
-        border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #2d5a3d;
+        border-radius: 6px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text-muted);
         display: inline-flex; align-items: center; gap: 6px;
       }
-      .bus-route-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: #1c7c45; }
-      .bus-route-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
-      .bus-route-no { font-size: 9px; font-weight: 700; background: rgba(0,0,0,0.06); border-radius: 4px; padding: 2px 5px; }
+      .bus-route-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: var(--c-green-ink); }
+      .bus-route-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .bus-route-no { font-size: 9px; font-weight: 700; background: var(--c-surface); border-radius: 4px; padding: 2px 5px; }
       .bus-detail { border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
       .bus-detail-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; justify-content: space-between; }
       .bus-detail-head h2 { font-size: 15px; margin: 0 0 10px; }
-      .bus-fare { font-size: 12px; font-weight: 700; color: #1c7c45; white-space: nowrap; }
+      .bus-fare { font-size: 12px; font-weight: 700; color: var(--c-green-ink); white-space: nowrap; }
       .bus-table-scroll { overflow-x: auto; }
       .bus-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      .bus-table th, .bus-table td { padding: 7px 10px; border-bottom: 1px solid rgba(0,0,0,0.08); text-align: left; }
-      .bus-table thead th { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: rgba(0,0,0,0.45); }
-      .bus-table tbody th { font-weight: 500; color: #0d2914; }
-      .bus-table td { white-space: nowrap; color: #2d5a3d; font-weight: 600; }
-      .bus-table tr:last-child th, .bus-table tr:last-child td { border-bottom: none; font-weight: 700; color: #1c7c45; }
+      .bus-table th, .bus-table td { padding: 7px 10px; border-bottom: 1px solid var(--c-line); text-align: left; }
+      .bus-table thead th { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-faint); }
+      .bus-table tbody th { font-weight: 500; color: var(--c-text); }
+      .bus-table td { white-space: nowrap; color: var(--c-text-muted); font-weight: 600; }
+      .bus-table tr:last-child th, .bus-table tr:last-child td { border-bottom: none; font-weight: 700; color: var(--c-green-ink); }
       .bus-stop--next th, .bus-stop--next td { background: rgba(46,204,113,0.10); }
-      .bus-outbound h3 { font-size: 11px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 1px; color: rgba(0,0,0,0.45); }
-      .bus-outbound p { margin: 0; font-size: 13px; color: #0d2914; }
-      .bus-attendant { margin: 10px 0 0; font-size: 13px; color: #2d5a3d; }
-      .bus-attendant a { color: #1c7c45; font-weight: 600; }
-      .bus-fare-note { font-size: 12px; color: #2d5a3d; }
-      .bus-extra { margin-top: 10px; font-size: 13px; color: #2d5a3d; }
+      .bus-outbound h3 { font-size: 11px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-faint); }
+      .bus-outbound p { margin: 0; font-size: 13px; color: var(--c-text); }
+      .bus-attendant { margin: 10px 0 0; font-size: 13px; color: var(--c-text-muted); }
+      .bus-attendant a { color: var(--c-green-ink); font-weight: 600; }
+      .bus-fare-note { font-size: 12px; color: var(--c-text-muted); }
+      .bus-extra { margin-top: 10px; font-size: 13px; color: var(--c-text-muted); }
       .bus-extra summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
       .bus-extra ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }
-      .bus-extra a { color: #1c7c45; }
+      .bus-extra a { color: var(--c-green-ink); }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+      [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+      [data-theme="dark"] select,
+      [data-theme="dark"] textarea {
+        background: rgba(0,0,0,0.28); color: var(--c-text);
+        border: 1px solid var(--c-border); border-radius: 8px;
+      }
+      [data-theme="dark"] input::placeholder,
+      [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
   </head>
   <body>
