@@ -38,7 +38,7 @@ test('transport office contacts are one tap away', async ({ page }) => {
 
 test('top bar links back to the main site', async ({ page }) => {
   await page.goto('/bus/', { waitUntil: 'domcontentloaded' });
-  const back = page.getByRole('link', { name: '← Shohoj' });
+  const back = page.getByRole('link', { name: 'Back to Shohoj' });
   await expect(back).toBeVisible();
   await expect(back).toHaveAttribute('href', '../');
 });
