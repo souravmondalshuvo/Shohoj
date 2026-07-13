@@ -161,15 +161,29 @@ jobs:
           test -s dist/index.html
           test -s dist/admin/index.html
 
-      - name: Shell build (non-deploying smoke check)
+      - name: Shell build + E2E
         run: |
-          # Compile-check the React Router shell (vite.shell.config.js → dist-shell/).
-          # Like the Vite build above, this output is NOT deployed — gh-pages ships
-          # the build3.py bundle. The full shell e2e (test:e2e:shell) runs locally,
-          # matching how the island e2e (test:e2e:vite) is treated; CI guards the
-          # build so a broken shell entry can't merge.
+          # Build and E2E the React Router shell (vite.shell.config.js → dist-shell/).
+          # The shell output is NOT deployed — gh-pages ships the build3.py bundle —
+          # but unlike the island (test:e2e:vite, still local-only), the shell now has
+          # full feature parity and is the Phase 13 cutover target. #365 therefore
+          # promotes the shell e2e from local-only to a CI gate: the accessibility axe
+          # smoke (serious/critical fail the build), the mobile/responsive parity
+          # specs, and every migrated feature slice must pass before merge.
+          #
+          # The Vite step above copies the runtime-config template into
+          # js/config/runtime-config.js (with unreplaced __PLACEHOLDER__ tokens).
+          # The shell must NOT bundle that: the cloud specs (runtime-config /
+          # auth-controls / cloud-sync) inject valid globals via addInitScript and
+          # rely on the comment stub — shipped only when the file is absent — not
+          # overwriting them (the template assigns window._shohoj_* directly).
+          # Remove it so build:shell ships the stub the specs document and expect.
+          rm -f js/config/runtime-config.js
           npm run build:shell
           # Accept either layout so this stays green regardless of merge order with
           # the root-served-shell fix (PR #298), which moves the entry from
           # dist-shell/app/index.html to dist-shell/index.html.
           test -s dist-shell/index.html || test -s dist-shell/app/index.html
+          # Serve the build just produced (playwright.shell.config.js webServer runs
+          # `vite preview`) and run the full shell suite — no rebuild.
+          npx playwright test --config=playwright.shell.config.js
