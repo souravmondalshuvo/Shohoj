@@ -25,7 +25,7 @@ import { CloudSyncProvider } from '../providers/CloudSyncProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
-import { anonymousAuthSource } from '../../platform/auth/authSnapshot';
+import { anonymousAuthSource, type AuthSource } from '../../platform/auth/authSnapshot';
 import { FacultyReviewsProvider } from '../../features/calculator/FacultyReviewsProvider';
 import { createFirebaseAuthSource } from '../../platform/auth/firebaseAuthSource';
 
@@ -34,6 +34,13 @@ import { createFirebaseAuthSource } from '../../platform/auth/firebaseAuthSource
 // generated config never changes within a page lifetime; missing/placeholder
 // values validate to the offline capability set exactly as before.
 const RAW_RUNTIME_CONFIG = typeof window !== 'undefined' ? runtimeConfigFromGlobals(window) : {};
+
+declare global {
+  interface Window {
+    /** e2e seam: an injected auth source (e.g. an authenticated stand-in). */
+    __shohojAuthSource?: AuthSource;
+  }
+}
 
 interface NavItem {
   readonly to: string;
@@ -127,8 +134,17 @@ function ShellChrome() {
     </>
   );
 
+  // e2e seam (the __shohoj* convention): an injected auth source stands in for a
+  // signed-in user so authenticated-only routes (Profile) can be driven without a
+  // real Firebase session. Only the AuthProvider reads it; the header's sign-in/out
+  // controls keep using the real firebaseSource.
+  const providerSource =
+    (typeof window !== 'undefined' && window.__shohojAuthSource) ||
+    firebaseSource ||
+    anonymousAuthSource;
+
   return (
-    <AuthProvider source={firebaseSource ?? anonymousAuthSource}>
+    <AuthProvider source={providerSource}>
       <ModalProvider>
         {/* Live faculty chip scores (inert until a chip requests one; no repo
             when offline → chips stay '–'). */}
