@@ -10,10 +10,17 @@
 // Auth-gated: signed-out students see a sign-in prompt (the actual sign-in
 // control lives in the header). Signed-in students see their hub.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAuth } from '../providers/AuthProvider';
+import {
+  parseWatches,
+  removeWatch,
+  serializeWatches,
+  SEAT_WATCH_STORAGE_KEY,
+  type WatchEntry,
+} from '../../core/seatWatch';
 
 const ROUTINE_STORAGE_KEY = 'shohoj_routine_picks_v1';
 
@@ -42,6 +49,26 @@ function readRoutineSummary(): RoutineSummary {
 export function Component() {
   const auth = useAuth();
   const routine = useMemo(readRoutineSummary, []);
+  const [watches, setWatches] = useState<WatchEntry[]>(() => {
+    try {
+      return parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY));
+    } catch {
+      return [];
+    }
+  });
+
+  // Removing here writes back to the same key the Seats route watches.
+  const unwatch = (sectionId: number) => {
+    setWatches((prev) => {
+      const next = removeWatch(prev, sectionId);
+      try {
+        localStorage.setItem(SEAT_WATCH_STORAGE_KEY, serializeWatches(next));
+      } catch {
+        // Storage off — the change just won't persist.
+      }
+      return next;
+    });
+  };
 
   if (auth.status === 'loading') {
     return (
@@ -103,13 +130,42 @@ export function Component() {
           )}
         </section>
 
+        <section className="profile-card" data-testid="profile-watchlist-card" aria-labelledby="profile-watch-heading">
+          <h2 id="profile-watch-heading" className="profile-card-title">
+            Seat watchlist
+          </h2>
+          {watches.length === 0 ? (
+            <p className="shell-muted" data-testid="profile-watchlist-empty">
+              You&apos;re not watching any sections. Add them from <Link to="/seats">Seat Status</Link>.
+            </p>
+          ) : (
+            <ul className="profile-watchlist" data-testid="profile-watchlist">
+              {watches.map((w) => (
+                <li className="profile-watch-item" key={w.sectionId}>
+                  <span className="profile-watch-label">
+                    <strong>{w.courseCode}</strong> · Section {w.sectionName}
+                  </span>
+                  <button
+                    type="button"
+                    className="profile-watch-remove"
+                    onClick={() => unwatch(w.sectionId)}
+                    aria-label={`Stop watching ${w.courseCode} section ${w.sectionName}`}
+                    data-testid={`profile-unwatch-${w.sectionId}`}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
         <section className="profile-card profile-card--soon" aria-labelledby="profile-soon-heading">
           <h2 id="profile-soon-heading" className="profile-card-title">
             Coming soon
           </h2>
           <p className="shell-muted">
-            Your seat watchlist, email-alert toggle, and your own reviews move here in
-            an upcoming update.
+            Email seat-drop alerts and your own reviews move here in an upcoming update.
           </p>
         </section>
       </div>
