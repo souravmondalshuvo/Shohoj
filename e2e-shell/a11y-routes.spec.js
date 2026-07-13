@@ -6,9 +6,9 @@
 // stays disabled until the visual system integrates (the 5C/5D precedent shared
 // with the per-section scans in calculator-results / calculator-autocomplete).
 //
-// Routine, seats, and profile are listed in #238 but are not shell routes yet
-// (routine/seats are legacy tabs; profile is unmigrated) — add their scans when
-// those routes land.
+// Seats and profile are listed in #238 but are not shell routes yet (seats is a
+// legacy tab; profile is unmigrated) — add their scans when those routes land
+// (#397). Routine migrated in #397 and is scanned below.
 
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -124,6 +124,40 @@ test('@a11y Bus route (static timetable + route toggles + stop table) has no ser
   await page.goto('/bus', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('bus-page')).toBeVisible();
   await expect(page.getByTestId('bus-stops')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
+
+test('@a11y Routine route (builder with picked sections + weekly grid) has no serious/critical violations', async ({ page }) => {
+  // Seed the CONNECT feed cache so the route resolves real sections (#397),
+  // then add a course and pick a section — the worst case scans the section
+  // picker AND the rendered weekly grid.
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'shohoj_connect_feed_v1',
+      JSON.stringify({
+        fetchedAt: Date.now(),
+        etag: null,
+        payload: [
+          {
+            sectionId: 1,
+            courseCode: 'CSE110',
+            sectionName: '01',
+            capacity: 40,
+            consumedSeat: 10,
+            roomName: '07A-01C',
+            sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '8:00', endTime: '9:20' }] },
+          },
+        ],
+      }),
+    );
+  });
+  await page.goto('/routine', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('routine-page')).toBeVisible();
+  await page.getByTestId('routine-course-input').fill('CSE110');
+  await page.getByTestId('routine-add-btn').click();
+  await page.getByTestId('routine-course-CSE110').getByRole('button', { name: /Section 01/ }).click();
+  await expect(page.getByTestId('routine-grid')).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
