@@ -21,7 +21,6 @@ const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['transcript', 'Transcript'],
   ['degree-progress', 'Degree progress'],
   ['rooms', 'Free rooms'],
-  ['seats', 'Seat status'],
   ['papers', 'Past papers'],
   ['groups', 'Study groups'],
   ['feedback', 'Feedback'],
@@ -42,6 +41,8 @@ export const router = createBrowserRouter([
       { path: 'campus', lazy: () => import('../routes/CampusRoute') },
       // Weekly routine builder (#397) over the live CONNECT feed.
       { path: 'routine', lazy: () => import('../routes/RoutineRoute') },
+      // Seat status browser (#397) over the live CONNECT feed.
+      { path: 'seats', lazy: () => import('../routes/SeatsRoute') },
       // Bus timetable (#372) — static transcribed data, no backend.
       { path: 'bus', lazy: () => import('../routes/BusRoute') },
       { path: 'lost-found', lazy: () => import('../routes/LostFoundRoute') },
