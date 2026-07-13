@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Campus Map — Shohoj</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('shohoj_theme');
+          if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,11 +25,27 @@
          two in sync until the cutover retires this page. */
       /* Shohoj brand layer (light theme) — matches the shell's app/index.html so
          this standalone page reads as the real app. Keep in sync with it. */
-      :root {
-        --green: #2ECC71; --gold: #F0A500; --bg: #d4edde;
-        --glass2: rgba(255,255,255,0.75); --border: rgba(46,204,113,0.25);
-        --text: #0d2914; --text2: #3a6b47;
+      :root, :root[data-theme="light"] {
+        --green: #2ECC71; --green-dim: #1a7a44; --gold: #F0A500;
+        --bg: #d4edde; --glass2: rgba(255,255,255,0.75);
         --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+        --c-text: #0d2914; --c-text-muted: #2d5a3d; --c-faint: rgba(0,0,0,0.5);
+        --c-green-ink: #1c7c45; --c-card: #ffffff; --c-surface: rgba(0,0,0,0.04);
+        --c-line: rgba(0,0,0,0.08); --c-border: rgba(0,0,0,0.12); --c-border2: rgba(0,0,0,0.15);
+        --c-border3: rgba(0,0,0,0.2); --border: rgba(46,204,113,0.25);
+        --text: var(--c-text); --text2: var(--c-text-muted);
+        --c-warn-ink: #b07d1a; --c-blue-ink: #2d5a8a; --c-danger-ink: #c0392b;
+        --header-bg: rgba(212,237,222,0.75);
+      }
+      :root[data-theme="dark"] {
+        --bg: #071009; --glass2: rgba(255,255,255,0.055);
+        --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+        --c-text: #e8f0ea; --c-text-muted: #9fc4ab; --c-faint: rgba(232,240,234,0.55);
+        --c-green-ink: #5fe0a0; --c-card: rgba(255,255,255,0.05); --c-surface: rgba(255,255,255,0.05);
+        --c-line: rgba(255,255,255,0.09); --c-border: rgba(46,204,113,0.2); --c-border2: rgba(46,204,113,0.24);
+        --c-border3: rgba(46,204,113,0.3); --border: rgba(46,204,113,0.22);
+        --c-warn-ink: #e8c06a; --c-blue-ink: #8fb8e8; --c-danger-ink: #ff8b7d;
+        --header-bg: rgba(9,18,12,0.8);
       }
       * { box-sizing: border-box; }
       body {
@@ -42,7 +66,7 @@
       h1, h2, h3 { font-family: 'Syne','DM Sans',sans-serif; letter-spacing: -0.02em; }
       .campus-topbar {
         position: sticky; top: 0; z-index: 20; padding: 12px 16px; border-bottom: 1px solid var(--border);
-        background: rgba(212,237,222,0.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+        background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       }
       .pg-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
       .pg-brand-mark {
@@ -60,52 +84,52 @@
       .shell-muted { color: var(--text2); }
       .shell-btn {
         font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #0d2914;
+        border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text);
         display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
       }
-      .shell-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .shell-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
       .campus-page { max-width: 860px; }
-      .campus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: #2d5a3d; }
+      .campus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--c-text-muted); }
       .campus-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
-      .campus-location { font-weight: 600; color: #1c7c45; }
+      .campus-location { font-weight: 600; color: var(--c-green-ink); }
       .campus-floors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
       .campus-floor-btn {
         font: inherit; font-size: 12px; font-weight: 600; padding: 8px 12px; min-height: 44px;
-        border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #2d5a3d;
+        border-radius: 6px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text-muted);
       }
-      .campus-floor-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: #1c7c45; }
-      .campus-floor-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .campus-floor-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: var(--c-green-ink); }
+      .campus-floor-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
       .campus-canvas {
-        height: min(420px, 60vh); border: 1px solid rgba(0,0,0,0.12); border-radius: 12px;
+        height: min(420px, 60vh); border: 1px solid var(--c-border); border-radius: 12px;
         overflow: hidden; background: linear-gradient(rgba(46,204,113,0.04), rgba(86,180,233,0.05));
         touch-action: none;
       }
       .campus-canvas canvas { display: block; width: 100%; height: 100%; }
-      .campus-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 11px; color: rgba(0,0,0,0.55); }
+      .campus-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 11px; color: var(--c-faint); }
       .campus-legend span { display: flex; align-items: center; gap: 5px; }
       .campus-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: #9aa59e; flex-shrink: 0; }
       .campus-dot--free { background: #27ae60; }
       .campus-dot--busy { background: #e74c3c; }
-      .campus-dot--selected { background: #2d5a8a; }
+      .campus-dot--selected { background: var(--c-blue-ink); }
       .campus-room-panel { border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.05); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
       .campus-room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
-      .campus-room-status { margin: 6px 0 0; font-size: 13px; color: #0d2914; font-weight: 600; }
-      .campus-room-schedule { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: #2d5a3d; }
-      .campus-zone-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: rgba(0,0,0,0.45); margin: 12px 0 6px; }
+      .campus-room-status { margin: 6px 0 0; font-size: 13px; color: var(--c-text); font-weight: 600; }
+      .campus-room-schedule { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: var(--c-text-muted); }
+      .campus-zone-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-faint); margin: 12px 0 6px; }
       .campus-zone-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
       .campus-room-btn {
         display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 600;
         padding: 8px 10px; min-height: 44px; border-radius: 8px; cursor: pointer;
-        border: 1px solid rgba(0,0,0,0.12); background: #fff; color: #0d2914;
+        border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text);
       }
-      .campus-room-btn--selected { border-color: #2d5a8a; background: rgba(86,180,233,0.10); }
-      .campus-room-btn:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .campus-room-btn--selected { border-color: var(--c-blue-ink); background: rgba(86,180,233,0.10); }
+      .campus-room-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
       .campus-room-sr {
         position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
         overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
       }
       .campus-error { padding: 16px 0; }
-      .campus-other { margin-top: 16px; font-size: 13px; color: #2d5a3d; }
+      .campus-other { margin-top: 16px; font-size: 13px; color: var(--c-text-muted); }
       .campus-wip {
         margin: 16px 16px 0; padding: 10px 14px; max-width: 828px;
         border: 1px solid rgba(240,165,0,0.35); border-radius: 10px;
@@ -113,6 +137,14 @@
       }
       .campus-wip a { color: #7a5a10; font-weight: 600; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+      [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+      [data-theme="dark"] select,
+      [data-theme="dark"] textarea {
+        background: rgba(0,0,0,0.28); color: var(--c-text);
+        border: 1px solid var(--c-border); border-radius: 8px;
+      }
+      [data-theme="dark"] input::placeholder,
+      [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
   </head>
   <body>
