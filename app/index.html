@@ -321,6 +321,62 @@
       .bus-extra summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
       .bus-extra ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }
       .bus-extra a { color: #1c7c45; }
+      /* Weekly routine builder (#397) */
+      .routine-page { max-width: 860px; }
+      .routine-feed-status { font-size: 12px; margin: 4px 0; }
+      .routine-feed-error { color: #e74c3c; }
+      .routine-add { margin: 14px 0; }
+      .routine-add-label { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #3a6b47; margin-bottom: 6px; }
+      .routine-add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+      .routine-add-input {
+        font: inherit; flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px;
+        border: 1px solid rgba(46,204,113,0.28); background: rgba(0,0,0,0.04); box-sizing: border-box;
+      }
+      .routine-add-input:focus { outline: none; border-color: rgba(46,204,113,0.55); }
+      .routine-add-error { color: #e74c3c; font-size: 12px; margin: 6px 0 0; }
+      .routine-courses { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+      .routine-course { border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 12px; }
+      .routine-course-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+      .routine-course-code { font-weight: 800; color: #1c7c45; }
+      .routine-remove {
+        font: inherit; min-height: 32px; min-width: 32px; border-radius: 8px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: rgba(0,0,0,0.55);
+      }
+      .routine-remove:focus-visible, .routine-clear:focus-visible, .routine-section:focus-visible { outline: 2px solid #1c7c45; outline-offset: 2px; }
+      .routine-sections { display: flex; flex-direction: column; gap: 6px; }
+      .routine-section {
+        font: inherit; text-align: left; display: flex; flex-direction: column; gap: 2px;
+        padding: 8px 12px; border-radius: 10px; cursor: pointer;
+        border: 1px solid rgba(0,0,0,0.15); background: #fff; color: #0d2914;
+      }
+      .routine-section--picked { border-color: rgba(46,204,113,0.5); background: rgba(46,204,113,0.10); }
+      .routine-section--clash { border-color: rgba(231,76,60,0.5); background: rgba(231,76,60,0.06); }
+      .routine-section-name { font-weight: 700; font-size: 13px; }
+      .routine-section-meta { font-size: 12px; color: #2d5a3d; }
+      .routine-section-slots { font-size: 11px; color: rgba(0,0,0,0.55); }
+      .routine-section-clash-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #e74c3c; }
+      .routine-course-hint, .routine-course-empty { font-size: 12px; margin: 6px 0 0; }
+      .routine-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; margin-bottom: 14px; }
+      .routine-summary-clash { color: #e74c3c; font-weight: 700; }
+      .routine-summary-ok { color: #1c7c45; font-weight: 700; }
+      .routine-clear {
+        font: inherit; font-size: 12px; font-weight: 600; margin-left: auto; min-height: 36px; padding: 6px 14px;
+        border-radius: 8px; cursor: pointer; border: 1px solid rgba(231,76,60,0.35); background: rgba(231,76,60,0.06); color: #c0392b;
+      }
+      .routine-empty { margin: 14px 0; }
+      .routine-grid {
+        display: grid; gap: 1px; margin-top: 8px; border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.06); font-size: 11px;
+      }
+      .routine-grid-dayhead { background: #fff; font-weight: 700; text-align: center; padding: 4px 0; color: #2d5a3d; }
+      .routine-grid-timelabel { background: #fff; color: rgba(0,0,0,0.5); font-size: 10px; padding: 0 6px; display: flex; align-items: center; }
+      .routine-block {
+        background: rgba(46,204,113,0.16); border-radius: 6px; padding: 2px 4px; overflow: hidden;
+        display: flex; flex-direction: column; line-height: 1.15; box-sizing: border-box; align-self: stretch;
+      }
+      .routine-block--clash { background: rgba(231,76,60,0.18); }
+      .routine-block-code { font-weight: 700; color: #0d2914; }
+      .routine-block-room { color: rgba(0,0,0,0.55); font-size: 10px; }
       .lf-page { max-width: 720px; }
       .lf-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
       .lf-filters { display: flex; gap: 4px; }
