@@ -61,6 +61,37 @@ test('the routine card summarizes the saved picks', async ({ page }) => {
   await expect(summary).toContainText('1 section picked');
 });
 
+function seedWatches(page, entries) {
+  return page.addInitScript((list) => {
+    localStorage.setItem('shohoj_seat_watch_v1', JSON.stringify(list));
+  }, entries);
+}
+
+test('the watchlist card is empty with no watched sections', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('profile-watchlist-empty')).toBeVisible();
+});
+
+test('the watchlist card lists watched sections and removing one updates storage', async ({ page }) => {
+  await signIn(page);
+  await seedWatches(page, [
+    { sectionId: 1, courseCode: 'CSE110', sectionName: '01', addedAt: 1, hadSeat: true },
+    { sectionId: 2, courseCode: 'MAT110', sectionName: '02', addedAt: 2, hadSeat: false },
+  ]);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+
+  const list = page.getByTestId('profile-watchlist');
+  await expect(list.locator('.profile-watch-item')).toHaveCount(2);
+  await expect(list).toContainText('CSE110');
+
+  await page.getByTestId('profile-unwatch-1').click();
+  await expect(list.locator('.profile-watch-item')).toHaveCount(1);
+  const stored = await page.evaluate(() => localStorage.getItem('shohoj_seat_watch_v1'));
+  expect(stored).not.toContain('"sectionId":1');
+  expect(stored).toContain('"sectionId":2');
+});
+
 test('no horizontal overflow at 360px in the signed-in hub', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 820 });
   await signIn(page, 'a-really-long-student-email-address@g.bracu.ac.bd');
