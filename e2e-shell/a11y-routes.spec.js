@@ -118,6 +118,16 @@ test('@a11y Campus route (map over a seeded feed cache) has no serious/critical 
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
 
+test('@a11y Bus route (static timetable + route toggles + stop table) has no serious/critical violations', async ({ page }) => {
+  // Static transcribed data (#372) — no seeding needed; the default selected
+  // route renders the fare line and the stop table. Scan that worst case.
+  await page.goto('/bus', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('bus-page')).toBeVisible();
+  await expect(page.getByTestId('bus-stops')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
+
 test('@a11y Lost & Found route (board + form + claim box over stub seams) has no serious/critical violations', async ({ page }) => {
   // Same seams as lost-found.spec.js: injected repo fake + identity stand-in.
   await page.addInitScript(() => {
