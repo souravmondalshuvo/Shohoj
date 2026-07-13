@@ -321,6 +321,24 @@
       .bus-extra summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
       .bus-extra ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }
       .bus-extra a { color: #1c7c45; }
+      /* Profile account hub (#397 / #196) */
+      .profile-page { max-width: 720px; }
+      .profile-signedout { border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 16px; margin-top: 12px; line-height: 1.6; }
+      .profile-account { display: flex; align-items: center; gap: 14px; margin: 14px 0 18px; }
+      .profile-avatar {
+        width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; font-weight: 800; color: #fff; background: #27ae60;
+      }
+      .profile-account-detail { display: flex; flex-direction: column; min-width: 0; }
+      .profile-email { font-weight: 700; color: #0d2914; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .profile-account-sub { font-size: 12px; }
+      .profile-cards { display: flex; flex-direction: column; gap: 12px; }
+      .profile-card { border: 1px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 14px; line-height: 1.5; }
+      .profile-card--soon { background: rgba(0,0,0,0.02); }
+      .profile-card-title { margin: 0 0 8px; font-size: 15px; }
+      .profile-card a, .profile-signedout a { color: #1c7c45; font-weight: 600; }
+      .profile-signout-note { font-size: 12px; margin-top: 16px; }
       /* Weekly routine builder (#397) */
       .routine-page { max-width: 860px; }
       .routine-feed-status { font-size: 12px; margin: 4px 0; }
