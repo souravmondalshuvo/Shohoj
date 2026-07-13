@@ -70,6 +70,38 @@ const NAV: readonly NavItem[] = [
   { to: '/admin', label: 'Admin' },
 ];
 
+/** Light/dark theme toggle. Persists to `shohoj_theme` (the production key) and
+ * flips `data-theme` on the root; a pre-paint script in index.html applies the
+ * saved value with no flash. Default dark, matching the production app. */
+function ThemeToggle() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light'
+      ? 'light'
+      : 'dark',
+  );
+  const toggle = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('shohoj_theme', next);
+    } catch {
+      // storage off — the choice just won't persist across reloads
+    }
+    setTheme(next);
+  };
+  return (
+    <button
+      type="button"
+      className="shell-theme-toggle"
+      onClick={toggle}
+      aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      title="Toggle theme"
+    >
+      {theme === 'dark' ? '🌙' : '☀️'}
+    </button>
+  );
+}
+
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
   const config = useRuntimeConfig();
@@ -130,6 +162,7 @@ function ShellChrome() {
               </NavLink>
             ))}
           </div>
+          <ThemeToggle />
           <AuthControls source={firebaseSource} />
         </nav>
       </header>
