@@ -6,9 +6,9 @@
 // stays disabled until the visual system integrates (the 5C/5D precedent shared
 // with the per-section scans in calculator-results / calculator-autocomplete).
 //
-// Seats and profile are listed in #238 but are not shell routes yet (seats is a
-// legacy tab; profile is unmigrated) — add their scans when those routes land
-// (#397). Routine migrated in #397 and is scanned below.
+// Profile is listed in #238 but is not a shell route yet (unmigrated) — add its
+// scan when the route lands (#397). Routine and seats migrated in #397 and are
+// scanned below.
 
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
@@ -158,6 +158,38 @@ test('@a11y Routine route (builder with picked sections + weekly grid) has no se
   await page.getByTestId('routine-add-btn').click();
   await page.getByTestId('routine-course-CSE110').getByRole('button', { name: /Section 01/ }).click();
   await expect(page.getByTestId('routine-grid')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
+
+test('@a11y Seats route (search results with open/tight/full sections) has no serious/critical violations', async ({ page }) => {
+  // Seed the CONNECT feed cache so a search resolves real sections (#397), then
+  // search a course to render the worst case — the sort/filter controls plus a
+  // course group with all three seat-status badges.
+  await page.addInitScript(() => {
+    const section = (sectionId, sectionName, consumedSeat) => ({
+      sectionId,
+      courseCode: 'CSE110',
+      courseName: 'Programming Language',
+      sectionName,
+      capacity: 40,
+      consumedSeat,
+      roomName: '07A-01C',
+      sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '8:00', endTime: '9:20' }] },
+    });
+    localStorage.setItem(
+      'shohoj_connect_feed_v1',
+      JSON.stringify({
+        fetchedAt: Date.now(),
+        etag: null,
+        payload: [section(1, '01', 10), section(2, '02', 38), section(3, '03', 40)],
+      }),
+    );
+  });
+  await page.goto('/seats', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('seats-page')).toBeVisible();
+  await page.getByTestId('seats-search-input').fill('CSE110');
+  await expect(page.getByTestId('seats-group-CSE110')).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
