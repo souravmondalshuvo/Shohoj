@@ -28,6 +28,16 @@ import {
   seatInfo,
   type SeatSortMode,
 } from '../../core/seatStatus';
+import {
+  addWatch,
+  isWatched,
+  parseWatches,
+  removeWatch,
+  serializeWatches,
+  MAX_WATCHES,
+  SEAT_WATCH_STORAGE_KEY,
+  type WatchEntry,
+} from '../../core/seatWatch';
 
 const DAY_LABEL: Record<WeekdayName, string> = {
   SATURDAY: 'Sat',
@@ -73,6 +83,31 @@ export function Component() {
   const [query, setQuery] = useState('');
   const [sortMode, setSortMode] = useState<SeatSortMode>('section');
   const [availableOnly, setAvailableOnly] = useState(false);
+  const [watches, setWatches] = useState<WatchEntry[]>(() => {
+    try {
+      return parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY));
+    } catch {
+      return [];
+    }
+  });
+
+  // Persist the watchlist so the Profile hub and the seat-drop alerts see it.
+  useEffect(() => {
+    try {
+      localStorage.setItem(SEAT_WATCH_STORAGE_KEY, serializeWatches(watches));
+    } catch {
+      // Storage off — the watchlist just won't survive a reload.
+    }
+  }, [watches]);
+
+  const atWatchLimit = watches.length >= MAX_WATCHES;
+  const toggleWatch = (section: NormalizedSection) => {
+    setWatches((prev) =>
+      isWatched(prev, section.sectionId)
+        ? removeWatch(prev, section.sectionId)
+        : addWatch(prev, section),
+    );
+  };
 
   // Load the CONNECT feed once (cache-first, same client as RoutineRoute).
   useEffect(() => {
@@ -196,6 +231,7 @@ export function Component() {
               <ul className="seats-sections">
                 {group.sections.map((section) => {
                   const info = seatInfo(section);
+                  const watched = isWatched(watches, section.sectionId);
                   return (
                     <li className="seats-section" key={section.sectionId}>
                       <div className="seats-section-main">
@@ -212,6 +248,21 @@ export function Component() {
                         {section.roomName ? ` · ${section.roomName}` : ''}
                       </div>
                       <div className="seats-section-slots">{slotSummary(section)}</div>
+                      <button
+                        type="button"
+                        className={watched ? 'seats-watch seats-watch--on' : 'seats-watch'}
+                        aria-pressed={watched}
+                        disabled={!watched && atWatchLimit}
+                        onClick={() => toggleWatch(section)}
+                        data-testid={`seats-watch-${section.sectionId}`}
+                        title={
+                          !watched && atWatchLimit
+                            ? `Watchlist is full (${MAX_WATCHES} max)`
+                            : undefined
+                        }
+                      >
+                        {watched ? '★ Watching' : '☆ Watch'}
+                      </button>
                     </li>
                   );
                 })}
