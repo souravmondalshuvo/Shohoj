@@ -4,10 +4,74 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Shohoj</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      /* Minimal structural styling for the Phase 3 skeleton. The full visual
-         system is integrated when feature routes migrate (no CSS rewrite). */
-      body { margin: 0; font-family: system-ui, sans-serif; }
+      /* Shohoj brand layer (light theme) — makes the shell read as the real app
+         ahead of the full cutover: DM Sans / Syne, the green-glass palette, an
+         ambient orb backdrop, a branded glass header + logo, and glass content
+         panels. The existing route rules ride on top (they already use green
+         accents on light surfaces), so no per-route rewrite. Dark theme + the
+         complete css/style.css port land at cutover. */
+      :root {
+        --green: #2ECC71;
+        --green-dim: #1a7a44;
+        --gold: #F0A500;
+        --bg: #d4edde;
+        --glass: rgba(255,255,255,0.55);
+        --glass2: rgba(255,255,255,0.75);
+        --border: rgba(46,204,113,0.25);
+        --text: #0d2914;
+        --text2: #3a6b47;
+        --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+      }
+      /* Ambient orbs — pure CSS backdrop, no markup needed. */
+      body::before, body::after {
+        content: ''; position: fixed; border-radius: 50%; filter: blur(80px);
+        pointer-events: none; z-index: -1;
+      }
+      body::before {
+        width: min(520px, 90vw); height: min(520px, 90vw); top: -140px; left: -120px;
+        background: radial-gradient(circle, rgba(46,204,113,0.30) 0%, transparent 70%);
+      }
+      body::after {
+        width: min(400px, 80vw); height: min(400px, 80vw); bottom: 5%; right: -100px;
+        background: radial-gradient(circle, rgba(100,200,140,0.25) 0%, transparent 70%);
+      }
+      h1, h2, h3 { font-family: 'Syne', 'DM Sans', sans-serif; letter-spacing: -0.02em; }
+      /* Header + brand logo */
+      .shell-header {
+        position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--border);
+        background: rgba(212,237,222,0.75); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      }
+      .shell-brand { display: flex; align-items: center; gap: 9px; text-decoration: none; margin-right: 6px; }
+      .shell-brand-mark {
+        width: 32px; height: 32px; flex-shrink: 0; background: var(--green); border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Syne', sans-serif; font-weight: 800; font-size: 15px; color: #0b0f0d; letter-spacing: -0.5px;
+      }
+      .shell-brand-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); white-space: nowrap; }
+      .shell-brand-text span { color: var(--green); }
+      /* Content sits on a branded glass panel; the orbs stay at z-index:-1. */
+      .shell-page {
+        margin: 20px auto; background: var(--glass2); border: 1px solid var(--border);
+        border-radius: 16px; box-shadow: var(--shadow-card);
+      }
+      .shell-btn--primary { background: var(--green); border-color: var(--green); }
       .shell-skip-link {
         position: absolute; left: -999px; top: 0;
         background: #fff; padding: 8px 12px; z-index: 10;
