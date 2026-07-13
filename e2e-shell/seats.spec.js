@@ -102,3 +102,32 @@ test('no horizontal overflow at 360px with results shown', async ({ page }) => {
   );
   expect(overflows, 'seats route overflows at 360px').toBe(false);
 });
+
+test('watching a section persists across a reload; unwatching clears it', async ({ page }) => {
+  await gotoSeats(page);
+  await page.getByTestId('seats-search-input').fill('CSE110');
+  const watch = page.getByTestId('seats-watch-1');
+  await expect(watch).toHaveText('☆ Watch');
+
+  await watch.click();
+  await expect(watch).toHaveText('★ Watching');
+  await expect(watch).toHaveAttribute('aria-pressed', 'true');
+
+  // Reload (feed reseeded by the init script) — the watch survives.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByTestId('seats-search-input').fill('CSE110');
+  const watchAfter = page.getByTestId('seats-watch-1');
+  await expect(watchAfter).toHaveText('★ Watching');
+
+  await watchAfter.click();
+  await expect(watchAfter).toHaveText('☆ Watch');
+});
+
+test('the watchlist is written to the shared storage key the Profile hub reads', async ({ page }) => {
+  await gotoSeats(page);
+  await page.getByTestId('seats-search-input').fill('CSE110');
+  await page.getByTestId('seats-watch-2').click();
+  const stored = await page.evaluate(() => localStorage.getItem('shohoj_seat_watch_v1'));
+  expect(stored).toContain('"sectionId":2');
+  expect(stored).toContain('"courseCode":"CSE110"');
+});
