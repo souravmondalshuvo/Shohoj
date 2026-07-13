@@ -65,7 +65,7 @@ test('shows the under-development note while #385 is open', async ({ page }) => 
 
 test('top bar links back to the main site', async ({ page }) => {
   await openCampus(page);
-  const back = page.getByRole('link', { name: '← Shohoj' });
+  const back = page.getByRole('link', { name: 'Back to Shohoj' });
   await expect(back).toBeVisible();
   await expect(back).toHaveAttribute('href', '../');
 });
