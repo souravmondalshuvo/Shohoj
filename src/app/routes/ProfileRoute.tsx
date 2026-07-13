@@ -10,10 +10,11 @@
 // Auth-gated: signed-out students see a sign-in prompt (the actual sign-in
 // control lives in the header). Signed-in students see their hub.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useAuth } from '../providers/AuthProvider';
+import { useSeatAlertSync } from '../providers/useSeatAlertSync';
 import {
   parseWatches,
   removeWatch,
@@ -23,6 +24,16 @@ import {
 } from '../../core/seatWatch';
 
 const ROUTINE_STORAGE_KEY = 'shohoj_routine_picks_v1';
+// Email-alert channel on/off, shared with the legacy Seats tab. Absent → armed.
+const SEAT_ALERT_PREF_KEY = 'shohoj_seat_alerts_enabled';
+
+function readAlertsEnabled(): boolean {
+  try {
+    return localStorage.getItem(SEAT_ALERT_PREF_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
 
 interface RoutineSummary {
   courses: number;
@@ -56,8 +67,22 @@ export function Component() {
       return [];
     }
   });
+  const [alertsEnabled, setAlertsEnabled] = useState(readAlertsEnabled);
+  const syncSeatAlerts = useSeatAlertSync();
 
-  // Removing here writes back to the same key the Seats route watches.
+  // Push the current watchlist + preference once the user is known, so signing
+  // in retroactively arms alerts for sections already being watched. Signed-out
+  // / offline → the sync is a no-op.
+  const syncedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (auth.status === 'authenticated' && auth.uid && syncedFor.current !== auth.uid) {
+      syncedFor.current = auth.uid;
+      syncSeatAlerts(watches, alertsEnabled);
+    }
+  }, [auth.status, auth.uid, watches, alertsEnabled, syncSeatAlerts]);
+
+  // Removing here writes back to the same key the Seats route watches, then
+  // re-syncs so the cron Worker stops emailing for the dropped section.
   const unwatch = (sectionId: number) => {
     setWatches((prev) => {
       const next = removeWatch(prev, sectionId);
@@ -66,6 +91,20 @@ export function Component() {
       } catch {
         // Storage off — the change just won't persist.
       }
+      syncSeatAlerts(next, alertsEnabled);
+      return next;
+    });
+  };
+
+  const toggleAlerts = () => {
+    setAlertsEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SEAT_ALERT_PREF_KEY, next ? '1' : '0');
+      } catch {
+        // Storage off — the choice just won't persist.
+      }
+      syncSeatAlerts(watches, next);
       return next;
     });
   };
@@ -134,6 +173,22 @@ export function Component() {
           <h2 id="profile-watch-heading" className="profile-card-title">
             Seat watchlist
           </h2>
+          <label className="profile-alert-toggle">
+            <input
+              type="checkbox"
+              checked={alertsEnabled}
+              onChange={toggleAlerts}
+              data-testid="profile-alert-toggle"
+            />
+            Email me when a watched seat opens
+          </label>
+          <p className="profile-alert-note shell-muted" data-testid="profile-alert-note">
+            {auth.email
+              ? alertsEnabled
+                ? `On — alerts go to ${auth.email}.`
+                : 'Off — no emails will be sent.'
+              : 'Sign in with the top-bar button to receive email alerts.'}
+          </p>
           {watches.length === 0 ? (
             <p className="shell-muted" data-testid="profile-watchlist-empty">
               You&apos;re not watching any sections. Add them from <Link to="/seats">Seat Status</Link>.
@@ -165,7 +220,7 @@ export function Component() {
             Coming soon
           </h2>
           <p className="shell-muted">
-            Email seat-drop alerts and your own reviews move here in an upcoming update.
+            Your own submitted reviews move here in an upcoming update.
           </p>
         </section>
       </div>
