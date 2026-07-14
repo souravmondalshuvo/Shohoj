@@ -42,9 +42,16 @@ needs this. On public repos it is on by default.
 
 ## 5. Code scanning (CodeQL)
 
-[`codeql.yml`](../.github/workflows/codeql.yml) uploads results to Security → Code
-scanning. No UI toggle is required to run it, but review findings there. On
-private repos, CodeQL requires GitHub Advanced Security.
+CodeQL runs via **default setup** (Settings → Code security → *Code scanning* →
+*Set up* → **Default**), which this repo already uses — it covers
+JavaScript/TypeScript, Python, and Actions. Review findings under Security → Code
+scanning.
+
+> Do **not** also add an advanced `codeql.yml` workflow: GitHub rejects an
+> advanced config's SARIF upload while default setup is enabled ("CodeQL analyses
+> from advanced configurations cannot be processed when the default setup is
+> enabled"). Pick one. We keep default setup for its broader language coverage.
+> On private repos, CodeQL requires GitHub Advanced Security.
 
 ## 6. Branch protection / ruleset for `main`
 
