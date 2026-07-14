@@ -1,0 +1,34 @@
+name: Dependency review
+
+# On every pull request, diff the dependency manifests and block the PR if it
+# introduces a dependency with a known high-severity vulnerability or a
+# disallowed license. Complements Dependabot (which fixes what's already merged)
+# by catching risky additions BEFORE they land.
+#
+# Requires the repository dependency graph to be enabled (Settings → Code
+# security). On public repos it is on by default. See docs/GITHUB_SECURITY_SETTINGS.md.
+
+on:
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Review dependency changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Needed only to post the summary comment on the PR.
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          # Fail the PR on newly-introduced high/critical vulnerabilities.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
