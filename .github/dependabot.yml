@@ -1,25 +1,47 @@
 # Dependabot configuration
 #
-# Security ALERTS (notifications) stay active — they are controlled in the
-# GitHub UI, not here. This file only governs Dependabot's pull requests.
+# Security ALERTS stay active (controlled in the GitHub UI, not here). This file
+# governs Dependabot's PRs.
 #
-# open-pull-requests-limit: 0 suppresses all version-update PRs so that
-# dependency bumps stop cluttering the contributor list, while Dependabot
-# still runs its checks. Bump dependencies manually instead.
-#
-# NOTE: This does NOT stop Dependabot *security-update* PRs. Those are a
-# separate toggle under Settings -> Code security & analysis and must be
-# disabled in the GitHub UI for truly zero PRs.
+# Policy (low-noise, replaces the previous open-pull-requests-limit: 0 blanket
+# suppression): MONTHLY runs, with compatible minor+patch bumps GROUPED into a
+# single PR per ecosystem. Major upgrades are left OUT of the groups so they get
+# their own PR and are reviewed individually (Dependabot never auto-merges — that
+# requires separate automation we intentionally do not add). Every update PR runs
+# the full CI/CD validation suite (.github/workflows/ci.yml) before it can merge.
 version: 2
 updates:
+  # ---- Root npm (app) ----
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      # One PR for all compatible minor + patch bumps.
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+    # Majors are not grouped → separate PR each, reviewed on their own.
 
+  # ---- Worker npm (Cloudflare Worker has its own lockfile) ----
   - package-ecosystem: "npm"
     directory: "/worker"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "worker"]
+    groups:
+      worker-npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # ---- GitHub Actions (keeps the SHA-pinned actions in the workflows current) ----
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    groups:
+      actions-minor-patch:
+        update-types: ["minor", "patch"]
