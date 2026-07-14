@@ -1,0 +1,52 @@
+name: CodeQL
+
+# Static analysis (code scanning) for the languages Shohoj actually ships:
+# JavaScript and TypeScript (one CodeQL language covers both). Runs on PRs and
+# pushes to main, plus a weekly scheduled scan so newly-published queries catch
+# issues in code that hasn't changed recently. Results appear under the repo's
+# Security → Code scanning tab.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly, Monday 03:27 UTC (off-peak; minute offset avoids the top-of-hour rush).
+    - cron: "27 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Least privilege: only the extra scopes CodeQL needs to upload results.
+      security-events: write
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+    steps:
+      - uses: actions/checkout@v6
+
+      # init/analyze are subactions of github/codeql-action; pinning the repo to
+      # one immutable SHA covers every subaction used below.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
+        with:
+          languages: ${{ matrix.language }}
+          # security-and-quality adds the maintainability queries on top of the
+          # default security set. Drop back to "security-extended" if noisy.
+          queries: security-and-quality
+
+      # JS/TS is interpreted, so there is no build step to run (no autobuild).
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
+        with:
+          category: "/language:${{ matrix.language }}"
