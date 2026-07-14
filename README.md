@@ -415,7 +415,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
 | Testing     | Node.js + Playwright + `@firebase/rules-unit-testing` | Unit tests across app logic and Worker validation, browser E2E tests, plus Firestore rules tests against the Firebase emulator |
 | CI / CD     | GitHub Actions + GitHub Pages                         | One pipeline: full validation on every PR/push; deploy only after it passes, on push to main |
-| Code scanning | CodeQL + dependency review                          | Static analysis and PR dependency-vulnerability gate   |
+| Code scanning | CodeQL (default setup) + dependency review          | Static analysis and PR dependency-vulnerability gate   |
 
 CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering.
 
@@ -655,9 +655,9 @@ Shohoj/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml                One CI/CD pipeline: full validation, then gated deploy of frontend + Worker + Firestore on push to main
-│   │   ├── codeql.yml            CodeQL static analysis (JS/TS)
 │   │   └── dependency-review.yml Blocks PRs adding vulnerable dependencies
 │   └── dependabot.yml            Monthly grouped dependency-update policy
+│                                 (CodeQL runs via GitHub's default setup, configured in the UI)
 ├── index.html                    Main HTML shell
 ├── playwright.config.js          Playwright config for the legacy bundled app E2E
 ├── playwright.shell.config.js    Playwright config for the React Router shell E2E
