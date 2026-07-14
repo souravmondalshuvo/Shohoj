@@ -113,6 +113,13 @@ git push origin branch-name
 
 ## Continuous Integration
 
+Shohoj uses a single **CI / CD** pipeline (`.github/workflows/ci.yml`). Every pull
+request and push runs the full validation suite — `lint`, `typecheck`,
+`validate:data`, unit + Firestore rules tests, worker tests, and the build + E2E +
+bundle/CSP guards. The production deploy jobs `needs:` all of them and run only on
+push to `main`, so **a red suite makes deployment impossible** and the exact
+validated commit is what ships. PRs also run CodeQL and dependency review.
+
 Every commit must run through CI/CD. Do **not** add CI-skip directives such as
 `[skip ci]`, `[ci skip]`, `[no ci]`, or `[skip actions]` to commit messages —
 GitHub Actions honors these and would let an untested commit reach `main`.

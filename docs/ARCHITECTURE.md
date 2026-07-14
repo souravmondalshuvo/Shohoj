@@ -114,7 +114,7 @@ Shohoj/
 ├── firestore.rules                Firestore security rules
 ├── firebase.json                  Emulator config
 ├── build3.py                      Build script
-└── .github/workflows/             ci.yml, cd.yml, deploy-worker.yml
+└── .github/workflows/             ci.yml (validation + gated deploy), codeql.yml, dependency-review.yml
 ```
 
 ## Module boundaries
