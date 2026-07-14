@@ -10,6 +10,12 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
 import { router } from '../routing/router';
+import { createLogger } from '../../platform/observability/logger.ts';
+import { installGlobalErrorHandlers } from '../../platform/observability/globalErrorHandlers.ts';
+
+// Last-resort capture: route uncaught errors / rejections through the structured
+// logger so frontend exceptions are observable (see docs/OBSERVABILITY.md).
+installGlobalErrorHandlers(createLogger({ base: { app: 'shell' } }));
 
 const container = document.getElementById('root');
 if (container) {

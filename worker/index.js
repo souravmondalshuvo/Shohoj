@@ -1146,21 +1146,56 @@ export default {
     }
 
     const url = new URL(request.url);
+    // Correlation id for this request: echoed back in a header and included in
+    // any error log so a client-reported failure can be traced to its log line.
+    // Never contains user data — just a random opaque token.
+    const requestId = newRequestId();
     try {
+      // Unauthenticated health probe for uptime monitoring. No secrets, no user
+      // data, no side effects — safe to expose publicly.
+      if (request.method === 'GET' && url.pathname === '/health') {
+        return jsonResponse(
+          { status: 'ok', service: 'shohoj-papers', time: new Date().toISOString() },
+          { status: 200, headers: { 'X-Request-Id': requestId } },
+          env,
+          origin,
+        );
+      }
       if (request.method === 'POST'   && url.pathname === '/upload')   return await handleUpload(request, env, origin, ctx);
       if (request.method === 'GET'    && url.pathname === '/download') return await handleDownload(request, env, origin);
       if (request.method === 'DELETE' && url.pathname === '/file')     return await handleDelete(request, env, origin);
       if (request.method === 'POST'   && url.pathname === '/reviews')  return await handleReview(request, env, origin);
-      return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
+      return jsonResponse({ error: 'Not found' }, { status: 404, headers: { 'X-Request-Id': requestId } }, env, origin);
     } catch (e) {
       const isAuthErr = e instanceof AuthError;
-      console.error('worker error:', e?.message || e);
+      // Structured, machine-readable error log (no request body / PII), keyed by
+      // the correlation id, path and method so failures are greppable.
+      console.error(JSON.stringify({
+        level: 'error',
+        event: 'worker_error',
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        errorCode: isAuthErr ? 'unauthorized' : 'server_error',
+        errorMessage: e?.message || String(e),
+      }));
       return jsonResponse(
-        { error: isAuthErr ? 'Unauthorized' : 'Server error' },
-        { status: isAuthErr ? 401 : 500 },
+        { error: isAuthErr ? 'Unauthorized' : 'Server error', requestId },
+        { status: isAuthErr ? 401 : 500, headers: { 'X-Request-Id': requestId } },
         env,
         origin,
       );
     }
   },
 };
+
+// crypto.randomUUID is available in the Workers runtime; fall back defensively
+// so tests running on older Node still get a unique-enough token.
+function newRequestId() {
+  try {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
