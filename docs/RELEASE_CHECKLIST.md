@@ -12,21 +12,32 @@ Use this checklist for every Shohoj v0.x release. The goal is to ship only after
 
 ## 2. Local Validation
 
-Run the core checks:
+Run the same gates CI enforces:
 
 ```bash
+npm run lint
 npm run typecheck
-npm test
+npm run validate:data
+npm test              # unit + Firestore rules (needs Java 21+)
+npm run test:worker
 ```
 
 Run browser and bundle checks:
 
 ```bash
 npx playwright install --with-deps chromium
-npm run test:e2e
+npm run check:collisions
 python3 build3.py
 npm run test:bundle
+npm run test:csp
+npm run test:e2e
+npm run test:e2e:pages
+npm run test:e2e:shell
 ```
+
+> These mirror the validation jobs in `.github/workflows/ci.yml`. CI runs them on
+> every PR/push and is the authoritative gate — the deploy jobs `needs:` all of
+> them, so a red suite means production cannot deploy.
 
 Confirm generated bundles exist:
 
@@ -62,8 +73,7 @@ test -s admin.html
 ## 6. GitHub Release
 
 - Ensure all release work is merged through pull requests.
-- Confirm `main` CI is green.
-- Confirm `main` CD is green.
+- Confirm the **CI / CD** pipeline is green on `main` (validation jobs **and** the deploy jobs — the deploy jobs only run after validation passes).
 - Create a GitHub release with:
   - Version tag
   - Release title
@@ -73,8 +83,9 @@ test -s admin.html
 
 ## 7. Deployment Verification
 
-After CD completes:
+The pipeline's post-deploy smoke test (`scripts/smoke-production.mjs`) already verifies routes, markers, and `version.json` automatically; a failed smoke test fails the deploy and means the release needs investigation or rollback ([ROLLBACK.md](ROLLBACK.md)). Then manually confirm:
 
+- `https://souravmondalshuvo.github.io/Shohoj/version.json` reports the released commit SHA and version.
 - Open the live site.
 - Confirm the landing page loads.
 - Click Try Demo Mode.

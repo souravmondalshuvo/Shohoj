@@ -54,7 +54,12 @@ Solo developer responsible for frontend, Firebase authentication, Firestore data
 | [docs/CASE_STUDY.md](docs/CASE_STUDY.md) | Problem, solution, engineering challenges, decisions, next steps |
 | [docs/SECURITY.md](docs/SECURITY.md) | Authentication, authorization, App Check, threat model |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | What's collected, where it lives, how to delete it |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CD pipeline, local dev, Worker deploy, admin claim |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Required secrets, CI/CD pipeline, local dev, Worker + Firestore deploy, admin claim |
+| [docs/ROLLBACK.md](docs/ROLLBACK.md) | Per-system rollback: Pages, Worker, Firestore rules, and user data |
+| [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md) | Local / staging / production separation and configuration surface |
+| [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | The logging foundation that exists today, and future metrics |
+| [docs/BACKUP_AND_RESTORE.md](docs/BACKUP_AND_RESTORE.md) | Firestore/R2 backup guidance, restore-into-staging, RPO/RTO |
+| [docs/GITHUB_SECURITY_SETTINGS.md](docs/GITHUB_SECURITY_SETTINGS.md) | Admin checklist: private reporting, scanning, branch ruleset, env, secrets |
 | [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md) | Script + shot-by-shot storyboard for the 55-second walkthrough (video pending) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and notable changes |
 | [v0.3.0 release notes](docs/RELEASE_NOTES_v0.3.0.md) | Recruiter Demo Release summary and verification |
@@ -409,12 +414,12 @@ Shohoj is built to feel like a real product, not a student project.
 | Build       | Python (`build3.py`)                                  | Bundles all modules into deployable HTML files (shohoj / admin / profile) |
 | Hosting     | GitHub Pages                                          | Free, fast, always available                           |
 | Testing     | Node.js + Playwright + `@firebase/rules-unit-testing` | Unit tests across app logic and Worker validation, browser E2E tests, plus Firestore rules tests against the Firebase emulator |
-| CI          | GitHub Actions                                        | Runs test suite on every push and pull request         |
-| CD          | GitHub Actions + GitHub Pages                         | Builds and deploys automatically on every push to main |
+| CI / CD     | GitHub Actions + GitHub Pages                         | One pipeline: full validation on every PR/push; deploy only after it passes, on push to main |
+| Code scanning | CodeQL + dependency review                          | Static analysis and PR dependency-vulnerability gate   |
 
 CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering.
 
-**Deployment pipeline:** every push to `main` triggers CI (tests) followed by CD (build + deploy). If tests fail, the live site is never touched. The built `shohoj.html` is deployed to the `gh-pages` branch as `index.html` and served by GitHub Pages.
+**Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, checking out the exact validated commit — so a red suite makes production deployment impossible. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
 
 The TypeScript/React migration is now underway and lives alongside the shipping app under `src/` — a parallel, typed implementation comprising a typed domain core (parity-tested against the legacy logic), a React calculator island, and a React Router shell that hosts the migrated `/calculator` route. All of it is **opt-in and not yet the default UI**: the vanilla `js/` app is still what `build3.py` bundles and ships, so production stays stable while the rewrite is validated incrementally. See [docs/architecture/](docs/architecture/) for the migration roadmap, target architecture, and decision records.
 
@@ -648,10 +653,11 @@ Shohoj/
 ├── docs/
 │   └── architecture/             Migration roadmap, current state, target architecture, risk register, test matrix, ADRs
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml                Runs unit tests + Firestore rules tests on push and pull request
-│       ├── cd.yml                Builds and deploys GitHub Pages on push to main
-│       └── deploy-worker.yml     Tests and deploys the Cloudflare Worker
+│   ├── workflows/
+│   │   ├── ci.yml                One CI/CD pipeline: full validation, then gated deploy of frontend + Worker + Firestore on push to main
+│   │   ├── codeql.yml            CodeQL static analysis (JS/TS)
+│   │   └── dependency-review.yml Blocks PRs adding vulnerable dependencies
+│   └── dependabot.yml            Monthly grouped dependency-update policy
 ├── index.html                    Main HTML shell
 ├── playwright.config.js          Playwright config for the legacy bundled app E2E
 ├── playwright.shell.config.js    Playwright config for the React Router shell E2E
@@ -694,7 +700,7 @@ npm test
 # Runs app, Worker, and Firestore rules tests
 
 npm run test:rules
-# Runs only Firestore rules tests (requires Java 17+)
+# Runs only Firestore rules tests (requires Java 21+)
 ```
 
 **Build the bundled version:**

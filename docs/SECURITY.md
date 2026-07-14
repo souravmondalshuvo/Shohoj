@@ -93,6 +93,22 @@ What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per d
 - **Anonymity from project admins.** As above, server-operator-level anonymity requires a backend rewrite.
 - **Section availability and time conflict checks** in the planner (these are correctness, not security).
 
-## Reporting an issue
+## Reporting a vulnerability
 
-Open a GitHub issue with the `security` label, or email `admin.shohoj@gmail.com`. Please don't disclose security issues publicly until they're patched.
+**Please do not report security vulnerabilities through public GitHub issues,
+discussions, or pull requests.** A public issue discloses the flaw to everyone
+before it can be fixed.
+
+Report privately through one of:
+
+1. **GitHub Private Vulnerability Reporting** — the repository's **Security** tab
+   → *Report a vulnerability* (GitHub Security Advisories). This is the preferred
+   channel; it keeps the report and discussion private until a fix ships.
+2. **Email** — `admin.shohoj@gmail.com`.
+
+Please include steps to reproduce and the impact you observed. We'll acknowledge,
+investigate, and coordinate a fix and disclosure timeline with you; please keep
+the details private until a patch is released.
+
+> Enabling Private Vulnerability Reporting is a one-time repository setting — see
+> [GITHUB_SECURITY_SETTINGS.md](GITHUB_SECURITY_SETTINGS.md).
