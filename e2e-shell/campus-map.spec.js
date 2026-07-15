@@ -117,6 +117,36 @@ test('?floor= deep link (from the cafeteria guide) focuses the floor without a r
   await expect(page.getByTestId('campus-floor-hint')).toBeVisible();
 });
 
+test('search box focuses a room by its code (#385)', async ({ page }) => {
+  await openCampus(page); // starts on the Tower (no floor)
+  await page.getByTestId('campus-search-input').fill('07A-01C');
+  await page.getByTestId('campus-search-btn').click();
+  // Focuses the room's floor and opens its panel, same as a click.
+  await expect(page.getByRole('button', { name: 'Floor 7' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('campus-room-panel')).toContainText('07A-01C');
+});
+
+test('“only free rooms” filter hides in-class rooms (#385)', async ({ page }) => {
+  await openCampus(page);
+  await page.getByRole('button', { name: 'Floor 7' }).click();
+  // 07A-01C is scheduled around the clock → always busy; 07A-02C is free.
+  await expect(page.getByRole('button', { name: /07A-01C/ })).toBeVisible();
+  await page.getByTestId('campus-onlyfree').check();
+  await expect(page.getByRole('button', { name: /07A-01C/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /07A-02C/ })).toBeVisible();
+});
+
+test('legend shows live free/busy counts (#385)', async ({ page }) => {
+  await openCampus(page);
+  const busy = page.getByTestId('campus-busy-count');
+  const free = page.getByTestId('campus-free-count');
+  await expect(busy).toBeVisible();
+  await expect(free).toBeVisible();
+  // 07A-01C is always in class, so the busy tally is at least one.
+  expect(Number(await busy.textContent())).toBeGreaterThanOrEqual(1);
+  expect(Number(await free.textContent())).toBeGreaterThanOrEqual(0);
+});
+
 test('non-tower venues are listed separately', async ({ page }) => {
   await openCampus(page);
   const other = page.locator('.campus-other');
