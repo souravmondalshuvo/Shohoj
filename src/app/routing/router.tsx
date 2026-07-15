@@ -45,6 +45,8 @@ export const router = createBrowserRouter([
       // Bus timetable (#372) — static transcribed data, no backend.
       { path: 'bus', lazy: () => import('../routes/BusRoute') },
       { path: 'lost-found', lazy: () => import('../routes/LostFoundRoute') },
+      // Cafeteria guide (#373) — static outlets, hours + open-now, no menus.
+      { path: 'cafeteria', lazy: () => import('../routes/CafeteriaRoute') },
       // Account hub (#397 / #196) — auth-gated; signed-out shows a prompt.
       { path: 'profile', lazy: () => import('../routes/ProfileRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
