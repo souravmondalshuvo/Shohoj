@@ -126,6 +126,10 @@ export function Component() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationState>({ phase: 'idle' });
   const [webglOk, setWebglOk] = useState(true);
+  // v2 interaction (#385): a room search and an "only free" filter over the
+  // DOM room list — the accessible layer the 3D view mirrors.
+  const [search, setSearch] = useState('');
+  const [onlyFree, setOnlyFree] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkConsumed = useRef(false);
@@ -187,6 +191,18 @@ export function Component() {
     return map;
   }, [feed, feedNameByCode, now]);
 
+  // Live tower-wide free/busy tally for the legend (#385 liveness). Recomputes
+  // whenever the minute tick flips a room's status.
+  const towerCounts = useMemo(() => {
+    let free = 0;
+    let busy = 0;
+    for (const status of statusByCode.values()) {
+      if (status === 'free') free += 1;
+      else if (status === 'busy') busy += 1;
+    }
+    return { free, busy };
+  }, [statusByCode]);
+
   // Consume a ?room=09G-31T deep link once the model can resolve it. A bare
   // ?floor=N link (used by the cafeteria guide, #373) focuses a whole floor
   // when no specific room is given and the model actually has that floor.
@@ -223,6 +239,22 @@ export function Component() {
     storeFloor(parsed.floor);
     setSelectedRoom(parsed.code);
   }, []);
+
+  // Search submit (#385): jump to the room whose code the query resolves to.
+  // A full code (e.g. "07A-01C") wins; otherwise the single tower room whose
+  // code starts with the query is focused. No match leaves the list filtered.
+  const submitSearch = useCallback(() => {
+    if (!model) return;
+    const query = search.trim().toUpperCase();
+    if (!query) return;
+    const exact = parseRoomCode(query);
+    if (exact && model.roomsByCode.has(exact.code)) {
+      selectRoom(exact.code);
+      return;
+    }
+    const matches = [...model.roomsByCode.keys()].filter((code) => code.startsWith(query));
+    if (matches.length === 1) selectRoom(matches[0]);
+  }, [model, search, selectRoom]);
 
   // Mirror the selection into ?room= so it's shareable — but only after the
   // inbound deep link (if any) has been consumed, so we never clear it while
@@ -300,6 +332,24 @@ export function Component() {
     ? model.floors.find((f) => f.floor === floor) ?? null
     : null;
 
+  // Apply the search + "only free" filters to the focused floor's room list
+  // (#385). Zones with no surviving rooms drop out; an all-empty result drives
+  // the "no rooms match" hint below.
+  const visibleZones = useMemo(() => {
+    if (!currentFloor) return [];
+    const needle = search.trim().toUpperCase();
+    return currentFloor.zones
+      .map((zone) => ({
+        zone: zone.zone,
+        rooms: zone.rooms.filter((room) => {
+          if (onlyFree && statusByCode.get(room.code) !== 'free') return false;
+          if (needle && !room.code.includes(needle)) return false;
+          return true;
+        }),
+      }))
+      .filter((zone) => zone.rooms.length > 0);
+  }, [currentFloor, search, onlyFree, statusByCode]);
+
   return (
     <section className="shell-page campus-page" data-testid="campus-page">
       <h1>Campus Map</h1>
@@ -368,6 +418,42 @@ export function Component() {
             ))}
           </div>
 
+          <form
+            className="campus-controls"
+            role="search"
+            aria-label="Find a room"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitSearch();
+            }}
+          >
+            <label className="campus-search-field">
+              <span className="shell-muted">Room</span>
+              <input
+                type="search"
+                className="campus-search-input"
+                data-testid="campus-search-input"
+                placeholder="e.g. 07A-01C"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+              />
+            </label>
+            <button type="submit" className="shell-btn campus-meta-btn" data-testid="campus-search-btn">
+              Find
+            </button>
+            <label className="campus-freefilter">
+              <input
+                type="checkbox"
+                data-testid="campus-onlyfree"
+                checked={onlyFree}
+                onChange={(e) => setOnlyFree(e.target.checked)}
+              />
+              Only free rooms
+            </label>
+          </form>
+
           {webglOk ? (
             <div className="campus-canvas" ref={canvasHost} aria-hidden="true" />
           ) : (
@@ -377,10 +463,24 @@ export function Component() {
             </p>
           )}
 
-          <div className="campus-legend" aria-hidden="true">
-            <span><i className="campus-dot campus-dot--free" /> Free now</span>
-            <span><i className="campus-dot campus-dot--busy" /> In class</span>
-            <span><i className="campus-dot campus-dot--selected" /> Selected</span>
+          <div className="campus-legend" data-testid="campus-legend" role="status" aria-live="polite">
+            <span className="campus-legend-key">
+              <i className="campus-dot campus-dot--free" />
+              <span className="campus-legend-count" data-testid="campus-free-count" key={towerCounts.free}>
+                {towerCounts.free}
+              </span>{' '}
+              free now
+            </span>
+            <span className="campus-legend-key">
+              <i className="campus-dot campus-dot--busy" />
+              <span className="campus-legend-count" data-testid="campus-busy-count" key={towerCounts.busy}>
+                {towerCounts.busy}
+              </span>{' '}
+              in class
+            </span>
+            <span className="campus-legend-key" aria-hidden="true">
+              <i className="campus-dot campus-dot--selected" /> Selected
+            </span>
           </div>
 
           {selectedParsed && (
@@ -412,8 +512,14 @@ export function Component() {
           )}
 
           {currentFloor ? (
+            visibleZones.length === 0 ? (
+              <p className="shell-muted" data-testid="campus-no-matches">
+                No rooms on this floor match{onlyFree ? ' the “only free” filter' : ''}
+                {search.trim() ? ` “${search.trim()}”` : ''}.
+              </p>
+            ) : (
             <div className="campus-room-list" data-testid="campus-room-list">
-              {currentFloor.zones.map((zone) => (
+              {visibleZones.map((zone) => (
                 <div key={zone.zone} className="campus-zone">
                   <h2 className="campus-zone-title">Zone {zone.zone}</h2>
                   <div className="campus-zone-rooms">
@@ -453,6 +559,7 @@ export function Component() {
                 </div>
               ))}
             </div>
+            )
           ) : (
             <p className="shell-muted" data-testid="campus-floor-hint">
               Select a floor to list its rooms.
