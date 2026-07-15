@@ -112,6 +112,20 @@
       .campus-dot--free { background: #27ae60; }
       .campus-dot--busy { background: #e74c3c; }
       .campus-dot--selected { background: var(--c-blue-ink); }
+      /* v2 room search + free filter (#385) — kept in sync with app/index.html */
+      .campus-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+      .campus-search-field { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+      .campus-search-input {
+        min-height: 36px; padding: 5px 10px; font-size: 13px; min-width: 150px;
+        border: 1px solid var(--c-border); border-radius: 8px;
+        background: var(--c-card); color: var(--c-text); text-transform: uppercase;
+      }
+      .campus-search-input:focus { border-color: rgba(46,204,113,0.55); outline: none; }
+      .campus-search-input::placeholder { text-transform: none; color: var(--c-faint); }
+      .campus-freefilter { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--c-text-muted); min-height: 36px; cursor: pointer; }
+      .campus-legend-key { display: flex; align-items: center; gap: 5px; }
+      .campus-legend-count { font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; display: inline-block; animation: campus-count-pulse 0.4s ease-out; }
+      @keyframes campus-count-pulse { 0% { transform: scale(1.35); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
       .campus-room-panel { border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.05); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
       .campus-room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
       .campus-room-status { margin: 6px 0 0; font-size: 13px; color: var(--c-text); font-weight: 600; }
@@ -147,7 +161,7 @@
       [data-theme="dark"] input::placeholder,
       [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
-    <script type="module" crossorigin src="../assets/campus-CL26GNc7.js"></script>
+    <script type="module" crossorigin src="../assets/campus-Lyaok2Lq.js"></script>
     <link rel="modulepreload" crossorigin href="../assets/preload-helper-HclGiUj8.js">
     <link rel="modulepreload" crossorigin href="../assets/jsx-runtime-CrLzfYuc.js">
     <link rel="modulepreload" crossorigin href="../assets/campusRooms-CbJy1Jr_.js">
