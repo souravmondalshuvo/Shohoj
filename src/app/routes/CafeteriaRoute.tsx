@@ -11,7 +11,6 @@
 // data. The only live convenience is the open/closed-now badge, derived from
 // the device clock — no claimed live feed.
 
-import { useMemo } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -58,12 +57,9 @@ export function Component() {
     const now = new Date();
     const todayIndex = now.getDay();
 
-    const outlets = useMemo(
-        () => CAFETERIA_OUTLETS.map((outlet) => ({ outlet, status: outletStatusNow(outlet, now) })),
-        // now is a fresh Date each render; recompute is cheap and keeps the badge live.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [],
-    );
+    // Cheap over a handful of outlets — recompute each render so the badge is
+    // current whenever the page renders.
+    const outlets = CAFETERIA_OUTLETS.map((outlet) => ({ outlet, status: outletStatusNow(outlet, now) }));
 
     return (
         <section className="shell-page cafeteria-page" data-testid="cafeteria-page">
