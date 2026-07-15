@@ -128,6 +128,16 @@ test('@a11y Bus route (static timetable + route toggles + stop table) has no ser
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
 
+test('@a11y Cafeteria route (static outlet list + hours tables) has no serious/critical violations', async ({ page }) => {
+  // Static guide (#373) — no seeding needed; every outlet card with its hours
+  // table renders immediately. Scan that worst case.
+  await page.goto('/cafeteria', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('cafeteria-page')).toBeVisible();
+  await expect(page.getByTestId('cafeteria-list')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
+
 test('@a11y Routine route (builder with picked sections + weekly grid) has no serious/critical violations', async ({ page }) => {
   // Seed the CONNECT feed cache so the route resolves real sections (#397),
   // then add a course and pick a section — the worst case scans the section
