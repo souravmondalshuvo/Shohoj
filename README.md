@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-857%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-535%20unit%2Fworker%20%2B%2068%20rules%20%2B%2065%20E2E-2ECC71?style=flat-square" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-800%2B%20unit%2Fworker%20%2B%2077%20rules%20%2B%20190%2B%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -626,20 +626,22 @@ Shohoj/
 ├── firestore.rules               Firestore security rules
 ├── firestore.indexes.json        Required Firestore composite indexes
 ├── firebase.json                 Firestore emulator config
-├── tests/
-│   ├── calculator.test.js        55 tests — GPA engine, retake/repeat policies, grade detection
-│   ├── parser.test.js            30 tests — department detection, semester parsing, blob parser
-│   ├── planner.test.js           15 tests — prereq resolution, plan validation
-│   ├── render.test.js            8 tests — semester rendering, reorder, recruiter demo fixture
-│   ├── tracker.test.js           4 tests — degree progress and graduation estimate
-│   ├── reviews.test.js           55 tests — review submission, aggregation, faculty grouping
-│   ├── adminDashboard.test.js    3 tests — admin stat rendering helpers
-│   ├── studyGroups.test.js       13 tests — draft validation, mode/course checks, member summary
-│   └── firestore.rules.test.js   68 tests — emulator-driven security rules checks
-├── e2e/
-│   └── shohoj.spec.js            Playwright E2E for the legacy bundled app — demo, CGPA, planner, mobile, export/import
-├── e2e-shell/                    Playwright E2E for the React Router shell (/calculator route + ARIA autocomplete)
+├── tests/                        81 unit/worker suites (800+ tests). Representative:
+│   ├── calculator.test.js        GPA engine, retake/repeat policies, grade detection
+│   ├── parser.test.js            department detection, semester parsing, blob parser
+│   ├── planner.test.js           prereq resolution, plan validation
+│   ├── reviews.test.js           review submission, aggregation, faculty grouping
+│   ├── studyGroups.test.js       draft validation, mode/course checks, member summary
+│   ├── routine*.test.js          routine state, suggestions, grid, faculty, export
+│   ├── seatStatus/seatWatch      live seat lookup + watchlist persistence
+│   ├── freeRooms.test.js         empty-room derivation from the timetable
+│   ├── profileTab.test.js        account hub — header, watchlist, alert toggle
+│   ├── typedCoreParity.test.js   src/ typed core parity vs the legacy js/ logic
+│   └── firestore.rules.test.js   77 tests — emulator-driven security rules checks
+├── e2e/                          Playwright E2E for the legacy bundled app + routine, seats, free rooms, profile
+├── e2e-shell/                    Playwright E2E for the React Router shell routes (calculator, planner, reviews, seats, profile, campus life, a11y)
 ├── e2e-vite/                     Playwright E2E for the Vite island build
+│                                 (45 spec files total across the three configs)
 ├── src/                          TypeScript/React migration — opt-in, NOT the default shipping UI
 │   ├── core/                     Typed ports of domain logic (gpa, grades, catalog, reviews, planner, routine*, seats, rooms…), parity-tested vs js/ via tests/typedCoreParity.test.js
 │   ├── features/calculator/      React calculator — semesters, course rows, summary, ARIA combobox autocomplete; shell bridge reads the real typed catalogue
