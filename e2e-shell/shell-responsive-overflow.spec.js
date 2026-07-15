@@ -92,6 +92,15 @@ for (const width of WIDTHS) {
       await assertNoOverflow(page, 'reviews directory');
     });
 
+    test('cafeteria (outlet cards + weekly hours tables)', async ({ page }) => {
+      await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
+      await page.evaluate(() => localStorage.clear());
+      await navigate(page, 'Cafeteria');
+      await expect(page.getByTestId('cafeteria-page')).toBeVisible();
+      await expect(page.getByTestId('cafeteria-list')).toBeVisible();
+      await assertNoOverflow(page, 'cafeteria guide');
+    });
+
     test('review dialogs (rate, course-viewer, report)', async ({ page }) => {
       await installReviewsRepo(page);
       await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
