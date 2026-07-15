@@ -436,6 +436,31 @@
       .bus-extra summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
       .bus-extra ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }
       .bus-extra a { color: var(--c-green-ink); }
+      /* Cafeteria guide (#373) */
+      .cafeteria-page { max-width: 760px; }
+      .cafeteria-effective { margin: 0 0 14px; padding: 10px 14px; border: 1px solid rgba(240,165,0,0.35); border-radius: 10px; background: rgba(240,165,0,0.08); color: var(--c-warn-ink); font-size: 12px; line-height: 1.6; }
+      .cafeteria-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+      .cafeteria-card { border: 1px solid var(--c-border); border-radius: 12px; padding: 14px 16px; background: var(--c-card); }
+      .cafeteria-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+      .cafeteria-name { font-size: 16px; margin: 0; }
+      .cafeteria-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--c-faint); margin-left: 4px; }
+      .cafeteria-status { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+      .cafeteria-status--open { color: var(--c-green-ink); background: rgba(46,204,113,0.12); }
+      .cafeteria-status--closed { color: var(--c-danger-ink); background: rgba(192,57,43,0.10); }
+      .cafeteria-status--unconfirmed { color: var(--c-faint); background: var(--c-surface); }
+      .cafeteria-location { margin: 8px 0 10px; font-size: 13px; color: var(--c-text-muted); line-height: 1.6; }
+      .cafeteria-map-link { color: var(--c-blue-ink); font-weight: 600; white-space: nowrap; }
+      .cafeteria-map-link:focus-visible { outline: 2px solid var(--c-blue-ink); outline-offset: 2px; }
+      .cafeteria-hours-scroll { overflow-x: auto; }
+      .cafeteria-hours { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .cafeteria-hours th, .cafeteria-hours td { padding: 5px 10px; border-bottom: 1px solid var(--c-line); text-align: left; }
+      .cafeteria-hours th { font-weight: 500; color: var(--c-text); white-space: nowrap; }
+      .cafeteria-hours td { color: var(--c-text-muted); font-weight: 600; }
+      .cafeteria-hours tr:last-child th, .cafeteria-hours tr:last-child td { border-bottom: none; }
+      .cafeteria-hours--today th, .cafeteria-hours--today td { background: rgba(46,204,113,0.08); color: var(--c-green-ink); }
+      .cafeteria-pay { margin: 10px 0 0; font-size: 12px; color: var(--c-text-muted); }
+      .cafeteria-note { margin: 6px 0 0; font-size: 12px; color: var(--c-text-muted); font-style: italic; }
+      .cafeteria-unverified { margin: 8px 0 0; font-size: 11px; color: var(--c-warn-ink); }
       /* Profile account hub (#397 / #196) */
       .profile-page { max-width: 720px; }
       .profile-signedout { border: 1px solid var(--c-border); border-radius: 12px; padding: 16px; margin-top: 12px; line-height: 1.6; }
