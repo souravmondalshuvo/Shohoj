@@ -46,7 +46,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^5.2.0",
-    "eslint": "^9.39.4",
+    "eslint": "^10.7.0",
     "firebase-admin": "^14.1.0",
     "firebase-tools": "^15.23.0",
     "globals": "^17.6.0",
