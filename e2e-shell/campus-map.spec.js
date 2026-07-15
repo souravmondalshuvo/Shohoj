@@ -104,6 +104,19 @@ test('?room= deep link focuses the floor and opens the room panel', async ({ pag
   await expect(panel).toContainText('Theater · Floor 9 · Zone G');
 });
 
+test('?floor= deep link (from the cafeteria guide) focuses the floor without a room', async ({ page }) => {
+  await openCampus(page, '/campus?floor=9');
+  await expect(page.getByRole('button', { name: 'Floor 9' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // A bare floor link highlights the floor but opens no room panel.
+  await expect(page.getByTestId('campus-room-panel')).toHaveCount(0);
+  // A floor with no rooms in the feed is ignored (no crash, prompt stays).
+  await openCampus(page, '/campus?floor=8');
+  await expect(page.getByTestId('campus-floor-hint')).toBeVisible();
+});
+
 test('non-tower venues are listed separately', async ({ page }) => {
   await openCampus(page);
   const other = page.locator('.campus-other');
