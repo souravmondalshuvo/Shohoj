@@ -187,7 +187,9 @@ export function Component() {
     return map;
   }, [feed, feedNameByCode, now]);
 
-  // Consume a ?room=09G-31T deep link once the model can resolve it.
+  // Consume a ?room=09G-31T deep link once the model can resolve it. A bare
+  // ?floor=N link (used by the cafeteria guide, #373) focuses a whole floor
+  // when no specific room is given and the model actually has that floor.
   useEffect(() => {
     if (!model || deepLinkConsumed.current) return;
     deepLinkConsumed.current = true;
@@ -195,6 +197,11 @@ export function Component() {
     if (parsed && model.roomsByCode.has(parsed.code)) {
       setFloor(parsed.floor);
       setSelectedRoom(parsed.code);
+      return;
+    }
+    const floorParam = Number(searchParams.get('floor'));
+    if (Number.isInteger(floorParam) && model.floors.some((f) => f.floor === floorParam)) {
+      setFloor(floorParam);
     }
   }, [model, searchParams]);
 
