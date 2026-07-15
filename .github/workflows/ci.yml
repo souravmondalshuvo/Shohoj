@@ -333,6 +333,11 @@ jobs:
       - name: Build standalone pages
         run: npm run build:pages
 
+      # test:bundle launches headless Chromium to load the built bundle, so the
+      # browser must be present here (the validation job installs it separately).
+      - name: Install Playwright browser (for the bundle smoke test)
+        run: npx playwright install --with-deps chromium
+
       # Production-only smoke + CSP checks AFTER runtime config is injected, so
       # they validate the exact artifact being shipped.
       - name: Run production bundle smoke test
