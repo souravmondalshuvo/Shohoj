@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-AdZeQ+A42rzM8D2NDFsyXJ3quCjYaAG+17Xsrnr6Rdk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-UcVPsgrNNLIxY7g50Swcx2aG4f/UtOY5YyFmSm3/DD4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,9 +60,15 @@
       --border:      rgba(46,204,113,0.18);
       --border2:     rgba(255,255,255,0.08);
       --text:        #e8f0ea;
+      --text1:       #e8f0ea;
       --text2:       #8aab90;
       --text3:       #4d6b52;
       --input-bg:    rgba(0,0,0,0.25);
+      --chip-border: rgba(255,255,255,0.10);
+      --chip-hover:  rgba(255,255,255,0.05);
+      --ink-green:   #2ecc71;
+      --ink-blue:    #5b9dff;
+      --ink-amber:   #f1c40f;
       --shadow:      0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(46,204,113,0.08);
       --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
     }
@@ -75,9 +81,15 @@
       --border:      rgba(46,204,113,0.25);
       --border2:     rgba(255,255,255,0.6);
       --text:        #0d2914;
+      --text1:       #0d2914;
       --text2:       #3a6b47;
       --text3:       #8ab898;
       --input-bg:    rgba(255,255,255,0.5);
+      --chip-border: rgba(13,41,20,0.16);
+      --chip-hover:  rgba(13,41,20,0.05);
+      --ink-green:   #1c7c45;
+      --ink-blue:    #2d5a8a;
+      --ink-amber:   #b07d1a;
       --shadow:      0 8px 32px rgba(46,204,113,0.12), 0 0 0 1px rgba(255,255,255,0.5);
       --shadow-card: 0 20px 60px rgba(46,204,113,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
     }
@@ -327,7 +339,7 @@
       font-family: 'DM Sans', sans-serif;
       font-weight: 600; font-size: 15px;
       padding: 13px 28px;
-      border-radius: var(--radius);
+      border-radius: 999px;
       border: none; cursor: pointer;
       text-decoration: none;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -342,7 +354,7 @@
       font-family: 'DM Sans', sans-serif;
       font-weight: 500; font-size: 15px;
       padding: 13px 28px;
-      border-radius: var(--radius);
+      border-radius: 999px;
       border: 1px solid var(--border);
       cursor: pointer;
       text-decoration: none;
@@ -355,8 +367,8 @@
        stretching toolbar buttons full-width — .btn-sm wins on specificity. */
     .btn-primary.btn-sm, .btn-secondary.btn-sm {
       font-size: 12.5px;
-      padding: 7px 14px;
-      border-radius: 9px;
+      padding: 7px 16px;
+      border-radius: 999px;
       width: auto; max-width: none;
     }
     .btn-primary.btn-sm:hover { box-shadow: 0 4px 16px rgba(46,204,113,0.3); }
@@ -417,7 +429,7 @@
     .semester-label sup { font-size: 0.55em; vertical-align: super; line-height: 0; }
     .semester-gpa-badge { font-size: 12px; font-weight: 600; background: var(--green-glow); color: var(--green); border-radius: 6px; padding: 2px 8px; }
     .semester-actions { display: flex; gap: 6px; }
-    .btn-icon { background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text2); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 600; letter-spacing: 0.02em; padding: 5px 12px; cursor: pointer; transition: all 0.2s !important; }
+    .btn-icon { background: transparent; border: 1px solid var(--border); border-radius: 999px; color: var(--text2); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 600; letter-spacing: 0.02em; padding: 5px 12px; cursor: pointer; transition: all 0.2s !important; }
     .btn-icon:hover { border-color: var(--green); color: var(--green); background: rgba(46,204,113,0.06); }
     .btn-icon.danger { color: var(--text3); }
     .btn-icon.danger:hover { border-color: rgba(231,76,60,0.6); color: #e74c3c; background: rgba(231,76,60,0.06); }
@@ -533,7 +545,7 @@
     .calc-footer-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
     .footer-stat { font-size: 13px; color: var(--text2); }
     .footer-stat strong { color: var(--text); font-weight: 600; }
-    .btn-add-semester { background: var(--green); color: #0b0f0d; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .btn-add-semester { background: var(--green); color: #0b0f0d; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px; padding: 9px 18px; border-radius: 999px; border: none; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
     .btn-add-semester:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(46,204,113,0.4); }
 
     .cgpa-meter { margin: 1.2rem 2rem; background: var(--glass2); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.5rem; }
@@ -1381,7 +1393,7 @@ h1[data-reveal-hero].visible {
       font-weight: 600;
       font-size: 13px;
       padding: 9px 18px;
-      border-radius: 10px;
+      border-radius: 999px;
       border: 1px solid rgba(240,165,0,0.4);
       cursor: pointer;
       transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -1406,7 +1418,7 @@ h1[data-reveal-hero].visible {
     }
     .btn-clear-data {
       padding: 10px 18px;
-      border-radius: 10px;
+      border-radius: 999px;
       border: 1px solid rgba(231,76,60,0.35);
       background: rgba(231,76,60,0.08);
       color: #e74c3c;
@@ -1421,7 +1433,7 @@ h1[data-reveal-hero].visible {
     }
     .btn-export-pdf {
       padding: 10px 18px;
-      border-radius: 10px;
+      border-radius: 999px;
       border: 1px solid rgba(29,185,84,0.35);
       background: rgba(29,185,84,0.08);
       color: #1DB954;
@@ -1436,7 +1448,7 @@ h1[data-reveal-hero].visible {
     }
     .btn-import-pdf {
       padding: 10px 18px;
-      border-radius: 10px;
+      border-radius: 999px;
       border: 1px solid rgba(86,180,233,0.35);
       background: rgba(86,180,233,0.08);
       color: #56B4E9;
@@ -5401,13 +5413,13 @@ body[data-page="admin"] .orb { display: none !important; }
 .papers-tab-head-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .papers-mod-btn,
 .papers-tab-head-actions .papers-upload-btn {
-  min-width: 132px;
-  padding: 13px 28px;
+  min-width: 108px;
+  padding: 10px 20px;
   border: none;
-  border-radius: var(--radius, 10px);
+  border-radius: 999px;
   font-family: 'DM Sans', sans-serif;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13.5px;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
@@ -5638,7 +5650,7 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-spinner {
   width: 28px; height: 28px; margin: 0 auto 12px;
-  border: 3px solid rgba(255,255,255,0.10);
+  border: 3px solid var(--chip-border);
   border-top-color: var(--green);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
@@ -5667,8 +5679,8 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-picker { display: flex; gap: 8px; align-items: center; }
 .routine-input {
   flex: 1; min-width: 200px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--glass);
+  border: 1px solid var(--chip-border);
   color: var(--text1);
   border-radius: 10px;
   padding: 10px 14px;
@@ -5676,7 +5688,7 @@ body[data-page="admin"] .orb { display: none !important; }
   letter-spacing: 0.5px;
   transition: border-color 0.2s, background 0.2s;
 }
-.routine-input:focus { outline: none; border-color: var(--green); background: rgba(255,255,255,0.06); }
+.routine-input:focus { outline: none; border-color: var(--green); background: var(--glass2); }
 .routine-input--err { border-color: #e74c3c; animation: routine-shake 0.3s; }
 @keyframes routine-shake {
   0%, 100% { transform: translateX(0); }
@@ -5775,23 +5787,23 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-sort-label { font-size: 11px; color: var(--text3); margin-right: 2px; text-transform: uppercase; letter-spacing: 0.6px; }
 .routine-sort-btn {
   font: 12px 'DM Sans', sans-serif; cursor: pointer;
-  padding: 4px 10px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.routine-sort-btn:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.routine-sort-btn:hover { background: var(--chip-hover); color: var(--text1); }
 .routine-sort-btn.is-active {
-  background: rgba(46,204,113,0.14); color: #2ecc71; border-color: rgba(46,204,113,0.35);
+  background: rgba(46,204,113,0.14); color: var(--ink-green); border-color: rgba(46,204,113,0.35);
 }
 .routine-chip-toggle {
   font: 12px 'DM Sans', sans-serif; cursor: pointer;
-  padding: 4px 10px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.routine-chip-toggle:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.routine-chip-toggle:hover { background: var(--chip-hover); color: var(--text1); }
 .routine-chip-toggle.is-active {
-  background: rgba(241,196,15,0.12); color: #f1c40f; border-color: rgba(241,196,15,0.35);
+  background: rgba(241,196,15,0.12); color: var(--ink-amber); border-color: rgba(241,196,15,0.35);
 }
 
 /* ── Section time filters ──────────────────────────────────────────────── */
@@ -5804,32 +5816,32 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .routine-filter-sep {
   width: 1px; align-self: stretch; min-height: 16px;
-  background: rgba(255,255,255,0.10); margin: 0 2px;
+  background: var(--chip-border); margin: 0 2px;
 }
 .routine-filter-days { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .routine-filter-toggle, .routine-filter-day {
-  font: 11px 'DM Sans', sans-serif; cursor: pointer;
-  padding: 4px 10px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  font: 12px 'DM Sans', sans-serif; cursor: pointer;
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.routine-filter-day { padding: 4px 8px; }
+.routine-filter-day { padding: 5px 10px; }
 .routine-filter-toggle:hover, .routine-filter-day:hover {
-  background: rgba(255,255,255,0.05); color: var(--text1);
+  background: var(--chip-hover); color: var(--text1);
 }
 .routine-filter-toggle.is-active, .routine-filter-day.is-active {
-  background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38);
+  background: rgba(91,157,255,0.14); color: var(--ink-blue); border-color: rgba(91,157,255,0.38);
 }
 
 /* Per-course actions + section legend */
 .routine-course-actions { display: flex; align-items: center; gap: 6px; }
 .routine-change-btn {
-  font: 11px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap;
-  padding: 3px 9px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.12); background: transparent; color: var(--text2);
+  font: 12px 'DM Sans', sans-serif; cursor: pointer; white-space: nowrap;
+  padding: 4px 11px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s;
 }
-.routine-change-btn:hover { background: rgba(255,255,255,0.06); color: var(--text1); }
+.routine-change-btn:hover { background: var(--chip-hover); color: var(--text1); }
 .routine-section-head {
   display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr;
   gap: 10px; padding: 6px 14px;
@@ -6220,37 +6232,37 @@ body[data-page="admin"] .orb { display: none !important; }
 .freerooms-days { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .freerooms-day {
   font: 12px 'DM Sans', sans-serif; cursor: pointer;
-  padding: 5px 11px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.freerooms-day:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
+.freerooms-day:hover { background: var(--chip-hover); color: var(--text1); }
 .freerooms-day.is-active {
-  background: rgba(91,157,255,0.14); color: #5b9dff; border-color: rgba(91,157,255,0.38);
+  background: rgba(91,157,255,0.14); color: var(--ink-blue); border-color: rgba(91,157,255,0.38);
 }
 .freerooms-time-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .freerooms-time-label { font-size: 12px; color: var(--text3); }
 
 .freerooms-controls--view { gap: 14px; }
-.freerooms-view { display: inline-flex; border-radius: 999px; border: 1px solid rgba(255,255,255,0.10); overflow: hidden; }
+.freerooms-view { display: inline-flex; border-radius: 999px; border: 1px solid var(--chip-border); overflow: hidden; }
 .freerooms-view-btn {
   font: 12px 'DM Sans', sans-serif; cursor: pointer; padding: 5px 14px;
   border: none; background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s;
 }
-.freerooms-view-btn:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
-.freerooms-view-btn.is-active { background: rgba(91,157,255,0.16); color: #5b9dff; }
+.freerooms-view-btn:hover { background: var(--chip-hover); color: var(--text1); }
+.freerooms-view-btn.is-active { background: rgba(91,157,255,0.16); color: var(--ink-blue); }
 .freerooms-types { display: inline-flex; gap: 4px; flex-wrap: wrap; }
 .freerooms-type {
-  font: 12px 'DM Sans', sans-serif; cursor: pointer; padding: 4px 10px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text3);
+  font: 12px 'DM Sans', sans-serif; cursor: pointer; padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text3);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.freerooms-type:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
-.freerooms-type.is-active { background: rgba(255,255,255,0.08); color: var(--text1); border-color: rgba(255,255,255,0.20); }
+.freerooms-type:hover { background: var(--chip-hover); color: var(--text1); }
+.freerooms-type.is-active { background: var(--glass2); color: var(--text1); border-color: var(--chip-border); }
 .freerooms-time {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--glass);
+  border: 1px solid var(--chip-border);
   color: var(--text1); border-radius: 8px; padding: 6px 10px;
   font: 13px 'DM Sans', sans-serif;
 }
@@ -6385,8 +6397,8 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .seats-search-input {
   flex: 1; min-width: 200px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: var(--glass);
+  border: 1px solid var(--chip-border);
   color: var(--text1);
   border-radius: 10px;
   padding: 11px 14px 11px 38px;
@@ -6396,7 +6408,7 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .seats-search-input::placeholder { color: var(--text3); }
 .seats-search-input:focus {
-  outline: none; border-color: var(--green); background: rgba(255,255,255,0.06);
+  outline: none; border-color: var(--green); background: var(--glass2);
   box-shadow: 0 0 0 3px var(--green-glow);
 }
 
@@ -6405,13 +6417,13 @@ body[data-page="admin"] .orb { display: none !important; }
 .seats-sort-label { font-size: 12px; color: var(--text3); }
 .seats-chip {
   font: 12px 'DM Sans', sans-serif; cursor: pointer;
-  padding: 5px 11px; border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.10); background: transparent; color: var(--text2);
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid var(--chip-border); background: transparent; color: var(--text2);
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.seats-chip:hover { background: rgba(255,255,255,0.05); color: var(--text1); }
-.seats-chip.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
-.seats-chip--filter.is-active { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.38); }
+.seats-chip:hover { background: var(--chip-hover); color: var(--text1); }
+.seats-chip.is-active { background: rgba(46,204,113,0.12); color: var(--ink-green); border-color: rgba(46,204,113,0.38); }
+.seats-chip--filter.is-active { background: rgba(46,204,113,0.12); color: var(--ink-green); border-color: rgba(46,204,113,0.38); }
 
 .seats-results { display: flex; flex-direction: column; gap: 12px; }
 
@@ -6510,7 +6522,7 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 700; font-size: 11px; text-align: center;
   padding: 2px 8px; border-radius: 999px;
 }
-.seats-watch-status--unknown { background: rgba(255,255,255,0.05); color: var(--text3); }
+.seats-watch-status--unknown { background: var(--chip-hover); color: var(--text3); }
 .seats-watch-remove {
   background: none; border: none; cursor: pointer;
   color: var(--text3); font-size: 13px; line-height: 1; padding: 2px;
@@ -23811,7 +23823,7 @@ function _grpSignInPrompt() {
       <p style="font-size:14px;line-height:1.6;margin:0 auto 18px;max-width:380px;">
         Sign in with your BRACU email to post a study group, find classmates for a course, and join open groups.
       </p>
-      <button data-action="grp:signin" style="padding:10px 18px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
+      <button data-action="grp:signin" style="padding:10px 20px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
     </div>
   `);
 }
@@ -23828,8 +23840,8 @@ function _grpRender() {
         <div style="font-size:12px;color:${t.text3};margin-top:2px;">Find classmates for a course, or post your own group.</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button data-action="grp:refresh" title="Refresh" style="padding:8px 12px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
-        <button data-action="grp:toggleCreate" style="padding:8px 14px;border-radius:9px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
+        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
+        <button data-action="grp:toggleCreate" style="padding:8px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
       </div>
     </div>
     ${_gs.showCreate ? _createForm(t) : ''}
@@ -23849,7 +23861,7 @@ function _createForm(t) {
   const inputStyle = `width:100%;padding:9px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;`;
   const modePills = MODES.map(m => {
     const on = m === _gs.createMode;
-    return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:8px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
+    return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:999px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
   }).join('');
   return `
     <div style="border:1px solid ${t.border};background:${t.cardBg};border-radius:12px;padding:16px;margin-bottom:16px;">
@@ -23860,7 +23872,7 @@ function _createForm(t) {
       ${field('When / where (optional)', `<input id="grpSchedule" maxlength="120" placeholder="e.g. Sun & Tue, 4–6pm, Library 3rd floor" style="${inputStyle}" />`)}
       ${field('Contact link (group chat)', `<input id="grpContact" maxlength="300" placeholder="https://m.me/… or https://discord.gg/…" style="${inputStyle}" />`)}
       ${field(`Capacity (${MIN_CAPACITY}–${MAX_CAPACITY})`, `<input id="grpCapacity" type="number" min="${MIN_CAPACITY}" max="${MAX_CAPACITY}" value="6" style="${inputStyle}max-width:120px;" />`)}
-      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
+      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
       ${_gs.createMsg ? `<div style="text-align:center;font-size:13px;margin-top:10px;color:${_gs.createErr ? t.danger : t.accent};">${escHtml(_gs.createMsg)}</div>` : ''}
     </div>`;
 }
@@ -23870,7 +23882,7 @@ function _filters(t) {
   const pills = ['all', ...MODES].map(m => {
     const on = m === _gs.modeFilter;
     const label = m === 'all' ? 'All' : MODE_LABELS[m];
-    return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
+    return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:999px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
   }).join('');
   return `
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
@@ -23901,7 +23913,7 @@ function _renderList() {
   if (_gs.error) {
     _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
       Couldn't load study groups.
-      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
+      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
     </div>`);
     return;
   }
@@ -23932,11 +23944,11 @@ function _groupCard(g, t) {
   // can't read the roster to know the live count), so the Join button is never
   // hard-disabled — the "N / cap joined" label is the only capacity signal.
   const joinBtn = joined
-    ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
-    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
+    ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 16px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
+    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
 
   const rosterBtn = joined
-    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
+    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
     : '';
 
   const delBtn = isCreator
