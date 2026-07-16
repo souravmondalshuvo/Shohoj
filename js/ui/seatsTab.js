@@ -20,7 +20,7 @@ import {
   isWatched, addWatch, removeWatch,
   indexBySectionId, evaluateWatches, serializeWatches, parseWatches,
 } from '../core/seatWatch.js';
-import { escHtml, escAttr } from '../core/helpers.js';
+import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, FEED_LIVE_POLL_MS } from './feedLive.js';
 
@@ -364,7 +364,7 @@ function _seatsMainHTML() {
           </span>
         </div>
         <div class="seats-header-right">
-          <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+          <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
         </div>
       </div>
 
