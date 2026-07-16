@@ -375,7 +375,22 @@ export function Component() {
               {titleCaseDay(now.day)}
             </span>
             <button type="button" className="shell-btn campus-meta-btn" onClick={() => load(true)}>
-              ↻ Refresh
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{ marginRight: 6 }}
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+              Refresh
             </button>
             <button
               type="button"
