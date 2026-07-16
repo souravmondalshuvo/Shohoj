@@ -150,7 +150,7 @@ function _grpSignInPrompt() {
       <p style="font-size:14px;line-height:1.6;margin:0 auto 18px;max-width:380px;">
         Sign in with your BRACU email to post a study group, find classmates for a course, and join open groups.
       </p>
-      <button data-action="grp:signin" style="padding:10px 18px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
+      <button data-action="grp:signin" style="padding:10px 20px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
     </div>
   `);
 }
@@ -167,8 +167,8 @@ function _grpRender() {
         <div style="font-size:12px;color:${t.text3};margin-top:2px;">Find classmates for a course, or post your own group.</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button data-action="grp:refresh" title="Refresh" style="padding:8px 12px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
-        <button data-action="grp:toggleCreate" style="padding:8px 14px;border-radius:9px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
+        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
+        <button data-action="grp:toggleCreate" style="padding:8px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
       </div>
     </div>
     ${_gs.showCreate ? _createForm(t) : ''}
@@ -188,7 +188,7 @@ function _createForm(t) {
   const inputStyle = `width:100%;padding:9px 11px;border-radius:9px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text};font-size:14px;font-family:inherit;box-sizing:border-box;outline:none;`;
   const modePills = MODES.map(m => {
     const on = m === _gs.createMode;
-    return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:8px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
+    return `<button type="button" data-action="grp:createMode" data-mode="${escAttr(m)}" style="flex:1;padding:7px 0;font-size:12px;font-weight:700;border-radius:999px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(MODE_LABELS[m])}</button>`;
   }).join('');
   return `
     <div style="border:1px solid ${t.border};background:${t.cardBg};border-radius:12px;padding:16px;margin-bottom:16px;">
@@ -199,7 +199,7 @@ function _createForm(t) {
       ${field('When / where (optional)', `<input id="grpSchedule" maxlength="120" placeholder="e.g. Sun & Tue, 4–6pm, Library 3rd floor" style="${inputStyle}" />`)}
       ${field('Contact link (group chat)', `<input id="grpContact" maxlength="300" placeholder="https://m.me/… or https://discord.gg/…" style="${inputStyle}" />`)}
       ${field(`Capacity (${MIN_CAPACITY}–${MAX_CAPACITY})`, `<input id="grpCapacity" type="number" min="${MIN_CAPACITY}" max="${MAX_CAPACITY}" value="6" style="${inputStyle}max-width:120px;" />`)}
-      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:10px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
+      <button data-action="grp:submit" style="width:100%;margin-top:6px;padding:11px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;${_gs.submitting ? 'opacity:0.6;' : ''}">${_gs.submitting ? 'Posting…' : 'Post study group'}</button>
       ${_gs.createMsg ? `<div style="text-align:center;font-size:13px;margin-top:10px;color:${_gs.createErr ? t.danger : t.accent};">${escHtml(_gs.createMsg)}</div>` : ''}
     </div>`;
 }
@@ -209,7 +209,7 @@ function _filters(t) {
   const pills = ['all', ...MODES].map(m => {
     const on = m === _gs.modeFilter;
     const label = m === 'all' ? 'All' : MODE_LABELS[m];
-    return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
+    return `<button data-action="grp:modeFilter" data-mode="${escAttr(m)}" style="padding:5px 12px;font-size:12px;font-weight:700;border-radius:999px;border:1px solid ${on ? t.accent : t.border};background:${on ? t.accent : t.inputBg};color:${on ? '#000' : t.text2};cursor:pointer;font-family:inherit;">${escHtml(label)}</button>`;
   }).join('');
   return `
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
@@ -240,7 +240,7 @@ function _renderList() {
   if (_gs.error) {
     _setHtml(el, `<div style="text-align:center;padding:32px 0;color:${t.text3};font-size:13px;">
       Couldn't load study groups.
-      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
+      <button data-action="grp:refresh" style="margin-left:6px;padding:5px 12px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Retry</button>
     </div>`);
     return;
   }
@@ -271,11 +271,11 @@ function _groupCard(g, t) {
   // can't read the roster to know the live count), so the Join button is never
   // hard-disabled — the "N / cap joined" label is the only capacity signal.
   const joinBtn = joined
-    ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
-    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:8px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
+    ? `<button data-action="grp:leave" data-id="${escAttr(g.id)}" style="padding:7px 16px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Leave</button>`
+    : `<button data-action="grp:join" data-id="${escAttr(g.id)}" style="padding:7px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Join</button>`;
 
   const rosterBtn = joined
-    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 12px;border-radius:8px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
+    ? `<button data-action="grp:toggleRoster" data-id="${escAttr(g.id)}" style="padding:7px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.expanded.has(g.id) ? 'Hide members' : 'Members'}</button>`
     : '';
 
   const delBtn = isCreator
