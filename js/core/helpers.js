@@ -190,3 +190,14 @@ export function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
 }
+
+// Shared inline refresh icon (arc arrow). A real SVG instead of the unicode ↻
+// glyph so the icon matches the label's stroke weight and baseline on every
+// platform; stroke follows the button's currentColor. Buttons that show an
+// in-flight state can spin it via a CSS class on the button (see
+// .admin-btn-ghost--loading svg).
+export const REFRESH_ICON_SVG =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' +
+  'style="vertical-align:-2px;margin-right:1px;">' +
+  '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
