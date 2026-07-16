@@ -9,7 +9,7 @@
 // Reuses the global window._shohoj_* admin helpers from firebase.js.
 // Charts via Chart.js loaded from CDN in index.html.
 
-import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
+import { escHtml, escAttr, confirmDestructive, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { getPaperDownloadUrl } from '../core/papers.js';
 import { openPreviewModal } from './previewModal.js';
 
@@ -138,7 +138,7 @@ function _shellHtml(opts = {}) {
           <p>Stats, activity, and triage queues — all in one place.</p>
         </div>
         <div class="admin-page-head-actions">
-          <button id="adminRefreshBtn" class="admin-btn-ghost" title="Reload everything">↻ Refresh</button>
+          <button id="adminRefreshBtn" class="admin-btn-ghost" title="Reload everything">${REFRESH_ICON_SVG} <span data-refresh-label>Refresh</span></button>
           <button id="adminCloseBtn"   class="admin-btn-ghost" title="Back to site">${closeLabel}</button>
         </div>
       </header>
@@ -714,12 +714,13 @@ async function _loadStatsAndCharts() {
 
 async function _refreshAll() {
   const btn = document.getElementById('adminRefreshBtn');
-  const prevLabel = btn ? btn.textContent : '';
+  const label = btn ? btn.querySelector('[data-refresh-label]') : null;
+  const prevLabel = label ? label.textContent : '';
   if (btn) {
     btn.disabled = true;
     btn.classList.add('admin-btn-ghost--loading');
-    btn.textContent = '↻ Refreshing…';
   }
+  if (label) label.textContent = 'Refreshing…';
   try {
     await Promise.all([
       _loadStatsAndCharts(),
@@ -734,7 +735,7 @@ async function _refreshAll() {
     if (btn) {
       btn.disabled = false;
       btn.classList.remove('admin-btn-ghost--loading');
-      btn.textContent = prevLabel;
+      if (label) label.textContent = prevLabel;
     }
   }
 }
