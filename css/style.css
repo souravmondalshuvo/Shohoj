@@ -5025,6 +5025,11 @@ body[data-page="admin"] .orb { display: none !important; }
 .admin-btn-ghost--loading {
   animation: admin-refresh-pulse 1.4s ease-in-out infinite;
 }
+/* Spin the inline refresh icon while the reload is in flight (keyframes
+   `spin` shared with .routine-spinner). */
+.admin-btn-ghost--loading svg {
+  animation: spin 0.9s linear infinite;
+}
 @keyframes admin-refresh-pulse {
   0%, 100% { opacity: 0.6; }
   50%      { opacity: 1; }
