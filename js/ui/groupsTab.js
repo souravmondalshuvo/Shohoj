@@ -11,7 +11,7 @@ import {
   createStudyGroup, fetchStudyGroups, fetchMyMemberships, fetchGroupMembers,
   joinStudyGroup, leaveStudyGroup, deleteStudyGroup, reportStudyGroup,
 } from '../core/studyGroups.js';
-import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
+import { escHtml, escAttr, confirmDestructive, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
 registerAction('grp:signin',       () => window._shohoj_signIn?.());
@@ -167,7 +167,7 @@ function _grpRender() {
         <div style="font-size:12px;color:${t.text3};margin-top:2px;">Find classmates for a course, or post your own group.</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
+        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;line-height:0;">${REFRESH_ICON_SVG}</button>
         <button data-action="grp:toggleCreate" style="padding:8px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
       </div>
     </div>
