@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-16eaMdns8QclteotFKjQIv+Z2jLsCxnp9QxwrB+8IoY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-sLMumGVIbQRyLqiSpuShHw2dLbUz2My1sp7I2/SJmwM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -10116,34 +10116,24 @@ function initCursor() {
   let rX = mX, rY = mY;
   let gX = mX, gY = mY;
 
-  document.addEventListener('mousemove', e => { mX = e.clientX; mY = e.clientY; }, { passive: true });
+  // Derive the cursor shape from the element currently under the pointer on
+  // every mouse event, instead of paired add/remove listeners. Paired
+  // listeners get stuck when the hovered element vanishes without a mouseout
+  // (innerHTML repaints, a modal opening on top) — the stale cursor-text
+  // I-beam then follows the pointer everywhere.
+  const HOVER_TARGETS = 'a, button, .feature-card, .nav-logo';
+  const TEXT_TARGETS  = 'input, textarea, select, .pf-select';
+  function syncCursorState(target) {
+    const el = target instanceof Element ? target : null;
+    body.classList.toggle('cursor-hover', !!(el && el.closest(HOVER_TARGETS)));
+    body.classList.toggle('cursor-text',  !!(el && el.closest(TEXT_TARGETS)));
+  }
 
-  // Use event delegation for hover state so dynamically added buttons/links
-  // (semester actions, add/remove course, etc.) also trigger cursor-hover
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('a, button, .feature-card, .nav-logo');
-    if (el) body.classList.add('cursor-hover');
-  });
-  document.addEventListener('mouseout', e => {
-    const el = e.target.closest('a, button, .feature-card, .nav-logo');
-    if (el) body.classList.remove('cursor-hover');
-  });
-  document.querySelectorAll('select, textarea').forEach(el => {
-    el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
-    el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
-  });
-  document.addEventListener('mouseover', e => {
-    if (e.target.matches('.pf-select')) body.classList.add('cursor-text');
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.matches('.pf-select')) body.classList.remove('cursor-text');
-  });
-  document.addEventListener('mouseover', e => {
-    if (e.target.matches('input, textarea')) body.classList.add('cursor-text');
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.matches('input, textarea')) body.classList.remove('cursor-text');
-  });
+  document.addEventListener('mousemove', e => {
+    mX = e.clientX; mY = e.clientY;
+    syncCursorState(e.target);
+  }, { passive: true });
+  document.addEventListener('mouseover', e => syncCursorState(e.target));
   document.addEventListener('mousedown', () => body.classList.add('cursor-click'));
   document.addEventListener('mouseup',   () => body.classList.remove('cursor-click'));
   document.addEventListener('mouseleave', () => {
