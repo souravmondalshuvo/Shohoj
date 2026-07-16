@@ -35,7 +35,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-XQ7SqzMlQi6gB1F20Be6+4DEXymGJ6qe4EjRuHZQn1I='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-y+mSnrV+RCIYRx5lZx+R89drD3HD2X1y7EZ5G9YmpzY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5067,6 +5067,11 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .admin-btn-ghost--loading {
   animation: admin-refresh-pulse 1.4s ease-in-out infinite;
+}
+/* Spin the inline refresh icon while the reload is in flight (keyframes
+   `spin` shared with .routine-spinner). */
+.admin-btn-ghost--loading svg {
+  animation: spin 0.9s linear infinite;
 }
 @keyframes admin-refresh-pulse {
   0%, 100% { opacity: 0.6; }
@@ -10294,6 +10299,17 @@ function getStartYear() {
   const el = document.getElementById('startYear');
   return el ? el.value : '2024';
 }
+
+// Shared inline refresh icon (arc arrow). A real SVG instead of the unicode ↻
+// glyph so the icon matches the label's stroke weight and baseline on every
+// platform; stroke follows the button's currentColor. Buttons that show an
+// in-flight state can spin it via a CSS class on the button (see
+// .admin-btn-ghost--loading svg).
+const REFRESH_ICON_SVG =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' +
+  'style="vertical-align:-2px;margin-right:1px;">' +
+  '<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>';
 
 // ── js/core/dispatch.js ─────────────────────────────────────────
 // ── ACTION DISPATCH ───────────────────────────────────────────────────────────
@@ -22273,7 +22289,7 @@ function _headerHTML(summary) {
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm ${_store.qrOpen ? 'is-active' : ''}" data-action="routine:toggleQr" aria-pressed="${_store.qrOpen}" title="Show a scannable QR of the share link">📱 QR</button>`
           : ''}
-        <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+        <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:clearAll" title="Remove all picked courses">Clear</button>`
           : ''}
@@ -22965,7 +22981,7 @@ function _frHeaderHTML() {
         </span>
       </div>
       <div class="routine-header-right">
-        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
       </div>
     </div>`;
 }
@@ -23496,7 +23512,7 @@ function _seatsMainHTML() {
           </span>
         </div>
         <div class="seats-header-right">
-          <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+          <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
         </div>
       </div>
 
@@ -23859,7 +23875,7 @@ function _grpRender() {
         <div style="font-size:12px;color:${t.text3};margin-top:2px;">Find classmates for a course, or post your own group.</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻</button>
+        <button data-action="grp:refresh" title="Refresh" style="padding:8px 14px;border-radius:999px;border:1px solid ${t.border};background:${t.inputBg};color:${t.text2};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;line-height:0;">${REFRESH_ICON_SVG}</button>
         <button data-action="grp:toggleCreate" style="padding:8px 16px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">${_gs.showCreate ? 'Close' : '+ Post a group'}</button>
       </div>
     </div>
