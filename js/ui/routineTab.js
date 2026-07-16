@@ -32,7 +32,7 @@ import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
 import { suggestCombinations } from '../core/routineSuggestions.js';
 import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerImport.js';
 import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routineExport.js';
-import { escHtml, escAttr } from '../core/helpers.js';
+import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
 
@@ -997,7 +997,7 @@ function _headerHTML(summary) {
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm ${_store.qrOpen ? 'is-active' : ''}" data-action="routine:toggleQr" aria-pressed="${_store.qrOpen}" title="Show a scannable QR of the share link">📱 QR</button>`
           : ''}
-        <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+        <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:clearAll" title="Remove all picked courses">Clear</button>`
           : ''}
