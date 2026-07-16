@@ -9,34 +9,24 @@ export function initCursor() {
   let rX = mX, rY = mY;
   let gX = mX, gY = mY;
 
-  document.addEventListener('mousemove', e => { mX = e.clientX; mY = e.clientY; }, { passive: true });
+  // Derive the cursor shape from the element currently under the pointer on
+  // every mouse event, instead of paired add/remove listeners. Paired
+  // listeners get stuck when the hovered element vanishes without a mouseout
+  // (innerHTML repaints, a modal opening on top) — the stale cursor-text
+  // I-beam then follows the pointer everywhere.
+  const HOVER_TARGETS = 'a, button, .feature-card, .nav-logo';
+  const TEXT_TARGETS  = 'input, textarea, select, .pf-select';
+  function syncCursorState(target) {
+    const el = target instanceof Element ? target : null;
+    body.classList.toggle('cursor-hover', !!(el && el.closest(HOVER_TARGETS)));
+    body.classList.toggle('cursor-text',  !!(el && el.closest(TEXT_TARGETS)));
+  }
 
-  // Use event delegation for hover state so dynamically added buttons/links
-  // (semester actions, add/remove course, etc.) also trigger cursor-hover
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('a, button, .feature-card, .nav-logo');
-    if (el) body.classList.add('cursor-hover');
-  });
-  document.addEventListener('mouseout', e => {
-    const el = e.target.closest('a, button, .feature-card, .nav-logo');
-    if (el) body.classList.remove('cursor-hover');
-  });
-  document.querySelectorAll('select, textarea').forEach(el => {
-    el.addEventListener('mouseenter', () => body.classList.add('cursor-text'));
-    el.addEventListener('mouseleave', () => body.classList.remove('cursor-text'));
-  });
-  document.addEventListener('mouseover', e => {
-    if (e.target.matches('.pf-select')) body.classList.add('cursor-text');
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.matches('.pf-select')) body.classList.remove('cursor-text');
-  });
-  document.addEventListener('mouseover', e => {
-    if (e.target.matches('input, textarea')) body.classList.add('cursor-text');
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.matches('input, textarea')) body.classList.remove('cursor-text');
-  });
+  document.addEventListener('mousemove', e => {
+    mX = e.clientX; mY = e.clientY;
+    syncCursorState(e.target);
+  }, { passive: true });
+  document.addEventListener('mouseover', e => syncCursorState(e.target));
   document.addEventListener('mousedown', () => body.classList.add('cursor-click'));
   document.addEventListener('mouseup',   () => body.classList.remove('cursor-click'));
   document.addEventListener('mouseleave', () => {
