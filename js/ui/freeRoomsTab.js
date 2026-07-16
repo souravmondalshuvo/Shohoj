@@ -15,7 +15,7 @@ import {
   CAMPUS_START_MIN,
   CAMPUS_END_MIN,
 } from '../core/freeRooms.js';
-import { escHtml, escAttr } from '../core/helpers.js';
+import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
 import { openModal } from './modal.js';
@@ -206,7 +206,7 @@ function _frHeaderHTML() {
         </span>
       </div>
       <div class="routine-header-right">
-        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">↻ Refresh</button>
+        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
       </div>
     </div>`;
 }
