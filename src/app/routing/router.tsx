@@ -22,7 +22,6 @@ const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['degree-progress', 'Degree progress'],
   ['papers', 'Past papers'],
   ['groups', 'Study groups'],
-  ['feedback', 'Feedback'],
 ];
 
 export const router = createBrowserRouter([
@@ -50,6 +49,8 @@ export const router = createBrowserRouter([
       { path: 'cafeteria', lazy: () => import('../routes/CafeteriaRoute') },
       // Account hub (#397 / #196) — auth-gated; signed-out shows a prompt.
       { path: 'profile', lazy: () => import('../routes/ProfileRoute') },
+      // Feedback submit + board (#437) — auth-gated; signed-out shows a prompt.
+      { path: 'feedback', lazy: () => import('../routes/FeedbackRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
