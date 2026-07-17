@@ -20,7 +20,6 @@ import { RequireAdmin } from './RequireAdmin';
 const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['transcript', 'Transcript'],
   ['degree-progress', 'Degree progress'],
-  ['papers', 'Past papers'],
   ['groups', 'Study groups'],
 ];
 
@@ -51,6 +50,8 @@ export const router = createBrowserRouter([
       { path: 'profile', lazy: () => import('../routes/ProfileRoute') },
       // Feedback submit + board (#437) — auth-gated; signed-out shows a prompt.
       { path: 'feedback', lazy: () => import('../routes/FeedbackRoute') },
+      // Past-papers library (#440) — auth-gated browse/upload over the Worker.
+      { path: 'papers', lazy: () => import('../routes/PapersRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
