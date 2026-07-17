@@ -367,3 +367,27 @@ test('@a11y Groups route (board + create form + roster over stub seams) has no s
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Transcript route (stats + tables over seeded state) has no serious/critical violations', async ({ page }) => {
+  // Seeded through the shared calculator storage key (#445).
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'shohoj_cgpa_v1',
+      JSON.stringify({
+        semesters: [
+          { id: 1, summary: true, courses: [], summaryCGPA: 3.42, summaryCredits: 60, summaryAttempted: 63, summarySemesters: 5 },
+          { id: 2, name: 'Spring 2026', courses: [{ name: 'CSE220 - Data Structures', credits: 3, grade: 'A', gradePoint: 4 }] },
+          { id: 3, name: 'Summer 2026', running: true, courses: [{ name: 'CSE221 - Algorithms', credits: 3, grade: '' }] },
+        ],
+        startSeason: 'Spring',
+        startYear: '2024',
+        currentDept: 'CSE',
+        planCourses: [],
+      }),
+    );
+  });
+  await page.goto('/transcript', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('transcript-sems')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
