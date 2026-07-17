@@ -307,3 +307,31 @@ test('@a11y Feedback route (form + board over stub seams) has no serious/critica
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Papers route (library + upload form over stub seams) has no serious/critical violations', async ({ page }) => {
+  // Same seams as papers.spec.js; scan with the upload form and a report box
+  // open — the interactive worst case (#440).
+  await page.addInitScript(() => {
+    const now = Date.now();
+    window.__shohojPapersIdentity = { uid: 'u_me', email: 'me@g.bracu.ac.bd' };
+    window.__shohojPapersRepo = {
+      async listRecent() {
+        return [
+          { id: 'p1', courseCode: 'CSE110', type: 'midterm', title: 'Fall 2025 midterm', semester: 'Fall 2025', size: 245760, createdAtMs: now - 86_400_000 },
+        ];
+      },
+      async listByCourse() { return []; },
+      async downloadUrl() { return null; },
+      async upload() { return { ok: true, id: 'x' }; },
+      async report() {},
+    };
+  });
+  await page.goto('/papers', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('papers-list')).toBeVisible();
+  await page.getByTestId('papers-upload-toggle').click();
+  await expect(page.getByTestId('papers-upload-form')).toBeVisible();
+  await page.getByTestId('papers-report-p1').click();
+  await expect(page.getByTestId('papers-report-box')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
