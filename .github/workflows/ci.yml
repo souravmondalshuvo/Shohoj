@@ -101,6 +101,11 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: npm ci
+      # The combined runner (scripts/run-tests.mjs) also executes
+      # worker/test/*.test.js, and the worker is its own npm package — its
+      # deps (@anthropic-ai/sdk for /api/assistant) must be installed here too.
+      - run: npm ci
+        working-directory: worker
       - run: npm test
 
   worker-tests:
