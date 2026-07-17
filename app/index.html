@@ -710,6 +710,56 @@
       }
       .feedback-del:focus-visible { outline: 2px solid var(--c-danger-ink); outline-offset: 2px; }
       .feedback-item-text { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+      .papers-page { max-width: 820px; }
+      .papers-signin { margin: 24px 0; }
+      .papers-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+      .papers-search {
+        font: inherit; flex: 1; min-width: 220px; padding: 10px 12px; border-radius: 10px; box-sizing: border-box;
+        border: 1px solid rgba(46,204,113,0.28); background: var(--c-surface); color: var(--c-text);
+      }
+      .papers-search:focus { outline: none; border-color: rgba(46,204,113,0.55); }
+      .papers-upload {
+        border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04);
+        border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .papers-upload-row { display: flex; flex-wrap: wrap; gap: 12px; }
+      .papers-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+      .papers-field--grow { flex: 1; }
+      .papers-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--c-text-muted); }
+      .papers-input {
+        font: inherit; font-size: 13px; padding: 9px 12px; border-radius: 8px;
+        border: 1px solid var(--c-border3); background: var(--c-card); color: var(--c-text); box-sizing: border-box;
+      }
+      .papers-input:focus { border-color: rgba(46,204,113,0.55); outline: none; }
+      .papers-error { font-size: 12px; color: #e74c3c; margin: 0; }
+      .papers-upload-send { align-self: flex-start; }
+      .papers-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+      .papers-chip {
+        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; min-height: 40px;
+        border-radius: 999px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-faint);
+      }
+      .papers-chip--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
+      .papers-chip:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .papers-load-error { padding: 12px 0; }
+      .papers-empty { margin: 14px 0; }
+      .papers-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+      .papers-item { border: 1px solid var(--c-border); border-radius: 12px; padding: 12px 14px; }
+      .papers-item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+      .papers-item-course { font-weight: 800; color: var(--c-green-ink); }
+      .papers-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--c-border2); color: var(--c-text-muted); }
+      .papers-item-date { font-size: 11px; color: var(--c-faint); margin-left: auto; }
+      .papers-item-title { margin: 6px 0 2px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+      .papers-item-meta { margin: 0 0 8px; font-size: 12px; }
+      .papers-item-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+      .papers-report {
+        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; min-height: 40px; cursor: pointer;
+        border-radius: 999px; border: 1px solid rgba(231,76,60,0.30); background: transparent; color: var(--c-danger-ink);
+      }
+      .papers-report:disabled { opacity: 0.55; cursor: default; }
+      .papers-report:focus-visible { outline: 2px solid var(--c-danger-ink); outline-offset: 2px; }
+      .papers-report-box { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+      .papers-reason { width: 100%; min-height: 56px; resize: vertical; }
       .lf-page { max-width: 720px; }
       .lf-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
       .lf-filters { display: flex; gap: 4px; }
