@@ -102,7 +102,6 @@ export function Component() {
       live = false;
     };
     // identity.uid (not the object) so an auth refresh doesn't re-fetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canUse, identity?.uid, reloadKey]);
 
   const board = useMemo(() => boardView(items ?? [], filter), [items, filter]);
