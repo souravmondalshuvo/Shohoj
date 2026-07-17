@@ -1373,7 +1373,7 @@ async function makeServiceAccountJson() {
         if (!data) return new Response('not found', { status: 404 });
         return json({ fields: { data: { stringValue: data } } });
       }
-      if (call.url.includes('api.anthropic.com')) {
+      if (new URL(call.url).hostname === 'api.anthropic.com') {
         anthropicCalls++;
         anthropicBodies.push(call.body);
         if (anthropicCalls === 1) {
