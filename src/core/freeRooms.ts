@@ -137,6 +137,72 @@ export function freeRoomsAt(
     return free.sort((a, b) => a.localeCompare(b));
 }
 
+/** Room type from the code's trailing letter: C=Classroom, L=Lab, T=Theater. */
+export type RoomTypeKey = 'C' | 'L' | 'T';
+
+export const ROOM_TYPE_LABELS: Record<RoomTypeKey, string> = {
+    C: 'Classroom',
+    L: 'Lab',
+    T: 'Theater',
+};
+
+/** Trailing-letter room type; unknown suffixes read as classrooms. */
+export function roomTypeKey(room: string): RoomTypeKey {
+    const last = room.trim().slice(-1).toUpperCase();
+    return last === 'L' || last === 'T' ? last : 'C';
+}
+
+/**
+ * A slot reads as a lab session if the feed tagged it 'lab', OR it's held in a
+ * lab room. Some lab-only courses (studios, MIC/ARC labs) stuff their whole
+ * session into classSchedules with a lab roomName and no labSchedules array, so
+ * it arrives tagged 'theory'; the room type is the reliable signal there.
+ */
+export function isLabOccupant(room: string, kind: SlotKind): boolean {
+    return kind === 'lab' || roomTypeKey(room) === 'L';
+}
+
+/** One free or busy stretch in a room's single-day timeline. */
+export interface TimelineSegment {
+    startMin: number;
+    endMin: number;
+    busy: boolean;
+    /** Busy segments only: true when the occupant is a lab session. */
+    lab?: boolean;
+    /** Busy segments only: occupying course code. */
+    courseCode?: string;
+    /** Busy segments only: occupying section name ('' when unknown). */
+    sectionName?: string;
+}
+
+/**
+ * Chronological free + busy segments for one room-day, clamped to campus hours
+ * and sorted by start (free before busy when they touch at a boundary). Free
+ * windows are the merged complement; busy segments carry the occupying
+ * course/section so the UI can label them.
+ */
+export function dayTimeline(
+    index: Map<string, BusyInterval[]>,
+    room: string,
+    day: WeekdayName,
+    dayStart: number = CAMPUS_START_MIN,
+    dayEnd: number = CAMPUS_END_MIN,
+): TimelineSegment[] {
+    const free: TimelineSegment[] = freeWindowsForRoom(index, room, day, dayStart, dayEnd)
+        .map(w => ({ startMin: w.startMin, endMin: w.endMin, busy: false }));
+    const busy: TimelineSegment[] = busyOnDay(index, room, day)
+        .map(i => ({
+            startMin: Math.max(i.startMin, dayStart),
+            endMin: Math.min(i.endMin, dayEnd),
+            busy: true,
+            lab: isLabOccupant(room, i.kind),
+            courseCode: i.courseCode,
+            sectionName: i.sectionName,
+        }))
+        .filter(s => s.endMin > s.startMin);
+    return [...free, ...busy].sort((a, b) => (a.startMin - b.startMin) || (a.busy ? 1 : -1));
+}
+
 /**
  * Free time windows for one room on a given day, as the complement of its busy
  * intervals within [dayStart, dayEnd). Overlapping/adjacent busy intervals are
