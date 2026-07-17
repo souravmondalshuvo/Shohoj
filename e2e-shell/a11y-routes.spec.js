@@ -249,3 +249,38 @@ test('@a11y Lost & Found route (board + form + claim box over stub seams) has no
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Rooms route (finder + weekly dialog over a seeded feed) has no serious/critical violations', async ({ page }) => {
+  // Same feed seam as rooms.spec.js; scan with the weekly dialog open — the
+  // interactive worst case (#434).
+  await page.addInitScript(() => {
+    const section = (sectionId, courseCode, sectionName, roomName, day) => ({
+      sectionId,
+      courseCode,
+      courseName: courseCode,
+      sectionName,
+      capacity: 40,
+      consumedSeat: 10,
+      roomName,
+      sectionSchedule: { classSchedules: [{ day, startTime: '8:00', endTime: '9:20' }] },
+    });
+    localStorage.setItem(
+      'shohoj_connect_feed_v1',
+      JSON.stringify({
+        fetchedAt: Date.now(),
+        etag: null,
+        payload: [
+          section(1, 'CSE110', '01', '07A-01C', 'SUNDAY'),
+          section(2, 'MAT110', '02', '08B-03C', 'MONDAY'),
+        ],
+      }),
+    );
+  });
+  await page.goto('/rooms', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('rooms-page')).toBeVisible();
+  await page.getByTestId('rooms-view-all').click();
+  await page.getByTestId('rooms-card-07A-01C').click();
+  await expect(page.getByTestId('rooms-week-modal')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
