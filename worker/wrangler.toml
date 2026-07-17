@@ -26,10 +26,21 @@ type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
 
+# Per-UID rate limit for /api/assistant (#435). Each chat turn is a Claude API
+# call, so this bounds per-student spend as well as abuse: 10 turns/min is
+# generous for a human conversation and cheap protection against a scripted
+# loop.
+[[unsafe.bindings]]
+name = "ASSISTANT_RATE_LIMIT"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
 # Plain-text env vars — safe to commit. Do NOT put secrets here; use
 # `wrangler secret put` for anything sensitive:
 #   wrangler secret put RESEND_API_KEY
 #   wrangler secret put SERVICE_ACCOUNT_JSON   # Firebase service-account JSON, used for /upload metadata and /reviews writes
+#   wrangler secret put ANTHROPIC_API_KEY      # Claude API key for /api/assistant — set BEFORE merging, merges auto-deploy
 #
 # Admin authorization is enforced via the Firebase `admin` custom claim
 # (see scripts/set_admin_claim.js).
