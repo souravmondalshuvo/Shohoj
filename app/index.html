@@ -660,6 +660,56 @@
       .rooms-seg-time { font-variant-numeric: tabular-nums; font-weight: 600; }
       .rooms-seg-label { color: var(--c-text-muted); }
       .rooms-week-close { align-self: flex-end; }
+      .feedback-page { max-width: 720px; }
+      .feedback-signin { margin: 24px 0; }
+      .feedback-form {
+        border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04);
+        border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .feedback-field { display: flex; flex-direction: column; gap: 6px; position: relative; }
+      .feedback-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--c-text-muted); }
+      .feedback-types, .feedback-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+      .feedback-chip {
+        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 16px; min-height: 40px;
+        border-radius: 999px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-faint);
+      }
+      .feedback-chip--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
+      .feedback-chip:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .feedback-text {
+        font: inherit; font-size: 14px; width: 100%; min-height: 90px; padding: 10px 12px;
+        border-radius: 10px; border: 1px solid var(--c-border3); background: var(--c-card);
+        color: var(--c-text); resize: vertical; box-sizing: border-box; line-height: 1.5;
+      }
+      .feedback-text:focus { border-color: rgba(46,204,113,0.55); outline: none; }
+      .feedback-count { align-self: flex-end; font-size: 11px; color: var(--c-faint); }
+      .feedback-anon { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--c-text-muted); cursor: pointer; }
+      .feedback-error { font-size: 12px; color: #e74c3c; margin: 0; }
+      .feedback-send { align-self: flex-start; }
+      .feedback-board-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 6px 0 10px; }
+      .feedback-board-head h2 { margin: 0; font-size: 16px; }
+      .feedback-empty { margin: 14px 0; }
+      .feedback-list { list-style: none; margin: 0; padding: 0; }
+      .feedback-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--c-border); }
+      .feedback-vote {
+        font: inherit; font-size: 14px; min-width: 40px; min-height: 40px; cursor: pointer;
+        border-radius: 999px; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-faint);
+      }
+      .feedback-vote--on { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
+      .feedback-vote:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .feedback-item-body { flex: 1; min-width: 0; }
+      .feedback-item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+      .feedback-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
+      .feedback-tag--bug { color: var(--c-danger-ink); background: rgba(231,76,60,0.08); border-color: rgba(231,76,60,0.30); }
+      .feedback-tag--feature { color: var(--c-blue-ink); background: rgba(86,180,233,0.10); border-color: rgba(86,180,233,0.35); }
+      .feedback-tag--general { color: var(--c-text-muted); background: var(--c-surface); border-color: var(--c-border2); }
+      .feedback-age { font-size: 11px; color: var(--c-faint); margin-left: auto; }
+      .feedback-del {
+        font: inherit; font-size: 16px; line-height: 1; padding: 2px 8px; cursor: pointer;
+        border: none; background: none; color: rgba(231,76,60,0.6); border-radius: 6px;
+      }
+      .feedback-del:focus-visible { outline: 2px solid var(--c-danger-ink); outline-offset: 2px; }
+      .feedback-item-text { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
       .lf-page { max-width: 720px; }
       .lf-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
       .lf-filters { display: flex; gap: 4px; }
