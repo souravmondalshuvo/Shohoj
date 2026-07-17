@@ -284,3 +284,26 @@ test('@a11y Rooms route (finder + weekly dialog over a seeded feed) has no serio
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Feedback route (form + board over stub seams) has no serious/critical violations', async ({ page }) => {
+  // Same seams as feedback.spec.js: injected repo fake + identity stand-in (#437).
+  await page.addInitScript(() => {
+    const now = Date.now();
+    const items = [
+      { id: 'f1', type: 'bug', text: 'Simulator forgets my grades', anonymous: true, createdAtMs: now - 3_600_000 },
+      { id: 'f2', type: 'feature', text: 'Dark mode for the routine grid', anonymous: false, uid: 'u_other', createdAtMs: now - 60_000 },
+    ];
+    window.__shohojFeedbackIdentity = { uid: 'u_me', email: 'me@g.bracu.ac.bd', isAdmin: true };
+    window.__shohojFeedbackRepo = {
+      async listRecent() { return items.slice(); },
+      async listMyUpvotes() { return [{ feedbackId: 'f1', uid: 'u_me' }]; },
+      async submit() {},
+      async toggleUpvote() {},
+      async adminDelete() {},
+    };
+  });
+  await page.goto('/feedback', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('feedback-list')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
