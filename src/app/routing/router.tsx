@@ -20,7 +20,6 @@ import { RequireAdmin } from './RequireAdmin';
 const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
   ['transcript', 'Transcript'],
   ['degree-progress', 'Degree progress'],
-  ['groups', 'Study groups'],
 ];
 
 export const router = createBrowserRouter([
@@ -52,6 +51,8 @@ export const router = createBrowserRouter([
       { path: 'feedback', lazy: () => import('../routes/FeedbackRoute') },
       // Past-papers library (#440) — auth-gated browse/upload over the Worker.
       { path: 'papers', lazy: () => import('../routes/PapersRoute') },
+      // Study Group Finder (#443) — auth-gated board over Firestore.
+      { path: 'groups', lazy: () => import('../routes/GroupsRoute') },
       ...PLACEHOLDERS.map(([path, title]) => ({
         path,
         element: <RoutePlaceholder title={title} />,
