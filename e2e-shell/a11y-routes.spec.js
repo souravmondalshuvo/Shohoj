@@ -335,3 +335,35 @@ test('@a11y Papers route (library + upload form over stub seams) has no serious/
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Groups route (board + create form + roster over stub seams) has no serious/critical violations', async ({ page }) => {
+  // Same seams as groups.spec.js; scan with the create form open and a roster
+  // expanded — the interactive worst case (#443).
+  await page.addInitScript(() => {
+    const now = Date.now();
+    window.__shohojGroupsIdentity = { uid: 'u_me', email: 'me@g.bracu.ac.bd' };
+    window.__shohojGroupsRepo = {
+      async listGroups() {
+        return [
+          { id: 'g1', courseCode: 'CSE220', title: 'Algo midterm grind', description: 'DP + graphs', mode: 'in-person', schedule: 'Sun 4pm', contactLink: 'https://m.me/x', capacity: 6, creatorUid: 'u_other', createdAtMs: now - 3_600_000 },
+          { id: 'g2', courseCode: 'CSE110', title: 'Recursion help desk', mode: 'online', contactLink: 'https://discord.gg/rec', capacity: 10, creatorUid: 'u_me', createdAtMs: now - 60_000 },
+        ];
+      },
+      async listMyMemberships() { return [{ groupId: 'g2' }]; },
+      async listMembers() { return [{ uid: 'u_me', email: 'me@g.bracu.ac.bd' }]; },
+      async create() { return 'x'; },
+      async join() {},
+      async leave() {},
+      async remove() {},
+      async report() {},
+    };
+  });
+  await page.goto('/groups', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('groups-list')).toBeVisible();
+  await page.getByTestId('groups-create-toggle').click();
+  await expect(page.getByTestId('groups-form')).toBeVisible();
+  await page.getByTestId('groups-roster-toggle-g2').click();
+  await expect(page.getByTestId('groups-roster-g2')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
