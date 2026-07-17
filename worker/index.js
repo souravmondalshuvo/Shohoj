@@ -14,6 +14,11 @@
 //                                 canonical sha256(uid|initials|course) ID
 //                                 via a service-account write — clients are
 //                                 denied direct writes by the rules
+//   POST   /api/assistant         Shohoj Assistant chat turn (#435): verifies
+//                                 the caller's token, then runs a Claude
+//                                 tool-use loop whose read-only tools are
+//                                 scoped server-side to the caller's own
+//                                 users/{uid} doc + the public seat feed
 //
 // Bindings (configured in wrangler.toml)
 //   PAPERS_BUCKET         R2 bucket binding
@@ -21,6 +26,7 @@
 //   ALLOWED_ORIGINS       comma-separated CORS origins
 //   ADMIN_EMAIL/etc.      optional, for upload notifications
 //   PAPERS_RATE_LIMIT     Cloudflare Rate Limiting binding (per-UID)
+//   ASSISTANT_RATE_LIMIT  Cloudflare Rate Limiting binding (per-UID, /api/assistant)
 //
 // Secrets (set with `wrangler secret put`)
 //   RESEND_API_KEY          for upload notifications
@@ -28,8 +34,16 @@
 //                           OAuth2 access tokens that authorize the
 //                           Firestore REST writes for /upload metadata and
 //                           /reviews
+//   ANTHROPIC_API_KEY       Claude API key for /api/assistant — lives only
+//                           here, never shipped to the client
 
+import Anthropic from '@anthropic-ai/sdk';
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
+import {
+  loadSeatIndexFromFeed,
+  runAssistantLoop,
+  validateAssistantMessages,
+} from './assistant.js';
 
 const BRACU_EMAIL_RE      = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES    = 10 * 1024 * 1024;
@@ -369,10 +383,10 @@ async function sha256Hex(input) {
 // Cloudflare's Workers Rate Limiting binding (PAPERS_RATE_LIMIT) is keyed on
 // any string we pass. We key on the Firebase UID so abuse is bounded per
 // account, not per IP. The limits are configured in wrangler.toml.
-async function rateLimit(env, uid, namespace) {
-  if (!env.PAPERS_RATE_LIMIT || typeof env.PAPERS_RATE_LIMIT.limit !== 'function') return true;
+async function rateLimit(env, uid, namespace, binding = env.PAPERS_RATE_LIMIT) {
+  if (!binding || typeof binding.limit !== 'function') return true;
   try {
-    const { success } = await env.PAPERS_RATE_LIMIT.limit({ key: `${namespace}:${uid}` });
+    const { success } = await binding.limit({ key: `${namespace}:${uid}` });
     return success;
   } catch (e) {
     console.warn('rate-limit check failed; failing open:', e?.message || e);
@@ -915,6 +929,68 @@ export function seatAlertEmailConfig(env) {
   };
 }
 
+// ── Shohoj Assistant (#435) ─────────────────────────────────────────────────
+// Chat turn for the in-app assistant. The security boundary lives entirely in
+// this handler: the uid comes ONLY from the verified Firebase ID token, and
+// the tool loaders below close over that uid — the model (and the client)
+// never supply a user identifier, so a prompt-injected tool call cannot be
+// redirected at another student's document.
+async function handleAssistant(request, env, origin) {
+  const originCheck = requireBrowserOriginAllowed(request, env, origin);
+  if (originCheck) return originCheck;
+
+  const { claims } = await readAuth(request, env); // throws AuthError → 401
+  const uid = safePathSegment(claims?.user_id || claims?.sub);
+  if (!uid) throw new AuthError('Token carries no uid');
+
+  if (!(await rateLimit(env, uid, 'assistant', env.ASSISTANT_RATE_LIMIT))) {
+    return jsonResponse({ error: 'Too many requests' }, { status: 429 }, env, origin);
+  }
+  if (!env.ANTHROPIC_API_KEY) {
+    return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON body' }, { status: 400 }, env, origin);
+  }
+  const messages = validateAssistantMessages(body?.messages);
+  if (!messages) {
+    return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 }, env, origin);
+  }
+
+  // Capability-style loaders: the uid is interpolated into the Firestore path
+  // HERE, server-side. assistant.js never sees a uid at all.
+  const ctx = {
+    loadUserSnapshot: async () => {
+      const saToken = await getServiceAccountAccessToken(env);
+      const fields = await firestoreGetFields(env, saToken, `users/${uid}`);
+      if (!fields || typeof fields.data !== 'string') return null;
+      try {
+        return JSON.parse(fields.data);
+      } catch {
+        return null;
+      }
+    },
+    loadSeatIndex: () => loadSeatIndexFromFeed(SEAT_FEED_URL),
+  };
+
+  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1 });
+  try {
+    const reply = await runAssistantLoop({ anthropic, messages, ctx });
+    return jsonResponse({ reply }, { status: 200 }, env, origin);
+  } catch (e) {
+    console.error(JSON.stringify({
+      level: 'error',
+      event: 'assistant_error',
+      errorMessage: e?.message || String(e),
+    }));
+    return jsonResponse({ error: 'assistant_unavailable' }, { status: 502 }, env, origin);
+  }
+}
+
 async function resendSeatAlert(env, to, subject, html) {
   const cfg = seatAlertEmailConfig(env);
   if (!cfg.ok) return false;
@@ -1165,6 +1241,7 @@ export default {
       if (request.method === 'GET'    && url.pathname === '/download') return await handleDownload(request, env, origin);
       if (request.method === 'DELETE' && url.pathname === '/file')     return await handleDelete(request, env, origin);
       if (request.method === 'POST'   && url.pathname === '/reviews')  return await handleReview(request, env, origin);
+      if (request.method === 'POST'   && url.pathname === '/api/assistant') return await handleAssistant(request, env, origin);
       return jsonResponse({ error: 'Not found' }, { status: 404, headers: { 'X-Request-Id': requestId } }, env, origin);
     } catch (e) {
       const isAuthErr = e instanceof AuthError;
