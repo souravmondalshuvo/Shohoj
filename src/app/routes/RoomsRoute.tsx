@@ -180,7 +180,7 @@ function RoomWeekDialog({
                   {!hasClasses ? (
                     <li className="rooms-seg rooms-seg--none">No class data</li>
                   ) : (
-                    segs.map((s) => {
+                    segs.map((s, i) => {
                       const cls = !s.busy
                         ? 'rooms-seg rooms-seg--free'
                         : s.lab
@@ -190,7 +190,7 @@ function RoomWeekDialog({
                         ? 'free'
                         : `${s.sectionName ? `${s.courseCode} Section ${s.sectionName}` : s.courseCode}${s.lab ? ' · lab' : ''}`;
                       return (
-                        <li key={`${s.startMin}-${s.busy ? 'b' : 'f'}`} className={cls}>
+                        <li key={i} className={cls}>
                           <span className="rooms-seg-time">
                             {fmt12(s.startMin)} – {fmt12(s.endMin)}
                           </span>
