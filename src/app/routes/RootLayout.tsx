@@ -26,6 +26,7 @@ import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
 import { anonymousAuthSource, type AuthSource } from '../../platform/auth/authSnapshot';
+import { AssistantLauncher } from '../../features/assistant/AssistantDrawer';
 import { FacultyReviewsProvider } from '../../features/calculator/FacultyReviewsProvider';
 import { createFirebaseAuthSource } from '../../platform/auth/firebaseAuthSource';
 
@@ -171,6 +172,8 @@ function ShellChrome() {
         <Outlet />
       </main>
       <NotificationViewport />
+      {/* Shohoj Assistant (#435): renders only signed-in on a cloud shell. */}
+      <AssistantLauncher workerUrl={config?.papersWorkerUrl} />
     </>
   );
 
