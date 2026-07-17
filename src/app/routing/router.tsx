@@ -18,7 +18,6 @@ import { RequireAdmin } from './RequireAdmin';
 // routes (Home, Calculator) lazy-load. Each swaps to its own lazy module as it
 // migrates in Phase 5/6.
 const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
-  ['transcript', 'Transcript'],
   ['degree-progress', 'Degree progress'],
 ];
 
@@ -30,6 +29,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, lazy: () => import('../routes/HomeRoute') },
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
+      // Transcript view (#445) — shares the calculator's persisted state.
+      { path: 'transcript', lazy: () => import('../routes/TranscriptRoute') },
       { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
       { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
       // Campus map (#370): Three.js stays out of the entry chunk via `lazy`.
