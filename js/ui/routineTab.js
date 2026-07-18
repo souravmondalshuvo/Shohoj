@@ -800,15 +800,13 @@ function _gridHTML(routine, clashMap) {
   }).join('');
 
   // Shade every day *except* today, so the current day reads as the bright one
-  // without painting an accent bar on it. Renders nothing when today isn't among
-  // the displayed days (e.g. weekend or a day with no classes in range), leaving
-  // all columns equally lit. Screen-only — the PNG export is a static artifact
-  // where the viewer's "today" no longer matches.
+  // without painting an accent bar on it. When today isn't among the displayed
+  // days (e.g. an off-day with no classes), every column gets the wash — a fully
+  // lit grid would read as "class today". Screen-only — the PNG export is a
+  // static artifact where the viewer's "today" no longer matches.
   const todayIdx = layout.days.indexOf(today);
-  const dimCols = todayIdx >= 0
-    ? layout.days.map((d, i) => i === todayIdx ? ''
-        : `<div class="routine-grid-dim-col" style="grid-column: ${i + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`).join('')
-    : '';
+  const dimCols = layout.days.map((d, i) => i === todayIdx ? ''
+      : `<div class="routine-grid-dim-col" style="grid-column: ${i + 2}; grid-row: 1 / -1;" aria-hidden="true"></div>`).join('');
 
   // Time labels every 2 rows (= every hour).
   const timeLabels = [];
