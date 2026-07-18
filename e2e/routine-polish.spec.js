@@ -186,3 +186,31 @@ test('Hide clashes removes clashing alternatives from the list', async ({ page }
   await expect(mat.locator('.routine-section-row[data-sid="9102"]')).toBeVisible();
   await expect(mat.locator('.routine-section-hidden')).toContainText('1 clashing section hidden');
 });
+
+// The dim overlay marks "today" in the weekly grid. CSE110 Section 01 meets
+// Sun + Tue, so the grid shows exactly those two day columns.
+test('on a class day, only today\'s column stays bright', async ({ page }) => {
+  await boot(page);
+  await page.clock.setFixedTime(new Date('2026-07-19T10:00:00')); // a Sunday
+  await addCourse(page, 'CSE110');
+  await page.locator('.routine-section-row[data-sid="9001"]').click();
+
+  const grid = page.locator('.routine-grid');
+  await expect(grid.locator('.routine-grid-day-header')).toHaveCount(2);
+  await expect(grid.locator('.routine-grid-day-header--today')).toHaveText('Sun');
+  // Tue gets the wash; Sun (today) stays bright.
+  await expect(grid.locator('.routine-grid-dim-col')).toHaveCount(1);
+});
+
+test('on an off-day, every column is dimmed so it doesn\'t read as "class today"', async ({ page }) => {
+  await boot(page);
+  await page.clock.setFixedTime(new Date('2026-07-18T10:00:00')); // a Saturday — no classes
+  await addCourse(page, 'CSE110');
+  await page.locator('.routine-section-row[data-sid="9001"]').click();
+
+  const grid = page.locator('.routine-grid');
+  await expect(grid.locator('.routine-grid-day-header')).toHaveCount(2);
+  await expect(grid.locator('.routine-grid-day-header--today')).toHaveCount(0);
+  // No bright column: both Sun and Tue are washed.
+  await expect(grid.locator('.routine-grid-dim-col')).toHaveCount(2);
+});
