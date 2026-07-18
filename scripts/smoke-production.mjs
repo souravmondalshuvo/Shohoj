@@ -71,7 +71,7 @@ async function waitForPropagation() {
 }
 
 // ---- Step 2: check every critical route returns real HTML ----
-const ROUTES = ['', 'admin/', 'profile/', 'campus/', 'bus/', 'lost-found/'];
+const ROUTES = ['', 'admin/', 'profile/', 'campus/', 'bus/', 'lost-found/', 'app/'];
 
 async function checkRoutes(failures) {
   for (const route of ROUTES) {
