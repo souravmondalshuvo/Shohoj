@@ -1001,6 +1001,24 @@
          by the vite.shell.config.js plugin; a comment stub when not generated,
          so the shell degrades to the offline capability set. Loaded before the
          module entry so the globals exist when providers read them. -->
+    <script>
+      // Deep-link restore for static hosting (#449): GitHub Pages has no SPA
+      // fallback, so 404.html redirects /Shohoj/app/<route> here as ?/<route>
+      // ('&' escaped as ~and~). Decode it back into the real pathname before
+      // the router module boots. No-op when the query doesn't start with ?/.
+      (function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&');
+            })
+            .join('?');
+          window.history.replaceState(null, '', l.pathname + decoded.slice(1) + l.hash);
+        }
+      })(window.location);
+    </script>
     <script src="/runtime-config.js"></script>
     <script type="module" src="./shell.tsx"></script>
   </body>
