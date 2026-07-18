@@ -5976,7 +5976,8 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 [data-theme="light"] .routine-grid-day-header--today { color: var(--ink-blue); }
 /* Every day except today gets a soft dark wash, so the current day reads as the
-   bright one with no accent bar of its own. Sits above the blocks (z-index 1)
+   bright one with no accent bar of its own; on an off-day with no classes every
+   column is washed, so a fully lit grid never fakes a class day. Sits above the blocks (z-index 1)
    to gently shade them, but below the now-line (3); hovering a block lifts it to
    z-index 2, restoring full colour. Pointer-events off so clicks pass through. */
 .routine-grid-dim-col {
