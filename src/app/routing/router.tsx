@@ -10,16 +10,8 @@ import { createBrowserRouter } from 'react-router';
 
 import { RootLayout } from '../routes/RootLayout';
 import { RouteError } from '../routes/RouteError';
-import { RoutePlaceholder } from '../routes/RoutePlaceholder';
 import { AdminRoute } from '../routes/AdminRoute';
 import { RequireAdmin } from './RequireAdmin';
-
-// Routes whose feature hasn't migrated yet share the placeholder element; real
-// routes (Home, Calculator) lazy-load. Each swaps to its own lazy module as it
-// migrates in Phase 5/6.
-const PLACEHOLDERS: ReadonlyArray<readonly [string, string]> = [
-  ['degree-progress', 'Degree progress'],
-];
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +23,8 @@ export const router = createBrowserRouter([
       { path: 'calculator', lazy: () => import('../routes/CalculatorRoute') },
       // Transcript view (#445) — shares the calculator's persisted state.
       { path: 'transcript', lazy: () => import('../routes/TranscriptRoute') },
+      // Degree tracker (#450) — read-only view over the same shared state.
+      { path: 'degree-progress', lazy: () => import('../routes/DegreeRoute') },
       { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
       { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
       // Campus map (#370): Three.js stays out of the entry chunk via `lazy`.
@@ -54,10 +48,6 @@ export const router = createBrowserRouter([
       { path: 'papers', lazy: () => import('../routes/PapersRoute') },
       // Study Group Finder (#443) — auth-gated board over Firestore.
       { path: 'groups', lazy: () => import('../routes/GroupsRoute') },
-      ...PLACEHOLDERS.map(([path, title]) => ({
-        path,
-        element: <RoutePlaceholder title={title} />,
-      })),
       {
         path: 'admin',
         element: (
