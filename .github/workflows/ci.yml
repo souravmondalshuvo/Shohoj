@@ -338,6 +338,12 @@ jobs:
       - name: Build standalone pages
         run: npm run build:pages
 
+      # Shell beta (#449): the React shell ships as an opt-in beta under /app/
+      # until the cutover. It builds AFTER the runtime config is generated, so
+      # the real config gets bundled (same file the legacy page loads).
+      - name: Build shell beta (served under /app/)
+        run: SHELL_BASE=/Shohoj/app/ npm run build:shell
+
       # test:bundle launches headless Chromium to load the built bundle, so the
       # browser must be present here (the validation job installs it separately).
       - name: Install Playwright browser (for the bundle smoke test)
@@ -352,12 +358,17 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin _deploy/profile
+          mkdir -p _deploy/admin _deploy/profile _deploy/app
           cp shohoj.html  _deploy/index.html
           cp admin.html   _deploy/admin/index.html
           cp profile.html _deploy/profile/index.html
+          # Custom 404: SPA fallback for /app/ deep links + plain not-found
+          # for everything else (#449).
+          cp 404.html     _deploy/404.html
           # Standalone pages keep their directory layout and share assets/.
           cp -R dist-pages/. _deploy/
+          # Shell beta (#449) — opt-in at /app/, legacy stays the default.
+          cp -R dist-shell/. _deploy/app/
 
       - name: Generate version.json (build metadata)
         env:
