@@ -69,4 +69,9 @@ export const router = createBrowserRouter([
       { path: '*', lazy: () => import('../routes/NotFoundRoute') },
     ],
   },
-]);
+], {
+  // Follow the Vite base so the shell also works from a subpath deploy — the
+  // /app/ beta on GitHub Pages builds with SHELL_BASE=/Shohoj/app/ (#449).
+  // BASE_URL is '/' in dev/e2e, which leaves routing exactly as before.
+  basename: import.meta.env.BASE_URL,
+});
