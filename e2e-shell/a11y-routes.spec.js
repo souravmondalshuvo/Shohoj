@@ -391,3 +391,26 @@ test('@a11y Transcript route (stats + tables over seeded state) has no serious/c
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
+
+test('@a11y Degree route (tracker over seeded state) has no serious/critical violations', async ({ page }) => {
+  // Seeded through the shared calculator storage key (#450).
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'shohoj_cgpa_v1',
+      JSON.stringify({
+        semesters: [
+          { id: 1, summary: true, courses: [], summaryCGPA: 3.42, summaryCredits: 60, summaryAttempted: 63, summarySemesters: 5 },
+          { id: 2, name: 'Spring 2026', courses: [{ name: 'CSE220 - Data Structures', credits: 3, grade: 'A', gradePoint: 4 }] },
+        ],
+        startSeason: 'Spring',
+        startYear: '2024',
+        currentDept: 'CSE',
+        planCourses: [],
+      }),
+    );
+  });
+  await page.goto('/degree-progress', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('degree-tracker')).toBeVisible();
+  const blocking = await scanPage(page);
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+});
