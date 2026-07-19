@@ -213,6 +213,18 @@
     .nav-right { display: flex; align-items: center; gap: 1rem; }
     .nav-link { font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; transition: color 0.2s; }
     .nav-link:hover { color: var(--green); }
+    /* Shell-beta pill (#453) — its own class, not .nav-link, so the mobile
+       rule that hides plain nav links leaves it visible. */
+    .nav-beta {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 13px; border-radius: 100px;
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      background: rgba(46,204,113,0.12); color: var(--ink-green);
+      border: 1px solid rgba(46,204,113,0.38);
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .nav-beta:hover { background: rgba(46,204,113,0.22); }
 
     .theme-toggle {
       width: 56px; height: 28px;
@@ -759,6 +771,7 @@ h1[data-reveal-hero].visible {
       nav { padding: 0 1rem; height: 56px; }
       .nav-logo-text { font-size: 15px; } .nav-logo-mark { width: 28px; height: 28px; font-size: 12px; }
       .nav-right .nav-link { display: none !important; } .theme-toggle { width: 46px; height: 24px; }
+      .nav-beta { font-size: 12px; padding: 4px 10px; }
       .toggle-pill { width: 18px; height: 18px; font-size: 11px; }
       [data-theme="dark"] .toggle-pill { transform: translateX(22px); }
       .hero { padding: 5rem 1.2rem 3rem; min-height: 100svh; }
