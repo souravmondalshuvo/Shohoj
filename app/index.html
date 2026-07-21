@@ -3,6 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Content-Security-Policy (#460 follow-up). Mirrors the policy the legacy
+         build3.py page ships, adapted for the shell: same Google/Firebase auth +
+         App Check origins, the papers Worker, the CONNECT feed, and cdnjs for the
+         on-demand pdf.js / jsPDF loaders (which also need blob: workers).
+         The placeholder token in script-src below is replaced at build time with
+         the sha256 of every inline script block, by the shohoj:shell-csp-hashes
+         plugin, so no 'unsafe-inline' is needed in script-src (style-src keeps it
+         — React and the route CSS set inline styles). Do NOT repeat that token
+         anywhere else in this file: the plugin asserts it appears exactly once. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://apis.google.com https://accounts.google.com __CSP_SCRIPT_HASHES__; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none'"
+    />
     <title>Shohoj</title>
     <script>
       // Apply the saved theme before first paint (no flash). Default dark, the
