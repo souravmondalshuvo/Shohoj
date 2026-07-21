@@ -37,7 +37,7 @@
     "config:local": "node scripts/generate_runtime_config.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
