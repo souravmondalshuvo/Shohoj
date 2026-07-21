@@ -75,10 +75,37 @@ function shellRuntimeConfig() {
 // the FINAL html (order 'post', so Vite's injected tags are already in). In dev
 // the meta is dropped entirely — @vitejs/plugin-react's refresh preamble and HMR
 // would otherwise need their own hashes on every edit.
-const INLINE_SCRIPT_RE = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
 const CSP_META_RE = /\s*<meta\s+http-equiv="Content-Security-Policy"[\s\S]*?\/>/i;
 const CSP_PLACEHOLDER = '__CSP_SCRIPT_HASHES__';
-const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+
+// Collects the body of every inline script, walking the document rather than
+// regex-matching it. Comments are skipped as regions instead of being stripped
+// first: a regex strip is single-pass, so nested markers can leave a `<!--`
+// behind (CodeQL's incomplete-multi-character-sanitization), and a comment that
+// merely mentions a script tag would open a bogus match that swallows the next
+// real block — shipping that script unhashed, i.e. blocked at runtime.
+function inlineScriptBodies(html) {
+  const bodies = [];
+  for (let i = 0; i < html.length; ) {
+    if (html.startsWith('<!--', i)) {
+      const end = html.indexOf('-->', i + 4);
+      i = end === -1 ? html.length : end + 3;
+    } else if (html.startsWith('<script', i)) {
+      const openEnd = html.indexOf('>', i);
+      if (openEnd === -1) break;
+      const close = html.indexOf('</script>', openEnd + 1);
+      if (close === -1) break;
+      // Only inline blocks carry hashable content; external ones have src=.
+      if (!/\bsrc\s*=/i.test(html.slice(i, openEnd + 1))) {
+        bodies.push(html.slice(openEnd + 1, close));
+      }
+      i = close + '</script>'.length;
+    } else {
+      i += 1;
+    }
+  }
+  return bodies;
+}
 
 function shellCspHashes() {
   let isBuild = false;
@@ -100,13 +127,9 @@ function shellCspHashes() {
             `shohoj:shell-csp-hashes — expected exactly 1 ${CSP_PLACEHOLDER} in index.html, found ${occurrences}`,
           );
         }
-        // Scan with comments stripped: a comment mentioning a script tag would
-        // otherwise open a bogus match that swallows the next real block, and the
-        // genuine script would ship unhashed (i.e. blocked at runtime).
-        const hashes = [];
-        for (const [, body] of html.replace(HTML_COMMENT_RE, '').matchAll(INLINE_SCRIPT_RE)) {
-          hashes.push(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`);
-        }
+        const hashes = inlineScriptBodies(html).map(
+          (body) => `'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`,
+        );
         if (!hashes.length) throw new Error('shohoj:shell-csp-hashes — no inline scripts found to hash');
         return html.replace(CSP_PLACEHOLDER, hashes.join(' '));
       },
