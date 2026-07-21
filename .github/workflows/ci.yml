@@ -56,6 +56,10 @@ jobs:
       # ESLint is correctness-only (see eslint.config.js): errors fail the job,
       # warnings are printed but don't block.
       - run: npm run lint
+      # Prettier enforces formatting on the maintained typed surface only (see
+      # .prettierignore); generated bundles, vendored files and the retiring
+      # legacy js/ app are out of scope.
+      - run: npm run format:check
 
   typecheck:
     name: Typecheck
