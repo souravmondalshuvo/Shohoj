@@ -27,6 +27,9 @@ export const router = createBrowserRouter([
       { path: 'degree-progress', lazy: () => import('../routes/DegreeRoute') },
       { path: 'planner', lazy: () => import('../routes/PlannerRoute') },
       { path: 'reviews', lazy: () => import('../routes/ReviewsRoute') },
+      // Course Difficulty Map (#453 parity port) — aggregates review difficulty
+      // + workload per course over the same recent-reviews feed as /reviews.
+      { path: 'difficulty', lazy: () => import('../routes/DifficultyRoute') },
       // Campus map (#370): Three.js stays out of the entry chunk via `lazy`.
       { path: 'campus', lazy: () => import('../routes/CampusRoute') },
       // Weekly routine builder (#397) over the live CONNECT feed.
