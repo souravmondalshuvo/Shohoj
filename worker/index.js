@@ -44,6 +44,7 @@ import {
   runAssistantLoop,
   validateAssistantMessages,
 } from './assistant.js';
+import { isKnownCourse } from './catalog.generated.js';
 
 const BRACU_EMAIL_RE      = /^[^@]+@g\.bracu\.ac\.bd$/;
 const MAX_UPLOAD_BYTES    = 10 * 1024 * 1024;
@@ -59,6 +60,8 @@ const REVIEW_INITIALS_RE  = /^[A-Z]{2,6}$/;
 const REVIEW_COURSE_RE    = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const REVIEW_TYPE_KEYS    = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 const PAPER_TYPES         = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
+const MAX_REVIEW_SEMESTER_CHARS = 40;
+const MAX_REVIEW_TEXT_CHARS     = 500;
 
 let _jwks = null;
 let _jwksSource = null;
@@ -154,8 +157,18 @@ export function isValidStoragePath(p) {
     && (OWNED_STORAGE_PATH_RE.test(p) || LEGACY_STORAGE_PATH_RE.test(p));
 }
 
+// Course codes are validated for EXISTENCE, not merely shape. The regex alone
+// accepts "ZZZ999", which would let a caller mint review rows and R2 object
+// prefixes for courses that do not exist. `isKnownCourse` checks the generated
+// catalogue (worker/catalog.generated.js, from js/core/catalog.js) — a
+// server-controlled list the client cannot influence.
+//
+// The shape test is kept as a cheap pre-filter so a junk string never reaches
+// the Set lookup, and so the error stays the same for malformed input.
 export function isValidCourseCode(c) {
-  return typeof c === 'string' && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c);
+  return typeof c === 'string'
+    && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c)
+    && isKnownCourse(c);
 }
 
 export function safeFilename(name) {
@@ -383,15 +396,72 @@ async function sha256Hex(input) {
 // Cloudflare's Workers Rate Limiting binding (PAPERS_RATE_LIMIT) is keyed on
 // any string we pass. We key on the Firebase UID so abuse is bounded per
 // account, not per IP. The limits are configured in wrangler.toml.
-async function rateLimit(env, uid, namespace, binding = env.PAPERS_RATE_LIMIT) {
-  if (!binding || typeof binding.limit !== 'function') return true;
+//
+// Failure policy (deliberate, per-endpoint — see docs/SECURITY.md):
+//
+//   `failClosed: true`  — used by /api/assistant. That endpoint spends real
+//     money per call (Anthropic tokens), so a limiter that *throws* must deny
+//     rather than hand out unmetered paid capacity. A throwing limiter is a
+//     runtime condition an attacker can plausibly induce by hammering it, so
+//     it is the exploitable case and it fails closed.
+//
+//   `failClosed: false` — used by /upload and /reviews. Those are already
+//     gated behind a verified BRACU Google account and hard size/shape limits,
+//     they cost us storage rather than metered spend, and denying them during
+//     a limiter blip breaks legitimate coursework uploads. They fail open and
+//     log.
+//
+// A *missing* binding is treated separately from a *throwing* one: it is a
+// static deploy-time misconfiguration, so it is allowed-with-a-loud-log here
+// and reported by `readinessReport()` (surfaced on GET /ready) where a deploy
+// preflight can catch it deterministically. Failing closed on a missing
+// binding would instead turn one bad deploy into a silent total outage.
+async function rateLimit(env, uid, namespace, options = {}) {
+  const { binding = env.PAPERS_RATE_LIMIT, failClosed = false } = options;
+  if (!binding || typeof binding.limit !== 'function') {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      event: 'rate_limit_binding_missing',
+      namespace,
+    }));
+    return true;
+  }
   try {
     const { success } = await binding.limit({ key: `${namespace}:${uid}` });
     return success;
   } catch (e) {
-    console.warn('rate-limit check failed; failing open:', e?.message || e);
-    return true;
+    // Log only safe operational metadata — never the uid or the key.
+    console.error(JSON.stringify({
+      level: 'error',
+      event: 'rate_limit_check_failed',
+      namespace,
+      policy: failClosed ? 'fail_closed' : 'fail_open',
+      errorMessage: e?.message || String(e),
+    }));
+    return !failClosed;
   }
+}
+
+// ── Readiness / capabilities ────────────────────────────────────────────────
+// Liveness (`/health`) answers "is the Worker running". Readiness answers "is
+// each feature's backing dependency actually configured", so the UI can hide a
+// feature it cannot deliver (#455) and a deploy preflight can fail loudly.
+//
+// SECURITY: booleans only. This endpoint is unauthenticated, so it must never
+// leak key material, prefixes, lengths, provider names, or account identifiers
+// — only whether a given dependency is present.
+export function readinessReport(env) {
+  const e = env || {};
+  const emailCfg = seatAlertEmailConfig(e);
+  return {
+    assistant: !!e.ANTHROPIC_API_KEY,
+    papers: !!e.SERVICE_ACCOUNT_JSON && !!e.PAPERS_BUCKET,
+    email: emailCfg.ok,
+    rateLimits: {
+      papers: typeof e.PAPERS_RATE_LIMIT?.limit === 'function',
+      assistant: typeof e.ASSISTANT_RATE_LIMIT?.limit === 'function',
+    },
+  };
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -409,7 +479,7 @@ async function handleUpload(request, env, origin, ctx) {
     return jsonResponse({ error: 'Invalid auth token' }, { status: 401 }, env, origin);
   }
 
-  if (!(await rateLimit(env, ownerSegment, 'upload'))) {
+  if (!(await rateLimit(env, ownerSegment, 'upload', { failClosed: false }))) {
     return jsonResponse({ error: 'Rate limit exceeded' }, { status: 429 }, env, origin);
   }
 
@@ -750,7 +820,7 @@ async function handleReview(request, env, origin) {
   const uid = claims?.user_id || claims?.sub;
   if (!uid) return jsonResponse({ error: 'Invalid auth token' }, { status: 401 }, env, origin);
 
-  if (!(await rateLimit(env, uid, 'review'))) {
+  if (!(await rateLimit(env, uid, 'review', { failClosed: false }))) {
     return jsonResponse({ error: 'Rate limit exceeded' }, { status: 429 }, env, origin);
   }
 
@@ -811,8 +881,18 @@ export function validateReviewPayload(p) {
   if (!p || typeof p !== 'object') return { error: 'Invalid payload' };
   const facultyInitials = String(p.facultyInitials || '').toUpperCase().trim();
   const courseCode      = String(p.courseCode || '').toUpperCase().trim();
+  // Faculty initials are shape-checked only, deliberately. The authoritative
+  // set of teaching faculty is the live CONNECT feed, not anything in this
+  // repo: data/faculty_profiles.jsonl is an explicitly partial seed (116 rows
+  // against a far larger faculty body — see src/core/faculty.ts), so gating on
+  // it would reject legitimate reviews for most professors, and gating on the
+  // feed would reject reviews of faculty who no longer teach the course.
+  // Tracked as a known limitation in docs/SECURITY.md rather than silently
+  // presented as an existence check.
   if (!REVIEW_INITIALS_RE.test(facultyInitials)) return { error: 'Invalid faculty initials' };
+  // Course codes, by contrast, ARE checked against the authoritative catalogue.
   if (!REVIEW_COURSE_RE.test(courseCode))        return { error: 'Invalid course code' };
+  if (!isKnownCourse(courseCode))                return { error: 'Unknown course code' };
 
   const r = p.ratings;
   if (!r || typeof r !== 'object') return { error: 'Missing ratings' };
@@ -823,10 +903,16 @@ export function validateReviewPayload(p) {
     ratings[k] = v;
   }
 
-  const semester = p.semester != null ? String(p.semester).slice(0, 40) : '';
-  const text     = p.text     != null ? String(p.text).slice(0, 500)    : '';
-  if (semester && semester.length > 40) return { error: 'Semester too long' };
-  if (text && text.length > 500)        return { error: 'Review text too long' };
+  // Length is validated against the ORIGINAL string, before any truncation.
+  // The previous order sliced first and then compared the already-clamped
+  // value against the same bound, so both checks were unreachable and an
+  // over-long review was silently truncated instead of rejected. Rejecting is
+  // the correct behaviour: silently storing a different review than the one
+  // the student wrote is worse than telling them it was too long.
+  const semester = p.semester != null ? String(p.semester) : '';
+  const text     = p.text     != null ? String(p.text)     : '';
+  if (semester.length > MAX_REVIEW_SEMESTER_CHARS) return { error: 'Semester too long' };
+  if (text.length > MAX_REVIEW_TEXT_CHARS)         return { error: 'Review text too long' };
 
   return { value: { facultyInitials, courseCode, ratings, semester, text } };
 }
@@ -943,11 +1029,19 @@ async function handleAssistant(request, env, origin) {
   const uid = safePathSegment(claims?.user_id || claims?.sub);
   if (!uid) throw new AuthError('Token carries no uid');
 
-  if (!(await rateLimit(env, uid, 'assistant', env.ASSISTANT_RATE_LIMIT))) {
-    return jsonResponse({ error: 'Too many requests' }, { status: 429 }, env, origin);
-  }
+  // Configuration check BEFORE the rate limit: when the assistant is not
+  // configured at all (#455) every turn is going to 503 anyway, so burning the
+  // caller's rate-limit quota on it would be pure punishment.
   if (!env.ANTHROPIC_API_KEY) {
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
+  }
+  // Paid endpoint: a throwing limiter denies rather than granting unmetered
+  // Anthropic spend. See the rateLimit() policy note.
+  if (!(await rateLimit(env, uid, 'assistant', {
+    binding: env.ASSISTANT_RATE_LIMIT,
+    failClosed: true,
+  }))) {
+    return jsonResponse({ error: 'Too many requests' }, { status: 429 }, env, origin);
   }
 
   let body;
@@ -1232,6 +1326,19 @@ export default {
       if (request.method === 'GET' && url.pathname === '/health') {
         return jsonResponse(
           { status: 'ok', service: 'shohoj-papers', time: new Date().toISOString() },
+          { status: 200, headers: { 'X-Request-Id': requestId } },
+          env,
+          origin,
+        );
+      }
+      // Unauthenticated readiness probe. Reports, as booleans only, whether
+      // each feature's backing dependency is configured — never any key
+      // material. The shell calls this to avoid offering a feature that would
+      // only fail (#455); the deploy preflight calls it to fail loudly.
+      if (request.method === 'GET' && url.pathname === '/ready') {
+        const capabilities = readinessReport(env);
+        return jsonResponse(
+          { status: 'ok', service: 'shohoj-papers', time: new Date().toISOString(), capabilities },
           { status: 200, headers: { 'X-Request-Id': requestId } },
           env,
           origin,
