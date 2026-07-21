@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {
   ASSISTANT_MAX_MESSAGES,
   clampTranscript,
+  fetchAssistantAvailability,
   sendAssistantTurn,
 } from '../src/features/assistant/assistantClient.ts';
 
@@ -121,4 +122,76 @@ test('sendAssistantTurn: network failure and malformed success map to unavailabl
   });
   assert.equal(malformed.ok, false);
   assert.equal(malformed.code, 'unavailable');
+});
+
+// ── Readiness probe (#455) ──────────────────────────────────────────────────
+// The Assistant drawer shipped while ANTHROPIC_API_KEY was unset, so the
+// feature was visibly offered and failed on every turn. fetchAssistantAvailability
+// is what lets the launcher refuse to advertise a backend that cannot answer.
+
+test('fetchAssistantAvailability reports ready when the Worker says configured', async () => {
+  const availability = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => jsonResponse({ capabilities: { assistant: true } }),
+  });
+  assert.equal(availability, 'ready');
+});
+
+test('fetchAssistantAvailability reports unconfigured when the Worker says so', async () => {
+  const availability = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => jsonResponse({ capabilities: { assistant: false } }),
+  });
+  assert.equal(availability, 'unconfigured');
+});
+
+test('fetchAssistantAvailability probes /ready without a token', async () => {
+  let seenUrl = '';
+  let seenAuth = null;
+  await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example/',
+    fetchImpl: async (url, init) => {
+      seenUrl = String(url);
+      seenAuth = new Headers(init?.headers).get('Authorization');
+      return jsonResponse({ capabilities: { assistant: true } });
+    },
+  });
+  // Trailing slash on the base URL must not produce a double slash.
+  assert.equal(seenUrl, 'https://worker.example/ready');
+  assert.equal(seenAuth, null, 'readiness is not user-specific — no token is sent');
+});
+
+test('fetchAssistantAvailability is unknown when the probe itself fails', async () => {
+  const network = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => { throw new TypeError('network down'); },
+  });
+  assert.equal(network, 'unknown');
+
+  const server = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => jsonResponse({ error: 'boom' }, 500),
+  });
+  assert.equal(server, 'unknown');
+
+  // A 200 with an unexpected shape must not be read as "ready".
+  const malformed = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => jsonResponse({ capabilities: {} }),
+  });
+  assert.equal(malformed, 'unknown');
+
+  const notJson = await fetchAssistantAvailability({
+    workerUrl: 'https://worker.example',
+    fetchImpl: async () => new Response('nope', { status: 200 }),
+  });
+  assert.equal(notJson, 'unknown');
+});
+
+test('fetchAssistantAvailability is unconfigured with no worker URL', async () => {
+  const availability = await fetchAssistantAvailability({
+    workerUrl: null,
+    fetchImpl: async () => { throw new Error('must not be called'); },
+  });
+  assert.equal(availability, 'unconfigured');
 });
