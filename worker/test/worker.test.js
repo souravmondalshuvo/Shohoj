@@ -19,6 +19,7 @@ import worker, {
   safeFilename,
   sniffMimeFromBytes,
   validateReviewPayload,
+  readinessReport,
   parseFeedSeatMap,
   detectSeatDrops,
   buildSeatAlertEmail,
@@ -128,11 +129,17 @@ async function makeServiceAccountJson() {
 (async function run() {
   console.log('\nWorker pure validators:');
 
-  await test('isValidCourseCode accepts CSE110 / MAT215 / CSE470L', () => {
+  await test('isValidCourseCode accepts real catalogue codes, including labs', () => {
     assert(isValidCourseCode('CSE110'));
     assert(isValidCourseCode('MAT215'));
-    assert(isValidCourseCode('CSE470L'));
     assert(isValidCourseCode('PHY111'));
+    // Suffixed codes are real and must keep working: the catalogue carries 57
+    // of them (ECE/EEE labs, thesis sections). The previous fixture used
+    // "CSE470L", which the shape regex accepts but which is not a BRACU course
+    // — CSE labs are not separately coded. Use codes that actually exist.
+    assert(isValidCourseCode('ECE101L'));
+    assert(isValidCourseCode('EEE101L'));
+    assert(isValidCourseCode('CSE490A'));
   });
 
   await test('isValidCourseCode rejects malformed codes', () => {
@@ -145,6 +152,16 @@ async function makeServiceAccountJson() {
     assert(!isValidCourseCode(null));
     assert(!isValidCourseCode(123));
     assert(!isValidCourseCode('../etc'));
+  });
+
+  await test('isValidCourseCode rejects shape-valid but nonexistent courses', () => {
+    // These all pass /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/ but are not in the catalogue.
+    // Before the catalogue gate these were accepted, letting a caller create R2
+    // prefixes and review rows for courses that do not exist.
+    assert(!isValidCourseCode('ZZZ999'));
+    assert(!isValidCourseCode('CSE999'));
+    assert(!isValidCourseCode('QQQ101'));
+    assert(!isValidCourseCode('AAAA111'));
   });
 
   await test('isValidStoragePath accepts owner-scoped and legacy paper paths', () => {
@@ -296,14 +313,39 @@ async function makeServiceAccountJson() {
     })).error);
   });
 
-  await test('validateReviewPayload truncates long text/semester', () => {
+  // Behaviour change (production-hardening pass): over-long input is REJECTED,
+  // not silently truncated. The old code sliced to the bound and then compared
+  // the already-sliced value against the same bound, so both length checks were
+  // dead code and a 1000-char review was stored as a different 500-char review
+  // than the student wrote.
+  await test('validateReviewPayload rejects over-long text', () => {
+    const r = validateReviewPayload(basePayload({ text: 'x'.repeat(501) }));
+    assert(r.error, 'a 501-char review must be rejected');
+    assertEq(r.error, 'Review text too long');
+  });
+
+  await test('validateReviewPayload rejects over-long semester', () => {
+    const r = validateReviewPayload(basePayload({ semester: 'y'.repeat(41) }));
+    assert(r.error, 'a 41-char semester must be rejected');
+    assertEq(r.error, 'Semester too long');
+  });
+
+  await test('validateReviewPayload accepts text/semester exactly at the bound', () => {
     const r = validateReviewPayload(basePayload({
-      text: 'x'.repeat(1000),
-      semester: 'y'.repeat(80),
+      text: 'x'.repeat(500),
+      semester: 'y'.repeat(40),
     }));
-    assert(!r.error);
-    assertEq(r.value.text.length, 500);
+    assert(!r.error, r.error);
+    assertEq(r.value.text.length, 500, 'boundary value is preserved verbatim');
     assertEq(r.value.semester.length, 40);
+  });
+
+  await test('validateReviewPayload rejects a syntactically valid but nonexistent course', () => {
+    // Shape-valid, catalogue-absent — the case a regex-only check let through.
+    assert(validateReviewPayload(basePayload({ courseCode: 'ZZZ999' })).error);
+    assertEq(validateReviewPayload(basePayload({ courseCode: 'ZZZ999' })).error, 'Unknown course code');
+    assert(validateReviewPayload(basePayload({ courseCode: 'CSE999' })).error);
+    assert(validateReviewPayload(basePayload({ courseCode: 'QQQ101' })).error);
   });
 
   console.log('\nCORS:');
@@ -1437,6 +1479,138 @@ async function makeServiceAccountJson() {
     // And the request surface itself never mentions Bob outside the user's own
     // injected text (which round-trips as chat history, never as a lookup).
     assert(!firestoreUserGets.includes('uid_bob'), 'Bob\'s doc is never requested');
+  });
+
+  console.log('\nReadiness / capabilities (GET /ready):');
+
+  await test('readinessReport reports assistant unconfigured without the key', () => {
+    const r = readinessReport({ ...ENV });
+    assertEq(r.assistant, false);
+  });
+
+  await test('readinessReport reports assistant configured with the key', () => {
+    const r = readinessReport({ ...ENV, ANTHROPIC_API_KEY: 'sk-test' });
+    assertEq(r.assistant, true);
+  });
+
+  await test('readinessReport reports rate-limit binding presence', () => {
+    const without = readinessReport({ ...ENV });
+    assertEq(without.rateLimits.assistant, false);
+    const with_ = readinessReport({
+      ...ENV,
+      ASSISTANT_RATE_LIMIT: { async limit() { return { success: true }; } },
+    });
+    assertEq(with_.rateLimits.assistant, true);
+  });
+
+  await test('/ready is unauthenticated, 200, and leaks no key material', async () => {
+    const secret = 'sk-ant-SUPERSECRETVALUE';
+    const res = await worker.fetch(req('GET', '/ready'), {
+      ...ENV,
+      ANTHROPIC_API_KEY: secret,
+      SERVICE_ACCOUNT_JSON: '{"client_email":"a@b.c","private_key":"PRIVATEKEYMATERIAL"}',
+      RESEND_API_KEY: 're_secret',
+    }, {});
+    assertEq(res.status, 200);
+    const raw = await res.text();
+    // The whole point of this endpoint: booleans only.
+    assert(!raw.includes(secret), 'must not echo the API key');
+    assert(!raw.includes('sk-ant'), 'must not echo a key prefix');
+    assert(!raw.includes('PRIVATEKEYMATERIAL'), 'must not echo service-account key material');
+    assert(!raw.includes('re_secret'), 'must not echo the Resend key');
+    assert(!/\b\d{2,}\b/.test(JSON.stringify(JSON.parse(raw).capabilities)),
+      'capabilities must not carry lengths or other numeric fingerprints');
+    const body = JSON.parse(raw);
+    assertEq(body.capabilities.assistant, true);
+    assert(res.headers.get('X-Request-Id'), 'carries a correlation id');
+  });
+
+  await test('/health stays a lightweight liveness probe (no capabilities)', async () => {
+    const res = await worker.fetch(req('GET', '/health'), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {});
+    assertEq(res.status, 200);
+    const body = await res.json();
+    assertEq(body.status, 'ok');
+    assert(!('capabilities' in body), 'liveness must not take on readiness semantics');
+  });
+
+  console.log('\nRate-limit failure policy:');
+
+  await test('assistant fails CLOSED when the rate-limit binding throws', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), {
+        ...ENV,
+        ANTHROPIC_API_KEY: 'sk-test',
+        ASSISTANT_RATE_LIMIT: { async limit() { throw new Error('limiter exploded'); } },
+      }, {});
+      // A throwing limiter must NOT hand out unmetered paid Anthropic capacity.
+      assertEq(res.status, 429, 'paid endpoint must deny when the limiter fails');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('upload fails OPEN when the rate-limit binding throws', async () => {
+    // Documented asymmetry: /upload is already gated behind a verified BRACU
+    // account and hard size/shape limits, so a limiter blip must not break
+    // legitimate coursework uploads. It proceeds to normal validation instead —
+    // here, a bad course code, proving it got past the limiter.
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await worker.fetch(req('POST', '/upload?courseCode=ZZZ999&filename=a.pdf', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/pdf' },
+        body: 'x',
+      }), {
+        ...ENV,
+        PAPERS_RATE_LIMIT: { async limit() { throw new Error('limiter exploded'); } },
+      }, {});
+      assertEq(res.status, 400, 'reached course validation, i.e. was not denied by the limiter');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('assistant proceeds when the rate-limit binding is absent', async () => {
+    // A MISSING binding is a static deploy-time misconfiguration, surfaced by
+    // /ready for the preflight to catch — not something to turn into a silent
+    // total outage at request time.
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {});
+      assert(res.status !== 429, 'a missing binding must not deny');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('assistant 503 is returned without consuming rate-limit quota', async () => {
+    // The config check runs first, so an unconfigured assistant (#455) does not
+    // also burn the caller's quota.
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      let called = 0;
+      const res = await worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), {
+        ...ENV,
+        ASSISTANT_RATE_LIMIT: { async limit() { called++; return { success: true }; } },
+      }, {});
+      assertEq(res.status, 503);
+      assertEq(called, 0, 'no quota consumed for an unconfigured assistant');
+    } finally {
+      __setTestJwksForTests(null);
+    }
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);
