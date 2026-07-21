@@ -241,7 +241,11 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
       }, debounceMs);
     },
     async saveNow(snapshotJson) {
-      const action = decideCloudSave({ signedIn: uid !== null, immediate: true, skipFirstSaveFlag: false });
+      const action = decideCloudSave({
+        signedIn: uid !== null,
+        immediate: true,
+        skipFirstSaveFlag: false,
+      });
       if (action === 'noop-signed-out') return false;
       clearQueued();
       return persistSerial(snapshotJson);

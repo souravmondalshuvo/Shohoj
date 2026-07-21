@@ -27,7 +27,11 @@ const fmt = (value: number | null) => (value !== null ? value.toFixed(1) : '—'
 
 function FacultyCard({ entry }: { readonly entry: FacultyAggregate }) {
   return (
-    <div className="rv-dir-card" data-testid="reviews-faculty-card" data-fac={entry.facultyInitials}>
+    <div
+      className="rv-dir-card"
+      data-testid="reviews-faculty-card"
+      data-fac={entry.facultyInitials}
+    >
       <div className="rv-dir-card-head">
         <span className="rv-dir-initials">{entry.facultyInitials}</span>
         <span className="rv-dir-count">
@@ -99,14 +103,10 @@ export function Component() {
         <div className="rv-dir-empty" data-testid="reviews-unavailable" role="alert">
           <div className="rv-dir-empty-title">Reviews are unavailable right now</div>
           <div className="rv-dir-empty-note">
-            We couldn’t load the faculty directory. This is a problem on our side, not
-            with your account — your other tools still work.
+            We couldn’t load the faculty directory. This is a problem on our side, not with your
+            account — your other tools still work.
           </div>
-          <button
-            type="button"
-            className="rv-dir-retry"
-            onClick={() => setReloadKey((n) => n + 1)}
-          >
+          <button type="button" className="rv-dir-retry" onClick={() => setReloadKey((n) => n + 1)}>
             Try again
           </button>
         </div>

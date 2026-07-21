@@ -67,9 +67,7 @@ function SemesterCard({ semester }: { readonly semester: SemesterEntry }) {
         ) : (
           <span className="transcript-sem-gpa">GPA {fmtGpa(gpa)}</span>
         )}
-        <span className="transcript-sem-credits shell-muted">
-          {formatCredits(credits)} cr
-        </span>
+        <span className="transcript-sem-credits shell-muted">{formatCredits(credits)} cr</span>
       </div>
       {semester.courses.length > 0 && (
         <div className="transcript-table-wrap">
@@ -131,8 +129,8 @@ export function Component() {
     <section className="shell-page transcript-page" data-testid="transcript-page">
       <h1>Transcript</h1>
       <p className="shell-muted">
-        Your semesters and grades, transcript-style — imported from a CONNECT
-        grade-sheet PDF or built up in the <Link to="/calculator">calculator</Link>.
+        Your semesters and grades, transcript-style — imported from a CONNECT grade-sheet PDF or
+        built up in the <Link to="/calculator">calculator</Link>.
       </p>
 
       <div className="transcript-actions">
@@ -148,9 +146,8 @@ export function Component() {
 
       {!hasData ? (
         <p className="transcript-empty shell-muted" data-testid="transcript-empty">
-          Nothing here yet. Import your CONNECT grade sheet above, or add
-          semesters in the <Link to="/calculator">calculator</Link> — both views
-          share the same data.
+          Nothing here yet. Import your CONNECT grade sheet above, or add semesters in the{' '}
+          <Link to="/calculator">calculator</Link> — both views share the same data.
         </p>
       ) : (
         <>
@@ -165,7 +162,9 @@ export function Component() {
             </div>
             <div className="transcript-stat">
               <span className="transcript-stat-label">Credits attempted</span>
-              <span className="transcript-stat-value">{formatCredits(results.attemptedCredits)}</span>
+              <span className="transcript-stat-value">
+                {formatCredits(results.attemptedCredits)}
+              </span>
             </div>
           </div>
           <ul className="transcript-sems" data-testid="transcript-sems">

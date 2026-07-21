@@ -112,7 +112,10 @@ export function trendChartGeometry(
   const baselineY = height - PAD.bottom;
   const areaPath =
     `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} ` +
-    coords.slice(1).map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ') +
+    coords
+      .slice(1)
+      .map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
+      .join(' ') +
     ` L ${coords[coords.length - 1].x.toFixed(1)} ${baselineY} L ${coords[0].x.toFixed(1)} ${baselineY} Z`;
 
   return {

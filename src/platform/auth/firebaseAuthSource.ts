@@ -21,12 +21,7 @@
 // signInWithCredential) is deferred; the explicit button is the legacy
 // fallback path already.
 
-import {
-  ANONYMOUS,
-  LOADING,
-  type AuthSnapshot,
-  type AuthSource,
-} from './authSnapshot.ts';
+import { ANONYMOUS, LOADING, type AuthSnapshot, type AuthSource } from './authSnapshot.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { createLogger } from '../observability/logger.ts';
 

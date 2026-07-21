@@ -20,7 +20,13 @@ function formatCredits(n: number): string {
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
-export default function SummaryBlock({ cgpa, attempted, credits, onEdit, onRemove }: SummaryBlockProps) {
+export default function SummaryBlock({
+  cgpa,
+  attempted,
+  credits,
+  onEdit,
+  onRemove,
+}: SummaryBlockProps) {
   const cgpaColor = gpaBadgeColors(cgpa).color;
 
   return (
@@ -37,13 +43,21 @@ export default function SummaryBlock({ cgpa, attempted, credits, onEdit, onRemov
           </span>
           <span
             className="semester-gpa-badge"
-            style={{ color: cgpaColor, background: 'rgba(46,204,113,0.10)', border: '1px solid rgba(46,204,113,0.22)' }}
+            style={{
+              color: cgpaColor,
+              background: 'rgba(46,204,113,0.10)',
+              border: '1px solid rgba(46,204,113,0.22)',
+            }}
           >
             CGPA {cgpa.toFixed(2)}
           </span>
           <span
             className="semester-gpa-badge"
-            style={{ color: 'var(--text2)', background: 'var(--glass2)', border: '1px solid var(--border)' }}
+            style={{
+              color: 'var(--text2)',
+              background: 'var(--glass2)',
+              border: '1px solid var(--border)',
+            }}
           >
             {attempted ? `${formatCredits(attempted)} attempted · ` : ''}
             {formatCredits(credits)} cr earned
@@ -58,8 +72,11 @@ export default function SummaryBlock({ cgpa, attempted, credits, onEdit, onRemov
           </button>
         </div>
       </div>
-      <div style={{ padding: '10px 1.2rem', fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>
-        This block represents your academic history before using Shohoj. Add new semesters below to continue tracking.
+      <div
+        style={{ padding: '10px 1.2rem', fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}
+      >
+        This block represents your academic history before using Shohoj. Add new semesters below to
+        continue tracking.
       </div>
     </div>
   );

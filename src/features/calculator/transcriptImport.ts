@@ -66,7 +66,10 @@ function gradedCount(semester: TranscriptSemester): number {
  * catalogue cleanup (canonical name + credit fill; the F(NT) 3-credit default
  * for 100+ level codes the catalogue does not know).
  */
-export function parseTranscriptForImport(fullText: string, lookupCourse: CourseLookup): ParsedTranscript {
+export function parseTranscriptForImport(
+  fullText: string,
+  lookupCourse: CourseLookup,
+): ParsedTranscript {
   let parsed = parseTranscriptText(fullText);
 
   const lineTotal = totalCourses(parsed);

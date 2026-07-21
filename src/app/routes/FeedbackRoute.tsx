@@ -23,10 +23,7 @@ import {
   type FeedbackItem,
   type FeedbackType,
 } from '../../core/feedback.ts';
-import {
-  createFeedbackRepo,
-  type FeedbackRepo,
-} from '../../platform/firebase/feedbackRepo.ts';
+import { createFeedbackRepo, type FeedbackRepo } from '../../platform/firebase/feedbackRepo.ts';
 import { useAuth } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
@@ -173,8 +170,8 @@ export function Component() {
     <section className="shell-page feedback-page" data-testid="feedback-page">
       <h1>Feedback</h1>
       <p className="shell-muted">
-        Found a bug, want a feature, or have a thought? Tell us — and upvote
-        what others have posted so we know what matters.
+        Found a bug, want a feature, or have a thought? Tell us — and upvote what others have posted
+        so we know what matters.
       </p>
 
       {!canUse ? (
@@ -200,7 +197,9 @@ export function Component() {
                   <button
                     key={t}
                     type="button"
-                    className={draftType === t ? 'feedback-chip feedback-chip--active' : 'feedback-chip'}
+                    className={
+                      draftType === t ? 'feedback-chip feedback-chip--active' : 'feedback-chip'
+                    }
                     aria-pressed={draftType === t}
                     onClick={() => setDraftType(t)}
                     data-testid={`feedback-type-${t}`}
@@ -262,7 +261,9 @@ export function Component() {
                 <button
                   key={f.key}
                   type="button"
-                  className={filter === f.key ? 'feedback-chip feedback-chip--active' : 'feedback-chip'}
+                  className={
+                    filter === f.key ? 'feedback-chip feedback-chip--active' : 'feedback-chip'
+                  }
                   aria-pressed={filter === f.key}
                   onClick={() => setFilter(f.key)}
                   data-testid={`feedback-filter-${f.key}`}
@@ -284,7 +285,11 @@ export function Component() {
               {board.map((item) => {
                 const voted = myUpvotes.has(item.id);
                 return (
-                  <li key={item.id} className="feedback-item" data-testid={`feedback-item-${item.id}`}>
+                  <li
+                    key={item.id}
+                    className="feedback-item"
+                    data-testid={`feedback-item-${item.id}`}
+                  >
                     <button
                       type="button"
                       className={voted ? 'feedback-vote feedback-vote--on' : 'feedback-vote'}

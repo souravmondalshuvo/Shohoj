@@ -99,10 +99,7 @@ function cgpaTier(cgpa: number): CgpaTier {
   return cgpa >= 3.5 ? 'green' : cgpa >= 3.0 ? 'green-dark' : cgpa >= 2.5 ? 'amber' : 'red';
 }
 
-function courseRow(
-  course: SemesterEntry['courses'][number],
-  retaken: boolean,
-): PdfReportRow {
+function courseRow(course: SemesterEntry['courses'][number], retaken: boolean): PdfReportRow {
   const rawName = course.name || '---';
   const name = rawName.length > 68 ? `${rawName.slice(0, 65)}...` : rawName;
 
@@ -166,7 +163,11 @@ export function buildPdfReport(state: CalculatorState, now: Date): PdfReport {
     state.semesters.filter((s) => !s.running && !s.summary).length +
     (summaryBlock
       ? estimateSummarySemesters(
-          { semesters: state.semesters, startSeason: state.startSeason, startYear: state.startYear },
+          {
+            semesters: state.semesters,
+            startSeason: state.startSeason,
+            startYear: state.startYear,
+          },
           deptSeasons,
           0,
           now,

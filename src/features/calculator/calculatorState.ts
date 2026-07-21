@@ -66,7 +66,10 @@ function nextSemesterId(semesters: readonly SemesterEntry[]): number {
 }
 
 /** Pure reducer over the calculator state, built on the immutable mutations. */
-export function calculatorReducer(state: CalculatorState, action: CalculatorAction): CalculatorState {
+export function calculatorReducer(
+  state: CalculatorState,
+  action: CalculatorAction,
+): CalculatorState {
   switch (action.type) {
     case 'addSemester':
       return {
@@ -79,12 +82,17 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
     case 'addRunningSemester':
       // Legacy parity (addRunningSemester in js/ui/render.js): at most one
       // running semester; a second request is a no-op.
-      if (state.semesters.some(s => s.running)) return state;
+      if (state.semesters.some((s) => s.running)) return state;
       return {
         ...state,
         semesters: [
           ...state.semesters,
-          { id: nextSemesterId(state.semesters), name: action.name, running: true, courses: [blankCourse()] },
+          {
+            id: nextSemesterId(state.semesters),
+            name: action.name,
+            running: true,
+            courses: [blankCourse()],
+          },
         ],
       };
     case 'removeSemester':
@@ -94,7 +102,10 @@ export function calculatorReducer(state: CalculatorState, action: CalculatorActi
     case 'removeCourse':
       return { ...state, semesters: removeCourse(state.semesters, action.semId, action.index) };
     case 'updateCourse':
-      return { ...state, semesters: updateCourse(state.semesters, action.semId, action.index, action.patch) };
+      return {
+        ...state,
+        semesters: updateCourse(state.semesters, action.semId, action.index, action.patch),
+      };
     case 'reorderSemesters':
       return { ...state, semesters: reorderSemesters(state.semesters, action.srcId, action.tgtId) };
     case 'setStart':

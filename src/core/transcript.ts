@@ -25,7 +25,10 @@ type Detector = readonly [DepartmentLabel, RegExp];
 const PROGRAM_DETECTORS: readonly Detector[] = [
   [DEPARTMENT_LABELS.CSE, /COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
   [DEPARTMENT_LABELS.CS, /COMPUTER\s+SCIENCE(?!\s+AND\s+ENGINEERING)|\bCS\b/i],
-  [DEPARTMENT_LABELS.EEE, /ELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING|\bBSC\s*EEE\b|\bEEE\b/i],
+  [
+    DEPARTMENT_LABELS.EEE,
+    /ELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING|\bBSC\s*EEE\b|\bEEE\b/i,
+  ],
   [DEPARTMENT_LABELS.ECE, /ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING|\bECE\b/i],
   [DEPARTMENT_LABELS.BBA, /BUSINESS\s+ADMINISTRATION|\bBBA\b/i],
   [DEPARTMENT_LABELS.ECO, /ECONOMICS|\bECO\b/i],
@@ -42,22 +45,58 @@ const PROGRAM_DETECTORS: readonly Detector[] = [
 ];
 
 const TEXT_DETECTORS: readonly Detector[] = [
-  [DEPARTMENT_LABELS.CSE, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING\b|COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i],
+  [
+    DEPARTMENT_LABELS.CSE,
+    /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING\b|COMPUTER\s+SCIENCE\s+AND\s+ENGINEERING|\bCSE\b/i,
+  ],
   [DEPARTMENT_LABELS.EEE, /\bBSC\s*EEE\b|\bELECTRICAL\s*(?:&|AND)\s*ELECTRONIC\s+ENGINEERING\b/i],
   [DEPARTMENT_LABELS.BBA, /\bBACHELOR\s+OF\s+BUSINESS\s+ADMINISTRATION\b|\bBBA\b/i],
-  [DEPARTMENT_LABELS.ECO, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ECONOMICS\b|\bSOCIAL\s+SCIENCE.*ECONOMICS\b/i],
-  [DEPARTMENT_LABELS.ENG, /\bB\.?\s*A\.?\s+IN\s+ENGLISH\b|\bBACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH\b/i],
+  [
+    DEPARTMENT_LABELS.ECO,
+    /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ECONOMICS\b|\bSOCIAL\s+SCIENCE.*ECONOMICS\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.ENG,
+    /\bB\.?\s*A\.?\s+IN\s+ENGLISH\b|\bBACHELOR\s+OF\s+ARTS\s+IN\s+ENGLISH\b/i,
+  ],
   [DEPARTMENT_LABELS.ARC, /\bB\.?\s*ARCH\.?\b|\bBACHELOR\s+OF\s+ARCHITECTURE\b/i],
-  [DEPARTMENT_LABELS.PHR, /\bB\.?\s*SC\.?\s+IN\s+PHARMACY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHARMACY\b/i],
+  [
+    DEPARTMENT_LABELS.PHR,
+    /\bB\.?\s*SC\.?\s+IN\s+PHARMACY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHARMACY\b/i,
+  ],
   [DEPARTMENT_LABELS.LAW, /\bBACHELOR\s+OF\s+LAWS\b|\bLL\.?B\b/i],
-  [DEPARTMENT_LABELS.CS, /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)/i],
-  [DEPARTMENT_LABELS.ECE, /\bB\.?\s*SC\.?\s+IN\s+ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b|\bELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b/i],
-  [DEPARTMENT_LABELS.ANT, /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ANTHROPOLOGY\b|\bBACHELOR\s+OF\s+SOCIAL\s+SCIENCE\s+IN\s+ANTHROPOLOGY\b/i],
-  [DEPARTMENT_LABELS.APE, /\bB\.?\s*SC\.?\s+IN\s+APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b|\bAPPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b/i],
-  [DEPARTMENT_LABELS.PHY, /\bB\.?\s*SC\.?\s+IN\s+PHYSICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHYSICS\b/i],
-  [DEPARTMENT_LABELS.MAT, /\bB\.?\s*SC\.?\s+IN\s+MATHEMATICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MATHEMATICS\b/i],
-  [DEPARTMENT_LABELS.MIC, /\bB\.?\s*SC\.?\s+IN\s+MICROBIOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MICROBIOLOGY\b/i],
-  [DEPARTMENT_LABELS.BIO, /\bB\.?\s*SC\.?\s+IN\s+BIOTECHNOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+BIOTECHNOLOGY\b/i],
+  [
+    DEPARTMENT_LABELS.CS,
+    /\bB\.?\s*SC\.?\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+COMPUTER\s+SCIENCE\b(?!\s+AND\s+ENGINEERING)/i,
+  ],
+  [
+    DEPARTMENT_LABELS.ECE,
+    /\bB\.?\s*SC\.?\s+IN\s+ELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b|\bELECTRONIC\s*(?:&|AND)\s*COMMUNICATION\s+ENGINEERING\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.ANT,
+    /\bB\.?\s*S\.?\s*S\.?\s+IN\s+ANTHROPOLOGY\b|\bBACHELOR\s+OF\s+SOCIAL\s+SCIENCE\s+IN\s+ANTHROPOLOGY\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.APE,
+    /\bB\.?\s*SC\.?\s+IN\s+APPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b|\bAPPLIED\s+PHYSICS\s*(?:&|AND)\s*ELECTRONICS\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.PHY,
+    /\bB\.?\s*SC\.?\s+IN\s+PHYSICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+PHYSICS\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.MAT,
+    /\bB\.?\s*SC\.?\s+IN\s+MATHEMATICS\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MATHEMATICS\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.MIC,
+    /\bB\.?\s*SC\.?\s+IN\s+MICROBIOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+MICROBIOLOGY\b/i,
+  ],
+  [
+    DEPARTMENT_LABELS.BIO,
+    /\bB\.?\s*SC\.?\s+IN\s+BIOTECHNOLOGY\b|\bBACHELOR\s+OF\s+SCIENCE\s+IN\s+BIOTECHNOLOGY\b/i,
+  ],
 ];
 
 interface SemesterMarker {
@@ -78,7 +117,9 @@ const SEASON_NAMES: Record<string, string> = {
 };
 
 export function detectDepartment(text: string): string | null {
-  const compact = String(text || '').replace(/\s+/g, ' ').trim();
+  const compact = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!compact) return null;
 
   const programMatch = compact.match(
@@ -106,14 +147,15 @@ export function detectDepartment(text: string): string | null {
  * the rest of the sheet. The ID is the standard 7–8 digit BRACU student number.
  */
 export function detectStudentIdentity(text: string): StudentIdentity {
-  const compact = String(text || '').replace(/\s+/g, ' ').trim();
+  const compact = String(text || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   let studentId: string | null = null;
   let studentName: string | null = null;
 
   if (compact) {
     const idMatch =
-      compact.match(/STUDENT\s*ID\s*:?\s*(\d{7,8})\b/i) ||
-      compact.match(/\bID\s*:?\s*(\d{8})\b/i);
+      compact.match(/STUDENT\s*ID\s*:?\s*(\d{7,8})\b/i) || compact.match(/\bID\s*:?\s*(\d{8})\b/i);
     if (idMatch) studentId = idMatch[1];
 
     const nameMatch = compact.match(
@@ -129,7 +171,9 @@ export function detectStudentIdentity(text: string): StudentIdentity {
 }
 
 export function normalizeTranscriptLine(line: string): string {
-  let normalized = String(line || '').replace(/\u00a0/g, ' ').trim();
+  let normalized = String(line || '')
+    .replace(/\u00a0/g, ' ')
+    .trim();
   if (!normalized) return '';
 
   normalized = normalized.replace(/\s+/g, ' ');
@@ -174,45 +218,54 @@ export function parseBlobFallback(text: string): TranscriptParseResult {
   while ((semMatch = semRe.exec(blob)) !== null) {
     const season = semMatch[1].toUpperCase();
     const year = semMatch[2];
-    semMatches.push({ name: `${SEASON_NAMES[season] || semMatch[1]} ${year}`, idx: semMatch.index });
+    semMatches.push({
+      name: `${SEASON_NAMES[season] || semMatch[1]} ${year}`,
+      idx: semMatch.index,
+    });
   }
 
   if (!semMatches.length) return { semesters: [], detectedDept: null };
 
-  const courseRe = /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
-  const semesters = semMatches.map((semester, index): TranscriptSemester => {
-    const sliceEnd = index + 1 < semMatches.length ? semMatches[index + 1].idx : blob.length;
-    const slice = blob.slice(semester.idx, sliceEnd);
-    const courses: TranscriptSemester['courses'] = [];
-    let courseMatch: RegExpExecArray | null;
+  const courseRe =
+    /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
+  const semesters = semMatches
+    .map((semester, index): TranscriptSemester => {
+      const sliceEnd = index + 1 < semMatches.length ? semMatches[index + 1].idx : blob.length;
+      const slice = blob.slice(semester.idx, sliceEnd);
+      const courses: TranscriptSemester['courses'] = [];
+      let courseMatch: RegExpExecArray | null;
 
-    while ((courseMatch = courseRe.exec(slice)) !== null) {
-      const code = courseMatch[1];
-      const title = (courseMatch[2] || '').trim().replace(/\s{2,}/g, ' ');
-      const credits = Number.parseFloat(courseMatch[3]);
-      const grade = courseMatch[4].replace(/\(RT\)/, '').trim();
-      const gradePoint = Number.parseFloat(courseMatch[5]);
+      while ((courseMatch = courseRe.exec(slice)) !== null) {
+        const code = courseMatch[1];
+        const title = (courseMatch[2] || '').trim().replace(/\s{2,}/g, ' ');
+        const credits = Number.parseFloat(courseMatch[3]);
+        const grade = courseMatch[4].replace(/\(RT\)/, '').trim();
+        const gradePoint = Number.parseFloat(courseMatch[5]);
 
-      if (!Number.isNaN(credits) && credits > 0) {
-        courses.push({
-          name: `${code} ${title}`.trim(),
-          credits,
-          grade,
-          gradePoint,
-        });
+        if (!Number.isNaN(credits) && credits > 0) {
+          courses.push({
+            name: `${code} ${title}`.trim(),
+            credits,
+            grade,
+            gradePoint,
+          });
+        }
       }
-    }
 
-    courseRe.lastIndex = 0;
-    return { id: Date.now() + index, name: semester.name, courses, running: false };
-  }).filter(semester => semester.courses.length > 0);
+      courseRe.lastIndex = 0;
+      return { id: Date.now() + index, name: semester.name, courses, running: false };
+    })
+    .filter((semester) => semester.courses.length > 0);
 
   return { semesters, detectedDept: detectDepartment(normalizedText) };
 }
 
 export function parseTranscriptText(text: string): TranscriptParseResult {
   const normalizedText = normalizeTranscriptText(text);
-  const lines = normalizedText.split('\n').map(line => line.trim()).filter(Boolean);
+  const lines = normalizedText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
   const detectedDept = detectDepartment(normalizedText);
 
   const semRe = /^SEMESTER:\s*([A-Z]+)\s*(\d{4})\b/i;
@@ -220,7 +273,8 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
   const codeStartRe = /^([A-Z]{2,4}\d{3}[A-Z]?)(?:\s*(?:\d|\.\d))/;
   const numberRe = /^\d+\.\d+$/;
   const gradeRe = /^([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)$/;
-  const skipRe = /^(SEMESTER\b(?!:)|CUMULATIVE\s+Credits|Credits\s+(Attempted|Earned)|GPA$|CGPA$|BRAC\s+University|Kha\s+224|Merul|GRADE\s+SHEET|UNOFFICIAL|Student\s+ID|^Name$|Course\s+No|Course\s+Title|UNDERGRADUATE|PROGRAM:|Page\s+\d|Credits\s+Earned\s+Grade|Grade\s+Points)/i;
+  const skipRe =
+    /^(SEMESTER\b(?!:)|CUMULATIVE\s+Credits|Credits\s+(Attempted|Earned)|GPA$|CGPA$|BRAC\s+University|Kha\s+224|Merul|GRADE\s+SHEET|UNOFFICIAL|Student\s+ID|^Name$|Course\s+No|Course\s+Title|UNDERGRADUATE|PROGRAM:|Page\s+\d|Credits\s+Earned\s+Grade|Grade\s+Points)/i;
 
   const workingSemesters: WorkingSemester[] = [];
   let currentSemester: WorkingSemester | null = null;
@@ -260,8 +314,15 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
     const compactCodeMatch = line.match(codeStartRe);
     if (compactCodeMatch) {
       currentSemester.codes.push(compactCodeMatch[1]);
-      if (lastExtText !== null && lastExtIndex >= 0 && lastExtIndex < currentSemester.titles.length) {
-        currentSemester.titles[lastExtIndex] = currentSemester.titles[lastExtIndex].substring(0, lastExtOrigLen);
+      if (
+        lastExtText !== null &&
+        lastExtIndex >= 0 &&
+        lastExtIndex < currentSemester.titles.length
+      ) {
+        currentSemester.titles[lastExtIndex] = currentSemester.titles[lastExtIndex].substring(
+          0,
+          lastExtOrigLen,
+        );
         currentSemester.titles.push(lastExtText);
       }
       lastExtText = null;
@@ -283,7 +344,7 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
     }
   }
 
-  const semesterCourseCounts = workingSemesters.map(semester => semester.codes.length);
+  const semesterCourseCounts = workingSemesters.map((semester) => semester.codes.length);
   const totalCourses = semesterCourseCounts.reduce((sum, count) => sum + count, 0);
   if (totalCourses === 0) return legacyParseTranscript(lines, detectedDept);
 
@@ -388,17 +449,26 @@ function extractCourseValues(raw: readonly number[], counts: readonly number[]):
   return out;
 }
 
-function legacyParseTranscript(lines: readonly string[], detectedDept: string | null): TranscriptParseResult {
+function legacyParseTranscript(
+  lines: readonly string[],
+  detectedDept: string | null,
+): TranscriptParseResult {
   const semRe = /^SEMESTER[:\s]*([A-Z]+)\s*(\d{4})\b/i;
-  const skipRe = /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
+  const skipRe =
+    /^(SEMESTER|CUMULATIVE)\s+Credits|^(Credits Attempted|Credits Earned|GPA|CGPA)|^(BRAC University|Grade Sheet|Student|Name|Program|Course No)|^Page \d/i;
   const fntRe = /F\s*\(NT\)/;
-  const courseRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
-  const codeOnlyRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  const courseRe =
+    /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+  const codeOnlyRe =
+    /^([A-Z]{2,4}\d{3}[A-Z]?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
   const codeMarkerRe = /^([A-Z]{2,4}\d{3}[A-Z]?)$/;
-  const codeOnlyCompactRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
+  const codeOnlyCompactRe =
+    /^([A-Z]{2,4}\d{3}[A-Z]?)\s*([\d]+\.[\d]+)\s*([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s*([\d]+\.[\d]+)$/;
   const partialRe = /^([A-Z]{2,4}\d{3}[A-Z]?)\s+(.+)$/;
-  const contRe = /^([A-Za-z][A-Za-z\s&:,()\-.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
-  const creditsGradeGpOnlyRe = /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
+  const contRe =
+    /^([A-Za-z][A-Za-z\s&:,()\-.]*?)\s+([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?)\s+([\d]+\.[\d]+)$/;
+  const creditsGradeGpOnlyRe =
+    /^([\d]+\.[\d]+)\s+([A-Z][+-]?(?:\s*\((?:NT|RT)\))?(?:\s*\(RT\))?)\s+([\d]+\.[\d]+)$/;
 
   const semesters: TranscriptSemester[] = [];
   let currentSemester: TranscriptSemester | null = null;
@@ -458,7 +528,10 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
     if (pendingTitle) {
       const creditsGradeGp = line.match(creditsGradeGpOnlyRe);
       if (creditsGradeGp) {
-        const code = (pendingTitle.match(codeMarkerRe) || pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || '';
+        const code =
+          (pendingTitle.match(codeMarkerRe) ||
+            pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) ||
+            [])[1] || '';
         const title = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim();
 
         currentSemester.courses.push({
@@ -501,7 +574,9 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
 
     const codeOnly = line.match(codeOnlyRe);
     if (codeOnly) {
-      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim() : '';
+      const title = pendingTitle
+        ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim()
+        : '';
       currentSemester.courses.push({
         name: title ? `${title} (${codeOnly[1]})` : codeOnly[1],
         credits: Number.parseFloat(codeOnly[2]),
@@ -515,7 +590,9 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
 
     const compactCodeOnly = line.match(codeOnlyCompactRe);
     if (compactCodeOnly) {
-      const title = pendingTitle ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim() : '';
+      const title = pendingTitle
+        ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim()
+        : '';
       currentSemester.courses.push({
         name: title ? `${title} (${compactCodeOnly[1]})` : compactCodeOnly[1],
         credits: Number.parseFloat(compactCodeOnly[2]),
@@ -545,12 +622,17 @@ function legacyParseTranscript(lines: readonly string[], detectedDept: string | 
       continue;
     }
 
-    if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
+    if (
+      !line[0].match(/\d/) &&
+      line.length > 2 &&
+      line.length < 100 &&
+      !/^[A-Z]{2,4}\d{3}/.test(line)
+    ) {
       pendingTitle = `${pendingTitle ? `${pendingTitle} ` : ''}${line}`;
     } else {
       pendingTitle = null;
     }
   }
 
-  return { semesters: semesters.filter(semester => semester.courses.length > 0), detectedDept };
+  return { semesters: semesters.filter((semester) => semester.courses.length > 0), detectedDept };
 }

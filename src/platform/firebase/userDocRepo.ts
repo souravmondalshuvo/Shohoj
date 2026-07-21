@@ -58,7 +58,8 @@ async function defaultBackend(
     onDocSnapshot(uid, next, onError) {
       return onSnapshot(
         ref(uid),
-        (snap) => next({ exists: snap.exists(), data: snap.exists() ? snap.data()?.data : undefined }),
+        (snap) =>
+          next({ exists: snap.exists(), data: snap.exists() ? snap.data()?.data : undefined }),
         (err) => onError?.(err),
       );
     },

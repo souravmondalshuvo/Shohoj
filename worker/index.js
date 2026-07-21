@@ -39,29 +39,25 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
-import {
-  loadSeatIndexFromFeed,
-  runAssistantLoop,
-  validateAssistantMessages,
-} from './assistant.js';
+import { loadSeatIndexFromFeed, runAssistantLoop, validateAssistantMessages } from './assistant.js';
 import { isKnownCourse } from './catalog.generated.js';
 
-const BRACU_EMAIL_RE      = /^[^@]+@g\.bracu\.ac\.bd$/;
-const MAX_UPLOAD_BYTES    = 10 * 1024 * 1024;
-const ALLOWED_MIME_RE     = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
-const OWNED_STORAGE_PATH_RE  = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
+const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
+const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
 // Legacy paths (no uploader segment) still exist in R2 from earlier uploads.
 // Reads/deletes must accept them so already-uploaded papers stay accessible.
 // NEW uploads always use the owned form (handleUpload constructs that path
 // explicitly), so this regex is read-only legacy support, not a write surface.
 const LEGACY_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/;
-const PAPER_ID_RE         = /^[A-Za-z0-9_-]{1,200}$/;
-const REVIEW_INITIALS_RE  = /^[A-Z]{2,6}$/;
-const REVIEW_COURSE_RE    = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
-const REVIEW_TYPE_KEYS    = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
-const PAPER_TYPES         = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
+const PAPER_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
+const REVIEW_INITIALS_RE = /^[A-Z]{2,6}$/;
+const REVIEW_COURSE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+const REVIEW_TYPE_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
+const PAPER_TYPES = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
 const MAX_REVIEW_SEMESTER_CHARS = 40;
-const MAX_REVIEW_TEXT_CHARS     = 500;
+const MAX_REVIEW_TEXT_CHARS = 500;
 
 let _jwks = null;
 let _jwksSource = null;
@@ -79,7 +75,11 @@ function getJwks() {
     _jwksSource = source;
     _jwks = _testJwks
       ? createLocalJWKSet(_testJwks)
-      : createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
+      : createRemoteJWKSet(
+          new URL(
+            'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
+          ),
+        );
   }
   return _jwks;
 }
@@ -88,10 +88,11 @@ export class AuthError extends Error {}
 
 export function isAllowedFirebasePayload(payload) {
   const isAdmin = payload?.admin === true;
-  const isVerifiedBracuGoogleUser = !!payload?.email
-    && payload.email_verified === true
-    && payload.firebase?.sign_in_provider === 'google.com'
-    && BRACU_EMAIL_RE.test(payload.email);
+  const isVerifiedBracuGoogleUser =
+    !!payload?.email &&
+    payload.email_verified === true &&
+    payload.firebase?.sign_in_provider === 'google.com' &&
+    BRACU_EMAIL_RE.test(payload.email);
   return isAdmin || isVerifiedBracuGoogleUser;
 }
 
@@ -116,7 +117,7 @@ export function corsHeaders(env, origin) {
     'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Max-Age': '86400',
-    'Vary': 'Origin',
+    Vary: 'Origin',
   };
   if (isOriginAllowed(env, origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
@@ -126,7 +127,10 @@ export function corsHeaders(env, origin) {
 
 function isOriginAllowed(env, origin) {
   if (!origin) return false;
-  const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const allowed = (env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   return allowed.includes(origin);
 }
 
@@ -153,8 +157,7 @@ function jsonResponse(body, init = {}, env, origin) {
 }
 
 export function isValidStoragePath(p) {
-  return typeof p === 'string'
-    && (OWNED_STORAGE_PATH_RE.test(p) || LEGACY_STORAGE_PATH_RE.test(p));
+  return typeof p === 'string' && (OWNED_STORAGE_PATH_RE.test(p) || LEGACY_STORAGE_PATH_RE.test(p));
 }
 
 // Course codes are validated for EXISTENCE, not merely shape. The regex alone
@@ -166,13 +169,13 @@ export function isValidStoragePath(p) {
 // The shape test is kept as a cheap pre-filter so a junk string never reaches
 // the Set lookup, and so the error stays the same for malformed input.
 export function isValidCourseCode(c) {
-  return typeof c === 'string'
-    && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c)
-    && isKnownCourse(c);
+  return typeof c === 'string' && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c) && isKnownCourse(c);
 }
 
 export function safeFilename(name) {
-  return String(name || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 80);
+  return String(name || '')
+    .replace(/[^A-Za-z0-9._-]/g, '')
+    .slice(0, 80);
 }
 
 // Map a file's leading magic bytes to a renderable MIME type. Used as a last
@@ -183,13 +186,22 @@ export function safeFilename(name) {
 export function sniffMimeFromBytes(bytes) {
   const b = bytes;
   if (!b || b.length < 4) return null;
-  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return 'application/pdf';        // %PDF
-  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';              // PNG
-  if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';                              // JPEG
-  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';                               // GIF
-  if (b.length >= 12 &&
-      b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
-      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'image/webp';           // RIFF…WEBP
+  if (b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46) return 'application/pdf'; // %PDF
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png'; // PNG
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'; // JPEG
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif'; // GIF
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return 'image/webp'; // RIFF…WEBP
   return null;
 }
 
@@ -199,20 +211,29 @@ function uniqueUploadObjectName(filename) {
 }
 
 function safePathSegment(value) {
-  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 128);
+  return String(value || '')
+    .replace(/[^A-Za-z0-9_-]/g, '')
+    .slice(0, 128);
 }
 
 function cleanPaperType(value) {
-  const type = String(value || '').toLowerCase().trim();
+  const type = String(value || '')
+    .toLowerCase()
+    .trim();
   return PAPER_TYPES.has(type) ? type : '';
 }
 
 function cleanOptionalSemester(value) {
-  return String(value || '').trim().slice(0, 40);
+  return String(value || '')
+    .trim()
+    .slice(0, 40);
 }
 
 function cleanOptionalFacultyInitials(value) {
-  const initials = String(value || '').toUpperCase().trim().slice(0, 40);
+  const initials = String(value || '')
+    .toUpperCase()
+    .trim()
+    .slice(0, 40);
   return /^[A-Z]{2,6}(, ?[A-Z]{2,6})*$/.test(initials) ? initials : '';
 }
 
@@ -223,7 +244,9 @@ function sanitizeHeaderValue(s, max = 200) {
   // Matching control characters is the whole point here (CR/LF header injection
   // defence), so no-control-regex is intentionally disabled for this line.
   // eslint-disable-next-line no-control-regex
-  return String(s ?? '').replace(/[\x00-\x1F\x7F]/g, ' ').slice(0, max);
+  return String(s ?? '')
+    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    .slice(0, max);
 }
 
 async function readAuth(request, env) {
@@ -242,22 +265,44 @@ function sniffMime(buf) {
   if (u.length >= 4 && u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) {
     return 'application/pdf';
   }
-  if (u.length >= 8
-      && u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4E && u[3] === 0x47
-      && u[4] === 0x0D && u[5] === 0x0A && u[6] === 0x1A && u[7] === 0x0A) {
+  if (
+    u.length >= 8 &&
+    u[0] === 0x89 &&
+    u[1] === 0x50 &&
+    u[2] === 0x4e &&
+    u[3] === 0x47 &&
+    u[4] === 0x0d &&
+    u[5] === 0x0a &&
+    u[6] === 0x1a &&
+    u[7] === 0x0a
+  ) {
     return 'image/png';
   }
-  if (u.length >= 3 && u[0] === 0xFF && u[1] === 0xD8 && u[2] === 0xFF) {
+  if (u.length >= 3 && u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff) {
     return 'image/jpeg';
   }
-  if (u.length >= 12
-      && u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46
-      && u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50) {
+  if (
+    u.length >= 12 &&
+    u[0] === 0x52 &&
+    u[1] === 0x49 &&
+    u[2] === 0x46 &&
+    u[3] === 0x46 &&
+    u[8] === 0x57 &&
+    u[9] === 0x45 &&
+    u[10] === 0x42 &&
+    u[11] === 0x50
+  ) {
     return 'image/webp';
   }
-  if (u.length >= 6
-      && u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x38
-      && (u[4] === 0x37 || u[4] === 0x39) && u[5] === 0x61) {
+  if (
+    u.length >= 6 &&
+    u[0] === 0x47 &&
+    u[1] === 0x49 &&
+    u[2] === 0x46 &&
+    u[3] === 0x38 &&
+    (u[4] === 0x37 || u[4] === 0x39) &&
+    u[5] === 0x61
+  ) {
     return 'image/gif';
   }
   return null;
@@ -347,9 +392,7 @@ function toFirestoreValue(v) {
   if (typeof v === 'string') return { stringValue: v };
   if (typeof v === 'boolean') return { booleanValue: v };
   if (typeof v === 'number') {
-    return Number.isInteger(v)
-      ? { integerValue: String(v) }
-      : { doubleValue: v };
+    return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
   }
   if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (Array.isArray(v)) {
@@ -364,14 +407,14 @@ function toFirestoreValue(v) {
 // Decode `fields` returned by Firestore REST back into plain JS.
 function fromFirestoreValue(v) {
   if (!v || typeof v !== 'object') return null;
-  if ('stringValue'   in v) return v.stringValue;
-  if ('integerValue'  in v) return Number(v.integerValue);
-  if ('doubleValue'   in v) return v.doubleValue;
-  if ('booleanValue'  in v) return v.booleanValue;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
   if ('timestampValue' in v) return v.timestampValue;
-  if ('nullValue'     in v) return null;
-  if ('mapValue'      in v) return fromFirestoreFields(v.mapValue?.fields || {});
-  if ('arrayValue'    in v) return (v.arrayValue?.values || []).map(fromFirestoreValue);
+  if ('nullValue' in v) return null;
+  if ('mapValue' in v) return fromFirestoreFields(v.mapValue?.fields || {});
+  if ('arrayValue' in v) return (v.arrayValue?.values || []).map(fromFirestoreValue);
   return null;
 }
 
@@ -386,9 +429,9 @@ function fromFirestoreFields(fields) {
 // SHA-256 a string → 64-char lowercase hex.
 async function sha256Hex(input) {
   const data = new TextEncoder().encode(String(input ?? ''));
-  const buf  = await crypto.subtle.digest('SHA-256', data);
+  const buf = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
@@ -419,11 +462,13 @@ async function sha256Hex(input) {
 async function rateLimit(env, uid, namespace, options = {}) {
   const { binding = env.PAPERS_RATE_LIMIT, failClosed = false } = options;
   if (!binding || typeof binding.limit !== 'function') {
-    console.warn(JSON.stringify({
-      level: 'warn',
-      event: 'rate_limit_binding_missing',
-      namespace,
-    }));
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'rate_limit_binding_missing',
+        namespace,
+      }),
+    );
     return true;
   }
   try {
@@ -431,13 +476,15 @@ async function rateLimit(env, uid, namespace, options = {}) {
     return success;
   } catch (e) {
     // Log only safe operational metadata — never the uid or the key.
-    console.error(JSON.stringify({
-      level: 'error',
-      event: 'rate_limit_check_failed',
-      namespace,
-      policy: failClosed ? 'fail_closed' : 'fail_open',
-      errorMessage: e?.message || String(e),
-    }));
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'rate_limit_check_failed',
+        namespace,
+        policy: failClosed ? 'fail_closed' : 'fail_open',
+        errorMessage: e?.message || String(e),
+      }),
+    );
     return !failClosed;
   }
 }
@@ -495,17 +542,29 @@ async function handleUpload(request, env, origin, ctx) {
   }
   const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
   if (!contentLength || contentLength <= 0 || contentLength > MAX_UPLOAD_BYTES) {
-    return jsonResponse({ error: 'File missing or larger than 10 MB' }, { status: 413 }, env, origin);
+    return jsonResponse(
+      { error: 'File missing or larger than 10 MB' },
+      { status: 413 },
+      env,
+      origin,
+    );
   }
   const contentType = request.headers.get('Content-Type') || '';
   if (!ALLOWED_MIME_RE.test(contentType)) {
-    return jsonResponse({ error: 'Only PDFs and images are allowed' }, { status: 415 }, env, origin);
+    return jsonResponse(
+      { error: 'Only PDFs and images are allowed' },
+      { status: 415 },
+      env,
+      origin,
+    );
   }
   const paperType = cleanPaperType(url.searchParams.get('type'));
   if (!paperType) {
     return jsonResponse({ error: 'Invalid paper type' }, { status: 400 }, env, origin);
   }
-  const title = String(url.searchParams.get('title') || '').trim().slice(0, 120);
+  const title = String(url.searchParams.get('title') || '')
+    .trim()
+    .slice(0, 120);
   if (title.length < 3) {
     return jsonResponse({ error: 'Invalid title' }, { status: 400 }, env, origin);
   }
@@ -523,7 +582,9 @@ async function handleUpload(request, env, origin, ctx) {
   if (!mimeMatches(contentType, sniffed)) {
     return jsonResponse(
       { error: 'File contents do not match declared type' },
-      { status: 415 }, env, origin,
+      { status: 415 },
+      env,
+      origin,
     );
   }
 
@@ -565,7 +626,10 @@ async function handleUpload(request, env, origin, ctx) {
       throw new Error(`Firestore paper create failed: ${docRes.status} ${txt.slice(0, 200)}`);
     }
     const docJson = await docRes.json();
-    paperId = String(docJson?.name || '').split('/').pop() || null;
+    paperId =
+      String(docJson?.name || '')
+        .split('/')
+        .pop() || null;
     if (!paperId) throw new Error('Firestore paper create returned no document id');
   } catch (e) {
     console.error('paper metadata create failed; deleting uploaded object:', e?.message || e);
@@ -574,7 +638,12 @@ async function handleUpload(request, env, origin, ctx) {
     } catch (deleteErr) {
       console.error('uploaded object cleanup failed:', deleteErr?.message || deleteErr);
     }
-    return jsonResponse({ error: 'Upload metadata could not be saved' }, { status: 502 }, env, origin);
+    return jsonResponse(
+      { error: 'Upload metadata could not be saved' },
+      { status: 502 },
+      env,
+      origin,
+    );
   }
 
   // Fire-and-forget admin notification. Wrapped in ctx.waitUntil so the
@@ -588,13 +657,13 @@ async function handleUpload(request, env, origin, ctx) {
     path,
     fileSize: body.byteLength,
     contentType,
-    title:           sanitizeHeaderValue(title, 120),
-    type:            sanitizeHeaderValue(paperType, 20),
-    semester:        sanitizeHeaderValue(semester, 40),
+    title: sanitizeHeaderValue(title, 120),
+    type: sanitizeHeaderValue(paperType, 20),
+    semester: sanitizeHeaderValue(semester, 40),
     facultyInitials: sanitizeHeaderValue(facultyInitials, 20),
-    uploaderEmail:   claims?.email || '(unknown)',
-    uploaderUid:     uploaderUid || '(unknown)',
-  }).catch(err => console.error('admin notify failed:', err?.message || err));
+    uploaderEmail: claims?.email || '(unknown)',
+    uploaderUid: uploaderUid || '(unknown)',
+  }).catch((err) => console.error('admin notify failed:', err?.message || err));
   if (ctx && typeof ctx.waitUntil === 'function') {
     ctx.waitUntil(notifyPromise);
   }
@@ -618,7 +687,8 @@ export function resolveEmailFrom(env) {
     return {
       ok: false,
       from: raw,
-      reason: 'EMAIL_FROM uses the Resend test sender, which only delivers to the Resend account owner; set a verified-domain sender',
+      reason:
+        'EMAIL_FROM uses the Resend test sender, which only delivers to the Resend account owner; set a verified-domain sender',
     };
   }
   return { ok: true, from: raw, reason: '' };
@@ -635,15 +705,16 @@ async function notifyAdminOfUpload(env, info) {
   const modUrl = env.ADMIN_MODERATION_URL || '';
   const from = sender.from;
   const typeLabel = info.type ? info.type.charAt(0).toUpperCase() + info.type.slice(1) : '';
-  const titleStr  = info.title || '(untitled)';
+  const titleStr = info.title || '(untitled)';
   const subject = sanitizeHeaderValue(
     `[Shohoj] New ${info.type || 'paper'} pending review: ${info.courseCode}${info.title ? ' — ' + info.title : ''}`,
     200,
   );
 
-  const row = (label, value, mono = false) => value
-    ? `<tr><td style="padding:6px 16px 6px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td><td style="padding:6px 0;${mono ? 'font-family:ui-monospace,monospace;font-size:13px;' : 'font-weight:500;'}">${escapeHtml(value)}</td></tr>`
-    : '';
+  const row = (label, value, mono = false) =>
+    value
+      ? `<tr><td style="padding:6px 16px 6px 0;color:#666;vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td><td style="padding:6px 0;${mono ? 'font-family:ui-monospace,monospace;font-size:13px;' : 'font-weight:500;'}">${escapeHtml(value)}</td></tr>`
+      : '';
 
   const html = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; line-height: 1.5; color:#222;">
@@ -656,16 +727,16 @@ async function notifyAdminOfUpload(env, info) {
       </div>
 
       <table style="border-collapse:collapse;font-size:14px;width:100%;">
-        ${row('Course code',       info.courseCode)}
-        ${row('Paper type',        typeLabel || info.type)}
-        ${row('Title',             info.title)}
-        ${row('Semester',          info.semester)}
-        ${row('Faculty initials',  info.facultyInitials)}
-        ${row('File size',         `${sizeMb} MB`)}
-        ${row('MIME type',         info.contentType, true)}
-        ${row('Storage path',      info.path, true)}
-        ${row('Uploader email',    info.uploaderEmail)}
-        ${row('Uploader UID',      info.uploaderUid, true)}
+        ${row('Course code', info.courseCode)}
+        ${row('Paper type', typeLabel || info.type)}
+        ${row('Title', info.title)}
+        ${row('Semester', info.semester)}
+        ${row('Faculty initials', info.facultyInitials)}
+        ${row('File size', `${sizeMb} MB`)}
+        ${row('MIME type', info.contentType, true)}
+        ${row('Storage path', info.path, true)}
+        ${row('Uploader email', info.uploaderEmail)}
+        ${row('Uploader UID', info.uploaderUid, true)}
       </table>
 
       ${modUrl ? `<p style="margin:24px 0 0;"><a href="${escapeHtml(modUrl)}" style="display:inline-block;background:#2ECC71;color:#0b0f0d;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;">Open admin dashboard →</a></p>` : ''}
@@ -675,7 +746,7 @@ async function notifyAdminOfUpload(env, info) {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -692,9 +763,17 @@ async function notifyAdminOfUpload(env, info) {
 }
 
 function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
+  return String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[c],
+  );
 }
 
 async function handleDownload(request, env, origin) {
@@ -703,7 +782,7 @@ async function handleDownload(request, env, origin) {
 
   const { claims } = await readAuth(request, env);
   const callerUid = claims?.user_id || claims?.sub;
-  const isAdmin  = claims?.admin === true;
+  const isAdmin = claims?.admin === true;
 
   const url = new URL(request.url);
   const paperId = url.searchParams.get('paperId') || '';
@@ -723,10 +802,9 @@ async function handleDownload(request, env, origin) {
     console.error('SA token fetch failed:', e?.message || e);
     return jsonResponse({ error: 'Service unavailable' }, { status: 503 }, env, origin);
   }
-  const docRes = await fetch(
-    `${firestoreDocsBase(env)}/papers/${encodeURIComponent(paperId)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  const docRes = await fetch(`${firestoreDocsBase(env)}/papers/${encodeURIComponent(paperId)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   if (docRes.status === 404) {
     return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
   }
@@ -738,7 +816,7 @@ async function handleDownload(request, env, origin) {
   const docJson = await docRes.json();
   const fields = fromFirestoreFields(docJson?.fields || {});
 
-  const approved    = fields.approved === true;
+  const approved = fields.approved === true;
   const uploaderUid = String(fields.uploaderUid || '');
   if (!isAdmin && !approved && uploaderUid !== callerUid) {
     return jsonResponse({ error: 'Forbidden' }, { status: 403 }, env, origin);
@@ -759,9 +837,11 @@ async function handleDownload(request, env, origin) {
   // entry, in which case `obj.httpMetadata.contentType` is undefined and the
   // browser receives a typeless blob — that's what makes the preview iframe
   // render blank.
-  let contentType = String(fields.mimeType || '').match(/^(?:application\/pdf|image\/(?:png|jpeg|webp|gif))$/)
+  let contentType = String(fields.mimeType || '').match(
+    /^(?:application\/pdf|image\/(?:png|jpeg|webp|gif))$/,
+  )
     ? fields.mimeType
-    : (obj.httpMetadata?.contentType || 'application/octet-stream');
+    : obj.httpMetadata?.contentType || 'application/octet-stream';
   // Last resort for pre-migration objects with no authoritative type: buffer the
   // object and sniff its magic bytes so the browser preview renders inline
   // instead of blank. Uploads are capped at MAX_UPLOAD_BYTES, so buffering is
@@ -844,7 +924,7 @@ async function handleReview(request, env, origin) {
     facultyInitials,
     courseCode,
     semester: semester || '',
-    text:     text || '',
+    text: text || '',
     ratings,
     createdAt: new Date(),
   });
@@ -867,7 +947,12 @@ async function handleReview(request, env, origin) {
     body: JSON.stringify({ fields }),
   });
   if (res.status === 409) {
-    return jsonResponse({ error: 'You have already reviewed this faculty for this course' }, { status: 409 }, env, origin);
+    return jsonResponse(
+      { error: 'You have already reviewed this faculty for this course' },
+      { status: 409 },
+      env,
+      origin,
+    );
   }
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
@@ -879,8 +964,12 @@ async function handleReview(request, env, origin) {
 
 export function validateReviewPayload(p) {
   if (!p || typeof p !== 'object') return { error: 'Invalid payload' };
-  const facultyInitials = String(p.facultyInitials || '').toUpperCase().trim();
-  const courseCode      = String(p.courseCode || '').toUpperCase().trim();
+  const facultyInitials = String(p.facultyInitials || '')
+    .toUpperCase()
+    .trim();
+  const courseCode = String(p.courseCode || '')
+    .toUpperCase()
+    .trim();
   // Faculty initials are shape-checked only, deliberately. The authoritative
   // set of teaching faculty is the live CONNECT feed, not anything in this
   // repo: data/faculty_profiles.jsonl is an explicitly partial seed (116 rows
@@ -891,8 +980,8 @@ export function validateReviewPayload(p) {
   // presented as an existence check.
   if (!REVIEW_INITIALS_RE.test(facultyInitials)) return { error: 'Invalid faculty initials' };
   // Course codes, by contrast, ARE checked against the authoritative catalogue.
-  if (!REVIEW_COURSE_RE.test(courseCode))        return { error: 'Invalid course code' };
-  if (!isKnownCourse(courseCode))                return { error: 'Unknown course code' };
+  if (!REVIEW_COURSE_RE.test(courseCode)) return { error: 'Invalid course code' };
+  if (!isKnownCourse(courseCode)) return { error: 'Unknown course code' };
 
   const r = p.ratings;
   if (!r || typeof r !== 'object') return { error: 'Missing ratings' };
@@ -910,9 +999,9 @@ export function validateReviewPayload(p) {
   // the correct behaviour: silently storing a different review than the one
   // the student wrote is worse than telling them it was too long.
   const semester = p.semester != null ? String(p.semester) : '';
-  const text     = p.text     != null ? String(p.text)     : '';
+  const text = p.text != null ? String(p.text) : '';
   if (semester.length > MAX_REVIEW_SEMESTER_CHARS) return { error: 'Semester too long' };
-  if (text.length > MAX_REVIEW_TEXT_CHARS)         return { error: 'Review text too long' };
+  if (text.length > MAX_REVIEW_TEXT_CHARS) return { error: 'Review text too long' };
 
   return { value: { facultyInitials, courseCode, ratings, semester, text } };
 }
@@ -925,7 +1014,7 @@ export function validateReviewPayload(p) {
 
 export const SEAT_FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
 const SEAT_ALERT_WATCHES = 'seatAlertWatches';
-const SEAT_ALERT_STATE   = 'seatAlertState';
+const SEAT_ALERT_STATE = 'seatAlertState';
 
 // Build sectionId → seat info from the raw CONNECT array. Tolerant of junk.
 export function parseFeedSeatMap(payload) {
@@ -957,7 +1046,7 @@ export function detectSeatDrops(watched, seatMap, priorSeen = {}) {
   const drops = [];
   const nextSeen = {};
   let changed = false;
-  for (const w of (watched || [])) {
+  for (const w of watched || []) {
     const id = w?.id;
     if (typeof id !== 'number') continue;
     const key = String(id);
@@ -983,9 +1072,12 @@ export function detectSeatDrops(watched, seatMap, priorSeen = {}) {
 
 // Plain, escaped email for one user's freed seats.
 export function buildSeatAlertEmail(drops) {
-  const items = drops.map(d =>
-    `<li style="margin:6px 0;"><strong>${escapeHtml(d.label)}</strong> — ${d.seatsLeft} seat${d.seatsLeft === 1 ? '' : 's'} left</li>`,
-  ).join('');
+  const items = drops
+    .map(
+      (d) =>
+        `<li style="margin:6px 0;"><strong>${escapeHtml(d.label)}</strong> — ${d.seatsLeft} seat${d.seatsLeft === 1 ? '' : 's'} left</li>`,
+    )
+    .join('');
   const n = drops.length;
   const subject = sanitizeHeaderValue(
     n === 1 ? `[Shohoj] Seat open: ${drops[0].label}` : `[Shohoj] ${n} watched seats just opened`,
@@ -1037,10 +1129,12 @@ async function handleAssistant(request, env, origin) {
   }
   // Paid endpoint: a throwing limiter denies rather than granting unmetered
   // Anthropic spend. See the rateLimit() policy note.
-  if (!(await rateLimit(env, uid, 'assistant', {
-    binding: env.ASSISTANT_RATE_LIMIT,
-    failClosed: true,
-  }))) {
+  if (
+    !(await rateLimit(env, uid, 'assistant', {
+      binding: env.ASSISTANT_RATE_LIMIT,
+      failClosed: true,
+    }))
+  ) {
     return jsonResponse({ error: 'Too many requests' }, { status: 429 }, env, origin);
   }
 
@@ -1076,11 +1170,13 @@ async function handleAssistant(request, env, origin) {
     const reply = await runAssistantLoop({ anthropic, messages, ctx });
     return jsonResponse({ reply }, { status: 200 }, env, origin);
   } catch (e) {
-    console.error(JSON.stringify({
-      level: 'error',
-      event: 'assistant_error',
-      errorMessage: e?.message || String(e),
-    }));
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'assistant_error',
+        errorMessage: e?.message || String(e),
+      }),
+    );
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 502 }, env, origin);
   }
 }
@@ -1108,9 +1204,12 @@ async function firestoreListAll(env, token, collection) {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) throw new Error(`Firestore list ${collection} ${res.status}`);
     const data = await res.json();
-    for (const d of (data.documents || [])) {
+    for (const d of data.documents || []) {
       const name = d.name || '';
-      out.push({ id: name.slice(name.lastIndexOf('/') + 1), fields: fromFirestoreFields(d.fields || {}) });
+      out.push({
+        id: name.slice(name.lastIndexOf('/') + 1),
+        fields: fromFirestoreFields(d.fields || {}),
+      });
     }
     pageToken = data.nextPageToken || '';
   } while (pageToken);
@@ -1118,7 +1217,9 @@ async function firestoreListAll(env, token, collection) {
 }
 
 async function firestoreGetFields(env, token, path) {
-  const res = await fetch(`${firestoreDocsBase(env)}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(`${firestoreDocsBase(env)}/${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Firestore get ${path} ${res.status}`);
   return fromFirestoreFields((await res.json()).fields || {});
@@ -1141,23 +1242,39 @@ export async function runSeatAlertCron(env) {
   // it, rather than reading watches and silently dropping every email.
   const cfg = seatAlertEmailConfig(env);
   if (!cfg.ok) {
-    return { configured: false, reason: cfg.reason, users: 0, watches: 0, transitions: 0, emailed: 0, failed: 0 };
+    return {
+      configured: false,
+      reason: cfg.reason,
+      users: 0,
+      watches: 0,
+      transitions: 0,
+      emailed: 0,
+      failed: 0,
+    };
   }
 
   const feedRes = await fetch(SEAT_FEED_URL, { headers: { Accept: 'application/json' } });
   if (!feedRes.ok) throw new Error(`Feed fetch ${feedRes.status}`);
   const seatMap = parseFeedSeatMap(await feedRes.json());
   if (seatMap.size === 0) {
-    return { configured: true, feedEmpty: true, users: 0, watches: 0, transitions: 0, emailed: 0, failed: 0 };
+    return {
+      configured: true,
+      feedEmpty: true,
+      users: 0,
+      watches: 0,
+      transitions: 0,
+      emailed: 0,
+      failed: 0,
+    };
   }
 
   const token = await getServiceAccountAccessToken(env);
   const watchDocs = await firestoreListAll(env, token, SEAT_ALERT_WATCHES);
 
-  let watches = 0;      // active watch docs actually processed
-  let transitions = 0;  // full→open drops detected across all users
-  let emailed = 0;      // users successfully emailed this run
-  let failed = 0;       // users whose drop email failed to send
+  let watches = 0; // active watch docs actually processed
+  let transitions = 0; // full→open drops detected across all users
+  let emailed = 0; // users successfully emailed this run
+  let failed = 0; // users whose drop email failed to send
   for (const { id: uid, fields } of watchDocs) {
     if (fields.enabled === false) continue;
     const email = typeof fields.email === 'string' ? fields.email : '';
@@ -1167,7 +1284,7 @@ export async function runSeatAlertCron(env) {
 
     const state = await firestoreGetFields(env, token, `${SEAT_ALERT_STATE}/${uid}`);
     const firstRun = state === null;
-    const priorSeen = (state && state.seen && typeof state.seen === 'object') ? state.seen : {};
+    const priorSeen = state && state.seen && typeof state.seen === 'object' ? state.seen : {};
 
     const { drops, nextSeen, changed } = detectSeatDrops(sections, seatMap, priorSeen);
 
@@ -1177,7 +1294,8 @@ export async function runSeatAlertCron(env) {
       transitions += drops.length;
       const { subject, html } = buildSeatAlertEmail(drops);
       delivered = await resendSeatAlert(env, email, subject, html);
-      if (delivered) emailed += 1; else failed += 1;
+      if (delivered) emailed += 1;
+      else failed += 1;
     }
 
     // Only advance persisted state when delivery succeeded (or there was nothing
@@ -1185,7 +1303,10 @@ export async function runSeatAlertCron(env) {
     // leaving state untouched means the next tick re-detects the same drop and
     // retries, instead of silently swallowing the alert.
     if (delivered && (firstRun || changed)) {
-      await firestorePatchFields(env, token, `${SEAT_ALERT_STATE}/${uid}`, { seen: nextSeen, updatedAt: new Date() });
+      await firestorePatchFields(env, token, `${SEAT_ALERT_STATE}/${uid}`, {
+        seen: nextSeen,
+        updatedAt: new Date(),
+      });
     }
   }
   return { configured: true, users: watchDocs.length, watches, transitions, emailed, failed };
@@ -1200,18 +1321,19 @@ export async function runSeatAlertCron(env) {
 // a transient failure leaves it queued for the next tick, mirroring the
 // seat-alert retry semantics. Formatting is pure and exported for tests.
 
-const LOST_FOUND_POSTS    = 'lostFoundPosts';
+const LOST_FOUND_POSTS = 'lostFoundPosts';
 const LOST_FOUND_CONTACTS = 'lostFoundContacts';
-const LOST_FOUND_CLAIMS   = 'lostFoundClaims';
+const LOST_FOUND_CLAIMS = 'lostFoundClaims';
 
 export function buildLostFoundClaimEmail(post, claim) {
   const kind = post.type === 'lost' ? 'lost' : 'found';
   const verb = kind === 'lost' ? 'says they found it' : 'says it belongs to them';
   const title = String(post.title || '(untitled)');
   const subject = `Someone responded to your ${kind} item — ${title}`;
-  const note = typeof claim.note === 'string' && claim.note.trim() !== ''
-    ? `<p style="margin:12px 0;padding:10px 12px;background:#f5f5f5;border-radius:8px;">${escapeHtml(claim.note.trim())}</p>`
-    : '';
+  const note =
+    typeof claim.note === 'string' && claim.note.trim() !== ''
+      ? `<p style="margin:12px 0;padding:10px 12px;background:#f5f5f5;border-radius:8px;">${escapeHtml(claim.note.trim())}</p>`
+      : '';
   const html = `
     <div style="font-family:sans-serif;max-width:520px;">
       <h2 style="color:#1c7c45;">Your lost &amp; found post got a response</h2>
@@ -1247,13 +1369,17 @@ export async function runLostFoundCron(env) {
   }
 
   let emailed = 0; // claims delivered and dequeued this run
-  let failed = 0;  // Resend rejections — left queued for retry
+  let failed = 0; // Resend rejections — left queued for retry
   let dropped = 0; // malformed/orphaned claims removed without an email
   for (const { id, fields } of claimDocs) {
     const postId = typeof fields.postId === 'string' ? fields.postId : '';
     const fromEmail = typeof fields.fromEmail === 'string' ? fields.fromEmail : '';
-    const post = postId ? await firestoreGetFields(env, token, `${LOST_FOUND_POSTS}/${postId}`) : null;
-    const contact = postId ? await firestoreGetFields(env, token, `${LOST_FOUND_CONTACTS}/${postId}`) : null;
+    const post = postId
+      ? await firestoreGetFields(env, token, `${LOST_FOUND_POSTS}/${postId}`)
+      : null;
+    const contact = postId
+      ? await firestoreGetFields(env, token, `${LOST_FOUND_CONTACTS}/${postId}`)
+      : null;
 
     // Post deleted / contact missing / junk claim → nothing deliverable; drop
     // the queue doc so it can't loop forever.
@@ -1277,35 +1403,45 @@ export async function runLostFoundCron(env) {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil((async () => {
-      try {
-        const r = await runSeatAlertCron(env);
-        if (!r.configured) {
-          // Loud, non-PII operational error — alerts are NOT being delivered.
-          console.error(`seat-alert cron: email channel not configured — ${r.reason}; skipped (no emails sent)`);
-          return;
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const r = await runSeatAlertCron(env);
+          if (!r.configured) {
+            // Loud, non-PII operational error — alerts are NOT being delivered.
+            console.error(
+              `seat-alert cron: email channel not configured — ${r.reason}; skipped (no emails sent)`,
+            );
+            return;
+          }
+          console.log(
+            `seat-alert cron: users=${r.users} watches=${r.watches} transitions=${r.transitions} emailed=${r.emailed} failed=${r.failed}`,
+          );
+        } catch (e) {
+          console.error('seat-alert cron failed:', e?.message || e);
         }
-        console.log(
-          `seat-alert cron: users=${r.users} watches=${r.watches} transitions=${r.transitions} emailed=${r.emailed} failed=${r.failed}`,
-        );
-      } catch (e) {
-        console.error('seat-alert cron failed:', e?.message || e);
-      }
-    })());
-    ctx.waitUntil((async () => {
-      try {
-        const r = await runLostFoundCron(env);
-        if (!r.configured) {
-          console.error(`lost-found cron: email channel not configured — ${r.reason}; skipped (no emails sent)`);
-          return;
+      })(),
+    );
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const r = await runLostFoundCron(env);
+          if (!r.configured) {
+            console.error(
+              `lost-found cron: email channel not configured — ${r.reason}; skipped (no emails sent)`,
+            );
+            return;
+          }
+          if (r.claims > 0) {
+            console.log(
+              `lost-found cron: claims=${r.claims} emailed=${r.emailed} failed=${r.failed} dropped=${r.dropped}`,
+            );
+          }
+        } catch (e) {
+          console.error('lost-found cron failed:', e?.message || e);
         }
-        if (r.claims > 0) {
-          console.log(`lost-found cron: claims=${r.claims} emailed=${r.emailed} failed=${r.failed} dropped=${r.dropped}`);
-        }
-      } catch (e) {
-        console.error('lost-found cron failed:', e?.message || e);
-      }
-    })());
+      })(),
+    );
   },
 
   async fetch(request, env, ctx) {
@@ -1344,25 +1480,37 @@ export default {
           origin,
         );
       }
-      if (request.method === 'POST'   && url.pathname === '/upload')   return await handleUpload(request, env, origin, ctx);
-      if (request.method === 'GET'    && url.pathname === '/download') return await handleDownload(request, env, origin);
-      if (request.method === 'DELETE' && url.pathname === '/file')     return await handleDelete(request, env, origin);
-      if (request.method === 'POST'   && url.pathname === '/reviews')  return await handleReview(request, env, origin);
-      if (request.method === 'POST'   && url.pathname === '/api/assistant') return await handleAssistant(request, env, origin);
-      return jsonResponse({ error: 'Not found' }, { status: 404, headers: { 'X-Request-Id': requestId } }, env, origin);
+      if (request.method === 'POST' && url.pathname === '/upload')
+        return await handleUpload(request, env, origin, ctx);
+      if (request.method === 'GET' && url.pathname === '/download')
+        return await handleDownload(request, env, origin);
+      if (request.method === 'DELETE' && url.pathname === '/file')
+        return await handleDelete(request, env, origin);
+      if (request.method === 'POST' && url.pathname === '/reviews')
+        return await handleReview(request, env, origin);
+      if (request.method === 'POST' && url.pathname === '/api/assistant')
+        return await handleAssistant(request, env, origin);
+      return jsonResponse(
+        { error: 'Not found' },
+        { status: 404, headers: { 'X-Request-Id': requestId } },
+        env,
+        origin,
+      );
     } catch (e) {
       const isAuthErr = e instanceof AuthError;
       // Structured, machine-readable error log (no request body / PII), keyed by
       // the correlation id, path and method so failures are greppable.
-      console.error(JSON.stringify({
-        level: 'error',
-        event: 'worker_error',
-        requestId,
-        method: request.method,
-        path: url.pathname,
-        errorCode: isAuthErr ? 'unauthorized' : 'server_error',
-        errorMessage: e?.message || String(e),
-      }));
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'worker_error',
+          requestId,
+          method: request.method,
+          path: url.pathname,
+          errorCode: isAuthErr ? 'unauthorized' : 'server_error',
+          errorMessage: e?.message || String(e),
+        }),
+      );
       return jsonResponse(
         { error: isAuthErr ? 'Unauthorized' : 'Server error', requestId },
         { status: isAuthErr ? 401 : 500, headers: { 'X-Request-Id': requestId } },

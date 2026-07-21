@@ -52,9 +52,10 @@ function gpaCoreCalcSemesterGpaImpl(semester: Pick<SemesterEntry, 'courses'>): n
 
 function gpaCoreUsesBestGradePolicyImpl(options: RetakePolicyOptions = {}): boolean {
   const season = options.startSeason || 'Fall';
-  const year = typeof options.startYear === 'number'
-    ? options.startYear
-    : Number.parseInt(options.startYear || '2024', 10);
+  const year =
+    typeof options.startYear === 'number'
+      ? options.startYear
+      : Number.parseInt(options.startYear || '2024', 10);
 
   if (!season || Number.isNaN(year)) return false;
 
@@ -74,16 +75,20 @@ export function getCourseCode(courseName: string): string | null {
 export function getCourseIdentity(courseName: string): string {
   const code = getCourseCode(courseName);
   if (code) return code;
-  return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
+  return courseName
+    .replace(/\s*\([^)]+\)$/, '')
+    .trim()
+    .toLowerCase();
 }
 
 function gpaCoreGetRetakenKeysImpl(
   semesters: readonly SemesterEntry[],
   options: RetakePolicyOptions = {},
 ): Set<string> {
-  const bestGrade = typeof options.bestGrade === 'boolean'
-    ? options.bestGrade
-    : gpaCoreUsesBestGradePolicyImpl(options);
+  const bestGrade =
+    typeof options.bestGrade === 'boolean'
+      ? options.bestGrade
+      : gpaCoreUsesBestGradePolicyImpl(options);
 
   const attempts: {
     semId: number;
@@ -97,9 +102,8 @@ function gpaCoreGetRetakenKeysImpl(
     if (semester.running || semester.summary) continue;
     semester.courses.forEach((course: CourseEntry, index: number) => {
       if (!course.name.trim()) return;
-      const gp = course.grade && course.grade !== 'F(NT)'
-        ? gradePointFor(course.grade) ?? -1
-        : -1;
+      const gp =
+        course.grade && course.grade !== 'F(NT)' ? (gradePointFor(course.grade) ?? -1) : -1;
       attempts.push({
         semId: semester.id,
         index,
@@ -151,7 +155,7 @@ export function calculateCgpaTotals(
   let cgpaCredits = 0;
 
   if (includeSummary) {
-    const summaryBlock = semesters.find(semester => semester.summary);
+    const summaryBlock = semesters.find((semester) => semester.summary);
     if (summaryBlock?.summaryCGPA !== undefined && summaryBlock.summaryCredits !== undefined) {
       points += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
       cgpaCredits += summaryBlock.summaryCredits;
@@ -202,9 +206,12 @@ function gpaCoreGetSemesterCreditWarningImpl(
   }, 0);
 
   if (total === 0) return null;
-  if (total < 9) return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
-  if (total > 15) return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
-  if (total > 12) return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
+  if (total < 9)
+    return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
+  if (total > 15)
+    return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
+  if (total > 12)
+    return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
   return null;
 }
 

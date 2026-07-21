@@ -51,22 +51,17 @@ export function ModalProvider({ children }: { readonly children: ReactNode }) {
     });
   }, []);
 
-  const settle = useCallback(
-    (confirmed: boolean) => {
-      setPending((current) => {
-        current?.resolve(confirmed);
-        return null;
-      });
-    },
-    [],
-  );
+  const settle = useCallback((confirmed: boolean) => {
+    setPending((current) => {
+      current?.resolve(confirmed);
+      return null;
+    });
+  }, []);
 
   return (
     <ModalContext value={confirm}>
       {children}
-      {pending !== null && (
-        <ConfirmDialog options={pending.options} onSettle={settle} />
-      )}
+      {pending !== null && <ConfirmDialog options={pending.options} onSettle={settle} />}
     </ModalContext>
   );
 }
@@ -96,11 +91,7 @@ function ConfirmDialog({
   };
 
   return (
-    <div
-      className="shell-modal-backdrop"
-      onClick={() => onSettle(false)}
-      onKeyDown={onKeyDown}
-    >
+    <div className="shell-modal-backdrop" onClick={() => onSettle(false)} onKeyDown={onKeyDown}>
       <div
         ref={dialogRef}
         className="shell-modal"
@@ -112,9 +103,7 @@ function ConfirmDialog({
         <h2 id="shell-modal-title" className="shell-modal-title">
           {options.title}
         </h2>
-        {options.message !== undefined && (
-          <p className="shell-modal-message">{options.message}</p>
-        )}
+        {options.message !== undefined && <p className="shell-modal-message">{options.message}</p>}
         <div className="shell-modal-actions">
           <Button variant="secondary" onClick={() => onSettle(false)}>
             {options.cancelLabel ?? 'Cancel'}

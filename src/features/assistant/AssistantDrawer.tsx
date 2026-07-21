@@ -87,7 +87,12 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
   };
 
   return (
-    <aside className="assistant-drawer" role="dialog" aria-label="Shohoj Assistant" aria-modal="false">
+    <aside
+      className="assistant-drawer"
+      role="dialog"
+      aria-label="Shohoj Assistant"
+      aria-modal="false"
+    >
       <header className="assistant-drawer-header">
         <h2 className="assistant-drawer-title">Shohoj Assistant</h2>
         <button
@@ -100,7 +105,8 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
         </button>
       </header>
       <p className="assistant-drawer-note">
-        Answers use only your own saved data. Chats aren’t saved — they reset when you close this panel.
+        Answers use only your own saved data. Chats aren’t saved — they reset when you close this
+        panel.
       </p>
 
       <div className="assistant-log" ref={logRef} aria-live="polite">
@@ -162,11 +168,7 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
             }
           }}
         />
-        <button
-          type="submit"
-          className="assistant-send"
-          disabled={pending || !draft.trim()}
-        >
+        <button type="submit" className="assistant-send" disabled={pending || !draft.trim()}>
           {pending ? '…' : 'Send'}
         </button>
       </form>

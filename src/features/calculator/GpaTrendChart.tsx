@@ -62,7 +62,14 @@ export default function GpaTrendChart() {
                 strokeOpacity={0.12}
                 strokeDasharray="3 4"
               />
-              <text x={31} y={line.y + 3.5} textAnchor="end" fontSize={10} fill="currentColor" fillOpacity={0.45}>
+              <text
+                x={31}
+                y={line.y + 3.5}
+                textAnchor="end"
+                fontSize={10}
+                fill="currentColor"
+                fillOpacity={0.45}
+              >
                 {line.label}
               </text>
             </g>
@@ -80,8 +87,22 @@ export default function GpaTrendChart() {
 
           {geometry.dots.map((dot) => (
             <g key={`${dot.label}-${dot.x}`}>
-              <circle cx={dot.x} cy={dot.y} r={4} fill="var(--bg, #fff)" stroke="#2ECC71" strokeWidth={2} />
-              <text x={dot.x} y={dot.y - 9} textAnchor="middle" fontSize={10} fontWeight={700} fill="#2ECC71">
+              <circle
+                cx={dot.x}
+                cy={dot.y}
+                r={4}
+                fill="var(--bg, #fff)"
+                stroke="#2ECC71"
+                strokeWidth={2}
+              />
+              <text
+                x={dot.x}
+                y={dot.y - 9}
+                textAnchor="middle"
+                fontSize={10}
+                fontWeight={700}
+                fill="#2ECC71"
+              >
                 {dot.gpaText}
               </text>
               <text

@@ -22,7 +22,10 @@
 //   SMOKE_MAX_ATTEMPTS  Propagation poll attempts (default 20).
 //   SMOKE_DELAY_MS      Delay between attempts (default 6000).
 
-const BASE_URL = (process.env.BASE_URL || 'https://souravmondalshuvo.github.io/Shohoj/').replace(/\/?$/, '/');
+const BASE_URL = (process.env.BASE_URL || 'https://souravmondalshuvo.github.io/Shohoj/').replace(
+  /\/?$/,
+  '/',
+);
 const EXPECTED_SHA = process.env.EXPECTED_SHA || '';
 const MAX_ATTEMPTS = Number(process.env.SMOKE_MAX_ATTEMPTS || 20);
 const DELAY_MS = Number(process.env.SMOKE_DELAY_MS || 6000);
@@ -58,7 +61,9 @@ async function waitForPropagation() {
           console.log(`✓ version.json live (commit=${meta.commit}, version=${meta.version})`);
           return meta;
         }
-        console.log(`… version.json commit ${meta.commit} != expected ${EXPECTED_SHA} (attempt ${attempt}/${MAX_ATTEMPTS})`);
+        console.log(
+          `… version.json commit ${meta.commit} != expected ${EXPECTED_SHA} (attempt ${attempt}/${MAX_ATTEMPTS})`,
+        );
       } else {
         console.log(`… version.json HTTP ${status} (attempt ${attempt}/${MAX_ATTEMPTS})`);
       }
@@ -86,7 +91,9 @@ async function checkRoutes(failures) {
         continue;
       }
       if (!/text\/html/i.test(contentType)) {
-        failures.push(`route /${route} content-type is ${contentType || 'unknown'} (expected text/html)`);
+        failures.push(
+          `route /${route} content-type is ${contentType || 'unknown'} (expected text/html)`,
+        );
         continue;
       }
       console.log(`✓ /${route} OK (${body.length} bytes)`);
@@ -151,7 +158,9 @@ async function main() {
   if (failures.length) {
     console.error('\n✗ Smoke test FAILED:');
     for (const f of failures) console.error(`  - ${f}`);
-    console.error('\nThe deployment is live but unhealthy. Investigate or roll back (docs/ROLLBACK.md).');
+    console.error(
+      '\nThe deployment is live but unhealthy. Investigate or roll back (docs/ROLLBACK.md).',
+    );
     process.exit(1);
   }
 

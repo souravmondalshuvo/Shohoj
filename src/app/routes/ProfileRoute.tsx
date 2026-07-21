@@ -50,7 +50,9 @@ function readRoutineSummary(): RoutineSummary {
     const picks = (parsed as { picks?: unknown })?.picks;
     if (!picks || typeof picks !== 'object') return { courses: 0, sectionsPicked: 0 };
     const entries = Object.values(picks as Record<string, unknown>);
-    const sectionsPicked = entries.filter((v) => typeof v === 'number' && Number.isFinite(v)).length;
+    const sectionsPicked = entries.filter(
+      (v) => typeof v === 'number' && Number.isFinite(v),
+    ).length;
     return { courses: entries.length, sectionsPicked };
   } catch {
     return { courses: 0, sectionsPicked: 0 };
@@ -126,10 +128,12 @@ export function Component() {
         <h1>Profile</h1>
         <div className="profile-signedout" data-testid="profile-signedout">
           <p>
-            Sign in with your BRACU G-Suite account to see your account hub — your
-            saved routine, seat watchlist, and reviews all in one place.
+            Sign in with your BRACU G-Suite account to see your account hub — your saved routine,
+            seat watchlist, and reviews all in one place.
           </p>
-          <p className="shell-muted">Use the <strong>Sign in</strong> button in the top bar.</p>
+          <p className="shell-muted">
+            Use the <strong>Sign in</strong> button in the top bar.
+          </p>
         </div>
       </section>
     );
@@ -152,7 +156,11 @@ export function Component() {
       </div>
 
       <div className="profile-cards">
-        <section className="profile-card" data-testid="profile-routine-card" aria-labelledby="profile-routine-heading">
+        <section
+          className="profile-card"
+          data-testid="profile-routine-card"
+          aria-labelledby="profile-routine-heading"
+        >
           <h2 id="profile-routine-heading" className="profile-card-title">
             Saved routine
           </h2>
@@ -169,7 +177,11 @@ export function Component() {
           )}
         </section>
 
-        <section className="profile-card" data-testid="profile-watchlist-card" aria-labelledby="profile-watch-heading">
+        <section
+          className="profile-card"
+          data-testid="profile-watchlist-card"
+          aria-labelledby="profile-watch-heading"
+        >
           <h2 id="profile-watch-heading" className="profile-card-title">
             Seat watchlist
           </h2>
@@ -191,7 +203,8 @@ export function Component() {
           </p>
           {watches.length === 0 ? (
             <p className="shell-muted" data-testid="profile-watchlist-empty">
-              You&apos;re not watching any sections. Add them from <Link to="/seats">Seat Status</Link>.
+              You&apos;re not watching any sections. Add them from{' '}
+              <Link to="/seats">Seat Status</Link>.
             </p>
           ) : (
             <ul className="profile-watchlist" data-testid="profile-watchlist">
@@ -219,9 +232,7 @@ export function Component() {
           <h2 id="profile-soon-heading" className="profile-card-title">
             Coming soon
           </h2>
-          <p className="shell-muted">
-            Your own submitted reviews move here in an upcoming update.
-          </p>
+          <p className="shell-muted">Your own submitted reviews move here in an upcoming update.</p>
         </section>
       </div>
 

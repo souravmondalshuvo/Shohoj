@@ -25,27 +25,27 @@ export const POST_TTL_DAYS = 30;
 export const POST_TTL_MS = POST_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 export interface LostFoundDraft {
-    type: LostFoundType;
-    title: string;
-    description?: string;
-    locationHint?: string;
-    /** Optional tower room code; links the post to the campus map. */
-    roomCode?: string;
+  type: LostFoundType;
+  title: string;
+  description?: string;
+  locationHint?: string;
+  /** Optional tower room code; links the post to the campus map. */
+  roomCode?: string;
 }
 
 export interface LostFoundPost extends LostFoundDraft {
-    id: string;
-    status: LostFoundStatus;
-    creatorUid: string;
-    /** Epoch milliseconds (the repo converts Firestore timestamps). */
-    createdAtMs: number;
+  id: string;
+  status: LostFoundStatus;
+  creatorUid: string;
+  /** Epoch milliseconds (the repo converts Firestore timestamps). */
+  createdAtMs: number;
 }
 
 export type DraftField = 'type' | 'title' | 'description' | 'locationHint' | 'roomCode';
 
 export type DraftResult =
-    | { ok: true; value: LostFoundDraft }
-    | { ok: false; errors: Partial<Record<DraftField, string>> };
+  | { ok: true; value: LostFoundDraft }
+  | { ok: false; errors: Partial<Record<DraftField, string>> };
 
 /**
  * Validate and normalize a draft: trims text, canonicalizes the room code,
@@ -53,66 +53,64 @@ export type DraftResult =
  * passes here must not be rejected by the rules.
  */
 export function validateDraft(input: {
-    type?: string | null;
-    title?: string | null;
-    description?: string | null;
-    locationHint?: string | null;
-    roomCode?: string | null;
+  type?: string | null;
+  title?: string | null;
+  description?: string | null;
+  locationHint?: string | null;
+  roomCode?: string | null;
 }): DraftResult {
-    const errors: Partial<Record<DraftField, string>> = {};
+  const errors: Partial<Record<DraftField, string>> = {};
 
-    const type = input.type === 'lost' || input.type === 'found' ? input.type : null;
-    if (!type) errors.type = 'Choose lost or found.';
+  const type = input.type === 'lost' || input.type === 'found' ? input.type : null;
+  if (!type) errors.type = 'Choose lost or found.';
 
-    const title = (input.title ?? '').trim();
-    if (title.length < TITLE_MIN) {
-        errors.title = `Title needs at least ${TITLE_MIN} characters.`;
-    } else if (title.length > TITLE_MAX) {
-        errors.title = `Title can be at most ${TITLE_MAX} characters.`;
-    }
+  const title = (input.title ?? '').trim();
+  if (title.length < TITLE_MIN) {
+    errors.title = `Title needs at least ${TITLE_MIN} characters.`;
+  } else if (title.length > TITLE_MAX) {
+    errors.title = `Title can be at most ${TITLE_MAX} characters.`;
+  }
 
-    const description = (input.description ?? '').trim();
-    if (description.length > DESCRIPTION_MAX) {
-        errors.description = `Description can be at most ${DESCRIPTION_MAX} characters.`;
-    }
+  const description = (input.description ?? '').trim();
+  if (description.length > DESCRIPTION_MAX) {
+    errors.description = `Description can be at most ${DESCRIPTION_MAX} characters.`;
+  }
 
-    const locationHint = (input.locationHint ?? '').trim();
-    if (locationHint.length > LOCATION_MAX) {
-        errors.locationHint = `Location can be at most ${LOCATION_MAX} characters.`;
-    }
+  const locationHint = (input.locationHint ?? '').trim();
+  if (locationHint.length > LOCATION_MAX) {
+    errors.locationHint = `Location can be at most ${LOCATION_MAX} characters.`;
+  }
 
-    const roomRaw = (input.roomCode ?? '').trim();
-    let roomCode: string | undefined;
-    if (roomRaw !== '') {
-        const parsed = parseRoomCode(roomRaw);
-        if (!parsed) errors.roomCode = 'Not a tower room code (like 09G-31T).';
-        else roomCode = parsed.code;
-    }
+  const roomRaw = (input.roomCode ?? '').trim();
+  let roomCode: string | undefined;
+  if (roomRaw !== '') {
+    const parsed = parseRoomCode(roomRaw);
+    if (!parsed) errors.roomCode = 'Not a tower room code (like 09G-31T).';
+    else roomCode = parsed.code;
+  }
 
-    if (Object.keys(errors).length > 0 || !type) return { ok: false, errors };
+  if (Object.keys(errors).length > 0 || !type) return { ok: false, errors };
 
-    const value: LostFoundDraft = { type, title };
-    if (description !== '') value.description = description;
-    if (locationHint !== '') value.locationHint = locationHint;
-    if (roomCode) value.roomCode = roomCode;
-    return { ok: true, value };
+  const value: LostFoundDraft = { type, title };
+  if (description !== '') value.description = description;
+  if (locationHint !== '') value.locationHint = locationHint;
+  if (roomCode) value.roomCode = roomCode;
+  return { ok: true, value };
 }
 
-export type ClaimNoteResult =
-    | { ok: true; value: string }
-    | { ok: false; error: string };
+export type ClaimNoteResult = { ok: true; value: string } | { ok: false; error: string };
 
 /** Normalize an optional claim note; '' means "no note". */
 export function validateClaimNote(input: string | null | undefined): ClaimNoteResult {
-    const note = (input ?? '').trim();
-    if (note.length > CLAIM_NOTE_MAX) {
-        return { ok: false, error: `Note can be at most ${CLAIM_NOTE_MAX} characters.` };
-    }
-    return { ok: true, value: note };
+  const note = (input ?? '').trim();
+  if (note.length > CLAIM_NOTE_MAX) {
+    return { ok: false, error: `Note can be at most ${CLAIM_NOTE_MAX} characters.` };
+  }
+  return { ok: true, value: note };
 }
 
 export function isExpired(createdAtMs: number, nowMs: number): boolean {
-    return nowMs - createdAtMs >= POST_TTL_MS;
+  return nowMs - createdAtMs >= POST_TTL_MS;
 }
 
 /**
@@ -120,30 +118,32 @@ export function isExpired(createdAtMs: number, nowMs: number): boolean {
  * and expired posts drop out here (nothing is deleted).
  */
 export function visiblePosts(
-    posts: readonly LostFoundPost[],
-    nowMs: number,
-    filter: LostFoundType | 'all' = 'all',
+  posts: readonly LostFoundPost[],
+  nowMs: number,
+  filter: LostFoundType | 'all' = 'all',
 ): LostFoundPost[] {
-    return posts
-        .filter((p) =>
-            p.status === 'open' &&
-            !isExpired(p.createdAtMs, nowMs) &&
-            (filter === 'all' || p.type === filter))
-        .sort((a, b) => b.createdAtMs - a.createdAtMs);
+  return posts
+    .filter(
+      (p) =>
+        p.status === 'open' &&
+        !isExpired(p.createdAtMs, nowMs) &&
+        (filter === 'all' || p.type === filter),
+    )
+    .sort((a, b) => b.createdAtMs - a.createdAtMs);
 }
 
 /** Compact relative age for list rows. */
 export function postAge(createdAtMs: number, nowMs: number): string {
-    const diff = Math.max(0, nowMs - createdAtMs);
-    const minutes = Math.floor(diff / 60_000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+  const diff = Math.max(0, nowMs - createdAtMs);
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 /** The claim button reads differently on each side of the exchange. */
 export function claimLabel(type: LostFoundType): string {
-    return type === 'lost' ? 'I found this' : 'This is mine';
+  return type === 'lost' ? 'I found this' : 'This is mine';
 }

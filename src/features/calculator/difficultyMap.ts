@@ -73,10 +73,7 @@ export function difficultyDepts(entries: readonly DifficultyEntry[]): string[] {
 }
 
 /** Applies the department filter (ALL = passthrough), leaving order untouched. */
-export function filterByDept(
-  entries: readonly DifficultyEntry[],
-  dept: string,
-): DifficultyEntry[] {
+export function filterByDept(entries: readonly DifficultyEntry[], dept: string): DifficultyEntry[] {
   return dept === 'ALL' ? [...entries] : entries.filter((e) => e.dept === dept);
 }
 

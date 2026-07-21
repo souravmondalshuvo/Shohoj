@@ -63,9 +63,7 @@ export function validate<T>(
   if (parsed.success) return ok(parsed.data);
 
   const issues = formatIssues(parsed.error);
-  const detail = issues
-    .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
-    .join('; ');
+  const detail = issues.map((i) => (i.path ? `${i.path}: ${i.message}` : i.message)).join('; ');
   const message = context ? `${context}: ${detail}` : detail;
   return err(new SchemaValidationError(message, issues, parsed.error));
 }

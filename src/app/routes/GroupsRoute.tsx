@@ -252,8 +252,8 @@ export function Component() {
     <section className="shell-page groups-page" data-testid="groups-page">
       <h1>Study Groups</h1>
       <p className="shell-muted">
-        Find classmates for a course, or post your own group — join a group to
-        see its member roster.
+        Find classmates for a course, or post your own group — join a group to see its member
+        roster.
       </p>
 
       {!canUse ? (
@@ -352,7 +352,9 @@ export function Component() {
                     <button
                       key={m}
                       type="button"
-                      className={form.mode === m ? 'groups-chip groups-chip--active' : 'groups-chip'}
+                      className={
+                        form.mode === m ? 'groups-chip groups-chip--active' : 'groups-chip'
+                      }
                       aria-pressed={form.mode === m}
                       onClick={() => setForm({ ...form, mode: m })}
                       data-testid={`groups-form-mode-${m}`}
@@ -431,9 +433,16 @@ export function Component() {
                 const joined = myGroupIds.has(group.id);
                 const isCreator = group.creatorUid === identity.uid;
                 const roster = rosters.get(group.id);
-                const sum = summarizeMembers(joined && roster ? roster.length : null, group.capacity);
+                const sum = summarizeMembers(
+                  joined && roster ? roster.length : null,
+                  group.capacity,
+                );
                 return (
-                  <li key={group.id} className="groups-item" data-testid={`groups-item-${group.id}`}>
+                  <li
+                    key={group.id}
+                    className="groups-item"
+                    data-testid={`groups-item-${group.id}`}
+                  >
                     <div className="groups-item-head">
                       <span className="groups-item-course">{group.courseCode}</span>
                       <span className="groups-tag">{MODE_LABELS[group.mode]}</span>
@@ -446,9 +455,7 @@ export function Component() {
                       <span className="groups-item-age">{groupAge(group.createdAtMs, now)}</span>
                     </div>
                     <p className="groups-item-title">{group.title || 'Untitled group'}</p>
-                    {group.description && (
-                      <p className="groups-item-desc">{group.description}</p>
-                    )}
+                    {group.description && <p className="groups-item-desc">{group.description}</p>}
                     {group.schedule && (
                       <p className="groups-item-schedule shell-muted">🕑 {group.schedule}</p>
                     )}
@@ -535,10 +542,7 @@ export function Component() {
                     )}
                     {reportingId === group.id && (
                       <div className="groups-report-box" data-testid="groups-report-box">
-                        <label
-                          className="groups-field-label"
-                          htmlFor={`groups-reason-${group.id}`}
-                        >
+                        <label className="groups-field-label" htmlFor={`groups-reason-${group.id}`}>
                           What&apos;s wrong? (spam, abuse, dead link…)
                         </label>
                         <textarea

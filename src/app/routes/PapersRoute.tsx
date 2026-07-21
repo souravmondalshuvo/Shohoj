@@ -149,9 +149,7 @@ export function Component() {
     let papers = list.papers;
     if (!isCourseQuery && searchCode !== '') {
       papers = papers.filter(
-        (p) =>
-          p.courseCode.includes(searchCode) ||
-          p.title.toUpperCase().includes(searchCode),
+        (p) => p.courseCode.includes(searchCode) || p.title.toUpperCase().includes(searchCode),
       );
     }
     if (typeFilter !== 'all') papers = papers.filter((p) => p.type === typeFilter);
@@ -196,7 +194,12 @@ export function Component() {
   const submitUpload = async () => {
     if (!repo || uploading) return;
     const err = validatePaperUpload(
-      { file: uploadFile, courseCode: uploadForm.courseCode, type: uploadForm.type, title: uploadForm.title },
+      {
+        file: uploadFile,
+        courseCode: uploadForm.courseCode,
+        type: uploadForm.type,
+        title: uploadForm.title,
+      },
       BRACU_COURSE_DB,
     );
     if (err) {
@@ -236,8 +239,8 @@ export function Component() {
     <section className="shell-page papers-page" data-testid="papers-page">
       <h1>Past Papers &amp; Notes</h1>
       <p className="shell-muted">
-        Browse and share past midterms, finals, quizzes, and notes — searchable
-        by course, reviewed before they appear.
+        Browse and share past midterms, finals, quizzes, and notes — searchable by course, reviewed
+        before they appear.
       </p>
 
       {!canUse ? (
@@ -303,7 +306,9 @@ export function Component() {
                   <select
                     className="papers-input"
                     value={uploadForm.type}
-                    onChange={(e) => setUploadForm({ ...uploadForm, type: e.target.value as PaperType })}
+                    onChange={(e) =>
+                      setUploadForm({ ...uploadForm, type: e.target.value as PaperType })
+                    }
                     data-testid="papers-type"
                   >
                     {PAPER_TYPES.map((t) => (

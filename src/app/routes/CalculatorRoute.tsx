@@ -47,7 +47,10 @@ import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import CalculatorResults from '../../features/calculator/CalculatorResults.tsx';
 import CalculatorSemesters from '../../features/calculator/CalculatorSemesters';
 import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog';
-import { CalculatorBridgeProvider, type CalculatorBridge } from '../../features/calculator/calculatorBridge';
+import {
+  CalculatorBridgeProvider,
+  type CalculatorBridge,
+} from '../../features/calculator/calculatorBridge';
 import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
 import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
@@ -141,7 +144,8 @@ export function Component() {
         startYear: state.startYear,
         currentDept: state.currentDept,
       }),
-      commit: (semesters: SemesterEntry[]) => dispatch({ type: 'replace', state: { ...state, semesters } }),
+      commit: (semesters: SemesterEntry[]) =>
+        dispatch({ type: 'replace', state: { ...state, semesters } }),
       isKnownCode: isKnownCourseCode,
       catalog: BRACU_COURSE_CATALOG,
       addSemester: () =>
@@ -167,7 +171,10 @@ export function Component() {
           }
           dispatch({ type: 'replace', state: demoCalculatorState() });
           // Same copy loadSampleData() shows via _shohoj_showToast.
-          notify({ kind: 'success', message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.' });
+          notify({
+            kind: 'success',
+            message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.',
+          });
         })();
       },
       rateForCourse: (semId: number, index: number) => {
@@ -193,9 +200,11 @@ export function Component() {
   // removed while open) closes silently, like the legacy onSubmitted re-find.
   const rateSem = rateTarget ? state.semesters.find((s) => s.id === rateTarget.semId) : undefined;
   const rateCourse = rateTarget ? rateSem?.courses[rateTarget.index] : undefined;
-  const rateCourseCode = rateCourse ? getReviewableCourseCode(rateCourse.name, isKnownCourseCode) : '';
+  const rateCourseCode = rateCourse
+    ? getReviewableCourseCode(rateCourse.name, isKnownCourseCode)
+    : '';
 
-  const hasSemesters = state.semesters.some(s => !s.summary);
+  const hasSemesters = state.semesters.some((s) => !s.summary);
 
   // Legacy onDeptSelect parity: keep the start season if the new department's
   // calendar offers it, otherwise clear it back to the placeholder.
@@ -215,7 +224,9 @@ export function Component() {
         startSeason={state.startSeason}
         startYear={state.startYear}
         onDeptChange={onDeptChange}
-        onStartChange={(season, year) => dispatch({ type: 'setStart', startSeason: season, startYear: year })}
+        onStartChange={(season, year) =>
+          dispatch({ type: 'setStart', startSeason: season, startYear: year })
+        }
       />
       <CalculatorBridgeProvider value={bridge}>
         <div id="semestersContainer">
@@ -226,13 +237,25 @@ export function Component() {
         {hasSemesters && (
           <div className="calc-footer lg-panel">
             <div className="footer-btn-group">
-              <button type="button" className="btn-add-semester" onClick={() => bridge.addSemester()}>
+              <button
+                type="button"
+                className="btn-add-semester"
+                onClick={() => bridge.addSemester()}
+              >
                 + Add Semester
               </button>
-              <button type="button" className="btn-running-sem" onClick={() => bridge.addRunningSemester()}>
+              <button
+                type="button"
+                className="btn-running-sem"
+                onClick={() => bridge.addRunningSemester()}
+              >
                 🎯 Running Semester
               </button>
-              <button type="button" className="btn-import-pdf" onClick={() => bridge.importTranscript()}>
+              <button
+                type="button"
+                className="btn-import-pdf"
+                onClick={() => bridge.importTranscript()}
+              >
                 📄 Import Transcript
               </button>
               <button
@@ -245,7 +268,10 @@ export function Component() {
                       // the footer only renders with semesters — but keep the guard.
                       if (!state.semesters.length) return;
                       const { jsPDF } = await loadJsPdf();
-                      drawPdfReport(new jsPDF({ unit: 'mm', format: 'a4' }), buildPdfReport(state, new Date()));
+                      drawPdfReport(
+                        new jsPDF({ unit: 'mm', format: 'a4' }),
+                        buildPdfReport(state, new Date()),
+                      );
                     } catch (err) {
                       notify({
                         kind: 'error',

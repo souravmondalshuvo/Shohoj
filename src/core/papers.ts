@@ -13,7 +13,15 @@ const ALLOWED_PAPER_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-export const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz'] as const;
+export const PAPER_TYPES = [
+  'midterm',
+  'final',
+  'quiz',
+  'notes',
+  'assignment',
+  'lab',
+  'lab-quiz',
+] as const;
 export type PaperType = (typeof PAPER_TYPES)[number];
 
 export const PAPER_TYPE_LABELS: Record<PaperType, string> = {
@@ -40,7 +48,9 @@ export interface PaperTimestampLike {
 }
 
 export function normalizeCourseCode(raw: unknown): string {
-  return String(raw ?? '').toUpperCase().trim();
+  return String(raw ?? '')
+    .toUpperCase()
+    .trim();
 }
 
 export function isKnownCourseCode(raw: unknown, catalog: CourseCatalog): boolean {
@@ -59,7 +69,8 @@ export function validatePaperUpload(
   if (!file) return 'File is required';
   if (file.size <= 0) return 'File is empty';
   if (file.size > MAX_FILE_SIZE) return 'File must be 10 MB or smaller';
-  if (!ALLOWED_PAPER_MIME_RE.test(file.type || '')) return 'Only PDFs, PNG, JPEG, WebP, and GIF images are allowed';
+  if (!ALLOWED_PAPER_MIME_RE.test(file.type || ''))
+    return 'Only PDFs, PNG, JPEG, WebP, and GIF images are allowed';
   const code = normalizeCourseCode(courseCode);
   if (!isKnownCourseCode(code, catalog)) return 'Unknown course code';
   if (!isValidPaperType(type)) return 'Invalid paper type';

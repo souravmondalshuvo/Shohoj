@@ -42,7 +42,13 @@ import {
 } from '../../features/campus/campusScene';
 
 const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
-  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
 ];
 
 const FLOOR_STORAGE_KEY = 'shohoj_campus_floor_v1';
@@ -166,7 +172,9 @@ export function Component() {
       .finally(() => {
         if (live) setRefreshing(false);
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(() => load(false), [load]);
@@ -237,9 +245,7 @@ export function Component() {
     storeFloor(next);
     // Keep the selected room only when it lives on the newly focused floor.
     setSelectedRoom((current) =>
-      current !== null && next !== null && parseRoomCode(current)?.floor === next
-        ? current
-        : null,
+      current !== null && next !== null && parseRoomCode(current)?.floor === next ? current : null,
     );
   }, []);
 
@@ -279,27 +285,32 @@ export function Component() {
 
   // Tooltip text for a hovered 3D room (#385). Lives here because only the
   // route holds the schedule feed; the scene calls it through describeRoomRef.
-  const describeRoom = useCallback((code: string): RoomTooltip | null => {
-    const parsed = model?.roomsByCode.get(code);
-    if (!parsed) return null;
-    const status = statusByCode.get(code) ?? 'unknown';
-    const feedName = feedNameByCode.get(code);
-    let detail: string;
-    if (feed && feedName) {
-      const occupant = occupantAt(feed.index, feedName, now.day, now.minute);
-      if (occupant) {
-        detail = `In class · ${occupant.courseCode} until ${fmtTime(occupant.endMin)}`;
+  const describeRoom = useCallback(
+    (code: string): RoomTooltip | null => {
+      const parsed = model?.roomsByCode.get(code);
+      if (!parsed) return null;
+      const status = statusByCode.get(code) ?? 'unknown';
+      const feedName = feedNameByCode.get(code);
+      let detail: string;
+      if (feed && feedName) {
+        const occupant = occupantAt(feed.index, feedName, now.day, now.minute);
+        if (occupant) {
+          detail = `In class · ${occupant.courseCode} until ${fmtTime(occupant.endMin)}`;
+        } else {
+          const next = busyOnDay(feed.index, feedName, now.day).find(
+            (i) => i.startMin > now.minute,
+          );
+          detail = next
+            ? `Free until ${fmtTime(next.startMin)} · then ${next.courseCode}`
+            : 'Free for the rest of today';
+        }
       } else {
-        const next = busyOnDay(feed.index, feedName, now.day).find((i) => i.startMin > now.minute);
-        detail = next
-          ? `Free until ${fmtTime(next.startMin)} · then ${next.courseCode}`
-          : 'Free for the rest of today';
+        detail = 'No classes scheduled here';
       }
-    } else {
-      detail = 'No classes scheduled here';
-    }
-    return { title: `${parsed.code} · ${roomKindLabel(parsed.kind)}`, status, detail };
-  }, [model, feed, feedNameByCode, now, statusByCode]);
+      return { title: `${parsed.code} · ${roomKindLabel(parsed.kind)}`, status, detail };
+    },
+    [model, feed, feedNameByCode, now, statusByCode],
+  );
   describeRoomRef.current = describeRoom;
 
   // Scene lifecycle — create once per model, tear down cleanly (StrictMode
@@ -325,10 +336,18 @@ export function Component() {
     };
   }, [model, selectFloor, selectRoom]);
 
-  useEffect(() => { sceneRef.current?.setFloor(floor); }, [floor, model]);
-  useEffect(() => { sceneRef.current?.setRoomStatus(statusByCode); }, [statusByCode]);
-  useEffect(() => { sceneRef.current?.setHighlight(selectedRoom); }, [selectedRoom]);
-  useEffect(() => { sceneRef.current?.setOnlyFree(onlyFree); }, [onlyFree, model]);
+  useEffect(() => {
+    sceneRef.current?.setFloor(floor);
+  }, [floor, model]);
+  useEffect(() => {
+    sceneRef.current?.setRoomStatus(statusByCode);
+  }, [statusByCode]);
+  useEffect(() => {
+    sceneRef.current?.setHighlight(selectedRoom);
+  }, [selectedRoom]);
+  useEffect(() => {
+    sceneRef.current?.setOnlyFree(onlyFree);
+  }, [onlyFree, model]);
 
   const checkLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
@@ -339,36 +358,37 @@ export function Component() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const distance = distanceMeters(
-          position.coords.latitude, position.coords.longitude,
-          CAMPUS_LAT, CAMPUS_LNG,
+          position.coords.latitude,
+          position.coords.longitude,
+          CAMPUS_LAT,
+          CAMPUS_LNG,
         );
         setLocation({ phase: 'done', distance });
       },
       (error) => {
         setLocation({
           phase: 'error',
-          message: error.code === error.PERMISSION_DENIED
-            ? 'Location permission was denied.'
-            : 'Could not get a location fix.',
+          message:
+            error.code === error.PERMISSION_DENIED
+              ? 'Location permission was denied.'
+              : 'Could not get a location fix.',
         });
       },
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
     );
   }, []);
 
-  const selectedParsed = selectedRoom && model ? model.roomsByCode.get(selectedRoom) ?? null : null;
-  const selectedFeedName = selectedRoom ? feedNameByCode.get(selectedRoom) ?? null : null;
-  const selectedToday: BusyInterval[] = feed && selectedFeedName
-    ? busyOnDay(feed.index, selectedFeedName, now.day)
-    : [];
-  const selectedOccupant = feed && selectedFeedName
-    ? occupantAt(feed.index, selectedFeedName, now.day, now.minute)
-    : null;
+  const selectedParsed =
+    selectedRoom && model ? (model.roomsByCode.get(selectedRoom) ?? null) : null;
+  const selectedFeedName = selectedRoom ? (feedNameByCode.get(selectedRoom) ?? null) : null;
+  const selectedToday: BusyInterval[] =
+    feed && selectedFeedName ? busyOnDay(feed.index, selectedFeedName, now.day) : [];
+  const selectedOccupant =
+    feed && selectedFeedName ? occupantAt(feed.index, selectedFeedName, now.day, now.minute) : null;
   const selectedNextClass = selectedToday.find((i) => i.startMin > now.minute) ?? null;
 
-  const currentFloor = model && floor !== null
-    ? model.floors.find((f) => f.floor === floor) ?? null
-    : null;
+  const currentFloor =
+    model && floor !== null ? (model.floors.find((f) => f.floor === floor) ?? null) : null;
 
   // Apply the search + "only free" filters to the focused floor's room list
   // (#385). Zones with no surviving rooms drop out; an all-empty result drives
@@ -392,8 +412,8 @@ export function Component() {
     <section className="shell-page campus-page" data-testid="campus-page">
       <h1>Campus Map</h1>
       <p className="shell-muted">
-        The Merul Badda tower, drawn live from the class schedule feed — pick a
-        floor to see its rooms and what&apos;s free right now.
+        The Merul Badda tower, drawn live from the class schedule feed — pick a floor to see its
+        rooms and what&apos;s free right now.
       </p>
 
       {feedError !== null ? (
@@ -409,8 +429,7 @@ export function Component() {
         <>
           <div className="campus-meta">
             <span className="campus-meta-item">
-              {SOURCE_LABEL[feed.source]} feed · as of {fmtTime(now.minute)}{' '}
-              {titleCaseDay(now.day)}
+              {SOURCE_LABEL[feed.source]} feed · as of {fmtTime(now.minute)} {titleCaseDay(now.day)}
             </span>
             <button type="button" className="shell-btn campus-meta-btn" onClick={() => load(true)}>
               <svg
@@ -452,7 +471,9 @@ export function Component() {
           <div className="campus-floors" role="group" aria-label="Floor">
             <button
               type="button"
-              className={floor === null ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'}
+              className={
+                floor === null ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'
+              }
               aria-pressed={floor === null}
               onClick={() => selectFloor(null)}
             >
@@ -462,7 +483,11 @@ export function Component() {
               <button
                 key={f.floor}
                 type="button"
-                className={floor === f.floor ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'}
+                className={
+                  floor === f.floor
+                    ? 'campus-floor-btn campus-floor-btn--active'
+                    : 'campus-floor-btn'
+                }
                 aria-pressed={floor === f.floor}
                 onClick={() => selectFloor(f.floor)}
               >
@@ -493,7 +518,11 @@ export function Component() {
                 autoCapitalize="characters"
               />
             </label>
-            <button type="submit" className="shell-btn campus-meta-btn" data-testid="campus-search-btn">
+            <button
+              type="submit"
+              className="shell-btn campus-meta-btn"
+              data-testid="campus-search-btn"
+            >
               Find
             </button>
             <label className="campus-freefilter">
@@ -517,8 +546,8 @@ export function Component() {
             />
           ) : (
             <p className="shell-muted" data-testid="campus-no-webgl">
-              3D view isn&apos;t available on this device — the floor lists below
-              show everything the map does.
+              3D view isn&apos;t available on this device — the floor lists below show everything
+              the map does.
             </p>
           )}
 
@@ -528,17 +557,30 @@ export function Component() {
             </p>
           )}
 
-          <div className="campus-legend" data-testid="campus-legend" role="status" aria-live="polite">
+          <div
+            className="campus-legend"
+            data-testid="campus-legend"
+            role="status"
+            aria-live="polite"
+          >
             <span className="campus-legend-key">
               <i className="campus-dot campus-dot--free" />
-              <span className="campus-legend-count" data-testid="campus-free-count" key={towerCounts.free}>
+              <span
+                className="campus-legend-count"
+                data-testid="campus-free-count"
+                key={towerCounts.free}
+              >
                 {towerCounts.free}
               </span>{' '}
               free now
             </span>
             <span className="campus-legend-key">
               <i className="campus-dot campus-dot--busy" />
-              <span className="campus-legend-count" data-testid="campus-busy-count" key={towerCounts.busy}>
+              <span
+                className="campus-legend-count"
+                data-testid="campus-busy-count"
+                key={towerCounts.busy}
+              >
                 {towerCounts.busy}
               </span>{' '}
               in class
@@ -568,7 +610,8 @@ export function Component() {
                 <ul className="campus-room-schedule">
                   {selectedToday.map((slot) => (
                     <li key={`${slot.startMin}-${slot.courseCode}-${slot.sectionName}`}>
-                      {fmtTime(slot.startMin)}–{fmtTime(slot.endMin)} · {slot.courseCode} ({slot.kind})
+                      {fmtTime(slot.startMin)}–{fmtTime(slot.endMin)} · {slot.courseCode} (
+                      {slot.kind})
                     </li>
                   ))}
                 </ul>
@@ -583,47 +626,51 @@ export function Component() {
                 {search.trim() ? ` “${search.trim()}”` : ''}.
               </p>
             ) : (
-            <div className="campus-room-list" data-testid="campus-room-list">
-              {visibleZones.map((zone) => (
-                <div key={zone.zone} className="campus-zone">
-                  <h2 className="campus-zone-title">Zone {zone.zone}</h2>
-                  <div className="campus-zone-rooms">
-                    {zone.rooms.map((room) => {
-                      const status = statusByCode.get(room.code);
-                      return (
-                        <button
-                          key={room.code}
-                          type="button"
-                          className={
-                            room.code === selectedRoom
-                              ? 'campus-room-btn campus-room-btn--selected'
-                              : 'campus-room-btn'
-                          }
-                          onClick={() => selectRoom(room.code)}
-                        >
-                          <i
+              <div className="campus-room-list" data-testid="campus-room-list">
+                {visibleZones.map((zone) => (
+                  <div key={zone.zone} className="campus-zone">
+                    <h2 className="campus-zone-title">Zone {zone.zone}</h2>
+                    <div className="campus-zone-rooms">
+                      {zone.rooms.map((room) => {
+                        const status = statusByCode.get(room.code);
+                        return (
+                          <button
+                            key={room.code}
+                            type="button"
                             className={
-                              status === 'free'
-                                ? 'campus-dot campus-dot--free'
-                                : status === 'busy'
-                                  ? 'campus-dot campus-dot--busy'
-                                  : 'campus-dot'
+                              room.code === selectedRoom
+                                ? 'campus-room-btn campus-room-btn--selected'
+                                : 'campus-room-btn'
                             }
-                            aria-hidden="true"
-                          />
-                          {room.code}
-                          <span className="campus-room-sr">
-                            {' '}
-                            — {roomKindLabel(room.kind)},{' '}
-                            {status === 'busy' ? 'in class now' : status === 'free' ? 'free now' : 'status unknown'}
-                          </span>
-                        </button>
-                      );
-                    })}
+                            onClick={() => selectRoom(room.code)}
+                          >
+                            <i
+                              className={
+                                status === 'free'
+                                  ? 'campus-dot campus-dot--free'
+                                  : status === 'busy'
+                                    ? 'campus-dot campus-dot--busy'
+                                    : 'campus-dot'
+                              }
+                              aria-hidden="true"
+                            />
+                            {room.code}
+                            <span className="campus-room-sr">
+                              {' '}
+                              — {roomKindLabel(room.kind)},{' '}
+                              {status === 'busy'
+                                ? 'in class now'
+                                : status === 'free'
+                                  ? 'free now'
+                                  : 'status unknown'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             )
           ) : (
             <p className="shell-muted" data-testid="campus-floor-hint">
@@ -635,8 +682,8 @@ export function Component() {
             <details className="campus-other">
               <summary>Other venues ({model.otherVenues.length})</summary>
               <p className="shell-muted">
-                These appear in the schedule but are outside the tower&apos;s
-                room-code system: {model.otherVenues.join(', ')}
+                These appear in the schedule but are outside the tower&apos;s room-code system:{' '}
+                {model.otherVenues.join(', ')}
               </p>
             </details>
           )}

@@ -32,7 +32,11 @@ const SEEDED_FACULTY_PROFILES: FacultyProfile[] = [];
 
 export function normalizeInitials(raw: unknown): string {
   if (typeof raw !== 'string') return '';
-  return raw.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6);
+  return raw
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 6);
 }
 
 export function isValidInitials(raw: unknown): boolean {
@@ -59,8 +63,12 @@ export function upsertFacultyProfile(profile: unknown): void {
   const input = profile as Partial<FacultyProfile>;
   const initials = normalizeInitials(input.initials);
   if (!initials) return;
-  const existing: FacultyProfile =
-    _profiles.get(initials) || { initials, courses: [], ratings: null, reviewCount: 0 };
+  const existing: FacultyProfile = _profiles.get(initials) || {
+    initials,
+    courses: [],
+    ratings: null,
+    reviewCount: 0,
+  };
   _profiles.set(initials, { ...existing, ...input, initials });
 }
 
@@ -70,7 +78,9 @@ export function clearFacultyCache(): void {
 
 // Suggest faculty as the user types. Matches prefix on initials or name.
 export function suggestFaculty(query: unknown, limit = 6): FacultyProfile[] {
-  const q = String(query || '').trim().toUpperCase();
+  const q = String(query || '')
+    .trim()
+    .toUpperCase();
   if (!q) return [];
   const out: FacultyProfile[] = [];
   for (const p of _profiles.values()) {

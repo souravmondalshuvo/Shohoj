@@ -68,7 +68,13 @@ export type SimulatorOutcome =
       readonly plans: readonly SimulatorPlanRow[];
       readonly delta: number;
     }
-  | { readonly kind: 'unreachable'; readonly cgpa: number; readonly target: number; readonly remaining: number; readonly ceiling: number }
+  | {
+      readonly kind: 'unreachable';
+      readonly cgpa: number;
+      readonly target: number;
+      readonly remaining: number;
+      readonly ceiling: number;
+    }
   | { readonly kind: 'achieved'; readonly cgpa: number; readonly target: number };
 
 /** The 7-tier needed-GPA → letter-range mapping (gpToLetter in simulator.js). */

@@ -27,17 +27,21 @@ import {
 const INSIGHT_COPY = {
   'near-perfect': (
     <>
-      <span style={{ color: '#e74c3c' }}>Requires near-perfect grades every semester</span> — focus on strategic retakes below.
+      <span style={{ color: '#e74c3c' }}>Requires near-perfect grades every semester</span> — focus
+      on strategic retakes below.
     </>
   ),
   challenging: (
     <>
-      Challenging but doable — <span style={{ color: '#F0A500' }}>consistent B+/A- performance</span> needed across remaining semesters.
+      Challenging but doable —{' '}
+      <span style={{ color: '#F0A500' }}>consistent B+/A- performance</span> needed across remaining
+      semesters.
     </>
   ),
   realistic: (
     <>
-      Very realistic — <span style={{ color: '#2ECC71' }}>avoid D/F grades</span> and stay consistent.
+      Very realistic — <span style={{ color: '#2ECC71' }}>avoid D/F grades</span> and stay
+      consistent.
     </>
   ),
   'great-shape': (
@@ -71,7 +75,9 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
           <div className="sim-callout sim-callout--good">
             <div className="sim-callout-title">🎉 Target already secured</div>
             <div className="sim-callout-body">
-              You have no remaining credits left, and your current CGPA <strong>{outcome.cgpa.toFixed(2)}</strong> already meets the target of <strong>{outcome.target.toFixed(2)}</strong>.
+              You have no remaining credits left, and your current CGPA{' '}
+              <strong>{outcome.cgpa.toFixed(2)}</strong> already meets the target of{' '}
+              <strong>{outcome.target.toFixed(2)}</strong>.
             </div>
           </div>
         </div>
@@ -80,9 +86,13 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
       return (
         <div className="sim-result-card">
           <div className="sim-callout sim-callout--bad">
-            <div className="sim-callout-title" style={{ color: '#e74c3c' }}>⛔ No remaining credits</div>
+            <div className="sim-callout-title" style={{ color: '#e74c3c' }}>
+              ⛔ No remaining credits
+            </div>
             <div className="sim-callout-body">
-              You have no remaining credits left, so you cannot raise your CGPA to <strong>{outcome.target.toFixed(2)}</strong> through future semesters. Consider retakes if you want to improve beyond <strong>{outcome.cgpa.toFixed(2)}</strong>.
+              You have no remaining credits left, so you cannot raise your CGPA to{' '}
+              <strong>{outcome.target.toFixed(2)}</strong> through future semesters. Consider
+              retakes if you want to improve beyond <strong>{outcome.cgpa.toFixed(2)}</strong>.
             </div>
           </div>
         </div>
@@ -93,7 +103,8 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
           <div className="sim-callout sim-callout--good">
             <div className="sim-callout-title">🎉 Already achieved!</div>
             <div className="sim-callout-body">
-              Your CGPA {outcome.cgpa.toFixed(2)} already meets the target of {outcome.target.toFixed(2)}. Set a higher goal!
+              Your CGPA {outcome.cgpa.toFixed(2)} already meets the target of{' '}
+              {outcome.target.toFixed(2)}. Set a higher goal!
             </div>
           </div>
         </div>
@@ -106,25 +117,39 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
               <div className="sim-ba-label">Current CGPA</div>
               <div className="sim-ba-val">{outcome.cgpa.toFixed(2)}</div>
             </div>
-            <div className="sim-ba-arrow" style={{ color: '#e74c3c' }}>✗</div>
+            <div className="sim-ba-arrow" style={{ color: '#e74c3c' }}>
+              ✗
+            </div>
             <div className="sim-ba-block">
               <div className="sim-ba-label">Your Ceiling</div>
               <div className="sim-ba-val red">{outcome.ceiling.toFixed(2)}</div>
-              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>with all A grades</div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+                with all A grades
+              </div>
             </div>
           </div>
           <div style={{ fontSize: 12, color: '#e74c3c', marginBottom: 10 }}>
-            ⛔ Target {outcome.target.toFixed(2)} is out of reach from {outcome.remaining} remaining credits. Consider lowering your goal or using strategic retakes below to raise your ceiling.
+            ⛔ Target {outcome.target.toFixed(2)} is out of reach from {outcome.remaining} remaining
+            credits. Consider lowering your goal or using strategic retakes below to raise your
+            ceiling.
           </div>
         </div>
       );
     case 'plan': {
       const neededColor =
-        outcome.difficulty === 'hard' ? '#e74c3c' : outcome.difficulty === 'medium' ? '#F0A500' : '#2ECC71';
+        outcome.difficulty === 'hard'
+          ? '#e74c3c'
+          : outcome.difficulty === 'medium'
+            ? '#F0A500'
+            : '#2ECC71';
       const targetColor =
         outcome.target >= 3.5 ? '#2ECC71' : outcome.target >= 3.0 ? '#F0A500' : 'var(--text)';
       const diffLabel =
-        outcome.difficulty === 'hard' ? '🔴 Very Hard' : outcome.difficulty === 'medium' ? '🟡 Challenging' : '🟢 Achievable';
+        outcome.difficulty === 'hard'
+          ? '🔴 Very Hard'
+          : outcome.difficulty === 'medium'
+            ? '🟡 Challenging'
+            : '🟢 Achievable';
       return (
         <div className="sim-result-card">
           <div className="sim-before-after">
@@ -136,14 +161,20 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
               <div className="sim-ba-arrow">→</div>
               <div className="sim-ba-block">
                 <div className="sim-ba-label">Target CGPA</div>
-                <div className="sim-ba-val" style={{ color: targetColor }}>{outcome.target.toFixed(2)}</div>
+                <div className="sim-ba-val" style={{ color: targetColor }}>
+                  {outcome.target.toFixed(2)}
+                </div>
               </div>
             </div>
             <div className="sim-ba-right">
               <div className="sim-ba-label">Avg GPA Needed</div>
-              <div className="sim-ba-val" style={{ color: neededColor }}>{outcome.neededGpa.toFixed(2)}</div>
+              <div className="sim-ba-val" style={{ color: neededColor }}>
+                {outcome.neededGpa.toFixed(2)}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span style={{ fontSize: 10, color: 'var(--text3)' }}>over {outcome.remaining} credits</span>
+                <span style={{ fontSize: 10, color: 'var(--text3)' }}>
+                  over {outcome.remaining} credits
+                </span>
                 <span className="sim-ba-delta">+{outcome.delta.toFixed(2)}</span>
               </div>
             </div>
@@ -155,7 +186,10 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
               <span>{outcome.neededGpa.toFixed(2)} / 4.00</span>
             </div>
             <div className="sim-difficulty-bar">
-              <div className={`sim-difficulty-fill ${outcome.difficulty}`} style={{ width: `${outcome.difficultyPct}%` }}></div>
+              <div
+                className={`sim-difficulty-fill ${outcome.difficulty}`}
+                style={{ width: `${outcome.difficultyPct}%` }}
+              ></div>
             </div>
           </div>
 
@@ -164,7 +198,10 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
           </div>
 
           <div style={{ overflowX: 'auto', marginBottom: 4 }}>
-            <table className="sim-plan-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table
+              className="sim-plan-table"
+              style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}
+            >
               <thead>
                 <tr>
                   <th>cr/sem</th>
@@ -175,11 +212,15 @@ function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
               <tbody>
                 {outcome.plans.map((plan) => (
                   <tr key={plan.creditsPerSem}>
-                    <td style={{ textAlign: 'center', color: 'var(--text2)' }}>{plan.creditsPerSem} cr/sem</td>
+                    <td style={{ textAlign: 'center', color: 'var(--text2)' }}>
+                      {plan.creditsPerSem} cr/sem
+                    </td>
                     <td style={{ textAlign: 'center', fontWeight: 700 }}>
                       {plan.semesters} sem{plan.semesters !== 1 ? 's' : ''}
                     </td>
-                    <td style={{ textAlign: 'center', color: 'var(--text2)' }}>{outcome.letterRange}</td>
+                    <td style={{ textAlign: 'center', color: 'var(--text2)' }}>
+                      {outcome.letterRange}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -204,10 +245,15 @@ function RetakeSection({
 }) {
   if (!candidates.length) return null;
   return (
-    <div className="sim-retake-section" style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+    <div
+      className="sim-retake-section"
+      style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 14 }}
+    >
       <div className="sim-retake-heading">🔁 Smart Retake &amp; Repeat Strategy</div>
       <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-        Courses ranked by CGPA impact if raised to <strong style={{ color: '#2ECC71' }}>B (3.0)</strong>. Click rows to simulate stacking improvements.
+        Courses ranked by CGPA impact if raised to{' '}
+        <strong style={{ color: '#2ECC71' }}>B (3.0)</strong>. Click rows to simulate stacking
+        improvements.
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table className="sim-retake-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -241,18 +287,24 @@ function RetakeSection({
                     />
                   </td>
                   <td className="sim-retake-course">{c.name}</td>
-                  <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>{c.semLabel}</td>
+                  <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>
+                    {c.semLabel}
+                  </td>
                   <td style={{ textAlign: 'center', fontSize: 12 }}>
                     <span style={{ fontWeight: 700, color: gradeColor(c.grade) }}>{c.grade}</span>
                     <span style={{ color: 'var(--text3)' }}> → </span>
                     <span style={{ fontWeight: 700, color: '#2ECC71' }}>B</span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <span className={`sim-strategy-badge ${c.strategy === 'repeat' ? 'repeat' : 'retake'}`}>
+                    <span
+                      className={`sim-strategy-badge ${c.strategy === 'repeat' ? 'repeat' : 'retake'}`}
+                    >
                       {c.strategy === 'repeat' ? 'Repeat' : 'Retake'}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 700, color: '#2ECC71' }}>{c.cgpaIfB.toFixed(2)}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700, color: '#2ECC71' }}>
+                    {c.cgpaIfB.toFixed(2)}
+                  </td>
                   <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>
                     {c.cgpaIfA.toFixed(2)} <span style={{ fontSize: 9 }}>(if A)</span>
                   </td>
@@ -266,10 +318,17 @@ function RetakeSection({
       {impact.checkedCount > 0 ? (
         <div className="sim-impact-box" data-testid="sim-impact">
           <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-            ✅ <strong>{impact.checkedCount} course{impact.checkedCount > 1 ? 's' : ''} selected</strong> — CGPA goes from{' '}
-            <strong>{(impact.cgpaAfter - impact.cumBoost).toFixed(2)}</strong> →{' '}
-            <strong style={{ fontSize: 14, color: '#2ECC71' }}>{impact.cgpaAfter.toFixed(2)}</strong>{' '}
-            <span style={{ color: 'var(--text3)', fontSize: 11 }}>(+{impact.cumBoost.toFixed(2)} boost if all raised to B)</span>
+            ✅{' '}
+            <strong>
+              {impact.checkedCount} course{impact.checkedCount > 1 ? 's' : ''} selected
+            </strong>{' '}
+            — CGPA goes from <strong>{(impact.cgpaAfter - impact.cumBoost).toFixed(2)}</strong> →{' '}
+            <strong style={{ fontSize: 14, color: '#2ECC71' }}>
+              {impact.cgpaAfter.toFixed(2)}
+            </strong>{' '}
+            <span style={{ color: 'var(--text3)', fontSize: 11 }}>
+              (+{impact.cumBoost.toFixed(2)} boost if all raised to B)
+            </span>
           </div>
           {impact.targetLine && (
             <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text2)' }}>
@@ -280,7 +339,9 @@ function RetakeSection({
               {impact.targetLine.kind === 'need' && (
                 <>
                   After these improvements, you&apos;d need avg GPA{' '}
-                  <strong style={{ color: impact.targetLine.neededGpa >= 3.5 ? '#F0A500' : '#2ECC71' }}>
+                  <strong
+                    style={{ color: impact.targetLine.neededGpa >= 3.5 ? '#F0A500' : '#2ECC71' }}
+                  >
                     {impact.targetLine.neededGpa.toFixed(2)}
                   </strong>{' '}
                   from your remaining credits to hit the target.
@@ -297,10 +358,12 @@ function RetakeSection({
 
       <div className="sim-legend">
         <span>
-          <span className="sim-strategy-badge retake">RETAKE</span> Re-enroll for a full semester (F grades, up to 2×)
+          <span className="sim-strategy-badge retake">RETAKE</span> Re-enroll for a full semester (F
+          grades, up to 2×)
         </span>
         <span>
-          <span className="sim-strategy-badge repeat">REPEAT</span> Special exam, once, within 2 semesters (below B, no grade cap)
+          <span className="sim-strategy-badge repeat">REPEAT</span> Special exam, once, within 2
+          semesters (below B, no grade cap)
         </span>
       </div>
     </div>
@@ -389,20 +452,37 @@ export default function CgpaSimulator() {
             <div className="sim-nudge" data-testid="sim-nudge">
               <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Unlock full potential</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>
-                  You&apos;re using a CGPA summary — great for quick tracking! To unlock <strong>Smart Retake &amp; Repeat Strategy</strong>, add your past semester courses with grades.
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+                  Unlock full potential
                 </div>
-                <button type="button" className="sim-nudge-btn" onClick={() => bridge.importTranscript()}>
+                <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>
+                  You&apos;re using a CGPA summary — great for quick tracking! To unlock{' '}
+                  <strong>Smart Retake &amp; Repeat Strategy</strong>, add your past semester
+                  courses with grades.
+                </div>
+                <button
+                  type="button"
+                  className="sim-nudge-btn"
+                  onClick={() => bridge.importTranscript()}
+                >
                   📄 Import Transcript
                 </button>{' '}
-                <button type="button" className="sim-nudge-btn" onClick={() => bridge.addSemester()}>
+                <button
+                  type="button"
+                  className="sim-nudge-btn"
+                  onClick={() => bridge.addSemester()}
+                >
                   + Add Past Semester
                 </button>
               </div>
             </div>
           ) : (
-            <RetakeSection candidates={candidates} selected={selected} onToggle={toggle} impact={impact} />
+            <RetakeSection
+              candidates={candidates}
+              selected={selected}
+              onToggle={toggle}
+              impact={impact}
+            />
           ))}
       </div>
     </div>

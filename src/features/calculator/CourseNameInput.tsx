@@ -33,7 +33,13 @@ export interface CourseNameInputProps {
   readonly onResolve: (course: CourseSuggestion | null, text: string) => void;
 }
 
-export default function CourseNameInput({ id, value, catalog, onPick, onResolve }: CourseNameInputProps) {
+export default function CourseNameInput({
+  id,
+  value,
+  catalog,
+  onPick,
+  onResolve,
+}: CourseNameInputProps) {
   const [text, setText] = useState(value);
   const [suggestions, setSuggestions] = useState<CourseSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -64,9 +70,12 @@ export default function CourseNameInput({ id, value, catalog, onPick, onResolve 
     setText(value);
   }, [value]);
 
-  useEffect(() => () => {
-    if (blurTimer.current) clearTimeout(blurTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+    },
+    [],
+  );
 
   const isOpen = open && suggestions.length > 0;
 

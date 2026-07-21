@@ -15,13 +15,8 @@ import {
   CalculatorBridgeProvider,
   type CalculatorBridge,
 } from '../../features/calculator/calculatorBridge.ts';
-import {
-  loadCalculatorState,
-} from '../../features/calculator/calculatorState.ts';
-import {
-  BRACU_COURSE_CATALOG,
-  isKnownCourseCode,
-} from '../../features/calculator/catalog.ts';
+import { loadCalculatorState } from '../../features/calculator/calculatorState.ts';
+import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog.ts';
 import { getDepartment } from '../../features/calculator/departments.ts';
 import DegreeTracker from '../../features/calculator/DegreeTracker.tsx';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
@@ -59,16 +54,15 @@ export function Component() {
     <section className="shell-page degree-page" data-testid="degree-page">
       <h1>Degree Progress</h1>
       <p className="shell-muted">
-        Credits earned vs required, your pace, and an estimated graduation date —
-        drawn from the same data as the <Link to="/calculator">calculator</Link>.
+        Credits earned vs required, your pace, and an estimated graduation date — drawn from the
+        same data as the <Link to="/calculator">calculator</Link>.
       </p>
 
       {!hasTracker ? (
         <p className="degree-empty shell-muted" data-testid="degree-empty">
-          Pick your department and add semesters in the{' '}
-          <Link to="/calculator">calculator</Link> (or import your transcript on
-          the <Link to="/transcript">Transcript</Link> page) and your degree
-          timeline will appear here.
+          Pick your department and add semesters in the <Link to="/calculator">calculator</Link> (or
+          import your transcript on the <Link to="/transcript">Transcript</Link> page) and your
+          degree timeline will appear here.
         </p>
       ) : (
         <CalculatorBridgeProvider value={bridge}>

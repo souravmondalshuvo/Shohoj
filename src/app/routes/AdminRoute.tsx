@@ -9,8 +9,8 @@ export function AdminRoute() {
     <section className="shell-page">
       <h1>Admin</h1>
       <p className="shell-muted">
-        Moderation tools migrate here in Phase 6/7. Access is gated client-side by
-        RequireAdmin and enforced server-side by Firestore rules + the Worker.
+        Moderation tools migrate here in Phase 6/7. Access is gated client-side by RequireAdmin and
+        enforced server-side by Firestore rules + the Worker.
       </p>
     </section>
   );

@@ -53,7 +53,7 @@ function summaryContinuationTarget(
   now: Date,
   seasons: Seasons,
 ): SeasonYear {
-  const nonSummary = semesters.filter(s => !s.summary);
+  const nonSummary = semesters.filter((s) => !s.summary);
   const last = nonSummary[nonSummary.length - 1];
   const parsed = last ? parseSemesterSeasonYear(last.name) : null;
   if (parsed) return nextSemester(parsed.season, parsed.year, seasons);
@@ -66,7 +66,7 @@ export function nextCompletedSemesterName(
   now: Date,
   deptSeasons: Seasons = DEFAULT_SEASONS,
 ): string {
-  const hasSummary = inputs.semesters.some(s => s.summary);
+  const hasSummary = inputs.semesters.some((s) => s.summary);
   if (hasSummary) {
     return buildSemesterName(
       summaryContinuationTarget(inputs.semesters, now, deptSeasons),
@@ -75,7 +75,7 @@ export function nextCompletedSemesterName(
     );
   }
 
-  const completedCount = inputs.semesters.filter(s => !s.running && !s.summary).length;
+  const completedCount = inputs.semesters.filter((s) => !s.running && !s.summary).length;
   const start = startSeasonYear(inputs);
   if (!start) return `Semester ${completedCount + 1}`;
   const names = generateSemesterNames(start.season, start.year, completedCount + 1, deptSeasons);
@@ -89,7 +89,7 @@ export function nextRunningSemesterName(
   now: Date,
   deptSeasons: Seasons = DEFAULT_SEASONS,
 ): string {
-  const hasSummary = inputs.semesters.some(s => s.summary);
+  const hasSummary = inputs.semesters.some((s) => s.summary);
   let base: string;
 
   if (hasSummary) {
@@ -101,7 +101,7 @@ export function nextRunningSemesterName(
   } else {
     // Mirrors generateNextSemesterName: one step past the last completed
     // semester's parseable name, else "Current Semester". No ordinal suffix.
-    const completed = inputs.semesters.filter(s => !s.running && !s.summary);
+    const completed = inputs.semesters.filter((s) => !s.running && !s.summary);
     const last = completed[completed.length - 1];
     const parsed = last ? parseSemesterSeasonYear(last.name) : null;
     if (parsed) {

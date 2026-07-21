@@ -11,13 +11,7 @@
 // into Firebase directly. It is a function, not a snapshot field, because tokens
 // expire — each call mints/returns a fresh one.
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 
 import {
   type AuthSnapshot,
@@ -39,11 +33,7 @@ export interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, source = anonymousAuthSource }: AuthProviderProps) {
-  const snapshot = useSyncExternalStore(
-    source.subscribe,
-    source.get,
-    () => source.get(),
-  );
+  const snapshot = useSyncExternalStore(source.subscribe, source.get, () => source.get());
   // getIdToken is bound to the source; re-memo only when the source swaps.
   const value = useMemo<AuthContextValue>(
     () => ({ snapshot, getIdToken: () => source.getIdToken() }),
