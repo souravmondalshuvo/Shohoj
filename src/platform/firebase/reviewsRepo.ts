@@ -30,11 +30,7 @@
 
 import type { QueryConstraint } from 'firebase/firestore';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
-import {
-  FirebaseUnavailableError,
-  PermissionError,
-  type ShohojError,
-} from '../../core/errors.ts';
+import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews.ts';
 import type { ReviewLike } from '../../core/reviews.ts';
 
@@ -70,9 +66,8 @@ const EMPTY_PAGE: ReviewPage = { reviews: [], nextCursor: null };
  * `userMessage` reaches the user (docs/SECURITY.md).
  */
 function toReviewsError(cause: unknown): ShohojError {
-  const code = typeof (cause as { code?: unknown })?.code === 'string'
-    ? (cause as { code: string }).code
-    : '';
+  const code =
+    typeof (cause as { code?: unknown })?.code === 'string' ? (cause as { code: string }).code : '';
   // Firestore codes: https://firebase.google.com/docs/reference/js/firestore_.md
   if (code === 'permission-denied' || code === 'unauthenticated') {
     return new PermissionError(`reviews read denied: ${code}`, { cause });
@@ -203,8 +198,7 @@ async function defaultBackend(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const toDoc = (d: any): ReviewDoc => ({ id: d.id, ...d.data() });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const lastOf = (docs: any[]): ReviewCursor | null =>
-    docs.length ? docs[docs.length - 1] : null;
+  const lastOf = (docs: any[]): ReviewCursor | null => (docs.length ? docs[docs.length - 1] : null);
 
   return {
     async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
@@ -237,9 +231,7 @@ async function defaultBackend(
       return snap.docs.map(toDoc);
     },
     async getFacultyProfiles(idsChunk) {
-      const snap = await getDocs(
-        query(profiles, where(documentId(), 'in', idsChunk as string[])),
-      );
+      const snap = await getDocs(query(profiles, where(documentId(), 'in', idsChunk as string[])));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return snap.docs.map((d: any) => ({ initials: d.id, ...d.data() }));
     },
@@ -261,7 +253,12 @@ export function createReviewsRepo(options: ReviewsRepoOptions): ReviewsRepo {
   const load = () => (backend ??= loadBackend());
 
   return {
-    async fetchByFaculty({ facultyInitials, courseCode, pageSize = DEFAULT_PAGE_SIZE, after = null }) {
+    async fetchByFaculty({
+      facultyInitials,
+      courseCode,
+      pageSize = DEFAULT_PAGE_SIZE,
+      after = null,
+    }) {
       const initials = normalizeInitials(facultyInitials);
       if (!initials) return EMPTY_PAGE;
       const code = courseCode ? normalizeCourseCode(courseCode) : undefined;
@@ -298,9 +295,10 @@ export function createReviewsRepo(options: ReviewsRepoOptions): ReviewsRepo {
 
     async fetchRecent(limit = 200) {
       // Legacy _shohoj_fetchRecentReviews cap: Math.min(n, 1000).
-      const effective = Number.isInteger(limit) && limit > 0
-        ? Math.min(limit, MAX_RECENT)
-        : Math.min(200, MAX_RECENT);
+      const effective =
+        Number.isInteger(limit) && limit > 0
+          ? Math.min(limit, MAX_RECENT)
+          : Math.min(200, MAX_RECENT);
       return await readOrThrow(async () => (await load()).queryRecent(effective));
     },
 

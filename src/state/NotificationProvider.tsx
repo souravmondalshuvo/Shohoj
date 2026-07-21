@@ -8,14 +8,18 @@
 // *when* things happen. It replaces the ad-hoc `window._shohoj_showToast`
 // global (see docs/FULL_REACT_TYPESCRIPT_MIGRATION.md §4).
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+} from 'react';
 import type { ReactNode } from 'react';
 
-import {
-  createNotification,
-  initialNotificationState,
-  notificationReducer,
-} from './notifications';
+import { createNotification, initialNotificationState, notificationReducer } from './notifications';
 import type { Notification, NotificationInput } from './notifications';
 
 export interface NotificationApi {
@@ -59,10 +63,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const dismiss = useCallback((id: string) => {
-    clearTimer(id);
-    dispatch({ type: 'dismiss', id });
-  }, [clearTimer]);
+  const dismiss = useCallback(
+    (id: string) => {
+      clearTimer(id);
+      dispatch({ type: 'dismiss', id });
+    },
+    [clearTimer],
+  );
 
   const clear = useCallback(() => {
     for (const handle of timers.current.values()) clearTimeout(handle);
@@ -70,21 +77,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'clear' });
   }, []);
 
-  const notify = useCallback((input: NotificationInput): string => {
-    const notification = createNotification(input, { id: nextId.current(), now: Date.now() });
-    dispatch({ type: 'push', notification });
+  const notify = useCallback(
+    (input: NotificationInput): string => {
+      const notification = createNotification(input, { id: nextId.current(), now: Date.now() });
+      dispatch({ type: 'push', notification });
 
-    if (notification.durationMs !== null) {
-      clearTimer(notification.id); // guard against id reuse
-      const handle = setTimeout(() => {
-        timers.current.delete(notification.id);
-        dispatch({ type: 'dismiss', id: notification.id });
-      }, notification.durationMs);
-      timers.current.set(notification.id, handle);
-    }
+      if (notification.durationMs !== null) {
+        clearTimer(notification.id); // guard against id reuse
+        const handle = setTimeout(() => {
+          timers.current.delete(notification.id);
+          dispatch({ type: 'dismiss', id: notification.id });
+        }, notification.durationMs);
+        timers.current.set(notification.id, handle);
+      }
 
-    return notification.id;
-  }, [clearTimer]);
+      return notification.id;
+    },
+    [clearTimer],
+  );
 
   // Cancel every outstanding timer when the provider unmounts.
   useEffect(() => {

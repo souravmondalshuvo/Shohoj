@@ -107,7 +107,7 @@ function isIncomplete(semester: SemesterEntry): boolean {
   return (
     !semester.running &&
     !semester.summary &&
-    semester.courses.some(course => course.name.trim() !== '' && !course.grade)
+    semester.courses.some((course) => course.name.trim() !== '' && !course.grade)
   );
 }
 
@@ -127,9 +127,8 @@ export function computeCalculatorResults(inputs: ResultsInputs): CalculatorResul
     includeSummary: true,
   });
 
-  const hasRunning = inputs.semesters.some(semester => semester.running);
-  const meterPercent =
-    completed.cgpa !== null ? Math.min((completed.cgpa / 4) * 100, 100) : 0;
+  const hasRunning = inputs.semesters.some((semester) => semester.running);
+  const meterPercent = completed.cgpa !== null ? Math.min((completed.cgpa / 4) * 100, 100) : 0;
 
   return {
     cgpa: projected.cgpa,

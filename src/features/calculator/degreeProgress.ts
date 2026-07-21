@@ -163,7 +163,8 @@ export function computeDegreeProgress(
   const totalCompletedCount = completedSems.length + estimatedSummarySems;
 
   const totalCompletedCredits =
-    completedSems.reduce((s, d) => s + d.credits, 0) + (summaryBlock ? summaryBlock.summaryCredits ?? 0 : 0);
+    completedSems.reduce((s, d) => s + d.credits, 0) +
+    (summaryBlock ? (summaryBlock.summaryCredits ?? 0) : 0);
   const avgCredits =
     totalCompletedCount > 0 ? totalCompletedCredits / totalCompletedCount : DEFAULT_PACE;
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
@@ -177,7 +178,10 @@ export function computeDegreeProgress(
     let yr = startYearNum;
     for (let i = 0; i < totalSemsNeeded - 1; i++) {
       si++;
-      if (si >= deptSeasons.length) { si = 0; yr++; }
+      if (si >= deptSeasons.length) {
+        si = 0;
+        yr++;
+      }
     }
     gradEstimate = `${deptSeasons[si]} '${String(yr).slice(2)}`;
   }
@@ -198,14 +202,19 @@ export function computeDegreeProgress(
     const seasonMatch = lastLabel.match(/(Spring|Summer|Fall)\s*'?(\d{2,4})/);
     if (seasonMatch) {
       nextYr =
-        seasonMatch[2].length === 2 ? 2000 + parseInt(seasonMatch[2], 10) : parseInt(seasonMatch[2], 10);
+        seasonMatch[2].length === 2
+          ? 2000 + parseInt(seasonMatch[2], 10)
+          : parseInt(seasonMatch[2], 10);
       const matchedIdx = deptSeasons.indexOf(seasonMatch[1]);
       if (matchedIdx === -1) {
         nextSi = 0;
         nextYr++;
       } else {
         nextSi = matchedIdx + 1;
-        if (nextSi >= deptSeasons.length) { nextSi = 0; nextYr++; }
+        if (nextSi >= deptSeasons.length) {
+          nextSi = 0;
+          nextYr++;
+        }
       }
     } else if (summaryBlock && inputs.startSeason && startYearNum) {
       // No real semesters yet — project from the current real-world semester.
@@ -216,7 +225,10 @@ export function computeDegreeProgress(
         const curIdx = GLOBAL_ORDER.indexOf(season);
         for (let offset = 1; offset <= 3; offset++) {
           const candidate = GLOBAL_ORDER[(curIdx + offset) % 3];
-          if (deptSeasons.includes(candidate)) { season = candidate; break; }
+          if (deptSeasons.includes(candidate)) {
+            season = candidate;
+            break;
+          }
         }
       }
       nextSi = deptSeasons.indexOf(season);
@@ -227,7 +239,10 @@ export function computeDegreeProgress(
       if (nextSi >= 0) {
         projectedLabels.push(`${deptSeasons[nextSi]} '${String(nextYr).slice(2)}`);
         nextSi++;
-        if (nextSi >= deptSeasons.length) { nextSi = 0; nextYr++; }
+        if (nextSi >= deptSeasons.length) {
+          nextSi = 0;
+          nextYr++;
+        }
       } else {
         projectedLabels.push(`Semester ${totalCompletedCount + (runningSem ? 1 : 0) + j + 1}`);
       }

@@ -20,7 +20,15 @@ export interface PdfDocLike {
   setFont(family: string, style: string): void;
   setLineWidth(width: number): void;
   rect(x: number, y: number, w: number, h: number, style?: string): void;
-  roundedRect(x: number, y: number, w: number, h: number, rx: number, ry: number, style?: string): void;
+  roundedRect(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    rx: number,
+    ry: number,
+    style?: string,
+  ): void;
   line(x1: number, y1: number, x2: number, y2: number): void;
   text(text: string, x: number, y: number, options?: { align?: 'right' | 'center' }): void;
   addImage(data: string, format: string, x: number, y: number, w: number, h: number): void;

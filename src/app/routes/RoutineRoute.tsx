@@ -14,10 +14,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  fetchConnectFeed,
-  type FeedSource,
-} from '../../core/connectFeedClient';
+import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
   indexByCourse,
   type NormalizedSection,
@@ -83,7 +80,9 @@ function restoreRoutine(): RoutineState {
       return emptyRoutineState();
     }
     const picks: Record<string, number | null> = {};
-    for (const [code, sid] of Object.entries((parsed as { picks: Record<string, unknown> }).picks)) {
+    for (const [code, sid] of Object.entries(
+      (parsed as { picks: Record<string, unknown> }).picks,
+    )) {
       if (sid === null || (typeof sid === 'number' && Number.isFinite(sid))) {
         picks[code.toUpperCase()] = sid as number | null;
       }
@@ -168,8 +167,8 @@ export function Component() {
     <section className="shell-page routine-page" data-testid="routine-page">
       <h1>Weekly Routine</h1>
       <p className="shell-muted">
-        Build a clash-free weekly schedule: add a course, pick a section, and the grid
-        below fills in. Class-time and exam clashes are flagged as you go.
+        Build a clash-free weekly schedule: add a course, pick a section, and the grid below fills
+        in. Class-time and exam clashes are flagged as you go.
       </p>
 
       {loading && (
@@ -206,7 +205,11 @@ export function Component() {
             }}
             data-testid="routine-course-input"
           />
-          <button type="submit" className="shell-btn shell-btn--primary" data-testid="routine-add-btn">
+          <button
+            type="submit"
+            className="shell-btn shell-btn--primary"
+            data-testid="routine-add-btn"
+          >
             Add
           </button>
         </div>
@@ -241,7 +244,11 @@ export function Component() {
                       No sections for {code} in the current feed.
                     </p>
                   ) : (
-                    <div className="routine-sections" role="group" aria-label={`Sections for ${code}`}>
+                    <div
+                      className="routine-sections"
+                      role="group"
+                      aria-label={`Sections for ${code}`}
+                    >
                       {sections.map((section) => {
                         const isPicked = section.sectionId === pickedId;
                         const clash = isPicked ? clashMap.get(section.sectionId) : undefined;
@@ -264,7 +271,9 @@ export function Component() {
                               )
                             }
                           >
-                            <span className="routine-section-name">Section {section.sectionName}</span>
+                            <span className="routine-section-name">
+                              Section {section.sectionName}
+                            </span>
                             <span className="routine-section-meta">
                               {section.facultyInitials || 'TBA'}
                               {section.roomName ? ` · ${section.roomName}` : ''}
@@ -291,7 +300,8 @@ export function Component() {
 
           <div className="routine-summary" data-testid="routine-summary">
             <span>
-              {summary.pickedCount} course{summary.pickedCount === 1 ? '' : 's'} · {summary.resolvedCount} scheduled
+              {summary.pickedCount} course{summary.pickedCount === 1 ? '' : 's'} ·{' '}
+              {summary.resolvedCount} scheduled
             </span>
             {summary.classClashPairs + summary.examClashPairs > 0 ? (
               <span className="routine-summary-clash" data-testid="routine-summary-clash">

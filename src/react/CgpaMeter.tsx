@@ -33,9 +33,15 @@ export default function CgpaMeter() {
         <div className="meter-bar-fill" id="meterFill" style={{ width: `${meterPercent}%` }}></div>
       </div>
       <div className="meter-labels">
-        <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
+        <span>0.0</span>
+        <span>1.0</span>
+        <span>2.0</span>
+        <span>3.0</span>
+        <span>4.0</span>
       </div>
-      <div className="meter-status" id="meterStatus">{meterStatusMessage(meterStatus)}</div>
+      <div className="meter-status" id="meterStatus">
+        {meterStatusMessage(meterStatus)}
+      </div>
     </>
   );
 }

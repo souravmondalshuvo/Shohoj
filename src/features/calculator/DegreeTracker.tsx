@@ -91,7 +91,10 @@ export default function DegreeTracker() {
 
         <div className="tracker-bar-wrap">
           <div className="tracker-bar-bg">
-            <div className="tracker-bar-fill" style={{ width: `${progress.progressPct.toFixed(1)}%` }}></div>
+            <div
+              className="tracker-bar-fill"
+              style={{ width: `${progress.progressPct.toFixed(1)}%` }}
+            ></div>
           </div>
           <div className="tracker-bar-labels">
             <span>{progress.progressPct.toFixed(0)}% complete</span>
@@ -113,7 +116,9 @@ export default function DegreeTracker() {
                   <div className="tracker-node-gpa" style={{ color: '#2ECC71' }}>
                     {progress.summaryNode.cgpa.toFixed(2)}
                   </div>
-                  <div className="tracker-node-meta">{formatCredits(progress.summaryNode.credits)} cr</div>
+                  <div className="tracker-node-meta">
+                    {formatCredits(progress.summaryNode.credits)} cr
+                  </div>
                 </div>
               </div>
             )}
@@ -148,7 +153,9 @@ export default function DegreeTracker() {
             )}
 
             {progress.graduation && (
-              <div className={`tracker-node graduation${progress.graduation.complete ? ' completed' : ''}`}>
+              <div
+                className={`tracker-node graduation${progress.graduation.complete ? ' completed' : ''}`}
+              >
                 <div className="tracker-node-dot">
                   <div className="tracker-node-dot-inner">🎓</div>
                 </div>

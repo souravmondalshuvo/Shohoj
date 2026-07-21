@@ -13,21 +13,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  fetchConnectFeed,
-  type FeedSource,
-} from '../../core/connectFeedClient';
+import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
   indexByCourse,
   type NormalizedSection,
   type SectionIndex,
   type WeekdayName,
 } from '../../core/connectFeed';
-import {
-  searchCourseSections,
-  seatInfo,
-  type SeatSortMode,
-} from '../../core/seatStatus';
+import { searchCourseSections, seatInfo, type SeatSortMode } from '../../core/seatStatus';
 import {
   addWatch,
   isWatched,
@@ -157,8 +150,8 @@ export function Component() {
     <section className="shell-page seats-page" data-testid="seats-page">
       <h1>Seat Status</h1>
       <p className="shell-muted">
-        Search a course to see live seat availability per section. Seats change as
-        registration moves — refresh for the latest; this reflects the last feed pull.
+        Search a course to see live seat availability per section. Seats change as registration
+        moves — refresh for the latest; this reflects the last feed pull.
       </p>
 
       {loading && (
@@ -197,7 +190,9 @@ export function Component() {
         <div className="seats-sort" role="group" aria-label="Sort by">
           <button
             type="button"
-            className={sortMode === 'section' ? 'seats-toggle seats-toggle--active' : 'seats-toggle'}
+            className={
+              sortMode === 'section' ? 'seats-toggle seats-toggle--active' : 'seats-toggle'
+            }
             aria-pressed={sortMode === 'section'}
             onClick={() => setSortMode('section')}
           >
@@ -234,12 +229,17 @@ export function Component() {
       ) : (
         <ul className="seats-groups" data-testid="seats-groups">
           {groups.map((group) => (
-            <li className="seats-group" key={group.courseCode} data-testid={`seats-group-${group.courseCode}`}>
+            <li
+              className="seats-group"
+              key={group.courseCode}
+              data-testid={`seats-group-${group.courseCode}`}
+            >
               <div className="seats-group-head">
                 <span className="seats-group-code">{group.courseCode}</span>
                 {group.courseName && <span className="seats-group-name">{group.courseName}</span>}
                 <span className="seats-group-summary">
-                  {group.summary.openSections}/{group.summary.totalSections} open · {group.summary.seatsLeft} seat
+                  {group.summary.openSections}/{group.summary.totalSections} open ·{' '}
+                  {group.summary.seatsLeft} seat
                   {group.summary.seatsLeft === 1 ? '' : 's'} left
                 </span>
               </div>
@@ -251,7 +251,10 @@ export function Component() {
                     <li className="seats-section" key={section.sectionId}>
                       <div className="seats-section-main">
                         <span className="seats-section-name">Section {section.sectionName}</span>
-                        <span className={`seats-badge seats-badge--${info.status}`} data-status={info.status}>
+                        <span
+                          className={`seats-badge seats-badge--${info.status}`}
+                          data-status={info.status}
+                        >
                           {STATUS_LABEL[info.status]}
                         </span>
                         <span className="seats-section-count">

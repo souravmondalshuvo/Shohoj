@@ -9,10 +9,7 @@ import { useCallback, useMemo } from 'react';
 
 import { useAuth } from './AuthProvider';
 import { useRuntimeConfig } from './RuntimeConfigProvider';
-import {
-  createSeatAlertRepo,
-  type SeatAlertRepo,
-} from '../../platform/firebase/seatAlertRepo';
+import { createSeatAlertRepo, type SeatAlertRepo } from '../../platform/firebase/seatAlertRepo';
 import type { WatchEntry } from '../../core/seatWatch';
 
 declare global {
@@ -29,15 +26,24 @@ export function useSeatAlertSync(): SyncSeatAlerts {
   const auth = useAuth();
 
   const repo = useMemo<SeatAlertRepo | null>(() => {
-    if (typeof window !== 'undefined' && window.__shohojSeatAlertRepo) return window.__shohojSeatAlertRepo;
-    if (config) return createSeatAlertRepo({ config: config.firebase, recaptchaV3SiteKey: config.recaptchaV3SiteKey });
+    if (typeof window !== 'undefined' && window.__shohojSeatAlertRepo)
+      return window.__shohojSeatAlertRepo;
+    if (config)
+      return createSeatAlertRepo({
+        config: config.firebase,
+        recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      });
     return null;
   }, [config]);
 
   return useCallback(
     (watches, enabled) => {
       if (!repo) return;
-      const sections = watches.map((w) => ({ id: w.sectionId, code: w.courseCode, name: w.sectionName }));
+      const sections = watches.map((w) => ({
+        id: w.sectionId,
+        code: w.courseCode,
+        name: w.sectionName,
+      }));
       void repo.sync(auth.uid, auth.email, enabled, sections).catch(() => {
         // Sync is best-effort; the local watchlist still works if it fails.
       });

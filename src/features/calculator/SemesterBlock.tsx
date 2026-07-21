@@ -35,7 +35,11 @@ export interface SemesterBlockProps {
   readonly onAddCourse: () => void;
   readonly onRemoveSemester: () => void;
   readonly onCourseNamePick: (idx: number, course: CourseSuggestion) => void;
-  readonly onCourseNameResolve: (idx: number, course: CourseSuggestion | null, text: string) => void;
+  readonly onCourseNameResolve: (
+    idx: number,
+    course: CourseSuggestion | null,
+    text: string,
+  ) => void;
   readonly onCourseGradePointChange: (idx: number, value: string) => void;
   readonly onCourseGradePointBlur?: (idx: number, e: React.FocusEvent<HTMLInputElement>) => void;
   readonly onCoursePassFailChange: (idx: number, value: string) => void;
@@ -114,14 +118,22 @@ export default function SemesterBlock({
           {isCurrentSem ? (
             <span
               className="semester-running-badge"
-              style={{ background: 'rgba(46,204,113,0.12)', color: '#2ECC71', borderColor: 'rgba(46,204,113,0.30)' }}
+              style={{
+                background: 'rgba(46,204,113,0.12)',
+                color: '#2ECC71',
+                borderColor: 'rgba(46,204,113,0.30)',
+              }}
             >
               📍 Current
             </span>
           ) : isFuture ? (
             <span
               className="semester-running-badge"
-              style={{ background: 'rgba(86,180,233,0.10)', color: '#56B4E9', borderColor: 'rgba(86,180,233,0.25)' }}
+              style={{
+                background: 'rgba(86,180,233,0.10)',
+                color: '#56B4E9',
+                borderColor: 'rgba(86,180,233,0.25)',
+              }}
             >
               🔜 Future
             </span>
@@ -133,7 +145,11 @@ export default function SemesterBlock({
               {gpa !== null && (
                 <span
                   className="semester-gpa-badge"
-                  style={{ color: '#F0A500', background: 'rgba(240,165,0,0.10)', border: '1px solid rgba(240,165,0,0.25)' }}
+                  style={{
+                    color: '#F0A500',
+                    background: 'rgba(240,165,0,0.10)',
+                    border: '1px solid rgba(240,165,0,0.25)',
+                  }}
                 >
                   GPA {gpa.toFixed(2)}
                 </span>
@@ -144,7 +160,10 @@ export default function SemesterBlock({
             (() => {
               const { color, bg, border } = gpaBadgeColors(gpa);
               return (
-                <span className="semester-gpa-badge" style={{ color, background: bg, border: `1px solid ${border}` }}>
+                <span
+                  className="semester-gpa-badge"
+                  style={{ color, background: bg, border: `1px solid ${border}` }}
+                >
                   GPA {gpa.toFixed(2)}
                 </span>
               );
@@ -154,7 +173,13 @@ export default function SemesterBlock({
           {isIncomplete && <span className="semester-incomplete-badge">⚠ Incomplete</span>}
 
           {warning && (
-            <span className={warning.type === 'error' ? 'semester-credit-error-badge' : 'semester-credit-warn-badge'}>
+            <span
+              className={
+                warning.type === 'error'
+                  ? 'semester-credit-error-badge'
+                  : 'semester-credit-warn-badge'
+              }
+            >
               {warning.msg}
             </span>
           )}
@@ -176,7 +201,12 @@ export default function SemesterBlock({
         {sem.courses.map((course, i) => {
           const courseCode = getReviewableCourseCode(course.name, isKnownCode);
           const grade = (course.grade ?? '') as string;
-          const canRate = !sem.summary && !!(course.name ?? '').trim() && !!grade && grade !== 'I' && !!courseCode;
+          const canRate =
+            !sem.summary &&
+            !!(course.name ?? '').trim() &&
+            !!grade &&
+            grade !== 'I' &&
+            !!courseCode;
           const facInit = normalizeInitials(course.faculty ?? '');
           return (
             <CourseRow
@@ -191,7 +221,9 @@ export default function SemesterBlock({
               onNamePick={(course) => onCourseNamePick(i, course)}
               onNameResolve={(course, text) => onCourseNameResolve(i, course, text)}
               onGradePointChange={(v) => onCourseGradePointChange(i, v)}
-              onGradePointBlur={onCourseGradePointBlur ? (e) => onCourseGradePointBlur(i, e) : undefined}
+              onGradePointBlur={
+                onCourseGradePointBlur ? (e) => onCourseGradePointBlur(i, e) : undefined
+              }
               onPassFailChange={(v) => onCoursePassFailChange(i, v)}
               onRate={() => onRateCourse(i)}
               onRemove={() => onRemoveCourse(i)}

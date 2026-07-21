@@ -28,7 +28,11 @@ export interface MigrationReport {
 
 /** Detect the schema version of an already-parsed stored value. */
 export function detectStoredVersion(raw: unknown): 1 | 2 {
-  if (raw !== null && typeof raw === 'object' && (raw as { version?: unknown }).version === CURRENT_SCHEMA_VERSION) {
+  if (
+    raw !== null &&
+    typeof raw === 'object' &&
+    (raw as { version?: unknown }).version === CURRENT_SCHEMA_VERSION
+  ) {
     return CURRENT_SCHEMA_VERSION;
   }
   return 1;

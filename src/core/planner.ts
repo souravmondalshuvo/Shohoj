@@ -141,12 +141,16 @@ function plannerCoreGetScheduledCodesImpl(semesters: readonly SemesterEntry[]): 
   return codes;
 }
 
-function plannerCoreCheckPrereqsImpl(code: CourseCode, completed: ReadonlySet<CourseCode>, prerequisites: PrerequisiteMap): PrereqCheck {
+function plannerCoreCheckPrereqsImpl(
+  code: CourseCode,
+  completed: ReadonlySet<CourseCode>,
+  prerequisites: PrerequisiteMap,
+): PrereqCheck {
   const prereq = prerequisites[code];
   if (!prereq) return { canTake: true, missingHp: [], missingSp: [], hasData: false };
 
-  const missingHp = (prereq.hp ?? []).filter(item => !completed.has(item));
-  const missingSp = (prereq.sp ?? []).filter(item => !completed.has(item));
+  const missingHp = (prereq.hp ?? []).filter((item) => !completed.has(item));
+  const missingSp = (prereq.sp ?? []).filter((item) => !completed.has(item));
 
   return {
     canTake: missingHp.length === 0,
@@ -156,7 +160,9 @@ function plannerCoreCheckPrereqsImpl(code: CourseCode, completed: ReadonlySet<Co
   };
 }
 
-function plannerCoreBuildUnlockCountMapImpl(prerequisites: PrerequisiteMap): Record<CourseCode, number> {
+function plannerCoreBuildUnlockCountMapImpl(
+  prerequisites: PrerequisiteMap,
+): Record<CourseCode, number> {
   const counts: Record<CourseCode, number> = Object.create(null);
 
   for (const code of Object.keys(prerequisites)) {
@@ -225,16 +231,16 @@ function plannerCoreGetAvailableCoursesImpl(
 
   const query = options.searchQuery?.trim().toLowerCase();
   if (query) {
-    results = results.filter(course =>
-      course.code.toLowerCase().includes(query) ||
-      course.name.toLowerCase().includes(query),
+    results = results.filter(
+      (course) =>
+        course.code.toLowerCase().includes(query) || course.name.toLowerCase().includes(query),
     );
   }
 
   if (options.filterMode === 'unlocked') {
-    results = results.filter(course => course.canTake);
+    results = results.filter((course) => course.canTake);
   } else if (options.filterMode === 'locked') {
-    results = results.filter(course => !course.canTake);
+    results = results.filter((course) => !course.canTake);
   }
 
   return typeof options.limit === 'number' ? results.slice(0, options.limit) : results;
@@ -266,7 +272,9 @@ function plannerCoreValidatePlanImpl(input: PlannerEngineInput): PlanValidation 
   for (const code of input.planCourses) {
     const check = plannerCoreCheckPrereqsImpl(code, completed, input.prerequisites);
     if (!check.canTake) {
-      issues.push(`${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`);
+      issues.push(
+        `${code} \u2014 missing prerequisite${check.missingHp.length > 1 ? 's' : ''}: ${check.missingHp.join(', ')}`,
+      );
     }
     if (check.missingSp.length > 0) {
       warnings.push(`${code} \u2014 recommended: ${check.missingSp.join(', ')}`);
@@ -307,7 +315,13 @@ function plannerCoreGetPrereqChainImpl(
 
   const allPrereqs = [...(prereq.hp ?? []), ...(prereq.sp ?? [])];
   for (const item of allPrereqs) {
-    const child = plannerCoreGetPrereqChainImpl(item, completed, courseCatalog, prerequisites, depth + 1);
+    const child = plannerCoreGetPrereqChainImpl(
+      item,
+      completed,
+      courseCatalog,
+      prerequisites,
+      depth + 1,
+    );
     if (!child) continue;
     child.isSoft = (prereq.sp ?? []).includes(item);
     node.children.push(child);

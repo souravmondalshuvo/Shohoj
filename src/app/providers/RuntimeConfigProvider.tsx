@@ -8,14 +8,8 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-import {
-  readRuntimeConfig,
-  type RuntimeConfig,
-} from '../../platform/configuration/runtimeConfig';
-import {
-  deriveCapabilities,
-  type Capabilities,
-} from '../../platform/configuration/capabilities';
+import { readRuntimeConfig, type RuntimeConfig } from '../../platform/configuration/runtimeConfig';
+import { deriveCapabilities, type Capabilities } from '../../platform/configuration/capabilities';
 
 export interface RuntimeConfigValue {
   /** Validated config, or null when missing/placeholder/invalid. */

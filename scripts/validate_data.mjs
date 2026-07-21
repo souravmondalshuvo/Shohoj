@@ -31,17 +31,68 @@ const DATA_DIR = join(__dirname, '..', 'data');
 // ── Canonical lookups (mirror src/core/catalog.ts + js/ui/reviewsTab.js) ───────
 // The department codes the public faculty/reviews UI groups by. A faculty `dept`
 // outside this set renders ungrouped (raw code), so it's a data-quality warning.
-export const CANON_DEPTS = new Set(
-  ['CSE', 'EEE', 'ECE', 'MPS', 'BBA', 'ENG', 'ECO', 'ANT', 'ARC', 'PHR', 'LLB', 'GENED'],
-);
+export const CANON_DEPTS = new Set([
+  'CSE',
+  'EEE',
+  'ECE',
+  'MPS',
+  'BBA',
+  'ENG',
+  'ECO',
+  'ANT',
+  'ARC',
+  'PHR',
+  'LLB',
+  'GENED',
+]);
 
 // Course-code prefix → department. Trimmed mirror of PREFIX_DEPT_MAP; used to
 // flag course codes whose prefix maps to no known department.
 export const KNOWN_PREFIXES = new Set([
-  'CSE', 'EEE', 'ECE', 'MAT', 'PHY', 'STA', 'ENV', 'MIC', 'BCH', 'BTE', 'BIO', 'APE', 'CHE', 'GEO',
-  'ACT', 'BUS', 'FIN', 'MGT', 'MKT', 'MIS', 'MSC', 'ENG', 'HST', 'ECO', 'SOC', 'ANT',
-  'ARC', 'CEE', 'MEE', 'PHI', 'PHB', 'PHR', 'LAW',
-  'BNG', 'EMB', 'CST', 'FRN', 'DEV', 'POL', 'PSY', 'HUM', 'CHN', 'JPN', 'SPN',
+  'CSE',
+  'EEE',
+  'ECE',
+  'MAT',
+  'PHY',
+  'STA',
+  'ENV',
+  'MIC',
+  'BCH',
+  'BTE',
+  'BIO',
+  'APE',
+  'CHE',
+  'GEO',
+  'ACT',
+  'BUS',
+  'FIN',
+  'MGT',
+  'MKT',
+  'MIS',
+  'MSC',
+  'ENG',
+  'HST',
+  'ECO',
+  'SOC',
+  'ANT',
+  'ARC',
+  'CEE',
+  'MEE',
+  'PHI',
+  'PHB',
+  'PHR',
+  'LAW',
+  'BNG',
+  'EMB',
+  'CST',
+  'FRN',
+  'DEV',
+  'POL',
+  'PSY',
+  'HUM',
+  'CHN',
+  'JPN',
+  'SPN',
 ]);
 
 // Mirrors the strict shapes enforced by firestore.rules / the worker.
@@ -63,7 +114,9 @@ export function isValidInitials(s) {
   return typeof s === 'string' && INITIALS_RE.test(s);
 }
 export function coursePrefix(code) {
-  const m = String(code).toUpperCase().match(/^([A-Z]+)/);
+  const m = String(code)
+    .toUpperCase()
+    .match(/^([A-Z]+)/);
   return m ? m[1] : '';
 }
 export function isKnownCoursePrefix(code) {
@@ -88,16 +141,32 @@ export function validateFacultyRow(row) {
   const out = [];
   const initials = String(row?.initials ?? '').trim();
   if (!initials) out.push(issue('error', 'missing-required', 'faculty: initials is required'));
-  else if (!isValidInitials(initials)) out.push(issue('error', 'invalid-initials', `faculty initials must be 2–6 uppercase letters (got ${JSON.stringify(initials)})`));
+  else if (!isValidInitials(initials))
+    out.push(
+      issue(
+        'error',
+        'invalid-initials',
+        `faculty initials must be 2–6 uppercase letters (got ${JSON.stringify(initials)})`,
+      ),
+    );
 
-  if (!String(row?.name ?? '').trim()) out.push(issue('error', 'missing-required', 'faculty: name is required'));
-  if (!String(row?.dept ?? '').trim()) out.push(issue('error', 'missing-required', 'faculty: dept is required'));
+  if (!String(row?.name ?? '').trim())
+    out.push(issue('error', 'missing-required', 'faculty: name is required'));
+  if (!String(row?.dept ?? '').trim())
+    out.push(issue('error', 'missing-required', 'faculty: dept is required'));
   else if (!CANON_DEPTS.has(String(row.dept).trim().toUpperCase())) {
-    out.push(issue('warn', 'invalid-dept-mapping', `faculty dept ${JSON.stringify(row.dept)} is not a known department code (renders ungrouped)`));
+    out.push(
+      issue(
+        'warn',
+        'invalid-dept-mapping',
+        `faculty dept ${JSON.stringify(row.dept)} is not a known department code (renders ungrouped)`,
+      ),
+    );
   }
 
   const email = String(row?.email ?? '').trim();
-  if (email && !EMAIL_RE.test(email)) out.push(issue('warn', 'invalid-email', 'faculty email is malformed'));
+  if (email && !EMAIL_RE.test(email))
+    out.push(issue('warn', 'invalid-email', 'faculty email is malformed'));
 
   const courses = row?.courses;
   if (courses !== undefined && !Array.isArray(courses)) {
@@ -105,26 +174,60 @@ export function validateFacultyRow(row) {
   } else if (Array.isArray(courses)) {
     for (const c of courses) {
       const code = String(c).trim().toUpperCase();
-      if (!isValidCourseCode(code)) out.push(issue('error', 'invalid-course-code', `faculty course code looks malformed: ${JSON.stringify(c)}`));
-      else if (!isKnownCoursePrefix(code)) out.push(issue('info', 'unknown-course-prefix', `faculty course ${code} has an unknown department prefix`));
+      if (!isValidCourseCode(code))
+        out.push(
+          issue(
+            'error',
+            'invalid-course-code',
+            `faculty course code looks malformed: ${JSON.stringify(c)}`,
+          ),
+        );
+      else if (!isKnownCoursePrefix(code))
+        out.push(
+          issue(
+            'info',
+            'unknown-course-prefix',
+            `faculty course ${code} has an unknown department prefix`,
+          ),
+        );
     }
   }
 
-  if (!hasProvenance(row)) out.push(issue('info', 'missing-provenance', 'faculty row has no provenance (provenance/source)'));
+  if (!hasProvenance(row))
+    out.push(
+      issue('info', 'missing-provenance', 'faculty row has no provenance (provenance/source)'),
+    );
   return out;
 }
 
 export function validateReviewRow(row) {
   const out = [];
   const initials = String(row?.facultyInitials ?? '').trim();
-  if (!initials) out.push(issue('error', 'missing-required', 'review: facultyInitials is required'));
-  else if (!isValidInitials(initials)) out.push(issue('error', 'invalid-initials', `review facultyInitials must be 2–6 uppercase letters (got ${JSON.stringify(initials)})`));
+  if (!initials)
+    out.push(issue('error', 'missing-required', 'review: facultyInitials is required'));
+  else if (!isValidInitials(initials))
+    out.push(
+      issue(
+        'error',
+        'invalid-initials',
+        `review facultyInitials must be 2–6 uppercase letters (got ${JSON.stringify(initials)})`,
+      ),
+    );
 
   const course = String(row?.courseCode ?? '').trim();
-  if (course && !isValidCourseCode(course.toUpperCase())) out.push(issue('error', 'invalid-course-code', `review courseCode looks malformed: ${JSON.stringify(course)}`));
+  if (course && !isValidCourseCode(course.toUpperCase()))
+    out.push(
+      issue(
+        'error',
+        'invalid-course-code',
+        `review courseCode looks malformed: ${JSON.stringify(course)}`,
+      ),
+    );
 
-  if (String(row?.semester ?? '').length > MAX_SEMESTER) out.push(issue('error', 'oversized-field', `review semester exceeds ${MAX_SEMESTER} chars`));
-  if (String(row?.text ?? '').length > MAX_TEXT) out.push(issue('error', 'oversized-field', `review text exceeds ${MAX_TEXT} chars`));
+  if (String(row?.semester ?? '').length > MAX_SEMESTER)
+    out.push(issue('error', 'oversized-field', `review semester exceeds ${MAX_SEMESTER} chars`));
+  if (String(row?.text ?? '').length > MAX_TEXT)
+    out.push(issue('error', 'oversized-field', `review text exceeds ${MAX_TEXT} chars`));
 
   const ratings = row?.ratings;
   if (!ratings || typeof ratings !== 'object') {
@@ -133,12 +236,19 @@ export function validateReviewRow(row) {
     for (const key of RATING_KEYS) {
       const v = ratings[key];
       if (typeof v !== 'number' || Number.isNaN(v) || v < 1 || v > 5) {
-        out.push(issue('error', 'rating-out-of-range', `review rating ${JSON.stringify(key)} must be a number in 1..5`));
+        out.push(
+          issue(
+            'error',
+            'rating-out-of-range',
+            `review rating ${JSON.stringify(key)} must be a number in 1..5`,
+          ),
+        );
       }
     }
   }
 
-  if (!hasProvenance(row)) out.push(issue('info', 'missing-provenance', 'review row has no provenance (sourceUrl)'));
+  if (!hasProvenance(row))
+    out.push(issue('info', 'missing-provenance', 'review row has no provenance (sourceUrl)'));
   return out;
 }
 
@@ -146,24 +256,48 @@ export function validateReviewRow(row) {
 // a data/papers*.jsonl exists; kept here (and tested) so the rule is ready.
 export function validatePaperRow(row) {
   const out = [];
-  if (!String(row?.paperId ?? row?.id ?? '').trim()) out.push(issue('error', 'missing-required', 'paper: paperId is required'));
-  if (!String(row?.title ?? '').trim()) out.push(issue('error', 'missing-required', 'paper: title is required'));
-  else if (String(row.title).length > MAX_TITLE) out.push(issue('error', 'oversized-field', `paper title exceeds ${MAX_TITLE} chars`));
+  if (!String(row?.paperId ?? row?.id ?? '').trim())
+    out.push(issue('error', 'missing-required', 'paper: paperId is required'));
+  if (!String(row?.title ?? '').trim())
+    out.push(issue('error', 'missing-required', 'paper: title is required'));
+  else if (String(row.title).length > MAX_TITLE)
+    out.push(issue('error', 'oversized-field', `paper title exceeds ${MAX_TITLE} chars`));
 
-  const course = String(row?.courseCode ?? '').trim().toUpperCase();
+  const course = String(row?.courseCode ?? '')
+    .trim()
+    .toUpperCase();
   if (!course) out.push(issue('error', 'missing-required', 'paper: courseCode is required'));
-  else if (!isValidCourseCode(course)) out.push(issue('error', 'invalid-course-code', `paper courseCode looks malformed: ${JSON.stringify(row.courseCode)}`));
+  else if (!isValidCourseCode(course))
+    out.push(
+      issue(
+        'error',
+        'invalid-course-code',
+        `paper courseCode looks malformed: ${JSON.stringify(row.courseCode)}`,
+      ),
+    );
 
-  const type = String(row?.type ?? '').trim().toLowerCase();
+  const type = String(row?.type ?? '')
+    .trim()
+    .toLowerCase();
   if (!type) out.push(issue('error', 'missing-required', 'paper: type is required'));
-  else if (!PAPER_TYPES.has(type)) out.push(issue('error', 'invalid-paper-type', `paper type ${JSON.stringify(row.type)} is not allowed`));
+  else if (!PAPER_TYPES.has(type))
+    out.push(
+      issue('error', 'invalid-paper-type', `paper type ${JSON.stringify(row.type)} is not allowed`),
+    );
 
   const size = row?.sizeBytes;
   if (size !== undefined) {
-    if (typeof size !== 'number' || size < 0) out.push(issue('error', 'invalid-paper-size', 'paper sizeBytes must be a non-negative number'));
-    else if (size > MAX_PAPER_BYTES) out.push(issue('error', 'oversized-paper', `paper sizeBytes exceeds ${MAX_PAPER_BYTES} (10MB)`));
+    if (typeof size !== 'number' || size < 0)
+      out.push(
+        issue('error', 'invalid-paper-size', 'paper sizeBytes must be a non-negative number'),
+      );
+    else if (size > MAX_PAPER_BYTES)
+      out.push(
+        issue('error', 'oversized-paper', `paper sizeBytes exceeds ${MAX_PAPER_BYTES} (10MB)`),
+      );
   }
-  if (!hasProvenance(row)) out.push(issue('info', 'missing-provenance', 'paper row has no provenance'));
+  if (!hasProvenance(row))
+    out.push(issue('info', 'missing-provenance', 'paper row has no provenance'));
   return out;
 }
 
@@ -175,19 +309,33 @@ export function findDuplicateFaculty(rows) {
   const out = [];
   const byInitials = new Map();
   for (const { line, row } of rows) {
-    const k = String(row?.initials ?? '').trim().toUpperCase();
+    const k = String(row?.initials ?? '')
+      .trim()
+      .toUpperCase();
     if (!k) continue;
     (byInitials.get(k) || byInitials.set(k, []).get(k)).push({ line, row });
   }
   for (const [k, group] of byInitials) {
     if (group.length < 2) continue;
-    const names = new Set(group.map(g => String(g.row?.name ?? '').trim()));
-    const emails = new Set(group.map(g => String(g.row?.email ?? '').trim()).filter(Boolean));
-    const lines = group.map(g => g.line).join(', ');
+    const names = new Set(group.map((g) => String(g.row?.name ?? '').trim()));
+    const emails = new Set(group.map((g) => String(g.row?.email ?? '').trim()).filter(Boolean));
+    const lines = group.map((g) => g.line).join(', ');
     if (names.size > 1 || emails.size > 1) {
-      out.push(issue('error', 'conflicting-initials', `initials ${k} used by ${names.size} different faculty (lines ${lines})`));
+      out.push(
+        issue(
+          'error',
+          'conflicting-initials',
+          `initials ${k} used by ${names.size} different faculty (lines ${lines})`,
+        ),
+      );
     } else {
-      out.push(issue('error', 'duplicate-faculty', `initials ${k} appears ${group.length}× (lines ${lines})`));
+      out.push(
+        issue(
+          'error',
+          'duplicate-faculty',
+          `initials ${k} appears ${group.length}× (lines ${lines})`,
+        ),
+      );
     }
   }
   return out;
@@ -200,9 +348,16 @@ export function findDuplicateReviews(rows) {
   const seen = new Map();
   for (const { line, row } of rows) {
     const key = [
-      String(row?.facultyInitials ?? '').trim().toUpperCase(),
-      String(row?.courseCode ?? '').trim().toUpperCase(),
-      String(row?.text ?? '').replace(/\s+/g, ' ').trim().toLowerCase(),
+      String(row?.facultyInitials ?? '')
+        .trim()
+        .toUpperCase(),
+      String(row?.courseCode ?? '')
+        .trim()
+        .toUpperCase(),
+      String(row?.text ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase(),
     ].join('|');
     if (!row?.text) continue; // empty-text rows aren't meaningful duplicates
     (seen.get(key) || seen.set(key, []).get(key)).push({ line, row });
@@ -210,22 +365,42 @@ export function findDuplicateReviews(rows) {
   for (const group of seen.values()) {
     if (group.length < 2) continue;
     const first = group[0].row;
-    const lines = group.map(g => g.line).join(', ');
-    out.push(issue('warn', 'duplicate-review', `duplicate review for ${String(first.facultyInitials).toUpperCase()} ${String(first.courseCode || '—').toUpperCase()} (${group.length}× on lines ${lines})`));
+    const lines = group.map((g) => g.line).join(', ');
+    out.push(
+      issue(
+        'warn',
+        'duplicate-review',
+        `duplicate review for ${String(first.facultyInitials).toUpperCase()} ${String(first.courseCode || '—').toUpperCase()} (${group.length}× on lines ${lines})`,
+      ),
+    );
   }
   return out;
 }
 
 // Reviews referencing a faculty with no profile show up un-attributed in the UI.
 export function findOrphanReviews(reviewRows, facultyRows) {
-  const known = new Set(facultyRows.map(({ row }) => String(row?.initials ?? '').trim().toUpperCase()));
+  const known = new Set(
+    facultyRows.map(({ row }) =>
+      String(row?.initials ?? '')
+        .trim()
+        .toUpperCase(),
+    ),
+  );
   const out = [];
   const flagged = new Set();
   for (const { row } of reviewRows) {
-    const k = String(row?.facultyInitials ?? '').trim().toUpperCase();
+    const k = String(row?.facultyInitials ?? '')
+      .trim()
+      .toUpperCase();
     if (k && !known.has(k) && !flagged.has(k)) {
       flagged.add(k);
-      out.push(issue('warn', 'orphan-review', `reviews reference faculty ${k} with no profile in faculty_profiles.jsonl`));
+      out.push(
+        issue(
+          'warn',
+          'orphan-review',
+          `reviews reference faculty ${k} with no profile in faculty_profiles.jsonl`,
+        ),
+      );
     }
   }
   return out;
@@ -296,9 +471,17 @@ function stampProvenance(path, kind, { write }) {
     const trimmed = line.trim();
     if (!trimmed) return line;
     let row;
-    try { row = JSON.parse(trimmed); } catch { return line; }
+    try {
+      row = JSON.parse(trimmed);
+    } catch {
+      return line;
+    }
     if (hasProvenance(row)) return line;
-    const stamp = JSON.stringify({ source: `unverified-${kind}-import`, addedBy: 'validate_data', addedAt: new Date().toISOString().slice(0, 10) });
+    const stamp = JSON.stringify({
+      source: `unverified-${kind}-import`,
+      addedBy: 'validate_data',
+      addedAt: new Date().toISOString().slice(0, 10),
+    });
     const idx = line.lastIndexOf('}');
     changed += 1;
     return `${line.slice(0, idx)},"provenance":${stamp}${line.slice(idx)}`;
@@ -312,7 +495,11 @@ function printReport(findings, { json }) {
     process.stdout.write(JSON.stringify(findings, null, 2) + '\n');
     return;
   }
-  const labels = { faculty: 'faculty_profiles.jsonl', reviews: 'input_reviews.jsonl', papers: 'papers.jsonl' };
+  const labels = {
+    faculty: 'faculty_profiles.jsonl',
+    reviews: 'input_reviews.jsonl',
+    papers: 'papers.jsonl',
+  };
   for (const [group, items] of Object.entries(findings)) {
     if (!items.length) continue;
     console.log(`\n${labels[group]}`);
@@ -320,9 +507,11 @@ function printReport(findings, { json }) {
     const byRule = new Map();
     for (const f of items) (byRule.get(f.rule) || byRule.set(f.rule, []).get(f.rule)).push(f);
     for (const [rule, fs] of byRule) {
-      const tag = fs[0].severity === 'error' ? 'ERROR' : fs[0].severity === 'warn' ? 'warn ' : 'info ';
+      const tag =
+        fs[0].severity === 'error' ? 'ERROR' : fs[0].severity === 'warn' ? 'warn ' : 'info ';
       console.log(`  [${tag}] ${rule} (${fs.length})`);
-      for (const f of fs.slice(0, 8)) console.log(`      ${f.line ? `line ${f.line}: ` : ''}${f.message}`);
+      for (const f of fs.slice(0, 8))
+        console.log(`      ${f.line ? `line ${f.line}: ` : ''}${f.message}`);
       if (fs.length > 8) console.log(`      … and ${fs.length - 8} more`);
     }
   }
@@ -339,16 +528,30 @@ function main() {
 
   const facultyPath = join(DATA_DIR, 'faculty_profiles.jsonl');
   const reviewPath = join(DATA_DIR, 'input_reviews.jsonl');
-  const paperPath = ['papers.jsonl', 'input_papers.jsonl'].map(f => join(DATA_DIR, f)).find(existsSync);
+  const paperPath = ['papers.jsonl', 'input_papers.jsonl']
+    .map((f) => join(DATA_DIR, f))
+    .find(existsSync);
 
   const parseErrors = [];
   let facultyRows = [];
   let reviewRows = [];
   let paperRows = [];
   try {
-    if (existsSync(facultyPath)) { const r = loadJsonl(facultyPath); facultyRows = r.rows; parseErrors.push(...r.errors.map(e => ({ ...e, file: 'faculty' }))); }
-    if (existsSync(reviewPath)) { const r = loadJsonl(reviewPath); reviewRows = r.rows; parseErrors.push(...r.errors.map(e => ({ ...e, file: 'reviews' }))); }
-    if (paperPath) { const r = loadJsonl(paperPath); paperRows = r.rows; parseErrors.push(...r.errors.map(e => ({ ...e, file: 'papers' }))); }
+    if (existsSync(facultyPath)) {
+      const r = loadJsonl(facultyPath);
+      facultyRows = r.rows;
+      parseErrors.push(...r.errors.map((e) => ({ ...e, file: 'faculty' })));
+    }
+    if (existsSync(reviewPath)) {
+      const r = loadJsonl(reviewPath);
+      reviewRows = r.rows;
+      parseErrors.push(...r.errors.map((e) => ({ ...e, file: 'reviews' })));
+    }
+    if (paperPath) {
+      const r = loadJsonl(paperPath);
+      paperRows = r.rows;
+      parseErrors.push(...r.errors.map((e) => ({ ...e, file: 'papers' })));
+    }
   } catch (e) {
     console.error(`✖ could not read a data file: ${e.message}`);
     process.exit(2);
@@ -356,12 +559,15 @@ function main() {
 
   const findings = validateDataset({ facultyRows, reviewRows, paperRows });
   // Fold any JSON parse errors into the faculty/reviews groups for reporting.
-  for (const e of parseErrors) findings[e.file === 'reviews' ? 'reviews' : e.file === 'papers' ? 'papers' : 'faculty'].push(e);
+  for (const e of parseErrors)
+    findings[e.file === 'reviews' ? 'reviews' : e.file === 'papers' ? 'papers' : 'faculty'].push(e);
 
   // In --json mode stdout must be pure JSON, so all human chatter goes to stderr.
   const say = opts.json ? (...a) => console.error(...a) : (...a) => console.log(...a);
 
-  say(`Validated ${facultyRows.length} faculty, ${reviewRows.length} reviews${paperPath ? `, ${paperRows.length} papers` : ''}.`);
+  say(
+    `Validated ${facultyRows.length} faculty, ${reviewRows.length} reviews${paperPath ? `, ${paperRows.length} papers` : ''}.`,
+  );
   printReport(findings, opts);
 
   if (opts.addProvenance) {
@@ -375,7 +581,11 @@ function main() {
   say(`\nResult: ${errors} error(s), ${warns} warning(s), ${infos} info.`);
   const fail = errors > 0 || (opts.strict && warns > 0);
   if (fail) {
-    console.error(opts.strict && errors === 0 ? '✖ warnings present and --strict set.' : '✖ validation found errors.');
+    console.error(
+      opts.strict && errors === 0
+        ? '✖ warnings present and --strict set.'
+        : '✖ validation found errors.',
+    );
     process.exit(1);
   }
   say('✓ no blocking issues.');

@@ -34,7 +34,11 @@ import {
   type PrereqTreeNode,
 } from '../../core/planner.ts';
 import type { SemesterSeason } from '../../core/types.ts';
-import { BRACU_COURSE_CATALOG, BRACU_COURSE_DB, BRACU_PREREQS } from '../../features/calculator/catalog.ts';
+import {
+  BRACU_COURSE_CATALOG,
+  BRACU_COURSE_DB,
+  BRACU_PREREQS,
+} from '../../features/calculator/catalog.ts';
 import {
   calculatorReducer,
   loadCalculatorState,
@@ -92,7 +96,9 @@ export function Component() {
   const [assumedGrade, setAssumedGrade] = useState<(typeof IMPACT_GRADES)[number]>('A');
   const [viewingPrereqs, setViewingPrereqs] = useState('');
   // The course whose reviews modal is open (null = closed).
-  const [reviewingCourse, setReviewingCourse] = useState<{ code: string; name: string } | null>(null);
+  const [reviewingCourse, setReviewingCourse] = useState<{ code: string; name: string } | null>(
+    null,
+  );
 
   const retakenKeys = useMemo(
     () =>
@@ -200,7 +206,12 @@ export function Component() {
       .map((code) => {
         const c = BRACU_COURSE_DB[code];
         if (!c) return null;
-        return { name: `${c.name} (${c.code})`, credits: c.credits ?? 0, grade: '', gradePoint: '' };
+        return {
+          name: `${c.name} (${c.code})`,
+          credits: c.credits ?? 0,
+          grade: '',
+          gradePoint: '',
+        };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
     if (prefill.length === 0) return;
@@ -262,9 +273,14 @@ export function Component() {
         <div className="pl-plan" data-testid="planner-plan">
           <div className="pl-section-head">
             <span className="pl-section-title">
-              Your plan ({state.planCourses.length} course{state.planCourses.length !== 1 ? 's' : ''})
+              Your plan ({state.planCourses.length} course
+              {state.planCourses.length !== 1 ? 's' : ''})
             </span>
-            <button type="button" className="pl-link-btn" onClick={() => dispatch({ type: 'clearPlan' })}>
+            <button
+              type="button"
+              className="pl-link-btn"
+              onClick={() => dispatch({ type: 'clearPlan' })}
+            >
               Clear all
             </button>
           </div>
@@ -274,7 +290,9 @@ export function Component() {
             const check = plannerCoreCheckPrereqs(code, completed, BRACU_PREREQS);
             return (
               <div key={code} className="pl-plan-row">
-                <span className={check.canTake ? 'pl-ok' : 'pl-miss'}>{check.canTake ? '✓' : '✗'}</span>
+                <span className={check.canTake ? 'pl-ok' : 'pl-miss'}>
+                  {check.canTake ? '✓' : '✗'}
+                </span>
                 <div className="pl-plan-row-main">
                   <div className="pl-plan-row-name">
                     <span className="pl-code">{c.code}</span>
@@ -330,7 +348,9 @@ export function Component() {
                 <select
                   aria-label="Assumed grade for all planned courses"
                   value={assumedGrade}
-                  onChange={(e) => setAssumedGrade(e.target.value as (typeof IMPACT_GRADES)[number])}
+                  onChange={(e) =>
+                    setAssumedGrade(e.target.value as (typeof IMPACT_GRADES)[number])
+                  }
                 >
                   {IMPACT_GRADES.map((g) => (
                     <option key={g} value={g}>
@@ -403,7 +423,9 @@ export function Component() {
               ×
             </button>
           </div>
-          <div className="pl-tree-course">{BRACU_COURSE_DB[viewingPrereqs]?.name ?? viewingPrereqs}</div>
+          <div className="pl-tree-course">
+            {BRACU_COURSE_DB[viewingPrereqs]?.name ?? viewingPrereqs}
+          </div>
           {tree.children.length > 0 ? (
             tree.children.map((child) => <TreeNode key={child.code} node={child} />)
           ) : (
@@ -463,7 +485,10 @@ export function Component() {
             <span className="pl-name">
               {c.name}
               {c.missingSp.length > 0 && c.canTake && (
-                <span className="pl-warn-soft-inline" title={`Recommended: ${c.missingSp.join(', ')}`}>
+                <span
+                  className="pl-warn-soft-inline"
+                  title={`Recommended: ${c.missingSp.join(', ')}`}
+                >
                   {' '}
                   ⚠
                 </span>
@@ -500,7 +525,9 @@ export function Component() {
           </div>
         ))}
         {hasMore && (
-          <div className="pl-more">{filtered.length - DISPLAY_CAP} more courses — refine your search</div>
+          <div className="pl-more">
+            {filtered.length - DISPLAY_CAP} more courses — refine your search
+          </div>
         )}
       </div>
 

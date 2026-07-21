@@ -79,7 +79,7 @@ if (process.argv.includes('--check')) {
   if (current !== next) {
     console.error(
       '✗ worker/catalog.generated.js is out of date with js/core/catalog.js.\n' +
-      '  Run: npm run generate:worker-catalog',
+        '  Run: npm run generate:worker-catalog',
     );
     process.exit(1);
   }

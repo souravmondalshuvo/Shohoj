@@ -26,7 +26,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Files that must NOT run via this generic runner (they need a special harness).
 const EXCLUDE = new Set([
-  'firestore.rules.test.js',   // needs the Firestore emulator → npm run test:rules
+  'firestore.rules.test.js', // needs the Firestore emulator → npm run test:rules
   'productionBundleSmoke.test.js', // needs a built bundle → npm run test:bundle
   'cspInlineHandlers.test.js', // needs a built bundle → npm run test:csp
 ]);
@@ -59,7 +59,7 @@ function main() {
   const filter = process.argv[2];
   let files = discover();
   if (filter) {
-    files = files.filter(f => f.toLowerCase().includes(filter.toLowerCase()));
+    files = files.filter((f) => f.toLowerCase().includes(filter.toLowerCase()));
   }
 
   if (files.length === 0) {

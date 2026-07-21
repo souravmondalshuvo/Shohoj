@@ -46,7 +46,10 @@ export function stripTags(s: unknown): string {
   if (typeof s !== 'string') return '';
   let prev: string;
   let out = s;
-  do { prev = out; out = out.replace(/<[^>]+>/g, ''); } while (out !== prev);
+  do {
+    prev = out;
+    out = out.replace(/<[^>]+>/g, '');
+  } while (out !== prev);
   return out;
 }
 
@@ -86,44 +89,50 @@ export function sanitizeRestoredState(saved: unknown): RestoredState | null {
     if (!/^[A-Z]{2,4}$/.test(state.currentDept)) state.currentDept = '';
   }
 
-  state.semesters = state.semesters.filter(sem => {
+  state.semesters = state.semesters.filter((sem) => {
     if (!sem || typeof sem !== 'object') return false;
     if (typeof sem.id !== 'number') return false;
 
     // ── Summary blocks pass through as-is after basic validation ──────────
     if (sem.summary === true) {
       const cgpa = parseFloat(sem.summaryCGPA);
-      const cr   = parseFloat(sem.summaryCredits);
+      const cr = parseFloat(sem.summaryCredits);
       if (isNaN(cgpa) || cgpa < 0 || cgpa > 4.0) return false;
-      if (isNaN(cr)   || cr < 0)                  return false;
+      if (isNaN(cr) || cr < 0) return false;
       // Normalize attempted credits — default to earned if missing
       const att = parseFloat(sem.summaryAttempted);
-      sem.summaryAttempted = (!isNaN(att) && att >= 0) ? att : cr;
+      sem.summaryAttempted = !isNaN(att) && att >= 0 ? att : cr;
       // normalise optional semesters count
-      sem.summarySemesters = typeof sem.summarySemesters === 'number'
-        ? sem.summarySemesters : 0;
-      sem.courses = [];   // always empty
+      sem.summarySemesters = typeof sem.summarySemesters === 'number' ? sem.summarySemesters : 0;
+      sem.courses = []; // always empty
       sem.running = false;
       return true;
     }
 
     sem.name = sanitizeSemName(sem.name || '');
-    if (!Array.isArray(sem.courses)) { sem.courses = []; return true; }
-    sem.courses = sem.courses.filter((c: unknown) => c && typeof c === 'object').map((c: any) => ({
-      name:       typeof c.name === 'string' ? c.name : '',
-      credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
-      grade:      typeof c.grade === 'string' ? c.grade : '',
-      gradePoint: sanitizeGradePointValue(c.gradePoint),
-      faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
-    }));
+    if (!Array.isArray(sem.courses)) {
+      sem.courses = [];
+      return true;
+    }
+    sem.courses = sem.courses
+      .filter((c: unknown) => c && typeof c === 'object')
+      .map((c: any) => ({
+        name: typeof c.name === 'string' ? c.name : '',
+        credits: typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
+        grade: typeof c.grade === 'string' ? c.grade : '',
+        gradePoint: sanitizeGradePointValue(c.gradePoint),
+        faculty: typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
+      }));
     return true;
   });
 
-  state.semesterCounter = typeof state.semesterCounter === 'number'
-    ? state.semesterCounter : state.semesters.length;
+  state.semesterCounter =
+    typeof state.semesterCounter === 'number' ? state.semesterCounter : state.semesters.length;
 
   state.planCourses = Array.isArray(state.planCourses)
-    ? state.planCourses.filter((c: unknown) => typeof c === 'string' && /^[A-Z]{2,4}\d{3}[A-Z]?$/.test(c))
+    ? state.planCourses.filter(
+        (c: unknown) => typeof c === 'string' && /^[A-Z]{2,4}\d{3}[A-Z]?$/.test(c),
+      )
     : [];
 
   return state;
@@ -136,16 +145,17 @@ export function getCurrentSeason(): SemesterSeason {
   return 'Fall';
 }
 
-export function getLastCompletedSemester(
-  seasons?: readonly string[],
-): { season: string; year: number } {
+export function getLastCompletedSemester(seasons?: readonly string[]): {
+  season: string;
+  year: number;
+} {
   const order: readonly string[] = seasons || SEASON_ORDER;
   const curSeason = getCurrentSeason();
   const curYear = new Date().getFullYear();
   const curGlobalIdx = SEASON_ORDER.indexOf(curSeason);
 
-  const offeredBeforeCurrent = order.filter(season =>
-    (SEASON_ORDER as readonly string[]).indexOf(season) < curGlobalIdx,
+  const offeredBeforeCurrent = order.filter(
+    (season) => (SEASON_ORDER as readonly string[]).indexOf(season) < curGlobalIdx,
   );
 
   if (offeredBeforeCurrent.length > 0) {
@@ -171,7 +181,10 @@ export function countSemesters(
     count++;
     if (order[si] === endSeason && yr === parseInt(String(endYear))) break;
     si++;
-    if (si >= order.length) { si = 0; yr++; }
+    if (si >= order.length) {
+      si = 0;
+      yr++;
+    }
     if (yr > parseInt(String(endYear)) + 1) break;
   }
   return count;
@@ -191,7 +204,10 @@ export function generateSemesterNames(
   for (let i = 0; i < count; i++) {
     names.push(`${order[si]} ${yr} (${ordinalSup(i + 1)} Semester)`);
     si++;
-    if (si >= order.length) { si = 0; yr++; }
+    if (si >= order.length) {
+      si = 0;
+      yr++;
+    }
   }
   return names;
 }

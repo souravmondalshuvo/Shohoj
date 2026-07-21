@@ -33,7 +33,10 @@ export interface CourseReviewsModalProps {
   readonly onClose: () => void;
 }
 
-const DIMENSIONS: readonly { readonly key: 'teaching' | 'marking' | 'behavior' | 'difficulty' | 'workload'; readonly label: string }[] = [
+const DIMENSIONS: readonly {
+  readonly key: 'teaching' | 'marking' | 'behavior' | 'difficulty' | 'workload';
+  readonly label: string;
+}[] = [
   { key: 'teaching', label: 'Teach' },
   { key: 'marking', label: 'Marks' },
   { key: 'behavior', label: 'Behav' },
@@ -103,7 +106,11 @@ function FacultyCard({
   );
 }
 
-export default function CourseReviewsModal({ courseCode, courseName, onClose }: CourseReviewsModalProps) {
+export default function CourseReviewsModal({
+  courseCode,
+  courseName,
+  onClose,
+}: CourseReviewsModalProps) {
   const fetchByCourse = useFetchReviewsByCourse();
   const submitToProvider = useSubmitReview();
   const fetchReviewById = useFetchReviewById();
@@ -168,108 +175,108 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
 
   return (
     <>
-    <div
-      className="shell-modal-backdrop"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onClose();
-          return;
-        }
-        trapTabKey(e, dialogRef);
-      }}
-    >
       <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="shell-modal rv-cr-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rv-cr-title"
-        data-testid="course-reviews-modal"
-        onClick={(e) => e.stopPropagation()}
+        className="shell-modal-backdrop"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+            return;
+          }
+          trapTabKey(e, dialogRef);
+        }}
       >
-        <h2 id="rv-cr-title" className="shell-modal-title">
-          {courseCode} reviews
-        </h2>
-        {courseName && <p className="shell-modal-message rv-cr-subtitle">{courseName}</p>}
+        <div
+          ref={dialogRef}
+          tabIndex={-1}
+          className="shell-modal rv-cr-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rv-cr-title"
+          data-testid="course-reviews-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="rv-cr-title" className="shell-modal-title">
+            {courseCode} reviews
+          </h2>
+          {courseName && <p className="shell-modal-message rv-cr-subtitle">{courseName}</p>}
 
-        {groups === undefined ? (
-          <p className="rv-cr-loading" role="status">
-            Loading course reviews…
-          </p>
-        ) : failed ? (
-          <div className="rv-cr-empty" data-testid="course-reviews-unavailable" role="alert">
-            <div className="rv-cr-empty-title">Reviews are unavailable right now</div>
-            <div className="rv-cr-empty-note">
-              We couldn’t load reviews for {courseCode}. Please try again in a moment.
+          {groups === undefined ? (
+            <p className="rv-cr-loading" role="status">
+              Loading course reviews…
+            </p>
+          ) : failed ? (
+            <div className="rv-cr-empty" data-testid="course-reviews-unavailable" role="alert">
+              <div className="rv-cr-empty-title">Reviews are unavailable right now</div>
+              <div className="rv-cr-empty-note">
+                We couldn’t load reviews for {courseCode}. Please try again in a moment.
+              </div>
+              <button
+                type="button"
+                className="rv-cr-retry"
+                onClick={() => setReloadKey((n) => n + 1)}
+              >
+                Try again
+              </button>
             </div>
-            <button
-              type="button"
-              className="rv-cr-retry"
-              onClick={() => setReloadKey((n) => n + 1)}
-            >
-              Try again
-            </button>
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="rv-cr-empty" data-testid="course-reviews-empty">
-            <div className="rv-cr-empty-title">No reviews yet</div>
-            <div className="rv-cr-empty-note">
-              Be the first — rate a faculty who taught you {courseCode}.
+          ) : groups.length === 0 ? (
+            <div className="rv-cr-empty" data-testid="course-reviews-empty">
+              <div className="rv-cr-empty-title">No reviews yet</div>
+              <div className="rv-cr-empty-note">
+                Be the first — rate a faculty who taught you {courseCode}.
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="rv-cr-list">
-            {groups.map((group) => (
-              <FacultyCard
-                key={group.facultyInitials}
-                group={group}
-                onReport={setReportReviewId}
-                onAddRating={setRateInitials}
-              />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="rv-cr-list">
+              {groups.map((group) => (
+                <FacultyCard
+                  key={group.facultyInitials}
+                  group={group}
+                  onReport={setReportReviewId}
+                  onAddRating={setRateInitials}
+                />
+              ))}
+            </div>
+          )}
 
-        <div className="shell-modal-actions">
-          <Button variant="secondary" onClick={onClose}>
-            Close
-          </Button>
+          <div className="shell-modal-actions">
+            <Button variant="secondary" onClick={onClose}>
+              Close
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
 
-    {reportReviewId && (
-      <ReportReviewModal
-        reviewId={reportReviewId}
-        onReported={() => notify({ kind: 'success', message: 'Report submitted — thanks' })}
-        onClose={() => setReportReviewId(null)}
-      />
-    )}
+      {reportReviewId && (
+        <ReportReviewModal
+          reviewId={reportReviewId}
+          onReported={() => notify({ kind: 'success', message: 'Report submitted — thanks' })}
+          onClose={() => setReportReviewId(null)}
+        />
+      )}
 
-    {rateInitials && (
-      <RateFacultyModal
-        courseCode={courseCode}
-        semester=""
-        prefillInitials={rateInitials}
-        probe={() => probeExistingReview(rateInitials, courseCode, probeEnv)}
-        onSubmit={(payload) =>
-          submitReview(payload, {
-            isKnownCode: isKnownCourseCode,
-            hook: submitToProvider,
-            currentUid,
-          })
-        }
-        onSubmitted={() => {
-          notify({ kind: 'success', message: 'Review submitted — thank you' });
-          // Refetch so the just-added review shows in the viewer.
-          setReloadKey((k) => k + 1);
-        }}
-        onClose={() => setRateInitials(null)}
-      />
-    )}
+      {rateInitials && (
+        <RateFacultyModal
+          courseCode={courseCode}
+          semester=""
+          prefillInitials={rateInitials}
+          probe={() => probeExistingReview(rateInitials, courseCode, probeEnv)}
+          onSubmit={(payload) =>
+            submitReview(payload, {
+              isKnownCode: isKnownCourseCode,
+              hook: submitToProvider,
+              currentUid,
+            })
+          }
+          onSubmitted={() => {
+            notify({ kind: 'success', message: 'Review submitted — thank you' });
+            // Refetch so the just-added review shows in the viewer.
+            setReloadKey((k) => k + 1);
+          }}
+          onClose={() => setRateInitials(null)}
+        />
+      )}
     </>
   );
 }

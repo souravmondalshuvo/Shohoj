@@ -53,10 +53,7 @@ export interface LoadResult {
  * or clears the stored slot, even on corruption — the corrupt raw and its backup
  * are preserved so the user can recover rather than losing data.
  */
-export function loadAcademicState(
-  store: KeyValueStore,
-  key: string = STORAGE_KEY,
-): LoadResult {
+export function loadAcademicState(store: KeyValueStore, key: string = STORAGE_KEY): LoadResult {
   const backup = backupLegacyStateOnce(store, { sourceKey: key });
   const backedUp = backup.ok && backup.value.backedUp;
 
@@ -69,7 +66,9 @@ export function loadAcademicState(
       status: 'corrupt',
       state: null,
       backedUp,
-      error: new StorageError('Could not read stored state', { cause }) as unknown as ValidationError,
+      error: new StorageError('Could not read stored state', {
+        cause,
+      }) as unknown as ValidationError,
     };
   }
 

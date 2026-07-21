@@ -24,7 +24,10 @@ export function parseStoredState(raw: string | null | undefined): unknown {
 export function getDataFingerprint(raw: unknown): string {
   if (!raw) return '';
   try {
-    const parsed = typeof raw === 'string' ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown>);
+    const parsed =
+      typeof raw === 'string'
+        ? (JSON.parse(raw) as Record<string, unknown>)
+        : (raw as Record<string, unknown>);
     const { updatedAt: _u, _serverTimestamp: _s, ...dataOnly } = parsed;
     return JSON.stringify(dataOnly);
   } catch {

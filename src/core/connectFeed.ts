@@ -221,8 +221,7 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     isFull: capacity > 0 && consumedSeat >= capacity,
     facultyInitials: (raw.faculties ?? '').trim().toUpperCase(),
     roomName: (raw.roomName ?? raw.roomNumber ?? '').trim(),
-    semesterSessionId:
-      typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
+    semesterSessionId: typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
     classSlots,
     classStartDate: normalizeDateOnly(raw.sectionSchedule?.classStartDate),
     classEndDate: normalizeDateOnly(raw.sectionSchedule?.classEndDate),

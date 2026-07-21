@@ -15,9 +15,9 @@ export const MODES = ['online', 'in-person', 'hybrid'] as const;
 export type GroupMode = (typeof MODES)[number];
 
 export const MODE_LABELS: Record<GroupMode, string> = {
-    online: 'Online',
-    'in-person': 'In-person',
-    hybrid: 'Hybrid',
+  online: 'Online',
+  'in-person': 'In-person',
+  hybrid: 'Hybrid',
 };
 
 export const TITLE_MIN = 3;
@@ -32,82 +32,87 @@ export const MAX_CAPACITY = 50;
 export const GROUPS_LIMIT = 200;
 
 export interface GroupDraft {
-    courseCode: string;
-    title: string;
-    description: string;
-    mode: GroupMode;
-    schedule: string;
-    contactLink: string;
-    capacity: number;
+  courseCode: string;
+  title: string;
+  description: string;
+  mode: GroupMode;
+  schedule: string;
+  contactLink: string;
+  capacity: number;
 }
 
 export interface StudyGroup {
-    id: string;
-    courseCode: string;
-    title: string;
-    description?: string;
-    mode: GroupMode;
-    schedule?: string;
-    contactLink: string;
-    capacity: number;
-    creatorUid: string;
-    createdAtMs: number;
+  id: string;
+  courseCode: string;
+  title: string;
+  description?: string;
+  mode: GroupMode;
+  schedule?: string;
+  contactLink: string;
+  capacity: number;
+  creatorUid: string;
+  createdAtMs: number;
 }
 
 export interface GroupMember {
-    uid: string;
-    email: string;
+  uid: string;
+  email: string;
 }
 
 export function normalizeCourseCode(raw: unknown): string {
-    return String(raw ?? '').toUpperCase().trim();
+  return String(raw ?? '')
+    .toUpperCase()
+    .trim();
 }
 
 export function isKnownCourseCode(raw: unknown, catalog: CourseCatalog): boolean {
-    const code = normalizeCourseCode(raw);
-    return GROUP_COURSE_CODE_RE.test(code) && !!catalog[code];
+  const code = normalizeCourseCode(raw);
+  return GROUP_COURSE_CODE_RE.test(code) && !!catalog[code];
 }
 
 export function isValidMode(mode: unknown): mode is GroupMode {
-    return (MODES as readonly string[]).includes(String(mode ?? '').toLowerCase());
+  return (MODES as readonly string[]).includes(String(mode ?? '').toLowerCase());
 }
 
 /** Returns an error string, or null when the draft is valid (legacy parity). */
 export function validateGroupDraft(
-    { courseCode, title, description, mode, schedule, contactLink, capacity }: Partial<GroupDraft>,
-    catalog: CourseCatalog,
+  { courseCode, title, description, mode, schedule, contactLink, capacity }: Partial<GroupDraft>,
+  catalog: CourseCatalog,
 ): string | null {
-    if (!isKnownCourseCode(courseCode, catalog)) return 'Unknown course code';
+  if (!isKnownCourseCode(courseCode, catalog)) return 'Unknown course code';
 
-    const cleanTitle = String(title ?? '').trim();
-    if (cleanTitle.length < TITLE_MIN) return `Title must be at least ${TITLE_MIN} characters`;
-    if (cleanTitle.length > TITLE_MAX) return `Title must be ${TITLE_MAX} characters or less`;
+  const cleanTitle = String(title ?? '').trim();
+  if (cleanTitle.length < TITLE_MIN) return `Title must be at least ${TITLE_MIN} characters`;
+  if (cleanTitle.length > TITLE_MAX) return `Title must be ${TITLE_MAX} characters or less`;
 
-    const cleanDesc = String(description ?? '').trim();
-    if (cleanDesc.length > DESCRIPTION_MAX) return `Description must be ${DESCRIPTION_MAX} characters or less`;
+  const cleanDesc = String(description ?? '').trim();
+  if (cleanDesc.length > DESCRIPTION_MAX)
+    return `Description must be ${DESCRIPTION_MAX} characters or less`;
 
-    if (!isValidMode(mode)) return 'Pick a meeting mode';
+  if (!isValidMode(mode)) return 'Pick a meeting mode';
 
-    const cleanSchedule = String(schedule ?? '').trim();
-    if (cleanSchedule.length > SCHEDULE_MAX) return `Schedule must be ${SCHEDULE_MAX} characters or less`;
+  const cleanSchedule = String(schedule ?? '').trim();
+  if (cleanSchedule.length > SCHEDULE_MAX)
+    return `Schedule must be ${SCHEDULE_MAX} characters or less`;
 
-    const cleanLink = String(contactLink ?? '').trim();
-    if (!HTTPS_LINK_RE.test(cleanLink)) return 'Contact link must be a full https:// URL';
-    if (cleanLink.length > CONTACT_LINK_MAX) return `Contact link must be ${CONTACT_LINK_MAX} characters or less`;
+  const cleanLink = String(contactLink ?? '').trim();
+  if (!HTTPS_LINK_RE.test(cleanLink)) return 'Contact link must be a full https:// URL';
+  if (cleanLink.length > CONTACT_LINK_MAX)
+    return `Contact link must be ${CONTACT_LINK_MAX} characters or less`;
 
-    const cap = Number(capacity);
-    if (!Number.isInteger(cap)) return 'Capacity must be a whole number';
-    if (cap < MIN_CAPACITY) return `Capacity must be at least ${MIN_CAPACITY}`;
-    if (cap > MAX_CAPACITY) return `Capacity must be ${MAX_CAPACITY} or less`;
+  const cap = Number(capacity);
+  if (!Number.isInteger(cap)) return 'Capacity must be a whole number';
+  if (cap < MIN_CAPACITY) return `Capacity must be at least ${MIN_CAPACITY}`;
+  if (cap > MAX_CAPACITY) return `Capacity must be ${MAX_CAPACITY} or less`;
 
-    return null;
+  return null;
 }
 
 export interface MemberSummary {
-    label: string;
-    isFull: boolean;
-    spotsLeft: number | null;
-    known: boolean;
+  label: string;
+  isFull: boolean;
+  spotsLeft: number | null;
+  known: boolean;
 }
 
 /**
@@ -116,40 +121,40 @@ export interface MemberSummary {
  * advisory — the label is the only capacity signal.
  */
 export function summarizeMembers(memberCount: number | null, capacity: number): MemberSummary {
-    const cap = Number(capacity) || 0;
-    if (memberCount == null) {
-        return { label: `up to ${cap}`, isFull: false, spotsLeft: null, known: false };
-    }
-    const count = Math.max(0, Number(memberCount) || 0);
-    const spotsLeft = Math.max(0, cap - count);
-    return { label: `${count} / ${cap} joined`, isFull: count >= cap, spotsLeft, known: true };
+  const cap = Number(capacity) || 0;
+  if (memberCount == null) {
+    return { label: `up to ${cap}`, isFull: false, spotsLeft: null, known: false };
+  }
+  const count = Math.max(0, Number(memberCount) || 0);
+  const spotsLeft = Math.max(0, cap - count);
+  return { label: `${count} / ${cap} joined`, isFull: count >= cap, spotsLeft, known: true };
 }
 
 /** Newest-first board, filtered by mode and a course-code substring. */
 export function groupsView(
-    groups: readonly StudyGroup[],
-    modeFilter: GroupMode | 'all',
-    courseFilter: string,
+  groups: readonly StudyGroup[],
+  modeFilter: GroupMode | 'all',
+  courseFilter: string,
 ): StudyGroup[] {
-    const q = courseFilter.trim().toUpperCase();
-    return groups
-        .filter((g) => {
-            if (modeFilter !== 'all' && g.mode !== modeFilter) return false;
-            if (q !== '' && !g.courseCode.toUpperCase().includes(q)) return false;
-            return true;
-        })
-        .sort((a, b) => b.createdAtMs - a.createdAtMs);
+  const q = courseFilter.trim().toUpperCase();
+  return groups
+    .filter((g) => {
+      if (modeFilter !== 'all' && g.mode !== modeFilter) return false;
+      if (q !== '' && !g.courseCode.toUpperCase().includes(q)) return false;
+      return true;
+    })
+    .sort((a, b) => b.createdAtMs - a.createdAtMs);
 }
 
 /** "3d ago" / "5h ago" / "12m ago" / "just now" (legacy parity). */
 export function groupAge(createdAtMs: number, nowMs: number): string {
-    if (!createdAtMs) return '';
-    const diff = nowMs - createdAtMs;
-    const d = Math.floor(diff / 86_400_000);
-    if (d > 0) return `${d}d ago`;
-    const h = Math.floor(diff / 3_600_000);
-    if (h > 0) return `${h}h ago`;
-    const m = Math.floor(diff / 60_000);
-    if (m > 0) return `${m}m ago`;
-    return 'just now';
+  if (!createdAtMs) return '';
+  const diff = nowMs - createdAtMs;
+  const d = Math.floor(diff / 86_400_000);
+  if (d > 0) return `${d}d ago`;
+  const h = Math.floor(diff / 3_600_000);
+  if (h > 0) return `${h}h ago`;
+  const m = Math.floor(diff / 60_000);
+  if (m > 0) return `${m}m ago`;
+  return 'just now';
 }

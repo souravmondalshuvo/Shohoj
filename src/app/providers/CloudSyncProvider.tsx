@@ -15,8 +15,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../../shared/ui/Button';
 import type { RuntimeConfig } from '../../platform/configuration/runtimeConfig';
 import { createUserDocRepo } from '../../platform/firebase/userDocRepo';
-import { createBrowserStore, createSessionStore } from '../../services/storage/browserKeyValueStore';
-import { createCloudSyncEngine, type CloudSyncEngine } from '../../services/cloudSync/cloudSyncEngine';
+import {
+  createBrowserStore,
+  createSessionStore,
+} from '../../services/storage/browserKeyValueStore';
+import {
+  createCloudSyncEngine,
+  type CloudSyncEngine,
+} from '../../services/cloudSync/cloudSyncEngine';
 import { onLocalSave } from '../../services/cloudSync/saveAnnouncer';
 import type { MigrationChoice } from '../../services/storage/syncDecision';
 import { useAuth } from './AuthProvider';
@@ -89,7 +95,12 @@ export function CloudSyncProvider({ config, children }: CloudSyncProviderProps) 
       {pending !== null && (
         <div className="shell-modal-backdrop" data-testid="cloud-migration-modal">
           {/* No backdrop/Escape dismiss — a choice is required (legacy parity). */}
-          <div className="shell-modal" role="dialog" aria-modal="true" aria-labelledby="cloud-migration-title">
+          <div
+            className="shell-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cloud-migration-title"
+          >
             <h2 id="cloud-migration-title" className="shell-modal-title">
               Which data should we keep?
             </h2>

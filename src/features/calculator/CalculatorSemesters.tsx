@@ -15,7 +15,10 @@
 
 import { useMemo, useState } from 'react';
 
-import { gpaCoreGetRetakenKeys as getRetakenKeys, gpaCoreNormalizeGradePoint as normalizeGradePoint } from '../../core/gpa';
+import {
+  gpaCoreGetRetakenKeys as getRetakenKeys,
+  gpaCoreNormalizeGradePoint as normalizeGradePoint,
+} from '../../core/gpa';
 import { detectGrade } from '../../core/grades';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import SemesterBlock from './SemesterBlock';
@@ -24,8 +27,18 @@ import SummaryForm from './SummaryForm';
 import type { SummaryValues } from './SummaryForm';
 import type { CourseSuggestion } from './courseSearch';
 import { coursePickPatch, courseResolvePatch } from './courseSelection';
-import { addCourse, removeCourse, removeSemester, reorderSemesters, updateCourse } from './mutations';
-import { getCurrentSemesterForDeptSeasons, parseSemesterSeasonYear, isFutureSemester } from './semesterCalendar';
+import {
+  addCourse,
+  removeCourse,
+  removeSemester,
+  reorderSemesters,
+  updateCourse,
+} from './mutations';
+import {
+  getCurrentSemesterForDeptSeasons,
+  parseSemesterSeasonYear,
+  isFutureSemester,
+} from './semesterCalendar';
 import { useCalculatorBridge } from './calculatorBridge';
 
 const DEFAULT_SEASONS: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
@@ -70,7 +83,12 @@ export default function CalculatorSemesters() {
       commit(
         semesters.map((s) =>
           s.id === summaryEditId
-            ? { ...s, summaryCGPA: values.cgpa, summaryAttempted: values.attempted, summaryCredits: values.credits }
+            ? {
+                ...s,
+                summaryCGPA: values.cgpa,
+                summaryAttempted: values.attempted,
+                summaryCredits: values.credits,
+              }
             : s,
         ),
       );
@@ -143,17 +161,34 @@ export default function CalculatorSemesters() {
             }
             onCourseNameResolve={(idx, course, text) =>
               commit(
-                updateCourse(semesters, sem.id, idx, courseResolvePatch(sem.courses[idx]?.name ?? '', course, text)),
+                updateCourse(
+                  semesters,
+                  sem.id,
+                  idx,
+                  courseResolvePatch(sem.courses[idx]?.name ?? '', course, text),
+                ),
               )
             }
             onCourseGradePointChange={(idx, value) =>
-              commit(updateCourse(semesters, sem.id, idx, { gradePoint: value, grade: detectGrade(value) }))
+              commit(
+                updateCourse(semesters, sem.id, idx, {
+                  gradePoint: value,
+                  grade: detectGrade(value),
+                }),
+              )
             }
             onCourseGradePointBlur={(idx, e) => {
               const norm = normalizeGradePoint(e.target.value, 'blur');
-              commit(updateCourse(semesters, sem.id, idx, { gradePoint: norm, grade: detectGrade(norm) }));
+              commit(
+                updateCourse(semesters, sem.id, idx, {
+                  gradePoint: norm,
+                  grade: detectGrade(norm),
+                }),
+              );
             }}
-            onCoursePassFailChange={(idx, value) => commit(updateCourse(semesters, sem.id, idx, { grade: value }))}
+            onCoursePassFailChange={(idx, value) =>
+              commit(updateCourse(semesters, sem.id, idx, { grade: value }))
+            }
             onRateCourse={(idx) => bridge.rateForCourse(sem.id, idx)}
             onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
             isDragOver={dragOverId === sem.id && dragSrcId !== null && dragSrcId !== sem.id}
@@ -180,7 +215,14 @@ export default function CalculatorSemesters() {
         <button
           type="button"
           className="btn-add-course"
-          style={{ width: '100%', marginTop: 4, padding: 10, fontSize: 13, fontWeight: 600, borderRadius: 10 }}
+          style={{
+            width: '100%',
+            marginTop: 4,
+            padding: 10,
+            fontSize: 13,
+            fontWeight: 600,
+            borderRadius: 10,
+          }}
           onClick={() => bridge.addSemester()}
         >
           + Add Semester
@@ -201,7 +243,11 @@ export default function CalculatorSemesters() {
             <button type="button" className="btn-sample-ghost" onClick={() => bridge.addSemester()}>
               + Add semester
             </button>
-            <button type="button" className="btn-sample-ghost" onClick={() => bridge.importTranscript()}>
+            <button
+              type="button"
+              className="btn-sample-ghost"
+              onClick={() => bridge.importTranscript()}
+            >
               📄 Import Transcript
             </button>
             {!hasSummary && (

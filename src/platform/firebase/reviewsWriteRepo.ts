@@ -180,10 +180,14 @@ export function createReviewReportRepo(options: ReviewReportRepoOptions): Review
     async reportReview({ reviewId, reason, uid }) {
       if (!uid) return { ok: false, error: 'Sign in to report a review' };
       if (!isValidReviewId(reviewId)) return { ok: false, error: 'Invalid review reference' };
-      const trimmed = String(reason ?? '').trim().slice(0, REPORT_REASON_MAX);
+      const trimmed = String(reason ?? '')
+        .trim()
+        .slice(0, REPORT_REASON_MAX);
       if (trimmed.length < 3) return { ok: false, error: 'Please describe the issue' };
       try {
-        await (await load()).createReport(buildReviewReportId(reviewId, uid), {
+        await (
+          await load()
+        ).createReport(buildReviewReportId(reviewId, uid), {
           reviewId: String(reviewId).trim(),
           reason: trimmed,
           reporterUid: uid,

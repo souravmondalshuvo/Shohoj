@@ -67,7 +67,8 @@ export default function CourseRow({
   const trimmedName = name.trim();
   const supersedeLabel = grade === 'F' || grade === 'F(NT)' ? 'Retaken' : 'Repeated';
 
-  const showCreditDot = !!trimmedName && course.credits > 0 && !NORMAL_CREDITS.includes(course.credits);
+  const showCreditDot =
+    !!trimmedName && course.credits > 0 && !NORMAL_CREDITS.includes(course.credits);
   const isPassFailSlot = course.credits === 0 && trimmedName !== '';
   const showChip = canRate && !!faculty?.initials;
   // Live aggregate score for the chip (–- until it loads / when unavailable).
@@ -171,7 +172,12 @@ export default function CourseRow({
           </button>
         ) : (
           canRate && (
-            <button type="button" className="course-rate-pill" title="Rate this faculty" onClick={onRate}>
+            <button
+              type="button"
+              className="course-rate-pill"
+              title="Rate this faculty"
+              onClick={onRate}
+            >
               + Rate
             </button>
           )

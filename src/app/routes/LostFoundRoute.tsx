@@ -27,10 +27,7 @@ import {
   type LostFoundPost,
   type LostFoundType,
 } from '../../core/lostFound.ts';
-import {
-  createLostFoundRepo,
-  type LostFoundRepo,
-} from '../../platform/firebase/lostFoundRepo.ts';
+import { createLostFoundRepo, type LostFoundRepo } from '../../platform/firebase/lostFoundRepo.ts';
 import { useAuth } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
@@ -104,7 +101,9 @@ function PostRow({
   return (
     <li className="lf-item" data-testid="lostfound-item">
       <div className="lf-item-head">
-        <span className={post.type === 'lost' ? 'lf-badge lf-badge--lost' : 'lf-badge lf-badge--found'}>
+        <span
+          className={post.type === 'lost' ? 'lf-badge lf-badge--lost' : 'lf-badge lf-badge--found'}
+        >
           {post.type === 'lost' ? 'Lost' : 'Found'}
         </span>
         <strong className="lf-title">{post.title}</strong>
@@ -192,7 +191,7 @@ export function Component() {
     if (auth.status === 'authenticated' && auth.uid) {
       return { uid: auth.uid, email: auth.email ?? '' };
     }
-    return typeof window !== 'undefined' ? window.__shohojLostFoundIdentity ?? null : null;
+    return typeof window !== 'undefined' ? (window.__shohojLostFoundIdentity ?? null) : null;
   }, [auth]);
 
   const repo = useMemo<LostFoundRepo | null>(() => {
@@ -240,9 +239,8 @@ export function Component() {
     [posts, filter],
   );
 
-  const setField = (field: keyof PostFormState) =>
-    (e: { target: { value: string } }) =>
-      setForm((f) => ({ ...f, [field]: e.target.value }));
+  const setField = (field: keyof PostFormState) => (e: { target: { value: string } }) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const submitPost = useCallback(async () => {
     if (!repo || !identity) return;
@@ -275,55 +273,65 @@ export function Component() {
     }
   }, [repo, identity, form, notify]);
 
-  const resolvePost = useCallback(async (id: string) => {
-    if (!repo) return;
-    try {
-      await repo.resolvePost(id);
-      setPosts((current) =>
-        current?.map((p) => (p.id === id ? { ...p, status: 'resolved' } : p)));
-      notify({ kind: 'success', message: 'Marked resolved.' });
-    } catch {
-      notify({ kind: 'error', message: 'Could not update the post.' });
-    }
-  }, [repo, notify]);
+  const resolvePost = useCallback(
+    async (id: string) => {
+      if (!repo) return;
+      try {
+        await repo.resolvePost(id);
+        setPosts((current) =>
+          current?.map((p) => (p.id === id ? { ...p, status: 'resolved' } : p)),
+        );
+        notify({ kind: 'success', message: 'Marked resolved.' });
+      } catch {
+        notify({ kind: 'error', message: 'Could not update the post.' });
+      }
+    },
+    [repo, notify],
+  );
 
-  const deletePost = useCallback(async (id: string) => {
-    if (!repo) return;
-    const confirmed = await confirm({
-      title: 'Delete this post?',
-      message: 'It disappears from the board for everyone.',
-      confirmLabel: 'Delete',
-      danger: true,
-    });
-    if (!confirmed) return;
-    try {
-      await repo.deletePost(id);
-      setPosts((current) => current?.filter((p) => p.id !== id));
-      notify({ kind: 'success', message: 'Post deleted.' });
-    } catch {
-      notify({ kind: 'error', message: 'Could not delete the post.' });
-    }
-  }, [repo, confirm, notify]);
+  const deletePost = useCallback(
+    async (id: string) => {
+      if (!repo) return;
+      const confirmed = await confirm({
+        title: 'Delete this post?',
+        message: 'It disappears from the board for everyone.',
+        confirmLabel: 'Delete',
+        danger: true,
+      });
+      if (!confirmed) return;
+      try {
+        await repo.deletePost(id);
+        setPosts((current) => current?.filter((p) => p.id !== id));
+        notify({ kind: 'success', message: 'Post deleted.' });
+      } catch {
+        notify({ kind: 'error', message: 'Could not delete the post.' });
+      }
+    },
+    [repo, confirm, notify],
+  );
 
-  const claimPost = useCallback(async (id: string, note: string) => {
-    if (!repo || !identity) return false;
-    try {
-      await repo.createClaim(id, identity.uid, identity.email, note);
-      setClaimedIds((current) => new Set(current).add(id));
-      notify({ kind: 'success', message: 'The poster will get an email shortly.' });
-      return true;
-    } catch {
-      notify({ kind: 'error', message: 'Could not send — please try again.' });
-      return false;
-    }
-  }, [repo, identity, notify]);
+  const claimPost = useCallback(
+    async (id: string, note: string) => {
+      if (!repo || !identity) return false;
+      try {
+        await repo.createClaim(id, identity.uid, identity.email, note);
+        setClaimedIds((current) => new Set(current).add(id));
+        notify({ kind: 'success', message: 'The poster will get an email shortly.' });
+        return true;
+      } catch {
+        notify({ kind: 'error', message: 'Could not send — please try again.' });
+        return false;
+      }
+    },
+    [repo, identity, notify],
+  );
 
   return (
     <section className="shell-page lf-page" data-testid="lostfound-page">
       <h1>Lost &amp; Found</h1>
       <p className="shell-muted">
-        Lost something on campus, or found something that isn&apos;t yours? Post
-        it here — no contact info is shown; responses reach the poster by email.
+        Lost something on campus, or found something that isn&apos;t yours? Post it here — no
+        contact info is shown; responses reach the poster by email.
       </p>
 
       {!repo ? (
@@ -334,8 +342,7 @@ export function Component() {
         <p role="status">Checking sign-in…</p>
       ) : !identity ? (
         <p data-testid="lostfound-signin">
-          Sign in with your <strong>g.bracu.ac.bd</strong> account (top right) to
-          browse and post.
+          Sign in with your <strong>g.bracu.ac.bd</strong> account (top right) to browse and post.
         </p>
       ) : (
         <>
@@ -402,7 +409,9 @@ export function Component() {
                   onChange={setField('title')}
                   placeholder="e.g. Black umbrella with a wooden handle"
                 />
-                {formErrors.title !== undefined && <span className="lf-error">{formErrors.title}</span>}
+                {formErrors.title !== undefined && (
+                  <span className="lf-error">{formErrors.title}</span>
+                )}
               </label>
               <label className="lf-field">
                 <span className="lf-field-label">Details (optional)</span>

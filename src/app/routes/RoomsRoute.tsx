@@ -12,10 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  fetchConnectFeed,
-  type FeedSource,
-} from '../../core/connectFeedClient';
+import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import type { WeekdayName } from '../../core/connectFeed';
 import {
   buildRoomBusyIndex,
@@ -36,7 +33,13 @@ import {
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 
 const DAY_ORDER: readonly WeekdayName[] = [
-  'SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
 ];
 const DAY_SHORT: Record<WeekdayName, string> = {
   SATURDAY: 'Sat',
@@ -49,7 +52,13 @@ const DAY_SHORT: Record<WeekdayName, string> = {
 };
 // Date.getDay() (0=Sun..6=Sat) -> canonical day name.
 const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
-  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
 ];
 
 const TYPE_FILTERS: readonly { key: RoomTypeKey | 'ALL'; label: string }[] = [
@@ -109,9 +118,8 @@ function roomStatus(
     const win = freeWindowsForRoom(index, room, day).find(
       (w) => minute >= w.startMin && minute < w.endMin,
     );
-    const label = !win || win.endMin >= CAMPUS_END_MIN
-      ? 'free rest of day'
-      : `free until ${fmt12(win.endMin)}`;
+    const label =
+      !win || win.endMin >= CAMPUS_END_MIN ? 'free rest of day' : `free until ${fmt12(win.endMin)}`;
     return { free: true, lab: false, label };
   }
   const lab = isLabOccupant(room, occ.kind);
@@ -173,7 +181,9 @@ function RoomWeekDialog({
             return (
               <div
                 key={day}
-                className={day === activeDay ? 'rooms-week-row rooms-week-row--active' : 'rooms-week-row'}
+                className={
+                  day === activeDay ? 'rooms-week-row rooms-week-row--active' : 'rooms-week-row'
+                }
               >
                 <div className="rooms-week-day">{DAY_SHORT[day]}</div>
                 <ul className="rooms-week-segs">
@@ -232,7 +242,9 @@ export function Component() {
       .catch(() => {
         if (live) setFeedError('Could not load the class schedule feed.');
       });
-    return () => { live = false; };
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(() => load(false), [load]);
@@ -255,8 +267,8 @@ export function Component() {
     <section className="shell-page rooms-page" data-testid="rooms-page">
       <h1>Free Rooms</h1>
       <p className="shell-muted">
-        Which rooms are empty right now? Pick a day and time — availability comes
-        live from the class schedule feed.
+        Which rooms are empty right now? Pick a day and time — availability comes live from the
+        class schedule feed.
       </p>
 
       {feedError !== null ? (

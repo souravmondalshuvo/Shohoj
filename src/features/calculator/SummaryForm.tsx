@@ -99,7 +99,11 @@ export default function SummaryForm({ initial = null, onSubmit, onCancel }: Summ
   const title = initial ? 'Edit Past Semesters' : 'Start from Current CGPA';
 
   return (
-    <div className="semester-block lg-surface" style={{ borderColor: 'rgba(46,204,113,0.35)' }} id="summaryFormBlock">
+    <div
+      className="semester-block lg-surface"
+      style={{ borderColor: 'rgba(46,204,113,0.35)' }}
+      id="summaryFormBlock"
+    >
       <div className="lg-shine" />
       <div
         className="semester-head"
@@ -119,8 +123,8 @@ export default function SummaryForm({ initial = null, onSubmit, onCancel }: Summ
       </div>
       <div style={{ padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, margin: 0 }}>
-          Enter your current academic standing. Shohoj will use this as the foundation for all calculations — simulator,
-          playground, degree tracker, and more.
+          Enter your current academic standing. Shohoj will use this as the foundation for all
+          calculations — simulator, playground, degree tracker, and more.
         </p>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={fieldWrapStyle}>
@@ -203,7 +207,8 @@ export default function SummaryForm({ initial = null, onSubmit, onCancel }: Summ
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--text3)', margin: 0 }}>
-          💡 Find your CGPA and credits earned on CONNECT → Grade Sheet, or from your official transcript.
+          💡 Find your CGPA and credits earned on CONNECT → Grade Sheet, or from your official
+          transcript.
         </p>
       </div>
     </div>

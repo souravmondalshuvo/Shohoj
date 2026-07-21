@@ -44,7 +44,10 @@ function ScoreBar({ label, value }: { readonly label: string; readonly value: nu
     <div className="dm-bar-row">
       <span className="dm-bar-label">{label}</span>
       <div className="dm-bar-track">
-        <div className={`dm-bar-fill dm-bar-fill--${tier || 'none'}`} style={{ width: `${scorePct(value)}%` }} />
+        <div
+          className={`dm-bar-fill dm-bar-fill--${tier || 'none'}`}
+          style={{ width: `${scorePct(value)}%` }}
+        />
       </div>
       <span className={`dm-bar-value dm-bar-value--${tier || 'none'}`}>{formatScore(value)}</span>
     </div>
@@ -57,7 +60,9 @@ function DifficultyCard({ entry }: { readonly entry: DifficultyEntry }) {
     <div className="dm-card" data-testid="difficulty-card" data-code={entry.code}>
       <div className="dm-card-head">
         <span className="dm-card-code">{entry.code}</span>
-        <span className={`dm-card-tag dm-card-tag--${tier || 'none'}`}>{difficultyLabel(entry.difficulty)}</span>
+        <span className={`dm-card-tag dm-card-tag--${tier || 'none'}`}>
+          {difficultyLabel(entry.difficulty)}
+        </span>
       </div>
       <div className="dm-card-name" title={entry.name}>
         {entry.name}
@@ -136,8 +141,9 @@ export function Component() {
       ) : (
         <>
           <p className="dm-subtitle shell-muted">
-            Based on {totalReviewCount(entries)} review{totalReviewCount(entries) !== 1 ? 's' : ''} across{' '}
-            {entries.length} course{entries.length !== 1 ? 's' : ''}. Low-sample courses are marked limited.
+            Based on {totalReviewCount(entries)} review{totalReviewCount(entries) !== 1 ? 's' : ''}{' '}
+            across {entries.length} course{entries.length !== 1 ? 's' : ''}. Low-sample courses are
+            marked limited.
           </p>
 
           <div className="dm-controls">

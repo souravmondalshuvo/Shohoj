@@ -207,7 +207,9 @@ export default function RateFacultyModal({
                 {RATING_FIELDS.map((field) => (
                   <div key={field.key} className="rv-existing-row">
                     <span className="rv-existing-label">{field.label}</span>
-                    <span className="rv-existing-value">{existing.ratings?.[field.key] ?? '—'}/5</span>
+                    <span className="rv-existing-value">
+                      {existing.ratings?.[field.key] ?? '—'}/5
+                    </span>
                   </div>
                 ))}
               </div>
@@ -226,70 +228,70 @@ export default function RateFacultyModal({
           </>
         ) : (
           <>
-        <div className="rv-field">
-          <label className="rv-field-label" htmlFor="rv-initials">
-            Faculty Initials
-          </label>
-          <input
-            id="rv-initials"
-            ref={initialsRef}
-            className="rv-input rv-initials"
-            type="text"
-            maxLength={6}
-            placeholder="e.g. MNR"
-            autoComplete="off"
-            value={draft.initials}
-            onChange={(e) => {
-              setDraft((d) => setDraftInitials(d, e.target.value));
-              setInitialsError(false);
-            }}
-          />
-          {initialsError && <div className="rv-field-error">Initials must be 2–6 letters.</div>}
-        </div>
+            <div className="rv-field">
+              <label className="rv-field-label" htmlFor="rv-initials">
+                Faculty Initials
+              </label>
+              <input
+                id="rv-initials"
+                ref={initialsRef}
+                className="rv-input rv-initials"
+                type="text"
+                maxLength={6}
+                placeholder="e.g. MNR"
+                autoComplete="off"
+                value={draft.initials}
+                onChange={(e) => {
+                  setDraft((d) => setDraftInitials(d, e.target.value));
+                  setInitialsError(false);
+                }}
+              />
+              {initialsError && <div className="rv-field-error">Initials must be 2–6 letters.</div>}
+            </div>
 
-        <div className="rv-stars-box">
-          {RATING_FIELDS.map((field) => (
-            <StarRow
-              key={field.key}
-              field={field}
-              value={draft.ratings[field.key as RatingKey]}
-              onSelect={(v) => setDraft((d) => setDraftRating(d, field.key, v))}
-            />
-          ))}
-        </div>
+            <div className="rv-stars-box">
+              {RATING_FIELDS.map((field) => (
+                <StarRow
+                  key={field.key}
+                  field={field}
+                  value={draft.ratings[field.key as RatingKey]}
+                  onSelect={(v) => setDraft((d) => setDraftRating(d, field.key, v))}
+                />
+              ))}
+            </div>
 
-        <div className="rv-field">
-          <label className="rv-field-label" htmlFor="rv-text">
-            Your experience (optional)
-          </label>
-          <textarea
-            id="rv-text"
-            className="rv-input rv-text"
-            rows={3}
-            maxLength={REVIEW_TEXT_MAX}
-            placeholder="What stood out? Keep it honest and respectful."
-            value={draft.text}
-            onChange={(e) => setDraft((d) => setDraftText(d, e.target.value))}
-          />
-          <div className="rv-count" aria-hidden="true">
-            {draft.text.length} / {REVIEW_TEXT_MAX}
-          </div>
-        </div>
+            <div className="rv-field">
+              <label className="rv-field-label" htmlFor="rv-text">
+                Your experience (optional)
+              </label>
+              <textarea
+                id="rv-text"
+                className="rv-input rv-text"
+                rows={3}
+                maxLength={REVIEW_TEXT_MAX}
+                placeholder="What stood out? Keep it honest and respectful."
+                value={draft.text}
+                onChange={(e) => setDraft((d) => setDraftText(d, e.target.value))}
+              />
+              <div className="rv-count" aria-hidden="true">
+                {draft.text.length} / {REVIEW_TEXT_MAX}
+              </div>
+            </div>
 
-        {error && (
-          <div className="rv-error" role="alert">
-            {error}
-          </div>
-        )}
+            {error && (
+              <div className="rv-error" role="alert">
+                {error}
+              </div>
+            )}
 
-        <div className="shell-modal-actions">
-          <Button variant="secondary" disabled={submitting} onClick={onClose}>
-            Skip
-          </Button>
-          <Button variant="primary" disabled={submitting} onClick={() => void submit()}>
-            {submitting ? 'Submitting…' : 'Submit Review'}
-          </Button>
-        </div>
+            <div className="shell-modal-actions">
+              <Button variant="secondary" disabled={submitting} onClick={onClose}>
+                Skip
+              </Button>
+              <Button variant="primary" disabled={submitting} onClick={() => void submit()}>
+                {submitting ? 'Submitting…' : 'Submit Review'}
+              </Button>
+            </div>
           </>
         )}
       </div>

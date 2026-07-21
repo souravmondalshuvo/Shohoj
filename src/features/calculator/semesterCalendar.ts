@@ -90,7 +90,10 @@ export function computeOrdinal(
   let ordinal = 1;
   while (!(deptSeasons[si] === target.season && yr === target.year)) {
     si++;
-    if (si >= deptSeasons.length) { si = 0; yr++; }
+    if (si >= deptSeasons.length) {
+      si = 0;
+      yr++;
+    }
     ordinal++;
     if (ordinal > 50) break;
   }
@@ -116,7 +119,10 @@ export function estimatedSemesterCount(
   while (!(deptSeasons[si] === current.season && yr === current.year)) {
     count++;
     si++;
-    if (si >= deptSeasons.length) { si = 0; yr++; }
+    if (si >= deptSeasons.length) {
+      si = 0;
+      yr++;
+    }
     if (count > 50) break;
   }
   return count;

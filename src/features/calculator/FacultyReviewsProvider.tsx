@@ -27,7 +27,11 @@ import {
 } from 'react';
 
 import { normalizeCourseCode, normalizeInitials } from '../../core/reviews';
-import { createReviewsRepo, type ReviewDoc, type ReviewsRepo } from '../../platform/firebase/reviewsRepo';
+import {
+  createReviewsRepo,
+  type ReviewDoc,
+  type ReviewsRepo,
+} from '../../platform/firebase/reviewsRepo';
 import {
   createReviewReportRepo,
   submitReviewRelay,
@@ -98,7 +102,12 @@ export interface FacultyReviewsProviderProps {
   readonly children: ReactNode;
 }
 
-export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children }: FacultyReviewsProviderProps) {
+export function FacultyReviewsProvider({
+  repo,
+  submitRelay,
+  reportRepo,
+  children,
+}: FacultyReviewsProviderProps) {
   const config = useRuntimeConfig();
   const getIdToken = useIdToken();
   const auth = useAuth();
@@ -109,7 +118,8 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
   // stub, then the live worker POST.
   const resolvedSubmitRelay = useMemo<ReviewRelay>(() => {
     if (submitRelay) return submitRelay;
-    if (typeof window !== 'undefined' && window.__shohojSubmitRelay) return window.__shohojSubmitRelay;
+    if (typeof window !== 'undefined' && window.__shohojSubmitRelay)
+      return window.__shohojSubmitRelay;
     return submitReviewRelay;
   }, [submitRelay]);
 
@@ -117,16 +127,26 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
   // stub, then a config-built repo; null when the shell isn't configured.
   const resolvedRepo = useMemo<ReviewsRepo | null>(() => {
     if (repo !== undefined) return repo;
-    if (typeof window !== 'undefined' && window.__shohojReviewsRepo) return window.__shohojReviewsRepo;
-    if (config) return createReviewsRepo({ config: config.firebase, recaptchaV3SiteKey: config.recaptchaV3SiteKey });
+    if (typeof window !== 'undefined' && window.__shohojReviewsRepo)
+      return window.__shohojReviewsRepo;
+    if (config)
+      return createReviewsRepo({
+        config: config.firebase,
+        recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      });
     return null;
   }, [repo, config]);
 
   // The report repo resolves the same way (prop → e2e stub → config-built).
   const resolvedReportRepo = useMemo<ReviewReportRepo | null>(() => {
     if (reportRepo !== undefined) return reportRepo;
-    if (typeof window !== 'undefined' && window.__shohojReportRepo) return window.__shohojReportRepo;
-    if (config) return createReviewReportRepo({ config: config.firebase, recaptchaV3SiteKey: config.recaptchaV3SiteKey });
+    if (typeof window !== 'undefined' && window.__shohojReportRepo)
+      return window.__shohojReportRepo;
+    if (config)
+      return createReviewReportRepo({
+        config: config.firebase,
+        recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      });
     return null;
   }, [reportRepo, config]);
 
@@ -169,7 +189,8 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
   );
 
   const labelFor = useCallback(
-    (initials: string, courseCode: string) => labels.current.get(keyOf(initials, courseCode)) ?? CHIP_PLACEHOLDER,
+    (initials: string, courseCode: string) =>
+      labels.current.get(keyOf(initials, courseCode)) ?? CHIP_PLACEHOLDER,
     [],
   );
 
@@ -215,7 +236,8 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
       });
       if (result.ok) {
         // Legacy _recordMyReview: stamp the local receipt the Profile tab reads.
-        const uid = auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
+        const uid =
+          auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
         recordMyReview(store, uid, {
           id: result.id ?? null,
           facultyInitials: submission.facultyInitials,
@@ -232,7 +254,8 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
   const reportReview = useCallback(
     async (reviewId: string, reason: string): Promise<ReviewReportResult> => {
       if (!resolvedReportRepo) return { ok: false, error: 'Sign in to report a review' };
-      const uid = auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
+      const uid =
+        auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '';
       return resolvedReportRepo.reportReview({ reviewId, reason, uid });
     },
     [resolvedReportRepo, auth.uid],
@@ -241,8 +264,27 @@ export function FacultyReviewsProvider({ repo, submitRelay, reportRepo, children
   // `version` is a dep so each bump yields a new value object → chips re-render
   // and re-read labelFor (which reads the mutable label cache).
   const api = useMemo<FacultyReviewsApi>(
-    () => ({ request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, reportReview }),
-    [request, labelFor, invalidate, fetchReviewById, fetchReviewsByCourse, fetchRecentReviews, submitReview, reportReview, version],
+    () => ({
+      request,
+      labelFor,
+      invalidate,
+      fetchReviewById,
+      fetchReviewsByCourse,
+      fetchRecentReviews,
+      submitReview,
+      reportReview,
+    }),
+    [
+      request,
+      labelFor,
+      invalidate,
+      fetchReviewById,
+      fetchReviewsByCourse,
+      fetchRecentReviews,
+      submitReview,
+      reportReview,
+      version,
+    ],
   );
 
   return <FacultyReviewsContext.Provider value={api}>{children}</FacultyReviewsContext.Provider>;
@@ -263,7 +305,10 @@ export function useFacultyChipScore(initials: string, courseCode: string): strin
 /** Invalidate a pair's cached score (e.g. after submitting a review for it). */
 export function useInvalidateFacultyChipScore(): (initials: string, courseCode: string) => void {
   const ctx = useContext(FacultyReviewsContext);
-  return useCallback((initials: string, courseCode: string) => ctx?.invalidate(initials, courseCode), [ctx]);
+  return useCallback(
+    (initials: string, courseCode: string) => ctx?.invalidate(initials, courseCode),
+    [ctx],
+  );
 }
 
 /** Fetch a review by canonical id through the resolved repo (the modal probe). */
@@ -275,7 +320,10 @@ export function useFetchReviewById(): (id: string) => Promise<ReviewDoc | null> 
 /** Fetch a course's reviews through the resolved repo (the course-reviews viewer). */
 export function useFetchReviewsByCourse(): (courseCode: string) => Promise<ReviewDoc[]> {
   const ctx = useContext(FacultyReviewsContext);
-  return useCallback((code: string) => ctx?.fetchReviewsByCourse(code) ?? Promise.resolve([]), [ctx]);
+  return useCallback(
+    (code: string) => ctx?.fetchReviewsByCourse(code) ?? Promise.resolve([]),
+    [ctx],
+  );
 }
 
 /** Fetch the recent-reviews feed through the resolved repo (the Browse directory). */
@@ -303,7 +351,10 @@ export function useSubmitReview(): (submission: ReviewSubmission) => Promise<Rev
  * Report a review through the provider (the reviewReports write). Resolves the
  * signed-out message where no provider/report repo is available.
  */
-export function useReportReview(): (reviewId: string, reason: string) => Promise<ReviewReportResult> {
+export function useReportReview(): (
+  reviewId: string,
+  reason: string,
+) => Promise<ReviewReportResult> {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback(
     (reviewId: string, reason: string) =>

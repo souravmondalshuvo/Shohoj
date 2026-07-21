@@ -140,7 +140,9 @@ function ShellChrome() {
       <header className="shell-header">
         <nav className="shell-nav" aria-label="Primary">
           <NavLink to="/" className="shell-brand" aria-label="Shohoj home" end>
-            <span className="shell-brand-mark" aria-hidden="true">স</span>
+            <span className="shell-brand-mark" aria-hidden="true">
+              স
+            </span>
             <span className="shell-brand-text">
               Shohoj <span>সহজ</span>
             </span>

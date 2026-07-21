@@ -65,7 +65,11 @@ const KNOWN_CODES: ReadonlySet<string> = new Set(
  * shell bridge's isKnownCode — drives reviewable-course detection in the rows.
  */
 export function isKnownCourseCode(code: string): boolean {
-  return KNOWN_CODES.has(String(code ?? '').trim().toUpperCase());
+  return KNOWN_CODES.has(
+    String(code ?? '')
+      .trim()
+      .toUpperCase(),
+  );
 }
 
 /** The by-code course record (COURSE_DB), typed for the planner engine (#327). */

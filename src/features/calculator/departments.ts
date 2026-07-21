@@ -72,7 +72,13 @@ const BY_CODE: ReadonlyMap<string, DepartmentInfo> = new Map(
 
 /** Department for a code, or null for unknown/empty codes. */
 export function getDepartment(code: string): DepartmentInfo | null {
-  return BY_CODE.get(String(code ?? '').trim().toUpperCase()) ?? null;
+  return (
+    BY_CODE.get(
+      String(code ?? '')
+        .trim()
+        .toUpperCase(),
+    ) ?? null
+  );
 }
 
 /** The semester calendar for a department code, defaulting to the global one. */

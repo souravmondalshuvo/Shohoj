@@ -1,44 +1,55 @@
 export type GradeLetter =
-  | 'A+' | 'A' | 'A-'
-  | 'B+' | 'B' | 'B-'
-  | 'C+' | 'C' | 'C-'
-  | 'D+' | 'D' | 'D-'
-  | 'F' | 'F(NT)' | 'P' | 'I';
+  | 'A+'
+  | 'A'
+  | 'A-'
+  | 'B+'
+  | 'B'
+  | 'B-'
+  | 'C+'
+  | 'C'
+  | 'C-'
+  | 'D+'
+  | 'D'
+  | 'D-'
+  | 'F'
+  | 'F(NT)'
+  | 'P'
+  | 'I';
 
 export type GradePoint = number | null;
 
 export const GRADES: Record<GradeLetter, GradePoint> = {
-  'A+': 4.00,
-  A: 4.00,
-  'A-': 3.70,
-  'B+': 3.30,
-  B: 3.00,
-  'B-': 2.70,
-  'C+': 2.30,
-  C: 2.00,
-  'C-': 1.70,
-  'D+': 1.30,
-  D: 1.00,
-  'D-': 0.70,
-  F: 0.00,
-  'F(NT)': 0.00,
+  'A+': 4.0,
+  A: 4.0,
+  'A-': 3.7,
+  'B+': 3.3,
+  B: 3.0,
+  'B-': 2.7,
+  'C+': 2.3,
+  C: 2.0,
+  'C-': 1.7,
+  'D+': 1.3,
+  D: 1.0,
+  'D-': 0.7,
+  F: 0.0,
+  'F(NT)': 0.0,
   P: null,
   I: null,
 };
 
 export const POINTS_TO_GRADE = [
-  [4.00, 'A'],
-  [3.70, 'A-'],
-  [3.30, 'B+'],
-  [3.00, 'B'],
-  [2.70, 'B-'],
-  [2.30, 'C+'],
-  [2.00, 'C'],
-  [1.70, 'C-'],
-  [1.30, 'D+'],
-  [1.00, 'D'],
-  [0.70, 'D-'],
-  [0.00, 'F'],
+  [4.0, 'A'],
+  [3.7, 'A-'],
+  [3.3, 'B+'],
+  [3.0, 'B'],
+  [2.7, 'B-'],
+  [2.3, 'C+'],
+  [2.0, 'C'],
+  [1.7, 'C-'],
+  [1.3, 'D+'],
+  [1.0, 'D'],
+  [0.7, 'D-'],
+  [0.0, 'F'],
 ] as const satisfies readonly (readonly [number, GradeLetter])[];
 
 export function detectGrade(value: string | number): GradeLetter | '' {
@@ -59,5 +70,5 @@ export function detectGrade(value: string | number): GradeLetter | '' {
     }
   }
 
-  return minDiff <= 0.20 ? closest : '';
+  return minDiff <= 0.2 ? closest : '';
 }

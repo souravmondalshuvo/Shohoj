@@ -106,9 +106,9 @@ export async function fetchAssistantAvailability(
   }
   if (!res.ok) return 'unknown';
 
-  const body = (await res.json().catch(() => null)) as
-    | { capabilities?: { assistant?: unknown } }
-    | null;
+  const body = (await res.json().catch(() => null)) as {
+    capabilities?: { assistant?: unknown };
+  } | null;
   const configured = body?.capabilities?.assistant;
   if (typeof configured !== 'boolean') return 'unknown';
   return configured ? 'ready' : 'unconfigured';
@@ -121,7 +121,11 @@ export async function sendAssistantTurn(
 ): Promise<AssistantTurnResult> {
   const { workerUrl, getToken, fetchImpl = fetch } = options;
   if (!workerUrl) {
-    return { ok: false, code: 'unconfigured', error: 'The assistant is not configured on this build.' };
+    return {
+      ok: false,
+      code: 'unconfigured',
+      error: 'The assistant is not configured on this build.',
+    };
   }
 
   const messages = clampTranscript(transcript);
@@ -144,7 +148,7 @@ export async function sendAssistantTurn(
     res = await fetchImpl(`${workerUrl.replace(/\/$/, '')}/api/assistant`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ messages }),
@@ -161,13 +165,25 @@ export async function sendAssistantTurn(
     return { ok: false, code: 'unavailable', error: UNAVAILABLE_MESSAGE };
   }
   if (res.status === 401) {
-    return { ok: false, code: 'unauthenticated', error: 'Your session expired — sign in again to continue.' };
+    return {
+      ok: false,
+      code: 'unauthenticated',
+      error: 'Your session expired — sign in again to continue.',
+    };
   }
   if (res.status === 429) {
-    return { ok: false, code: 'rate-limited', error: 'Slow down a little — try again in a minute.' };
+    return {
+      ok: false,
+      code: 'rate-limited',
+      error: 'Slow down a little — try again in a minute.',
+    };
   }
   if (res.status === 400) {
-    return { ok: false, code: 'invalid', error: 'That message could not be sent. Try rephrasing it.' };
+    return {
+      ok: false,
+      code: 'invalid',
+      error: 'That message could not be sent. Try rephrasing it.',
+    };
   }
   return { ok: false, code: 'unavailable', error: UNAVAILABLE_MESSAGE };
 }

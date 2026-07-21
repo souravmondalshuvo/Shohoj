@@ -38,7 +38,8 @@ export function meterStatusMessage(status: MeterStatus): ReactNode {
     case 'projected-only':
       return (
         <>
-          <strong>Projected only.</strong> CGPA {figure} is based on running courses. Add completed semesters to assess your standing.
+          <strong>Projected only.</strong> CGPA {figure} is based on running courses. Add completed
+          semesters to assess your standing.
         </>
       );
     case 'outstanding':
@@ -68,7 +69,8 @@ export function meterStatusMessage(status: MeterStatus): ReactNode {
     case 'recovery':
       return (
         <>
-          <strong>Recovery mode.</strong> CGPA {figure} — Focus on retakes and consistent grades from here.
+          <strong>Recovery mode.</strong> CGPA {figure} — Focus on retakes and consistent grades
+          from here.
         </>
       );
   }
@@ -89,13 +91,15 @@ export const STANDING_COPY: Record<
     title: 'Higher Distinction',
     badge: '🌟',
     className: 'standing-excellent',
-    description: 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).',
+    description:
+      'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).',
   },
   distinction: {
     title: 'Distinction',
     badge: '⭐',
     className: 'standing-excellent',
-    description: 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).',
+    description:
+      'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).',
   },
   good: {
     title: 'Good Standing',
@@ -113,13 +117,15 @@ export const STANDING_COPY: Record<
     title: 'Needs Improvement',
     badge: '⚠️',
     className: 'standing-warning',
-    description: 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.',
+    description:
+      'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.',
   },
   probation: {
     title: 'Academic Probation',
     badge: '❌',
     className: 'standing-danger',
-    description: 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.',
+    description:
+      'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.',
   },
 };
 
@@ -133,7 +139,9 @@ export default function CalculatorResults() {
       <div className="cgpa-display">
         <div
           className="cgpa-val"
-          style={{ color: results.cgpa === null ? 'var(--text3)' : gpaBadgeColors(results.cgpa).color }}
+          style={{
+            color: results.cgpa === null ? 'var(--text3)' : gpaBadgeColors(results.cgpa).color,
+          }}
         >
           {results.cgpa !== null ? results.cgpa.toFixed(2) : '—'}
         </div>
@@ -142,7 +150,9 @@ export default function CalculatorResults() {
 
       {results.incompleteSemesters > 0 && (
         <div className="incomplete-warning" role="status">
-          ⚠ {results.incompleteSemesters} semester{results.incompleteSemesters > 1 ? 's have' : ' has'} missing grades — CGPA may be inaccurate
+          ⚠ {results.incompleteSemesters} semester
+          {results.incompleteSemesters > 1 ? 's have' : ' has'} missing grades — CGPA may be
+          inaccurate
         </div>
       )}
 
@@ -157,7 +167,11 @@ export default function CalculatorResults() {
           <div className="meter-bar-fill" style={{ width: `${results.meterPercent}%` }}></div>
         </div>
         <div className="meter-labels">
-          <span>0.0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
+          <span>0.0</span>
+          <span>1.0</span>
+          <span>2.0</span>
+          <span>3.0</span>
+          <span>4.0</span>
         </div>
         <div className="meter-status">{meterStatusMessage(results.meterStatus)}</div>
       </div>

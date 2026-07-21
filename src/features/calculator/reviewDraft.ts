@@ -105,7 +105,9 @@ export function buildReviewPayload(
 ): ReviewPayload {
   return {
     facultyInitials: normalizeInitials(draft.initials),
-    courseCode: String(courseCode ?? '').toUpperCase().trim(),
+    courseCode: String(courseCode ?? '')
+      .toUpperCase()
+      .trim(),
     semester: String(semester ?? ''),
     ratings: draft.ratings,
     text: draft.text.trim(),

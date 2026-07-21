@@ -53,16 +53,22 @@ export const ASSISTANT_TOOLS = [
       type: 'object',
       properties: {
         target_cgpa: {
-          type: 'number', minimum: 0, maximum: 4,
+          type: 'number',
+          minimum: 0,
+          maximum: 4,
           description: 'Target CGPA to solve for (needed GPA on remaining credits).',
         },
         planned_credits: {
           type: 'number',
-          description: 'Upcoming/remaining credits. Defaults to 12 (one standard semester) if omitted.',
+          description:
+            'Upcoming/remaining credits. Defaults to 12 (one standard semester) if omitted.',
         },
         what_if_gpa: {
-          type: 'number', minimum: 0, maximum: 4,
-          description: 'Hypothetical GPA on the planned credits, to project the resulting CGPA instead of solving for a target.',
+          type: 'number',
+          minimum: 0,
+          maximum: 4,
+          description:
+            'Hypothetical GPA on the planned credits, to project the resulting CGPA instead of solving for a target.',
         },
       },
       additionalProperties: false,
@@ -98,7 +104,9 @@ export const ASSISTANT_TOOLS = [
 ];
 
 function normalizeCourseCode(raw) {
-  const code = String(raw || '').toUpperCase().replace(/\s+/g, '');
+  const code = String(raw || '')
+    .toUpperCase()
+    .replace(/\s+/g, '');
   return COURSE_CODE_RE.test(code) ? code : null;
 }
 
@@ -111,7 +119,8 @@ export function validateAssistantMessages(raw) {
     const role = entry?.role;
     const content = entry?.content;
     if (role !== 'user' && role !== 'assistant') return null;
-    if (typeof content !== 'string' || !content.trim() || content.length > MAX_MESSAGE_CHARS) return null;
+    if (typeof content !== 'string' || !content.trim() || content.length > MAX_MESSAGE_CHARS)
+      return null;
     out.push({ role, content });
   }
   if (out[0].role !== 'user' || out[out.length - 1].role !== 'user') return null;
@@ -145,9 +154,10 @@ async function runCgpaScenario(input, ctx) {
     cgpa: totals.cgpa,
     completed_credits: totals.cgpaCredits,
   };
-  const credits = Number.isFinite(input?.planned_credits) && input.planned_credits > 0
-    ? input.planned_credits
-    : 12;
+  const credits =
+    Number.isFinite(input?.planned_credits) && input.planned_credits > 0
+      ? input.planned_credits
+      : 12;
 
   if (Number.isFinite(input?.what_if_gpa)) {
     const gpa = Math.min(4, Math.max(0, input.what_if_gpa));
@@ -189,7 +199,9 @@ async function runPrereqCheck(input, ctx) {
     missing_hard_prereqs: check.missingHp,
     missing_soft_prereqs: check.missingSp,
     completed_courses_counted: completed.size,
-    note: data ? undefined : 'The student has no saved semesters, so no courses count as completed yet.',
+    note: data
+      ? undefined
+      : 'The student has no saved semesters, so no courses count as completed yet.',
   };
 }
 
@@ -201,24 +213,33 @@ async function runSeatStatus(input, ctx) {
   if (!sections || sections.length === 0) {
     return { error: 'course_not_in_feed', course_code: code };
   }
-  const wanted = String(input?.section ?? '').trim().toLowerCase();
+  const wanted = String(input?.section ?? '')
+    .trim()
+    .toLowerCase();
   const matched = wanted
-    ? sections.filter(s => String(s.sectionName || '').trim().toLowerCase() === wanted)
+    ? sections.filter(
+        (s) =>
+          String(s.sectionName || '')
+            .trim()
+            .toLowerCase() === wanted,
+      )
     : sections;
   if (wanted && matched.length === 0) {
     return { error: 'section_not_found', course_code: code, section: input.section };
   }
-  const detail = sortSections(matched).slice(0, 20).map(s => {
-    const info = seatInfo(s);
-    return {
-      section: s.sectionName,
-      capacity: info.capacity,
-      taken: info.taken,
-      seats_left: info.left,
-      status: info.status,
-      faculty: s.facultyInitials || undefined,
-    };
-  });
+  const detail = sortSections(matched)
+    .slice(0, 20)
+    .map((s) => {
+      const info = seatInfo(s);
+      return {
+        section: s.sectionName,
+        capacity: info.capacity,
+        taken: info.taken,
+        seats_left: info.left,
+        status: info.status,
+        faculty: s.facultyInitials || undefined,
+      };
+    });
   return { course_code: code, summary: courseSeatSummary(matched), sections: detail };
 }
 
@@ -227,17 +248,21 @@ async function runSeatStatus(input, ctx) {
 // never redirect a lookup to another user.
 export async function executeAssistantTool(name, input, ctx) {
   switch (name) {
-    case 'get_cgpa_scenario': return runCgpaScenario(input, ctx);
-    case 'check_prerequisite': return runPrereqCheck(input, ctx);
-    case 'check_seat_status': return runSeatStatus(input, ctx);
-    default: throw new Error(`Unknown tool: ${name}`);
+    case 'get_cgpa_scenario':
+      return runCgpaScenario(input, ctx);
+    case 'check_prerequisite':
+      return runPrereqCheck(input, ctx);
+    case 'check_seat_status':
+      return runSeatStatus(input, ctx);
+    default:
+      throw new Error(`Unknown tool: ${name}`);
   }
 }
 
 function extractText(content) {
   return (content || [])
-    .filter(block => block.type === 'text' && typeof block.text === 'string')
-    .map(block => block.text)
+    .filter((block) => block.type === 'text' && typeof block.text === 'string')
+    .map((block) => block.text)
     .join('')
     .trim();
 }
@@ -246,7 +271,7 @@ function extractText(content) {
 // call Claude, execute any requested tools against the uid-scoped ctx, feed
 // results back, stop when Claude answers or the round cap is hit.
 export async function runAssistantLoop({ anthropic, messages, ctx }) {
-  const convo = messages.map(m => ({ role: m.role, content: m.content }));
+  const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   let lastText = '';
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const response = await anthropic.messages.create({
@@ -281,5 +306,7 @@ export async function runAssistantLoop({ anthropic, messages, ctx }) {
     }
     convo.push({ role: 'user', content: results });
   }
-  return lastText || 'Sorry, that took too many steps to answer. Please ask a more specific question.';
+  return (
+    lastText || 'Sorry, that took too many steps to answer. Please ask a more specific question.'
+  );
 }

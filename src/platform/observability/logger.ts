@@ -101,7 +101,6 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     info: (m, f) => emit('info', m, f),
     warn: (m, f) => emit('warn', m, f),
     error: (m, f) => emit('error', m, f),
-    child: (fields) =>
-      createLogger({ sink, minLevel, base: { ...base, ...fields }, now }),
+    child: (fields) => createLogger({ sink, minLevel, base: { ...base, ...fields }, now }),
   };
 }

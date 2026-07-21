@@ -77,7 +77,9 @@ export function prepareCatalog(courses: readonly CourseSuggestion[]): PreparedCa
   const seen = new Set<string>();
   const prepared: PreparedCourse[] = [];
   for (const course of courses) {
-    const codeLower = String(course.code ?? '').trim().toLowerCase();
+    const codeLower = String(course.code ?? '')
+      .trim()
+      .toLowerCase();
     if (!codeLower || seen.has(codeLower)) continue;
     seen.add(codeLower);
     prepared.push({

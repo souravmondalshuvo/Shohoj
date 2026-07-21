@@ -22,7 +22,11 @@ export interface ReportReviewModalProps {
   readonly onClose: () => void;
 }
 
-export default function ReportReviewModal({ reviewId, onReported, onClose }: ReportReviewModalProps) {
+export default function ReportReviewModal({
+  reviewId,
+  onReported,
+  onClose,
+}: ReportReviewModalProps) {
   const reportReview = useReportReview();
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);

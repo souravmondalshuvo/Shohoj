@@ -10,12 +10,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import {
-  DEFAULT_THEME,
-  THEME_STORAGE_KEY,
-  nextTheme,
-  parseStoredTheme,
-} from './theme';
+import { DEFAULT_THEME, THEME_STORAGE_KEY, nextTheme, parseStoredTheme } from './theme';
 import type { Theme } from './theme';
 
 export interface ThemeApi {
