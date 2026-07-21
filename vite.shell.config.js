@@ -22,6 +22,7 @@
 // builds with SHELL_BASE=/Shohoj/app/ to publish the shell beta on GitHub Pages
 // next to the legacy site. Unset (dev, e2e-shell, local builds) it stays '/'.
 
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
@@ -66,10 +67,57 @@ function shellRuntimeConfig() {
   };
 }
 
+// The shell's CSP meta (#460 follow-up) forbids inline script, but index.html
+// needs two synchronous inline blocks before the router boots (pre-paint theme,
+// deep-link decode). Rather than weaken script-src with 'unsafe-inline', hash
+// them the way build3.py hashes the legacy page: on build, replace the
+// __CSP_SCRIPT_HASHES__ placeholder with the sha256 of every inline <script> in
+// the FINAL html (order 'post', so Vite's injected tags are already in). In dev
+// the meta is dropped entirely — @vitejs/plugin-react's refresh preamble and HMR
+// would otherwise need their own hashes on every edit.
+const INLINE_SCRIPT_RE = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+const CSP_META_RE = /\s*<meta\s+http-equiv="Content-Security-Policy"[\s\S]*?\/>/i;
+const CSP_PLACEHOLDER = '__CSP_SCRIPT_HASHES__';
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+
+function shellCspHashes() {
+  let isBuild = false;
+  return {
+    name: 'shohoj:shell-csp-hashes',
+    configResolved(config) {
+      isBuild = config.command === 'build';
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        if (!isBuild) return html.replace(CSP_META_RE, '');
+        // Fail the build rather than ship a CSP that silently blocks the shell's
+        // own inline scripts (a stray second mention of the token would other-
+        // wise swallow the replacement and leave the real directive unfilled).
+        const occurrences = html.split(CSP_PLACEHOLDER).length - 1;
+        if (occurrences !== 1) {
+          throw new Error(
+            `shohoj:shell-csp-hashes — expected exactly 1 ${CSP_PLACEHOLDER} in index.html, found ${occurrences}`,
+          );
+        }
+        // Scan with comments stripped: a comment mentioning a script tag would
+        // otherwise open a bogus match that swallows the next real block, and the
+        // genuine script would ship unhashed (i.e. blocked at runtime).
+        const hashes = [];
+        for (const [, body] of html.replace(HTML_COMMENT_RE, '').matchAll(INLINE_SCRIPT_RE)) {
+          hashes.push(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`);
+        }
+        if (!hashes.length) throw new Error('shohoj:shell-csp-hashes — no inline scripts found to hash');
+        return html.replace(CSP_PLACEHOLDER, hashes.join(' '));
+      },
+    },
+  };
+}
+
 export default defineConfig({
   root: resolve(import.meta.dirname, 'app'),
   base: process.env.SHELL_BASE || '/',
-  plugins: [react(), shellRuntimeConfig()],
+  plugins: [react(), shellRuntimeConfig(), shellCspHashes()],
   server: {
     port: 5174,
     fs: { allow: [resolve(import.meta.dirname)] },
