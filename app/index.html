@@ -1094,6 +1094,15 @@
       :root[data-theme="dark"] .dm-card-tag--bad { color: #ff8b7d; }
       .dm-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--c-border); border-radius: 14px; color: var(--c-text-muted); }
       .dm-empty-title { font-weight: 700; color: var(--c-text); margin-bottom: 4px; }
+      /* Unavailable states: a failed read is rendered distinctly from an empty
+         one, so it needs its own affordance — a pill retry, matching the app's
+         button language. Shared by the reviews directory and the course-reviews
+         modal. */
+      .rv-dir-empty, .rv-cr-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--c-border); border-radius: 14px; color: var(--c-text-muted); }
+      .rv-dir-empty-title, .rv-cr-empty-title { font-weight: 700; color: var(--c-text); margin-bottom: 4px; }
+      .rv-dir-retry, .rv-cr-retry { margin-top: 14px; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--c-border); background: transparent; color: var(--c-text); font: inherit; font-weight: 600; cursor: pointer; }
+      .rv-dir-retry:hover, .rv-cr-retry:hover { border-color: var(--c-accent, #2ECC71); color: var(--c-accent, #2ECC71); }
+      .rv-dir-retry:focus-visible, .rv-cr-retry:focus-visible { outline: 2px solid var(--c-accent, #2ECC71); outline-offset: 2px; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
