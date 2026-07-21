@@ -39,6 +39,24 @@ Every frontend deploy uploads the exact published folder as an artifact named
 > Do **not** hand-edit `gh-pages`. Always restore a whole validated package so
 > `version.json` and assets stay consistent.
 
+### Option C — undo the React shell cutover (#460)
+
+Since the cutover the site root serves the **React shell**; the vanilla
+`build3.py` site is no longer the default. Two levels of undo, cheapest first:
+
+1. **Point users at the retained legacy site.** The whole vanilla app is still
+   published at `/Shohoj/legacy/` (with its standalone pages under
+   `/Shohoj/legacy/campus/`, `/bus/`, `/lost-found/`, `/profile/`). Nothing to
+   deploy — useful as an immediate workaround while you decide.
+2. **Full revert to legacy-at-root.** Re-deploy any commit before the cutover
+   (tagged **`legacy-single-file-build`**) using Option A or B above. That
+   restores `shohoj.html` as the root `index.html` and the shell back under
+   `/app/`. Because the cutover is only deploy wiring — `.github/workflows/ci.yml`
+   and `404.html` — reverting those two files is enough; no app code changes.
+
+> `/Shohoj/admin/` is unaffected by the cutover either way: it is the same
+> standalone `admin.html` before and after.
+
 ---
 
 ## 2. Cloudflare Worker
