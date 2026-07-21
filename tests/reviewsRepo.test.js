@@ -6,7 +6,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createReviewsRepo, MAX_PAGE_SIZE, MAX_RECENT } from '../src/platform/firebase/reviewsRepo.ts';
+import {
+  createReviewsRepo,
+  resolvePageSize,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  MAX_RECENT,
+} from '../src/platform/firebase/reviewsRepo.ts';
+import { isShohojError } from '../src/core/errors.ts';
 
 const CONFIG = { apiKey: 'k', authDomain: 'a', projectId: 'p', storageBucket: 'b', messagingSenderId: 'm', appId: 'i' };
 
@@ -25,13 +32,16 @@ function fakeBackend(reviews = [], profiles = new Map()) {
     const docs = list.slice(start, start + limit);
     return { docs, last: docs.length ? docs[docs.length - 1] : null };
   };
+  // `failAll` may be `true` (generic failure) or an Error carrying a Firestore
+  // `code`, so tests can exercise the error-code mapping.
+  const failure = (f) => (f instanceof Error ? f : new Error('offline'));
   const backend = {
     reviews,
     profiles,
     failAll: false,
     async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
       calls.byFaculty.push({ facultyInitials, courseCode, limit });
-      if (backend.failAll) throw new Error('offline');
+      if (backend.failAll) throw failure(backend.failAll);
       const filtered = sortedDesc(
         backend.reviews.filter(
           (r) =>
@@ -43,23 +53,23 @@ function fakeBackend(reviews = [], profiles = new Map()) {
     },
     async queryByCourse({ courseCode, limit, after }) {
       calls.byCourse.push({ courseCode, limit });
-      if (backend.failAll) throw new Error('offline');
+      if (backend.failAll) throw failure(backend.failAll);
       const filtered = sortedDesc(backend.reviews.filter((r) => r.courseCode === courseCode));
       return sliceAfter(filtered, after, limit);
     },
     async getById(id) {
       calls.byId.push(id);
-      if (backend.failAll) throw new Error('offline');
+      if (backend.failAll) throw failure(backend.failAll);
       return backend.reviews.find((r) => r.id === id) ?? null;
     },
     async queryRecent(limit) {
       calls.recent.push(limit);
-      if (backend.failAll) throw new Error('offline');
+      if (backend.failAll) throw failure(backend.failAll);
       return sortedDesc(backend.reviews).slice(0, limit);
     },
     async getFacultyProfiles(chunk) {
       calls.profileChunks.push([...chunk]);
-      if (backend.failAll) throw new Error('offline');
+      if (backend.failAll) throw failure(backend.failAll);
       return chunk
         .filter((id) => backend.profiles.has(id))
         .map((id) => ({ initials: id, ...backend.profiles.get(id) }));
@@ -125,16 +135,45 @@ test('fetchByFaculty: paging returns a cursor only on a full page, then walks it
   assert.equal(page3.nextCursor, null, 'partial page ends paging');
 });
 
-test('fetchByFaculty: over-cap pageSize is limited to 200 and stops paging (legacy quirk)', async () => {
-  const reviews = Array.from({ length: MAX_PAGE_SIZE }, (_, i) => review(`r${i}`, 'MRA', 'CSE110', i));
+test('fetchByFaculty: over-cap pageSize is capped at 200 AND keeps paging', async () => {
+  // Regression: the old code capped the query at 200 but then compared the
+  // returned count against the *requested* 500, concluded the page was not
+  // full, and dropped the cursor — silently truncating at 200 rows with no way
+  // to reach the rest. Both sides now use the resolved size.
+  const reviews = Array.from({ length: MAX_PAGE_SIZE + 25 }, (_, i) => review(`r${i}`, 'MRA', 'CSE110', i));
   const { backend, calls } = fakeBackend(reviews);
   const repo = repoWith(backend);
 
   const page = await repo.fetchByFaculty({ facultyInitials: 'MRA', pageSize: 500 });
   assert.equal(calls.byFaculty[0].limit, MAX_PAGE_SIZE, 'limit capped at 200');
   assert.equal(page.reviews.length, MAX_PAGE_SIZE);
-  // 200 docs !== requested 500 → nextCursor null even though more may exist.
-  assert.equal(page.nextCursor, null);
+  assert.ok(page.nextCursor, 'a full capped page still yields a cursor');
+
+  // And the cursor actually reaches the remaining rows.
+  const page2 = await repo.fetchByFaculty({
+    facultyInitials: 'MRA', pageSize: 500, after: page.nextCursor,
+  });
+  assert.equal(page2.reviews.length, 25, 'the previously unreachable tail');
+  assert.equal(page2.nextCursor, null, 'partial page ends paging');
+});
+
+test('resolvePageSize: boundary and nonsensical values', () => {
+  assert.equal(resolvePageSize(1), 1);
+  assert.equal(resolvePageSize(50), 50);
+  assert.equal(resolvePageSize(MAX_PAGE_SIZE), MAX_PAGE_SIZE);
+  assert.equal(resolvePageSize(MAX_PAGE_SIZE + 1), MAX_PAGE_SIZE);
+  assert.equal(resolvePageSize(500), MAX_PAGE_SIZE);
+  assert.equal(resolvePageSize(1e9), MAX_PAGE_SIZE);
+
+  // Nonsensical → the safe default, never 0/negative/NaN reaching Firestore.
+  for (const bad of [0, -1, -500, Number.NaN, Infinity, -Infinity, 1.5, '  ', 'abc', null, undefined, {}, []]) {
+    assert.equal(resolvePageSize(bad), DEFAULT_PAGE_SIZE, `bad input: ${String(bad)}`);
+  }
+  // A numeric string is still a usable integer.
+  assert.equal(resolvePageSize('25'), 25);
+  // An explicit fallback is honoured, but never above the cap.
+  assert.equal(resolvePageSize(0, MAX_PAGE_SIZE), MAX_PAGE_SIZE);
+  assert.equal(resolvePageSize(0, 9999), MAX_PAGE_SIZE);
 });
 
 test('fetchByFaculty: empty initials short-circuits without loading the backend', async () => {
@@ -199,15 +238,61 @@ test('fetchFacultyProfiles: empty / all-blank input short-circuits', async () =>
   assert.equal(loads(), 0);
 });
 
-test('failed reads degrade to empty results (legacy console.warn + empty parity)', async () => {
+// Behaviour change: a failed read is no longer indistinguishable from "no
+// reviews". Swallowing it into [] meant a permission-denied or missing-index
+// failure rendered as a cheerful empty state.
+test('failed reads reject with a typed ShohojError, not an empty result', async () => {
   const { backend } = fakeBackend([review('r1', 'MRA', 'CSE110', 1)]);
   backend.failAll = true;
   const repo = repoWith(backend);
+
+  const reads = [
+    () => repo.fetchByFaculty({ facultyInitials: 'MRA' }),
+    () => repo.fetchByCourse('CSE110'),
+    () => repo.fetchById('r1'),
+    () => repo.fetchRecent(),
+    () => repo.fetchFacultyProfiles(['MRA']),
+  ];
+  for (const read of reads) {
+    await assert.rejects(read, (e) => {
+      assert.ok(isShohojError(e), 'rejects with a ShohojError');
+      assert.ok(e.userMessage, 'carries a user-safe message');
+      return true;
+    });
+  }
+});
+
+test('permission-denied maps to a permission error; outage maps to unavailable', async () => {
+  const denied = Object.assign(new Error('Missing or insufficient permissions.'), {
+    code: 'permission-denied',
+  });
+  const { backend } = fakeBackend([]);
+  backend.failAll = denied;
+  const repo = repoWith(backend);
+  await assert.rejects(
+    () => repo.fetchRecent(),
+    (e) => e.code === 'permission' && !e.userMessage.includes('permissions.'),
+  );
+
+  const offline = Object.assign(new Error('backend unreachable'), { code: 'unavailable' });
+  backend.failAll = offline;
+  await assert.rejects(() => repo.fetchRecent(), (e) => e.code === 'firebase_unavailable');
+
+  // A missing composite index is a deployment fault, not "no data".
+  const noIndex = Object.assign(new Error('The query requires an index.'), {
+    code: 'failed-precondition',
+  });
+  backend.failAll = noIndex;
+  await assert.rejects(() => repo.fetchRecent(), (e) => e.code === 'firebase_unavailable');
+});
+
+test('a genuinely empty collection still resolves to an empty result', async () => {
+  // The distinction the typed errors buy us: empty must still mean empty.
+  const { backend } = fakeBackend([]);
+  const repo = repoWith(backend);
   assert.deepEqual(await repo.fetchByFaculty({ facultyInitials: 'MRA' }), { reviews: [], nextCursor: null });
-  assert.deepEqual(await repo.fetchByCourse('CSE110'), { reviews: [], nextCursor: null });
-  assert.equal(await repo.fetchById('r1'), null);
   assert.deepEqual(await repo.fetchRecent(), []);
-  assert.deepEqual(await repo.fetchFacultyProfiles(['MRA']), []);
+  assert.equal(await repo.fetchById('nope'), null);
 });
 
 test('fetchRecent: newest-first, default limit, and the 1000 cap', async () => {
