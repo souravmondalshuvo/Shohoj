@@ -47,6 +47,10 @@ interface NavItem {
   readonly to: string;
   readonly label: string;
   readonly end?: boolean;
+  // External items are full-page links, not router routes (e.g. Admin, which
+  // stays the standalone build3.py admin.html page — see NAV below). `to` is then
+  // a path relative to the deploy base, resolved against BASE_URL at render.
+  readonly external?: boolean;
 }
 
 // The target route map. Routes resolve to placeholders until each feature
@@ -70,7 +74,10 @@ const NAV: readonly NavItem[] = [
   { to: '/groups', label: 'Groups' },
   { to: '/feedback', label: 'Feedback' },
   { to: '/profile', label: 'Profile' },
-  { to: '/admin', label: 'Admin' },
+  // Admin stays the standalone moderation dashboard (build3.py admin.html at
+  // <base>/admin/), not a shell route — it has no shell port yet and admins are
+  // a tiny audience. A full-page link, base-rooted so it works from any route.
+  { to: 'admin/', label: 'Admin', external: true },
 ];
 
 /** Light/dark theme toggle. Persists to `shohoj_theme` (the production key) and
@@ -151,19 +158,30 @@ function ShellChrome() {
             id="shell-nav-list"
             className={navOpen ? 'shell-nav-list shell-nav-list--open' : 'shell-nav-list'}
           >
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
-                }
-                onClick={() => setNavOpen(false)}
-              >
-                {item.label}
-              </NavLink>
-            ))}
+            {NAV.map((item) =>
+              item.external ? (
+                <a
+                  key={item.to}
+                  href={`${import.meta.env.BASE_URL}${item.to}`}
+                  className="shell-nav-link"
+                  onClick={() => setNavOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    isActive ? 'shell-nav-link shell-nav-link--active' : 'shell-nav-link'
+                  }
+                  onClick={() => setNavOpen(false)}
+                >
+                  {item.label}
+                </NavLink>
+              ),
+            )}
           </div>
           <ThemeToggle />
           <AuthControls source={firebaseSource} />
