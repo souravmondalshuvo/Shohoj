@@ -158,6 +158,21 @@
       .shell-main:focus { outline: none; }
       .shell-page { padding: 24px 16px; max-width: 720px; }
       .shell-muted { color: var(--c-text-muted); }
+      .shell-brand-bn { color: var(--c-green-ink); }
+      .home-links {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px; margin: 20px 0 4px;
+      }
+      .home-link {
+        display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
+        border-radius: 14px; border: 1px solid var(--border); background: var(--c-surface);
+        text-decoration: none; color: var(--c-text); transition: border-color 0.15s, transform 0.15s;
+      }
+      .home-link:hover { border-color: var(--green); transform: translateY(-1px); }
+      .home-link:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .home-link-label { font-weight: 700; color: var(--c-green-ink); }
+      .home-link-blurb { font-size: 13px; color: var(--c-text-muted); }
+      .home-cloud { font-size: 13px; margin-top: 16px; }
       .shell-route-error { padding: 24px 16px; }
       .shell-btn {
         font: inherit; padding: 8px 18px; border-radius: 999px; cursor: pointer;
@@ -996,7 +1011,7 @@
       }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
-    <script type="module" crossorigin src="/Shohoj/app/assets/index-CeD22peE.js"></script>
+    <script type="module" crossorigin src="/Shohoj/app/assets/index-C5wSqpZH.js"></script>
     <link rel="modulepreload" crossorigin href="/Shohoj/app/assets/jsx-runtime-bzQ4Vb5N.js">
     <link rel="modulepreload" crossorigin href="/Shohoj/app/assets/errors-Cv5XgoJG.js">
     <link rel="modulepreload" crossorigin href="/Shohoj/app/assets/result-DZutzm4Y.js">
