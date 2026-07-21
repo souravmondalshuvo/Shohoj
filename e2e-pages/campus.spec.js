@@ -58,9 +58,10 @@ test('?room= deep link selects the room without a basename', async ({ page }) =>
   await expect(page).toHaveURL(/room=07A-01C/);
 });
 
-test('shows the under-development note while #385 is open', async ({ page }) => {
+test('the under-development note is gone now that the v2 map (#385) has shipped', async ({ page }) => {
   await openCampus(page);
-  await expect(page.getByTestId('campus-wip')).toContainText('Under development');
+  await expect(page.getByTestId('campus-page')).toBeVisible();
+  await expect(page.getByTestId('campus-wip')).toHaveCount(0);
 });
 
 test('top bar links back to the main site', async ({ page }) => {
