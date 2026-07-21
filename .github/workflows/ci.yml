@@ -381,6 +381,16 @@ jobs:
           # Custom 404: SPA fallback into the shell for every missing path except
           # the static /admin/ and /legacy/ trees (#460).
           cp 404.html _deploy/404.html
+          # These four paths served real static pages before the cutover, so a
+          # bare 404-then-JS-redirect would regress them for crawlers, link
+          # unfurls and no-JS clients. Drop a copy of the shell's index.html at
+          # each: GitHub Pages answers 200, and because the shell's asset URLs are
+          # absolute (base /Shohoj/) it boots normally and the router resolves the
+          # pathname to the matching route. Keep in sync with src/app/routing/router.tsx.
+          for route in profile campus bus lost-found; do
+            mkdir -p "_deploy/$route"
+            cp dist-shell/index.html "_deploy/$route/index.html"
+          done
 
       - name: Generate version.json (build metadata)
         env:
