@@ -388,11 +388,33 @@
       .campus-floor-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: var(--c-green-ink); }
       .campus-floor-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
       .campus-canvas {
+        position: relative;
         height: min(420px, 60vh); border: 1px solid var(--c-border); border-radius: 12px;
         overflow: hidden; background: linear-gradient(rgba(46,204,113,0.04), rgba(86,180,233,0.05));
         touch-action: none;
       }
       .campus-canvas canvas { display: block; width: 100%; height: 100%; }
+      /* v2 hover tooltip + feed-refresh shimmer (#385) — kept in sync with campus/index.html */
+      .campus-tooltip {
+        position: absolute; z-index: 5; pointer-events: none; max-width: 220px;
+        transform: translate(-50%, calc(-100% - 12px));
+        padding: 7px 10px; border-radius: 9px; font-size: 12px; line-height: 1.35;
+        background: var(--header-bg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        border: 1px solid var(--c-border2); box-shadow: var(--shadow-card); color: var(--c-text);
+        display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
+      }
+      .campus-tooltip[hidden] { display: none; }
+      .campus-tooltip-title { font-size: 12px; font-weight: 700; }
+      .campus-tooltip-detail { color: var(--c-text-muted); }
+      .campus-tooltip[data-status="free"] .campus-tooltip-detail { color: var(--c-green-ink); }
+      .campus-tooltip[data-status="busy"] .campus-tooltip-detail { color: var(--c-danger-ink); }
+      .campus-canvas[data-refreshing]::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(100deg, transparent 34%, rgba(255,255,255,0.16) 50%, transparent 66%);
+        background-size: 220% 100%; animation: campus-shimmer 1.1s ease-in-out infinite;
+      }
+      @keyframes campus-shimmer { 0% { background-position: 190% 0; } 100% { background-position: -90% 0; } }
+      @media (prefers-reduced-motion: reduce) { .campus-canvas[data-refreshing]::after { animation: none; } }
       .campus-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 11px; color: var(--c-faint); }
       .campus-legend span { display: flex; align-items: center; gap: 5px; }
       .campus-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: #9aa59e; flex-shrink: 0; }
