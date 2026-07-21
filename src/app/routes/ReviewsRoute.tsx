@@ -50,41 +50,66 @@ function FacultyCard({ entry }: { readonly entry: FacultyAggregate }) {
 
 export function Component() {
   const fetchRecent = useFetchRecentReviews();
-  // undefined = loading; [] = no reviews; aggregates = the directory.
-  const [directory, setDirectory] = useState<FacultyAggregate[] | undefined>(undefined);
+  // Four distinct states. Previously a failed read was caught and turned into
+  // `[]`, so an outage or a permission failure rendered the cheerful "No
+  // reviews yet" empty state — indistinguishable from a genuinely empty
+  // directory. `unavailable` now says so honestly and offers a retry.
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'unavailable'>('loading');
+  const [directory, setDirectory] = useState<FacultyAggregate[]>([]);
   const [query, setQuery] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Fetch once on mount; fetchRecent is recreated on provider bumps, read via ref.
   const fetchRef = useRef(fetchRecent);
   fetchRef.current = fetchRecent;
   useEffect(() => {
     let live = true;
+    setStatus('loading');
     fetchRef
       .current(200)
       .then((reviews) => {
-        if (live) setDirectory(aggregateByFaculty(reviews));
+        if (!live) return;
+        setDirectory(aggregateByFaculty(reviews));
+        setStatus('loaded');
       })
       .catch(() => {
-        if (live) setDirectory([]);
+        // The repo has already logged the machine-readable code; the raw SDK
+        // message must never reach the user (docs/SECURITY.md).
+        if (live) setStatus('unavailable');
       });
     return () => {
       live = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = useMemo(
-    () => (directory ? filterDirectory(directory, query) : []),
-    [directory, query],
+    () => (status === 'loaded' ? filterDirectory(directory, query) : []),
+    [status, directory, query],
   );
 
   return (
     <section className="shell-page" data-testid="reviews-page">
       <h1>Faculty Reviews</h1>
 
-      {directory === undefined ? (
+      {status === 'loading' ? (
         <p className="rv-dir-loading" role="status">
           Loading reviews…
         </p>
+      ) : status === 'unavailable' ? (
+        <div className="rv-dir-empty" data-testid="reviews-unavailable" role="alert">
+          <div className="rv-dir-empty-title">Reviews are unavailable right now</div>
+          <div className="rv-dir-empty-note">
+            We couldn’t load the faculty directory. This is a problem on our side, not
+            with your account — your other tools still work.
+          </div>
+          <button
+            type="button"
+            className="rv-dir-retry"
+            onClick={() => setReloadKey((n) => n + 1)}
+          >
+            Try again
+          </button>
+        </div>
       ) : directory.length === 0 ? (
         <div className="rv-dir-empty" data-testid="reviews-empty">
           <div className="rv-dir-empty-title">No reviews yet</div>
