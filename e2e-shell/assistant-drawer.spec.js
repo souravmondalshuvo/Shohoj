@@ -19,7 +19,11 @@ const VALID_GLOBALS = {
     appId: '1:123:web:abc',
     measurementId: 'G-XYZ',
   },
-  _shohoj_papers_worker_url: 'https://papers.example.com',
+  // The real Worker origin, not a placeholder: the built shell now ships a CSP
+  // whose connect-src only allows this host, and CSP is enforced before
+  // page.route() can intercept — a made-up origin would be blocked outright and
+  // the assistant round-trip could never run. The request is still fully stubbed.
+  _shohoj_papers_worker_url: 'https://shohoj-papers.souravmondal033.workers.dev',
   _shohoj_recaptcha_v3_site_key: 'sitekey',
   _shohoj_google_client_id: 'client-id',
 };
