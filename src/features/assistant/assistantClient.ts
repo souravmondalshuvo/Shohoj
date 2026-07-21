@@ -59,6 +59,61 @@ export function clampTranscript(messages: readonly AssistantMessage[]): Assistan
 
 const UNAVAILABLE_MESSAGE = 'The assistant is temporarily unavailable. Please try again in a bit.';
 
+/**
+ * Result of the readiness probe (GET /ready on the Worker).
+ *
+ * `'ready'`        — the Worker reports the Assistant's dependency configured.
+ * `'unconfigured'` — the Worker is reachable and says it is NOT configured.
+ * `'unknown'`      — the probe itself failed (offline, CORS, 5xx, bad shape).
+ *
+ * Callers treat `'unknown'` the same as `'unconfigured'` for the purpose of
+ * showing the entry point. That is the conservative direction: #455 was a live
+ * feature that looked available and failed on every turn, and showing a button
+ * we cannot stand behind is worse than briefly hiding one that works. The probe
+ * is cheap and re-runs on mount, so a transient blip self-heals on navigation.
+ */
+export type AssistantAvailability = 'ready' | 'unconfigured' | 'unknown';
+
+export interface AssistantCapabilityOptions {
+  readonly workerUrl: string | null | undefined;
+  readonly fetchImpl?: typeof fetch;
+  /** Abort signal so an unmounting component can cancel the probe. */
+  readonly signal?: AbortSignal;
+}
+
+/**
+ * Ask the Worker whether the Assistant's backend dependency is configured.
+ *
+ * Unauthenticated on purpose: readiness is not user-specific, so the probe can
+ * run before/without a token and the endpoint exposes booleans only — never key
+ * material. See `readinessReport()` in worker/index.js.
+ */
+export async function fetchAssistantAvailability(
+  options: AssistantCapabilityOptions,
+): Promise<AssistantAvailability> {
+  const { workerUrl, fetchImpl = fetch, signal } = options;
+  if (!workerUrl) return 'unconfigured';
+
+  let res: Response;
+  try {
+    res = await fetchImpl(`${workerUrl.replace(/\/$/, '')}/ready`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal,
+    });
+  } catch {
+    return 'unknown';
+  }
+  if (!res.ok) return 'unknown';
+
+  const body = (await res.json().catch(() => null)) as
+    | { capabilities?: { assistant?: unknown } }
+    | null;
+  const configured = body?.capabilities?.assistant;
+  if (typeof configured !== 'boolean') return 'unknown';
+  return configured ? 'ready' : 'unconfigured';
+}
+
 /** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
 export async function sendAssistantTurn(
   transcript: readonly AssistantMessage[],
