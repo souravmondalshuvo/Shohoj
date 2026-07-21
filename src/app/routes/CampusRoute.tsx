@@ -38,6 +38,7 @@ import {
   createCampusScene,
   type CampusSceneHandle,
   type RoomStatus,
+  type RoomTooltip,
 } from '../../features/campus/campusScene';
 
 const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
@@ -130,16 +131,23 @@ export function Component() {
   // DOM room list — the accessible layer the 3D view mirrors.
   const [search, setSearch] = useState('');
   const [onlyFree, setOnlyFree] = useState(false);
+  // A brief shimmer over the map while a manual refresh is in flight (#385
+  // liveness) — the feed is honest about being live, so refetching shows it.
+  const [refreshing, setRefreshing] = useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkConsumed = useRef(false);
 
   const canvasHost = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<CampusSceneHandle | null>(null);
+  // Latest tooltip describer, read through a ref so the scene (created once per
+  // model) always sees current feed/time data without being torn down.
+  const describeRoomRef = useRef<(code: string) => RoomTooltip | null>(() => null);
 
   const load = useCallback((forceRefresh: boolean) => {
     let live = true;
     setFeedError(null);
+    if (forceRefresh) setRefreshing(true);
     fetchConnectFeed({ forceRefresh })
       .then((result) => {
         if (!live) return;
@@ -154,6 +162,9 @@ export function Component() {
       })
       .catch(() => {
         if (live) setFeedError('Could not load the class schedule feed.');
+      })
+      .finally(() => {
+        if (live) setRefreshing(false);
       });
     return () => { live = false; };
   }, []);
@@ -266,6 +277,31 @@ export function Component() {
     }
   }, [selectedRoom, searchParams, setSearchParams]);
 
+  // Tooltip text for a hovered 3D room (#385). Lives here because only the
+  // route holds the schedule feed; the scene calls it through describeRoomRef.
+  const describeRoom = useCallback((code: string): RoomTooltip | null => {
+    const parsed = model?.roomsByCode.get(code);
+    if (!parsed) return null;
+    const status = statusByCode.get(code) ?? 'unknown';
+    const feedName = feedNameByCode.get(code);
+    let detail: string;
+    if (feed && feedName) {
+      const occupant = occupantAt(feed.index, feedName, now.day, now.minute);
+      if (occupant) {
+        detail = `In class · ${occupant.courseCode} until ${fmtTime(occupant.endMin)}`;
+      } else {
+        const next = busyOnDay(feed.index, feedName, now.day).find((i) => i.startMin > now.minute);
+        detail = next
+          ? `Free until ${fmtTime(next.startMin)} · then ${next.courseCode}`
+          : 'Free for the rest of today';
+      }
+    } else {
+      detail = 'No classes scheduled here';
+    }
+    return { title: `${parsed.code} · ${roomKindLabel(parsed.kind)}`, status, detail };
+  }, [model, feed, feedNameByCode, now, statusByCode]);
+  describeRoomRef.current = describeRoom;
+
   // Scene lifecycle — create once per model, tear down cleanly (StrictMode
   // double-mount safe: dispose removes the canvas and stops the loop).
   useEffect(() => {
@@ -275,6 +311,7 @@ export function Component() {
       colors: SCENE_COLORS,
       onFloorClick: (f) => selectFloor(f),
       onRoomClick: (code) => selectRoom(code),
+      describeRoom: (code) => describeRoomRef.current(code),
     });
     if (!handle) {
       setWebglOk(false);
@@ -291,6 +328,7 @@ export function Component() {
   useEffect(() => { sceneRef.current?.setFloor(floor); }, [floor, model]);
   useEffect(() => { sceneRef.current?.setRoomStatus(statusByCode); }, [statusByCode]);
   useEffect(() => { sceneRef.current?.setHighlight(selectedRoom); }, [selectedRoom]);
+  useEffect(() => { sceneRef.current?.setOnlyFree(onlyFree); }, [onlyFree, model]);
 
   const checkLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
@@ -470,11 +508,23 @@ export function Component() {
           </form>
 
           {webglOk ? (
-            <div className="campus-canvas" ref={canvasHost} aria-hidden="true" />
+            <div
+              className="campus-canvas"
+              ref={canvasHost}
+              aria-hidden="true"
+              data-refreshing={refreshing ? 'true' : undefined}
+              data-testid="campus-canvas"
+            />
           ) : (
             <p className="shell-muted" data-testid="campus-no-webgl">
               3D view isn&apos;t available on this device — the floor lists below
               show everything the map does.
+            </p>
+          )}
+
+          {refreshing && (
+            <p className="campus-room-sr" data-testid="campus-refreshing" role="status">
+              Refreshing the schedule feed…
             </p>
           )}
 
