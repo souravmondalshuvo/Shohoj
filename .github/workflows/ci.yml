@@ -123,6 +123,11 @@ jobs:
       - name: Install worker dependencies
         working-directory: worker
         run: npm ci
+      # Drift guard: the Worker validates course codes against a generated copy
+      # of js/core/catalog.js. If the catalogue gains a course and this is not
+      # regenerated, the Worker rejects a real course as nonexistent.
+      - name: Check worker catalogue is in sync
+        run: npm run check:worker-catalog
       - name: Run worker tests
         run: npm run test:worker
 
@@ -435,6 +440,21 @@ jobs:
           workingDirectory: worker
           command: deploy
 
+      # Post-deployment verification for the Worker, mirroring the frontend's
+      # smoke step. Unauthenticated GETs only — no user data is read and no
+      # Anthropic tokens are spent.
+      #
+      # REQUIRE_ASSISTANT is intentionally NOT set yet: ANTHROPIC_API_KEY is
+      # still pending on the deployed Worker (#455), so a hard assertion would
+      # block every Worker deploy. The step warns loudly instead. Flip it to
+      # '1' once the secret is set, so the Assistant can never silently
+      # regress to unconfigured again.
+      - name: Post-deploy Worker smoke test
+        if: ${{ vars.WORKER_URL != '' }}
+        env:
+          WORKER_URL: ${{ vars.WORKER_URL }}
+        run: node scripts/smoke-worker.mjs
+
   deploy-firestore:
     name: Deploy Firestore rules & indexes
     needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, changes]
@@ -466,18 +486,28 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
         run: |
-          # Fail SAFE when auth is not configured: skip rather than crash the
-          # pipeline, and never deploy Firestore DATA — only rules and indexes.
+          set -euo pipefail
+          # FAIL CLOSED. This job only runs when firestore.rules or
+          # firestore.indexes.json actually changed on main (see the `if:`
+          # above). So reaching this step with no credentials means the
+          # security rules protecting production user data were modified and
+          # NOT deployed. Previously that exited 0 with a warning, leaving a
+          # green pipeline and stale rules in production — the pipeline
+          # reported success for a deploy that never happened.
+          #
+          # Never deploy Firestore DATA — only rules and indexes.
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
-            echo "::warning::FIREBASE_SERVICE_ACCOUNT not configured — skipping Firestore rules/indexes deploy. See docs/GITHUB_SECURITY_SETTINGS.md."
-            exit 0
+            echo "::error::Firestore rules/indexes changed on main but FIREBASE_SERVICE_ACCOUNT is not configured, so they were NOT deployed. Production is running the previous rules. Add the secret (see docs/GITHUB_SECURITY_SETTINGS.md) and re-run this job."
+            exit 1
           fi
           # Write the key to a temp file the CLI reads via ADC; never printed.
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-sa.json"
+          # The trap removes it even if the deploy fails or the job is cancelled.
+          SA_FILE="$RUNNER_TEMP/firebase-sa.json"
+          trap 'rm -f "$SA_FILE"' EXIT
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$SA_FILE"
+          export GOOGLE_APPLICATION_CREDENTIALS="$SA_FILE"
           PROJECT="${FIREBASE_PROJECT_ID:-shohoj}"
           npx firebase deploy \
             --only firestore:rules,firestore:indexes \
             --project "$PROJECT" \
             --non-interactive
-          rm -f "$RUNNER_TEMP/firebase-sa.json"
