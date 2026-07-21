@@ -1582,11 +1582,14 @@ async function makeServiceAccountJson() {
     const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
     __setTestJwksForTests({ keys: [jwk] });
     try {
+      // Deliberately an INVALID messages payload: it proves the request got
+      // past the limiter (400, not 429) while stopping short of the Anthropic
+      // call, so the test stays offline and never spends tokens.
       const res = await worker.fetch(req('POST', '/api/assistant', {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+        body: JSON.stringify({ messages: [{ role: 'system', content: 'nope' }] }),
       }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {});
-      assert(res.status !== 429, 'a missing binding must not deny');
+      assertEq(res.status, 400, 'reached payload validation, i.e. was not denied by a missing binding');
     } finally {
       __setTestJwksForTests(null);
     }
