@@ -18,7 +18,9 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
 import {
+  fetchAssistantAvailability,
   sendAssistantTurn,
+  type AssistantAvailability,
   type AssistantMessage,
 } from './assistantClient.ts';
 
@@ -176,13 +178,42 @@ export interface AssistantLauncherProps {
   readonly workerUrl: string | null | undefined;
 }
 
-/** Floating launcher + drawer. Renders nothing unless signed in on a
- * cloud-capable shell (the endpoint needs both). */
+/**
+ * Floating launcher + drawer.
+ *
+ * Renders nothing unless ALL of these hold:
+ *   - the shell is cloud-capable (papersWorkerUrl configured),
+ *   - the student is signed in (the endpoint requires a BRACU token), and
+ *   - the Worker reports the Assistant's backend dependency as configured.
+ *
+ * That last check is #455: the drawer shipped while ANTHROPIC_API_KEY was
+ * unset, so the feature was visibly present and failed on every single turn.
+ * A launcher we cannot stand behind is worse than no launcher, so the probe
+ * must affirmatively say "ready" before the entry point appears — an
+ * inconclusive probe keeps it hidden.
+ */
 export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
+  const [availability, setAvailability] = useState<AssistantAvailability>('unknown');
 
-  if (!workerUrl || auth.status !== 'authenticated') return null;
+  const signedIn = auth.status === 'authenticated';
+
+  useEffect(() => {
+    if (!workerUrl || !signedIn) return;
+    const controller = new AbortController();
+    let active = true;
+    void fetchAssistantAvailability({ workerUrl, signal: controller.signal }).then((next) => {
+      if (active) setAvailability(next);
+    });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [workerUrl, signedIn]);
+
+  if (!workerUrl || !signedIn) return null;
+  if (availability !== 'ready') return null;
 
   return (
     <>
