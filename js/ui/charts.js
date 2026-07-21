@@ -16,7 +16,7 @@ export function drawTrendChart(canvas, data) {
   const green     = '#2ECC71';
   const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
   const labelColor = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
-  const dotBg     = isDark ? '#060d09' : '#d4edde';
+  const dotBg     = isDark ? '#060d09' : '#f2f8f4';
 
   const PAD = { top: 12, right: 16, bottom: 48, left: 36 };
   const cW = W - PAD.left - PAD.right;
