@@ -1,0 +1,46 @@
+# Prettier scope is deliberately narrow: the actively-maintained TypeScript in
+# src/, the Node scripts, and the Worker. Everything below is either generated,
+# vendored, a large legacy surface the migration is retiring, or a data file
+# where reformatting would be pure noise (and risk).
+
+# Dependencies & build output
+node_modules/
+worker/node_modules/
+dist/
+dist-shell/
+dist-pages/
+.vite/
+
+# Generated / build artifacts — never hand-formatted
+shohoj.html
+admin.html
+profile.html
+worker/catalog.generated.js
+js/config/runtime-config.js
+**/version.json
+
+# Legacy vanilla-JS app (retired by the React migration; not restyled to avoid
+# enormous churn on code that is on its way out — see the cutover plan)
+js/
+vite/
+
+# Standalone marketing/tool HTML pages (hand-authored, large inline <style>)
+index.html
+404.html
+app/index.html
+bus/
+campus/
+lost-found/
+profile/
+admin/
+
+# Data / fixtures / lockfiles
+data/
+bracu-section.json
+package-lock.json
+worker/package-lock.json
+firestore.indexes.json
+*.jsonl
+
+# Docs are prose; leave wrapping to the author
+*.md
