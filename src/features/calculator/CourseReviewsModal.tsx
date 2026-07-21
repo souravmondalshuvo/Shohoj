@@ -111,6 +111,11 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
   const { notify } = useNotifications();
   // undefined = loading; [] = none; groups = cards.
   const [groups, setGroups] = useState<CourseReviewGroup[] | undefined>(undefined);
+  // Kept separate from `groups` so a failed read is not rendered as "No reviews
+  // yet" — that made an outage or a permission failure look like a course
+  // nobody had reviewed, and invited students to re-submit a review they had
+  // already written.
+  const [failed, setFailed] = useState(false);
   // The review id the Report dialog is open for (null = closed).
   const [reportReviewId, setReportReviewId] = useState<string | null>(null);
   // The faculty initials the rating dialog is open for (null = closed).
@@ -145,10 +150,16 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
     fetchRef
       .current(courseCode)
       .then((reviews) => {
-        if (live) setGroups(buildCourseReviewGroups(reviews));
+        if (!live) return;
+        setGroups(buildCourseReviewGroups(reviews));
+        setFailed(false);
       })
       .catch(() => {
-        if (live) setGroups([]);
+        // The repo logs the machine-readable code; never surface the raw SDK
+        // message to a student.
+        if (!live) return;
+        setGroups([]);
+        setFailed(true);
       });
     return () => {
       live = false;
@@ -188,6 +199,20 @@ export default function CourseReviewsModal({ courseCode, courseName, onClose }: 
           <p className="rv-cr-loading" role="status">
             Loading course reviews…
           </p>
+        ) : failed ? (
+          <div className="rv-cr-empty" data-testid="course-reviews-unavailable" role="alert">
+            <div className="rv-cr-empty-title">Reviews are unavailable right now</div>
+            <div className="rv-cr-empty-note">
+              We couldn’t load reviews for {courseCode}. Please try again in a moment.
+            </div>
+            <button
+              type="button"
+              className="rv-cr-retry"
+              onClick={() => setReloadKey((n) => n + 1)}
+            >
+              Try again
+            </button>
+          </div>
         ) : groups.length === 0 ? (
           <div className="rv-cr-empty" data-testid="course-reviews-empty">
             <div className="rv-cr-empty-title">No reviews yet</div>
