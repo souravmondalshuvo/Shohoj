@@ -1009,6 +1009,49 @@
       @media (max-width: 480px) {
         .assistant-drawer { right: 8px; left: 8px; bottom: 8px; width: auto; height: min(70dvh, 560px); }
       }
+      /* Course Difficulty Map (/difficulty) — parity port of the legacy tab. */
+      .dm-subtitle { margin: 4px 0 16px; font-size: 13px; }
+      .dm-loading { color: var(--c-faint); }
+      .dm-controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .dm-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+      .dm-pill, .dm-sort-btn {
+        font: inherit; font-size: 13px; min-height: 32px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+        border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-muted);
+      }
+      .dm-pill--active, .dm-sort-btn--active { border-color: var(--green); color: var(--c-green-ink); background: rgba(46,204,113,0.12); font-weight: 600; }
+      .dm-pill:focus-visible, .dm-sort-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .dm-sort { display: flex; align-items: center; gap: 6px; }
+      .dm-sort-label { font-size: 12px; color: var(--c-faint); }
+      .dm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+      .dm-card {
+        display: flex; flex-direction: column; gap: 8px; padding: 14px;
+        border-radius: 14px; border: 1px solid var(--c-border); background: var(--c-card);
+      }
+      .dm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .dm-card-code { font-weight: 700; font-size: 15px; color: var(--c-text); }
+      .dm-card-tag { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+      .dm-card-name { font-size: 13px; color: var(--c-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .dm-card-foot { font-size: 11.5px; color: var(--c-faint); margin-top: 2px; }
+      .dm-bar-row { display: grid; grid-template-columns: 62px 1fr 34px; align-items: center; gap: 8px; }
+      .dm-bar-label { font-size: 11.5px; color: var(--c-text-muted); }
+      .dm-bar-track { height: 7px; border-radius: 999px; background: var(--c-surface); overflow: hidden; }
+      .dm-bar-fill { height: 100%; border-radius: 999px; }
+      .dm-bar-value { font-size: 12px; font-weight: 600; text-align: right; }
+      /* Five tiers, easy→brutal, shared by the tag, the bar fill and the value. */
+      .dm-bar-fill--great { background: #2ECC71; } .dm-bar-fill--good { background: #A8D820; }
+      .dm-bar-fill--mid { background: #F0A500; } .dm-bar-fill--warn { background: #E67E22; }
+      .dm-bar-fill--bad { background: #E74C3C; } .dm-bar-fill--none { background: var(--c-border); }
+      .dm-bar-value--great { color: #2ECC71; } .dm-bar-value--good { color: #7ba500; }
+      .dm-bar-value--mid { color: #F0A500; } .dm-bar-value--warn { color: #E67E22; }
+      .dm-bar-value--bad { color: #E74C3C; } .dm-bar-value--none { color: var(--c-faint); }
+      .dm-card-tag--great { color: #1c7c45; background: rgba(46,204,113,0.16); } .dm-card-tag--good { color: #5a7a00; background: rgba(168,216,32,0.18); }
+      .dm-card-tag--mid { color: #9a6a00; background: rgba(240,165,0,0.18); } .dm-card-tag--warn { color: #a8551a; background: rgba(230,126,34,0.18); }
+      .dm-card-tag--bad { color: #c0392b; background: rgba(231,76,60,0.16); } .dm-card-tag--none { color: var(--c-faint); background: var(--c-surface); }
+      :root[data-theme="dark"] .dm-card-tag--great { color: #5fe0a0; } :root[data-theme="dark"] .dm-card-tag--good { color: #c3e86a; }
+      :root[data-theme="dark"] .dm-card-tag--mid { color: #f6c765; } :root[data-theme="dark"] .dm-card-tag--warn { color: #f0a06a; }
+      :root[data-theme="dark"] .dm-card-tag--bad { color: #ff8b7d; }
+      .dm-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--c-border); border-radius: 14px; color: var(--c-text-muted); }
+      .dm-empty-title { font-weight: 700; color: var(--c-text); margin-bottom: 4px; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
   </head>
