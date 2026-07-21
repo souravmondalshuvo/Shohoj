@@ -10,8 +10,6 @@ import { createBrowserRouter } from 'react-router';
 
 import { RootLayout } from '../routes/RootLayout';
 import { RouteError } from '../routes/RouteError';
-import { AdminRoute } from '../routes/AdminRoute';
-import { RequireAdmin } from './RequireAdmin';
 
 export const router = createBrowserRouter([
   {
@@ -51,14 +49,9 @@ export const router = createBrowserRouter([
       { path: 'papers', lazy: () => import('../routes/PapersRoute') },
       // Study Group Finder (#443) — auth-gated board over Firestore.
       { path: 'groups', lazy: () => import('../routes/GroupsRoute') },
-      {
-        path: 'admin',
-        element: (
-          <RequireAdmin>
-            <AdminRoute />
-          </RequireAdmin>
-        ),
-      },
+      // Admin is the standalone build3.py admin.html page (linked from the nav as
+      // a full-page link), not a shell route — no in-shell port yet. The static
+      // page is served at <base>/admin/; the 404 SPA fallback must exclude it.
       { path: '*', lazy: () => import('../routes/NotFoundRoute') },
     ],
   },
