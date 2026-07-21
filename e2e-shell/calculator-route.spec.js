@@ -26,7 +26,9 @@ test('the served root resolves to Home on initial load', async ({ page }) => {
   // root pathname matches the index route. Before the base/root fix the entry
   // loaded at a nested path and matched only the catch-all NotFound route.
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('heading', { name: 'Shohoj', level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: /University life, made simple/, level: 1 }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0);
 });
 
