@@ -69,6 +69,9 @@ export function Component() {
   }, [config]);
 
   const [items, setItems] = useState<FeedbackItem[] | undefined>(undefined);
+  // Distinct from `items === undefined` (loading) and `items.length === 0`
+  // (empty): a failed read must not render as an empty board.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [myUpvotes, setMyUpvotes] = useState<ReadonlySet<string>>(new Set());
   const [filter, setFilter] = useState<BoardFilter>('all');
   const [draftType, setDraftType] = useState<FeedbackType>('general');
@@ -91,9 +94,14 @@ export function Component() {
         if (!live) return;
         setItems(loaded);
         setMyUpvotes(new Set(votes.map((v) => v.feedbackId)));
+        setLoadFailed(false);
       })
       .catch(() => {
-        if (live) setItems([]);
+        // The repo logged the machine-readable code; never surface the raw SDK
+        // message. Mark the load failed rather than pretending the board is empty.
+        if (!live) return;
+        setItems([]);
+        setLoadFailed(true);
       });
     return () => {
       live = false;
@@ -276,6 +284,21 @@ export function Component() {
 
           {items === undefined ? (
             <p role="status">Loading the board…</p>
+          ) : loadFailed ? (
+            <div
+              className="feedback-empty shell-muted"
+              data-testid="feedback-unavailable"
+              role="alert"
+            >
+              <div>The feedback board is unavailable right now.</div>
+              <button
+                type="button"
+                className="rv-dir-retry"
+                onClick={() => setReloadKey((n) => n + 1)}
+              >
+                Try again
+              </button>
+            </div>
           ) : board.length === 0 ? (
             <p className="feedback-empty shell-muted" data-testid="feedback-empty">
               No feedback yet{filter !== 'all' ? ' in this category' : ''}.
