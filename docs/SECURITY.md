@@ -26,7 +26,26 @@ The rules suite (`tests/firestore.rules.test.js`) runs in CI against the Firesto
 
 ## App Check
 
-Firestore is fronted by Firebase App Check using reCAPTCHA v3. Every Firestore call from the browser carries an attestation token; scripted abuse without a real browser session is rejected. App Check runs in **monitor** mode while we watch real traffic, then flips to **enforce**.
+The client initializes Firebase App Check with a reCAPTCHA v3 provider
+(`src/platform/firebase/firebaseClient.ts`), so Firestore calls from a real
+browser session attach an attestation token. Three things are worth stating
+precisely, because they are often conflated:
+
+- **Client initialization** is in the code and best-effort: if App Check fails
+  to initialize, auth and the Firestore calls still proceed (offline tools must
+  keep working). So the presence of App Check in the client does not, by itself,
+  reject anything.
+- **Monitor mode** (the current expected state) records attestation results in
+  the Firebase console but **does not reject** un-attested traffic. A scripted
+  client with a valid ID token is still served.
+- **Enforce mode** is what actually rejects un-attested requests, and it is a
+  **Firebase console setting**, not something this repo can turn on or verify.
+
+We therefore do **not** claim that scripted traffic is currently rejected by App
+Check. Enabling and confirming enforcement is tracked as an external action in
+[`GITHUB_SECURITY_SETTINGS.md`](GITHUB_SECURITY_SETTINGS.md). Until enforcement
+is verified in the console, the real authorization boundary is the Firestore
+rules plus the Worker's token verification — not App Check.
 
 ## XSS prevention
 
@@ -47,12 +66,25 @@ jsPDF, pdf.js, and Chart.js load from cdnjs with `integrity` and `crossorigin="a
 Reviews are pseudonymous to other users:
 
 - The review document body contains no UID or email.
-- The Firestore doc ID is a salted SHA-256 of `uid + facultyInitials + courseCode`, so the same user's reviews for different courses produce different hashes — third-party readers cannot trivially group all of one user's reviews together.
+- The Firestore doc ID is a **deterministic, unsalted** SHA-256 of
+  `uid | facultyInitials | courseCode`. There is no secret salt — the term was
+  removed from this document and the code because it was inaccurate. The hash is
+  reproducible by anyone who knows the exact inputs. What it does buy: the same
+  user's reviews for different courses produce different, uncorrelated doc IDs,
+  so a third-party reader cannot trivially group all of one user's reviews
+  together, and the raw UID never appears in a public doc.
+
+Why unsalted, and why that is acceptable here: the determinism is load-bearing.
+It is exactly what enforces one-review-per-(user, faculty, course) — the Worker
+writes to that computed ID, and a duplicate collides (HTTP 409). A random or
+secret-salted ID could not do that without storing a uid→id mapping somewhere,
+which would reintroduce the very identifier we are trying to keep out of the
+data.
 
 What pseudonymity does **not** cover:
 
-- Firebase project administrators (and anyone with admin SDK access) can audit Firestore logs and correlate writes back to the authenticated session. "Anonymous to the public" ≠ "anonymous to the service operator".
-- A determined adversary who already knows your UID can reconstruct your hash for any (faculty, course) pair.
+- Firebase project administrators (and anyone with admin SDK access) can audit Firestore logs and correlate writes back to the authenticated session. "Pseudonymous to other users" ≠ "anonymous to the service operator".
+- Because the ID is unsalted and deterministic, an adversary who **already knows your UID** can reconstruct your doc ID for any (faculty, course) pair and confirm whether you reviewed it. Guessing a UID you do not know remains infeasible (Firebase UIDs are 28 random characters), but this is confirmation-of-a-known-guess resistance, not anonymity.
 
 Review submissions are already mediated by the Cloudflare Worker (`POST /reviews`), which verifies the Firebase ID token and writes the Firestore review document through a service account. The public review body still contains no UID or email. Stronger operator-level anonymity would require a more advanced backend design with blind tokens or another unlinkable submission protocol.
 
@@ -76,16 +108,55 @@ only after an admin approves them.
 
 ## Public Firebase config
 
-The Firebase web config (API key, project ID, etc.) is public by design — Firebase apps must ship it to the browser. It does not grant access on its own; access is gated by Firestore rules + App Check. The config lives in `js/config/runtime-config.js`, which is gitignored and generated from `.env` (locally) or GitHub Actions secrets (CI).
+The Firebase web config (API key, project ID, etc.) is public by design — Firebase apps must ship it to the browser. It does not grant access on its own; access is gated by Firestore rules (and, once console enforcement is verified, App Check). The config lives in `js/config/runtime-config.js`, which is gitignored and generated from `.env` (locally) or GitHub Actions secrets (CI).
 
 ## Rate limiting
 
-Two layers are in place:
+Three layers, in order of how much they actually stop:
 
-1. **Firebase App Check (reCAPTCHA v3).** Every Firestore call carries an attestation token. Scripted clients without a real browser session are rejected. This is the primary line of defense against automated abuse.
-2. **Schema constraints.** Firestore rules enforce one review per `(user, faculty, course)` pair, one report per `(user, target)` pair, private per-user feedback upvote reads, approved/uploader/admin paper visibility, and max 500 chars in review text. The Worker enforces paper upload size, owner-scoped paths, MIME allow-listing, and metadata creation.
+1. **Worker per-UID rate limits.** The Cloudflare Worker keys Cloudflare's
+   Rate Limiting binding on the verified Firebase UID (not the IP), so abuse is
+   bounded per account. This is real, code-level enforcement on the privileged
+   write and paid endpoints:
+   - `/upload` and `/reviews` — namespaced `upload:` / `review:` per UID.
+   - `/api/assistant` — namespaced `assistant:` per UID (this endpoint spends
+     metered Anthropic tokens, so it is limited independently).
 
-What is **not** in place: per-user write-rate quotas (e.g. "max 5 feedback per day"). Pure Firestore rules can't aggregate writes across documents, so this would need a Cloud Function. App Check covers the realistic abuse model for this project; revisit if the corpus grows enough that App Check alone is insufficient.
+   **Failure policy is explicit and differs by endpoint** (`rateLimit()` in
+   `worker/index.js`):
+   - `/api/assistant` **fails closed** — if the limiter binding throws, the
+     request is denied (429) rather than handed unmetered paid capacity.
+   - `/upload` and `/reviews` **fail open** — they are already behind a verified
+     BRACU account and hard size/shape limits, and a limiter blip must not block
+     legitimate coursework. A limiter *exception* is logged (safe metadata only);
+     a *missing* binding is a deploy-time fault surfaced by `GET /ready`, not a
+     silent outage.
+2. **Firebase App Check (reCAPTCHA v3).** In monitor mode this records but does
+   not reject (see the App Check section). Treat it as telemetry today, and as a
+   second enforcement layer only once console enforcement is verified.
+3. **Schema constraints.** Firestore rules enforce one review per
+   `(user, faculty, course)` pair, one report per `(user, target)` pair, private
+   per-user feedback upvote reads, approved/uploader/admin paper visibility, and
+   max 500 chars in review text. The Worker additionally validates upload size,
+   owner-scoped paths, MIME allow-listing + magic-byte sniffing, and — new in
+   this pass — **course codes against an authoritative catalogue** (not just a
+   shape regex), and rejects (rather than truncates) over-length review text.
+
+What is **not** in place: per-user *daily* write quotas (e.g. "max 5 feedback per
+day"). Pure Firestore rules can't aggregate writes across documents, so this
+would need a Cloud Function; the Worker's per-request rate limits are the
+current mitigation.
+
+### Faculty-initials validation (known limitation)
+
+The Worker validates review **course codes** against the authoritative catalogue
+but validates **faculty initials by shape only** (`^[A-Z]{2,6}$`). This is
+deliberate: the authoritative set of teaching faculty is the live CONNECT feed,
+and `data/faculty_profiles.jsonl` is an explicitly partial seed, so gating on it
+would reject legitimate reviews for most professors. The consequence is that a
+review can be filed against well-formed initials that no current faculty member
+uses. Closing this cleanly needs a server-side faculty roster synced from
+CONNECT; tracked as future work.
 
 ## What is *not* in scope
 
