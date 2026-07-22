@@ -1525,6 +1525,17 @@ async function makeServiceAccountJson() {
     assert(res.headers.get('X-Request-Id'), 'carries a correlation id');
   });
 
+  await test('routed responses carry an X-Request-Id correlation id', async () => {
+    // A 401 from a routed handler (no bearer token) still gets the id, so a
+    // client can report it end-to-end — not just health/error responses.
+    const res = await worker.fetch(req('POST', '/reviews', {
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }), { ...ENV }, {});
+    assertEq(res.status, 401);
+    assert(res.headers.get('X-Request-Id'), 'routed 401 carries a correlation id');
+  });
+
   await test('/health stays a lightweight liveness probe (no capabilities)', async () => {
     const res = await worker.fetch(req('GET', '/health'), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {});
     assertEq(res.status, 200);
