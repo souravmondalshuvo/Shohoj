@@ -78,9 +78,14 @@ export async function sha256Hex(input: unknown): Promise<string> {
 }
 
 /**
- * Salted per-(user, faculty, course) hash — the doc-id suffix. Mirrors
- * js/core/reviews.js reviewKeyHash byte-for-byte: `anon` uid fallback,
- * normalized initials, and the code uppercased (NOT trimmed) inside the salt.
+ * Deterministic per-(user, faculty, course) hash — the doc-id suffix. This is
+ * an UNSALTED SHA-256 of `uid|initials|course`; there is no secret key. That is
+ * deliberate — the determinism is what enforces one-review-per-(user, faculty,
+ * course) without storing the uid — but it means the hash is reproducible by
+ * anyone who knows a candidate uid, so it provides pseudonymity to other users,
+ * not anonymity. See docs/SECURITY.md. Mirrors js/core/reviews.js reviewKeyHash
+ * byte-for-byte: `anon` uid fallback, normalized initials, and the code
+ * uppercased (NOT trimmed).
  */
 export async function reviewKeyHash(
   uid: unknown,
