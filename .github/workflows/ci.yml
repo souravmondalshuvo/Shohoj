@@ -338,12 +338,12 @@ jobs:
       - name: Build standalone pages
         run: npm run build:pages
 
-      # Shell (#460 cutover): the React shell is now the site, built at the site
-      # base /Shohoj/ and served as the deploy root. It builds AFTER the runtime
-      # config is generated, so the real config gets bundled (the plugin emits
-      # /runtime-config.js, base-rewritten to /Shohoj/runtime-config.js).
-      - name: Build the shell (served at the site root)
-        run: SHELL_BASE=/Shohoj/ npm run build:shell
+      # Shell (#460 cutover rolled back): the vanilla build3.py site is the deploy
+      # root again; the React shell is published under /Shohoj/app/. It builds
+      # AFTER the runtime config is generated, so the real config gets bundled (the
+      # plugin emits /runtime-config.js, base-rewritten to /Shohoj/app/runtime-config.js).
+      - name: Build the shell (served under /app/)
+        run: SHELL_BASE=/Shohoj/app/ npm run build:shell
 
       # test:bundle launches headless Chromium to load the built bundle, so the
       # browser must be present here (the validation job installs it separately).
@@ -359,38 +359,19 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin _deploy/legacy/profile _deploy/app
-          # The React shell is the site now (#460): its built index.html + assets
-          # become the deploy root.
-          cp -R dist-shell/. _deploy/
-          # Admin stays the standalone moderation dashboard, linked from the shell
-          # nav (there is no in-shell admin yet). Served at /admin/; the 404 SPA
-          # fallback must not hijack it.
-          cp admin.html _deploy/admin/index.html
-          # Legacy vanilla site kept recoverable at /legacy/ (the tagged
-          # legacy-single-file-build is the real rollback path — see docs/ROLLBACK.md).
-          # Everything that would shadow a shell route moves under /legacy/ so the
-          # shell owns /profile, /campus, /bus, /lost-found: profile.html and the
-          # standalone public pages (dist-pages) go here, not to the root.
-          cp shohoj.html  _deploy/legacy/index.html
-          cp profile.html _deploy/legacy/profile/index.html
-          cp -R dist-pages/. _deploy/legacy/
-          # Old beta URL: redirect the bare /app/ bookmark to the shell root;
-          # /app/<route> deep links are handled by the 404 fallback below.
-          cp app-redirect.html _deploy/app/index.html
-          # Custom 404: SPA fallback into the shell for every missing path except
-          # the static /admin/ and /legacy/ trees (#460).
-          cp 404.html _deploy/404.html
-          # These four paths served real static pages before the cutover, so a
-          # bare 404-then-JS-redirect would regress them for crawlers, link
-          # unfurls and no-JS clients. Drop a copy of the shell's index.html at
-          # each: GitHub Pages answers 200, and because the shell's asset URLs are
-          # absolute (base /Shohoj/) it boots normally and the router resolves the
-          # pathname to the matching route. Keep in sync with src/app/routing/router.tsx.
-          for route in profile campus bus lost-found; do
-            mkdir -p "_deploy/$route"
-            cp dist-shell/index.html "_deploy/$route/index.html"
-          done
+          mkdir -p _deploy/admin _deploy/profile _deploy/app
+          # Vanilla build3.py site is the deploy root again (#460 rolled back);
+          # the React shell moves back under /app/ (opt-in). Legacy is the default.
+          cp shohoj.html  _deploy/index.html
+          cp admin.html   _deploy/admin/index.html
+          cp profile.html _deploy/profile/index.html
+          # Custom 404: SPA fallback for /app/ deep links + plain not-found
+          # for everything else (#449).
+          cp 404.html     _deploy/404.html
+          # Standalone pages keep their directory layout and share assets/.
+          cp -R dist-pages/. _deploy/
+          # React shell — opt-in at /app/ (built with SHELL_BASE=/Shohoj/app/).
+          cp -R dist-shell/. _deploy/app/
 
       - name: Generate version.json (build metadata)
         env:
