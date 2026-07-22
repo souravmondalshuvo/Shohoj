@@ -15,6 +15,7 @@ import {
     TEXT_MAX,
 } from '../src/core/feedback.ts';
 import { createFeedbackRepo } from '../src/platform/firebase/feedbackRepo.ts';
+import { isShohojError } from '../src/core/errors.ts';
 
 test('validateFeedbackText: trims, rejects short and oversized input', () => {
     assert.deepEqual(validateFeedbackText('  a solid thought  '), { ok: true, text: 'a solid thought' });
@@ -74,20 +75,45 @@ test('repo: toggleUpvote adds when not voted, removes when voted', async () => {
     assert.deepEqual(log, [['addUpvote', 'f1', 'u1'], ['removeUpvote', 'f1', 'u1']]);
 });
 
-test('repo: failed reads degrade to empty lists; writes propagate errors', async () => {
+test('repo: failed reads reject with a typed error; writes propagate errors', async () => {
+    const denied = Object.assign(new Error('Missing or insufficient permissions.'), {
+        code: 'permission-denied',
+    });
     const repo = createFeedbackRepo({
         config: {},
         loadBackend: async () => ({
             async listRecent() { throw new Error('offline'); },
-            async listMyUpvotes() { throw new Error('offline'); },
+            async listMyUpvotes() { throw denied; },
             async submit() { throw new Error('rules'); },
             async addUpvote() { throw new Error('rules'); },
             async removeUpvote() {},
             async adminDelete() {},
         }),
     });
-    assert.deepEqual(await repo.listRecent(), []);
-    assert.deepEqual(await repo.listMyUpvotes('u1'), []);
+    // Reads no longer swallow failures into [] — an outage must be
+    // distinguishable from an empty board.
+    await assert.rejects(() => repo.listRecent(), (e) => {
+        assert.ok(isShohojError(e), 'typed error');
+        assert.ok(e.userMessage, 'user-safe message');
+        return e.code === 'firebase_unavailable';
+    });
+    await assert.rejects(() => repo.listMyUpvotes('u1'), (e) => e.code === 'permission');
     await assert.rejects(() => repo.submit({ type: 'bug', text: 'abc', anonymous: true }, 'u1'));
     await assert.rejects(() => repo.toggleUpvote('f1', 'u1', false));
+});
+
+test('repo: a genuinely empty board still resolves empty', async () => {
+    const repo = createFeedbackRepo({
+        config: {},
+        loadBackend: async () => ({
+            async listRecent() { return []; },
+            async listMyUpvotes() { return []; },
+            async submit() {},
+            async addUpvote() {},
+            async removeUpvote() {},
+            async adminDelete() {},
+        }),
+    });
+    assert.deepEqual(await repo.listRecent(), []);
+    assert.deepEqual(await repo.listMyUpvotes('u1'), []);
 });
