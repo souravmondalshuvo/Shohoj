@@ -1480,16 +1480,20 @@ export default {
           origin,
         );
       }
+      // Every routed response carries the same correlation id as the logs, so a
+      // client that reports "request <id> failed" can be traced end to end —
+      // not just error/health responses. withRequestId stamps the header on the
+      // handler's own Response without the handlers having to thread it through.
       if (request.method === 'POST' && url.pathname === '/upload')
-        return await handleUpload(request, env, origin, ctx);
+        return withRequestId(await handleUpload(request, env, origin, ctx), requestId);
       if (request.method === 'GET' && url.pathname === '/download')
-        return await handleDownload(request, env, origin);
+        return withRequestId(await handleDownload(request, env, origin), requestId);
       if (request.method === 'DELETE' && url.pathname === '/file')
-        return await handleDelete(request, env, origin);
+        return withRequestId(await handleDelete(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/reviews')
-        return await handleReview(request, env, origin);
+        return withRequestId(await handleReview(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
-        return await handleAssistant(request, env, origin);
+        return withRequestId(await handleAssistant(request, env, origin), requestId);
       return jsonResponse(
         { error: 'Not found' },
         { status: 404, headers: { 'X-Request-Id': requestId } },
@@ -1520,6 +1524,21 @@ export default {
     }
   },
 };
+
+// Stamp the correlation id onto a handler's Response. Responses built by this
+// Worker are always fresh (never a cached/immutable body), so mutating the
+// header set is safe. Only sets it when absent, so a handler that already chose
+// an id wins.
+function withRequestId(response, requestId) {
+  try {
+    if (response && response.headers && !response.headers.has('X-Request-Id')) {
+      response.headers.set('X-Request-Id', requestId);
+    }
+  } catch {
+    /* immutable/streamed response — leave it as-is */
+  }
+  return response;
+}
 
 // crypto.randomUUID is available in the Workers runtime; fall back defensively
 // so tests running on older Node still get a unique-enough token.
