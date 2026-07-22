@@ -240,12 +240,16 @@ function cleanOptionalFacultyInitials(value) {
 // Strip control chars (incl. CR/LF) and clamp length. Used for any uploader-
 // controlled string that ends up in an outbound HTTP header value (e.g. the
 // Resend email subject line).
+// Matching control characters is the whole point here (CR/LF header injection
+// defence), so no-control-regex is intentionally disabled. Pinned to its own
+// const so the disable directive stays glued to the regex regardless of how the
+// call site below is wrapped by the formatter.
+// eslint-disable-next-line no-control-regex
+const HEADER_CONTROL_CHARS_RE = /[\x00-\x1F\x7F]/g;
+
 function sanitizeHeaderValue(s, max = 200) {
-  // Matching control characters is the whole point here (CR/LF header injection
-  // defence), so no-control-regex is intentionally disabled for this line.
-  // eslint-disable-next-line no-control-regex
   return String(s ?? '')
-    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    .replace(HEADER_CONTROL_CHARS_RE, ' ')
     .slice(0, max);
 }
 
