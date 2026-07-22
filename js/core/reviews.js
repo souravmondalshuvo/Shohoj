@@ -94,9 +94,12 @@ export async function sha256Hex(input) {
     .join('');
 }
 
-// Salted per-(user, faculty, course) hash. Two reviews by the same user for
-// different courses produce uncorrelated hashes, which makes cross-review
-// linkage by hash harder than a single uid-only hash would be.
+// Deterministic (UNSALTED) per-(user, faculty, course) SHA-256 hash — there is
+// no secret key. Two reviews by the same user for different courses produce
+// different hashes, so a third-party reader cannot trivially group one user's
+// reviews together; but because the input is reproducible by anyone who knows a
+// candidate uid, this is pseudonymity to other users, not anonymity. See
+// docs/SECURITY.md.
 export async function reviewKeyHash(uid, facultyInitials, courseCode) {
   return sha256Hex(
     `${uid || 'anon'}|${normalizeInitials(facultyInitials)}|${String(courseCode || '').toUpperCase()}`
@@ -104,8 +107,9 @@ export async function reviewKeyHash(uid, facultyInitials, courseCode) {
 }
 
 // Build both the deterministic doc ID and the Firestore-bound body.
-// The uid is encoded into the doc ID (as a salted hash) and is NOT stored
-// in the body — this avoids shipping a reusable user identifier in public docs.
+// The uid is encoded into the doc ID (as a deterministic, unsalted hash) and is
+// NOT stored in the body — this avoids shipping a reusable user identifier in
+// public docs.
 export async function buildReviewDoc(payload, uid) {
   const facultyInitials = normalizeInitials(payload.facultyInitials);
   const courseCode      = normalizeCourseCode(payload.courseCode);
