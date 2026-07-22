@@ -14,12 +14,38 @@
 //     `${feedbackId}_${uid}` id (one vote per user per item).
 
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
+import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
 import {
   BOARD_LIMIT,
   isFeedbackType,
   type FeedbackDraft,
   type FeedbackItem,
 } from '../../core/feedback.ts';
+
+/**
+ * Map a raw Firestore rejection to the typed hierarchy, so a failed board read
+ * is distinguishable from an empty board. See the equivalent note in
+ * reviewsRepo.ts — these reads used to `catch { return [] }`, which rendered an
+ * outage as "No feedback yet".
+ */
+function toFeedbackError(cause: unknown): ShohojError {
+  const code =
+    typeof (cause as { code?: unknown })?.code === 'string' ? (cause as { code: string }).code : '';
+  if (code === 'permission-denied' || code === 'unauthenticated') {
+    return new PermissionError(`feedback read denied: ${code}`, { cause });
+  }
+  return new FirebaseUnavailableError(`feedback read failed: ${code || 'unknown'}`, { cause });
+}
+
+async function readOrThrow<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (cause) {
+    const error = toFeedbackError(cause);
+    console.warn(`[feedbackRepo] ${error.code}`);
+    throw error;
+  }
+}
 
 export interface FeedbackUpvote {
   feedbackId: string;
@@ -142,19 +168,12 @@ export function createFeedbackRepo(options: FeedbackRepoOptions): FeedbackRepo {
 
   return {
     async listRecent() {
-      try {
-        return await (await load()).listRecent(BOARD_LIMIT);
-      } catch {
-        // A failed read behaves like "no feedback" (lostFoundRepo parity).
-        return [];
-      }
+      // Rejects with a typed ShohojError on a real failure so the route can
+      // tell "board is empty" from "board failed to load".
+      return await readOrThrow(async () => (await load()).listRecent(BOARD_LIMIT));
     },
     async listMyUpvotes(uid) {
-      try {
-        return await (await load()).listMyUpvotes(uid);
-      } catch {
-        return [];
-      }
+      return await readOrThrow(async () => (await load()).listMyUpvotes(uid));
     },
     async submit(draft, uid) {
       await (await load()).submit(draft, uid);
