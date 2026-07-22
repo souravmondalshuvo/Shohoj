@@ -96,12 +96,46 @@ Repository or (preferred) `production`-environment secrets:
 ### Worker (required for `deploy-worker`)
 `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`.
 
-### Firestore rules/index deploy (optional — job skips safely if absent)
+### Worker runtime secret (Assistant — set via Wrangler, NOT a GitHub secret)
+`ANTHROPIC_API_KEY` powers `POST /api/assistant`. It is a **Cloudflare Worker
+secret**, set directly on the Worker — it never enters the repo, CI, or GitHub
+secrets. Until it is set, the Worker returns 503 for assistant turns and the
+in-app launcher stays hidden (`GET /ready` reports `assistant: false`). To set
+it (owner-only):
+
+```
+cd worker
+npx wrangler secret put ANTHROPIC_API_KEY   # paste the key when prompted
+```
+
+Verify with `npx wrangler secret list` (shows the **name** only) and by
+confirming `GET <worker>/ready` reports `capabilities.assistant: true`. Once
+set, flip the `deploy-worker` smoke step to enforce it by setting the repo
+variable `REQUIRE_ASSISTANT=1` (Settings → Secrets and variables → Actions →
+Variables), so a future deploy can never silently ship the Assistant
+unconfigured again. Tracks issue #455.
+
+### Firestore rules/index deploy (required when rules/indexes change — job now FAILS CLOSED)
 `FIREBASE_SERVICE_ACCOUNT` — the JSON of a service account with the
 *Firebase Rules Admin* + *Cloud Datastore Index Admin* roles (or *Firebase
 Admin*). Create it in **Firebase Console → Project settings → Service accounts →
 Generate new private key**, then paste the whole JSON as the secret value. Never
 commit this file. See [ROLLBACK.md](ROLLBACK.md) for the rules-rollback path.
+
+> **Behaviour change:** `deploy-firestore` previously skipped with a warning
+> when this secret was absent, leaving a green pipeline over stale production
+> rules. It now **errors** if the rules/indexes changed on `main` but the secret
+> is missing — a required security-rules deploy can no longer silently no-op.
+> The job still only runs when `firestore.rules`/`firestore.indexes.json`
+> actually changed, so an unrelated push is unaffected.
+
+### App Check enforcement (Firebase console — not in this repo)
+The client initializes App Check, but **enforcement** is a Firebase console
+setting. Until it is switched from monitor to enforce and verified, un-attested
+traffic with a valid ID token is still served. Firebase Console →
+**App Check** → per-product (Firestore) → set to **Enforce** once monitor-mode
+metrics look clean. This cannot be asserted from the repo; treat it as pending
+until verified in the console. See [SECURITY.md](SECURITY.md).
 
 > Prefer short-lived Workload Identity Federation over a long-lived key if/when
 > you set up a GCP↔GitHub OIDC trust; this repo does not assume it exists.
