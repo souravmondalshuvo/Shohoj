@@ -46,6 +46,19 @@ const signedIn = async (page) => {
   }, VALID_GLOBALS);
 };
 
+// The launcher now also requires the Worker's readiness probe (GET /ready) to
+// report the Assistant configured (#455). Stub it so the "configured" tests
+// see the launcher; the routes below override it to exercise the hidden cases.
+const readyReports = async (page, assistant) => {
+  await page.route('**/ready', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok', capabilities: { assistant } }),
+    }),
+  );
+};
+
 test('the offline shell renders no assistant launcher', async ({ page }) => {
   await page.goto('/', { waitUntil: 'networkidle' });
   await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
@@ -64,8 +77,27 @@ test('a signed-out cloud shell renders no assistant launcher', async ({ page }) 
   await expect(page.locator('.assistant-fab')).toHaveCount(0);
 });
 
+test('signed in but assistant unconfigured: no launcher (#455)', async ({ page }) => {
+  await signedIn(page);
+  await readyReports(page, false);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // Wait for auth to settle (the account menu appears) so we know the launcher
+  // had its chance to render, then assert it did not.
+  await expect(page.locator('.shell-auth')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toHaveCount(0);
+});
+
+test('signed in but readiness probe fails: no launcher (conservative)', async ({ page }) => {
+  await signedIn(page);
+  await page.route('**/ready', (route) => route.fulfill({ status: 500, body: 'boom' }));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.shell-auth')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toHaveCount(0);
+});
+
 test('signed in: example prompt round-trips through the endpoint with the bearer token', async ({ page }) => {
   await signedIn(page);
+  await readyReports(page, true);
 
   const requests = [];
   await page.route('**/api/assistant', async (route) => {
@@ -113,6 +145,7 @@ test('signed in: example prompt round-trips through the endpoint with the bearer
 
 test('signed in: a failing endpoint surfaces the unavailable error state', async ({ page }) => {
   await signedIn(page);
+  await readyReports(page, true);
   await page.route('**/api/assistant', (route) =>
     route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"assistant_unavailable"}' }),
   );
