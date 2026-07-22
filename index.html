@@ -6,10 +6,20 @@
        so guard against framing in JS: keep the page hidden until we confirm
        we're the top window, then try to break out of any frame. A sandboxed
        frame that blocks top-navigation simply leaves the page hidden — there is
-       nothing to click-jack. build3.py hashes this inline script into the CSP. -->
+       nothing to click-jack. The one exception is the developer's own portfolio,
+       which embeds this page as a live demo; document.referrer is set by the
+       browser and can't be spoofed to claim a different origin, so this stays
+       safe against real clickjacking attempts from anywhere else.
+       build3.py hashes this inline script into the CSP. -->
   <style id="antiClickjack">body{display:none !important;}</style>
   <script>
-    if (self === top) {
+    var trustedFramer = false;
+    if (document.referrer) {
+      try {
+        trustedFramer = ['https://souravmondalshuvo.github.io', 'http://localhost:5173'].indexOf(new URL(document.referrer).origin) !== -1;
+      } catch (e) {}
+    }
+    if (self === top || trustedFramer) {
       var n = document.getElementById('antiClickjack');
       n.parentNode.removeChild(n);
     } else {

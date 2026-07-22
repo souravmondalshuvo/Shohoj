@@ -901,4 +901,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initReveal();
   initCursor();
   initDotMatrix(document.getElementById('themeToggle'));
+
+  // Auto-launch demo mode when embedded via ?demo=1 (e.g. the portfolio
+  // site's live preview iframe). Skipped if local data already exists, so it
+  // never overwrites a returning user's own semesters.
+  if (new URLSearchParams(window.location.search).get('demo') === '1' && state.semesters.length === 0) {
+    startDemoMode();
+  }
 });
