@@ -14,12 +14,10 @@
 <p align="center">
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/Status-v0.5.0-2ECC71?style=flat-square" alt="Status" />
-  <img src="https://img.shields.io/badge/Stack-HTML%20·%20CSS%20·%20JS%20·%20Firebase-3498DB?style=flat-square" alt="Stack" />
+  <img src="https://img.shields.io/badge/Stack-TypeScript%20·%20React%20·%20Firebase%20·%20Cloudflare-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/Departments-16%20Supported-9B59B6?style=flat-square" alt="Departments" />
   <img src="https://img.shields.io/badge/Courses-857%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
-  <img src="https://img.shields.io/badge/Tests-800%2B%20unit%2Fworker%20%2B%2077%20rules%20%2B%20190%2B%20E2E-2ECC71?style=flat-square" alt="Tests" />
 </p>
 
 ---
@@ -42,7 +40,31 @@
 
 ## My Role
 
-Solo developer responsible for frontend, Firebase authentication, Firestore database structure, security rules, Cloudflare Worker integration, CI/CD, testing, documentation, and product design.
+Solo developer. I built and maintain the frontend, the Firebase auth and
+Firestore data model, the security rules, the Cloudflare Worker, the CI/CD
+pipeline, the test suites, the documentation, and the product design.
+
+## Current status
+
+Shohoj is a live, single-maintainer project. An honest snapshot of what is
+shipping versus in progress:
+
+- **Two frontends coexist, on purpose.** The production app people use today is
+  a vanilla-JS application bundled by `build3.py` into `shohoj.html`. A typed
+  **React + TypeScript + React Router** rewrite lives alongside it under `src/`
+  and is deployed to a beta path (`/app/`). The React shell has reached parity
+  on most routes but is **not yet the default root** — the cutover is a
+  deliberate, still-pending step (see [docs/architecture/](docs/architecture/)).
+- **The in-app Assistant is gated on its backend.** The chat UI only appears
+  when the Worker reports its Anthropic key is configured (`GET /ready`); until
+  the key is set on the deployed Worker it is intentionally hidden rather than
+  shown-and-broken.
+- **Some features depend on external data feeds** (live seat status, free rooms)
+  that are third-party and best-effort.
+- **No claim of a user base.** This is a portfolio-grade project built for
+  BRACU students; adoption numbers are not tracked or advertised.
+
+See [Features — What's Live Today](#features--whats-live-today) and the [Roadmap](#roadmap) below for the per-feature breakdown.
 
 ---
 
@@ -405,23 +427,42 @@ Shohoj is built to feel like a real product, not a student project.
 
 | Layer       | Technology                                            | Purpose                                                |
 | ----------- | ----------------------------------------------------- | ------------------------------------------------------ |
-| Frontend    | HTML, CSS, Vanilla JavaScript                         | Zero-dependency, fast, portable                        |
+| Shipping frontend | HTML, CSS, vanilla JavaScript (bundled by `build3.py`) | The production app people use today (`shohoj.html`)    |
+| Beta frontend | TypeScript, React 19, React Router, Vite            | The typed rewrite under `src/`, deployed to `/app/` (not yet the default root) |
+| Validation  | [Zod](https://zod.dev/)                               | Runtime schema validation for imported/restored data   |
 | Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
-| PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/) v3.11.174 | Reading BRACU transcript PDFs                          |
-| PDF Export  | [jsPDF](https://github.com/parallax/jsPDF) v2.5.1     | Generating grade report PDFs                           |
-| Charts      | [Chart.js](https://www.chartjs.org/) v4.4.0           | Admin dashboard and analytics visualizations           |
-| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete and server-mediated review writes |
-| Build       | Python (`build3.py`)                                  | Bundles all modules into deployable HTML files (shohoj / admin / profile) |
-| Hosting     | GitHub Pages                                          | Free, fast, always available                           |
-| Testing     | Node.js + Playwright + `@firebase/rules-unit-testing` | Unit tests across app logic and Worker validation, browser E2E tests, plus Firestore rules tests against the Firebase emulator |
+| PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
+| PDF Export  | [jsPDF](https://github.com/parallax/jsPDF)            | Generating grade report PDFs                            |
+| Charts      | [Chart.js](https://www.chartjs.org/)                  | Admin dashboard and analytics visualizations           |
+| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, and the Assistant relay |
+| Assistant   | Anthropic Claude (Haiku) via the Worker               | In-app assistant; the key lives only on the Worker, never in the client |
+| Build       | Python (`build3.py`) + Vite                           | `build3.py` bundles the shipping app; Vite builds the React shell/pages |
+| Hosting     | GitHub Pages                                          | Static hosting for both the shipping app and the `/app/` beta |
+| Testing     | Node.js test runner + Playwright + `@firebase/rules-unit-testing` | Unit tests (app logic + Worker), browser E2E, and Firestore rules tests against the emulator |
 | CI / CD     | GitHub Actions + GitHub Pages                         | One pipeline: full validation on every PR/push; deploy only after it passes, on push to main |
-| Code scanning | CodeQL (default setup) + dependency review          | Static analysis and PR dependency-vulnerability gate   |
 
-CDN scripts are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering.
+CDN scripts in the shipping app are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering; the React shell bundles its dependencies through Vite instead.
 
-**Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, checking out the exact validated commit — so a red suite makes production deployment impossible. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
+**Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, format check, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, so a red suite blocks production deployment. Firestore rules/index deploys **fail closed** — if the rules changed but the deploy credentials are missing, the job errors rather than reporting a green deploy over stale production rules. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test; the Worker deploy runs its own `/health` + `/ready` smoke check. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
 
-The TypeScript/React migration is now underway and lives alongside the shipping app under `src/` — a parallel, typed implementation comprising a typed domain core (parity-tested against the legacy logic), a React calculator island, and a React Router shell that hosts the migrated `/calculator` route. All of it is **opt-in and not yet the default UI**: the vanilla `js/` app is still what `build3.py` bundles and ships, so production stays stable while the rewrite is validated incrementally. See [docs/architecture/](docs/architecture/) for the migration roadmap, target architecture, and decision records.
+> **Note on multi-service deploys.** The frontend, the Worker, and the Firestore
+> rules deploy as three independent, path-filtered jobs — this is **not** an
+> atomic multi-service release. A push that touches all three can land them at
+> slightly different times; each has its own post-deploy check and rollback path.
+
+> **Static analysis / secret scanning** (CodeQL / GitHub code scanning, secret
+> scanning, push protection, Dependabot alerts) are **repository settings**, not
+> workflow files in this repo, so their status cannot be asserted from the code.
+> Dependency review runs as a workflow (`dependency-review.yml`). See
+> [docs/GITHUB_SECURITY_SETTINGS.md](docs/GITHUB_SECURITY_SETTINGS.md) for the
+> exact enablement checklist.
+
+**On the two frontends:** the vanilla `js/` app is still what `build3.py` bundles
+and ships, so production stays stable while the typed rewrite is validated. The
+React shell (`src/`) — a parity-tested typed domain core, feature slices, and a
+React Router shell — has migrated most routes and is deployed to `/app/`, but is
+**not yet the default root**. See [docs/architecture/](docs/architecture/) for the
+migration roadmap, target architecture, and decision records.
 
 ### Architecture at a glance
 
@@ -468,7 +509,7 @@ For a deeper breakdown see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); for wha
 
 ## Security
 
-Shohoj has been through a security audit and the following protections are in place across the codebase:
+Shohoj has been through a self-directed security review (no external audit is claimed), and the following protections are in place across the codebase. For the precise threat model — including what is **not** covered — see [docs/SECURITY.md](docs/SECURITY.md):
 
 - **XSS prevention** — all user-sourced strings (course names, semester labels, PDF-imported data, error messages) are escaped via `escHtml()` and `escAttr()` helpers in `helpers.js` before any `innerHTML` insertion.
 - **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
@@ -477,8 +518,8 @@ Shohoj has been through a security audit and the following protections are in pl
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
 - **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable by BRACU accounts, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
-- **Anonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic SHA-256 hash of `uid + faculty + course`, which reduces cross-review linkage compared with a single reusable user hash.
-- **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules and App Check, not by hiding the web config.
+- **Pseudonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic, **unsalted** SHA-256 of `uid | faculty | course` (there is no secret salt — the determinism is what enforces one review per user/faculty/course). This is pseudonymity to other users, **not** anonymity: a project admin can correlate writes, and anyone who already knows a UID can reproduce the hash. Full detail in [docs/SECURITY.md](docs/SECURITY.md).
+- **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules (and App Check once console enforcement is verified — see [docs/SECURITY.md](docs/SECURITY.md)), not by hiding the web config.
 
 ---
 
@@ -626,7 +667,7 @@ Shohoj/
 ├── firestore.rules               Firestore security rules
 ├── firestore.indexes.json        Required Firestore composite indexes
 ├── firebase.json                 Firestore emulator config
-├── tests/                        81 unit/worker suites (800+ tests). Representative:
+├── tests/                        Node test-runner unit suites (see the CI badge for pass status). Representative:
 │   ├── calculator.test.js        GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            department detection, semester parsing, blob parser
 │   ├── planner.test.js           prereq resolution, plan validation
