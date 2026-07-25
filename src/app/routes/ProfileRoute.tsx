@@ -1,11 +1,11 @@
 // src/app/routes/ProfileRoute.tsx
 //
 // Account hub (Phase 6 shell migration of the legacy profileTab.js, #397 /
-// #196). This first slice ports the auth gate, the account header, and the
-// saved-routine summary (read from the migrated Routine route's storage). The
-// seat watchlist + email-alert toggle and the student's own reviews are
-// deferred follow-up slices — the watchlist depends on the seat-watch feature
-// landing on the Seats route first.
+// #196). Ports the auth gate, the account header, the saved-routine summary
+// (read from the migrated Routine route's storage), the seat watchlist +
+// email-alert toggle, and the student's own submitted reviews (read from the
+// local receipt the review submit flow writes — the same list the legacy
+// profileTab.js "Your reviews" card showed).
 //
 // Auth-gated: signed-out students see a sign-in prompt (the actual sign-in
 // control lives in the header). Signed-in students see their hub.
@@ -22,6 +22,7 @@ import {
   SEAT_WATCH_STORAGE_KEY,
   type WatchEntry,
 } from '../../core/seatWatch';
+import { readMyReviews, type MyReviewEntry } from '../../features/calculator/myReviewsReceipt';
 
 const ROUTINE_STORAGE_KEY = 'shohoj_routine_picks_v1';
 // Email-alert channel on/off, shared with the legacy Seats tab. Absent → armed.
@@ -59,9 +60,22 @@ function readRoutineSummary(): RoutineSummary {
   }
 }
 
+// The student's own submitted reviews, read from the local receipt the review
+// submit flow writes (`shohoj_my_reviews_v1`, keyed by uid). Storage-off / a
+// foreign uid just reads as an empty list.
+function readOwnReviews(uid: string | null | undefined): MyReviewEntry[] {
+  if (!uid) return [];
+  try {
+    return readMyReviews(localStorage, uid);
+  } catch {
+    return [];
+  }
+}
+
 export function Component() {
   const auth = useAuth();
   const routine = useMemo(readRoutineSummary, []);
+  const reviews = useMemo(() => readOwnReviews(auth.uid), [auth.uid]);
   const [watches, setWatches] = useState<WatchEntry[]>(() => {
     try {
       return parseWatches(localStorage.getItem(SEAT_WATCH_STORAGE_KEY));
@@ -228,11 +242,44 @@ export function Component() {
           )}
         </section>
 
-        <section className="profile-card profile-card--soon" aria-labelledby="profile-soon-heading">
-          <h2 id="profile-soon-heading" className="profile-card-title">
-            Coming soon
+        <section
+          className="profile-card"
+          data-testid="profile-reviews-card"
+          aria-labelledby="profile-reviews-heading"
+        >
+          <h2 id="profile-reviews-heading" className="profile-card-title">
+            Your reviews
           </h2>
-          <p className="shell-muted">Your own submitted reviews move here in an upcoming update.</p>
+          {reviews.length === 0 ? (
+            <p className="shell-muted" data-testid="profile-reviews-empty">
+              You haven&apos;t written any reviews yet. Rate a faculty from the{' '}
+              <Link to="/calculator">Calculator</Link>.
+            </p>
+          ) : (
+            <>
+              <p className="shell-muted" data-testid="profile-reviews-count">
+                {reviews.length} written.
+              </p>
+              <ul className="profile-watchlist" data-testid="profile-reviews">
+                {reviews.map((r, i) => (
+                  <li
+                    className="profile-watch-item"
+                    key={r.id ?? `${r.facultyInitials}|${r.courseCode}|${i}`}
+                  >
+                    <span className="profile-watch-label">
+                      <strong>{r.facultyInitials}</strong>
+                      {` · ${r.courseCode}`}
+                      {r.semester ? ` · ${r.semester}` : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="profile-alert-note shell-muted">
+                Reviews are pseudonymous and can&apos;t be edited after posting. This list is kept
+                privately in this browser.
+              </p>
+            </>
+          )}
         </section>
       </div>
 
