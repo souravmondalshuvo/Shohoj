@@ -51,6 +51,14 @@ function seedWatchOne(page) {
   });
 }
 
+// Seed the local "my reviews" receipt for the signed-in uid (u_test) — the same
+// `shohoj_my_reviews_v1` map the review submit flow writes.
+function seedReviews(page, entries) {
+  return page.addInitScript((rows) => {
+    localStorage.setItem('shohoj_my_reviews_v1', JSON.stringify({ u_test: rows }));
+  }, entries);
+}
+
 test('signed-out students see the sign-in prompt, not the hub', async ({ page }) => {
   await page.goto('/profile', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('profile-page')).toBeVisible();
@@ -161,4 +169,31 @@ test('signing in retroactively arms alerts for already-watched sections', async 
   const first = await page.evaluate(() => window.__seatAlertCalls[0]);
   expect(first.enabled).toBe(true);
   expect(first.sections).toEqual([{ id: 1, code: 'CSE110', name: '01' }]);
+});
+
+test('the reviews card is empty with no submitted reviews', async ({ page }) => {
+  await signIn(page);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('profile-reviews-card')).toBeVisible();
+  await expect(page.getByTestId('profile-reviews-empty')).toBeVisible();
+  await expect(page.getByTestId('profile-reviews')).toHaveCount(0);
+});
+
+test('the reviews card lists the student own submitted reviews', async ({ page }) => {
+  await signIn(page);
+  await seedReviews(page, [
+    { id: 'r1', facultyInitials: 'MHK', courseCode: 'CSE110', semester: 'Fall 2024', at: 1 },
+    { id: 'r2', facultyInitials: 'ANM', courseCode: 'MAT110', semester: '', at: 2 },
+  ]);
+  await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByTestId('profile-reviews-empty')).toHaveCount(0);
+  await expect(page.getByTestId('profile-reviews-count')).toContainText('2 written');
+
+  const list = page.getByTestId('profile-reviews');
+  await expect(list.locator('.profile-watch-item')).toHaveCount(2);
+  await expect(list).toContainText('MHK');
+  await expect(list).toContainText('CSE110 · Fall 2024');
+  // A blank semester renders just the course code, no trailing separator.
+  await expect(list).toContainText('ANM · MAT110');
 });
