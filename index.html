@@ -16,7 +16,12 @@
     var trustedFramer = false;
     if (document.referrer) {
       try {
-        trustedFramer = ['https://souravmondalshuvo.github.io', 'http://localhost:5173'].indexOf(new URL(document.referrer).origin) !== -1;
+        trustedFramer = [
+          'https://souravmondalshuvo.com',
+          'https://www.souravmondalshuvo.com',
+          'https://souravmondalshuvo.github.io',
+          'http://localhost:5173',
+        ].indexOf(new URL(document.referrer).origin) !== -1;
       } catch (e) {}
     }
     if (self === top || trustedFramer) {
