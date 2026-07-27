@@ -14,6 +14,11 @@ export const DECORATIVE = [
   '#cursor-glow',
   '.orb', // three CSS-animated gradient blobs
   '#scroll-progress',
+  // Legacy-only chrome, not animation: the nav's "✦ New app · beta" link exists
+  // solely to advertise the shell. Once the shell replaces legacy at the root
+  // there is no separate new app to link to, so it has no counterpart to match
+  // and is excluded rather than faked.
+  '.nav-beta',
 ];
 
 /** Every element the legacy reveal system toggles `.visible` on. */
