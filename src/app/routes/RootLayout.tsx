@@ -159,7 +159,9 @@ function ShellChrome() {
           to be legacy's, not the shell's former flat link list. The 19 routes
           live in <ShellTabs /> below, exactly as legacy puts them in .calc-tabs
           rather than the nav. */}
-      <nav className="lg-surface">
+      {/* aria-label names the landmark: legacy omits it, but it costs no pixels
+          and the shell's a11y guards assert a labelled Primary navigation. */}
+      <nav className="lg-surface" aria-label="Primary">
         <NavLink to="/" className="nav-logo" aria-label="Shohoj home" end>
           <div className="nav-logo-mark">স</div>
           <span className="nav-logo-text">
