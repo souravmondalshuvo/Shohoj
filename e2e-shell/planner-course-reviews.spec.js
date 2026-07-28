@@ -10,12 +10,14 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 async function openPlannerWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
   await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByRole('heading', { name: 'Semester Planner' })).toBeVisible();
   return page.getByTestId('planner-page');
 }

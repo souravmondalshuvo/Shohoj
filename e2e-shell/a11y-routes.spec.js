@@ -11,6 +11,8 @@
 // signed-in state via the RootLayout auth seam).
 
 import { expect, test } from '@playwright/test';
+
+import { navigateTo } from './_nav.js';
 import AxeBuilder from '@axe-core/playwright';
 
 // Serious/critical only, color-contrast excluded (no visual system yet).
@@ -45,7 +47,7 @@ test('@a11y Planner route has no serious/critical violations', async ({ page }) 
   await gotoHome(page);
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
   await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByRole('heading', { name: 'Semester Planner' })).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
@@ -77,7 +79,7 @@ test('@a11y Reviews route (directory over a stub feed) has no serious/critical v
     };
   });
   await gotoHome(page);
-  await page.getByRole('link', { name: 'Reviews', exact: true }).click();
+  await navigateTo(page, 'Reviews');
   await expect(page.getByTestId('reviews-directory')).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);

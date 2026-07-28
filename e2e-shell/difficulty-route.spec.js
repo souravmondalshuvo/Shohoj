@@ -7,6 +7,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 function installRecent(page, reviews) {
   return page.addInitScript((seed) => {
     window.__shohojReviewsRepo = {
@@ -41,7 +43,7 @@ const r = (code, diff, load) => ({
 async function openDifficulty(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
-  await page.getByRole('link', { name: 'Difficulty', exact: true }).click();
+  await navigateTo(page, 'Difficulty');
   await expect(page.getByRole('heading', { name: 'Course Difficulty Map' })).toBeVisible();
   return page.getByTestId('difficulty-page');
 }

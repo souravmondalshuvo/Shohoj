@@ -8,12 +8,14 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 async function openPlannerWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
   await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByRole('heading', { name: 'Semester Planner' })).toBeVisible();
   return page.getByTestId('planner-page');
 }
@@ -109,7 +111,7 @@ test('promote starts a running semester in the calculator and clears the plan', 
   await expect(container.getByRole('combobox').nth(6)).toHaveValue(/CSE221/);
 
   // Back on the planner the plan is gone.
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByTestId('planner-plan')).toHaveCount(0);
 });
 
@@ -122,7 +124,7 @@ test('promoting over an existing running semester asks and replaces it', async (
   await page.locator('.footer-btn-group').getByRole('button', { name: '🎯 Running Semester' }).click();
   await expect(container.getByText('🎯 Projected')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await page.getByTestId('planner-page').getByRole('button', { name: /Replace Running Semester/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
 
@@ -149,7 +151,7 @@ test('a plan edit persists across a reload', async ({ page }) => {
 test('empty states: no setup at all, and summary-only data', async ({ page }) => {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByText('Set up your department first')).toBeVisible();
 
   // Summary-only: totals exist but no completed courses.
@@ -161,6 +163,6 @@ test('empty states: no setup at all, and summary-only data', async ({ page }) =>
   await container.getByPlaceholder('e.g. 42').fill('60');
   await container.getByRole('button', { name: 'Confirm →' }).click();
 
-  await page.getByRole('link', { name: 'Planner', exact: true }).click();
+  await navigateTo(page, 'Planner');
   await expect(page.getByText('Add completed courses first')).toBeVisible();
 });

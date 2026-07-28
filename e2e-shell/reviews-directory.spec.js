@@ -7,6 +7,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 function installRecent(page, reviews) {
   return page.addInitScript((seed) => {
     window.__shohojReviewsRepo = {
@@ -40,7 +42,7 @@ const r = (fac, n) => ({
 async function openReviews(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
-  await page.getByRole('link', { name: 'Reviews', exact: true }).click();
+  await navigateTo(page, 'Reviews');
   await expect(page.getByRole('heading', { name: 'Faculty Reviews' })).toBeVisible();
   return page.getByTestId('reviews-page');
 }
