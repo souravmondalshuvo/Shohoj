@@ -102,7 +102,16 @@ export default function DegreeTracker() {
           </div>
         </div>
 
-        <div className="tracker-timeline-wrap">
+        {/* css/style.css:1073 makes this horizontally scrollable, so it needs to
+            be reachable by keyboard — a scrollable region that cannot be focused
+            is unusable without a pointer (axe: scrollable-region-focusable). The
+            group role plus label give the stop a meaningful announcement. */}
+        <div
+          className="tracker-timeline-wrap"
+          tabIndex={0}
+          role="group"
+          aria-label="Degree timeline (scrollable)"
+        >
           <div className="tracker-timeline">
             <div className="tracker-timeline-line"></div>
 
