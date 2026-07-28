@@ -14,6 +14,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 const WIDTHS = [360, 414];
 
 // Faculty reviews repo stub — a review body long enough to exercise wrapping
@@ -47,12 +49,10 @@ async function assertNoOverflow(page, label) {
   expect(overflows, `${label} overflows horizontally`).toBe(false);
 }
 
-// The nav collapses behind the "Menu" toggle under 720px; open it before
-// following a nav link.
-async function navigate(page, linkName) {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('link', { name: linkName, exact: true }).click();
-}
+// The flat link list and its "Menu" toggle are gone: the bar now mirrors
+// legacy's grouped tabs, so most routes have to have their dropdown opened
+// first. navigateTo handles both shapes.
+const navigate = navigateTo;
 
 for (const width of WIDTHS) {
   test.describe(`no horizontal overflow @ ${width}px`, () => {
