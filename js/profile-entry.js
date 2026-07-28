@@ -15,9 +15,69 @@
 
 import { renderProfileTab } from './ui/profileTab.js';
 import { initCursor } from './animations/cursor.js';
+import {
+  renderSemesterBriefing,
+  renderSemesterBriefingState,
+  sbcLoadingHtml,
+  sbcNoRoutineHtml,
+  sbcUnavailableHtml,
+} from './ui/semesterBriefingCard.js';
+import { fetchConnectFeed } from './core/connectFeedClient.js';
+import { buildRoomBusyIndex } from './core/freeRooms.js';
+
+// Where the Routine tab persists `{ picks: { COURSE: sectionId|null } }`.
+const PENTRY_ROUTINE_KEY = 'shohoj_routine_v1';
+const PENTRY_BRIEFING_HOST = 'pfBriefingHost';
 
 function _pentry_onProfilePage() {
   return document.body && document.body.dataset && document.body.dataset.page === 'profile';
+}
+
+/** Section ids the student actually picked. Unpicked courses persist as null. */
+function _pentry_pickedSectionIds() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(PENTRY_ROUTINE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const picks = (parsed && parsed.picks && typeof parsed.picks === 'object') ? parsed.picks : {};
+    return Object.values(picks).filter(v => typeof v === 'number' && Number.isFinite(v));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fill the briefing slot. Runs after the account hub paints so a slow or dead
+ * feed never delays the rest of the page — the slot carries its own loading,
+ * empty and unavailable states.
+ *
+ * The feed read is anonymous and cached (same client, same 10-minute TTL as the
+ * Seats and Routine tabs), so opening this page costs at most one extra request.
+ */
+async function _pentry_loadBriefing() {
+  if (!document.getElementById(PENTRY_BRIEFING_HOST)) return;
+
+  const pickedIds = _pentry_pickedSectionIds();
+  if (pickedIds.length === 0) {
+    renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcNoRoutineHtml());
+    return;
+  }
+
+  renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcLoadingHtml());
+  try {
+    const feed = await fetchConnectFeed();
+    const wanted = new Set(pickedIds);
+    const picked = feed.sections.filter(s => wanted.has(s.sectionId));
+    if (picked.length === 0) {
+      // Picks that no longer exist in the feed — a new semester has rolled over.
+      renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcNoRoutineHtml());
+      return;
+    }
+    renderSemesterBriefing(PENTRY_BRIEFING_HOST, picked, buildRoomBusyIndex(feed.sections), 'mid');
+  } catch {
+    renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcUnavailableHtml());
+  }
 }
 
 function _pentry_mountShell() {
@@ -40,7 +100,9 @@ function _pentry_mountShell() {
 function _pentry_route() {
   if (!_pentry_onProfilePage()) return;
   _pentry_mountShell();
-  renderProfileTab('profilePageContent', { includeSeatAlerts: false });
+  renderProfileTab('profilePageContent', { includeSeatAlerts: false, includeBriefing: true });
+  // Fire-and-forget: the briefing fills its own slot when the feed lands.
+  _pentry_loadBriefing();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
