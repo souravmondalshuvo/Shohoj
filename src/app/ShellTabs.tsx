@@ -167,7 +167,9 @@ export function ShellTabs() {
               className={({ isActive }) => (isActive ? 'calc-tab active' : 'calc-tab')}
               data-active-pill={pathname === entry.to ? 'true' : undefined}
             >
-              <span className="calc-tab-icon">{entry.icon}</span>
+              <span className="calc-tab-icon" aria-hidden="true">
+                {entry.icon}
+              </span>
               <span>{entry.label}</span>
             </NavLink>
           );
@@ -198,7 +200,9 @@ export function ShellTabs() {
                 else setOpenGroup(null);
               }}
             >
-              <span className="calc-tab-icon">{entry.icon}</span>
+              <span className="calc-tab-icon" aria-hidden="true">
+                {entry.icon}
+              </span>
               <span>{entry.label}</span>
               <span className="calc-tab-caret" aria-hidden="true">
                 ▾
@@ -214,7 +218,9 @@ export function ShellTabs() {
                     isActive ? 'calc-tab-menu-item active' : 'calc-tab-menu-item'
                   }
                 >
-                  <span className="calc-tab-icon">{item.icon}</span>
+                  <span className="calc-tab-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
                   <span>{item.label}</span>
                 </NavLink>
               ))}
