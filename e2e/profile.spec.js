@@ -169,3 +169,102 @@ test('the avatar falls back to the name initial when there is no photo', async (
   await expect(fallback).toBeVisible();
   await expect(fallback).toHaveText('K');
 });
+
+// ── "This semester" briefing (#476) ──────────────────────────────────────────
+// The briefing joins the student's saved routine picks against the live section
+// feed. Network stays blocked, so the feed is seeded into the client's cache
+// (fresh timestamp → no request). Fixture mirrors the real shape it was built
+// against: a Saturday gap, a Sunday floor hop, and two exams on one day.
+
+function briefingStub() {
+  window._shohoj_userProfile = () => ({
+    signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+  });
+
+  const section = (id, code, room, days, exam) => ({
+    sectionId: id, courseCode: code, courseName: code, sectionName: '01',
+    courseCredit: 3, capacity: 30, consumedSeat: 1, faculties: 'ABC',
+    roomName: room, semesterSessionId: 20262,
+    sectionSchedule: {
+      classSchedules: days.map(([day, startTime, endTime]) => ({ day, startTime, endTime })),
+      midExamDate: exam[0], midExamStartTime: exam[1], midExamEndTime: exam[2],
+      finalExamDate: '2026-09-14', finalExamStartTime: '08:30', finalExamEndTime: '10:30',
+    },
+  });
+
+  const payload = [
+    // Sat 08:00-09:20 … 4h40m gap … Sat 14:00-15:20 (different floor)
+    section(1, 'MAT215', '12A-08C', [['SATURDAY', '08:00', '09:20']], ['2026-07-27', '08:30', '10:30']),
+    section(2, 'CSE251', '07H-27C', [['SATURDAY', '14:00', '15:20']], ['2026-07-25', '16:30', '18:30']),
+    // Sun 14:00-15:20 → 10 min → 15:30-16:50, floor 12 → floor 09
+    section(3, 'MAT111', '12A-09C', [['SUNDAY', '14:00', '15:20']], ['2026-07-27', '14:00', '16:00']),
+    section(4, 'CSE220', '09A-01C', [['SUNDAY', '15:30', '16:50']], ['2026-07-26', '14:00', '16:00']),
+    // Unpicked sections — they supply the campus-wide room availability.
+    section(9, 'ECO101', '07B-12C', [['SUNDAY', '08:00', '09:20']], ['2026-07-28', '08:30', '10:30']),
+    section(10, 'ECO102', '07B-14C', [['SATURDAY', '16:00', '17:20']], ['2026-07-28', '11:00', '13:00']),
+  ];
+
+  localStorage.setItem('shohoj_connect_feed_v1', JSON.stringify({
+    fetchedAt: Date.now(), etag: null, payload,
+  }));
+  localStorage.setItem('shohoj_routine_v1', JSON.stringify({
+    picks: { MAT215: 1, CSE251: 2, MAT111: 3, CSE220: 4 },
+  }));
+}
+
+const BRIEF = '#pfBriefingHost';
+
+test('the briefing orders exams and flags the two that share a day', async ({ page }) => {
+  await boot(page, briefingStub);
+  const rows = page.locator(`${BRIEF} .pfb-row-code`);
+  await expect(rows).toHaveText(['CSE251', 'CSE220', 'MAT215', 'MAT111']);
+  await expect(page.locator(`${BRIEF} .pfb-chip.hot`)).toContainText('same day');
+});
+
+test('the exam switch flips to finals without refetching', async ({ page }) => {
+  await boot(page, briefingStub);
+  await expect(page.locator(`${BRIEF} .pfb-rows`)).toContainText('Sat 25 Jul');
+  await page.locator(`${BRIEF} [data-action="briefing:examKind"][data-kind="final"]`).click();
+  await expect(page.locator(`${BRIEF} .pfb-rows`)).toContainText('Mon 14 Sep');
+  await expect(page.locator(`${BRIEF} .pfb-seg[data-kind="final"]`)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('the week card measures contact time, dead time and campus days', async ({ page }) => {
+  await boot(page, briefingStub);
+  const stats = page.locator(`${BRIEF} .pfb-stats`);
+  await expect(stats).toContainText('5h 20m');  // 4 × 80-minute classes
+  await expect(stats).toContainText('4h 40m');  // the Saturday gap
+  await expect(stats).toContainText('2 / 6');   // campus days
+  await expect(stats).toContainText('08:00');   // earliest start
+});
+
+test('a tight transition across floors is called out', async ({ page }) => {
+  await boot(page, briefingStub);
+  const hop = page.locator(`${BRIEF} .pfb-hop`);
+  await expect(hop).toHaveCount(1);
+  await expect(hop).toContainText('12A-09C → 09A-01C');
+  await expect(hop).toContainText('3 floors down');
+  await expect(hop).toContainText('10m');
+});
+
+test('gap rooms prefer the floor of the next class', async ({ page }) => {
+  await boot(page, briefingStub);
+  const best = page.locator(`${BRIEF} .pfb-room.is-best`).first();
+  await expect(best).toContainText('07B-12C');   // floor 07, where CSE251 meets
+  await expect(best).toContainText('same floor');
+});
+
+test('the briefing invites a routine when none is saved', async ({ page }) => {
+  await boot(page, () => {
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+    });
+  });
+  await expect(page.locator(BRIEF)).toContainText('Pick your sections');
+  await expect(page.locator(`${BRIEF} .pfb-cta`)).toHaveAttribute('href', '../#routine');
+});
+
+test('signed-out users get no briefing at all', async ({ page }) => {
+  await boot(page);
+  await expect(page.locator(BRIEF)).toHaveCount(0);
+});
