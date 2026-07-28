@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-g7igHblnvyND4izxXIj1qPYxpl6nV3km2LLIETbfYJA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-IIEhRWT8wcO6v1sU79UEQ8D+xSQsbYHpud7lurJJVaQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -6966,6 +6966,321 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .pf-danger-btn:hover { background: rgba(231,76,60,0.12); border-color: rgba(231,76,60,0.8); }
 
+/* ═══ Profile — "This semester" briefing (#476) ═══ */
+.pf-briefing { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+
+.pfb-zone { display: flex; align-items: center; gap: 12px; margin: 4px 2px 2px; }
+.pfb-zone h2 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.pfb-zone::after { content: ''; flex: 1; height: 1px; background: var(--hairline); }
+.pfb-zone-sub { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+.pfb-card {
+  position: relative;
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0));
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.pfb-card:hover {
+  border-color: var(--border);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.pfb-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pfb-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.pfb-ico {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  background: rgba(46,204,113,0.12);
+  border: 1px solid var(--border);
+}
+
+/* The verdict line — the reason the card exists. */
+.pfb-verdict {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.pfb-verdict em { font-style: normal; color: var(--ink-amber); }
+.pfb-verdict b { color: var(--ink-green); font-weight: 700; }
+.pfb-verdict .hot { color: #e74c3c; }
+
+.pfb-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  color: var(--ink-green);
+  background: rgba(46,204,113,0.12);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.pfb-chip.warn { color: var(--ink-amber); background: rgba(241,196,15,0.12); border-color: rgba(241,196,15,0.32); }
+.pfb-chip.hot  { color: #e74c3c; background: rgba(231,76,60,0.12); border-color: rgba(231,76,60,0.35); }
+.pfb-chip.cool { color: var(--ink-blue); background: rgba(91,157,255,0.12); border-color: rgba(91,157,255,0.3); }
+
+.pfb-note { font-size: 11px; color: var(--text3); line-height: 1.55; }
+.pfb-empty { font-size: 12px; color: var(--text2); line-height: 1.55; padding: 4px 0; }
+.pfb-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+}
+.pfb-cta {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 17px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #06140b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: filter 0.2s;
+}
+.pfb-cta:hover { filter: brightness(1.08); }
+
+/* Midterms ⇄ Finals segmented switch */
+.pfb-toggle { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--border2); border-radius: 999px; }
+.pfb-seg {
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.pfb-seg:hover { color: var(--text); }
+.pfb-seg.is-on { background: rgba(46,204,113,0.14); color: var(--ink-green); }
+
+/* Exam rows */
+.pfb-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.pfb-row {
+  display: grid;
+  grid-template-columns: auto 62px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  transition: background 0.18s;
+}
+.pfb-row:hover { background: rgba(46,204,113,0.05); }
+.pfb-row + .pfb-row { border-top: 1px solid var(--hairline); }
+.pfb-row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(46,204,113,0.16);
+}
+.pfb-row-dot.hot { background: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,0.16); }
+.pfb-row-code { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; color: var(--text); }
+.pfb-row-when { font-size: 12px; color: var(--text2); }
+.pfb-row-when b { color: var(--text); font-weight: 600; }
+.pfb-row-meta { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+/* Week stats */
+.pfb-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 9px; }
+.pfb-stat {
+  padding: 11px 13px;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  background: rgba(46,204,113,0.04);
+  transition: border-color 0.2s, background 0.2s;
+}
+.pfb-stat:hover { border-color: var(--border); background: rgba(46,204,113,0.07); }
+.pfb-stat.alert { background: rgba(241,196,15,0.06); border-color: rgba(241,196,15,0.25); }
+.pfb-stat.alert .pfb-stat-n { color: var(--ink-amber); }
+.pfb-stat-n {
+  font-family: 'Syne', sans-serif;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--text);
+}
+.pfb-stat-l {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+}
+
+/* Week grid — 08:00→19:00, one column per teaching day */
+.pfb-week { display: grid; grid-template-columns: 38px repeat(6, 1fr); gap: 6px; }
+.pfb-week-h {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text3);
+  text-align: center;
+  padding-bottom: 4px;
+}
+.pfb-week-times { position: relative; height: 260px; }
+.pfb-week-times span {
+  position: absolute;
+  right: 4px;
+  font-size: 9px;
+  color: var(--text3);
+  transform: translateY(-50%);
+}
+.pfb-col {
+  position: relative;
+  height: 260px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+.pfb-col.is-off { background: transparent; border-style: dashed; }
+.pfb-blk {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 7px;
+  padding: 5px 6px;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(46,204,113,0.30), rgba(46,204,113,0.14));
+  border: 1px solid rgba(46,204,113,0.4);
+}
+.pfb-blk.is-lab {
+  background: linear-gradient(160deg, rgba(91,157,255,0.28), rgba(91,157,255,0.12));
+  border-color: rgba(91,157,255,0.42);
+}
+.pfb-blk-code { display: block; font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 800; line-height: 1.2; color: var(--text); }
+.pfb-blk-room { display: block; font-size: 8.5px; color: var(--text2); line-height: 1.3; margin-top: 1px; }
+.pfb-gap {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 7px;
+  border: 1px dashed var(--border2);
+  background: repeating-linear-gradient(45deg, transparent 0 5px, rgba(241,196,15,0.07) 5px 10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pfb-gap span { font-size: 9px; font-weight: 700; color: var(--ink-amber); text-align: center; line-height: 1.3; }
+
+/* Tight transitions */
+.pfb-hops { display: flex; flex-direction: column; gap: 8px; }
+.pfb-hop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(241,196,15,0.25);
+  background: rgba(241,196,15,0.05);
+  font-size: 12px;
+  color: var(--text);
+}
+.pfb-hop b { font-family: 'Syne', sans-serif; font-weight: 800; }
+.pfb-arrow { color: var(--ink-amber); font-weight: 700; }
+.pfb-hop-rooms { color: var(--text2); }
+.pfb-hop-min { margin-left: auto; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 800; color: var(--ink-amber); white-space: nowrap; }
+
+/* Where to wait */
+.pfb-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 11px; }
+.pfb-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 15px;
+  border: 1px solid var(--border2);
+  border-radius: 13px;
+  background: rgba(46,204,113,0.03);
+  transition: border-color 0.2s;
+}
+.pfb-slot:hover { border-color: var(--border); }
+.pfb-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.pfb-slot-when { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+.pfb-slot-why { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.pfb-slot-why b { color: var(--text); font-weight: 600; }
+.pfb-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
+.pfb-room {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--chip-border);
+  background: rgba(46,204,113,0.08);
+}
+.pfb-room.is-best { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.16); }
+.pfb-room.is-more { background: transparent; color: var(--text3); }
+.pfb-room small { color: var(--text3); font-weight: 500; margin-left: 5px; }
+
+/* Loading skeleton */
+.pfb-skel {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--skel-lo), var(--skel-hi), var(--skel-lo));
+  background-size: 200% 100%;
+  animation: pfbShimmer 1.4s linear infinite;
+}
+@keyframes pfbShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (max-width: 640px) {
+  .pfb-week { grid-template-columns: 30px repeat(6, 1fr); gap: 4px; }
+  .pfb-blk-room { display: none; }
+  .pfb-row { grid-template-columns: auto 58px 1fr; row-gap: 6px; }
+  .pfb-row-meta { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pfb-card { transition: none; }
+  .pfb-card:hover { transform: none; }
+  .pfb-skel { animation: none; }
+}
+
 </style>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
   </head>
@@ -10031,8 +10346,14 @@ function academicProfileSectionHtml(profile) {
 // opts.includeSeatAlerts (default true) lets the dedicated Profile page drop the
 // seat-alerts card: that card needs the Seats tab's live runtime globals, which
 // aren't loaded standalone — the Seats tab still owns the watchlist + toggle.
+//
+// opts.includeBriefing (default false) emits an empty slot above the cards for
+// the "This semester" block (#476), filled asynchronously by whoever holds the
+// section feed — profile-entry.js on the standalone page. Kept a slot rather
+// than a parameter so a slow or dead feed never delays the account hub.
 function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync, academic, opts = {}) {
   const includeSeatAlerts = opts.includeSeatAlerts !== false;
+  const includeBriefing = opts.includeBriefing === true;
   const p = profile || {};
   const name = p.displayName ? String(p.displayName) : 'BRACU student';
   const email = p.email ? String(p.email) : '';
@@ -10052,6 +10373,7 @@ function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync, ac
         </div>
         <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
       </div>
+      ${includeBriefing ? '<div id="pfBriefingHost" class="pf-briefing"></div>' : ''}
       <div class="pf-sections">
         ${academicProfileSectionHtml(academic)}
         ${includeSeatAlerts ? seatAlertsSectionHtml(seatAlerts) : ''}
@@ -10153,6 +10475,1170 @@ if (typeof window !== 'undefined') {
   window.addEventListener('shohoj:auth-changed', () => renderProfileTab());
 }
 
+// ── js/core/connectFeed.js ──────────────────────────────────────
+// Generated from src/core/connectFeed.ts for the vanilla JS runtime.
+// Update src/core/connectFeed.ts first, then regenerate this file.
+//
+// Pure helpers for parsing and reasoning about the live BRACU CONNECT section
+// data served by `usis-cdn.eniamza.com/connect.json`. I/O-free on purpose —
+// fetch/cache live in the runtime client.
+
+const WEEKDAYS = new Set([
+    'SATURDAY',
+    'SUNDAY',
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+]);
+
+function parseTimeToMinutes(value) {
+    if (typeof value !== 'string') return null;
+    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+}
+
+function normalizeDay(value) {
+    if (typeof value !== 'string') return null;
+    const upper = value.trim().toUpperCase();
+    return WEEKDAYS.has(upper) ? upper : null;
+}
+
+function normalizeSlots(raw, kind, room) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    for (const slot of raw) {
+        const day = normalizeDay(slot && slot.day);
+        const startMin = parseTimeToMinutes(slot && slot.startTime);
+        const endMin = parseTimeToMinutes(slot && slot.endTime);
+        if (day === null || startMin === null || endMin === null) continue;
+        if (endMin <= startMin) continue;
+        out.push({ day, startMin, endMin, kind, room });
+    }
+    return out;
+}
+
+function normalizeDateOnly(value) {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function normalizeExam(date, start, end) {
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const startMin = parseTimeToMinutes(start);
+    const endMin = parseTimeToMinutes(end);
+    if (startMin === null || endMin === null || endMin <= startMin) return null;
+    return { date, startMin, endMin };
+}
+
+function normalizeSection(raw) {
+    if (!raw || typeof raw.sectionId !== 'number') return null;
+    if (typeof raw.courseCode !== 'string' || raw.courseCode.trim() === '') return null;
+
+    const capacity = Number.isFinite(raw.capacity) ? Number(raw.capacity) : 0;
+    const consumedSeat = Number.isFinite(raw.consumedSeat) ? Number(raw.consumedSeat) : 0;
+
+    const schedule = raw.sectionSchedule || null;
+    // The feed rooms theory and lab separately: theory uses roomName, the lab
+    // component carries its own labRoomName. Tag each slot with its real room
+    // so a section's lab isn't mis-attributed to its theory classroom.
+    const roomName = (raw.roomName || raw.roomNumber || '').trim();
+    const labRoomName = (raw.labRoomName || '').trim() || roomName;
+    const theorySlots = normalizeSlots(schedule && schedule.classSchedules, 'theory', roomName);
+    const labSlots = normalizeSlots(raw.labSchedules, 'lab', labRoomName);
+    const classSlots = theorySlots.concat(labSlots);
+
+    const midExam = schedule
+        ? normalizeExam(schedule.midExamDate, schedule.midExamStartTime, schedule.midExamEndTime)
+        : null;
+    const finalExam = schedule
+        ? normalizeExam(schedule.finalExamDate, schedule.finalExamStartTime, schedule.finalExamEndTime)
+        : null;
+
+    return {
+        sectionId: raw.sectionId,
+        courseCode: raw.courseCode.trim().toUpperCase(),
+        courseName: (raw.courseName || '').trim(),
+        credits: Number.isFinite(raw.courseCredit) ? Number(raw.courseCredit) : 0,
+        sectionName: (raw.sectionName || '').trim(),
+        capacity,
+        consumedSeat,
+        isFull: capacity > 0 && consumedSeat >= capacity,
+        facultyInitials: (raw.faculties || '').trim().toUpperCase(),
+        roomName,
+        semesterSessionId:
+            typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
+        classSlots,
+        classStartDate: normalizeDateOnly(schedule && schedule.classStartDate),
+        classEndDate: normalizeDateOnly(schedule && schedule.classEndDate),
+        midExam,
+        finalExam,
+    };
+}
+
+function parseFeed(payload) {
+    if (!Array.isArray(payload)) return { sections: [], dropped: [] };
+    const sections = [];
+    const dropped = [];
+    for (const entry of payload) {
+        const normalized = normalizeSection(entry);
+        if (normalized) sections.push(normalized);
+        else if (entry && typeof entry.sectionId === 'number') {
+            dropped.push(entry.sectionId);
+        }
+    }
+    return { sections, dropped };
+}
+
+function indexByCourse(sections) {
+    const out = new Map();
+    for (const s of sections) {
+        const list = out.get(s.courseCode);
+        if (list) list.push(s);
+        else out.set(s.courseCode, [s]);
+    }
+    return out;
+}
+
+function listCourseCodes(index) {
+    return Array.from(index.keys()).sort();
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+    return aStart < bEnd && bStart < aEnd;
+}
+
+function hasClassClash(a, b) {
+    if (a.sectionId === b.sectionId) return false;
+    for (const sa of a.classSlots) {
+        for (const sb of b.classSlots) {
+            if (sa.day !== sb.day) continue;
+            if (rangesOverlap(sa.startMin, sa.endMin, sb.startMin, sb.endMin)) return true;
+        }
+    }
+    return false;
+}
+
+function hasExamClash(a, b) {
+    if (a.sectionId === b.sectionId) return false;
+    const pairs = [
+        [a.midExam, b.midExam],
+        [a.midExam, b.finalExam],
+        [a.finalExam, b.midExam],
+        [a.finalExam, b.finalExam],
+    ];
+    for (const [x, y] of pairs) {
+        if (!x || !y) continue;
+        if (x.date !== y.date) continue;
+        if (rangesOverlap(x.startMin, x.endMin, y.startMin, y.endMin)) return true;
+    }
+    return false;
+}
+
+function detectClashes(routine) {
+    const classClashes = [];
+    const examClashes = [];
+    for (let i = 0; i < routine.length; i++) {
+        for (let j = i + 1; j < routine.length; j++) {
+            const a = routine[i];
+            const b = routine[j];
+            const pair = a.sectionId < b.sectionId
+                ? [a.sectionId, b.sectionId]
+                : [b.sectionId, a.sectionId];
+            if (hasClassClash(a, b)) classClashes.push(pair);
+            if (hasExamClash(a, b)) examClashes.push(pair);
+        }
+    }
+    return { classClashes, examClashes };
+}
+
+function isClashFree(routine) {
+    const report = detectClashes(routine);
+    return report.classClashes.length === 0 && report.examClashes.length === 0;
+}
+
+function summarizeFeed(sections) {
+    const courses = new Set();
+    const faculty = new Set();
+    const sessions = new Set();
+    for (const s of sections) {
+        courses.add(s.courseCode);
+        if (s.facultyInitials) faculty.add(s.facultyInitials);
+        if (s.semesterSessionId !== null) sessions.add(s.semesterSessionId);
+    }
+    return {
+        totalSections: sections.length,
+        totalCourses: courses.size,
+        totalFaculty: faculty.size,
+        semesterSessionIds: Array.from(sessions).sort((a, b) => a - b),
+    };
+}
+
+// ── js/core/connectFeedClient.js ────────────────────────────────
+// Generated from src/core/connectFeedClient.ts for the vanilla JS runtime.
+// Update src/core/connectFeedClient.ts first, then regenerate this file.
+//
+// Thin wrapper around `usis-cdn.eniamza.com/connect.json` with a localStorage
+// TTL cache, ETag-aware refresh, and stale-cache fallback on network failure.
+// I/O-free helpers live in ./connectFeed.js; this module composes them.
+
+const DEFAULT_FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
+const DEFAULT_CACHE_KEY = 'shohoj_connect_feed_v1';
+const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function safeRead(storage, key) {
+    if (!storage) return null;
+    let raw;
+    try { raw = storage.getItem(key); }
+    catch { return null; }
+    if (typeof raw !== 'string' || raw.length === 0) return null;
+
+    let parsed;
+    try { parsed = JSON.parse(raw); }
+    catch { return null; }
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.fetchedAt !== 'number' || !Array.isArray(parsed.payload)) return null;
+
+    const etag = typeof parsed.etag === 'string' ? parsed.etag : null;
+    return { fetchedAt: parsed.fetchedAt, etag, payload: parsed.payload };
+}
+
+function safeWrite(storage, key, entry) {
+    if (!storage) return;
+    try { storage.setItem(key, JSON.stringify(entry)); }
+    catch { /* QuotaExceeded etc. — silent on purpose */ }
+}
+
+function safeRemove(storage, key) {
+    if (!storage) return;
+    try { storage.removeItem(key); }
+    catch { /* ignore */ }
+}
+
+function materialize(payload, source, fetchedAt, etag) {
+    const { sections, dropped } = parseFeed(payload);
+    const summary = summarizeFeed(sections);
+    return { sections, summary, source, fetchedAt, etag, dropped };
+}
+
+async function fetchConnectFeed(options = {}) {
+    const url = options.url ?? DEFAULT_FEED_URL;
+    const cacheKey = options.cacheKey ?? DEFAULT_CACHE_KEY;
+    const ttlMs = typeof options.ttlMs === 'number' ? options.ttlMs : DEFAULT_CACHE_TTL_MS;
+    const storage =
+        options.storage === undefined
+            ? (typeof localStorage !== 'undefined' ? localStorage : null)
+            : options.storage;
+    const fetcher =
+        options.fetcher === undefined
+            ? (typeof fetch !== 'undefined' ? fetch : null)
+            : options.fetcher;
+    const now = options.now ?? (() => Date.now());
+
+    const cache = safeRead(storage, cacheKey);
+    const cacheFresh = cache !== null && now() - cache.fetchedAt < ttlMs;
+
+    if (cache !== null && cacheFresh && !options.forceRefresh) {
+        return materialize(cache.payload, 'cache', cache.fetchedAt, cache.etag);
+    }
+
+    if (fetcher === null) {
+        if (cache !== null) {
+            return materialize(cache.payload, 'fallback', cache.fetchedAt, cache.etag);
+        }
+        throw new Error('Connect feed: no fetcher available and no cache.');
+    }
+
+    const headers = { Accept: 'application/json' };
+    if (cache !== null && cache.etag) headers['If-None-Match'] = cache.etag;
+
+    try {
+        const response = await fetcher(url, { headers, signal: options.signal });
+        if (response.status === 304 && cache !== null) {
+            const refreshed = {
+                fetchedAt: now(),
+                etag: cache.etag,
+                payload: cache.payload,
+            };
+            safeWrite(storage, cacheKey, refreshed);
+            return materialize(cache.payload, 'cache', refreshed.fetchedAt, refreshed.etag);
+        }
+        if (!response.ok) {
+            throw new Error(`Connect feed: HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        if (!Array.isArray(payload)) {
+            throw new Error('Connect feed: response was not a JSON array.');
+        }
+        const etag = response.headers.get('etag');
+        const fetchedAt = now();
+        safeWrite(storage, cacheKey, { fetchedAt, etag, payload });
+        return materialize(payload, 'live', fetchedAt, etag);
+    } catch (err) {
+        if (cache !== null) {
+            return materialize(cache.payload, 'fallback', cache.fetchedAt, cache.etag);
+        }
+        throw err instanceof Error ? err : new Error(String(err));
+    }
+}
+
+function clearConnectFeedCache(
+    storage = typeof localStorage !== 'undefined' ? localStorage : null,
+    cacheKey = DEFAULT_CACHE_KEY,
+) {
+    safeRemove(storage, cacheKey);
+}
+
+function peekConnectFeedCache(
+    storage = typeof localStorage !== 'undefined' ? localStorage : null,
+    cacheKey = DEFAULT_CACHE_KEY,
+) {
+    const entry = safeRead(storage, cacheKey);
+    return entry === null ? null : { fetchedAt: entry.fetchedAt, etag: entry.etag };
+}
+
+// ── js/core/freeRooms.js ────────────────────────────────────────
+// Generated from src/core/freeRooms.ts for the vanilla JS runtime.
+// Update src/core/freeRooms.ts first, then regenerate this file.
+//
+// Free-room finder — pure helpers that invert the normalized section list into
+// room-availability queries (which rooms are busy when), so the UI can answer
+// "what's free right now / on day D". UI-agnostic.
+
+const CAMPUS_START_MIN = 8 * 60;   // 08:00
+const CAMPUS_END_MIN = 22 * 60;    // 22:00
+
+const FR_WEEK_ORDER = [
+    'SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY',
+];
+
+function isRealRoom(name) {
+    if (typeof name !== 'string') return false;
+    const trimmed = name.trim();
+    if (trimmed === '') return false;
+    const upper = trimmed.toUpperCase();
+    if (upper === 'TBA') return false;
+    // The live feed sometimes stuffs a class schedule into roomName
+    // (e.g. "MON 11:00AM: 07A-08C; WED 2:00PM: 09G-31T"); real room codes
+    // never contain whitespace or schedule punctuation.
+    if (/[\s:;]/.test(trimmed)) return false;
+    // UB (old University Building) is gone post campus-move; its "UB0000"
+    // placeholder still lingers in the feed.
+    if (upper.startsWith('UB')) return false;
+    return true;
+}
+
+// Map each room to its busy intervals across the week, sorted by day
+// (canonical Sat→Fri order) then start time. Blank/TBA rooms contribute nothing.
+function buildRoomBusyIndex(sections) {
+    const index = new Map();
+    for (const s of sections) {
+        for (const slot of s.classSlots) {
+            // Each slot carries its own room (theory→roomName, lab→labRoomName),
+            // so a lab lands in its real lab, not the section's theory classroom.
+            const room = (slot.room || s.roomName || '').trim();
+            if (!isRealRoom(room)) continue;
+            const interval = {
+                day: slot.day,
+                startMin: slot.startMin,
+                endMin: slot.endMin,
+                courseCode: s.courseCode,
+                sectionName: s.sectionName,
+                kind: slot.kind,
+            };
+            const list = index.get(room);
+            if (list) list.push(interval);
+            else index.set(room, [interval]);
+        }
+    }
+    for (const list of index.values()) {
+        list.sort((a, b) =>
+            (FR_WEEK_ORDER.indexOf(a.day) - FR_WEEK_ORDER.indexOf(b.day)) ||
+            (a.startMin - b.startMin) ||
+            (a.endMin - b.endMin));
+    }
+    return index;
+}
+
+// Busy intervals for a room on a single day (already sorted by start).
+function busyOnDay(index, room, day) {
+    return (index.get(room) ?? []).filter(i => i.day === day);
+}
+
+// Every room in the feed, sorted alphabetically.
+function listAllRooms(index) {
+    return [...index.keys()].sort((a, b) => a.localeCompare(b));
+}
+
+// The class/lab occupying `room` at `minute` on `day`, or null if free. When
+// intervals overlap (rare), the one ending latest wins so "busy until" reflects
+// when the room actually frees up. Half-open [startMin, endMin).
+function occupantAt(index, room, day, minute) {
+    let occupant = null;
+    for (const i of index.get(room) ?? []) {
+        if (i.day !== day || minute < i.startMin || minute >= i.endMin) continue;
+        if (!occupant || i.endMin > occupant.endMin) occupant = i;
+    }
+    return occupant;
+}
+
+// Rooms with no class covering `minute` on `day`, sorted alphabetically. A room
+// with no class that day counts as free all day. Classes are half-open
+// [startMin, endMin): a room frees up exactly at endMin.
+function freeRoomsAt(index, day, minute) {
+    const free = [];
+    for (const [room, intervals] of index) {
+        const occupied = intervals.some(i =>
+            i.day === day && minute >= i.startMin && minute < i.endMin);
+        if (!occupied) free.push(room);
+    }
+    return free.sort((a, b) => a.localeCompare(b));
+}
+
+// Free time windows for one room on a given day = complement of its busy
+// intervals within [dayStart, dayEnd). Overlaps are merged first.
+function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEnd = CAMPUS_END_MIN) {
+    if (dayEnd <= dayStart) return [];
+    const busy = busyOnDay(index, room, day)
+        .map(i => ({ startMin: Math.max(i.startMin, dayStart), endMin: Math.min(i.endMin, dayEnd) }))
+        .filter(i => i.endMin > i.startMin)
+        .sort((a, b) => a.startMin - b.startMin);
+
+    const windows = [];
+    let cursor = dayStart;
+    for (const b of busy) {
+        if (b.startMin > cursor) windows.push({ startMin: cursor, endMin: b.startMin });
+        if (b.endMin > cursor) cursor = b.endMin;
+    }
+    if (cursor < dayEnd) windows.push({ startMin: cursor, endMin: dayEnd });
+    return windows;
+}
+
+// ── js/core/semesterBriefing.js ─────────────────────────────────
+// Generated from src/core/semesterBriefing.ts for the vanilla JS runtime.
+// Update src/core/semesterBriefing.ts first, then regenerate this file.
+//
+// Semester briefing — turns a student's own routine picks into the three things
+// no single tab can answer, because each needs the picks joined against the
+// live feed: exam crunch, week measurements, and gap-room suggestions.
+// Pure and UI-agnostic: no DOM, no fetch.
+
+/** Canonical BRACU week order (Friday is the off day, kept last). */
+const BRIEFING_WEEK_ORDER = [
+    'SATURDAY',
+    'SUNDAY',
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+];
+
+/**
+ * Idle stretch below this is a transition between rooms, not a usable gap —
+ * BRACU's standard break between consecutive slots is 10 minutes.
+ */
+const MIN_GAP_MINUTES = 45;
+
+/** A back-to-back pair this tight, in a different room, is worth warning about. */
+const TIGHT_HOP_MINUTES = 15;
+
+/** Floors apart before a tight transition counts as a real climb. */
+const NOTABLE_FLOOR_DELTA = 2;
+
+/**
+ * Floor number from a room code. Post-move codes lead with a two-digit floor
+ * (`09A-01C` → 9, `12B-20L` → 12). Anything else is unparseable rather than
+ * guessed — a wrong floor is worse than no floor.
+ */
+function parseRoomFloor(room) {
+    if (typeof room !== 'string') return null;
+    const match = /^(\d{2})[A-Z]/.exec(room.trim().toUpperCase());
+    if (!match) return null;
+    const floor = Number.parseInt(match[1], 10);
+    return Number.isFinite(floor) ? floor : null;
+}
+
+/**
+ * A slot's real room. The runtime feed tags each slot with its own room so a
+ * section's lab isn't mis-attributed to its theory classroom; sections parsed
+ * before that landed fall back to the section room.
+ */
+function sbSlotRoom(slot, section) {
+    const own = typeof slot.room === 'string' ? slot.room.trim() : '';
+    return own !== '' ? own : section.roomName;
+}
+
+/** Flatten picked sections into per-day slots, sorted by day then start time. */
+function collectRoutineSlots(sections) {
+    const out = [];
+    for (const section of sections) {
+        for (const slot of section.classSlots) {
+            out.push({
+                day: slot.day,
+                startMin: slot.startMin,
+                endMin: slot.endMin,
+                kind: slot.kind,
+                room: sbSlotRoom(slot, section),
+                courseCode: section.courseCode,
+                sectionName: section.sectionName,
+                facultyInitials: section.facultyInitials,
+            });
+        }
+    }
+    out.sort((a, b) => BRIEFING_WEEK_ORDER.indexOf(a.day) - BRIEFING_WEEK_ORDER.indexOf(b.day)
+        || a.startMin - b.startMin
+        || a.courseCode.localeCompare(b.courseCode));
+    return out;
+}
+
+/**
+ * Measure the student's week: time in class, time waiting, and the transitions
+ * that are too tight for the distance. Overlapping slots (a clashing routine)
+ * contribute their own duration to contact time but never a negative gap.
+ */
+function buildWeekSummary(sections, options = {}) {
+    const minGap = options.minGapMinutes ?? MIN_GAP_MINUTES;
+    const tightHop = options.tightHopMinutes ?? TIGHT_HOP_MINUTES;
+
+    const slots = collectRoutineSlots(sections);
+    const byDay = new Map();
+    for (const slot of slots) {
+        const list = byDay.get(slot.day);
+        if (list) list.push(slot);
+        else byDay.set(slot.day, [slot]);
+    }
+
+    let contactMinutes = 0;
+    let deadGapMinutes = 0;
+    let longestDayMinutes = 0;
+    let longestDay = null;
+    let earliestStartMin = null;
+    const gaps = [];
+    const hops = [];
+
+    for (const day of BRIEFING_WEEK_ORDER) {
+        const list = byDay.get(day);
+        if (!list || list.length === 0) continue;
+
+        const dayStart = list[0].startMin;
+        const dayEnd = list.reduce((max, s) => Math.max(max, s.endMin), 0);
+        if (earliestStartMin === null || dayStart < earliestStartMin) earliestStartMin = dayStart;
+        if (dayEnd - dayStart > longestDayMinutes) {
+            longestDayMinutes = dayEnd - dayStart;
+            longestDay = day;
+        }
+        for (const slot of list) contactMinutes += Math.max(0, slot.endMin - slot.startMin);
+
+        for (let i = 1; i < list.length; i++) {
+            const prev = list[i - 1];
+            const next = list[i];
+            const idle = next.startMin - prev.endMin;
+            if (idle >= minGap) {
+                deadGapMinutes += idle;
+                gaps.push({
+                    day,
+                    startMin: prev.endMin,
+                    endMin: next.startMin,
+                    minutes: idle,
+                    afterCourse: prev.courseCode,
+                    beforeCourse: next.courseCode,
+                    nextRoom: next.room,
+                    nextFloor: parseRoomFloor(next.room),
+                });
+            } else if (idle >= 0 && idle <= tightHop && prev.room !== next.room) {
+                const fromFloor = parseRoomFloor(prev.room);
+                const toFloor = parseRoomFloor(next.room);
+                hops.push({
+                    day,
+                    minutes: idle,
+                    fromCourse: prev.courseCode,
+                    toCourse: next.courseCode,
+                    fromRoom: prev.room,
+                    toRoom: next.room,
+                    floorDelta: fromFloor !== null && toFloor !== null ? toFloor - fromFloor : null,
+                });
+            }
+        }
+    }
+
+    return {
+        slots,
+        byDay,
+        contactMinutes,
+        deadGapMinutes,
+        campusDays: byDay.size,
+        earliestStartMin,
+        longestDayMinutes,
+        longestDay,
+        gaps,
+        hops,
+    };
+}
+
+/** Absolute minutes since epoch for an ISO date + minute-of-day. UTC, so DST-free. */
+function sbAbsoluteMinutes(date, minuteOfDay) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (!match) return null;
+    const year = Number.parseInt(match[1], 10);
+    const month = Number.parseInt(match[2], 10);
+    const day = Number.parseInt(match[3], 10);
+    const ms = Date.UTC(year, month - 1, day);
+    if (!Number.isFinite(ms)) return null;
+    return Math.round(ms / 60000) + minuteOfDay;
+}
+
+/**
+ * Order the student's exams for one kind and measure the recovery time between
+ * them. Sections without a date for that kind are reported in `missing` rather
+ * than silently dropped — a half-known exam season is worth flagging.
+ * Returns null when no picked section carries a date at all.
+ */
+function buildExamBriefing(sections, kind) {
+    const missing = [];
+    const dated = [];
+
+    for (const section of sections) {
+        const exam = kind === 'mid' ? section.midExam : section.finalExam;
+        if (!exam) {
+            missing.push(section.courseCode);
+            continue;
+        }
+        const absStart = sbAbsoluteMinutes(exam.date, exam.startMin);
+        const absEnd = sbAbsoluteMinutes(exam.date, exam.endMin);
+        if (absStart === null || absEnd === null) {
+            missing.push(section.courseCode);
+            continue;
+        }
+        dated.push({
+            courseCode: section.courseCode,
+            sectionName: section.sectionName,
+            facultyInitials: section.facultyInitials,
+            date: exam.date,
+            startMin: exam.startMin,
+            endMin: exam.endMin,
+            gapHoursFromPrev: null,
+            sameDayAsPrev: false,
+            absStart,
+            absEnd,
+        });
+    }
+
+    if (dated.length === 0) return null;
+    dated.sort((a, b) => a.absStart - b.absStart || a.courseCode.localeCompare(b.courseCode));
+
+    let tightestGapHours = null;
+    let sameDayCount = 0;
+    for (let i = 1; i < dated.length; i++) {
+        const prev = dated[i - 1];
+        const current = dated[i];
+        const gapHours = (current.absStart - prev.absEnd) / 60;
+        current.gapHoursFromPrev = gapHours;
+        current.sameDayAsPrev = current.date === prev.date;
+        if (current.sameDayAsPrev) sameDayCount++;
+        if (tightestGapHours === null || gapHours < tightestGapHours) tightestGapHours = gapHours;
+    }
+
+    const first = dated[0];
+    const last = dated.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), dated[0]);
+
+    return {
+        kind,
+        exams: dated.map(entry => ({
+            courseCode: entry.courseCode,
+            sectionName: entry.sectionName,
+            facultyInitials: entry.facultyInitials,
+            date: entry.date,
+            startMin: entry.startMin,
+            endMin: entry.endMin,
+            gapHoursFromPrev: entry.gapHoursFromPrev,
+            sameDayAsPrev: entry.sameDayAsPrev,
+        })),
+        spanHours: (last.absEnd - first.absStart) / 60,
+        tightestGapHours,
+        sameDayCount,
+        missing,
+    };
+}
+
+/**
+ * Rooms with no booking overlapping `[startMin, endMin)` on `day` — free for
+ * the student's whole wait, not merely free at one instant. Rooms outside
+ * campus hours are excluded so we never suggest sitting somewhere at 06:00.
+ */
+function roomsFreeThroughout(index, day, startMin, endMin, dayStart = CAMPUS_START_MIN, dayEnd = CAMPUS_END_MIN) {
+    if (endMin <= startMin) return [];
+    if (startMin < dayStart || endMin > dayEnd) return [];
+    const free = [];
+    for (const room of listAllRooms(index)) {
+        const busy = busyOnDay(index, room, day);
+        const clashes = busy.some(interval => interval.startMin < endMin && startMin < interval.endMin);
+        if (!clashes) free.push(room);
+    }
+    return free;
+}
+
+/**
+ * Where to wait out a gap: rooms free for its whole span, with those on the
+ * next class's floor listed first so the student is already there when it
+ * starts. `limit` caps each list; `total` always reports the true count.
+ */
+function suggestGapRooms(index, gap, options = {}) {
+    const limit = options.limit ?? 3;
+    const free = roomsFreeThroughout(index, gap.day, gap.startMin, gap.endMin, options.dayStart, options.dayEnd);
+
+    const sameFloor = [];
+    const elsewhere = [];
+    for (const room of free) {
+        if (gap.nextFloor !== null && parseRoomFloor(room) === gap.nextFloor) sameFloor.push(room);
+        else elsewhere.push(room);
+    }
+
+    return {
+        sameFloor: sameFloor.slice(0, limit),
+        elsewhere: elsewhere.slice(0, limit),
+        total: free.length,
+    };
+}
+
+/** `545` → `"09:05"`. Minute-of-day to a 24h clock label. */
+function formatClock(minuteOfDay) {
+    const hours = Math.floor(minuteOfDay / 60);
+    const minutes = Math.round(minuteOfDay % 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+/** `280` → `"4h 40m"`, `60` → `"1h"`, `45` → `"45m"`. */
+function formatDuration(minutes) {
+    const total = Math.max(0, Math.round(minutes));
+    const hours = Math.floor(total / 60);
+    const rest = total % 60;
+    if (hours === 0) return `${rest}m`;
+    if (rest === 0) return `${hours}h`;
+    return `${hours}h ${rest}m`;
+}
+
+// ── js/ui/semesterBriefingCard.js ───────────────────────────────
+// js/ui/semesterBriefingCard.js
+// "This semester" block for the dedicated /profile/ page (#476).
+//
+// The rest of the Profile page restates the calculator and the tracker. This
+// block is the part only the Profile page can show: the student's own routine
+// picks joined against the live section feed, which yields three things no
+// single tab can answer — when their exams actually bunch up, what their week
+// really costs them, and where to sit out the gaps.
+//
+// View layer only. Every measurement lives in js/core/semesterBriefing.js so
+// the React shell can reuse it; this file turns those numbers into HTML and
+// writes the plain-language verdict that goes above each visual.
+//
+// Names are prefixed `sbc`/`SBC` because build3.py flattens every module into
+// one scope (see scripts/check_bundle_collisions.py).
+
+// Weeks in a BRACU semester — turns a recurring gap into the number that makes
+// it feel real ("4h 40m every Saturday" → "65 hours this semester").
+const SBC_SEMESTER_WEEKS = 13;
+
+// Grid bounds for the week strip. Slots outside are clamped, not dropped.
+const SBC_GRID_START_MIN = 8 * 60;
+const SBC_GRID_END_MIN = 19 * 60;
+
+const SBC_DAY_LABELS = {
+  SATURDAY: 'Sat',
+  SUNDAY: 'Sun',
+  MONDAY: 'Mon',
+  TUESDAY: 'Tue',
+  WEDNESDAY: 'Wed',
+  THURSDAY: 'Thu',
+  FRIDAY: 'Fri',
+};
+
+// Friday is off; a student with no Friday class shouldn't see a dead column.
+const SBC_GRID_DAYS = BRIEFING_WEEK_ORDER.filter(d => d !== 'FRIDAY');
+
+// ── Formatting helpers ────────────────────────────────────────────────────────
+
+/** `"2026-07-27"` → `"Mon 27 Jul"`. Parsed as UTC so the label can't shift a day. */
+function sbcFormatExamDate(iso) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!match) return String(iso || '');
+  const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+  if (Number.isNaN(date.getTime())) return String(iso);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[date.getUTCDay()]} ${date.getUTCDate()} ${months[date.getUTCMonth()]}`;
+}
+
+/** Whole hours read better than `19.5h` in a chip; halves are kept when present. */
+function sbcFormatHours(hours) {
+  if (!Number.isFinite(hours)) return '—';
+  const rounded = Math.round(hours * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}h` : `${rounded.toFixed(1)}h`;
+}
+
+/** A gap this tight between exams is the thing worth shouting about. */
+function sbcGapTone(hours) {
+  if (!Number.isFinite(hours)) return '';
+  if (hours < 6) return 'hot';
+  if (hours < 20) return 'warn';
+  return '';
+}
+
+// ── Exam crunch ───────────────────────────────────────────────────────────────
+
+/**
+ * The sentence a student actually reads. Everything else in the card is
+ * evidence for it, so it has to be true of *their* data, not a template with
+ * numbers dropped in — a comfortable exam spread must read as comfortable.
+ */
+function sbcExamVerdict(brief) {
+  if (!brief || !Array.isArray(brief.exams) || brief.exams.length === 0) return '';
+  const n = brief.exams.length;
+  if (n === 1) {
+    return `One exam this round — <b>${escHtml(brief.exams[0].courseCode)}</b> on ${escHtml(sbcFormatExamDate(brief.exams[0].date))}.`;
+  }
+
+  const sameDay = brief.exams.filter(e => e.sameDayAsPrev);
+  const span = sbcFormatHours(brief.spanHours);
+
+  if (brief.spanHours <= 72) {
+    const tail = sameDay.length > 0
+      ? ` — and <em>${escHtml(sameDay[0].courseCode)} shares a day with the exam before it</em>`
+      : '';
+    return `All ${n} exams fall inside <span class="hot">${escHtml(span)}</span>${tail}.`;
+  }
+  if (sameDay.length > 0) {
+    return `${n} exams across ${escHtml(span)}, with <em>${sameDay.length} landing on a day that already has one</em>.`;
+  }
+  if (Number.isFinite(brief.tightestGapHours) && brief.tightestGapHours < 24) {
+    return `${n} exams across ${escHtml(span)}; your tightest turnaround is <em>${escHtml(sbcFormatHours(brief.tightestGapHours))}</em>.`;
+  }
+  return `${n} exams across ${escHtml(span)}, with at least a day between each. <b>That's a kind spread.</b>`;
+}
+
+function sbcExamCardHtml(brief, kind = 'mid') {
+  const isMid = kind === 'mid';
+  const toggle = `
+        <div class="pfb-toggle" role="group" aria-label="Exam period">
+          <button class="pfb-seg ${isMid ? 'is-on' : ''}" data-action="briefing:examKind" data-kind="mid"
+                  aria-pressed="${isMid ? 'true' : 'false'}">Midterms</button>
+          <button class="pfb-seg ${isMid ? '' : 'is-on'}" data-action="briefing:examKind" data-kind="final"
+                  aria-pressed="${isMid ? 'false' : 'true'}">Finals</button>
+        </div>`;
+
+  if (!brief) {
+    return `
+      <section class="pfb-card">
+        <div class="pfb-head"><h3 class="pfb-title"><span class="pfb-ico">📕</span> Exam crunch</h3>${toggle}</div>
+        <div class="pfb-empty">No ${isMid ? 'midterm' : 'final'} dates published for your sections yet. They appear here as soon as the feed carries them.</div>
+      </section>`;
+  }
+
+  const rows = brief.exams.map(exam => {
+    const tone = exam.sameDayAsPrev ? 'hot' : sbcGapTone(exam.gapHoursFromPrev);
+    const chip = exam.gapHoursFromPrev === null
+      ? '<span class="pfb-chip cool">first up</span>'
+      : exam.sameDayAsPrev
+        ? `<span class="pfb-chip hot">same day · ${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} later</span>`
+        : `<span class="pfb-chip ${tone}">${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} gap</span>`;
+    return `
+        <li class="pfb-row">
+          <span class="pfb-row-dot ${tone === 'hot' ? 'hot' : ''}" aria-hidden="true"></span>
+          <span class="pfb-row-code">${escHtml(exam.courseCode)}</span>
+          <span class="pfb-row-when"><b>${escHtml(sbcFormatExamDate(exam.date))}</b> · ${escHtml(formatClock(exam.startMin))}–${escHtml(formatClock(exam.endMin))}</span>
+          ${chip}
+          <span class="pfb-row-meta">${escHtml(exam.facultyInitials || '')}</span>
+        </li>`;
+  }).join('');
+
+  const missing = brief.missing.length > 0
+    ? `<div class="pfb-note">No date yet for ${escHtml(brief.missing.join(', '))}.</div>`
+    : '';
+
+  return `
+      <section class="pfb-card">
+        <div class="pfb-head"><h3 class="pfb-title"><span class="pfb-ico">📕</span> Exam crunch</h3>${toggle}</div>
+        <p class="pfb-verdict">${sbcExamVerdict(brief)}</p>
+        <ul class="pfb-rows">${rows}</ul>
+        ${missing}
+        <div class="pfb-note">Dates come from the sections you picked on the Routine tab — read from the public feed, nothing uploaded.</div>
+      </section>`;
+}
+
+// ── Week on campus ────────────────────────────────────────────────────────────
+
+function sbcWeekVerdict(week) {
+  if (!week || week.campusDays === 0) return '';
+  const contact = formatDuration(week.contactMinutes);
+  const dead = formatDuration(week.deadGapMinutes);
+  if (week.deadGapMinutes === 0) {
+    return `<b>${week.campusDays} day${week.campusDays === 1 ? '' : 's'}</b> on campus for ${escHtml(contact)} of class, back to back. <b>No waiting around.</b>`;
+  }
+  return `You're on campus <b>${week.campusDays} day${week.campusDays === 1 ? '' : 's'}</b> for ${escHtml(contact)} of class — and <em>${escHtml(dead)} of waiting</em>.`;
+}
+
+/** Percent offsets for a slot inside the 08:00–19:00 grid, clamped to it. */
+function sbcGridBand(startMin, endMin) {
+  const span = SBC_GRID_END_MIN - SBC_GRID_START_MIN;
+  const from = Math.max(SBC_GRID_START_MIN, Math.min(startMin, SBC_GRID_END_MIN));
+  const to = Math.max(from, Math.min(endMin, SBC_GRID_END_MIN));
+  return {
+    top: ((from - SBC_GRID_START_MIN) / span) * 100,
+    height: Math.max(2, ((to - from) / span) * 100),
+  };
+}
+
+function sbcWeekCardHtml(week) {
+  if (!week || week.campusDays === 0) {
+    return `
+      <section class="pfb-card">
+        <div class="pfb-head"><h3 class="pfb-title"><span class="pfb-ico">🗓️</span> Your week on campus</h3></div>
+        <div class="pfb-empty">Pick your sections on the <strong>Routine</strong> tab and your week shows up here.</div>
+      </section>`;
+  }
+
+  const stats = [
+    ['', formatDuration(week.contactMinutes), 'Contact time'],
+    [week.deadGapMinutes > 0 ? 'alert' : '', formatDuration(week.deadGapMinutes), 'Dead time'],
+    ['', `${week.campusDays} / ${SBC_GRID_DAYS.length}`, 'Campus days'],
+    ['', week.earliestStartMin === null ? '—' : formatClock(week.earliestStartMin), 'Earliest start'],
+    [week.longestDayMinutes >= 6 * 60 ? 'alert' : '', formatDuration(week.longestDayMinutes), 'Longest day'],
+  ].map(([tone, value, label]) => `
+        <div class="pfb-stat ${tone}">
+          <div class="pfb-stat-n">${escHtml(String(value))}</div>
+          <span class="pfb-stat-l">${escHtml(label)}</span>
+        </div>`).join('');
+
+  const columns = SBC_GRID_DAYS.map(day => {
+    const slots = week.byDay.get(day) || [];
+    if (slots.length === 0) return '<div class="pfb-col is-off"></div>';
+    const blocks = slots.map(slot => {
+      const band = sbcGridBand(slot.startMin, slot.endMin);
+      return `
+          <div class="pfb-blk ${slot.kind === 'lab' ? 'is-lab' : ''}"
+               style="top:${band.top.toFixed(2)}%;height:${band.height.toFixed(2)}%"
+               title="${escHtml(slot.courseCode)} ${escHtml(slot.kind)} · ${escHtml(formatClock(slot.startMin))}–${escHtml(formatClock(slot.endMin))} · ${escHtml(slot.room)}">
+            <span class="pfb-blk-code">${escHtml(slot.courseCode)}${slot.kind === 'lab' ? ' lab' : ''}</span>
+            <span class="pfb-blk-room">${escHtml(slot.room)}</span>
+          </div>`;
+    }).join('');
+    const gapBands = (week.gaps.filter(g => g.day === day)).map(gap => {
+      const band = sbcGridBand(gap.startMin, gap.endMin);
+      return `
+          <div class="pfb-gap" style="top:${band.top.toFixed(2)}%;height:${band.height.toFixed(2)}%" aria-hidden="true">
+            <span>${escHtml(formatDuration(gap.minutes))}</span>
+          </div>`;
+    }).join('');
+    return `<div class="pfb-col">${gapBands}${blocks}</div>`;
+  }).join('');
+
+  const headers = SBC_GRID_DAYS
+    .map(day => `<div class="pfb-week-h">${escHtml(SBC_DAY_LABELS[day] || day)}</div>`)
+    .join('');
+
+  // Only the hops worth acting on: a couple of floors is a jog, one floor isn't.
+  const notableHops = week.hops.filter(
+    h => h.floorDelta === null || Math.abs(h.floorDelta) >= NOTABLE_FLOOR_DELTA,
+  );
+  const hopsBlock = notableHops.length === 0 ? '' : `
+        <div class="pfb-subhead">
+          <span>⚠️ Tight transitions</span>
+          <span class="pfb-chip warn">${notableHops.length} this week</span>
+        </div>
+        <div class="pfb-hops">${notableHops.map(hop => {
+          const floors = hop.floorDelta === null
+            ? ''
+            : ` · <b>${Math.abs(hop.floorDelta)} floor${Math.abs(hop.floorDelta) === 1 ? '' : 's'} ${hop.floorDelta > 0 ? 'up' : 'down'}</b>`;
+          return `
+          <div class="pfb-hop">
+            <b>${escHtml(SBC_DAY_LABELS[hop.day] || hop.day)}</b>
+            <span>${escHtml(hop.fromCourse)} <span class="pfb-arrow">→</span> ${escHtml(hop.toCourse)}</span>
+            <span class="pfb-hop-rooms">${escHtml(hop.fromRoom)} → ${escHtml(hop.toRoom)}${floors}</span>
+            <span class="pfb-hop-min">${escHtml(formatDuration(hop.minutes))}</span>
+          </div>`;
+        }).join('')}</div>`;
+
+  return `
+      <section class="pfb-card">
+        <div class="pfb-head">
+          <h3 class="pfb-title"><span class="pfb-ico">🗓️</span> Your week on campus</h3>
+          <span class="pfb-chip">${week.campusDays} day${week.campusDays === 1 ? '' : 's'} on campus</span>
+        </div>
+        <p class="pfb-verdict">${sbcWeekVerdict(week)}</p>
+        <div class="pfb-stats">${stats}</div>
+        <div class="pfb-week">
+          <div></div>${headers}
+          <div class="pfb-week-times">
+            <span style="top:0%">08:00</span><span style="top:27.3%">11:00</span>
+            <span style="top:54.5%">14:00</span><span style="top:81.8%">17:00</span>
+          </div>
+          ${columns}
+        </div>
+        ${hopsBlock}
+      </section>`;
+}
+
+// ── Where to wait ─────────────────────────────────────────────────────────────
+
+function sbcGapsVerdict(gaps) {
+  if (!Array.isArray(gaps) || gaps.length === 0) return '';
+  const longest = gaps.reduce((max, g) => (g.minutes > max.minutes ? g : max), gaps[0]);
+  const term = Math.round((longest.minutes * SBC_SEMESTER_WEEKS) / 60);
+  return `${escHtml(SBC_DAY_LABELS[longest.day] || longest.day)}'s <em>${escHtml(formatDuration(longest.minutes))} gap</em> repeats every week — that's <b>${term} hours</b> across the semester.`;
+}
+
+function sbcGapRoomsCardHtml(gaps, suggestionsByIndex) {
+  if (!Array.isArray(gaps) || gaps.length === 0) {
+    return `
+      <section class="pfb-card">
+        <div class="pfb-head"><h3 class="pfb-title"><span class="pfb-ico">🚪</span> Where to wait</h3></div>
+        <div class="pfb-empty">No long gaps in your week — your classes run back to back.</div>
+      </section>`;
+  }
+
+  const slots = gaps.map((gap, i) => {
+    const picks = (suggestionsByIndex && suggestionsByIndex[i]) || { sameFloor: [], elsewhere: [], total: 0 };
+    const floor = gap.nextFloor;
+    const rooms = [
+      ...picks.sameFloor.map(r => `<span class="pfb-room is-best">${escHtml(r)}<small>same floor</small></span>`),
+      ...picks.elsewhere.map(r => `<span class="pfb-room">${escHtml(r)}</span>`),
+    ];
+    const shown = picks.sameFloor.length + picks.elsewhere.length;
+    if (picks.total > shown) rooms.push(`<span class="pfb-room is-more">+${picks.total - shown} more</span>`);
+
+    const why = picks.total === 0
+      ? `Nothing is free for the whole gap — the Free Rooms tab can find a room for part of it.`
+      : floor === null
+        ? `${picks.total} room${picks.total === 1 ? '' : 's'} free for the whole gap.`
+        : `${picks.total} room${picks.total === 1 ? '' : 's'} free right through it${picks.sameFloor.length > 0 ? `, and these sit on floor ${floor} — where <b>${escHtml(gap.beforeCourse)}</b> starts` : ''}.`;
+
+    return `
+        <div class="pfb-slot">
+          <div class="pfb-slot-head">
+            <span class="pfb-slot-when">${escHtml(SBC_DAY_LABELS[gap.day] || gap.day)} · ${escHtml(formatClock(gap.startMin))} → ${escHtml(formatClock(gap.endMin))}</span>
+            <span class="pfb-chip ${gap.minutes >= 180 ? 'warn' : ''}">${escHtml(formatDuration(gap.minutes))}</span>
+          </div>
+          <div class="pfb-slot-why">After ${escHtml(gap.afterCourse)}, before ${escHtml(gap.beforeCourse)} in <b>${escHtml(gap.nextRoom)}</b>. ${why}</div>
+          ${rooms.length > 0 ? `<div class="pfb-rooms">${rooms.join('')}</div>` : ''}
+        </div>`;
+  }).join('');
+
+  return `
+      <section class="pfb-card">
+        <div class="pfb-head">
+          <h3 class="pfb-title"><span class="pfb-ico">🚪</span> Where to wait</h3>
+          <span class="pfb-chip">${gaps.length} recurring gap${gaps.length === 1 ? '' : 's'}</span>
+        </div>
+        <p class="pfb-verdict">${sbcGapsVerdict(gaps)}</p>
+        <div class="pfb-slots">${slots}</div>
+        <div class="pfb-note">Availability is computed from the same feed the Free Rooms tab uses — pointed at your gaps instead of the whole campus.</div>
+      </section>`;
+}
+
+// ── Block assembly ────────────────────────────────────────────────────────────
+
+function sbcLoadingHtml() {
+  return `
+    <div class="pfb-zone"><h2>This semester</h2></div>
+    <section class="pfb-card">
+      <div class="pfb-skel" style="width:38%"></div>
+      <div class="pfb-skel" style="width:82%"></div>
+      <div class="pfb-skel" style="width:64%"></div>
+    </section>`;
+}
+
+function sbcUnavailableHtml() {
+  return `
+    <div class="pfb-zone"><h2>This semester</h2></div>
+    <section class="pfb-card">
+      <div class="pfb-empty">Couldn't reach the section feed. Your exam dates, week and gaps appear here once it's back.</div>
+    </section>`;
+}
+
+function sbcNoRoutineHtml() {
+  return `
+    <div class="pfb-zone"><h2>This semester</h2></div>
+    <section class="pfb-card">
+      <div class="pfb-head"><h3 class="pfb-title"><span class="pfb-ico">🗓️</span> This semester</h3></div>
+      <div class="pfb-empty">Pick your sections on the <strong>Routine</strong> tab and this page will show when your exams bunch up, what your week costs you, and where to wait out the gaps.</div>
+      <a class="pfb-cta" href="../#routine">Build your routine</a>
+    </section>`;
+}
+
+/**
+ * The whole block. `sections` are the student's picked sections; `busyIndex`
+ * is the campus-wide room index (all sections, not just theirs) so gap rooms
+ * can be suggested. Pure — the caller does the fetching.
+ */
+function sbcBriefingHtml(sections, busyIndex, kind = 'mid') {
+  const picked = Array.isArray(sections) ? sections : [];
+  if (picked.length === 0) return sbcNoRoutineHtml();
+
+  const week = buildWeekSummary(picked);
+  const brief = buildExamBriefing(picked, kind);
+  const suggestions = busyIndex
+    ? week.gaps.map(gap => suggestGapRooms(busyIndex, gap))
+    : week.gaps.map(() => ({ sameFloor: [], elsewhere: [], total: 0 }));
+
+  return `
+    <div class="pfb-zone">
+      <h2>This semester</h2>
+      <span class="pfb-zone-sub">${picked.length} course${picked.length === 1 ? '' : 's'} · from your saved routine</span>
+    </div>
+    ${sbcExamCardHtml(brief, kind)}
+    ${sbcWeekCardHtml(week)}
+    ${sbcGapRoomsCardHtml(week.gaps, suggestions)}`;
+}
+
+// ── DOM wiring ────────────────────────────────────────────────────────────────
+
+// Held so the Midterms/Finals switch can repaint without re-fetching the feed.
+let _sbcState = { hostId: null, sections: [], busyIndex: null, kind: 'mid' };
+
+function renderSemesterBriefing(hostId, sections, busyIndex, kind) {
+  if (typeof document === 'undefined') return;
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  _sbcState = {
+    hostId,
+    sections: Array.isArray(sections) ? sections : [],
+    busyIndex: busyIndex || null,
+    kind: kind === 'final' ? 'final' : 'mid',
+  };
+  // Every interpolation above goes through escHtml.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  host.innerHTML = sbcBriefingHtml(_sbcState.sections, _sbcState.busyIndex, _sbcState.kind);
+}
+
+/** Paint a non-data state (loading / feed down) into the same host. */
+function renderSemesterBriefingState(hostId, html) {
+  if (typeof document === 'undefined') return;
+  const host = document.getElementById(hostId);
+  if (!host) return;
+  // Static markup from this module, no interpolation.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  host.innerHTML = html;
+}
+
+// Midterms ⇄ Finals. Wired through dispatch because the production CSP blocks
+// inline handlers (script-src-attr), so an onclick here would silently die.
+registerAction('briefing:examKind', el => {
+  const kind = el && el.dataset ? el.dataset.kind : null;
+  if (kind !== 'mid' && kind !== 'final') return;
+  if (!_sbcState.hostId || kind === _sbcState.kind) return;
+  renderSemesterBriefing(_sbcState.hostId, _sbcState.sections, _sbcState.busyIndex, kind);
+});
+
+// Exported for the room-floor label in tests and for callers that want to show
+// a floor next to a room without importing the core module directly.
+
 // ── js/animations/cursor.js ─────────────────────────────────────
 function initCursor() {
   const dot        = document.getElementById('cursor-dot');
@@ -10234,8 +11720,59 @@ function initCursor() {
 // The inner host id is `profilePageContent` (not `profileContent`) so the
 // module-level repaint listener inside profileTab.js stays a no-op on this page.
 
+// Where the Routine tab persists `{ picks: { COURSE: sectionId|null } }`.
+const PENTRY_ROUTINE_KEY = 'shohoj_routine_v1';
+const PENTRY_BRIEFING_HOST = 'pfBriefingHost';
+
 function _pentry_onProfilePage() {
   return document.body && document.body.dataset && document.body.dataset.page === 'profile';
+}
+
+/** Section ids the student actually picked. Unpicked courses persist as null. */
+function _pentry_pickedSectionIds() {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(PENTRY_ROUTINE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const picks = (parsed && parsed.picks && typeof parsed.picks === 'object') ? parsed.picks : {};
+    return Object.values(picks).filter(v => typeof v === 'number' && Number.isFinite(v));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fill the briefing slot. Runs after the account hub paints so a slow or dead
+ * feed never delays the rest of the page — the slot carries its own loading,
+ * empty and unavailable states.
+ *
+ * The feed read is anonymous and cached (same client, same 10-minute TTL as the
+ * Seats and Routine tabs), so opening this page costs at most one extra request.
+ */
+async function _pentry_loadBriefing() {
+  if (!document.getElementById(PENTRY_BRIEFING_HOST)) return;
+
+  const pickedIds = _pentry_pickedSectionIds();
+  if (pickedIds.length === 0) {
+    renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcNoRoutineHtml());
+    return;
+  }
+
+  renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcLoadingHtml());
+  try {
+    const feed = await fetchConnectFeed();
+    const wanted = new Set(pickedIds);
+    const picked = feed.sections.filter(s => wanted.has(s.sectionId));
+    if (picked.length === 0) {
+      // Picks that no longer exist in the feed — a new semester has rolled over.
+      renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcNoRoutineHtml());
+      return;
+    }
+    renderSemesterBriefing(PENTRY_BRIEFING_HOST, picked, buildRoomBusyIndex(feed.sections), 'mid');
+  } catch {
+    renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcUnavailableHtml());
+  }
 }
 
 function _pentry_mountShell() {
@@ -10258,7 +11795,9 @@ function _pentry_mountShell() {
 function _pentry_route() {
   if (!_pentry_onProfilePage()) return;
   _pentry_mountShell();
-  renderProfileTab('profilePageContent', { includeSeatAlerts: false });
+  renderProfileTab('profilePageContent', { includeSeatAlerts: false, includeBriefing: true });
+  // Fire-and-forget: the briefing fills its own slot when the feed lands.
+  _pentry_loadBriefing();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
