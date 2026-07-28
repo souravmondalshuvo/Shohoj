@@ -167,9 +167,7 @@ function sbSlotRoom(slot: TimeSlot & { room?: string | null }, section: Normaliz
 // ── Week ──────────────────────────────────────────────────────────────────────
 
 /** Flatten picked sections into per-day slots, sorted by day then start time. */
-export function collectRoutineSlots(
-  sections: readonly NormalizedSection[],
-): BriefingSlot[] {
+export function collectRoutineSlots(sections: readonly NormalizedSection[]): BriefingSlot[] {
   const out: BriefingSlot[] = [];
   for (const section of sections) {
     for (const slot of section.classSlots) {
