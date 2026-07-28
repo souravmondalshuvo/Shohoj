@@ -6,6 +6,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 function seedState(page) {
   return page.addInitScript(() => {
     localStorage.setItem(
@@ -85,7 +87,7 @@ test('shares state with /calculator (one dataset, two views)', async ({ page }) 
   await page.goto('/calculator', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.semester-block').first()).toBeVisible();
 
-  await page.getByRole('link', { name: 'Transcript' }).click();
+  await navigateTo(page, 'Transcript');
   await expect(page.getByTestId('transcript-sem-2')).toContainText('Spring 2026');
 });
 
