@@ -123,6 +123,14 @@ PROFILE_JS_FILES = [
     'js/core/helpers.js',
     'js/core/dispatch.js',
     'js/ui/profileTab.js',
+    # "This semester" briefing: the student's picks joined against the live
+    # section feed (exam crunch, week measurement, gap rooms). Dependencies
+    # must precede the modules that import them.
+    'js/core/connectFeed.js',
+    'js/core/connectFeedClient.js',
+    'js/core/freeRooms.js',
+    'js/core/semesterBriefing.js',
+    'js/ui/semesterBriefingCard.js',
     'js/animations/cursor.js',
     'js/profile-entry.js',
 ]
