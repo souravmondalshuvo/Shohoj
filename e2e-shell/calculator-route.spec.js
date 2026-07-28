@@ -27,7 +27,11 @@ test('the served root resolves to Home on initial load', async ({ page }) => {
   // loaded at a nested path and matched only the catch-all NotFound route.
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(
-    page.getByRole('heading', { name: /University life, made simple/, level: 1 }),
+    // The hero now carries legacy's copy and capitalisation: "University Life,"
+    // / "Made Simple." across a <br>, with সহজ appended. Matched
+    // case-insensitively on the first clause so a future line-break or the
+    // Bengali suffix does not break this guard again.
+    page.getByRole('heading', { name: /University Life/i, level: 1 }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Page not found' })).toHaveCount(0);
 });
