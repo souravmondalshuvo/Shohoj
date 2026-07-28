@@ -11,6 +11,8 @@
 
 import { expect, test } from '@playwright/test';
 
+import { navigateTo } from './_nav.js';
+
 test.use({ viewport: { width: 360, height: 780 } });
 
 async function noOverflow(page) {
@@ -20,10 +22,10 @@ async function noOverflow(page) {
   expect(overflows).toBe(false);
 }
 
-async function openMobileNav(page, linkName) {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByRole('link', { name: linkName, exact: true }).click();
-}
+// The flat link list and its "Menu" toggle are gone: the bar now mirrors
+// legacy's grouped tabs, so most routes have to have their dropdown opened
+// first. navigateTo handles both shapes.
+const openMobileNav = navigateTo;
 
 test('Home has no horizontal overflow at 360px', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
