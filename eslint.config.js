@@ -65,7 +65,14 @@ export default tseslint.config(
   // addInitScript callbacks (and the bundle-smoke harness) reference browser
   // globals, so both environments are in scope here.
   {
-    files: ['tests/**/*.js', 'e2e/**/*.js', 'e2e-vite/**/*.js', 'e2e-shell/**/*.js', 'e2e-pages/**/*.js'],
+    files: [
+      'tests/**/*.js',
+      'e2e/**/*.js',
+      'e2e-vite/**/*.js',
+      'e2e-shell/**/*.js',
+      'e2e-pages/**/*.js',
+      'e2e-visual/**/*.js',
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
