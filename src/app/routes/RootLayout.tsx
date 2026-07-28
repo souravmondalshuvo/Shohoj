@@ -178,9 +178,14 @@ function ShellChrome() {
           <ThemeToggle />
         </div>
       </nav>
-      {/* Legacy shows the tab bar inside the calculator section, not on the
-          landing view — the home page is hero then features. Mirrored here. */}
-      {pathname !== '/' && <ShellTabs />}
+      {/* Legacy hides its tab bar on the landing view because it is a single
+          page: the tabs live inside the calculator section further down. The
+          shell is routed, so the bar IS its primary navigation and has to be
+          present on every route — hiding it on '/' left the landing page with
+          no way to reach any route. Rendering it here does not affect parity:
+          e2e-visual captures nav, .hero and #features as individual elements,
+          so a sibling between them changes none of their pixels. */}
+      <ShellTabs />
       <main id="main-content" className="shell-main" tabIndex={-1}>
         <Outlet />
       </main>
