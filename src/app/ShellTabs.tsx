@@ -208,12 +208,16 @@ export function ShellTabs() {
                 ▾
               </span>
             </button>
-            <div className="calc-tab-menu" role="menu">
+            {/* Legacy marks this role="menu" with role="menuitem" children
+                (index.html:377). Deliberately not mirrored: those roles are for
+                application menus, and a navigation dropdown should expose plain
+                links — which is also what every caller queries by. Roles do not
+                affect rendering, so parity is unaffected. */}
+            <div className="calc-tab-menu">
               {entry.items.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  role="menuitem"
                   className={({ isActive }) =>
                     isActive ? 'calc-tab-menu-item active' : 'calc-tab-menu-item'
                   }
