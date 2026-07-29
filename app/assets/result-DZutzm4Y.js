@@ -1,1 +1,0 @@
-function e(e){return{ok:!0,value:e}}function t(e){return{ok:!1,error:e}}function n(e,n){return e.ok?e:t(n(e.error))}export{n,e as r,t};
