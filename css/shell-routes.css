@@ -141,6 +141,15 @@
 .shell-btn--primary { background: #27ae60; border-color: #27ae60; color: #fff; }
 .shell-btn--danger { background: #e74c3c; border-color: #e74c3c; color: #fff; }
 .shell-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+/* Legacy's tab entries are <button>s driving in-page tab switches; the shell
+   renders router links instead, so they arrive with the anchor underline that
+   css/style.css never had to suppress. Purely a markup difference — the pills
+   are meant to read identically. */
+.calc-tab,
+.calc-tab-menu-item {
+  text-decoration: none;
+}
+
 .shell-modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);
   display: flex; align-items: center; justify-content: center; padding: 16px;
