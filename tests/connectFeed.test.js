@@ -16,6 +16,12 @@ import {
     isClashFree,
     summarizeFeed,
 } from '../js/core/connectFeed.js';
+// The typed twin (#479). Imported alongside the JS so the parity block below
+// fails if either copy drifts again.
+import {
+    normalizeSection as tsNormalizeSection,
+    parseFeed as tsParseFeed,
+} from '../src/core/connectFeed.ts';
 
 let passed = 0, failed = 0;
 function test(name, fn) {
@@ -356,6 +362,98 @@ test('counts courses, faculty initials, sessions', () => {
     eq(summary.totalCourses, 4);
     eq(summary.totalFaculty, 4);
     eq(summary.semesterSessionIds, [20262]);
+});
+
+// ---- per-slot room tagging (#479) --------------------------------------------
+// Sections exercising the room rules. Kept out of FIXTURE so the count-based
+// assertions above stay untouched.
+const ROOM_FIXTURE = [
+    {
+        // Theory + lab in DIFFERENT rooms — the case the bug got wrong.
+        sectionId: 2001,
+        courseCode: 'CSE110',
+        sectionName: '01',
+        faculties: 'ABC',
+        roomName: '09B-12C',
+        labRoomName: '21A-05L',
+        sectionSchedule: {
+            classSchedules: [{ day: 'SUNDAY', startTime: '08:00:00', endTime: '09:20:00' }],
+        },
+        labSchedules: [{ day: 'THURSDAY', startTime: '08:00:00', endTime: '10:50:00' }],
+    },
+    {
+        // Lab with no labRoomName → falls back to the theory room.
+        sectionId: 2002,
+        courseCode: 'CSE111',
+        sectionName: '02',
+        roomName: '09C-04A',
+        sectionSchedule: {
+            classSchedules: [{ day: 'MONDAY', startTime: '11:00:00', endTime: '12:20:00' }],
+        },
+        labSchedules: [{ day: 'TUESDAY', startTime: '14:00:00', endTime: '16:50:00' }],
+    },
+    {
+        // Empty roomName must fall THROUGH to roomNumber (`||`, not `??`).
+        sectionId: 2003,
+        courseCode: 'MAT110',
+        sectionName: '03',
+        roomName: '',
+        roomNumber: '08A-01C',
+        sectionSchedule: {
+            classSchedules: [{ day: 'WEDNESDAY', startTime: '09:30:00', endTime: '10:50:00' }],
+        },
+    },
+    {
+        // No room information at all → empty tag, not undefined.
+        sectionId: 2004,
+        courseCode: 'PHY110',
+        sectionName: '04',
+        sectionSchedule: {
+            classSchedules: [{ day: 'SATURDAY', startTime: '13:00:00', endTime: '14:20:00' }],
+        },
+    },
+];
+
+console.log('\nper-slot room tagging (typed core):');
+test('theory and lab slots each carry their own room', () => {
+    const s = tsNormalizeSection(ROOM_FIXTURE[0]);
+    eq(s.classSlots.map(x => [x.kind, x.room]), [
+        ['theory', '09B-12C'],
+        ['lab', '21A-05L'],
+    ]);
+});
+test('a lab with no labRoomName falls back to the theory room', () => {
+    const s = tsNormalizeSection(ROOM_FIXTURE[1]);
+    eq(s.classSlots.map(x => [x.kind, x.room]), [
+        ['theory', '09C-04A'],
+        ['lab', '09C-04A'],
+    ]);
+});
+test('an empty roomName falls through to roomNumber', () => {
+    const s = tsNormalizeSection(ROOM_FIXTURE[2]);
+    eq(s.roomName, '08A-01C');
+    eq(s.classSlots.map(x => x.room), ['08A-01C']);
+});
+test('no room information yields an empty tag, not undefined', () => {
+    const s = tsNormalizeSection(ROOM_FIXTURE[3]);
+    eq(s.roomName, '');
+    eq(s.classSlots.map(x => x.room), ['']);
+});
+
+// ---- twin parity (#479) ------------------------------------------------------
+// js/core/connectFeed.js and src/core/connectFeed.ts are hand-kept twins with
+// nothing generating one from the other. Run identical input through both and
+// require byte-identical output, so the next drift fails here instead of on
+// campus.
+console.log('\ntwin parity (js/core vs src/core):');
+test('normalizeSection agrees on every fixture section', () => {
+    for (const raw of [...FIXTURE, ...ROOM_FIXTURE]) {
+        eq(tsNormalizeSection(raw), normalizeSection(raw), `section ${raw.sectionId}`);
+    }
+});
+test('parseFeed agrees on the whole payload, junk entries included', () => {
+    const payload = [...FIXTURE, ...ROOM_FIXTURE, { sectionId: 9001 }, null, { courseCode: 'X' }];
+    eq(tsParseFeed(payload), parseFeed(payload));
 });
 
 // -----------------------------------------------------------------------------
