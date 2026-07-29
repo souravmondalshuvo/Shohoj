@@ -5,6 +5,14 @@
  * This module is I/O-free on purpose: fetch/cache/localStorage live in the
  * runtime client (`js/core/connect-feed-client.js`). Everything here is
  * deterministic so it can be unit-tested against fixtures.
+ *
+ * TWIN: `js/core/connectFeed.js` is the shipping legacy copy and carries a
+ * "Generated from src/core/connectFeed.ts" header, but nothing regenerates or
+ * diffs it — the two are kept in step BY HAND. This file is the source of
+ * truth; when they disagree, port the JS behaviour here rather than the other
+ * way round (#479 fixed exactly such a drift: the JS had gained per-slot room
+ * tagging that this file never received). `tests/connectFeed.test.js` runs the
+ * shared cases against BOTH copies so a future drift fails the suite.
  */
 
 import type { CourseCode } from './types';
@@ -79,6 +87,13 @@ export interface TimeSlot {
   startMin: MinutesOfDay;
   endMin: MinutesOfDay;
   kind: SlotKind;
+  /**
+   * Where this particular meeting happens. Theory slots carry the section's
+   * `roomName`, lab slots their own `labRoomName` — so a section's lab isn't
+   * mis-attributed to its theory classroom. Empty string when the feed gives
+   * no room at all; consumers fall back to `NormalizedSection.roomName`.
+   */
+  room: string;
 }
 
 export interface ExamSlot {
@@ -152,6 +167,7 @@ function normalizeDay(value: string | null | undefined): WeekdayName | null {
 function normalizeSlots(
   raw: readonly RawClassSlot[] | null | undefined,
   kind: SlotKind,
+  room: string,
 ): TimeSlot[] {
   if (!Array.isArray(raw)) return [];
   const out: TimeSlot[] = [];
@@ -161,7 +177,7 @@ function normalizeSlots(
     const endMin = parseTimeToMinutes(slot?.endTime);
     if (day === null || startMin === null || endMin === null) continue;
     if (endMin <= startMin) continue;
-    out.push({ day, startMin, endMin, kind });
+    out.push({ day, startMin, endMin, kind, room });
   }
   return out;
 }
@@ -195,8 +211,15 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
   const capacity = Number.isFinite(raw.capacity) ? Number(raw.capacity) : 0;
   const consumedSeat = Number.isFinite(raw.consumedSeat) ? Number(raw.consumedSeat) : 0;
 
-  const theorySlots = normalizeSlots(raw.sectionSchedule?.classSchedules, 'theory');
-  const labSlots = normalizeSlots(raw.labSchedules, 'lab');
+  // The feed rooms theory and lab separately: theory uses roomName, the lab
+  // component carries its own labRoomName. Tag each slot with its real room so
+  // a section's lab isn't mis-attributed to its theory classroom. `||` (not
+  // `??`) is deliberate and matches the JS twin — an empty roomName falls
+  // through to roomNumber, and an empty labRoomName back to the theory room.
+  const roomName = (raw.roomName || raw.roomNumber || '').trim();
+  const labRoomName = (raw.labRoomName || '').trim() || roomName;
+  const theorySlots = normalizeSlots(raw.sectionSchedule?.classSchedules, 'theory', roomName);
+  const labSlots = normalizeSlots(raw.labSchedules, 'lab', labRoomName);
   const classSlots = [...theorySlots, ...labSlots];
 
   const midExam = normalizeExam(
@@ -220,7 +243,7 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     consumedSeat,
     isFull: capacity > 0 && consumedSeat >= capacity,
     facultyInitials: (raw.faculties ?? '').trim().toUpperCase(),
-    roomName: (raw.roomName ?? raw.roomNumber ?? '').trim(),
+    roomName,
     semesterSessionId: typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
     classSlots,
     classStartDate: normalizeDateOnly(raw.sectionSchedule?.classStartDate),
