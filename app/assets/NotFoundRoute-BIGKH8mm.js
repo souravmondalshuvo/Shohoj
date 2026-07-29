@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-bzQ4Vb5N.js";import{E as t}from"./index-BLpKgNe3.js";var n=e();function r(){return(0,n.jsxs)(`section`,{className:`shell-page`,role:`alert`,children:[(0,n.jsx)(`h1`,{children:`Page not found`}),(0,n.jsx)(`p`,{children:`That page doesn’t exist.`}),(0,n.jsx)(t,{to:`/`,children:`Back to home`})]})}export{r as Component};
