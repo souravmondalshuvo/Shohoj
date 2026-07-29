@@ -4,14 +4,29 @@ import { primeTheme, stabilize, TARGETS, VIEWPORTS, THEMES, shotName } from './_
 // The parity gate. Asserts the migrated shell renders pixel-identical to the
 // baselines authored from the legacy page by legacy-baseline.spec.js.
 //
-// THIS SUITE IS EXPECTED TO FAIL UNTIL PHASE 1 LANDS. Today the shell has no
-// .hero and no #features at all, and css/style.css is not imported — so it
-// fails on the visibility assertion long before it reaches a pixel compare.
-// That is the point: this going green IS the definition of done, and it is the
-// exit criterion for the migration.
-//
-// Do not wire `test:visual` into CI until it passes; add it to the workflow in
-// the same change that turns it green, so it never lands as a known-red job.
+// This going green is the exit criterion for the parity migration.
+
+// Legacy always shows its signed-out "Sign in" pill (static markup), but the
+// shell renders auth UI only on a cloud-capable build — the offline preview
+// shows nothing there (asserted by auth-controls.spec.js). Injecting valid-
+// shaped config makes the shell settle anonymous and render the same "Sign in"
+// pill, so the nav capture compares like with like. Same globals shape as
+// auth-controls.spec.js's cloud case; the SDK initialises locally and never
+// reaches a real backend.
+const CLOUD_GLOBALS = {
+  _shohoj_firebase_config: {
+    apiKey: 'AIzaKey',
+    authDomain: 'shohoj.firebaseapp.com',
+    projectId: 'shohoj',
+    storageBucket: 'shohoj.appspot.com',
+    messagingSenderId: '123',
+    appId: '1:123:web:abc',
+    measurementId: 'G-XYZ',
+  },
+  _shohoj_papers_worker_url: 'https://papers.example.com',
+  _shohoj_recaptcha_v3_site_key: 'sitekey',
+  _shohoj_google_client_id: 'client-id',
+};
 
 for (const viewport of VIEWPORTS) {
   for (const theme of THEMES) {
@@ -20,7 +35,16 @@ for (const viewport of VIEWPORTS) {
 
       test.beforeEach(async ({ page }) => {
         await primeTheme(page, theme);
+        await page.addInitScript((globals) => {
+          Object.assign(window, globals);
+        }, CLOUD_GLOBALS);
         await page.goto('/', { waitUntil: 'load' });
+        // Let the auth listener settle so the "Sign in" pill is present before
+        // the nav is captured; harmless for the hero/features captures.
+        await page
+          .locator('.shell-auth-btn')
+          .waitFor({ state: 'visible', timeout: 15_000 })
+          .catch(() => {});
         await stabilize(page);
       });
 
