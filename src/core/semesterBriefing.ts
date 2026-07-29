@@ -153,14 +153,12 @@ export function parseRoomFloor(room: string | null | undefined): number | null {
 }
 
 /**
- * A slot's real room. `js/core/connectFeed.js` tags every slot with its own
- * room so a section's lab isn't mis-attributed to its theory classroom, but
- * `src/core/connectFeed.ts` hasn't been ported to match yet — hence the
- * optional widening. Where the tag is absent we fall back to the section room,
- * which is exactly what the JS twin does for pre-tag sections.
+ * A slot's real room. Every slot is tagged at normalization (#479), so this is
+ * just the blank-tag fallback: a section whose feed entry carried no room at
+ * all reads back as the (equally empty) section room rather than undefined.
  */
-function sbSlotRoom(slot: TimeSlot & { room?: string | null }, section: NormalizedSection): string {
-  const own = typeof slot.room === 'string' ? slot.room.trim() : '';
+function sbSlotRoom(slot: TimeSlot, section: NormalizedSection): string {
+  const own = slot.room.trim();
   return own !== '' ? own : section.roomName;
 }
 
