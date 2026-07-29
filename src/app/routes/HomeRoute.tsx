@@ -97,9 +97,11 @@ export function Component() {
           BRACU students.
         </p>
         <div className="hero-cta" data-reveal-hero>
-          {/* Demo-mode seeding is not ported to the shell yet; this routes to the
-              calculator so the control is never a dead end. Tracked separately. */}
-          <Link to="/calculator" className="btn-primary magnetic">
+          {/* Legacy wires this straight to startDemoMode (js/main.js:820). Here
+              loadDemo is scoped to the calculator's bridge, so the intent travels
+              as router state and CalculatorRoute honours it on arrival — the
+              button seeds demo data rather than merely landing on the calculator. */}
+          <Link to="/calculator" state={{ loadDemo: true }} className="btn-primary magnetic">
             Try Demo Mode
           </Link>
           <Link to="/calculator" className="btn-secondary magnetic">
