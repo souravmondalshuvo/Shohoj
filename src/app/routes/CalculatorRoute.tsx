@@ -41,6 +41,7 @@
 // Failures surface as error toasts instead of the legacy alert().
 
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 
 import { normalizeInitials } from '../../core/faculty';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
@@ -93,6 +94,8 @@ const lookupCourse = (code: string) => COURSE_BY_CODE.get(code) ?? null;
 
 export function Component() {
   // One store instance for the route's lifetime (load seed + every persist).
+  const location = useLocation();
+  const navigate = useNavigate();
   const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
   const { notify } = useNotifications();
@@ -195,6 +198,21 @@ export function Component() {
     }),
     [state, confirm, notify],
   );
+
+  // The hero's "Try Demo Mode" lives on Home, but loadDemo is bridge-scoped to
+  // this route, so Home hands the intent over as router state and it is honoured
+  // on arrival — legacy wires the same button straight to startDemoMode
+  // (js/main.js:820). Cleared from history immediately so a Back/Forward or a
+  // reload does not re-seed; the ref guards against the effect re-running before
+  // that replace lands. loadDemo still confirms when data already exists.
+  const demoRequested = (location.state as { loadDemo?: boolean } | null)?.loadDemo === true;
+  const demoHandled = useRef(false);
+  useEffect(() => {
+    if (!demoRequested || demoHandled.current) return;
+    demoHandled.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+    bridge.loadDemo();
+  }, [demoRequested, bridge, navigate, location.pathname]);
 
   // Resolve the open modal's course from live state; a stale target (course
   // removed while open) closes silently, like the legacy onSubmitted re-find.
