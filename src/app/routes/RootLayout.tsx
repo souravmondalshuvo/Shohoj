@@ -114,11 +114,11 @@ function ThemeToggle() {
     }
     setTheme(next);
   };
-  // Legacy markup (index.html:174): a track with a pill that slides on
-  // [data-theme] rather than an emoji swap — style.css:251 translates
-  // .toggle-pill by 28px in dark and 0 in light. The glyph never changes, so
-  // rendering a different emoji per theme would both look wrong and shift the
-  // nav's layout.
+  // Legacy markup (index.html:174): a track whose pill slides on [data-theme]
+  // (style.css:251 translates .toggle-pill 28px in dark, 0 in light) AND swaps
+  // the glyph — dark shows 🌙, light shows ☀️ (js/main.js:267). Both are needed
+  // for parity: the glyph alone was wrong before, which the mobile nav capture
+  // caught once the pill stopped dominating the diff budget.
   return (
     <button
       type="button"
@@ -126,7 +126,7 @@ function ThemeToggle() {
       onClick={toggle}
       aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
-      <span className="toggle-pill">🌙</span>
+      <span className="toggle-pill">{theme === 'dark' ? '🌙' : '☀️'}</span>
     </button>
   );
 }
