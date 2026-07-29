@@ -268,3 +268,43 @@ test('signed-out users get no briefing at all', async ({ page }) => {
   await boot(page);
   await expect(page.locator(BRIEF)).toHaveCount(0);
 });
+
+// The two remaining paths through _pentry_loadBriefing: a feed that can't be
+// reached at all, and a feed that loads but no longer contains the picks. Both
+// are states a real student hits — the first on campus wifi, the second on the
+// day the semester rolls over — and neither should leave a blank slot.
+
+test('an unreachable feed shows the unavailable state, not an empty slot', async ({ page }) => {
+  // Picks saved, but nothing seeded into the feed cache — so the client
+  // actually reaches for the network, which boot() aborts.
+  await boot(page, () => {
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+    });
+    localStorage.setItem('shohoj_routine_v1', JSON.stringify({ picks: { CSE220: 4 } }));
+  });
+  await expect(page.locator(BRIEF)).toContainText("Couldn't reach the section feed");
+  // The heading stays so the block doesn't collapse to nothing.
+  await expect(page.locator(`${BRIEF} .pfb-zone h2`)).toHaveText('This semester');
+});
+
+test('picks that no longer exist in the feed fall back to the routine invite', async ({ page }) => {
+  // Semester rollover: the feed loads fine, but every saved sectionId is gone.
+  // The picks below MUST stay absent from the payload — if one matched, the
+  // real briefing would render and this assertion would (correctly) fail.
+  await boot(page, () => {
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+    });
+    localStorage.setItem('shohoj_connect_feed_v1', JSON.stringify({
+      fetchedAt: Date.now(), etag: null, payload: [{
+        sectionId: 777, courseCode: 'CSE110', courseName: 'CSE110', sectionName: '01',
+        courseCredit: 3, capacity: 30, consumedSeat: 1, faculties: 'ABC',
+        roomName: '09A-01C', semesterSessionId: 20263,
+        sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '08:00', endTime: '09:20' }] },
+      }],
+    }));
+    localStorage.setItem('shohoj_routine_v1', JSON.stringify({ picks: { MAT215: 1, CSE251: 2 } }));
+  });
+  await expect(page.locator(BRIEF)).toContainText('Pick your sections');
+});
