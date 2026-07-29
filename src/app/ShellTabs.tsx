@@ -188,7 +188,9 @@ export function ShellTabs() {
           >
             <button
               type="button"
-              className={holdsActive ? 'calc-tab calc-tab-trigger active' : 'calc-tab calc-tab-trigger'}
+              className={
+                holdsActive ? 'calc-tab calc-tab-trigger active' : 'calc-tab calc-tab-trigger'
+              }
               aria-haspopup="true"
               aria-expanded={isOpen}
               data-active-pill={holdsActive ? 'true' : undefined}
