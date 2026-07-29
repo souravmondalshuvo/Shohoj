@@ -15,11 +15,12 @@
 // anonymous source and render no auth UI at all.
 
 import { useMemo, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
+import { ShellBackdrop } from '../ShellBackdrop';
 import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
 import { CloudSyncProvider } from '../providers/CloudSyncProvider';
@@ -133,9 +134,6 @@ function ThemeToggle() {
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
   const config = useRuntimeConfig();
-  // The tab bar is hidden on the landing route, matching legacy's layout.
-  const { pathname } = useLocation();
-
   // One source per page: the validated config is module-scope stable, so this
   // memo effectively runs once. Offline (null config) keeps anonymous.
   const firebaseSource = useMemo(
@@ -154,6 +152,9 @@ function ShellChrome() {
       <a className="shell-skip-link" href="#main-content">
         Skip to content
       </a>
+      {/* Ambient layer: dot matrix, orbs, custom cursor, scroll progress. Also
+          hosts the reveal observers, which must re-scan per route. */}
+      <ShellBackdrop />
       {/* Legacy nav structure (index.html:134-177). css/style.css styles the bare
           `nav` element — fixed, 64px, masked — so the markup underneath it has
           to be legacy's, not the shell's former flat link list. The 19 routes
