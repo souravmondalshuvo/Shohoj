@@ -31,3 +31,10 @@ bracu-section.json
 # Python bytecode cache (build3.py is imported by the build/test scripts).
 __pycache__/
 *.pyc
+
+# iCloud Drive conflict copies. The repo lives under ~/Documents, which iCloud
+# syncs, and it periodically clones files as "<name> 2.tsx", "<name> 3.ts", …
+# They are byte-identical dead copies that otherwise show up as a huge untracked
+# diff (3,526 lines of them on 2026-07-30) and are easy to sweep into a commit.
+* [0-9].*
+* [0-9][0-9].*
