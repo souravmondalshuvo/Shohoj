@@ -76,7 +76,22 @@ async function waitForPropagation() {
 }
 
 // ---- Step 2: check every critical route returns real HTML ----
-const ROUTES = ['', 'admin/', 'profile/', 'campus/', 'bus/', 'lost-found/', 'app/'];
+// Only paths backed by a real file are asserted here. Since the cutover the
+// shell owns /profile, /campus, /bus and /lost-found as CLIENT routes: static
+// hosting has no file for them, so GitHub Pages answers 404 (the SPA fallback
+// in 404.html recovers them in the browser, but a plain GET still sees 404).
+// Asserting them as 200 would fail every deploy. Their static counterparts now
+// live under /legacy/, which is what gets checked instead.
+const ROUTES = [
+  '', // the React shell (site root)
+  'admin/', // standalone moderation dashboard
+  'app/', // retired beta URL -> redirect stub
+  'legacy/', // recoverable vanilla site
+  'legacy/profile/',
+  'legacy/campus/',
+  'legacy/bus/',
+  'legacy/lost-found/',
+];
 
 async function checkRoutes(failures) {
   for (const route of ROUTES) {
