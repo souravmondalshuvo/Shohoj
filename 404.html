@@ -1,14 +1,18 @@
 <!doctype html>
-<!-- GitHub Pages custom 404 (#449).
+<!-- GitHub Pages custom 404 (#460 cutover).
 
-     Two jobs:
-       1. SPA fallback for the shell beta: /Shohoj/app/<route> has no file on
-          static hosting, so redirect it to /Shohoj/app/?/<route> ('&' escaped
-          as ~and~ so the original query survives the round-trip); the shell's
-          index.html decodes that back into the pathname before the router
-          boots (spa-github-pages pattern).
-       2. A plain not-found page for every other missing path — legacy URLs
-          must NOT get hijacked into the shell.
+     The React shell is the site now, served at the base /Shohoj/. GitHub Pages
+     has no SPA fallback, so any /Shohoj/<route> with no matching file 404s here;
+     we redirect it to /Shohoj/?/<route> ('&' escaped as ~and~ so the original
+     query survives), and the shell's index.html decodes that back into the
+     pathname before the router boots (spa-github-pages pattern).
+
+     Two path trees are STATIC and must never be hijacked into the shell — a
+     genuine 404 under them falls through to the not-found body below:
+       - /Shohoj/admin/   the standalone moderation dashboard (admin.html)
+       - /Shohoj/legacy/  the recoverable vanilla site + its public pages
+     The retired /Shohoj/app/<route> beta links are rewritten to /Shohoj/<route>
+     so old bookmarks land on the equivalent shell route.
 
      Served from the site root, so the deploy job copies this file to
      _deploy/404.html verbatim. -->
@@ -20,9 +24,16 @@
     <title>Shohoj — page not found</title>
     <script>
       (function (l) {
-        var base = '/Shohoj/app/';
-        if (l.pathname.indexOf(base) !== 0) return;
-        var route = l.pathname.slice(base.length).replace(/&/g, '~and~');
+        var base = '/Shohoj/';
+        var p = l.pathname;
+        // Outside the app entirely — leave it as a plain not-found.
+        if (p.indexOf(base) !== 0) return;
+        var rest = p.slice(base.length);
+        // Static trees own their own files; a miss here is a real 404.
+        if (rest.indexOf('admin/') === 0 || rest.indexOf('legacy/') === 0) return;
+        // Retired beta: drop the /app/ prefix so bookmarks map to a shell route.
+        if (rest.indexOf('app/') === 0) rest = rest.slice('app/'.length);
+        var route = rest.replace(/&/g, '~and~');
         l.replace(
           base + '?/' + route
             + (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '')
