@@ -15,7 +15,7 @@
 // anonymous source and render no auth UI at all.
 
 import { useMemo, useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
 
 import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
@@ -131,6 +131,37 @@ function ThemeToggle() {
   );
 }
 
+/** The glass surface every routed feature sits on.
+ *
+ * Legacy does NOT give each feature its own card. It wraps the whole tool in a
+ * single `.calc-wrapper.lg-surface` — header, CGPA display, tab bar and all ten
+ * `.calc-tab-panel` divs inside one panel (index.html:268) — and the panels
+ * themselves carry no styling at all. The shell had inverted that: a
+ * `.shell-page` glass card per route at four different widths (720/760/820/860,
+ * none of them legacy's 839px), which is why route interiors read as a
+ * different product even where the feature was fully ported.
+ *
+ * `<section>` supplies the width (style.css:366, 900px centred), matching the
+ * `<section id="calculator">` legacy nests this in, and `.lg-shine`/`.lg-bloom`
+ * are the liquid-glass layers the surface expects as children.
+ *
+ * Home is deliberately NOT wrapped: its hero is full-bleed and its markup is
+ * already pixel-matched to legacy by the visual harness. Wrapping it would
+ * constrain the hero and break the one page that is currently at parity. */
+function ShellSurface({ children }: { readonly children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  if (pathname === '/') return <>{children}</>;
+  return (
+    <section id="calculator">
+      <div className="calc-wrapper lg-surface">
+        <div className="lg-shine" />
+        <div className="lg-bloom" />
+        {children}
+      </div>
+    </section>
+  );
+}
+
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
   const config = useRuntimeConfig();
@@ -188,10 +219,17 @@ function ShellChrome() {
           no way to reach any route. Rendering it here does not affect parity:
           e2e-visual captures nav, .hero and #features as individual elements,
           so a sibling between them changes none of their pixels. */}
-      <ShellTabs />
-      <main id="main-content" className="shell-main" tabIndex={-1}>
-        <Outlet />
-      </main>
+      <ShellSurface>
+        <ShellTabs />
+        {/* `.calc-body` is legacy's padding box INSIDE each panel
+            (style.css:397, 1.5rem/2rem, with a variant at every breakpoint).
+            <main> occupies the same slot here — panel content — so taking the
+            class gives the shell legacy's exact inset responsively, instead of
+            re-deriving one number per route. */}
+        <main id="main-content" className="shell-main calc-body" tabIndex={-1}>
+          <Outlet />
+        </main>
+      </ShellSurface>
       <NotificationViewport />
       {/* Shohoj Assistant (#435): renders only signed-in on a cloud shell. */}
       <AssistantLauncher workerUrl={config?.papersWorkerUrl} />
