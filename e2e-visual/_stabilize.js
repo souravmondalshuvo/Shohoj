@@ -102,6 +102,51 @@ export const TARGETS = [
   { name: 'features', selector: '#features' },
 ];
 
+/** Targets that require the page to be in a signed-in ADMIN state first.
+ *
+ * TARGETS above capture a signed-out page, so every admin-only affordance was
+ * invisible to the harness — which is how the shell shipped its Admin link with
+ * no `#adminNavBtn` id, falling back to a default blue underlined browser link
+ * next to legacy's amber pill.
+ *
+ * The setup lives in each spec rather than here because the two sides reach the
+ * admin state by different means: legacy toggles `.is-admin` on an anchor that
+ * is always present in the markup, while the shell mounts the node from an auth
+ * snapshot. Only the selector and the shot name are shared.
+ *
+ * Scoped to the link itself rather than the whole nav on purpose: a nav-wide
+ * admin capture would also contain the signed-in account pill, whose text is
+ * the fixture's email address, and the baseline would then encode a test
+ * fixture instead of a styling contract. Nav layout is already covered
+ * signed-out by TARGETS.
+ */
+export const ADMIN_TARGETS = [{ name: 'admin-link', selector: '#adminNavBtn' }];
+
+/**
+ * Pin an element to the viewport origin so its element screenshot is a stable
+ * size across both projects.
+ *
+ * The admin pill is 93.4375px wide on BOTH pages — identical padding, gap, font
+ * and border. But an element screenshot is snapped to whole device pixels, and
+ * where a fractional width lands depends on the element's x-origin. That origin
+ * legitimately differs between the two navs: legacy carries `.nav-beta` and its
+ * signed-out auth pill to the left of the link, the shell's admin capture
+ * carries neither. Same pill, different offset, so the bitmaps came out 95px
+ * and 94px and Playwright rejected the pair on size before comparing a single
+ * colour.
+ *
+ * Pinning to (0,0) gives both sides the same origin, so the snap is identical
+ * and the diff is left comparing what it is meant to compare: the pill's fill,
+ * border, radius, typography and internal spacing. Nothing about the element's
+ * own box is overridden — `position: fixed` blockifies `inline-flex` to `flex`,
+ * which both pages already compute, and the width stays shrink-to-fit.
+ */
+export async function pinForCapture(page, selector) {
+  await page.addStyleTag({
+    content: `${selector} { position: fixed !important; left: 0 !important; top: 0 !important; margin: 0 !important; }`,
+  });
+}
+
 export const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 900 },
   { name: 'mobile', width: 390, height: 844 },
