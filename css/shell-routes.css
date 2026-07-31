@@ -76,10 +76,23 @@
   border-radius: 999px; cursor: pointer; border: 1px solid var(--border); background: var(--c-surface); color: var(--c-text);
 }
 .shell-theme-toggle:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-/* Content sits on a branded glass panel; the orbs stay at z-index:-1. */
+/* Route content is a BARE panel, matching legacy's `.calc-tab-panel` — which has
+   no styling of its own beyond display (style.css:2896). Legacy puts one glass
+   surface around the whole tool (`.calc-wrapper.lg-surface`, holding the header,
+   the CGPA display, the tab bar and every panel) rather than a card per feature.
+   The shell used to give each route its own glass card here, which is why every
+   route interior read as a different product from the legacy page even though
+   the features themselves had been ported.
+
+   `.shell-page` is kept as the marker class only because 21 route files use it;
+   it no longer paints anything. The surrounding surface lives in RootLayout. */
 .shell-page {
-  margin: 20px auto; background: var(--glass2); border: 1px solid var(--border);
-  border-radius: 16px; box-shadow: var(--shadow-card);
+  /* Routes are authored as <section>, so without this they inherit the global
+     `section` rule (style.css:366) — 5rem/2rem — and sit 80px inset inside a
+     wrapper whose legacy counterpart insets them by nothing at all. */
+  margin: 0;
+  padding: 0;
+  max-width: none;
 }
 .shell-btn--primary { background: var(--green); border-color: var(--green); }
 .shell-skip-link {
@@ -135,7 +148,10 @@ nav.lg-surface .shell-auth-btn svg { flex-shrink: 0; opacity: 0.7; }
    let the pill own the visual weight. */
 nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .shell-main:focus { outline: none; }
-.shell-page { padding: 24px 16px; max-width: 720px; }
+/* No padding or max-width: the width now comes from the shared `section` rule
+   (style.css:366, 900px) via the surface RootLayout wraps routes in, exactly as
+   legacy sizes its panels. The old 720px here — with 820/860 overrides on some
+   routes — is what made the shell four different widths, none of them legacy's. */
 .shell-muted { color: var(--c-text-muted); }
 .shell-brand-bn { color: var(--c-green-ink); }
 .home-links {
@@ -370,7 +386,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   cursor: pointer; padding: 0 4px; color: inherit;
 }
 .shell-toast-dismiss:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.campus-page { max-width: 860px; }
 .campus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--c-text-muted); }
 .campus-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
 .campus-location { font-weight: 600; color: var(--c-green-ink); }
@@ -451,7 +466,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 }
 .campus-error { padding: 16px 0; }
 .campus-other { margin-top: 16px; font-size: 13px; color: var(--c-text-muted); }
-.bus-page { max-width: 860px; }
 .bus-effective { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); color: var(--c-blue-ink); font-size: 12px; line-height: 1.6; }
 .bus-today { font-size: 13px; font-weight: 600; color: var(--c-green-ink); margin: 0 0 12px; }
 .bus-routes { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
@@ -485,7 +499,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .bus-extra ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.7; }
 .bus-extra a { color: var(--c-green-ink); }
 /* Cafeteria guide (#373) */
-.cafeteria-page { max-width: 760px; }
 .cafeteria-effective { margin: 0 0 14px; padding: 10px 14px; border: 1px solid rgba(240,165,0,0.35); border-radius: 10px; background: rgba(240,165,0,0.08); color: var(--c-warn-ink); font-size: 12px; line-height: 1.6; }
 .cafeteria-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .cafeteria-card { border: 1px solid var(--c-border); border-radius: 12px; padding: 14px 16px; background: var(--c-card); }
@@ -510,7 +523,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .cafeteria-note { margin: 6px 0 0; font-size: 12px; color: var(--c-text-muted); font-style: italic; }
 .cafeteria-unverified { margin: 8px 0 0; font-size: 11px; color: var(--c-warn-ink); }
 /* Profile account hub (#397 / #196) */
-.profile-page { max-width: 720px; }
 .profile-signedout { border: 1px solid var(--c-border); border-radius: 12px; padding: 16px; margin-top: 12px; line-height: 1.6; }
 .profile-account { display: flex; align-items: center; gap: 14px; margin: 14px 0 18px; }
 .profile-avatar {
@@ -538,7 +550,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .profile-alert-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 2px 0 4px; cursor: pointer; }
 .profile-alert-note { font-size: 12px; margin: 0 0 10px; }
 /* Weekly routine builder (#397) */
-.routine-page { max-width: 860px; }
 .routine-feed-status { font-size: 12px; margin: 4px 0; }
 .routine-feed-error { color: #e74c3c; }
 .routine-add { margin: 14px 0; }
@@ -594,7 +605,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .routine-block-code { font-weight: 700; color: var(--c-text); }
 .routine-block-room { color: var(--c-faint); font-size: 10px; }
 /* Seat status browser (#397) */
-.seats-page { max-width: 820px; }
 .seats-feed-status { font-size: 12px; margin: 4px 0; }
 .seats-feed-error { color: #e74c3c; }
 .seats-search { margin: 14px 0 10px; }
@@ -639,7 +649,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .seats-watch--on { border-color: rgba(240,165,0,0.45); background: rgba(240,165,0,0.10); color: var(--c-warn-ink); }
 .seats-watch:disabled { opacity: 0.5; cursor: not-allowed; }
 .seats-watch:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.rooms-page { max-width: 860px; }
 .rooms-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--c-text-muted); }
 .rooms-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
 .rooms-error { padding: 16px 0; }
@@ -690,7 +699,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .rooms-seg-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 .rooms-seg-label { color: var(--c-text-muted); }
 .rooms-week-close { align-self: flex-end; }
-.feedback-page { max-width: 720px; }
 .feedback-signin { margin: 24px 0; }
 .feedback-form {
   border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.04);
@@ -740,7 +748,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 }
 .feedback-del:focus-visible { outline: 2px solid var(--c-danger-ink); outline-offset: 2px; }
 .feedback-item-text { margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-.papers-page { max-width: 820px; }
 .papers-signin { margin: 24px 0; }
 .papers-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .papers-search {
@@ -790,7 +797,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .papers-report:focus-visible { outline: 2px solid var(--c-danger-ink); outline-offset: 2px; }
 .papers-report-box { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .papers-reason { width: 100%; min-height: 56px; resize: vertical; }
-.groups-page { max-width: 760px; }
 .groups-signin { margin: 24px 0; }
 .groups-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 .groups-search {
@@ -851,7 +857,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .groups-roster-list { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12px; color: var(--c-text-muted); display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
 .groups-report-box { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .groups-reason { width: 100%; min-height: 56px; resize: vertical; }
-.transcript-page { max-width: 760px; }
 .transcript-actions { margin: 4px 0 14px; }
 .transcript-empty { margin: 14px 0; }
 .transcript-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
@@ -878,7 +883,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 }
 .transcript-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--c-surface); }
 .transcript-table tr:last-child td { border-bottom: none; }
-.degree-page { max-width: 860px; }
 .degree-empty { margin: 14px 0; }
 .lf-page { max-width: 720px; }
 .lf-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
