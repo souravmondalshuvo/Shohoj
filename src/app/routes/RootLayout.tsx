@@ -53,14 +53,25 @@ declare global {
  * parity, since a signed-out capture must not show an Admin link.
  *
  * Admin stays the standalone build3.py admin.html page, not a shell route, so
- * this is a full-page link resolved against the deploy base. */
+ * this is a full-page link resolved against the deploy base.
+ *
+ * The id and the `is-admin` class are load bearing, not leftovers from the
+ * legacy markup: css/style.css:5334 styles this link by ID ONLY — the amber
+ * pill, its border, colour and font all hang off `#adminNavBtn`, and the base
+ * rule is `display: none` with `#adminNavBtn.is-admin` restoring
+ * `inline-flex`. Rendering the anchor with just `magnetic` therefore produced a
+ * default browser link (blue, underlined) in the nav; dropping the class while
+ * keeping the id would hide it outright. Legacy toggles `.is-admin` at runtime
+ * because its anchor is always in the DOM — the shell mounts the node only for
+ * admins, so the class is unconditional here. */
 function AdminNavLink() {
   const { isAdmin } = useAuth();
   if (!isAdmin) return null;
   return (
     <a
+      id="adminNavBtn"
       href={`${import.meta.env.BASE_URL}admin/`}
-      className="magnetic"
+      className="magnetic is-admin"
       aria-label="Open admin dashboard"
       title="Moderation dashboard"
     >
