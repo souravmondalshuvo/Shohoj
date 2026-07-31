@@ -64,6 +64,19 @@ async function measure(page, url, selectors) {
   await page.goto('about:blank');
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(SETTLE_MS);
+  // Force the reveal end state before measuring, exactly as e2e-visual's
+  // stabilize() does. Without it every legacy number comes out 1.8% small:
+  // .calc-wrapper[data-reveal-calc] sits at scale(0.982) until the observer
+  // adds .visible (style.css:743-753), and getBoundingClientRect returns the
+  // TRANSFORMED box. That silently reported legacy's panels as 839px when
+  // their real layout width is 854 (838.63 / 0.982) — a wrong target to
+  // migrate toward, and wrong in a direction that looks plausible.
+  await page.evaluate(() => {
+    document
+      .querySelectorAll('.reveal,[data-reveal-calc]')
+      .forEach((el) => el.classList.add('visible'));
+  });
+  await page.waitForTimeout(400);
   return page.evaluate(MEASURE, selectors);
 }
 
