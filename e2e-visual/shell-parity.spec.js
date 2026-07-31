@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { primeTheme, stabilize, TARGETS, VIEWPORTS, THEMES, shotName } from './_stabilize.js';
+import {
+  primeTheme,
+  stabilize,
+  pinForCapture,
+  TARGETS,
+  ADMIN_TARGETS,
+  VIEWPORTS,
+  THEMES,
+  shotName,
+} from './_stabilize.js';
 
 // The parity gate. Asserts the migrated shell renders pixel-identical to the
 // baselines authored from the legacy page by legacy-baseline.spec.js.
@@ -56,6 +65,43 @@ for (const viewport of VIEWPORTS) {
         test(`${target.name} matches legacy`, async ({ page }) => {
           const el = page.locator(target.selector).first();
           await expect(el).toBeVisible();
+          await expect(el).toHaveScreenshot(shotName(target.name, viewport.name, theme));
+        });
+      }
+    });
+
+    test.describe(`shell admin · ${viewport.name} · ${theme}`, () => {
+      test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      test.beforeEach(async ({ page }) => {
+        await primeTheme(page, theme);
+        // AdminNavLink mounts off the auth snapshot's isAdmin, so the standard
+        // __shohojAuthSource seam is enough — no cloud config needed, since the
+        // capture is scoped to the link and never includes the auth pill that
+        // CLOUD_GLOBALS exists to render.
+        await page.addInitScript(() => {
+          // Stable reference: useSyncExternalStore compares get() by identity.
+          const snapshot = {
+            status: 'authenticated',
+            uid: 'u_admin',
+            email: 'admin@g.bracu.ac.bd',
+            isAdmin: true,
+          };
+          window.__shohojAuthSource = {
+            get: () => snapshot,
+            subscribe: () => () => {},
+            getIdToken: async () => 'test-token',
+          };
+        });
+        await page.goto('/', { waitUntil: 'load' });
+        await stabilize(page);
+      });
+
+      for (const target of ADMIN_TARGETS) {
+        test(`${target.name} matches legacy`, async ({ page }) => {
+          const el = page.locator(target.selector).first();
+          await expect(el).toBeVisible();
+          await pinForCapture(page, target.selector);
           await expect(el).toHaveScreenshot(shotName(target.name, viewport.name, theme));
         });
       }
