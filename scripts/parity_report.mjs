@@ -114,7 +114,8 @@ for (const r of rows) {
   if (!r.shell || !r.legacy) continue;
   const diffs = [];
   for (const key of ['maxWidth', 'padding', 'background', 'border', 'radius']) {
-    if (r.legacy[key] !== r.shell[key]) diffs.push(`${key}: legacy \`${r.legacy[key]}\` vs shell \`${r.shell[key]}\``);
+    if (r.legacy[key] !== r.shell[key])
+      diffs.push(`${key}: legacy \`${r.legacy[key]}\` vs shell \`${r.shell[key]}\``);
   }
   console.log(`- **${r.name}** — ${diffs.length ? diffs.join('; ') : 'container matches'}`);
 }
