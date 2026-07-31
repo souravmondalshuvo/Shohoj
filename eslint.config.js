@@ -72,6 +72,10 @@ export default tseslint.config(
       'e2e-shell/**/*.js',
       'e2e-pages/**/*.js',
       'e2e-visual/**/*.js',
+      // Lives in scripts/ but is a Playwright driver like the specs above: its
+      // measurement callback is evaluated in the page, so it needs the browser
+      // globals that the pure-Node scripts block below does not provide.
+      'scripts/parity_report.mjs',
     ],
     languageOptions: {
       ecmaVersion: 2022,
