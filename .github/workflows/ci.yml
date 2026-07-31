@@ -352,7 +352,7 @@ jobs:
       # AFTER the runtime config is generated, so the real config gets bundled (the
       # plugin emits /runtime-config.js, base-rewritten to /Shohoj/app/runtime-config.js).
       - name: Build the shell (served under /app/)
-        run: SHELL_BASE=/Shohoj/app/ npm run build:shell
+        run: SHELL_BASE=/Shohoj/ npm run build:shell
 
       # test:bundle launches headless Chromium to load the built bundle, so the
       # browser must be present here (the validation job installs it separately).
@@ -368,19 +368,27 @@ jobs:
 
       - name: Prepare deploy folder
         run: |
-          mkdir -p _deploy/admin _deploy/profile _deploy/app
-          # Vanilla build3.py site is the deploy root again (#460 rolled back);
-          # the React shell moves back under /app/ (opt-in). Legacy is the default.
-          cp shohoj.html  _deploy/index.html
-          cp admin.html   _deploy/admin/index.html
-          cp profile.html _deploy/profile/index.html
-          # Custom 404: SPA fallback for /app/ deep links + plain not-found
-          # for everything else (#449).
-          cp 404.html     _deploy/404.html
-          # Standalone pages keep their directory layout and share assets/.
-          cp -R dist-pages/. _deploy/
-          # React shell — opt-in at /app/ (built with SHELL_BASE=/Shohoj/app/).
-          cp -R dist-shell/. _deploy/app/
+          mkdir -p _deploy/admin _deploy/legacy/profile _deploy/app
+          # The React shell is the site (#460, redone): its built index.html and
+          # assets become the deploy root. Landing parity with the vanilla page
+          # is asserted by e2e-visual/, which is what made this safe to redo.
+          cp -R dist-shell/. _deploy/
+          # Admin stays the standalone moderation dashboard, linked from the shell
+          # nav (there is no in-shell admin yet). The 404 fallback must not hijack it.
+          cp admin.html _deploy/admin/index.html
+          # Vanilla site kept recoverable at /legacy/ (the tagged
+          # legacy-single-file-build is the real rollback path — docs/ROLLBACK.md).
+          # Everything that would shadow a shell route moves under /legacy/ so the
+          # shell owns /profile, /campus, /bus and /lost-found.
+          cp shohoj.html  _deploy/legacy/index.html
+          cp profile.html _deploy/legacy/profile/index.html
+          cp -R dist-pages/. _deploy/legacy/
+          # Retired beta URL: the bare /app/ bookmark redirects to the shell root;
+          # /app/<route> deep links are rewritten by the 404 fallback.
+          cp app-redirect.html _deploy/app/index.html
+          # Custom 404: SPA fallback into the shell for every missing path except
+          # the static /admin/ and /legacy/ trees.
+          cp 404.html _deploy/404.html
 
       - name: Generate version.json (build metadata)
         env:
