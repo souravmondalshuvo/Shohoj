@@ -7060,9 +7060,13 @@ body[data-page="admin"] .orb { display: none !important; }
 
 /* Exam rows */
 .pfb-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* Each row is its own grid, so the tracks only line up while every row hits the
+   same floor: 88px clears a six-character code in Syne 800 (~86px), where the
+   old fixed 62px clipped it into the date. Anything longer widens that one row
+   instead of colliding. */
 .pfb-row {
   display: grid;
-  grid-template-columns: auto 62px 1fr auto auto;
+  grid-template-columns: auto minmax(88px, max-content) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 10px 8px;
@@ -7079,10 +7083,15 @@ body[data-page="admin"] .orb { display: none !important; }
   box-shadow: 0 0 0 3px rgba(46,204,113,0.16);
 }
 .pfb-row-dot.hot { background: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,0.16); }
-.pfb-row-code { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; color: var(--text); }
-.pfb-row-when { font-size: 12px; color: var(--text2); }
-.pfb-row-when b { color: var(--text); font-weight: 600; }
-.pfb-row-meta { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.pfb-row-code { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; color: var(--text); white-space: nowrap; }
+/* Tabular figures so the clock times stack into a readable column. */
+.pfb-row-when { font-size: 12px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.pfb-row-when b { color: var(--text); font-weight: 600; white-space: nowrap; }
+/* A floor here too: initials run 2–4 characters, and without it every row ends
+   its chip at a different x. */
+.pfb-row-meta { font-size: 11px; color: var(--text3); white-space: nowrap; min-width: 34px; text-align: right; }
+/* Chips are content-width; ending them on one edge makes the column scannable. */
+.pfb-row .pfb-chip { justify-self: end; }
 
 /* Week stats */
 .pfb-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 9px; }
@@ -7232,7 +7241,12 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (max-width: 640px) {
   .pfb-week { grid-template-columns: 30px repeat(6, 1fr); gap: 4px; }
   .pfb-blk-room { display: none; }
-  .pfb-row { grid-template-columns: auto 58px 1fr; row-gap: 6px; }
+  /* Two lines instead of five squeezed columns: code + chip on top, the date
+     underneath. Auto-flow used to drop the chip in the dot's column. */
+  .pfb-row { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; row-gap: 4px; }
+  .pfb-row-code { grid-area: 1 / 2; }
+  .pfb-row .pfb-chip { grid-area: 1 / 3; }
+  .pfb-row-when { grid-area: 2 / 2 / 2 / -1; }
   .pfb-row-meta { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
