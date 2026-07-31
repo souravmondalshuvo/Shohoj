@@ -22,7 +22,12 @@ export const PANEL_ROUTES = [
   // shares this legacy panel DID migrate, as CgpaSimulator.tsx.
   { name: 'playground', hash: '#calculator/playground', panel: 'tabPlayground', route: null },
   { name: 'reviews', hash: '#calculator/reviews', panel: 'tabReviews', route: '/reviews' },
-  { name: 'difficulty', hash: '#calculator/difficulty', panel: 'tabDifficulty', route: '/difficulty' },
+  {
+    name: 'difficulty',
+    hash: '#calculator/difficulty',
+    panel: 'tabDifficulty',
+    route: '/difficulty',
+  },
   { name: 'papers', hash: '#calculator/papers', panel: 'tabPapers', route: '/papers' },
   { name: 'routine', hash: '#calculator/routine', panel: 'tabRoutine', route: '/routine' },
   { name: 'seats', hash: '#calculator/seats', panel: 'tabSeats', route: '/seats' },
