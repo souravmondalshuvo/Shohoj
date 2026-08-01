@@ -133,7 +133,11 @@ export function computeDegreeProgress(
       !sem.running &&
       !sem.summary &&
       sem.courses.some(
-        (c) => c.name.trim() && c.grade && GRADES[c.grade as keyof typeof GRADES] !== undefined,
+        (c) =>
+          c.name.trim() &&
+          c.grade &&
+          c.grade !== 'W' &&
+          GRADES[c.grade as keyof typeof GRADES] !== undefined,
       ),
   );
   if ((!gradedSemesters.length && !summaryBlock) || !totalRequired) return null;
