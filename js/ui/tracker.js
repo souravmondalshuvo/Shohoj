@@ -57,7 +57,7 @@ export function renderDegreeTracker(totalEarned) {
 
   const gradedSemesters = state.semesters.filter(sem =>
     !sem.running && !sem.summary && sem.courses.some(c =>
-      c.name.trim() && c.grade && GRADES[c.grade] !== undefined
+      c.name.trim() && c.grade && c.grade !== 'W' && GRADES[c.grade] !== undefined
     )
   );
 
