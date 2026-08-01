@@ -76,21 +76,24 @@ async function waitForPropagation() {
 }
 
 // ---- Step 2: check every critical route returns real HTML ----
-// Only paths backed by a real file are asserted here. Since the cutover the
-// shell owns /profile, /campus, /bus and /lost-found as CLIENT routes: static
-// hosting has no file for them, so GitHub Pages answers 404 (the SPA fallback
-// in 404.html recovers them in the browser, but a plain GET still sees 404).
-// Asserting them as 200 would fail every deploy. Their static counterparts now
-// live under /legacy/, which is what gets checked instead.
+// Only paths backed by a real file are asserted here.
+//
+// The cutover is reverted (docs/ROLLBACK.md Option C): the vanilla build3.py
+// site is the root again and the React shell is opt-in at /app/. So the static
+// pages are back at their own top-level paths, and there is no /legacy/ tree —
+// asserting one would fail every deploy.
+//
+// Shell CLIENT routes (/app/calculator and friends) are deliberately absent:
+// static hosting has no file for them, so a plain GET sees the 404 that
+// 404.html only recovers in the browser.
 const ROUTES = [
-  '', // the React shell (site root)
+  '', // vanilla build3.py site (site root)
   'admin/', // standalone moderation dashboard
-  'app/', // retired beta URL -> redirect stub
-  'legacy/', // recoverable vanilla site
-  'legacy/profile/',
-  'legacy/campus/',
-  'legacy/bus/',
-  'legacy/lost-found/',
+  'app/', // the React shell (opt-in beta)
+  'profile/',
+  'campus/',
+  'bus/',
+  'lost-found/',
 ];
 
 async function checkRoutes(failures) {
