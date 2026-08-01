@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-kK0cpPbw+e/oViZvRRWqxAnetyIT8O7Ir7/pvaC3gig='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-umEfGdiI7itXBs43hHLolbifyJKfDr51qPpSQ6BWW1E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10443,7 +10443,11 @@ const GRADES = {
   'B+': 3.30, 'B':  3.00, 'B-': 2.70,
   'C+': 2.30, 'C':  2.00, 'C-': 1.70,
   'D+': 1.30, 'D':  1.00, 'D-': 0.70,
-  'F':  0.00, 'F(NT)': 0, 'P':  null, 'I': null
+  'F':  0.00, 'F(NT)': 0, 'P':  null, 'I': null,
+  // A withdrawal carries no grade point, but unlike P/I it still consumed an
+  // attempt: calculateCgpaTotals counts it toward attempted credits and nothing
+  // else. See getRetakenKeys for why it never supersedes a grade.
+  'W': null
 };
 
 const POINTS_TO_GRADE = [
@@ -12742,6 +12746,12 @@ function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
         semester.courses.forEach((course, index) => {
             if (!course.name.trim())
                 return;
+            // A withdrawal is not an outcome, so it neither supersedes an earlier
+            // attempt nor is superseded by a later one. Leaving it in the group would
+            // let the latest-attempt policy below (slice(0, -1)) drop a real grade in
+            // favour of a W, which is how a student's passing grade would vanish.
+            if (course.grade === 'W')
+                return;
             const gp = course.grade && course.grade !== 'F(NT)'
                 ? gradePointFor(course.grade) ?? -1
                 : -1;
@@ -14624,7 +14634,7 @@ function renderDegreeTracker(totalEarned) {
 
   const gradedSemesters = state.semesters.filter(sem =>
     !sem.running && !sem.summary && sem.courses.some(c =>
-      c.name.trim() && c.grade && GRADES[c.grade] !== undefined
+      c.name.trim() && c.grade && c.grade !== 'W' && GRADES[c.grade] !== undefined
     )
   );
 
@@ -26122,7 +26132,7 @@ async function importTranscriptPDF(inputEl) {
       <tr style="border-bottom:1px solid ${t2.tableRowBorder}">
         <td style="padding:4px 8px;font-size:12px;color:${t2.text}">${escHtml(s.name)}</td>
         <td style="padding:4px 8px;text-align:center;font-size:12px;color:${t2.text2}">${s.courses.length} courses</td>
-        <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P'&&c.grade!=='I'&&c.credits>0).length} graded</td>
+        <td style="padding:4px 8px;text-align:center;font-size:13px;color:#1DB954;font-weight:600">${s.courses.filter(c=>c.grade&&c.grade!=='P'&&c.grade!=='I'&&c.grade!=='W'&&c.credits>0).length} graded</td>
       </tr>`
     ).join('');
 
@@ -26552,7 +26562,9 @@ const pg = {
 };
 
 // ── Grade list (exclude special grades) ─────────────────────────────────────
-const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)');
+// W is excluded alongside P/I/F(NT): the playground asks "what if this grade
+// were X", and a withdrawal is not a grade you can change a course *to*.
+const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function gradeColor(g) {
@@ -26606,7 +26618,7 @@ function getGradedCourses() {
   state.semesters.forEach(sem => {
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.grade) return;
-      if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
+      if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)' || c.grade === 'W') return;
       const gp = GRADES[c.grade];
       if (gp === undefined) return;
       if (rk.has(`${sem.id}-${i}`)) return;
