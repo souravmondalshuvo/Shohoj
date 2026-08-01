@@ -3,7 +3,11 @@ export const GRADES = {
   'B+': 3.30, 'B':  3.00, 'B-': 2.70,
   'C+': 2.30, 'C':  2.00, 'C-': 1.70,
   'D+': 1.30, 'D':  1.00, 'D-': 0.70,
-  'F':  0.00, 'F(NT)': 0, 'P':  null, 'I': null
+  'F':  0.00, 'F(NT)': 0, 'P':  null, 'I': null,
+  // A withdrawal carries no grade point, but unlike P/I it still consumed an
+  // attempt: calculateCgpaTotals counts it toward attempted credits and nothing
+  // else. See getRetakenKeys for why it never supersedes a grade.
+  'W': null
 };
 
 export const POINTS_TO_GRADE = [
