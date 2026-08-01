@@ -14,7 +14,8 @@ export type GradeLetter =
   | 'F'
   | 'F(NT)'
   | 'P'
-  | 'I';
+  | 'I'
+  | 'W';
 
 export type GradePoint = number | null;
 
@@ -35,6 +36,10 @@ export const GRADES: Record<GradeLetter, GradePoint> = {
   'F(NT)': 0.0,
   P: null,
   I: null,
+  // A withdrawal carries no grade point, but unlike P/I it still consumed an
+  // attempt: calculateCgpaTotals counts it toward attempted credits and nothing
+  // else. See gpaCoreGetRetakenKeysImpl for why it never supersedes a grade.
+  W: null,
 };
 
 export const POINTS_TO_GRADE = [
