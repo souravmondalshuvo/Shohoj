@@ -23,7 +23,9 @@ const pg = {
 };
 
 // ── Grade list (exclude special grades) ─────────────────────────────────────
-const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)');
+// W is excluded alongside P/I/F(NT): the playground asks "what if this grade
+// were X", and a withdrawal is not a grade you can change a course *to*.
+const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function gradeColor(g) {
@@ -77,7 +79,7 @@ function getGradedCourses() {
   state.semesters.forEach(sem => {
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.grade) return;
-      if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
+      if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)' || c.grade === 'W') return;
       const gp = GRADES[c.grade];
       if (gp === undefined) return;
       if (rk.has(`${sem.id}-${i}`)) return;
