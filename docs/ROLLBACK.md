@@ -39,20 +39,33 @@ Every frontend deploy uploads the exact published folder as an artifact named
 > Do **not** hand-edit `gh-pages`. Always restore a whole validated package so
 > `version.json` and assets stay consistent.
 
-### Option C — undo the React shell cutover (#460)
+### Option C — the React shell cutover (#460), currently REVERTED
 
-Since the cutover the site root serves the **React shell**; the vanilla
-`build3.py` site is no longer the default. Two levels of undo, cheapest first:
+The site root serves the vanilla `build3.py` site, and the React shell is
+opt-in at `/Shohoj/app/`. The cutover that made the shell the root has now been
+put in and taken out twice — #460 shipped it, #465 reverted it, it was redone,
+and it is reverted again because the shell's route interiors were still under
+development while users were landing on them.
 
-1. **Point users at the retained legacy site.** The whole vanilla app is still
-   published at `/Shohoj/legacy/` (with its standalone pages under
-   `/Shohoj/legacy/campus/`, `/bus/`, `/lost-found/`, `/profile/`). Nothing to
-   deploy — useful as an immediate workaround while you decide.
-2. **Full revert to legacy-at-root.** Re-deploy any commit before the cutover
-   (tagged **`legacy-single-file-build`**) using Option A or B above. That
-   restores `shohoj.html` as the root `index.html` and the shell back under
-   `/app/`. Because the cutover is only deploy wiring — `.github/workflows/ci.yml`
-   and `404.html` — reverting those two files is enough; no app code changes.
+There is no `/Shohoj/legacy/` tree in this state: legacy IS the root. Any
+bookmark to `/Shohoj/legacy/…` from the cutover period will 404.
+
+**To cut over to the shell again**, both halves must move together — reverting
+only one produces a broken site:
+
+1. `.github/workflows/ci.yml` — the deploy layout: which build lands on
+   `_deploy/index.html`, and the `SHELL_BASE` the shell is built with
+   (`/Shohoj/app/` when opt-in, `/Shohoj/` at root).
+2. `404.html` — the SPA fallback base. It currently redirects
+   `/Shohoj/app/<route>` and deliberately leaves every other missing path as a
+   plain 404 so legacy URLs are not hijacked. The root-cutover version instead
+   falls the WHOLE site through to the shell and strips a leading `app/`. Ship
+   that one while the shell is at `/app/` and every shell deep link is
+   redirected away from the shell into legacy.
+
+Before cutting over again, confirm parity covers more than the landing page —
+`e2e-visual` asserts nav/hero/features on `/` only, which is how mismatched
+route interiors reached production last time.
 
 > `/Shohoj/admin/` is unaffected by the cutover either way: it is the same
 > standalone `admin.html` before and after.
