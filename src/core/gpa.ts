@@ -102,6 +102,11 @@ function gpaCoreGetRetakenKeysImpl(
     if (semester.running || semester.summary) continue;
     semester.courses.forEach((course: CourseEntry, index: number) => {
       if (!course.name.trim()) return;
+      // A withdrawal is not an outcome, so it neither supersedes an earlier
+      // attempt nor is superseded by a later one. Leaving it in the group would
+      // let the latest-attempt policy below (slice(0, -1)) drop a real grade in
+      // favour of a W, which is how a student's passing grade would vanish.
+      if (course.grade === 'W') return;
       const gp =
         course.grade && course.grade !== 'F(NT)' ? (gradePointFor(course.grade) ?? -1) : -1;
       attempts.push({
