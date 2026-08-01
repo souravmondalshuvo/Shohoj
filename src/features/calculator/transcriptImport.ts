@@ -55,7 +55,7 @@ function totalCourses(result: TranscriptParseResult): number {
 /** The legacy "graded" display rule for the confirm dialog. */
 function gradedCount(semester: TranscriptSemester): number {
   return semester.courses.filter(
-    (c) => c.grade && c.grade !== 'P' && c.grade !== 'I' && c.credits > 0,
+    (c) => c.grade && c.grade !== 'P' && c.grade !== 'I' && c.grade !== 'W' && c.credits > 0,
   ).length;
 }
 
