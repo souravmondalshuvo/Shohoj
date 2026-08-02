@@ -13,11 +13,13 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import { getDepartment } from './departments.ts';
+import { computeMilestoneLadder, type MilestoneLadder } from './milestones.ts';
 import { computeCalculatorResults, formatCredits } from './results.ts';
 import {
   computeRetakeCandidates,
   computeRetakeImpact,
   computeSimulation,
+  gpaLetterRange,
   isSummaryOnly,
   simulatorTotals,
   type RetakeCandidate,
@@ -56,6 +58,50 @@ function gradeColor(grade: string): string {
   if (grade === 'F' || grade === 'F(NT)') return '#e74c3c';
   if (grade === 'D' || grade === 'D-' || grade === 'D+') return '#e67e22';
   return '#F0A500';
+}
+
+/**
+ * The goal ladder shown before a target is typed (#502).
+ *
+ * Curated rather than exhaustive: every tier the student has not already locked
+ * in, plus the single highest one they have. Listing "Satisfactory (2.50)" as an
+ * aspiration to someone at 3.80 is noise, but hiding an out-of-reach tier is the
+ * omission this feature exists to fix — so unreachable rows always stay.
+ */
+function MilestoneLadder({ ladder }: { readonly ladder: MilestoneLadder }) {
+  const firstSecured = ladder.rows.findIndex((r) => r.state === 'secured');
+  const visible = firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
+  if (!visible.length) return null;
+
+  return (
+    <div className="sim-ladder" data-testid="sim-ladder">
+      <div className="sim-ladder-heading">🪜 Where you can still land</div>
+      <div className="sim-ladder-sub">
+        Best still possible: <strong>{ladder.ceiling.toFixed(2)}</strong> · guaranteed floor:{' '}
+        <strong>{ladder.floor.toFixed(2)}</strong>
+      </div>
+      <ul className="sim-ladder-list">
+        {visible.map((row) => (
+          <li key={row.tier.id} className={`sim-ladder-row sim-ladder-row--${row.state}`}>
+            <span className="sim-ladder-goal">
+              {row.tier.goalLabel}{' '}
+              <span className="sim-ladder-thresh">({row.tier.threshold.toFixed(2)})</span>
+            </span>
+            <span className="sim-ladder-state">
+              {row.state === 'secured' && 'Locked in'}
+              {row.state === 'reachable' && row.neededGpa !== null && (
+                <>
+                  needs {row.neededGpa.toFixed(2)} avg{' '}
+                  <span className="sim-ladder-letters">({gpaLetterRange(row.neededGpa)})</span>
+                </>
+              )}
+              {row.state === 'out-of-reach' && 'Out of reach'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
@@ -452,6 +498,18 @@ export default function CgpaSimulator() {
       : computeRetakeCandidates(inputs, totals, ranking);
   const impact = computeRetakeImpact(candidates, selected, totals, target, remaining);
 
+  // The ladder answers "what can I still reach", which is only a useful lead-in
+  // before a target is named. Once one is, the plan below answers it directly.
+  const remainingNum = parseFloat(remaining);
+  const ladder =
+    outcome.kind === 'prompt' && !summaryOnly && totals.cgpa !== null && !Number.isNaN(remainingNum)
+      ? computeMilestoneLadder({
+          points: totals.points,
+          cgpaCredits: totals.cgpaCredits,
+          remaining: remainingNum,
+        })
+      : null;
+
   const toggle = (key: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -493,6 +551,7 @@ export default function CgpaSimulator() {
       </div>
       <div className="simulator-result">
         <OutcomeCard outcome={outcome} />
+        {ladder && <MilestoneLadder ladder={ladder} />}
         {outcome.kind !== 'prompt' &&
           outcome.kind !== 'invalid-target' &&
           outcome.kind !== 'invalid-remaining' &&
