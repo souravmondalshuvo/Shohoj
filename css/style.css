@@ -1897,11 +1897,16 @@ input, select, textarea,
   /* Footer buttons scroll horizontally */
   .footer-btn-group { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; }
   .footer-btn-group button { flex-shrink: 0; }
-  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (6th) columns */
+  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (8th) columns.
+     Columns are 1 checkbox · 2 Course · 3 Semester · 4 Grade → Target ·
+     5 Type · 6 Credits · 7 CGPA(B) · 8 CGPA(A). Credits stays on mobile: it is
+     the cost half of the default per-credit ranking, and it is the narrowest
+     column in the table. (The old rule hid nth-child(6), which was CGPA(B) —
+     the primary column — rather than the CGPA(A) its comment named.) */
   .sim-retake-table th:nth-child(3),
   .sim-retake-table td:nth-child(3) { display: none; }
-  .sim-retake-table th:nth-child(6),
-  .sim-retake-table td:nth-child(6) { display: none; }
+  .sim-retake-table th:nth-child(8),
+  .sim-retake-table td:nth-child(8) { display: none; }
   .sim-retake-table td:nth-child(2) { max-width: 140px; }
   /* ── Playground solver stack on small tablets ── */
   .pg-solver-inputs { flex-direction: column !important; }
@@ -3218,6 +3223,28 @@ input, select, textarea,
 .rv-tab-crumb-active {
   color: var(--text);
   font-weight: 700;
+}
+
+/* Smart Retake ranking toggle — "Best value" / "Biggest jump" */
+.sim-retake-ranking { display: flex; gap: 6px; flex-wrap: wrap; }
+.sim-rank-chip {
+  padding: 5px 11px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--chip-border);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+[data-theme="light"] .sim-rank-chip { background: rgba(0,0,0,0.03); }
+.sim-rank-chip:hover { border-color: rgba(46,204,113,0.55); color: var(--text); }
+.sim-rank-chip.active {
+  background: rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.55);
+  color: #2ECC71;
 }
 
 /* Course chip filter */
