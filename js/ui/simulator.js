@@ -9,8 +9,20 @@ registerAction('sim:importTranscript', () => {
 });
 registerAction('sim:addSemester', () => window.addSemester?.());
 registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
+registerAction('sim:setRetakeRanking', el => setRetakeRanking(el.dataset.ranking));
 
 const _retakeChecked = new Set();
+
+// 'efficiency' — CGPA gain per credit spent (default). 'boost' — raw CGPA gain,
+// the legacy order. See RetakeRanking in src/features/calculator/simulator.ts.
+let _retakeRanking = 'efficiency';
+
+export function setRetakeRanking(ranking) {
+  if (ranking !== 'efficiency' && ranking !== 'boost') return;
+  if (_retakeRanking === ranking) return;
+  _retakeRanking = ranking;
+  window._shohoj_recalc();
+}
 
 function clearRetakeSelections() {
   _retakeChecked.clear();
@@ -249,7 +261,8 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       const boostToA  = c.credits * (4.0 - gp) / currentCredits;
       const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat'
       candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
-                        sem: semLabel, key, boostToB, boostToA, strategy });
+                        sem: semLabel, key, boostToB, boostToA,
+                        boostPerCredit: boostToB / c.credits, strategy });
     });
   });
 
@@ -260,7 +273,19 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
 
   pruneRetakeSelections(candidates.map(c => c.key));
 
-  candidates.sort((a, b) => b.boostToB - a.boostToB);
+  // Sort first, cut second. Cutting by one order and then re-sorting would hide
+  // the candidates the other ranking exists to surface.
+  candidates.sort((a, b) => {
+    const primary = _retakeRanking === 'efficiency'
+      ? b.boostPerCredit - a.boostPerCredit
+      : b.boostToB - a.boostToB;
+    if (primary !== 0) return primary;
+    const secondary = _retakeRanking === 'efficiency'
+      ? b.boostToB - a.boostToB
+      : b.boostPerCredit - a.boostPerCredit;
+    if (secondary !== 0) return secondary;
+    return a.key.localeCompare(b.key);
+  });
   const top = candidates.slice(0, 6);
 
   const gradeCol = g =>
@@ -313,6 +338,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
       <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)" title="Credits you spend to take this course again">${escHtml(String(c.credits))}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
     </tr>`;
@@ -371,7 +397,18 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         🔁 Smart Retake &amp; Repeat Strategy
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
-        Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking improvements.
+        ${_retakeRanking === 'efficiency'
+          ? `Courses ranked by CGPA gained <strong style="color:#2ECC71">per credit spent</strong>, raising to B (3.0) — the cheapest lift first.`
+          : `Courses ranked by total CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>, whatever the credit cost.`}
+        Click rows to simulate stacking improvements.
+      </div>
+      <div class="sim-retake-ranking" role="group" aria-label="Rank retake candidates by" style="margin-bottom:10px">
+        <button type="button" class="sim-rank-chip${_retakeRanking === 'efficiency' ? ' active' : ''}"
+                aria-pressed="${_retakeRanking === 'efficiency'}"
+                data-action="sim:setRetakeRanking" data-ranking="efficiency">Best value</button>
+        <button type="button" class="sim-rank-chip${_retakeRanking === 'boost' ? ' active' : ''}"
+                aria-pressed="${_retakeRanking === 'boost'}"
+                data-action="sim:setRetakeRanking" data-ranking="boost">Biggest jump</button>
       </div>
       <div style="overflow-x:auto">
         <table class="sim-retake-table" style="width:100%;border-collapse:collapse">
@@ -382,6 +419,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Semester</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Grade → Target</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Type</th>
+              <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Credits</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (B)</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (A)</th>
             </tr>
