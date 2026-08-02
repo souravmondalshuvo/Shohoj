@@ -241,6 +241,28 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .sim-retake-row.selected { background: rgba(29,185,84,0.07); }
 .sim-retake-course { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sim-retake-heading { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-faint); margin-bottom: 4px; }
+/* Goal ladder — which standings are still reachable (#502) */
+.sim-ladder { margin-top: 14px; border-top: 1px solid var(--c-border); padding-top: 12px; }
+.sim-ladder-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--c-faint); margin-bottom: 4px;
+}
+.sim-ladder-sub { font-size: 11px; color: var(--c-faint); margin-bottom: 8px; }
+.sim-ladder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sim-ladder-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px;
+  border: 1px solid var(--c-border2); background: var(--c-card);
+}
+.sim-ladder-goal { color: var(--c-text); font-weight: 600; }
+.sim-ladder-thresh { color: var(--c-faint); font-weight: 500; font-size: 11px; }
+.sim-ladder-state { color: var(--c-text-muted); white-space: nowrap; font-size: 11px; }
+.sim-ladder-letters { color: var(--c-faint); }
+.sim-ladder-row--secured { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); }
+.sim-ladder-row--secured .sim-ladder-state { color: var(--c-green-ink); font-weight: 700; }
+.sim-ladder-row--out-of-reach { opacity: 0.72; }
+.sim-ladder-row--out-of-reach .sim-ladder-state { color: var(--c-faint); }
+
 .sim-retake-ranking { display: flex; flex-wrap: wrap; gap: 6px; }
 .sim-rank-chip {
   font: inherit; font-size: 11px; font-weight: 600; padding: 5px 12px;
