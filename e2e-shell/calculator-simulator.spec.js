@@ -32,6 +32,30 @@ test('remaining credits auto-fill from the department and a target yields a plan
   await expect(planRows.nth(0)).toContainText('A / A-');
 });
 
+test('the goal ladder leads before a target is typed (#502)', async ({ page }) => {
+  const sim = await openWithDemo(page);
+
+  // 63 points over 18 credits, 118 remaining → ceiling (4×118 + 63)/136 = 3.93,
+  // floor 63/136 = 0.46. Nothing is secured; Perfect Standing (3.97) is gone.
+  const ladder = sim.getByTestId('sim-ladder');
+  await expect(ladder).toBeVisible();
+  await expect(ladder).toContainText('3.93');
+  await expect(ladder).toContainText('0.46');
+
+  const perfect = ladder.locator('.sim-ladder-row', { hasText: 'Perfect Standing' });
+  await expect(perfect).toHaveClass(/sim-ladder-row--out-of-reach/);
+  await expect(perfect).toContainText('Out of reach');
+
+  // Higher Distinction is still live: needs (3.65×136 − 63)/118 = 3.67.
+  const higher = ladder.locator('.sim-ladder-row', { hasText: 'Higher Distinction' });
+  await expect(higher).toContainText('needs 3.67 avg');
+
+  // Typing a target hands over to the plan, exactly as before.
+  await sim.getByLabel('Target CGPA:').fill('3.5');
+  await expect(sim.getByText('Avg GPA Needed')).toBeVisible();
+  await expect(sim.getByTestId('sim-ladder')).toHaveCount(0);
+});
+
 test('an impossible target reports the all-A ceiling', async ({ page }) => {
   const sim = await openWithDemo(page);
   await sim.getByLabel('Target CGPA:').fill('4');
