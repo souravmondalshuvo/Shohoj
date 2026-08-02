@@ -70,6 +70,44 @@ test('a sub-B course appears in the retake table and stacks into the impact box'
   await expect(sim.getByTestId('sim-impact')).toHaveCount(0);
 });
 
+test('the ranking toggle reorders the retake table (#501)', async ({ page }) => {
+  const sim = await openWithDemo(page);
+  const container = page.locator('#semestersContainer');
+
+  // A 1-credit D and a 3-credit C. The D is the better value per credit; the C
+  // is the bigger absolute jump. Each ranking should lead with a different one.
+  async function addCourse(code, gradePoint, nth) {
+    await container.getByRole('button', { name: '+ Add course' }).first().click();
+    const input = container.getByRole('combobox').nth(nth);
+    await input.click();
+    await input.fill(code);
+    await container.getByRole('option', { name: new RegExp(code) }).first().click();
+    const gp = container.getByPlaceholder('0.0 – 4.0').nth(nth);
+    await gp.fill(gradePoint);
+    await gp.blur();
+  }
+
+  await addCourse('PHY112', '2', 3); // 3 credits, C
+  await addCourse('EEE101L', '1', 4); // 1 credit, D
+
+  await sim.getByLabel('Target CGPA:').fill('3.8');
+  const rows = sim.locator('.sim-retake-row');
+  await expect(rows).toHaveCount(2);
+
+  // Efficiency is the default: the 1-credit D leads.
+  await expect(sim.getByRole('button', { name: 'Best value' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(rows.first()).toContainText('EEE101L');
+
+  await sim.getByRole('button', { name: 'Biggest jump' }).click();
+  await expect(rows.first()).toContainText('PHY112');
+
+  await sim.getByRole('button', { name: 'Best value' }).click();
+  await expect(rows.first()).toContainText('EEE101L');
+});
+
 test('summary-only data shows the nudge instead of the retake table', async ({ page }) => {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
