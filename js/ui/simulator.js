@@ -2,6 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
+import { computeMilestoneLadder } from '../core/milestones.js';
 import { registerAction } from '../core/dispatch.js';
 
 registerAction('sim:importTranscript', () => {
@@ -64,6 +65,56 @@ export function updateSetupWizard() {
   if (wizard) wizard.style.opacity = hasCourses ? '0.4' : '1';
 }
 
+/** The 7-tier needed-GPA → letter-range mapping (gpaLetterRange in
+ * src/features/calculator/simulator.ts). Module-scoped so the plan table and
+ * the goal ladder share one definition. */
+function gpToLetter(gp) {
+  if (gp >= 3.85) return 'All A';
+  if (gp >= 3.50) return 'A / A-';
+  if (gp >= 3.15) return 'B+ / A-';
+  if (gp >= 2.85) return 'B / B+';
+  if (gp >= 2.50) return 'B- / B';
+  if (gp >= 2.15) return 'C+ / B-';
+  return 'C / C+';
+}
+
+/**
+ * The goal ladder (#502). Curated the same way as the shell's MilestoneLadder:
+ * every tier not already locked in, plus the single highest one that is.
+ * Unreachable tiers always stay — hiding them is the omission this fixes.
+ */
+export function buildMilestoneLadder(currentPts, currentCredits, remaining) {
+  const ladder = computeMilestoneLadder({
+    points: currentPts,
+    cgpaCredits: currentCredits,
+    remaining,
+  });
+  if (!ladder) return '';
+
+  const firstSecured = ladder.rows.findIndex(r => r.state === 'secured');
+  const visible = firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
+  if (!visible.length) return '';
+
+  const stateText = (row) => {
+    if (row.state === 'secured') return 'Locked in';
+    if (row.state === 'out-of-reach') return 'Out of reach';
+    return `needs ${row.neededGpa.toFixed(2)} avg <span class="sim-ladder-letters">(${escHtml(gpToLetter(row.neededGpa))})</span>`;
+  };
+
+  const rows = visible.map(row => `
+    <li class="sim-ladder-row sim-ladder-row--${escAttr(row.state)}">
+      <span class="sim-ladder-goal">${escHtml(row.tier.goalLabel)} <span class="sim-ladder-thresh">(${row.tier.threshold.toFixed(2)})</span></span>
+      <span class="sim-ladder-state">${stateText(row)}</span>
+    </li>`).join('');
+
+  return `
+    <div class="sim-ladder">
+      <div class="sim-ladder-heading">🪜 Where you can still land</div>
+      <div class="sim-ladder-sub">Best still possible: <strong>${ladder.ceiling.toFixed(2)}</strong> · guaranteed floor: <strong>${ladder.floor.toFixed(2)}</strong></div>
+      <ul class="sim-ladder-list">${rows}</ul>
+    </div>`;
+}
+
 export function runSimulator(currentCgpa, currentCredits, currentPts) {
   const target = parseFloat(document.getElementById('targetCgpa').value);
   const remaining = parseFloat(document.getElementById('creditsRemaining').value);
@@ -71,7 +122,16 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
 
   if (Number.isNaN(target) || Number.isNaN(remaining) || currentCgpa === null) {
     clearRetakeSelections();
-    resultEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>';
+    // Before a target is named, lead with what is still reachable (#502). The
+    // ladder needs remaining credits but not a target, and those auto-fill from
+    // the department, so there is usually something to say here.
+    const ladderHtml =
+      currentCgpa !== null && !Number.isNaN(remaining)
+        ? buildMilestoneLadder(currentPts, currentCredits, remaining)
+        : '';
+    resultEl.innerHTML =
+      '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>'
+      + ladderHtml;
     return;
   }
   if (target > 4.0 || target < 0) {
@@ -148,15 +208,6 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
     else                       insight = `<span style="color:#2ECC71">You're in great shape!</span> Maintain current effort.`;
     msg += `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">${insight}</div>`;
 
-    const gpToLetter = gp => {
-      if (gp >= 3.85) return 'All A';
-      if (gp >= 3.50) return 'A / A-';
-      if (gp >= 3.15) return 'B+ / A-';
-      if (gp >= 2.85) return 'B / B+';
-      if (gp >= 2.50) return 'B- / B';
-      if (gp >= 2.15) return 'C+ / B-';
-      return 'C / C+';
-    };
     const rows = [9, 12, 15].map(cr => {
       const semsNeeded = Math.ceil(remaining / cr);
       return `<tr>
