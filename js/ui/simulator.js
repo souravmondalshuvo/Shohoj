@@ -2,7 +2,7 @@ import { GRADES } from '../core/grades.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
-import { computeMilestoneLadder } from '../core/milestones.js';
+import { computeMilestoneLadder, visibleMilestoneRows } from '../core/milestones.js';
 import { registerAction } from '../core/dispatch.js';
 
 registerAction('sim:importTranscript', () => {
@@ -78,11 +78,8 @@ function gpToLetter(gp) {
   return 'C / C+';
 }
 
-/**
- * The goal ladder (#502). Curated the same way as the shell's MilestoneLadder:
- * every tier not already locked in, plus the single highest one that is.
- * Unreachable tiers always stay — hiding them is the omission this fixes.
- */
+/** The goal ladder (#502). Row curation lives in the model
+ * (visibleMilestoneRows) so this and the shell's MilestoneLadder share it. */
 export function buildMilestoneLadder(currentPts, currentCredits, remaining) {
   const ladder = computeMilestoneLadder({
     points: currentPts,
@@ -91,8 +88,7 @@ export function buildMilestoneLadder(currentPts, currentCredits, remaining) {
   });
   if (!ladder) return '';
 
-  const firstSecured = ladder.rows.findIndex(r => r.state === 'secured');
-  const visible = firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
+  const visible = visibleMilestoneRows(ladder);
   if (!visible.length) return '';
 
   const stateText = (row) => {
@@ -129,6 +125,10 @@ export function runSimulator(currentCgpa, currentCredits, currentPts) {
       currentCgpa !== null && !Number.isNaN(remaining)
         ? buildMilestoneLadder(currentPts, currentCredits, remaining)
         : '';
+    // ladderHtml carries no user input: every string in it comes from the
+    // MILESTONE_TIERS constant or a toFixed() number, and is escaped anyway.
+    // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
     resultEl.innerHTML =
       '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>'
       + ladderHtml;
