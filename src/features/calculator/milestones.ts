@@ -136,3 +136,19 @@ export function computeMilestoneLadder(inputs: MilestoneInputs): MilestoneLadder
 
   return { rows, ceiling, floor };
 }
+
+/**
+ * The rows worth showing: every tier not already locked in, plus the single
+ * highest one that is.
+ *
+ * Curation only ever trims the *bottom* — listing "Satisfactory (2.50)" as an
+ * aspiration to someone at 3.80 is noise. Nothing above the student's position
+ * is suppressed, so an out-of-reach tier always survives; hiding those is the
+ * omission this feature exists to fix.
+ *
+ * Shared by both front ends so the shell and the legacy page cannot drift.
+ */
+export function visibleMilestoneRows(ladder: MilestoneLadder): readonly MilestoneRow[] {
+  const firstSecured = ladder.rows.findIndex((r) => r.state === 'secured');
+  return firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
+}
