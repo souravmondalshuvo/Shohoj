@@ -1035,6 +1035,14 @@ h1[data-reveal-hero].visible {
       font-weight: 600;
       margin-top: 4px;
     }
+    /* How soft the graduation date is — range or assumption (#503) */
+    .tracker-stat-note {
+      font-size: 9px;
+      line-height: 1.35;
+      color: var(--text3);
+      opacity: 0.85;
+      margin-top: 3px;
+    }
 
     /* Progress bar */
     .tracker-bar-wrap {
