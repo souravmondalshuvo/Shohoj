@@ -56,6 +56,52 @@ test('demo data shows the degree tracker with legacy-parity stats', async ({ pag
   await expect(tracker.locator('.tracker-node.graduation')).toContainText("Fall '29");
 });
 
+test('an even pace claims no range; an uneven one does (#503)', async ({ page }) => {
+  await openWithDemo(page);
+
+  const gradStat = page.getByTestId('degree-tracker').locator('.tracker-stat').nth(3);
+
+  // Both demo semesters are 9 credits, so the observed spread is a single
+  // value — the tracker must not dress that up as a range.
+  await expect(gradStat).toContainText("Fall '29");
+  await expect(gradStat.locator('.tracker-stat-note')).toHaveCount(0);
+
+  // Add a 4th course to semester 1 → loads become 12 and 9, a real spread.
+  const container = page.locator('#semestersContainer');
+  await container.getByRole('button', { name: '+ Add course' }).first().click();
+  const input = container.getByRole('combobox').nth(3);
+  await input.click();
+  await input.fill('MAT110');
+  await container.getByRole('option', { name: /MAT110/ }).first().click();
+  const gp = container.getByPlaceholder('0.0 – 4.0').nth(3);
+  await gp.fill('4');
+  await gp.blur();
+
+  const note = gradStat.locator('.tracker-stat-note');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('9–12 cr/sem');
+});
+
+test('a single semester says the pace is assumed rather than observed (#503)', async ({ page }) => {
+  await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => localStorage.clear());
+  await page.getByRole('link', { name: 'Calculator', exact: true }).click();
+  await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
+
+  // Drop the second demo semester, leaving one observation.
+  const container = page.locator('#semestersContainer');
+  page.once('dialog', (d) => d.accept());
+  await container.getByRole('button', { name: 'Remove', exact: true }).last().click();
+
+  const note = page
+    .getByTestId('degree-tracker')
+    .locator('.tracker-stat')
+    .nth(3)
+    .locator('.tracker-stat-note');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('too few semesters to judge');
+});
+
 test('a graded running semester appears as an In Progress node', async ({ page }) => {
   await openWithDemo(page);
   await page.locator('.footer-btn-group').getByRole('button', { name: '🎯 Running Semester' }).click();
