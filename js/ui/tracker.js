@@ -11,6 +11,43 @@ import {
   stripTags,
 } from '../core/helpers.js';
 
+/** Walk `sems` semesters forward from the start on a department calendar and
+ * label where you land — "Fall '27", or '—' without a start semester.
+ * Mirrors semesterLabelAfter in src/features/calculator/degreeProgress.ts. */
+export function semesterLabelAfter(startSeason, startYear, deptSeasons, sems) {
+  if (!startSeason || !startYear) return '—';
+  let si = deptSeasons.indexOf(startSeason);
+  if (si === -1) si = 0;
+  let yr = startYear;
+  for (let i = 0; i < sems - 1; i++) {
+    si++;
+    if (si >= deptSeasons.length) { si = 0; yr++; }
+  }
+  return `${deptSeasons[si]} '${String(yr).slice(2)}`;
+}
+
+/**
+ * The credible spread of per-semester credit loads, or null when the history is
+ * too thin (#503). Mirrors observedPace in degreeProgress.ts.
+ *
+ * Drop the single slowest and fastest once there are four or more, then take
+ * the min and max of what is left. Zero-credit semesters are excluded from the
+ * rate — they say nothing about how fast credits get cleared, and a zero would
+ * make the slow end divide by zero — but still count as semesters used.
+ * Summary blocks never contribute: their credits sit over an *estimated*
+ * semester count, and an estimate is not an observation.
+ */
+export function observedPace(completedSems) {
+  const loads = completedSems
+    .map(s => s.credits)
+    .filter(c => c > 0)
+    .sort((a, b) => a - b);
+  if (loads.length < 2) return null;
+
+  const trimmed = loads.length >= 4 ? loads.slice(1, -1) : loads;
+  return { fast: trimmed[trimmed.length - 1], slow: trimmed[0] };
+}
+
 export function estimateSummaryCompletedSemesters({
   hasSummary,
   startSeason,
@@ -137,17 +174,27 @@ export function renderDegreeTracker(totalEarned) {
 
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
-  let gradEstimate = '—';
-  if (startSeason && startYearNum) {
-    const totalSemsNeeded = totalCompletedCount + (runningSem ? 1 : 0) + semsRemaining;
-    let si = deptSeasons.indexOf(startSeason);
-    if (si === -1) si = 0;
-    let yr = startYearNum;
-    for (let i = 0; i < totalSemsNeeded - 1; i++) {
-      si++;
-      if (si >= deptSeasons.length) { si = 0; yr++; }
-    }
-    gradEstimate = `${deptSeasons[si]} '${String(yr).slice(2)}`;
+  const semsAlreadyUsed = totalCompletedCount + (runningSem ? 1 : 0);
+  const estimateAfter = sems =>
+    semesterLabelAfter(startSeason, startYearNum, deptSeasons, semsAlreadyUsed + sems);
+  const gradEstimate = estimateAfter(semsRemaining);
+
+  // ── Graduation range (#503) ──────────────────────────────────────────────
+  const paceObservations = completedSems.filter(s => s.credits > 0).length;
+  const pace = observedPace(completedSems);
+  const paceAssumed = paceObservations < 2;
+  let gradRange = null;
+  if (pace && creditsRemaining > 0) {
+    const earliestSems = Math.ceil(creditsRemaining / pace.fast);
+    const latestSems = Math.ceil(creditsRemaining / pace.slow);
+    gradRange = {
+      fastPace: pace.fast,
+      slowPace: pace.slow,
+      earliestSems,
+      latestSems,
+      earliest: estimateAfter(earliestSems),
+      latest: estimateAfter(latestSems),
+    };
   }
 
   const progressPct = Math.min((totalEarned / totalRequired) * 100, 100);
@@ -155,6 +202,15 @@ export function renderDegreeTracker(totalEarned) {
   const fmtCr = n => n % 1 === 0 ? String(n) : n.toFixed(1);
   const earnedDisplay = fmtCr(totalEarned);
   const remainingDisplay = fmtCr(creditsRemaining);
+
+  // Say how soft the date is: a range from the student's own spread, or —
+  // when there is not enough history — that the pace is an assumption (#503).
+  let gradRangeNote = '';
+  if (paceAssumed && creditsRemaining > 0) {
+    gradRangeNote = `<div class="tracker-stat-note">assumes ${fmtCr(avgCredits)} cr/sem — too few semesters to judge</div>`;
+  } else if (gradRange && gradRange.earliest !== gradRange.latest) {
+    gradRangeNote = `<div class="tracker-stat-note">${escHtml(gradRange.earliest)} – ${escHtml(gradRange.latest)} at ${fmtCr(gradRange.slowPace)}–${fmtCr(gradRange.fastPace)} cr/sem</div>`;
+  }
   const statsHtml = `
     <div class="tracker-stats">
       <div class="tracker-stat">
@@ -172,6 +228,7 @@ export function renderDegreeTracker(totalEarned) {
       <div class="tracker-stat">
         <div class="tracker-stat-val">${escHtml(gradEstimate)}</div>
         <div class="tracker-stat-label">Est. Graduation</div>
+        ${gradRangeNote}
       </div>
     </div>`;
 
