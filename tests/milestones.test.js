@@ -9,12 +9,14 @@ import {
   computeMilestoneLadder,
   isGoal,
   standingTierFor,
+  visibleMilestoneRows,
 } from '../src/features/calculator/milestones.ts';
 
 import { MILESTONE_TIERS as LEGACY_TIERS } from '../js/core/milestones.js';
 import {
   computeMilestoneLadder as legacyLadder,
   standingTierFor as legacyStandingTierFor,
+  visibleMilestoneRows as legacyVisibleRows,
 } from '../js/core/milestones.js';
 
 const rowFor = (ladder, id) => ladder.rows.find((r) => r.tier.id === id);
@@ -123,6 +125,44 @@ test('a fresh student with everything ahead can still reach the top', () => {
   assert.equal(ladder.ceiling, 4.0);
   assert.equal(ladder.floor, 0);
   assert.ok(ladder.rows.every((r) => r.state === 'reachable'));
+});
+
+// ── Row curation ─────────────────────────────────────────────────────────────
+
+test('curation trims below the highest locked-in tier only', () => {
+  // 3.80 over 100 credits (380 points), 4 credits left.
+  // floor = 380/104 = 3.65 → higher-distinction and everything under it secured.
+  const ladder = computeMilestoneLadder({ points: 380, cgpaCredits: 100, remaining: 4 });
+  const visible = visibleMilestoneRows(ladder);
+
+  assert.deepEqual(
+    visible.map((r) => r.tier.id),
+    ['perfect', 'higher-distinction'],
+    'stops at the first secured tier, dropping the noise beneath it',
+  );
+  assert.equal(visible[visible.length - 1].state, 'secured');
+});
+
+test('curation never drops an out-of-reach tier', () => {
+  // Nothing secured, top tiers gone: every row must survive.
+  const ladder = computeMilestoneLadder({ points: 180, cgpaCredits: 90, remaining: 30 });
+  const visible = visibleMilestoneRows(ladder);
+  assert.equal(visible.length, ladder.rows.length);
+  assert.ok(visible.some((r) => r.state === 'out-of-reach'));
+});
+
+test('the js/ twin curates identically', () => {
+  for (const input of [
+    { points: 380, cgpaCredits: 100, remaining: 4 },
+    { points: 180, cgpaCredits: 90, remaining: 30 },
+    { points: 210, cgpaCredits: 60, remaining: 0 },
+  ]) {
+    assert.deepEqual(
+      legacyVisibleRows(legacyLadder(input)).map((r) => [r.tier.id, r.state]),
+      visibleMilestoneRows(computeMilestoneLadder(input)).map((r) => [r.tier.id, r.state]),
+      `twins curate differently for ${JSON.stringify(input)}`,
+    );
+  }
 });
 
 // ── Twin parity (#484) ───────────────────────────────────────────────────────
