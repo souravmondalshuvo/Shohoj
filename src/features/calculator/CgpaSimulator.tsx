@@ -13,7 +13,11 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import { getDepartment } from './departments.ts';
-import { computeMilestoneLadder, type MilestoneLadder } from './milestones.ts';
+import {
+  computeMilestoneLadder,
+  visibleMilestoneRows,
+  type MilestoneLadder,
+} from './milestones.ts';
 import { computeCalculatorResults, formatCredits } from './results.ts';
 import {
   computeRetakeCandidates,
@@ -60,17 +64,10 @@ function gradeColor(grade: string): string {
   return '#F0A500';
 }
 
-/**
- * The goal ladder shown before a target is typed (#502).
- *
- * Curated rather than exhaustive: every tier the student has not already locked
- * in, plus the single highest one they have. Listing "Satisfactory (2.50)" as an
- * aspiration to someone at 3.80 is noise, but hiding an out-of-reach tier is the
- * omission this feature exists to fix — so unreachable rows always stay.
- */
+/** The goal ladder shown before a target is typed (#502). Row curation lives in
+ * the model (visibleMilestoneRows) so both front ends share it. */
 function MilestoneLadder({ ladder }: { readonly ladder: MilestoneLadder }) {
-  const firstSecured = ladder.rows.findIndex((r) => r.state === 'secured');
-  const visible = firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
+  const visible = visibleMilestoneRows(ladder);
   if (!visible.length) return null;
 
   return (
