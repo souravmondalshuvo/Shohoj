@@ -7,6 +7,14 @@
 // estimates, projected nodes (max 4 shown, then "+N more") and the
 // graduation-complete state. The clock is injected; presentation (colors,
 // node markup) stays in the component.
+//
+// #503 adds the honest half of the timeline. `gradEstimate` is still the single
+// likely-case date from the flat average, and the projected nodes still follow
+// it; alongside it `gradRange` reports the earliest and latest that the
+// student's own spread of semester loads supports, and `paceAssumed` marks the
+// case where there is not enough history to say anything and DEFAULT_PACE is
+// doing the work. See observedPace for the method and why it is not a
+// confidence interval.
 
 import { calcSemesterGpa } from '../../core/gpa.ts';
 import { GRADES } from '../../core/grades.ts';
@@ -32,6 +40,19 @@ export interface TrackerNode {
   readonly running: boolean;
 }
 
+/** The spread of graduation dates the student's own pace supports (#503). */
+export interface GraduationRange {
+  /** Fastest observed credit load per semester, after trimming. */
+  readonly fastPace: number;
+  /** Slowest observed credit load per semester, after trimming. */
+  readonly slowPace: number;
+  readonly earliestSems: number;
+  readonly latestSems: number;
+  /** "Fall '27" style. */
+  readonly earliest: string;
+  readonly latest: string;
+}
+
 export interface DegreeProgress {
   readonly earned: number;
   readonly totalRequired: number;
@@ -40,8 +61,18 @@ export interface DegreeProgress {
   readonly totalCompletedCount: number;
   readonly avgCredits: number;
   readonly semsRemaining: number;
-  /** "Fall '27" style, or '—' without a start semester. */
+  /** "Fall '27" style, or '—' without a start semester. The likely case, from
+   * `avgCredits` — unchanged, and what the projected nodes follow. */
   readonly gradEstimate: string;
+  /** Earliest/latest the observed pace supports, or null when the history is
+   * too thin (see `paceAssumed`) or nothing is left to take. */
+  readonly gradRange: GraduationRange | null;
+  /** True when the pace behind `gradEstimate` is an assumption rather than the
+   * student's own history — fewer than two semesters with credits cleared.
+   * The component must say so rather than print a confident date. */
+  readonly paceAssumed: boolean;
+  /** How many completed semesters informed the pace. */
+  readonly paceObservations: number;
   readonly summaryNode: { readonly cgpa: number; readonly credits: number } | null;
   readonly semesters: readonly TrackerNode[];
   readonly projectedLabels: readonly string[];
@@ -102,6 +133,60 @@ export function estimateSummarySemesters(
     deptSeasons,
   );
   return Math.max(0, totalCompleted - completedSemCount);
+}
+
+/** Walk `sems` semesters forward from the start on a department calendar and
+ * label where you land — "Fall '27", or '—' without a start semester. */
+function semesterLabelAfter(
+  startSeason: string,
+  startYear: number,
+  deptSeasons: readonly string[],
+  sems: number,
+): string {
+  if (!startSeason || !startYear) return '—';
+  let si = deptSeasons.indexOf(startSeason);
+  if (si === -1) si = 0;
+  let yr = startYear;
+  for (let i = 0; i < sems - 1; i++) {
+    si++;
+    if (si >= deptSeasons.length) {
+      si = 0;
+      yr++;
+    }
+  }
+  return `${deptSeasons[si]} '${String(yr).slice(2)}`;
+}
+
+/**
+ * The credible spread of per-semester credit loads, or null when the history is
+ * too thin to support one (#503).
+ *
+ * Method, deliberately simple enough to explain in a sentence: take the credit
+ * load of every completed semester, drop the single slowest and single fastest
+ * once there are four or more, and use the min and max of what is left. With
+ * 4–8 data points a statistical confidence interval would be false rigour; a
+ * trimmed observed range is defensible and a student can check it by eye.
+ *
+ * Zero-credit semesters are excluded from the *rate* — a term where nothing was
+ * cleared says nothing about how fast credits get cleared, and a zero would
+ * make the slow end divide by zero. They still count toward
+ * `totalCompletedCount`, so a burned term is not erased from the timeline.
+ *
+ * Only real, entered semesters count. A summary block carries credits over an
+ * *estimated* semester count (estimateSummarySemesters), and treating an
+ * estimate as an observation is exactly the overconfidence this replaces.
+ */
+export function observedPace(
+  completedSems: readonly Pick<TrackerNode, 'credits'>[],
+): { readonly fast: number; readonly slow: number } | null {
+  const loads = completedSems
+    .map((s) => s.credits)
+    .filter((c) => c > 0)
+    .sort((a, b) => a - b);
+  if (loads.length < 2) return null;
+
+  const trimmed = loads.length >= 4 ? loads.slice(1, -1) : loads;
+  return { fast: trimmed[trimmed.length - 1], slow: trimmed[0] };
 }
 
 /** Earned credits within one semester, by the tracker's rules: running
@@ -174,21 +259,29 @@ export function computeDegreeProgress(
   const semsRemaining = avgCredits > 0 ? Math.ceil(creditsRemaining / avgCredits) : 0;
 
   const startYearNum = parseInt(inputs.startYear, 10);
-  let gradEstimate = '—';
-  if (inputs.startSeason && startYearNum) {
-    const totalSemsNeeded = totalCompletedCount + (runningSem ? 1 : 0) + semsRemaining;
-    let si = deptSeasons.indexOf(inputs.startSeason);
-    if (si === -1) si = 0;
-    let yr = startYearNum;
-    for (let i = 0; i < totalSemsNeeded - 1; i++) {
-      si++;
-      if (si >= deptSeasons.length) {
-        si = 0;
-        yr++;
-      }
-    }
-    gradEstimate = `${deptSeasons[si]} '${String(yr).slice(2)}`;
-  }
+  const semsAlreadyUsed = totalCompletedCount + (runningSem ? 1 : 0);
+  const estimateAfter = (sems: number): string =>
+    semesterLabelAfter(inputs.startSeason, startYearNum, deptSeasons, semsAlreadyUsed + sems);
+  const gradEstimate = estimateAfter(semsRemaining);
+
+  // ── Graduation range (#503) ───────────────────────────────────────────────
+  const paceObservations = completedSems.filter((s) => s.credits > 0).length;
+  const pace = observedPace(completedSems);
+  const gradRange =
+    pace && creditsRemaining > 0
+      ? (() => {
+          const earliestSems = Math.ceil(creditsRemaining / pace.fast);
+          const latestSems = Math.ceil(creditsRemaining / pace.slow);
+          return {
+            fastPace: pace.fast,
+            slowPace: pace.slow,
+            earliestSems,
+            latestSems,
+            earliest: estimateAfter(earliestSems),
+            latest: estimateAfter(latestSems),
+          };
+        })()
+      : null;
 
   // ── Projected nodes (tracker.js parity, incl. its fallbacks) ───────────────
   const projectedLabels: string[] = [];
@@ -265,6 +358,9 @@ export function computeDegreeProgress(
     avgCredits,
     semsRemaining,
     gradEstimate,
+    gradRange,
+    paceAssumed: paceObservations < 2,
+    paceObservations,
     summaryNode: summaryBlock
       ? { cgpa: summaryBlock.summaryCGPA ?? 0, credits: summaryBlock.summaryCredits ?? 0 }
       : null,
