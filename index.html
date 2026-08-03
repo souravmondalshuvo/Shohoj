@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-LW84XrFdpB0L0hI9SzJF+Rux86RTBrHXfeczQ/wAIu8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Y9hTCprBRVMv+HzZ6lfa/VuZrDcQEzVGgrSTq57D5WI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3282,6 +3282,28 @@ input, select, textarea,
   color: var(--text);
   font-weight: 700;
 }
+
+/* Goal ladder — which standings are still reachable (#502) */
+.sim-ladder { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.sim-ladder-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 4px;
+}
+.sim-ladder-sub { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+.sim-ladder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sim-ladder-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px;
+  border: 1px solid var(--chip-border); background: var(--chip-hover);
+}
+.sim-ladder-goal { color: var(--text); font-weight: 600; }
+.sim-ladder-thresh { color: var(--text3); font-weight: 500; font-size: 11px; }
+.sim-ladder-state { color: var(--text2); white-space: nowrap; font-size: 11px; }
+.sim-ladder-letters { color: var(--text3); }
+.sim-ladder-row--secured { border-color: rgba(46,204,113,0.35); background: rgba(46,204,113,0.08); }
+.sim-ladder-row--secured .sim-ladder-state { color: #2ECC71; font-weight: 700; }
+.sim-ladder-row--out-of-reach { opacity: 0.72; }
+.sim-ladder-row--out-of-reach .sim-ladder-state { color: var(--text3); }
 
 /* Smart Retake ranking toggle — "Best value" / "Biggest jump" */
 .sim-retake-ranking { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -10497,6 +10519,85 @@ function detectGrade(val) {
     if (diff < minDiff) { minDiff = diff; closest = letter; }
   }
   return minDiff <= 0.20 ? closest : '';
+}
+
+// ── js/core/milestones.js ───────────────────────────────────────
+// Generated from src/features/calculator/milestones.ts for the vanilla JS runtime.
+// Update src/features/calculator/milestones.ts first, then regenerate this file.
+//
+// The BRACU standing thresholds live here once, for both the standing box in
+// main.js and the goal ladder in ui/simulator.js (#502).
+
+/**
+ * Every tier, highest first. `probation` is the floor rather than a goal, so it
+ * carries a threshold of 0 and is excluded from the ladder by isGoal().
+ */
+const MILESTONE_TIERS = [
+  { id: 'perfect', standingLabel: 'Perfect Standing', goalLabel: 'Perfect Standing', threshold: 3.97 },
+  { id: 'higher-distinction', standingLabel: 'Higher Distinction', goalLabel: 'Higher Distinction', threshold: 3.65 },
+  { id: 'distinction', standingLabel: 'Distinction', goalLabel: 'Distinction', threshold: 3.50 },
+  { id: 'good', standingLabel: 'Good Standing', goalLabel: 'Good Standing', threshold: 3.00 },
+  { id: 'satisfactory', standingLabel: 'Satisfactory', goalLabel: 'Satisfactory', threshold: 2.50 },
+  { id: 'needs-improvement', standingLabel: 'Needs Improvement', goalLabel: 'Off academic probation', threshold: 2.00 },
+  { id: 'probation', standingLabel: 'Academic Probation', goalLabel: '', threshold: 0 },
+];
+
+/** A tier a student can aim at — everything except the probation floor. */
+function isGoal(tier) {
+  return tier.id !== 'probation';
+}
+
+/** The tier a completed CGPA currently sits in. */
+function standingTierFor(completedCgpa) {
+  if (completedCgpa === null || completedCgpa === undefined) return null;
+  for (const tier of MILESTONE_TIERS) {
+    if (completedCgpa >= tier.threshold) return tier.id;
+  }
+  return 'probation';
+}
+
+/**
+ * Classify every goal tier against what is still arithmetically possible.
+ *
+ * 'secured' is deliberately the *worst* case — the CGPA that results if every
+ * remaining credit scores 0.0 — not the current average. A tier that today's
+ * average would hold is not actually locked in; one that survives a total
+ * collapse is.
+ */
+function computeMilestoneLadder({ points, cgpaCredits, remaining }) {
+  const totalCredits = cgpaCredits + remaining;
+  if (totalCredits <= 0 || remaining < 0) return null;
+
+  const ceiling = (4.0 * remaining + points) / totalCredits;
+  const floor = points / totalCredits;
+
+  const rows = MILESTONE_TIERS.filter(isGoal).map(tier => {
+    if (floor >= tier.threshold) return { tier, state: 'secured', neededGpa: null };
+    if (ceiling < tier.threshold) return { tier, state: 'out-of-reach', neededGpa: null };
+    return {
+      tier,
+      state: 'reachable',
+      neededGpa: (tier.threshold * totalCredits - points) / remaining,
+    };
+  });
+
+  return { rows, ceiling, floor };
+}
+
+/**
+ * The rows worth showing: every tier not already locked in, plus the single
+ * highest one that is.
+ *
+ * Curation only ever trims the *bottom* — listing "Satisfactory (2.50)" as an
+ * aspiration to someone at 3.80 is noise. Nothing above the student's position
+ * is suppressed, so an out-of-reach tier always survives; hiding those is the
+ * omission this feature exists to fix.
+ *
+ * Shared by both front ends so the shell and the legacy page cannot drift.
+ */
+function visibleMilestoneRows(ladder) {
+  const firstSecured = ladder.rows.findIndex(r => r.state === 'secured');
+  return firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
 }
 
 // ── js/core/helpers.js ──────────────────────────────────────────
@@ -25565,6 +25666,52 @@ function updateSetupWizard() {
   if (wizard) wizard.style.opacity = hasCourses ? '0.4' : '1';
 }
 
+/** The 7-tier needed-GPA → letter-range mapping (gpaLetterRange in
+ * src/features/calculator/simulator.ts). Module-scoped so the plan table and
+ * the goal ladder share one definition. */
+function gpToLetter(gp) {
+  if (gp >= 3.85) return 'All A';
+  if (gp >= 3.50) return 'A / A-';
+  if (gp >= 3.15) return 'B+ / A-';
+  if (gp >= 2.85) return 'B / B+';
+  if (gp >= 2.50) return 'B- / B';
+  if (gp >= 2.15) return 'C+ / B-';
+  return 'C / C+';
+}
+
+/** The goal ladder (#502). Row curation lives in the model
+ * (visibleMilestoneRows) so this and the shell's MilestoneLadder share it. */
+function buildMilestoneLadder(currentPts, currentCredits, remaining) {
+  const ladder = computeMilestoneLadder({
+    points: currentPts,
+    cgpaCredits: currentCredits,
+    remaining,
+  });
+  if (!ladder) return '';
+
+  const visible = visibleMilestoneRows(ladder);
+  if (!visible.length) return '';
+
+  const stateText = (row) => {
+    if (row.state === 'secured') return 'Locked in';
+    if (row.state === 'out-of-reach') return 'Out of reach';
+    return `needs ${row.neededGpa.toFixed(2)} avg <span class="sim-ladder-letters">(${escHtml(gpToLetter(row.neededGpa))})</span>`;
+  };
+
+  const rows = visible.map(row => `
+    <li class="sim-ladder-row sim-ladder-row--${escAttr(row.state)}">
+      <span class="sim-ladder-goal">${escHtml(row.tier.goalLabel)} <span class="sim-ladder-thresh">(${row.tier.threshold.toFixed(2)})</span></span>
+      <span class="sim-ladder-state">${stateText(row)}</span>
+    </li>`).join('');
+
+  return `
+    <div class="sim-ladder">
+      <div class="sim-ladder-heading">🪜 Where you can still land</div>
+      <div class="sim-ladder-sub">Best still possible: <strong>${ladder.ceiling.toFixed(2)}</strong> · guaranteed floor: <strong>${ladder.floor.toFixed(2)}</strong></div>
+      <ul class="sim-ladder-list">${rows}</ul>
+    </div>`;
+}
+
 function runSimulator(currentCgpa, currentCredits, currentPts) {
   const target = parseFloat(document.getElementById('targetCgpa').value);
   const remaining = parseFloat(document.getElementById('creditsRemaining').value);
@@ -25572,7 +25719,20 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
 
   if (Number.isNaN(target) || Number.isNaN(remaining) || currentCgpa === null) {
     clearRetakeSelections();
-    resultEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>';
+    // Before a target is named, lead with what is still reachable (#502). The
+    // ladder needs remaining credits but not a target, and those auto-fill from
+    // the department, so there is usually something to say here.
+    const ladderHtml =
+      currentCgpa !== null && !Number.isNaN(remaining)
+        ? buildMilestoneLadder(currentPts, currentCredits, remaining)
+        : '';
+    // ladderHtml carries no user input: every string in it comes from the
+    // MILESTONE_TIERS constant or a toFixed() number, and is escaped anyway.
+    // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+    resultEl.innerHTML =
+      '<span style="color:var(--text3);font-size:13px">Enter your target CGPA and remaining credits above to see what you need.</span>'
+      + ladderHtml;
     return;
   }
   if (target > 4.0 || target < 0) {
@@ -25649,15 +25809,6 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
     else                       insight = `<span style="color:#2ECC71">You're in great shape!</span> Maintain current effort.`;
     msg += `<div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">${insight}</div>`;
 
-    const gpToLetter = gp => {
-      if (gp >= 3.85) return 'All A';
-      if (gp >= 3.50) return 'A / A-';
-      if (gp >= 3.15) return 'B+ / A-';
-      if (gp >= 2.85) return 'B / B+';
-      if (gp >= 2.50) return 'B- / B';
-      if (gp >= 2.15) return 'C+ / B-';
-      return 'C / C+';
-    };
     const rows = [9, 12, 15].map(cr => {
       const semsNeeded = Math.ceil(remaining / cr);
       return `<tr>
@@ -28607,6 +28758,25 @@ function initReveal() {
 // ── js/main.js ──────────────────────────────────────────────────
 // ── IMPORTS ──────────────────────────────────────────────────────────────────
 // installs delegated event listeners + registerAction
+// Thresholds and labels come from js/core/milestones.js so the standing box and
+// the simulator's goal ladder cannot drift apart (#502). Only the presentation
+// — emoji, colour class, copy — lives here. Static config, so module scope.
+const STANDING_PRESENTATION = {
+  'perfect': { cls: 'standing-excellent', emoji: '🏆',
+    description: 'Exceptional academic performance. You are at the top of your class.' },
+  'higher-distinction': { cls: 'standing-excellent', emoji: '🌟',
+    description: 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).' },
+  'distinction': { cls: 'standing-excellent', emoji: '⭐',
+    description: 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).' },
+  'good': { cls: 'standing-good', emoji: '✅',
+    description: 'You are in good academic standing. Keep it up!' },
+  'satisfactory': { cls: 'standing-good', emoji: '👍',
+    description: 'Acceptable academic performance. There is room to improve.' },
+  'needs-improvement': { cls: 'standing-warning', emoji: '⚠️',
+    description: 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.' },
+  'probation': { cls: 'standing-danger', emoji: '❌',
+    description: 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.' },
+};
 // ── INTERNAL HELPERS (used by modules via window._shohoj_*) ──────────────────
 function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
@@ -29242,29 +29412,13 @@ function recalc() {
     const badge  = document.getElementById('standingBadge');
     standingBox.classList.remove('standing-excellent','standing-good','standing-warning','standing-danger');
 
-    let standing, cls, emoji, description;
-    if (cgpaNum >= 3.97) {
-      standing = 'Perfect Standing'; cls = 'standing-excellent'; emoji = '🏆';
-      description = 'Exceptional academic performance. You are at the top of your class.';
-    } else if (cgpaNum >= 3.65) {
-      standing = 'Higher Distinction'; cls = 'standing-excellent'; emoji = '🌟';
-      description = 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).';
-    } else if (cgpaNum >= 3.50) {
-      standing = 'Distinction'; cls = 'standing-excellent'; emoji = '⭐';
-      description = 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).';
-    } else if (cgpaNum >= 3.00) {
-      standing = 'Good Standing'; cls = 'standing-good'; emoji = '✅';
-      description = 'You are in good academic standing. Keep it up!';
-    } else if (cgpaNum >= 2.50) {
-      standing = 'Satisfactory'; cls = 'standing-good'; emoji = '👍';
-      description = 'Acceptable academic performance. There is room to improve.';
-    } else if (cgpaNum >= 2.00) {
-      standing = 'Needs Improvement'; cls = 'standing-warning'; emoji = '⚠️';
-      description = 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.';
-    } else {
-      standing = 'Academic Probation'; cls = 'standing-danger'; emoji = '❌';
-      description = 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.';
-    }
+    const tierId = standingTierFor(cgpaNum);
+    const tier = MILESTONE_TIERS.find(t => t.id === tierId);
+    const presentation = STANDING_PRESENTATION[tierId];
+    const standing = tier.standingLabel;
+    const cls = presentation.cls;
+    const emoji = presentation.emoji;
+    const description = presentation.description;
 
     standingBox.classList.add(cls);
     title.textContent  = standing;
