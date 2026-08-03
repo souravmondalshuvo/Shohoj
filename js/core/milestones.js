@@ -1,8 +1,8 @@
-// js/core/milestones.js
+// Generated from src/features/calculator/milestones.ts for the vanilla JS runtime.
+// Update src/features/calculator/milestones.ts first, then regenerate this file.
 //
-// Generated from src/features/calculator/milestones.ts (#502). The BRACU
-// standing thresholds live here once, for both the standing box in main.js and
-// the goal ladder in ui/simulator.js.
+// The BRACU standing thresholds live here once, for both the standing box in
+// main.js and the goal ladder in ui/simulator.js (#502).
 
 /**
  * Every tier, highest first. `probation` is the floor rather than a goal, so it
@@ -58,4 +58,20 @@ export function computeMilestoneLadder({ points, cgpaCredits, remaining }) {
   });
 
   return { rows, ceiling, floor };
+}
+
+/**
+ * The rows worth showing: every tier not already locked in, plus the single
+ * highest one that is.
+ *
+ * Curation only ever trims the *bottom* — listing "Satisfactory (2.50)" as an
+ * aspiration to someone at 3.80 is noise. Nothing above the student's position
+ * is suppressed, so an out-of-reach tier always survives; hiding those is the
+ * omission this feature exists to fix.
+ *
+ * Shared by both front ends so the shell and the legacy page cannot drift.
+ */
+export function visibleMilestoneRows(ladder) {
+  const firstSecured = ladder.rows.findIndex(r => r.state === 'secured');
+  return firstSecured === -1 ? ladder.rows : ladder.rows.slice(0, firstSecured + 1);
 }
