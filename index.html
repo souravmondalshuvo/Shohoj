@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-umEfGdiI7itXBs43hHLolbifyJKfDr51qPpSQ6BWW1E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-LW84XrFdpB0L0hI9SzJF+Rux86RTBrHXfeczQ/wAIu8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1955,11 +1955,16 @@ input, select, textarea,
   /* Footer buttons scroll horizontally */
   .footer-btn-group { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; }
   .footer-btn-group button { flex-shrink: 0; }
-  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (6th) columns */
+  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (8th) columns.
+     Columns are 1 checkbox · 2 Course · 3 Semester · 4 Grade → Target ·
+     5 Type · 6 Credits · 7 CGPA(B) · 8 CGPA(A). Credits stays on mobile: it is
+     the cost half of the default per-credit ranking, and it is the narrowest
+     column in the table. (The old rule hid nth-child(6), which was CGPA(B) —
+     the primary column — rather than the CGPA(A) its comment named.) */
   .sim-retake-table th:nth-child(3),
   .sim-retake-table td:nth-child(3) { display: none; }
-  .sim-retake-table th:nth-child(6),
-  .sim-retake-table td:nth-child(6) { display: none; }
+  .sim-retake-table th:nth-child(8),
+  .sim-retake-table td:nth-child(8) { display: none; }
   .sim-retake-table td:nth-child(2) { max-width: 140px; }
   /* ── Playground solver stack on small tablets ── */
   .pg-solver-inputs { flex-direction: column !important; }
@@ -3276,6 +3281,28 @@ input, select, textarea,
 .rv-tab-crumb-active {
   color: var(--text);
   font-weight: 700;
+}
+
+/* Smart Retake ranking toggle — "Best value" / "Biggest jump" */
+.sim-retake-ranking { display: flex; gap: 6px; flex-wrap: wrap; }
+.sim-rank-chip {
+  padding: 5px 11px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--chip-border);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+[data-theme="light"] .sim-rank-chip { background: rgba(0,0,0,0.03); }
+.sim-rank-chip:hover { border-color: rgba(46,204,113,0.55); color: var(--text); }
+.sim-rank-chip.active {
+  background: rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.55);
+  color: #2ECC71;
 }
 
 /* Course chip filter */
@@ -25483,8 +25510,20 @@ registerAction('sim:importTranscript', () => {
 });
 registerAction('sim:addSemester', () => window.addSemester?.());
 registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
+registerAction('sim:setRetakeRanking', el => setRetakeRanking(el.dataset.ranking));
 
 const _retakeChecked = new Set();
+
+// 'efficiency' — CGPA gain per credit spent (default). 'boost' — raw CGPA gain,
+// the legacy order. See RetakeRanking in src/features/calculator/simulator.ts.
+let _retakeRanking = 'efficiency';
+
+function setRetakeRanking(ranking) {
+  if (ranking !== 'efficiency' && ranking !== 'boost') return;
+  if (_retakeRanking === ranking) return;
+  _retakeRanking = ranking;
+  window._shohoj_recalc();
+}
 
 function clearRetakeSelections() {
   _retakeChecked.clear();
@@ -25723,7 +25762,8 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
       const boostToA  = c.credits * (4.0 - gp) / currentCredits;
       const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat'
       candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
-                        sem: semLabel, key, boostToB, boostToA, strategy });
+                        sem: semLabel, key, boostToB, boostToA,
+                        boostPerCredit: boostToB / c.credits, strategy });
     });
   });
 
@@ -25734,7 +25774,19 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
 
   pruneRetakeSelections(candidates.map(c => c.key));
 
-  candidates.sort((a, b) => b.boostToB - a.boostToB);
+  // Sort first, cut second. Cutting by one order and then re-sorting would hide
+  // the candidates the other ranking exists to surface.
+  candidates.sort((a, b) => {
+    const primary = _retakeRanking === 'efficiency'
+      ? b.boostPerCredit - a.boostPerCredit
+      : b.boostToB - a.boostToB;
+    if (primary !== 0) return primary;
+    const secondary = _retakeRanking === 'efficiency'
+      ? b.boostToB - a.boostToB
+      : b.boostPerCredit - a.boostPerCredit;
+    if (secondary !== 0) return secondary;
+    return a.key.localeCompare(b.key);
+  });
   const top = candidates.slice(0, 6);
 
   const gradeCol = g =>
@@ -25787,6 +25839,7 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
       <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)" title="Credits you spend to take this course again">${escHtml(String(c.credits))}</td>
       <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
     </tr>`;
@@ -25845,7 +25898,18 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
         🔁 Smart Retake &amp; Repeat Strategy
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
-        Courses ranked by CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>. Click rows to simulate stacking improvements.
+        ${_retakeRanking === 'efficiency'
+          ? `Courses ranked by CGPA gained <strong style="color:#2ECC71">per credit spent</strong>, raising to B (3.0) — the cheapest lift first.`
+          : `Courses ranked by total CGPA impact if raised to <strong style="color:#2ECC71">B (3.0)</strong>, whatever the credit cost.`}
+        Click rows to simulate stacking improvements.
+      </div>
+      <div class="sim-retake-ranking" role="group" aria-label="Rank retake candidates by" style="margin-bottom:10px">
+        <button type="button" class="sim-rank-chip${_retakeRanking === 'efficiency' ? ' active' : ''}"
+                aria-pressed="${_retakeRanking === 'efficiency'}"
+                data-action="sim:setRetakeRanking" data-ranking="efficiency">Best value</button>
+        <button type="button" class="sim-rank-chip${_retakeRanking === 'boost' ? ' active' : ''}"
+                aria-pressed="${_retakeRanking === 'boost'}"
+                data-action="sim:setRetakeRanking" data-ranking="boost">Biggest jump</button>
       </div>
       <div style="overflow-x:auto">
         <table class="sim-retake-table" style="width:100%;border-collapse:collapse">
@@ -25856,6 +25920,7 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Semester</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Grade → Target</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Type</th>
+              <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">Credits</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (B)</th>
               <th style="padding:4px 8px;text-align:center;color:var(--text3);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase">CGPA (A)</th>
             </tr>
