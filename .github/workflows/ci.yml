@@ -100,7 +100,7 @@ jobs:
       # `npm test` runs the unit suite AND the Firestore rules tests, which spin
       # up the Firebase emulator (needs Java). Keep this here so rules changes
       # are exercised before they can be deployed.
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: "21"
@@ -145,7 +145,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
       - run: npm ci
@@ -303,7 +303,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
       - run: npm ci
