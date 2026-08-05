@@ -1035,6 +1035,14 @@ h1[data-reveal-hero].visible {
       font-weight: 600;
       margin-top: 4px;
     }
+    /* How soft the graduation date is — range or assumption (#503) */
+    .tracker-stat-note {
+      font-size: 9px;
+      line-height: 1.35;
+      color: var(--text3);
+      opacity: 0.85;
+      margin-top: 3px;
+    }
 
     /* Progress bar */
     .tracker-bar-wrap {
@@ -1897,11 +1905,16 @@ input, select, textarea,
   /* Footer buttons scroll horizontally */
   .footer-btn-group { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; }
   .footer-btn-group button { flex-shrink: 0; }
-  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (6th) columns */
+  /* Smart Retake table: hide Semester (3rd) and CGPA(A) (8th) columns.
+     Columns are 1 checkbox · 2 Course · 3 Semester · 4 Grade → Target ·
+     5 Type · 6 Credits · 7 CGPA(B) · 8 CGPA(A). Credits stays on mobile: it is
+     the cost half of the default per-credit ranking, and it is the narrowest
+     column in the table. (The old rule hid nth-child(6), which was CGPA(B) —
+     the primary column — rather than the CGPA(A) its comment named.) */
   .sim-retake-table th:nth-child(3),
   .sim-retake-table td:nth-child(3) { display: none; }
-  .sim-retake-table th:nth-child(6),
-  .sim-retake-table td:nth-child(6) { display: none; }
+  .sim-retake-table th:nth-child(8),
+  .sim-retake-table td:nth-child(8) { display: none; }
   .sim-retake-table td:nth-child(2) { max-width: 140px; }
   /* ── Playground solver stack on small tablets ── */
   .pg-solver-inputs { flex-direction: column !important; }
@@ -3218,6 +3231,50 @@ input, select, textarea,
 .rv-tab-crumb-active {
   color: var(--text);
   font-weight: 700;
+}
+
+/* Goal ladder — which standings are still reachable (#502) */
+.sim-ladder { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.sim-ladder-heading {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 4px;
+}
+.sim-ladder-sub { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+.sim-ladder-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.sim-ladder-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; border-radius: 8px; font-size: 12px;
+  border: 1px solid var(--chip-border); background: var(--chip-hover);
+}
+.sim-ladder-goal { color: var(--text); font-weight: 600; }
+.sim-ladder-thresh { color: var(--text3); font-weight: 500; font-size: 11px; }
+.sim-ladder-state { color: var(--text2); white-space: nowrap; font-size: 11px; }
+.sim-ladder-letters { color: var(--text3); }
+.sim-ladder-row--secured { border-color: rgba(46,204,113,0.35); background: rgba(46,204,113,0.08); }
+.sim-ladder-row--secured .sim-ladder-state { color: #2ECC71; font-weight: 700; }
+.sim-ladder-row--out-of-reach { opacity: 0.72; }
+.sim-ladder-row--out-of-reach .sim-ladder-state { color: var(--text3); }
+
+/* Smart Retake ranking toggle — "Best value" / "Biggest jump" */
+.sim-retake-ranking { display: flex; gap: 6px; flex-wrap: wrap; }
+.sim-rank-chip {
+  padding: 5px 11px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--chip-border);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+[data-theme="light"] .sim-rank-chip { background: rgba(0,0,0,0.03); }
+.sim-rank-chip:hover { border-color: rgba(46,204,113,0.55); color: var(--text); }
+.sim-rank-chip.active {
+  background: rgba(46,204,113,0.12);
+  border-color: rgba(46,204,113,0.55);
+  color: #2ECC71;
 }
 
 /* Course chip filter */

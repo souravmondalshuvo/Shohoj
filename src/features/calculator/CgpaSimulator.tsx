@@ -13,14 +13,21 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import { getDepartment } from './departments.ts';
+import {
+  computeMilestoneLadder,
+  visibleMilestoneRows,
+  type MilestoneLadder,
+} from './milestones.ts';
 import { computeCalculatorResults, formatCredits } from './results.ts';
 import {
   computeRetakeCandidates,
   computeRetakeImpact,
   computeSimulation,
+  gpaLetterRange,
   isSummaryOnly,
   simulatorTotals,
   type RetakeCandidate,
+  type RetakeRanking,
   type SimulatorOutcome,
 } from './simulator.ts';
 
@@ -55,6 +62,43 @@ function gradeColor(grade: string): string {
   if (grade === 'F' || grade === 'F(NT)') return '#e74c3c';
   if (grade === 'D' || grade === 'D-' || grade === 'D+') return '#e67e22';
   return '#F0A500';
+}
+
+/** The goal ladder shown before a target is typed (#502). Row curation lives in
+ * the model (visibleMilestoneRows) so both front ends share it. */
+function MilestoneLadder({ ladder }: { readonly ladder: MilestoneLadder }) {
+  const visible = visibleMilestoneRows(ladder);
+  if (!visible.length) return null;
+
+  return (
+    <div className="sim-ladder" data-testid="sim-ladder">
+      <div className="sim-ladder-heading">🪜 Where you can still land</div>
+      <div className="sim-ladder-sub">
+        Best still possible: <strong>{ladder.ceiling.toFixed(2)}</strong> · guaranteed floor:{' '}
+        <strong>{ladder.floor.toFixed(2)}</strong>
+      </div>
+      <ul className="sim-ladder-list">
+        {visible.map((row) => (
+          <li key={row.tier.id} className={`sim-ladder-row sim-ladder-row--${row.state}`}>
+            <span className="sim-ladder-goal">
+              {row.tier.goalLabel}{' '}
+              <span className="sim-ladder-thresh">({row.tier.threshold.toFixed(2)})</span>
+            </span>
+            <span className="sim-ladder-state">
+              {row.state === 'secured' && 'Locked in'}
+              {row.state === 'reachable' && row.neededGpa !== null && (
+                <>
+                  needs {row.neededGpa.toFixed(2)} avg{' '}
+                  <span className="sim-ladder-letters">({gpaLetterRange(row.neededGpa)})</span>
+                </>
+              )}
+              {row.state === 'out-of-reach' && 'Out of reach'}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function OutcomeCard({ outcome }: { readonly outcome: SimulatorOutcome }) {
@@ -237,11 +281,15 @@ function RetakeSection({
   selected,
   onToggle,
   impact,
+  ranking,
+  onRankingChange,
 }: {
   readonly candidates: readonly RetakeCandidate[];
   readonly selected: ReadonlySet<string>;
   readonly onToggle: (key: string) => void;
   readonly impact: ReturnType<typeof computeRetakeImpact>;
+  readonly ranking: RetakeRanking;
+  readonly onRankingChange: (ranking: RetakeRanking) => void;
 }) {
   if (!candidates.length) return null;
   return (
@@ -251,9 +299,42 @@ function RetakeSection({
     >
       <div className="sim-retake-heading">🔁 Smart Retake &amp; Repeat Strategy</div>
       <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
-        Courses ranked by CGPA impact if raised to{' '}
-        <strong style={{ color: '#2ECC71' }}>B (3.0)</strong>. Click rows to simulate stacking
-        improvements.
+        {ranking === 'efficiency' ? (
+          <>
+            Courses ranked by CGPA gained{' '}
+            <strong style={{ color: '#2ECC71' }}>per credit spent</strong>, raising to B (3.0) — the
+            cheapest lift first.
+          </>
+        ) : (
+          <>
+            Courses ranked by total CGPA impact if raised to{' '}
+            <strong style={{ color: '#2ECC71' }}>B (3.0)</strong>, whatever the credit cost.
+          </>
+        )}{' '}
+        Click rows to simulate stacking improvements.
+      </div>
+      <div
+        className="sim-retake-ranking"
+        role="group"
+        aria-label="Rank retake candidates by"
+        style={{ display: 'flex', gap: 6, marginBottom: 10 }}
+      >
+        {(
+          [
+            ['efficiency', 'Best value'],
+            ['boost', 'Biggest jump'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className={`sim-rank-chip${ranking === value ? ' active' : ''}`}
+            aria-pressed={ranking === value}
+            onClick={() => onRankingChange(value)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table className="sim-retake-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -264,6 +345,7 @@ function RetakeSection({
               <th>Semester</th>
               <th>Grade → Target</th>
               <th>Type</th>
+              <th>Credits</th>
               <th>CGPA (B)</th>
               <th>CGPA (A)</th>
             </tr>
@@ -301,6 +383,12 @@ function RetakeSection({
                     >
                       {c.strategy === 'repeat' ? 'Repeat' : 'Retake'}
                     </span>
+                  </td>
+                  <td
+                    style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}
+                    title="Credits you spend to take this course again"
+                  >
+                    {c.credits}
                   </td>
                   <td style={{ textAlign: 'center', fontWeight: 700, color: '#2ECC71' }}>
                     {c.cgpaIfB.toFixed(2)}
@@ -376,6 +464,7 @@ export default function CgpaSimulator() {
   const [target, setTarget] = useState('');
   const [remaining, setRemaining] = useState('');
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [ranking, setRanking] = useState<RetakeRanking>('efficiency');
   const [remainingFocused, setRemainingFocused] = useState(false);
   const lastAuto = useRef('');
 
@@ -401,8 +490,22 @@ export default function CgpaSimulator() {
   const outcome = computeSimulation(totals, target, remaining);
   const summaryOnly = isSummaryOnly(inputs.semesters);
   const candidates =
-    outcome.kind === 'prompt' || summaryOnly ? [] : computeRetakeCandidates(inputs, totals);
+    outcome.kind === 'prompt' || summaryOnly
+      ? []
+      : computeRetakeCandidates(inputs, totals, ranking);
   const impact = computeRetakeImpact(candidates, selected, totals, target, remaining);
+
+  // The ladder answers "what can I still reach", which is only a useful lead-in
+  // before a target is named. Once one is, the plan below answers it directly.
+  const remainingNum = parseFloat(remaining);
+  const ladder =
+    outcome.kind === 'prompt' && !summaryOnly && totals.cgpa !== null && !Number.isNaN(remainingNum)
+      ? computeMilestoneLadder({
+          points: totals.points,
+          cgpaCredits: totals.cgpaCredits,
+          remaining: remainingNum,
+        })
+      : null;
 
   const toggle = (key: string) =>
     setSelected((prev) => {
@@ -445,6 +548,7 @@ export default function CgpaSimulator() {
       </div>
       <div className="simulator-result">
         <OutcomeCard outcome={outcome} />
+        {ladder && <MilestoneLadder ladder={ladder} />}
         {outcome.kind !== 'prompt' &&
           outcome.kind !== 'invalid-target' &&
           outcome.kind !== 'invalid-remaining' &&
@@ -482,6 +586,8 @@ export default function CgpaSimulator() {
               selected={selected}
               onToggle={toggle}
               impact={impact}
+              ranking={ranking}
+              onRankingChange={setRanking}
             />
           ))}
       </div>
