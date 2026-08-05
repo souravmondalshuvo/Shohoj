@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Pq9IAa07OaR6rEIpcxSyG6pJSMHfMqHXOKT93fOmOyw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-dkAL29RxAS7mgUU0WwlUQ0g0Detw9wrNwwhWAoKv3uU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13417,7 +13417,7 @@ function buildReviewOverview(reviews, opts = {}) {
     ? `${facultyName}${facultyInitials ? ` (${facultyInitials})` : ''}`
     : (facultyInitials || 'This faculty');
 
-  let headline = 'Student sentiment is mixed';
+  let headline;
   if (overall >= 4.6) headline = 'Highly recommended';
   else if (overall >= 4.1) headline = 'Strongly recommended';
   else if (overall >= 3.4) headline = 'Mostly positive feedback';
@@ -14553,7 +14553,7 @@ function onCourseBlur(e, semId, cIdx) {
     );
 
   let resolvedName = val;
-  let resolvedCredits = course.credits;
+  let resolvedCredits;
   if (exactMatch) {
     resolvedName = exactMatch.full;
     resolvedCredits = exactMatch.credits;
@@ -17630,7 +17630,7 @@ async function _loadList() {
   _state.loading = true;
   _state.error = false;
   _renderPapersList();
-  let papers = [];
+  let papers;
   let error = false;
   try {
     if (_state.query && isKnownCourseCode(_state.query)) {
@@ -25867,7 +25867,7 @@ function runSimulator(currentCgpa, currentCredits, currentPts) {
       <div class="sim-difficulty-bar"><div class="sim-difficulty-fill ${diffClass}" style="width:${diffPct}%"></div></div>
     </div>`;
 
-    let insight = '';
+    let insight;
     if (neededGPA >= 3.9)      insight = `<span style="color:#e74c3c">Requires near-perfect grades every semester</span> — focus on strategic retakes below.`;
     else if (neededGPA >= 3.5) insight = `Challenging but doable — <span style="color:#F0A500">consistent B+/A- performance</span> needed across remaining semesters.`;
     else if (neededGPA >= 3.0) insight = `Very realistic — <span style="color:#2ECC71">avoid D/F grades</span> and stay consistent.`;
