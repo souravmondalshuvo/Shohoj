@@ -20,11 +20,7 @@ export const ASSISTANT_MAX_MESSAGES = 20;
 export const ASSISTANT_MAX_MESSAGE_CHARS = 4000;
 
 export type AssistantErrorCode =
-  | 'unconfigured'
-  | 'unauthenticated'
-  | 'invalid'
-  | 'rate-limited'
-  | 'unavailable';
+  'unconfigured' | 'unauthenticated' | 'invalid' | 'rate-limited' | 'unavailable';
 
 export type AssistantTurnResult =
   | { readonly ok: true; readonly reply: string }

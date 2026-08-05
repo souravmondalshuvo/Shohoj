@@ -44,8 +44,7 @@ export interface LostFoundPost extends LostFoundDraft {
 export type DraftField = 'type' | 'title' | 'description' | 'locationHint' | 'roomCode';
 
 export type DraftResult =
-  | { ok: true; value: LostFoundDraft }
-  | { ok: false; errors: Partial<Record<DraftField, string>> };
+  { ok: true; value: LostFoundDraft } | { ok: false; errors: Partial<Record<DraftField, string>> };
 
 /**
  * Validate and normalize a draft: trims text, canonicalizes the room code,

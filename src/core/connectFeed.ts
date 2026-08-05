@@ -22,13 +22,7 @@ import type { CourseCode } from './types';
 // ---------------------------------------------------------------------------
 
 export type WeekdayName =
-  | 'SATURDAY'
-  | 'SUNDAY'
-  | 'MONDAY'
-  | 'TUESDAY'
-  | 'WEDNESDAY'
-  | 'THURSDAY'
-  | 'FRIDAY';
+  'SATURDAY' | 'SUNDAY' | 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
 
 export interface RawClassSlot {
   startTime?: string | null;

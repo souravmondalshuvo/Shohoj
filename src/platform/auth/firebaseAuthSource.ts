@@ -73,9 +73,8 @@ async function defaultBackend(
 ): Promise<AuthBackend> {
   const { loadFirebaseClient } = await import('../firebase/firebaseClient.ts');
   const { auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
-  const { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } = await import(
-    'firebase/auth'
-  );
+  const { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } =
+    await import('firebase/auth');
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   return {
