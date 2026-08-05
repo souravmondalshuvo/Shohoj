@@ -74,9 +74,7 @@ const EMPTY_UPLOAD: UploadFormState = {
 };
 
 type ListState =
-  | { phase: 'loading' }
-  | { phase: 'error' }
-  | { phase: 'ready'; papers: PaperRecord[] };
+  { phase: 'loading' } | { phase: 'error' } | { phase: 'ready'; papers: PaperRecord[] };
 
 export function Component() {
   const config = useRuntimeConfig();
