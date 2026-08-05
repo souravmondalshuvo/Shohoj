@@ -1,5 +1,6 @@
-// Generated from src/core/routineSuggestions.ts for the vanilla JS runtime.
-// Update src/core/routineSuggestions.ts first, then regenerate this file.
+// Twin of src/core/routineSuggestions.ts — hand-maintained, not generated.
+// src/core/routineSuggestions.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Auto-suggest engine: enumerate one-section-per-picked-course combinations,
 // drop class-clashing combos, rank survivors by faculty rating + seat slack +

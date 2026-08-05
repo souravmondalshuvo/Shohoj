@@ -1,5 +1,6 @@
-// Generated from src/core/routineState.ts for the vanilla JS runtime.
-// Update src/core/routineState.ts first, then regenerate this file.
+// Twin of src/core/routineState.ts — hand-maintained, not generated.
+// src/core/routineState.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure state helpers for the Routine Builder tab. Picks live as
 // { [courseCode]: sectionId | null } so the state serializes cleanly for

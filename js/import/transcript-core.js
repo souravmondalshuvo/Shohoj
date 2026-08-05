@@ -1,5 +1,6 @@
-// Generated from src/core/transcript.ts for the vanilla JS runtime.
-// Update src/core/transcript.ts first, then regenerate this file.
+// Twin of src/core/transcript.ts — hand-maintained, not generated.
+// src/core/transcript.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 export const DEPARTMENT_LABELS = {
     CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
     EEE: 'BSc EEE \u2014 Electrical & Electronic Engineering',

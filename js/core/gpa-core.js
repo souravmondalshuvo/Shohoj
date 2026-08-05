@@ -1,5 +1,6 @@
-// Generated from src/core/gpa.ts for the vanilla JS runtime.
-// Update src/core/gpa.ts first, then regenerate this file.
+// Twin of src/core/gpa.ts — hand-maintained, not generated.
+// src/core/gpa.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 import { GRADES } from './grades.js';
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
 function isGradeLetter(grade) {

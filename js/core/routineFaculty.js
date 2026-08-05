@@ -1,5 +1,6 @@
-// Generated from src/core/routineFaculty.ts for the vanilla JS runtime.
-// Update src/core/routineFaculty.ts first, then regenerate this file.
+// Twin of src/core/routineFaculty.ts — hand-maintained, not generated.
+// src/core/routineFaculty.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Cross-references the live CONNECT feed (faculty initials like "ABC") with
 // the existing review aggregations so the Routine Builder can show a ★ next

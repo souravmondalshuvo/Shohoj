@@ -1,5 +1,6 @@
-// Generated from src/core/planner.ts for the vanilla JS runtime.
-// Update src/core/planner.ts first, then regenerate this file.
+// Twin of src/core/planner.ts — hand-maintained, not generated.
+// src/core/planner.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 import { GRADES } from './grades.js';
 import { getCourseCode } from './gpa-core.js';
 const DEPT_PREFIXES = {

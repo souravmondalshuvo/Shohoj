@@ -1,5 +1,6 @@
-// Generated from src/core/routineGrid.ts for the vanilla JS runtime.
-// Update src/core/routineGrid.ts first, then regenerate this file.
+// Twin of src/core/routineGrid.ts — hand-maintained, not generated.
+// src/core/routineGrid.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure helpers that turn a selected routine into positioning data for a
 // weekly-calendar grid. UI-agnostic: outputs grid rows/cols + minute bounds;
