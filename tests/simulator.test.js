@@ -111,7 +111,9 @@ test('simulatorTotals mirrors the projected recalc totals', () => {
 
 // ── Retake candidates ────────────────────────────────────────────────────────
 
-test('candidates: sub-B only, ranked by boost-to-B, top 6, with strategies', () => {
+// With every course at the same credit value both rankings agree, so this case
+// pins the candidate rules themselves. Ranking divergence is covered below.
+test('candidates: sub-B only, top 6, with strategies', () => {
   const sems = [
     semester('Fall 2024 (1st Semester)', [
       course('Algebra (MAT110)', 'A'), // ≥ 3.0 → excluded
@@ -140,6 +142,124 @@ test('retake-superseded attempts and running/summary semesters are excluded', ()
   const t = simulatorTotals(inputs(sems));
   const cands = computeRetakeCandidates(inputs(sems), t);
   assert.deepEqual(cands, []);
+});
+
+// ── Retake ranking (#501) ────────────────────────────────────────────────────
+
+test('efficiency ranks the cheaper lift first; boost ranks the bigger one first', () => {
+  // A 1-credit D buys (3−1)=2 grade points per credit spent; a 3-credit C buys
+  // (3−2)=1. But the 3-credit C moves the CGPA more in absolute terms, which is
+  // what the legacy sort — credits in the numerator — always preferred.
+  const sems = [
+    semester('Fall 2024', [
+      course('Lab (CSE110L)', 'D', 1),
+      course('Physics (PHY111)', 'C', 3),
+    ]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+
+  const byEfficiency = computeRetakeCandidates(inputs(sems), t, 'efficiency');
+  assert.deepEqual(
+    byEfficiency.map((c) => c.name),
+    ['Lab (CSE110L)', 'Physics (PHY111)'],
+  );
+
+  const byBoost = computeRetakeCandidates(inputs(sems), t, 'boost');
+  assert.deepEqual(
+    byBoost.map((c) => c.name),
+    ['Physics (PHY111)', 'Lab (CSE110L)'],
+  );
+
+  // The absolute boost really is larger for the more expensive course.
+  const c = byBoost[0];
+  const lab = byBoost[1];
+  assert.ok(c.boostToB > lab.boostToB);
+  assert.ok(lab.boostPerCredit > c.boostPerCredit);
+});
+
+test('efficiency is the default ranking', () => {
+  const sems = [
+    semester('Fall 2024', [
+      course('Lab (CSE110L)', 'D', 1),
+      course('Physics (PHY111)', 'C', 3),
+    ]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  assert.deepEqual(
+    computeRetakeCandidates(inputs(sems), t).map((c) => c.name),
+    computeRetakeCandidates(inputs(sems), t, 'efficiency').map((c) => c.name),
+  );
+});
+
+test('boostPerCredit is the gain per credit spent', () => {
+  const sems = [semester('Fall 2024', [course('Physics (PHY111)', 'C', 3)])];
+  const t = simulatorTotals(inputs(sems));
+  const [c] = computeRetakeCandidates(inputs(sems), t);
+  assert.equal(c.boostPerCredit, c.boostToB / c.credits);
+});
+
+test('the top-6 cut is applied after the active sort, not before it', () => {
+  // Seven candidates. Six fat 3-credit courses at C- (absolute boost 3×1.3 =
+  // 3.9 credit-points each), plus one 1-credit F (absolute 1×3 = 3.0, but 3.0
+  // per credit — the best value on the board). Cutting before sorting would
+  // drop the F under the efficiency ranking, which is the exact candidate that
+  // ranking exists to surface.
+  const sems = [
+    semester('Fall 2024', [
+      course('C1 (CSE101)', 'C-', 3),
+      course('C2 (CSE102)', 'C-', 3),
+      course('C3 (CSE103)', 'C-', 3),
+      course('C4 (CSE104)', 'C-', 3),
+      course('C5 (CSE105)', 'C-', 3),
+      course('C6 (CSE106)', 'C-', 3),
+      course('Lab (CSE110L)', 'F', 1),
+    ]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+
+  const byEfficiency = computeRetakeCandidates(inputs(sems), t, 'efficiency');
+  assert.equal(byEfficiency.length, 6);
+  assert.equal(byEfficiency[0].name, 'Lab (CSE110L)');
+
+  // Under the absolute ranking the 1-credit F is genuinely the weakest, so it
+  // falls off the list — that is the ranking answering a different question.
+  const byBoost = computeRetakeCandidates(inputs(sems), t, 'boost');
+  assert.equal(byBoost.length, 6);
+  assert.ok(!byBoost.some((c) => c.name === 'Lab (CSE110L)'));
+});
+
+test('ties break deterministically', () => {
+  const sems = [
+    semester('Fall 2024', [course('Beta (CSE102)', 'C', 3), course('Alpha (CSE101)', 'C', 3)]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  for (const ranking of ['efficiency', 'boost']) {
+    assert.deepEqual(
+      computeRetakeCandidates(inputs(sems), t, ranking).map((c) => c.name),
+      ['Alpha (CSE101)', 'Beta (CSE102)'],
+      `unstable order under ${ranking}`,
+    );
+  }
+});
+
+test('stacked impact is unaffected by the ranking', () => {
+  const sems = [
+    semester('Fall 2024', [
+      course('Lab (CSE110L)', 'D', 1),
+      course('Physics (PHY111)', 'C', 3),
+    ]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  const all = (list) => new Set(list.map((c) => c.key));
+
+  const eff = computeRetakeCandidates(inputs(sems), t, 'efficiency');
+  const boost = computeRetakeCandidates(inputs(sems), t, 'boost');
+
+  const a = computeRetakeImpact(eff, all(eff), t, '3.0', '30');
+  const b = computeRetakeImpact(boost, all(boost), t, '3.0', '30');
+  assert.equal(a.cumBoost.toFixed(6), b.cumBoost.toFixed(6));
+  assert.equal(a.cgpaAfter.toFixed(6), b.cgpaAfter.toFixed(6));
+  assert.equal(a.checkedCount, b.checkedCount);
 });
 
 test('summary-only data triggers the nudge rule', () => {
