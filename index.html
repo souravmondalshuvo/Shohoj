@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-dkAL29RxAS7mgUU0WwlUQ0g0Detw9wrNwwhWAoKv3uU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-tV+ri3KJC9gfRGOfa6gW6qh0Uo+VVBFRMoo+7rhzKP8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10530,8 +10530,9 @@ function detectGrade(val) {
 }
 
 // ── js/core/milestones.js ───────────────────────────────────────
-// Generated from src/features/calculator/milestones.ts for the vanilla JS runtime.
-// Update src/features/calculator/milestones.ts first, then regenerate this file.
+// Twin of src/features/calculator/milestones.ts — hand-maintained, not generated.
+// src/features/calculator/milestones.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // The BRACU standing thresholds live here once, for both the standing box in
 // main.js and the goal ladder in ui/simulator.js (#502).
@@ -12814,8 +12815,9 @@ function getCourseDept(code) {
 }
 
 // ── js/core/gpa-core.js ─────────────────────────────────────────
-// Generated from src/core/gpa.ts for the vanilla JS runtime.
-// Update src/core/gpa.ts first, then regenerate this file.
+// Twin of src/core/gpa.ts — hand-maintained, not generated.
+// src/core/gpa.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
 function isGradeLetter(grade) {
     return Object.prototype.hasOwnProperty.call(GRADES, grade);
@@ -13904,8 +13906,9 @@ async function deleteStudyGroupByReport(reportId, groupId) {
 }
 
 // ── js/import/transcript-core.js ────────────────────────────────
-// Generated from src/core/transcript.ts for the vanilla JS runtime.
-// Update src/core/transcript.ts first, then regenerate this file.
+// Twin of src/core/transcript.ts — hand-maintained, not generated.
+// src/core/transcript.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 const DEPARTMENT_LABELS = {
     CSE: 'B.Sc. in Computer Science and Engineering (CSE)',
     EEE: 'BSc EEE \u2014 Electrical & Electronic Engineering',
@@ -17946,8 +17949,9 @@ window.addEventListener('shohoj:auth-changed', () => {
 });
 
 // ── js/core/connectFeed.js ──────────────────────────────────────
-// Generated from src/core/connectFeed.ts for the vanilla JS runtime.
-// Update src/core/connectFeed.ts first, then regenerate this file.
+// Twin of src/core/connectFeed.ts — hand-maintained, not generated.
+// src/core/connectFeed.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure helpers for parsing and reasoning about the live BRACU CONNECT section
 // data served by `usis-cdn.eniamza.com/connect.json`. I/O-free on purpose —
@@ -18150,8 +18154,9 @@ function summarizeFeed(sections) {
 }
 
 // ── js/core/connectFeedClient.js ────────────────────────────────
-// Generated from src/core/connectFeedClient.ts for the vanilla JS runtime.
-// Update src/core/connectFeedClient.ts first, then regenerate this file.
+// Twin of src/core/connectFeedClient.ts — hand-maintained, not generated.
+// src/core/connectFeedClient.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Thin wrapper around `usis-cdn.eniamza.com/connect.json` with a localStorage
 // TTL cache, ETag-aware refresh, and stale-cache fallback on network failure.
@@ -18273,8 +18278,9 @@ function peekConnectFeedCache(
 }
 
 // ── js/core/freeRooms.js ────────────────────────────────────────
-// Generated from src/core/freeRooms.ts for the vanilla JS runtime.
-// Update src/core/freeRooms.ts first, then regenerate this file.
+// Twin of src/core/freeRooms.ts — hand-maintained, not generated.
+// src/core/freeRooms.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Free-room finder — pure helpers that invert the normalized section list into
 // room-availability queries (which rooms are busy when), so the UI can answer
@@ -18390,8 +18396,9 @@ function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEn
 }
 
 // ── js/core/seatStatus.js ───────────────────────────────────────
-// Generated from src/core/seatStatus.ts for the vanilla JS runtime.
-// Update src/core/seatStatus.ts first, then regenerate this file.
+// Twin of src/core/seatStatus.ts — hand-maintained, not generated.
+// src/core/seatStatus.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Seat-status lookup — pure helpers that turn the normalized section list into
 // "is there a seat in COURSE X" answers. Layers search, seat math, sorting, and
@@ -18504,8 +18511,9 @@ function searchCourseSections(index, query, opts = {}) {
 }
 
 // ── js/core/seatWatch.js ────────────────────────────────────────
-// Generated from src/core/seatWatch.ts for the vanilla JS runtime.
-// Update src/core/seatWatch.ts first, then regenerate this file.
+// Twin of src/core/seatWatch.ts — hand-maintained, not generated.
+// src/core/seatWatch.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Seat-watch core — pure helpers behind "alert me when a full section opens".
 // Owns the watchlist shape, its localStorage (de)serialization, and the
@@ -18631,8 +18639,9 @@ function parseWatches(raw) {
 }
 
 // ── js/core/calendarExport.js ───────────────────────────────────
-// Generated from src/core/calendarExport.ts for the vanilla JS runtime.
-// Update src/core/calendarExport.ts first, then regenerate this file.
+// Twin of src/core/calendarExport.ts — hand-maintained, not generated.
+// src/core/calendarExport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Calendar export — builds an RFC 5545 iCalendar (.ics) string from a student's
 // picked sections so their phone/laptop calendar fires real class/exam
@@ -18798,8 +18807,9 @@ function buildRoutineICS(sections, options = {}) {
 }
 
 // ── js/core/routineState.js ─────────────────────────────────────
-// Generated from src/core/routineState.ts for the vanilla JS runtime.
-// Update src/core/routineState.ts first, then regenerate this file.
+// Twin of src/core/routineState.ts — hand-maintained, not generated.
+// src/core/routineState.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure state helpers for the Routine Builder tab. Picks live as
 // { [courseCode]: sectionId | null } so the state serializes cleanly for
@@ -18939,8 +18949,9 @@ function summarizeRoutine(state, index) {
 }
 
 // ── js/core/routineGrid.js ──────────────────────────────────────
-// Generated from src/core/routineGrid.ts for the vanilla JS runtime.
-// Update src/core/routineGrid.ts first, then regenerate this file.
+// Twin of src/core/routineGrid.ts — hand-maintained, not generated.
+// src/core/routineGrid.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure helpers that turn a selected routine into positioning data for a
 // weekly-calendar grid. UI-agnostic: outputs grid rows/cols + minute bounds;
@@ -19080,8 +19091,9 @@ function assignSubColumns(blocks) {
 }
 
 // ── js/core/routineFaculty.js ───────────────────────────────────
-// Generated from src/core/routineFaculty.ts for the vanilla JS runtime.
-// Update src/core/routineFaculty.ts first, then regenerate this file.
+// Twin of src/core/routineFaculty.ts — hand-maintained, not generated.
+// src/core/routineFaculty.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Cross-references the live CONNECT feed (faculty initials like "ABC") with
 // the existing review aggregations so the Routine Builder can show a ★ next
@@ -19135,8 +19147,9 @@ function formatRatingScore(value, digits = 1) {
 }
 
 // ── js/core/routineSuggestions.js ───────────────────────────────
-// Generated from src/core/routineSuggestions.ts for the vanilla JS runtime.
-// Update src/core/routineSuggestions.ts first, then regenerate this file.
+// Twin of src/core/routineSuggestions.ts — hand-maintained, not generated.
+// src/core/routineSuggestions.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Auto-suggest engine: enumerate one-section-per-picked-course combinations,
 // drop class-clashing combos, rank survivors by faculty rating + seat slack +
@@ -19323,8 +19336,9 @@ function suggestCombinations(courseCodes, index, ratingMap = new Map(), options 
 }
 
 // ── js/core/routinePlannerImport.js ─────────────────────────────
-// Generated from src/core/routinePlannerImport.ts for the vanilla JS runtime.
-// Update src/core/routinePlannerImport.ts first, then regenerate this file.
+// Twin of src/core/routinePlannerImport.ts — hand-maintained, not generated.
+// src/core/routinePlannerImport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Resolves the student's Planner course codes against the live CONNECT feed so
 // the Routine Builder can pre-fill its picker with courses already planned,
@@ -19382,8 +19396,9 @@ function summarizePlanImport(result) {
 }
 
 // ── js/core/routineExport.js ────────────────────────────────────
-// Generated from src/core/routineExport.ts for the vanilla JS runtime.
-// Update src/core/routineExport.ts first, then regenerate this file.
+// Twin of src/core/routineExport.ts — hand-maintained, not generated.
+// src/core/routineExport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Turns a GridLayout into a flat list of canvas draw ops + dimensions. Pure /
 // renderer-agnostic: routineTab.js walks the ops against a 2D context and calls
@@ -27271,8 +27286,9 @@ function renderPlayground(force) {
 }
 
 // ── js/core/planner-core.js ─────────────────────────────────────
-// Generated from src/core/planner.ts for the vanilla JS runtime.
-// Update src/core/planner.ts first, then regenerate this file.
+// Twin of src/core/planner.ts — hand-maintained, not generated.
+// src/core/planner.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 const DEPT_PREFIXES = {
     CSE: ['CSE'],
     CS: ['CSE'],
