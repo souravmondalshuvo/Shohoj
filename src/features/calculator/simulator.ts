@@ -5,9 +5,13 @@
 // order, the remaining=0 secured/no-credits split, the needed-GPA formula,
 // difficulty cutoffs and insight tiers, the 7-tier letter mapping, the
 // 9/12/15 cr/sem plan rows, the all-A ceiling, the retake/repeat candidate
-// rules (gp < 3.0, not retake-superseded, top 6 by boost-to-B) and the
-// stacked-selection impact math. Presentation (copy, colors, markup) stays in
-// the component.
+// rules (gp < 3.0, not retake-superseded, top 6) and the stacked-selection
+// impact math. Presentation (copy, colors, markup) stays in the component.
+//
+// Diverges from the legacy order deliberately (#501): candidates now rank by
+// CGPA gain per credit spent rather than raw boost, since `boostToB` carries
+// credits in its numerator and so structurally favoured the most expensive
+// retakes. The legacy order remains available as the 'boost' ranking.
 
 import {
   calculateCgpaTotals,
@@ -152,6 +156,18 @@ export function computeSimulation(
 
 // ── Smart Retake & Repeat strategy ───────────────────────────────────────────
 
+/**
+ * How the candidate list is ordered before the top-6 cut.
+ *
+ * 'efficiency' — CGPA gain per credit spent. A retake costs tuition and a seat
+ *   in a credit load the student still has to plan around, so the cheapest lift
+ *   is usually the one worth taking first.
+ * 'boost' — raw CGPA gain, the legacy order. Still the right question for a
+ *   student sitting just under a threshold, who wants the biggest single jump
+ *   regardless of what it costs.
+ */
+export type RetakeRanking = 'efficiency' | 'boost';
+
 export interface RetakeCandidate {
   readonly key: string;
   readonly name: string;
@@ -162,6 +178,16 @@ export interface RetakeCandidate {
   /** CGPA gain if raised to B (3.0) / to A (4.0). */
   readonly boostToB: number;
   readonly boostToA: number;
+  /**
+   * CGPA gain per credit spent, raising to B — `boostToB / credits`.
+   *
+   * Because `boostToB` carries credits in its numerator this reduces to
+   * `(3.0 - gp) / cgpaCredits`, so ranking by it is ranking by how far below B
+   * the grade sits, independent of course size. That is the point: a 1-credit D
+   * buys more lift per credit than a 3-credit C, while the raw boost says the
+   * opposite.
+   */
+  readonly boostPerCredit: number;
   readonly cgpaIfB: number;
   readonly cgpaIfA: number;
   readonly strategy: ImprovementStrategy;
@@ -179,6 +205,7 @@ export function isSummaryOnly(semesters: readonly SemesterEntry[]): boolean {
 export function computeRetakeCandidates(
   inputs: SimulatorInputs,
   totals: SimulatorTotals,
+  ranking: RetakeRanking = 'efficiency',
 ): readonly RetakeCandidate[] {
   if (totals.cgpa === null || !inputs.semesters.length || totals.cgpaCredits <= 0) return [];
 
@@ -209,6 +236,7 @@ export function computeRetakeCandidates(
         semLabel,
         boostToB,
         boostToA,
+        boostPerCredit: boostToB / c.credits,
         cgpaIfB: Math.min(4.0, (totals.cgpa as number) + boostToB),
         cgpaIfA: Math.min(4.0, (totals.cgpa as number) + boostToA),
         strategy: gpaCoreGetImprovementStrategy(c.grade),
@@ -216,8 +244,26 @@ export function computeRetakeCandidates(
     });
   }
 
-  candidates.sort((a, b) => b.boostToB - a.boostToB);
+  // Sort first, cut second. Cutting by one order and then re-sorting would hide
+  // the candidates the other ranking exists to surface.
+  candidates.sort(rankingComparator(ranking));
   return candidates.slice(0, 6);
+}
+
+function rankingComparator(
+  ranking: RetakeRanking,
+): (a: RetakeCandidate, b: RetakeCandidate) => number {
+  return (a, b) => {
+    const primary =
+      ranking === 'efficiency' ? b.boostPerCredit - a.boostPerCredit : b.boostToB - a.boostToB;
+    if (primary !== 0) return primary;
+    // Deterministic tie-break so the list does not reshuffle between renders:
+    // the other measure, then the key.
+    const secondary =
+      ranking === 'efficiency' ? b.boostToB - a.boostToB : b.boostPerCredit - a.boostPerCredit;
+    if (secondary !== 0) return secondary;
+    return a.key.localeCompare(b.key);
+  };
 }
 
 export interface RetakeImpact {
