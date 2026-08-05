@@ -8,7 +8,7 @@
     "dev": "wrangler dev"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.112.1",
+    "@anthropic-ai/sdk": "^0.115.0",
     "jose": "^6.0.0"
   },
   "devDependencies": {
