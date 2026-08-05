@@ -133,7 +133,7 @@ export async function sendAssistantTurn(
     return { ok: false, code: 'invalid', error: 'Type a question to ask the assistant.' };
   }
 
-  let token: string | null = null;
+  let token: string | null;
   try {
     token = await getToken();
   } catch {

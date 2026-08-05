@@ -415,7 +415,7 @@ async function _loadList() {
   _state.loading = true;
   _state.error = false;
   _renderPapersList();
-  let papers = [];
+  let papers;
   let error = false;
   try {
     if (_state.query && isKnownCourseCode(_state.query)) {
