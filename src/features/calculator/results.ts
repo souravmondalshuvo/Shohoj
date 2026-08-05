@@ -11,6 +11,8 @@
 
 import { calculateCgpaTotals } from '../../core/gpa.ts';
 import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
+import { standingTierFor } from './milestones.ts';
+import type { StandingTier } from './milestones.ts';
 
 /** Structural twin of CalculatorInputs (calculatorBridge.ts) — kept separate so
  * this module never imports React through the bridge. */
@@ -41,15 +43,9 @@ export interface MeterStatus {
 }
 
 /** BRACU standing tiers by completed CGPA (recalc() standing box, Summer 2022+
- * probation policy). */
-export type StandingTier =
-  | 'perfect'
-  | 'higher-distinction'
-  | 'distinction'
-  | 'good'
-  | 'satisfactory'
-  | 'needs-improvement'
-  | 'probation';
+ * probation policy). Defined with the thresholds in milestones.ts so the
+ * cutoffs have exactly one definition. */
+export type { StandingTier } from './milestones.ts';
 
 export interface CalculatorResults {
   /** Projected CGPA — includes running semesters (the headline figure). */
@@ -92,16 +88,7 @@ function meterStatusFor(
   return { kind: 'recovery', cgpa };
 }
 
-function standingFor(completedCgpa: number | null): StandingTier | null {
-  if (completedCgpa === null) return null;
-  if (completedCgpa >= 3.97) return 'perfect';
-  if (completedCgpa >= 3.65) return 'higher-distinction';
-  if (completedCgpa >= 3.5) return 'distinction';
-  if (completedCgpa >= 3.0) return 'good';
-  if (completedCgpa >= 2.5) return 'satisfactory';
-  if (completedCgpa >= 2.0) return 'needs-improvement';
-  return 'probation';
-}
+const standingFor = standingTierFor;
 
 function isIncomplete(semester: SemesterEntry): boolean {
   return (

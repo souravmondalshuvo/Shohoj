@@ -32,6 +32,30 @@ test('remaining credits auto-fill from the department and a target yields a plan
   await expect(planRows.nth(0)).toContainText('A / A-');
 });
 
+test('the goal ladder leads before a target is typed (#502)', async ({ page }) => {
+  const sim = await openWithDemo(page);
+
+  // 63 points over 18 credits, 118 remaining → ceiling (4×118 + 63)/136 = 3.93,
+  // floor 63/136 = 0.46. Nothing is secured; Perfect Standing (3.97) is gone.
+  const ladder = sim.getByTestId('sim-ladder');
+  await expect(ladder).toBeVisible();
+  await expect(ladder).toContainText('3.93');
+  await expect(ladder).toContainText('0.46');
+
+  const perfect = ladder.locator('.sim-ladder-row', { hasText: 'Perfect Standing' });
+  await expect(perfect).toHaveClass(/sim-ladder-row--out-of-reach/);
+  await expect(perfect).toContainText('Out of reach');
+
+  // Higher Distinction is still live: needs (3.65×136 − 63)/118 = 3.67.
+  const higher = ladder.locator('.sim-ladder-row', { hasText: 'Higher Distinction' });
+  await expect(higher).toContainText('needs 3.67 avg');
+
+  // Typing a target hands over to the plan, exactly as before.
+  await sim.getByLabel('Target CGPA:').fill('3.5');
+  await expect(sim.getByText('Avg GPA Needed')).toBeVisible();
+  await expect(sim.getByTestId('sim-ladder')).toHaveCount(0);
+});
+
 test('an impossible target reports the all-A ceiling', async ({ page }) => {
   const sim = await openWithDemo(page);
   await sim.getByLabel('Target CGPA:').fill('4');
@@ -68,6 +92,44 @@ test('a sub-B course appears in the retake table and stacks into the impact box'
   await expect(impact).toContainText('+0.14 boost');
   await row.click();
   await expect(sim.getByTestId('sim-impact')).toHaveCount(0);
+});
+
+test('the ranking toggle reorders the retake table (#501)', async ({ page }) => {
+  const sim = await openWithDemo(page);
+  const container = page.locator('#semestersContainer');
+
+  // A 1-credit D and a 3-credit C. The D is the better value per credit; the C
+  // is the bigger absolute jump. Each ranking should lead with a different one.
+  async function addCourse(code, gradePoint, nth) {
+    await container.getByRole('button', { name: '+ Add course' }).first().click();
+    const input = container.getByRole('combobox').nth(nth);
+    await input.click();
+    await input.fill(code);
+    await container.getByRole('option', { name: new RegExp(code) }).first().click();
+    const gp = container.getByPlaceholder('0.0 – 4.0').nth(nth);
+    await gp.fill(gradePoint);
+    await gp.blur();
+  }
+
+  await addCourse('PHY112', '2', 3); // 3 credits, C
+  await addCourse('EEE101L', '1', 4); // 1 credit, D
+
+  await sim.getByLabel('Target CGPA:').fill('3.8');
+  const rows = sim.locator('.sim-retake-row');
+  await expect(rows).toHaveCount(2);
+
+  // Efficiency is the default: the 1-credit D leads.
+  await expect(sim.getByRole('button', { name: 'Best value' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(rows.first()).toContainText('EEE101L');
+
+  await sim.getByRole('button', { name: 'Biggest jump' }).click();
+  await expect(rows.first()).toContainText('PHY112');
+
+  await sim.getByRole('button', { name: 'Best value' }).click();
+  await expect(rows.first()).toContainText('EEE101L');
 });
 
 test('summary-only data shows the nudge instead of the retake table', async ({ page }) => {

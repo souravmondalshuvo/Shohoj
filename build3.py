@@ -35,6 +35,7 @@ MAIN_JS_FILES = [
     'js/qr-data.js',
     # Core (no dependencies)
     'js/core/grades.js',
+    'js/core/milestones.js',
     'js/core/helpers.js',
     'js/core/dispatch.js',
     'js/core/state.js',

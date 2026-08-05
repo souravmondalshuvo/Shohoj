@@ -10,7 +10,7 @@
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import { gpaBadgeColors } from './colors.ts';
-import { computeDegreeProgress, type TrackerNode } from './degreeProgress.ts';
+import { computeDegreeProgress, type DegreeProgress, type TrackerNode } from './degreeProgress.ts';
 import { getDepartment } from './departments.ts';
 import { computeCalculatorResults, formatCredits } from './results.ts';
 
@@ -20,6 +20,29 @@ function gpaClass(gpa: number | null): string {
   if (gpa >= 3.0) return 'gpa-good';
   if (gpa >= 2.5) return 'gpa-warning';
   return 'gpa-danger';
+}
+
+/**
+ * How soft the graduation date is (#503) — the range the student's own spread of
+ * semester loads supports, or, when there is too little history, that the pace
+ * behind the date is an assumption rather than anything they did.
+ */
+function GraduationNote({ progress }: { readonly progress: DegreeProgress }) {
+  if (progress.paceAssumed && progress.creditsRemaining > 0) {
+    return (
+      <div className="tracker-stat-note">
+        assumes {formatCredits(progress.avgCredits)} cr/sem — too few semesters to judge
+      </div>
+    );
+  }
+  const range = progress.gradRange;
+  if (!range || range.earliest === range.latest) return null;
+  return (
+    <div className="tracker-stat-note">
+      {range.earliest} – {range.latest} at {formatCredits(range.slowPace)}–
+      {formatCredits(range.fastPace)} cr/sem
+    </div>
+  );
 }
 
 function SemesterNode({ node }: { readonly node: TrackerNode }) {
@@ -86,6 +109,7 @@ export default function DegreeTracker() {
           <div className="tracker-stat">
             <div className="tracker-stat-val">{progress.gradEstimate}</div>
             <div className="tracker-stat-label">Est. Graduation</div>
+            <GraduationNote progress={progress} />
           </div>
         </div>
 

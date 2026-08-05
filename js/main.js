@@ -8,6 +8,27 @@ import {
   onPFChange, getSemCreditWarning, onGradePointBlur
 } from './core/calculator.js';
 import { calculateCgpaTotals } from './core/gpa-core.js';
+import { MILESTONE_TIERS, standingTierFor } from './core/milestones.js';
+
+// Thresholds and labels come from js/core/milestones.js so the standing box and
+// the simulator's goal ladder cannot drift apart (#502). Only the presentation
+// — emoji, colour class, copy — lives here. Static config, so module scope.
+const STANDING_PRESENTATION = {
+  'perfect': { cls: 'standing-excellent', emoji: '🏆',
+    description: 'Exceptional academic performance. You are at the top of your class.' },
+  'higher-distinction': { cls: 'standing-excellent', emoji: '🌟',
+    description: 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).' },
+  'distinction': { cls: 'standing-excellent', emoji: '⭐',
+    description: 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).' },
+  'good': { cls: 'standing-good', emoji: '✅',
+    description: 'You are in good academic standing. Keep it up!' },
+  'satisfactory': { cls: 'standing-good', emoji: '👍',
+    description: 'Acceptable academic performance. There is room to improve.' },
+  'needs-improvement': { cls: 'standing-warning', emoji: '⚠️',
+    description: 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.' },
+  'probation': { cls: 'standing-danger', emoji: '❌',
+    description: 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.' },
+};
 import {
   generateSemesterNames, getStartSeason, getStartYear,
   sanitizeRestoredState
@@ -702,29 +723,13 @@ function recalc() {
     const badge  = document.getElementById('standingBadge');
     standingBox.classList.remove('standing-excellent','standing-good','standing-warning','standing-danger');
 
-    let standing, cls, emoji, description;
-    if (cgpaNum >= 3.97) {
-      standing = 'Perfect Standing'; cls = 'standing-excellent'; emoji = '🏆';
-      description = 'Exceptional academic performance. You are at the top of your class.';
-    } else if (cgpaNum >= 3.65) {
-      standing = 'Higher Distinction'; cls = 'standing-excellent'; emoji = '🌟';
-      description = 'Outstanding performance. You qualify for graduation with Higher Distinction (CGPA ≥ 3.65).';
-    } else if (cgpaNum >= 3.50) {
-      standing = 'Distinction'; cls = 'standing-excellent'; emoji = '⭐';
-      description = 'Excellent academic record. You qualify for graduation with Distinction (CGPA ≥ 3.50).';
-    } else if (cgpaNum >= 3.00) {
-      standing = 'Good Standing'; cls = 'standing-good'; emoji = '✅';
-      description = 'You are in good academic standing. Keep it up!';
-    } else if (cgpaNum >= 2.50) {
-      standing = 'Satisfactory'; cls = 'standing-good'; emoji = '👍';
-      description = 'Acceptable academic performance. There is room to improve.';
-    } else if (cgpaNum >= 2.00) {
-      standing = 'Needs Improvement'; cls = 'standing-warning'; emoji = '⚠️';
-      description = 'Your CGPA is below 2.50. Consistent improvement is needed to stay in good standing.';
-    } else {
-      standing = 'Academic Probation'; cls = 'standing-danger'; emoji = '❌';
-      description = 'CGPA below 2.00 — you are on academic probation as per BRACU policy (Summer 2022+). Seek academic counselling immediately.';
-    }
+    const tierId = standingTierFor(cgpaNum);
+    const tier = MILESTONE_TIERS.find(t => t.id === tierId);
+    const presentation = STANDING_PRESENTATION[tierId];
+    const standing = tier.standingLabel;
+    const cls = presentation.cls;
+    const emoji = presentation.emoji;
+    const description = presentation.description;
 
     standingBox.classList.add(cls);
     title.textContent  = standing;
