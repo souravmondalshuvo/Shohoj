@@ -1,5 +1,6 @@
-// Generated from src/core/connectFeedClient.ts for the vanilla JS runtime.
-// Update src/core/connectFeedClient.ts first, then regenerate this file.
+// Twin of src/core/connectFeedClient.ts — hand-maintained, not generated.
+// src/core/connectFeedClient.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Thin wrapper around `usis-cdn.eniamza.com/connect.json` with a localStorage
 // TTL cache, ETag-aware refresh, and stale-cache fallback on network failure.

@@ -1,5 +1,6 @@
-// Generated from src/core/calendarExport.ts for the vanilla JS runtime.
-// Update src/core/calendarExport.ts first, then regenerate this file.
+// Twin of src/core/calendarExport.ts — hand-maintained, not generated.
+// src/core/calendarExport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Calendar export — builds an RFC 5545 iCalendar (.ics) string from a student's
 // picked sections so their phone/laptop calendar fires real class/exam

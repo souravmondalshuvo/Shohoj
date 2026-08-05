@@ -1,5 +1,6 @@
-// Generated from src/core/routinePlannerImport.ts for the vanilla JS runtime.
-// Update src/core/routinePlannerImport.ts first, then regenerate this file.
+// Twin of src/core/routinePlannerImport.ts — hand-maintained, not generated.
+// src/core/routinePlannerImport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Resolves the student's Planner course codes against the live CONNECT feed so
 // the Routine Builder can pre-fill its picker with courses already planned,

@@ -1,5 +1,6 @@
-// Generated from src/core/freeRooms.ts for the vanilla JS runtime.
-// Update src/core/freeRooms.ts first, then regenerate this file.
+// Twin of src/core/freeRooms.ts — hand-maintained, not generated.
+// src/core/freeRooms.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Free-room finder — pure helpers that invert the normalized section list into
 // room-availability queries (which rooms are busy when), so the UI can answer

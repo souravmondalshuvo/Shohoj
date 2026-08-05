@@ -1,5 +1,6 @@
-// Generated from src/core/seatWatch.ts for the vanilla JS runtime.
-// Update src/core/seatWatch.ts first, then regenerate this file.
+// Twin of src/core/seatWatch.ts — hand-maintained, not generated.
+// src/core/seatWatch.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Seat-watch core — pure helpers behind "alert me when a full section opens".
 // Owns the watchlist shape, its localStorage (de)serialization, and the
