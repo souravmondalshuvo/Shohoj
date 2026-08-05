@@ -66,17 +66,14 @@ export function flattenPdfPageText(items: readonly PdfTextItem[]): string {
       const yDiff = Math.abs(y - lastY);
       if (yDiff > 6) {
         text += '\n';
-        lastXEnd = null;
       } else if (yDiff > 1 && COURSE_CODE_RE.test(str)) {
         // Mobile PDF.js sometimes drops a course code a few pixels lower than
         // the rest of the row; a forced newline prevents row merging.
         text += '\n';
-        lastXEnd = null;
       } else if (yDiff > 1 && ALL_CAPS_FRAGMENT_RE.test(str) && str.length > 3) {
         // All-caps overflow fragments like "EQUATIONS" can belong to the next
         // course title and should not stay glued to the previous row.
         text += '\n';
-        lastXEnd = null;
       } else if (!text.endsWith('\n') && shouldInsertPdfSpace(lastXEnd, x, lastToken, str)) {
         text += ' ';
       }

@@ -14,7 +14,7 @@ export function RouteError() {
   const error = useRouteError();
 
   let heading = 'Something went wrong';
-  let message = 'Please try again.';
+  let message: string;
 
   if (isRouteErrorResponse(error)) {
     heading = `${error.status} ${error.statusText}`;

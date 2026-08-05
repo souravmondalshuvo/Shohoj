@@ -234,7 +234,7 @@ export function buildReviewOverview(
     ? `${facultyName}${facultyInitials ? ` (${facultyInitials})` : ''}`
     : facultyInitials || 'This faculty';
 
-  let headline = 'Student sentiment is mixed';
+  let headline: string;
   if (overall >= 4.6) headline = 'Highly recommended';
   else if (overall >= 4.1) headline = 'Strongly recommended';
   else if (overall >= 3.4) headline = 'Mostly positive feedback';

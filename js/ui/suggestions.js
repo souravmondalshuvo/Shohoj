@@ -50,7 +50,7 @@ export function onCourseBlur(e, semId, cIdx) {
     );
 
   let resolvedName = val;
-  let resolvedCredits = course.credits;
+  let resolvedCredits;
   if (exactMatch) {
     resolvedName = exactMatch.full;
     resolvedCredits = exactMatch.credits;
