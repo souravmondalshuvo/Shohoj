@@ -340,7 +340,7 @@ async function getServiceAccountAccessToken(env) {
   try {
     sa = JSON.parse(env.SERVICE_ACCOUNT_JSON);
   } catch (e) {
-    throw new Error('SERVICE_ACCOUNT_JSON is not valid JSON');
+    throw new Error('SERVICE_ACCOUNT_JSON is not valid JSON', { cause: e });
   }
   if (!sa.client_email || !sa.private_key || !sa.token_uri) {
     throw new Error('SERVICE_ACCOUNT_JSON missing required fields');
@@ -614,7 +614,7 @@ async function handleUpload(request, env, origin, ctx) {
   if (semester) paperDoc.semester = semester;
   if (facultyInitials) paperDoc.facultyInitials = facultyInitials;
 
-  let paperId = null;
+  let paperId;
   try {
     const accessToken = await getServiceAccountAccessToken(env);
     const docRes = await fetch(`${firestoreDocsBase(env)}/papers`, {
