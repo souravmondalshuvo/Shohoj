@@ -1,0 +1,278 @@
+// tests/helpers/twinFixtures.mjs
+//
+// Behavioural fixtures for the js/ ↔ src/ twin family (#484).
+//
+// Export-name comparison is the weak net: it would have rated `connectFeed`
+// clean despite #479, which lived entirely inside a function body. These are
+// the strong net — identical input through both copies, identical output
+// required.
+//
+// Inputs do not have to be *valid*, only identical: a fixture that makes both
+// sides throw still proves they agree. The harness reports how many cases
+// returned a value versus threw, so a twin cannot look covered on nothing but
+// mutual TypeErrors.
+
+const SECTION = {
+  sectionId: 101,
+  courseCode: 'CSE220',
+  sectionName: '01',
+  faculties: 'ABC',
+  roomName: '09A-20C',
+  capacity: 30,
+  consumedSeat: 28,
+  sectionSchedule: {
+    classSchedules: [
+      { day: 'SUNDAY', startTime: '08:00:00', endTime: '09:20:00', room: '09A-20C' },
+      { day: 'TUESDAY', startTime: '08:00:00', endTime: '09:20:00' },
+    ],
+    finalExamDate: '2026-08-20',
+    finalExamStartTime: '09:00:00',
+    finalExamEndTime: '11:00:00',
+  },
+  labSchedules: [],
+};
+
+const SECTION_B = {
+  ...SECTION,
+  sectionId: 102,
+  sectionName: '02',
+  courseCode: 'CSE221',
+  roomName: '10B-14A',
+  capacity: 30,
+  consumedSeat: 30,
+};
+
+const CLASHING = {
+  ...SECTION,
+  sectionId: 103,
+  courseCode: 'MAT120',
+  sectionSchedule: {
+    classSchedules: [{ day: 'SUNDAY', startTime: '08:30:00', endTime: '09:50:00' }],
+  },
+};
+
+const FEED = [SECTION, SECTION_B, CLASHING];
+
+const SEMESTER = {
+  id: 1,
+  name: 'Fall 2024',
+  running: false,
+  summary: false,
+  courses: [
+    { name: 'Programming (CSE110)', grade: 'A', credits: 3 },
+    { name: 'Physics (PHY111)', grade: 'C', credits: 3 },
+    { name: 'Seminar (CSE400)', grade: 'P', credits: 1 },
+  ],
+};
+const SEMESTER_RETAKE = {
+  id: 2,
+  name: 'Spring 2025',
+  running: false,
+  summary: false,
+  courses: [{ name: 'Physics (PHY111)', grade: 'A', credits: 3 }],
+};
+const SEMESTERS = [SEMESTER, SEMESTER_RETAKE];
+
+const TRANSCRIPT = [
+  'BRAC UNIVERSITY',
+  'GRADE SHEET',
+  'STUDENT ID: 21301234',
+  'PROGRAM: Bachelor of Science in Computer Science',
+  'SEMESTER: Fall 2024',
+  'CSE110 Programming Language I 3.0 A 4.00',
+  'PHY111 Principles of Physics I 3.0 B+ 3.30',
+  'SEMESTER: Spring 2025',
+  'CSE111 Programming Language II 3.0 A- 3.70',
+].join('\n');
+
+/**
+ * `twin name` → `exported function` → array of argument tuples.
+ *
+ * Only value-returning, deterministic functions belong here. Clock- and
+ * network-dependent exports (exportFileName, fetchConnectFeed) are deliberately
+ * absent — see UNCOVERED in twinParity.test.js.
+ */
+export const FIXTURES = {
+  calendarExport: {
+    firstOnOrAfter: [
+      [new Date('2026-08-03T00:00:00Z'), 'SUNDAY'],
+      [new Date('2026-08-03T00:00:00Z'), 'FRIDAY'],
+      [new Date('2026-01-01T00:00:00Z'), 'MONDAY'],
+    ],
+    buildRoutineICS: [[[]], [[SECTION]], [[SECTION, SECTION_B]]],
+  },
+
+  connectFeed: {
+    parseTimeToMinutes: [['08:00:00'], ['11:30 AM'], ['1:05 PM'], [''], [null], ['garbage']],
+    normalizeSection: [[SECTION], [SECTION_B], [{ sectionId: 9001 }], [null], [{ courseCode: 'X' }]],
+    parseFeed: [[FEED], [[]], [[null, { sectionId: 1 }]], [null]],
+    listCourseCodes: [[FEED], [[]]],
+    indexByCourse: [[FEED]],
+    summarizeFeed: [[FEED], [[]]],
+    detectClashes: [[FEED], [[SECTION]], [[]]],
+    hasClassClash: [
+      [SECTION, CLASHING],
+      [SECTION, SECTION_B],
+    ],
+    hasExamClash: [
+      [SECTION, SECTION_B],
+      [SECTION, CLASHING],
+    ],
+    isClashFree: [[[SECTION, SECTION_B]], [[SECTION, CLASHING]]],
+  },
+
+  freeRooms: {
+    roomTypeKey: [['09A-20C'], ['UB40101'], [''], [null]],
+    buildRoomBusyIndex: [[FEED], [[]]],
+    listAllRooms: [[FEED], [[]]],
+  },
+
+  'gpa-core': {
+    calcSemesterGpa: [[SEMESTER], [{ courses: [] }]],
+    calculateCgpaTotals: [
+      [SEMESTERS, {}],
+      [SEMESTERS, { bestGrade: true }],
+      [SEMESTERS, { includeRunning: true, includeSummary: true }],
+      [[], {}],
+    ],
+    getRetakenKeys: [
+      [SEMESTERS, { bestGrade: false }],
+      [SEMESTERS, { bestGrade: true }],
+    ],
+    getCourseCode: [['Physics (PHY111)'], ['No code here'], ['']],
+    getCourseIdentity: [['Physics (PHY111)'], ['Independent Study']],
+    clampGradePoint: [[5], [-1], [2.7], [NaN]],
+    normalizeGradePoint: [
+      ['3.7', 3],
+      ['abc', 3],
+      ['4.5', 3],
+    ],
+    getImprovementStrategy: [['F'], ['C'], ['A'], ['F(NT)'], ['W']],
+    isRepeatEligible: [['F'], ['C'], ['B'], ['A']],
+    getSemesterCreditWarning: [[SEMESTER], [{ courses: [] }]],
+  },
+
+  milestones: {
+    standingTierFor: [[4.0], [3.97], [3.5], [2.0], [1.5], [null]],
+    computeMilestoneLadder: [
+      [{ points: 216, cgpaCredits: 60, remaining: 60 }],
+      [{ points: 180, cgpaCredits: 90, remaining: 30 }],
+      [{ points: 0, cgpaCredits: 0, remaining: 136 }],
+      [{ points: 0, cgpaCredits: 0, remaining: 0 }],
+    ],
+    isGoal: [[{ id: 'perfect' }], [{ id: 'probation' }]],
+  },
+
+  'planner-core': {
+    getCompletedCodes: [[SEMESTERS], [[]]],
+    getScheduledCodes: [[SEMESTERS], [[]]],
+    getInProgressCodes: [[SEMESTERS], [[]]],
+    checkPrereqs: [
+      ['CSE221', SEMESTERS, []],
+      ['CSE110', [], []],
+    ],
+    isRelevantToDept: [
+      ['CSE220', 'CSE'],
+      ['BUS101', 'CSE'],
+    ],
+    validatePlan: [[['CSE220', 'CSE221']], [[]]],
+  },
+
+  routineExport: {
+    defaultHueForSection: [['CSE220'], ['MAT120'], ['']],
+    buildExportPlan: [[[]], [[SECTION, SECTION_B]]],
+  },
+
+  routineFaculty: {
+    formatRatingScore: [[4.25], [0], [null], [3]],
+    ratingTier: [
+      [4.6, 12],
+      [3.0, 1],
+      [null, 0],
+    ],
+    buildFacultyRatingMap: [[[]], [[{ facultyInitials: 'ABC', overall: 4.2, count: 9 }]]],
+  },
+
+  routineGrid: {
+    computeGridLayout: [[[]], [[SECTION]], [[SECTION, SECTION_B, CLASHING]]],
+  },
+
+  routinePlannerImport: {
+    summarizePlanImport: [[[]], [['CSE220', 'CSE221']]],
+    resolvePlanImport: [
+      [['CSE220'], FEED],
+      [[], FEED],
+    ],
+  },
+
+  routineState: {
+    emptyRoutineState: [[]],
+    encodeRoutinePicks: [[{}], [{ CSE220: 101 }]],
+    decodeRoutinePicks: [[''], ['CSE220:101'], [null]],
+    pickedCourseCodes: [[{ CSE220: 101 }], [{}]],
+    buildClashMap: [[FEED], [[]]],
+    selectedSections: [
+      [{ CSE220: 101 }, FEED],
+      [{}, FEED],
+    ],
+  },
+
+  routineSuggestions: {
+    scoreCombination: [
+      [[SECTION], {}],
+      [[SECTION, SECTION_B], {}],
+    ],
+    suggestCombinations: [
+      [FEED, {}],
+      [[], {}],
+    ],
+  },
+
+  seatStatus: {
+    seatInfo: [[SECTION], [SECTION_B], [{ capacity: 0, consumedSeat: 0 }], [null]],
+    sortSections: [[FEED], [[]]],
+    courseSeatSummary: [[FEED], [[]]],
+    searchCourseSections: [
+      [FEED, 'CSE220'],
+      [FEED, ''],
+    ],
+  },
+
+  seatWatch: {
+    makeWatch: [[SECTION], [SECTION_B], [null]],
+    hasSeat: [[SECTION], [SECTION_B]],
+    indexBySectionId: [[FEED], [[]]],
+    parseWatches: [['[]'], ['not json'], [null], ['[{"sectionId":101}]']],
+    serializeWatches: [[[]], [[{ sectionId: 101, courseCode: 'CSE220' }]]],
+    isWatched: [
+      [[{ sectionId: 101 }], 101],
+      [[], 101],
+    ],
+    addWatch: [
+      [[], { sectionId: 101, courseCode: 'CSE220' }],
+      [[{ sectionId: 101 }], { sectionId: 101 }],
+    ],
+    removeWatch: [
+      [[{ sectionId: 101 }], 101],
+      [[], 101],
+    ],
+    evaluateWatches: [[[{ sectionId: 101, consumedSeat: 30, capacity: 30 }], FEED], [[], FEED]],
+  },
+
+  semesterBriefing: {
+    formatClock: [[0], [90], [755], [1439]],
+    formatDuration: [[0], [45], [125]],
+    parseRoomFloor: [['09A-20C'], ['UB40101'], [''], [null]],
+    collectRoutineSlots: [[[]], [[SECTION, SECTION_B]]],
+  },
+
+  'transcript-core': {
+    normalizeTranscriptLine: [['  CSE110   Programming  '], [''], ['A+ (RT)']],
+    normalizeTranscriptText: [[TRANSCRIPT], ['']],
+    parseSemesterName: [['Fall 2024'], ['Summer 2025'], ['nonsense']],
+    detectDepartment: [[TRANSCRIPT], ['']],
+    detectStudentIdentity: [[TRANSCRIPT], ['']],
+    parseTranscriptText: [[TRANSCRIPT], ['']],
+    parseBlobFallback: [[TRANSCRIPT], ['']],
+  },
+};
