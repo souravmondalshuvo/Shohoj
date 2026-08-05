@@ -1,5 +1,6 @@
-// Generated from src/core/semesterBriefing.ts for the vanilla JS runtime.
-// Update src/core/semesterBriefing.ts first, then regenerate this file.
+// Twin of src/core/semesterBriefing.ts — hand-maintained, not generated.
+// src/core/semesterBriefing.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Semester briefing — turns a student's own routine picks into the three things
 // no single tab can answer, because each needs the picks joined against the

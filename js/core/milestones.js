@@ -1,5 +1,6 @@
-// Generated from src/features/calculator/milestones.ts for the vanilla JS runtime.
-// Update src/features/calculator/milestones.ts first, then regenerate this file.
+// Twin of src/features/calculator/milestones.ts — hand-maintained, not generated.
+// src/features/calculator/milestones.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // The BRACU standing thresholds live here once, for both the standing box in
 // main.js and the goal ladder in ui/simulator.js (#502).

@@ -1,5 +1,6 @@
-// Generated from src/core/connectFeed.ts for the vanilla JS runtime.
-// Update src/core/connectFeed.ts first, then regenerate this file.
+// Twin of src/core/connectFeed.ts — hand-maintained, not generated.
+// src/core/connectFeed.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Pure helpers for parsing and reasoning about the live BRACU CONNECT section
 // data served by `usis-cdn.eniamza.com/connect.json`. I/O-free on purpose —

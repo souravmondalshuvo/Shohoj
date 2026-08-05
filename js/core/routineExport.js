@@ -1,5 +1,6 @@
-// Generated from src/core/routineExport.ts for the vanilla JS runtime.
-// Update src/core/routineExport.ts first, then regenerate this file.
+// Twin of src/core/routineExport.ts — hand-maintained, not generated.
+// src/core/routineExport.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Turns a GridLayout into a flat list of canvas draw ops + dimensions. Pure /
 // renderer-agnostic: routineTab.js walks the ops against a 2D context and calls

@@ -1,5 +1,6 @@
-// Generated from src/core/seatStatus.ts for the vanilla JS runtime.
-// Update src/core/seatStatus.ts first, then regenerate this file.
+// Twin of src/core/seatStatus.ts — hand-maintained, not generated.
+// src/core/seatStatus.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
 //
 // Seat-status lookup — pure helpers that turn the normalized section list into
 // "is there a seat in COURSE X" answers. Layers search, seat math, sorting, and
