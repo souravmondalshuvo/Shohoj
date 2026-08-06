@@ -141,6 +141,28 @@ function stripSemesterIds(out) {
   };
 }
 
+/**
+ * Run `fn` with Date.now() advancing by a day on every read, then restore.
+ *
+ * Two ordinary calls usually see the same millisecond, which is exactly why a
+ * clock-reading fixture can pass a hundred times and then fail. Forcing the
+ * clock forward makes clock-dependence show up on the first run instead.
+ */
+let clockTick = 0;
+
+function withMovingClock(fn) {
+  const real = Date.now;
+  // The counter is module-level on purpose: resetting it per call would hand
+  // both probes the same first reading, which is the failure this exists to
+  // prevent. It must keep advancing across probes.
+  Date.now = () => 1_767_225_600_000 + ++clockTick * 86_400_000;
+  try {
+    return fn();
+  } finally {
+    Date.now = real;
+  }
+}
+
 /** Run a call on both sides, capturing a thrown error as a comparable value. */
 function outcome(fn, args) {
   try {
@@ -205,6 +227,20 @@ for (const twin of twins) {
         const tsOut = apply(outcome(ts[fnName], structuredClone(args)));
         totalCases++;
         if (tsOut.threw) totalThrew++;
+
+        // Determinism precheck, with the clock forced to move between the two
+        // probe calls. Simply calling twice is not enough: Date.now() usually
+        // returns the same millisecond twice in a row, so a clock-reading
+        // fixture looks stable and then fails intermittently as "drift" once
+        // the two sides land either side of a tick. Advancing the clock turns
+        // that into a guaranteed failure, reported as the fixture bug it is.
+        assert.deepEqual(
+          normalise(apply(withMovingClock(() => outcome(ts[fnName], structuredClone(args))))),
+          normalise(apply(withMovingClock(() => outcome(ts[fnName], structuredClone(args))))),
+          `${twin.name}.${fnName} case ${i} reads a moving clock, so it cannot ` +
+            `test parity — it would pass until the two sides straddled a tick. ` +
+            `Inject the time (most of these take a \`now\`) or add a PROJECTIONS entry.`,
+        );
 
         assert.deepEqual(
           normalise(jsOut),
