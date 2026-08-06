@@ -76,6 +76,46 @@ function sanitizeGradePointValue(value) {
   return Number.isFinite(numeric) && numeric >= 0 && numeric <= 4 ? trimmed : '';
 }
 
+/**
+ * Upper bound on tracked components per course (#500). Not a syllabus
+ * judgement — a bound on what restore will accept, so a corrupted or hostile
+ * document cannot grow the cloud doc without limit.
+ */
+export const MAX_MARK_COMPONENTS = 20;
+
+/**
+ * Validate persisted mark components. Returns undefined rather than an empty
+ * array when there is nothing usable, so a course that never tracked marks
+ * stays byte-identical through a save/restore cycle.
+ */
+export function sanitizeMarkComponents(value) {
+  if (!Array.isArray(value)) return undefined;
+
+  const out = [];
+  for (const raw of value) {
+    if (out.length >= MAX_MARK_COMPONENTS) break;
+    if (!raw || typeof raw !== 'object') continue;
+
+    const weight = typeof raw.weight === 'number' && Number.isFinite(raw.weight) ? raw.weight : NaN;
+    const outOf = typeof raw.outOf === 'number' && Number.isFinite(raw.outOf) ? raw.outOf : NaN;
+    // A component with no weight or no denominator cannot contribute to any
+    // answer, so it is dropped rather than stored as a broken row.
+    if (!(weight > 0) || !(outOf > 0)) continue;
+
+    const score =
+      typeof raw.score === 'number' && Number.isFinite(raw.score) ? Math.max(0, raw.score) : null;
+
+    out.push({
+      name: typeof raw.name === 'string' ? stripTags(raw.name).slice(0, 40) : '',
+      weight: Math.min(100, weight),
+      score,
+      outOf,
+    });
+  }
+
+  return out.length ? out : undefined;
+}
+
 export function sanitizeRestoredState(saved) {
   if (!saved || typeof saved !== 'object') return null;
   if (!Array.isArray(saved.semesters)) return null;
@@ -107,13 +147,18 @@ export function sanitizeRestoredState(saved) {
 
     sem.name = sanitizeSemName(sem.name || '');
     if (!Array.isArray(sem.courses)) { sem.courses = []; return true; }
-    sem.courses = sem.courses.filter(c => c && typeof c === 'object').map(c => ({
-      name:       typeof c.name === 'string' ? c.name : '',
-      credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
-      grade:      typeof c.grade === 'string' ? c.grade : '',
-      gradePoint: sanitizeGradePointValue(c.gradePoint),
-      faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
-    }));
+    // This map is an allowlist: a field absent here is dropped on restore.
+    sem.courses = sem.courses.filter(c => c && typeof c === 'object').map(c => {
+      const marks = sanitizeMarkComponents(c.marks);
+      return {
+        name:       typeof c.name === 'string' ? c.name : '',
+        credits:    typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
+        grade:      typeof c.grade === 'string' ? c.grade : '',
+        gradePoint: sanitizeGradePointValue(c.gradePoint),
+        faculty:    typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
+        ...(marks ? { marks } : {}),
+      };
+    });
     return true;
   });
 
