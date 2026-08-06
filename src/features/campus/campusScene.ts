@@ -1,19 +1,22 @@
 /**
  * Procedural 3D campus scene for the /campus route (#370, visuals #385).
  *
- * Renders the Merul Badda tower as stacked floor slabs generated purely from
- * the CampusModel (no hand-authored 3D asset): every floor that has rooms in
- * the live feed is interactive; podium floors below the first data floor are
- * inert context so the shape still reads as the real 13-story building.
+ * Renders a reference-aligned reconstruction of the completed Merul Badda
+ * campus: the park/lake ground plane, porous civic stack, WOHA's elevated
+ * academic ring and atrium, façade screens, garden terraces, lift/escalator
+ * circulation, university green, pool, jogging loop and PV canopy. The public
+ * Campus 360 programme and official project photography support those layers;
+ * exact plan positions remain deliberately schematic until BRACU releases the
+ * indexed as-built drawings.
  *
  * Selecting a floor "explodes" the stack — floors above lift and fade — and
  * the selected slab grows room boxes, one per room, clustered by zone in a
  * ring around the slab's center (the tower is built around a central void).
  * Room boxes recolor live from the free/busy status map.
  *
- * The v2 look (#385) stays procedural: PBR materials under a sun + sky rig
- * with soft shadows, a translucent glass envelope with a fresnel edge glow and
- * architectural edge lines, and a ground plaza that the tower casts onto. The
+ * The scene stays procedural: PBR materials under a sun + sky rig with soft
+ * shadows, a translucent interactive floor locator inside the architecture,
+ * and a landscaped campus base. The
  * sky/sun mood follows the viewer's real clock (day / golden hour / night) —
  * honest, like the free/busy data. Floors carry canvas-drawn number labels and
  * a per-floor occupancy heat tint, and rooms answer to hover (a DOM tooltip)
@@ -27,6 +30,7 @@
  */
 
 import {
+    ACESFilmicToneMapping,
     AdditiveBlending,
     AmbientLight,
     BackSide,
@@ -34,21 +38,28 @@ import {
     CanvasTexture,
     CircleGeometry,
     Color,
+    CylinderGeometry,
     DirectionalLight,
     EdgesGeometry,
     Group,
     HemisphereLight,
+    InstancedMesh,
     LineBasicMaterial,
     LineSegments,
     Mesh,
     MeshStandardMaterial,
+    Object3D,
     PCFSoftShadowMap,
     PerspectiveCamera,
     Raycaster,
+    RingGeometry,
     Scene,
+    Shape,
+    ShapeGeometry,
     ShaderMaterial,
     Sprite,
     SpriteMaterial,
+    SRGBColorSpace,
     Vector2,
     WebGLRenderer,
 } from 'three';
@@ -102,18 +113,20 @@ export interface CampusSceneHandle {
     dispose(): void;
 }
 
-// Slab / layout constants (world units; the tower footprint is ~30 wide).
-const SLAB_W = 30;
-const SLAB_D = 30;
-const SLAB_H = 0.7;
-const FLOOR_GAP = 2.4;          // vertical distance between slab centers
-const EXPLODE_LIFT = 7;         // extra lift for floors above the focused one
-const ROOM_SIZE = 1.7;
-const ROOM_H = 1.3;
-const ZONE_RING_RADIUS = 10;    // zone clusters sit on this ring
+// World units are schematic, but the proportions and architectural hierarchy
+// follow the public WOHA/BRACU references instead of the former generic tower.
+const SLAB_W = 48;
+const SLAB_D = 34;
+const SLAB_H = 0.42;
+const FLOOR_GAP = 3.1;
+const EXPLODE_LIFT = 8;
+const ROOM_SIZE = 1.45;
+const ROOM_H = 1.15;
+const ZONE_RING_RADIUS = 12.2;
 const PODIUM_FLOORS_MIN = 1;    // render context floors from 1 upward
-const GROUND_RADIUS = 46;       // plaza disk the tower shadows onto
-const SHELL_MARGIN = 2.4;       // glass envelope overhang past the slabs
+const PUBLISHED_TOP_FLOOR = 13;
+const GROUND_RADIUS = 62;
+const SHELL_MARGIN = 1.6;
 const EASE_RATE = 7;            // exponential-damping rate for all transitions
 const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
@@ -170,6 +183,7 @@ interface FloorEntry {
     // Animation targets — the render loop eases position/opacity/color here.
     targetY: number;
     targetOpacity: number;
+    targetLabelOpacity: number;
     targetColor: Color;
 }
 
@@ -259,9 +273,10 @@ export function createCampusScene(
     const reducedMotion =
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-    const maxFloor = model.floors.length
+    const maxDataFloor = model.floors.length
         ? model.floors[model.floors.length - 1].floor
         : PODIUM_FLOORS_MIN;
+    const maxFloor = Math.max(PUBLISHED_TOP_FLOOR, maxDataFloor);
     const dataFloors = new Map(model.floors.map((f) => [f.floor, f]));
     const towerHeight = (maxFloor - PODIUM_FLOORS_MIN) * FLOOR_GAP;
 
@@ -298,6 +313,411 @@ export function createCampusScene(
     ground.position.y = -SLAB_H * 1.6;
     ground.receiveShadow = true;
     scene.add(ground);
+
+    // --- Reference-aligned campus architecture -----------------------------
+    // This visual layer never owns room data or click state. It gives the live
+    // feed-driven locator the real campus hierarchy while remaining visually
+    // subordinate whenever a floor is opened.
+    const architecture = new Group();
+    scene.add(architecture);
+    const architectureMaterials: Array<{
+        material: MeshStandardMaterial;
+        baseOpacity: number;
+    }> = [];
+    let architectureTargetFactor = 1;
+
+    function archMaterial(
+        color: string,
+        roughness: number,
+        metalness = 0,
+        opacity = 1,
+        emissive?: string,
+    ): MeshStandardMaterial {
+        const material = new MeshStandardMaterial({
+            color: new Color(color),
+            roughness,
+            metalness,
+            transparent: true,
+            opacity,
+            // Every architecture material participates in the focus fade. A
+            // transparent material must not keep writing an invisible wall to
+            // the depth buffer while the live room layer is open.
+            depthWrite: false,
+            emissive: new Color(emissive ?? '#000000'),
+            emissiveIntensity: emissive ? 0.12 : 0,
+        });
+        architectureMaterials.push({ material, baseOpacity: opacity });
+        return material;
+    }
+
+    const arch = {
+        concrete: archMaterial('#d8d6ca', 0.76),
+        concreteLight: archMaterial('#ece9df', 0.68),
+        frame: archMaterial('#46534f', 0.52, 0.4),
+        glass: archMaterial('#557f82', 0.2, 0.12, 0.45),
+        glassDark: archMaterial('#294f53', 0.22, 0.22, 0.82),
+        screen: archMaterial('#3e7468', 0.46, 0.38),
+        screenDark: archMaterial('#254f49', 0.42, 0.42),
+        bronze: archMaterial('#aa9b78', 0.58, 0.2),
+        rail: archMaterial('#68756f', 0.38, 0.55),
+        green: archMaterial('#477b50', 0.94),
+        greenLight: archMaterial('#78a258', 0.96),
+        earth: archMaterial('#80694f', 1),
+        water: archMaterial('#3d8589', 0.18, 0.05, 0.82),
+        paver: archMaterial('#a7a39a', 0.9),
+        road: archMaterial('#4b5351', 0.98),
+        track: archMaterial('#9b6249', 0.88),
+        field: archMaterial('#426c59', 0.9),
+        solar: archMaterial('#183c4e', 0.25, 0.72),
+        light: archMaterial('#ddd39f', 0.42, 0, 1, '#f3be63'),
+    };
+
+    function addBox(
+        size: [number, number, number],
+        position: [number, number, number],
+        material: MeshStandardMaterial,
+        parent: Group = architecture,
+        cast = true,
+        receive = true,
+    ): Mesh<BoxGeometry, MeshStandardMaterial> {
+        const mesh = new Mesh(new BoxGeometry(...size), material);
+        mesh.position.set(...position);
+        mesh.castShadow = cast;
+        mesh.receiveShadow = receive;
+        parent.add(mesh);
+        return mesh;
+    }
+
+    type BoxInstance = {
+        size: [number, number, number];
+        position: [number, number, number];
+        rotation?: [number, number, number];
+    };
+
+    const instanceTransform = new Object3D();
+
+    function addInstancedBoxes(
+        instances: BoxInstance[],
+        material: MeshStandardMaterial,
+        cast = true,
+        receive = true,
+    ): InstancedMesh<BoxGeometry, MeshStandardMaterial> | null {
+        if (instances.length === 0) return null;
+        const mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), material, instances.length);
+        for (const [index, instance] of instances.entries()) {
+            instanceTransform.position.set(...instance.position);
+            instanceTransform.rotation.set(...(instance.rotation ?? [0, 0, 0]));
+            instanceTransform.scale.set(...instance.size);
+            instanceTransform.updateMatrix();
+            mesh.setMatrixAt(index, instanceTransform.matrix);
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.computeBoundingSphere();
+        mesh.castShadow = cast;
+        mesh.receiveShadow = receive;
+        architecture.add(mesh);
+        return mesh;
+    }
+
+    // Road edge, lake and cleansing-biotope cells around the raised park.
+    addBox([128, 0.24, 15], [0, -0.55, 43], arch.road, architecture, false, true);
+    const roadMarkings: BoxInstance[] = [];
+    for (let x = -56; x <= 56; x += 13) {
+        roadMarkings.push({ size: [6, 0.025, 0.18], position: [x, -0.4, 43] });
+    }
+    addInstancedBoxes(roadMarkings, arch.concreteLight, false, false);
+    const lakeShape = new Shape();
+    lakeShape.moveTo(-37, 27);
+    lakeShape.bezierCurveTo(-49, 14, -48, -23, -30, -30);
+    lakeShape.bezierCurveTo(-10, -37, 25, -34, 39, -23);
+    lakeShape.bezierCurveTo(49, -7, 47, 17, 35, 29);
+    lakeShape.bezierCurveTo(14, 36, -20, 36, -37, 27);
+    const lake = new Mesh(new ShapeGeometry(lakeShape, 16), arch.water);
+    lake.rotation.x = -Math.PI / 2;
+    lake.position.y = -0.4;
+    lake.receiveShadow = true;
+    architecture.add(lake);
+    for (let i = 0; i < 5; i += 1) {
+        addBox(
+            [5.2, 0.12, 7.6],
+            [-29 + i * 7.2, -0.2, -30 + (i % 2) * 0.8],
+            arch.water,
+            architecture,
+            false,
+            true,
+        );
+        for (let reed = 0; reed < 3; reed += 1) {
+            const stalk = new Mesh(
+                new CylinderGeometry(0.08, 0.11, 0.85 + reed * 0.14, 5),
+                arch.greenLight,
+            );
+            stalk.position.set(-30.4 + i * 7.2 + reed * 1.35, 0.18, -30.6);
+            architecture.add(stalk);
+        }
+    }
+
+    // Park island, public maidan and the shaded entrance stair.
+    addBox([54, 0.62, 38], [0, -0.08, 0], arch.concrete, architecture, false, true);
+    addBox([49, 0.25, 33], [0, 0.37, -0.5], arch.green, architecture, false, true);
+    addBox([24, 0.12, 16], [0, 0.57, -4], arch.field, architecture, false, true);
+    addBox([15, 0.12, 29], [0, 0.58, 5], arch.paver, architecture, false, true);
+    addInstancedBoxes(
+        Array.from({ length: 5 }, (_, step) => ({
+            size: [19 - step * 1.35, 0.26, 1.7],
+            position: [0, 0.75 + step * 0.24, 18 - step * 1.65],
+        })),
+        arch.concreteLight,
+    );
+
+    // G–6 civic stack: thin perimeter bars keep the multi-storey void porous.
+    const lowerTop = 6 * FLOOR_GAP;
+    const lowerSlabs: BoxInstance[] = [];
+    const lowerGlass: BoxInstance[] = [];
+    const lowerEarth: BoxInstance[] = [];
+    const lowerGreenLight: BoxInstance[] = [];
+    const lowerGreen: BoxInstance[] = [];
+    for (let floor = 1; floor <= 6; floor += 1) {
+        const y = (floor - 1) * FLOOR_GAP + 0.9;
+        for (const z of [-13.1, 13.1]) {
+            lowerSlabs.push({ size: [48, 0.25, 6.4], position: [0, y, z] });
+            lowerGlass.push({
+                size: [43.5, 2.35, 0.34],
+                position: [0, y + 1.35, z + Math.sign(z) * 3.05],
+            });
+        }
+        for (const x of [-20.8, 20.8]) {
+            lowerSlabs.push({ size: [6.5, 0.25, 20], position: [x, y, 0] });
+            lowerGlass.push({
+                size: [0.34, 2.35, 17],
+                position: [x + Math.sign(x) * 3.05, y + 1.35, 0],
+            });
+        }
+        if (floor === 3 || floor === 5) {
+            for (const x of [-16, -9, 9, 16]) {
+                lowerEarth.push({ size: [5.2, 0.5, 1], position: [x, y + 0.47, 9.5] });
+                (floor === 3 ? lowerGreenLight : lowerGreen).push({
+                    size: [4.7, 0.42, 0.8],
+                    position: [x, y + 0.87, 9.5],
+                });
+            }
+        }
+    }
+    addInstancedBoxes(lowerSlabs, arch.concreteLight);
+    addInstancedBoxes(lowerGlass, arch.glass, false, true);
+    addInstancedBoxes(lowerEarth, arch.earth, false, true);
+    addInstancedBoxes(lowerGreenLight, arch.greenLight, false, true);
+    addInstancedBoxes(lowerGreen, arch.green, false, true);
+    const lowerColumns: BoxInstance[] = [];
+    for (let x = -21; x <= 21; x += 7) {
+        for (const z of [-13, 13]) {
+            lowerColumns.push({
+                size: [0.58, lowerTop + 1.5, 0.58],
+                position: [x, lowerTop / 2 + 0.8, z],
+            });
+        }
+    }
+    for (let z = -7; z <= 7; z += 7) {
+        for (const x of [-21, 21]) {
+            lowerColumns.push({
+                size: [0.58, lowerTop + 1.5, 0.58],
+                position: [x, lowerTop / 2 + 0.8, z],
+            });
+        }
+    }
+    addInstancedBoxes(lowerColumns, arch.frame);
+    addBox([50, 0.72, 35], [0, lowerTop + 0.38, 0], arch.frame);
+
+    // Floors 7–12: the elevated academic ring around the ventilated atrium.
+    const academicSlabs: BoxInstance[] = [];
+    const academicGlass: BoxInstance[] = [];
+    const academicEarth: BoxInstance[] = [];
+    const academicGreenLight: BoxInstance[] = [];
+    const academicGreen: BoxInstance[] = [];
+    for (let floor = 7; floor <= 12; floor += 1) {
+        const y = (floor - 1) * FLOOR_GAP + 0.9;
+        for (const z of [-12.4, 12.4]) {
+            academicSlabs.push({ size: [50, 0.28, 8.4], position: [0, y, z] });
+            academicGlass.push({ size: [47, 2.36, 6.6], position: [0, y + 1.38, z] });
+        }
+        for (const x of [-20.8, 20.8]) {
+            academicSlabs.push({ size: [8.4, 0.28, 16.4], position: [x, y, 0] });
+            academicGlass.push({ size: [6.6, 2.36, 14.5], position: [x, y + 1.38, 0] });
+        }
+        if (floor === 8 || floor === 11) {
+            for (const x of [-17, -10, -3, 4, 11, 18]) {
+                academicEarth.push({
+                    size: [4.7, 0.55, 1.05],
+                    position: [x, y + 0.5, 7.75],
+                });
+                (floor === 8 ? academicGreenLight : academicGreen).push({
+                    size: [4.2, 0.46, 0.8],
+                    position: [x, y + 0.93, 7.75],
+                });
+            }
+        }
+    }
+    addInstancedBoxes(academicSlabs, arch.concreteLight);
+    addInstancedBoxes(academicGlass, arch.glass, false, true);
+    addInstancedBoxes(academicEarth, arch.earth, false, true);
+    addInstancedBoxes(academicGreenLight, arch.greenLight, false, true);
+    addInstancedBoxes(academicGreen, arch.green, false, true);
+
+    // Deep green-bronze solar-control skin seen in the official elevations.
+    const academiaBottom = 6 * FLOOR_GAP + 1;
+    const academiaTop = 12 * FLOOR_GAP + 2.7;
+    const academiaHeight = academiaTop - academiaBottom;
+    const academiaMid = academiaBottom + academiaHeight / 2;
+    const screenFins: BoxInstance[] = [];
+    const bronzeFins: BoxInstance[] = [];
+    const sideFins: BoxInstance[] = [];
+    for (let x = -23.6; x <= 23.6; x += 2.1) {
+        for (const z of [-16.95, 16.95]) {
+            (Math.abs(x) < 3 ? bronzeFins : screenFins).push({
+                size: [0.24, academiaHeight, 0.9],
+                position: [x, academiaMid, z],
+                rotation: [0, x % 4.2 === 0 ? 0.14 : -0.07, 0],
+            });
+        }
+    }
+    for (let z = -7.5; z <= 7.5; z += 2.1) {
+        for (const x of [-25.05, 25.05]) {
+            sideFins.push({
+                size: [0.9, academiaHeight, 0.24],
+                position: [x, academiaMid, z],
+                rotation: [0, z % 4.2 === 0 ? -0.12 : 0.07, 0],
+            });
+        }
+    }
+    addInstancedBoxes(screenFins, arch.screen, true, false);
+    addInstancedBoxes(bronzeFins, arch.bronze, true, false);
+    addInstancedBoxes(sideFins, arch.screenDark, true, false);
+
+    // Central bridges, visible lift cores and paired escalators. These elements
+    // are deliberately unlabelled: exact positions await approved plan files.
+    const bridgeDecks: BoxInstance[] = [];
+    const bridgeRails: BoxInstance[] = [];
+    for (const [index, floor] of [3, 5, 8, 10, 12].entries()) {
+        const y = (floor - 1) * FLOOR_GAP + 1;
+        const alongX = index % 2 === 0;
+        bridgeDecks.push({
+            size: alongX ? [15, 0.35, 2.5] : [2.5, 0.35, 17],
+            position: [0, y, 0],
+        });
+        for (const side of [-1, 1]) {
+            bridgeRails.push({
+                size: alongX ? [15, 0.1, 0.1] : [0.1, 0.1, 17],
+                position: alongX ? [0, y + 1, side * 1.15] : [side * 1.15, y + 1, 0],
+            });
+        }
+    }
+    addInstancedBoxes(bridgeDecks, arch.concreteLight);
+    addInstancedBoxes(bridgeRails, arch.rail, false, false);
+    const liftCores: BoxInstance[] = [];
+    const liftGlass: BoxInstance[] = [];
+    const liftLights: BoxInstance[] = [];
+    for (const x of [-13.5, 13.5]) {
+        liftCores.push({
+            size: [5.4, towerHeight + 1.8, 5.4],
+            position: [x, towerHeight / 2 + 0.7, 0],
+        });
+        liftGlass.push({
+            size: [3.9, towerHeight - 0.5, 5.55],
+            position: [x, towerHeight / 2 + 0.9, 0.05],
+        });
+        for (let floor = 2; floor <= 12; floor += 1) {
+            liftLights.push({
+                size: [2.7, 0.1, 0.1],
+                position: [x, (floor - 1) * FLOOR_GAP + 2.05, 2.82],
+            });
+        }
+    }
+    addInstancedBoxes(liftCores, arch.concrete);
+    addInstancedBoxes(liftGlass, arch.glassDark, false, true);
+    addInstancedBoxes(liftLights, arch.light, false, false);
+    function addEscalator(x: number, y: number, direction: 1 | -1): void {
+        const rise = FLOOR_GAP;
+        const run = 6.1;
+        const length = Math.hypot(rise, run);
+        const escalator = new Group();
+        const ramp = addBox([1.55, 0.28, length], [0, 0, 0], arch.frame, escalator);
+        ramp.rotation.x = direction * Math.atan2(rise, run);
+        for (const side of [-0.8, 0.8]) {
+            const rail = addBox(
+                [0.09, 0.42, length],
+                [side, 0.28, 0],
+                arch.rail,
+                escalator,
+                false,
+                false,
+            );
+            rail.rotation.x = direction * Math.atan2(rise, run);
+        }
+        escalator.position.set(x, y + rise / 2, direction * -1.1);
+        architecture.add(escalator);
+    }
+    for (const floor of [1, 3, 5, 7, 9, 11]) {
+        const y = (floor - 1) * FLOOR_GAP + 1.1;
+        addEscalator(-1.55, y, 1);
+        addEscalator(1.55, y + FLOOR_GAP, -1);
+    }
+
+    // 13th-floor university green and upper photovoltaic roof.
+    const roofY = (PUBLISHED_TOP_FLOOR - 1) * FLOOR_GAP + 1;
+    addBox([50, 0.72, 35], [0, roofY, 0], arch.concreteLight);
+    addBox([45.5, 0.2, 30.5], [0, roofY + 0.5, 0], arch.green, architecture, false, true);
+    addBox([27, 0.12, 16], [-4, roofY + 0.67, -1], arch.field, architecture, false, true);
+    addBox(
+        [14.8, 0.3, 7.4],
+        [16, roofY + 0.73, 5.5],
+        arch.concreteLight,
+        architecture,
+        false,
+        true,
+    );
+    addBox([13.6, 0.18, 6.2], [16, roofY + 0.94, 5.5], arch.water, architecture, false, true);
+    const poolLaneMarkers: BoxInstance[] = [];
+    for (let lane = -4.5; lane <= 4.5; lane += 3) {
+        poolLaneMarkers.push({
+            size: [0.04, 0.02, 5.7],
+            position: [16 + lane, roofY + 1.05, 5.5],
+        });
+    }
+    addInstancedBoxes(poolLaneMarkers, arch.concreteLight, false, false);
+    addBox([10.5, 3, 6.5], [-17, roofY + 2.1, -8], arch.glassDark);
+    addBox([11.3, 0.28, 7.2], [-17, roofY + 3.72, -8], arch.concreteLight);
+    const yogaPosts: BoxInstance[] = [];
+    for (const x of [-19.5, -15.8, -12.1]) {
+        for (const z of [7.4, 11.5]) {
+            yogaPosts.push({ size: [0.18, 2.5, 0.18], position: [x, roofY + 1.9, z] });
+        }
+    }
+    addInstancedBoxes(yogaPosts, arch.frame);
+    addBox([10, 0.25, 6.6], [-15.8, roofY + 3.2, 9.5], arch.bronze);
+    const joggingTrack = new Mesh(new RingGeometry(18, 19, 72), arch.track);
+    joggingTrack.scale.y = 0.67;
+    joggingTrack.rotation.x = -Math.PI / 2;
+    joggingTrack.position.y = roofY + 0.87;
+    architecture.add(joggingTrack);
+
+    const canopyY = roofY + 6;
+    const canopyPosts: BoxInstance[] = [];
+    for (const x of [-20, -10, 0, 10, 20]) {
+        for (const z of [-14.5, 14.5]) {
+            canopyPosts.push({ size: [0.28, 5.3, 0.28], position: [x, roofY + 3.2, z] });
+        }
+    }
+    addInstancedBoxes(canopyPosts, arch.frame);
+    const solarPanels: BoxInstance[] = [];
+    for (let row = 0; row < 6; row += 1) {
+        for (let col = 0; col < 10; col += 1) {
+            solarPanels.push({
+                size: [4.5, 0.14, 4.45],
+                position: [-21.3 + col * 4.72, canopyY, -11.8 + row * 4.72],
+                rotation: [-0.065, 0, 0],
+            });
+        }
+    }
+    addInstancedBoxes(solarPanels, arch.solar, false, false);
 
     // --- Floor slabs ---------------------------------------------------------
     const slabGeometry = new RoundedBoxGeometry(SLAB_W, SLAB_H, SLAB_D, 2, 0.28);
@@ -347,7 +767,8 @@ export function createCampusScene(
             labelMaterial,
             labelTexture,
             targetY: baseY,
-            targetOpacity: 1,
+            targetOpacity: 0.1,
+            targetLabelOpacity: interactive ? 0.86 : 0.3,
             targetColor: material.color.clone(),
         });
     }
@@ -407,9 +828,9 @@ export function createCampusScene(
     shellEdges.renderOrder = 3;
     scene.add(shellEdges);
 
-    const SHELL_OPACITY = { tower: 0.1, focused: 0.03 };
-    const SHELL_EDGE_OPACITY = { tower: 0.35, focused: 0.1 };
-    const FRESNEL_OPACITY = { tower: 0.5, focused: 0.12 };
+    const SHELL_OPACITY = { tower: 0.025, focused: 0 };
+    const SHELL_EDGE_OPACITY = { tower: 0.1, focused: 0 };
+    const FRESNEL_OPACITY = { tower: 0.12, focused: 0 };
     let shellTargetOpacity = SHELL_OPACITY.tower;
     let shellEdgesTargetOpacity = SHELL_EDGE_OPACITY.tower;
     let fresnelTargetOpacity = FRESNEL_OPACITY.tower;
@@ -535,13 +956,18 @@ export function createCampusScene(
             f.targetY = f.baseY + (lifted ? EXPLODE_LIFT : 0);
             const isFocused = focusedFloor !== null && f.floor === focusedFloor;
             f.targetOpacity =
-                focusedFloor === null ? 1 : isFocused ? 1 : lifted ? 0.18 : 0.55;
+                focusedFloor === null ? 0.1 : isFocused ? 0.78 : lifted ? 0.04 : 0.07;
+            f.targetLabelOpacity =
+                focusedFloor === null
+                    ? f.interactive ? 0.86 : 0.3
+                    : isFocused ? 1 : lifted ? 0.08 : 0.18;
             // Faded slabs must not throw full-strength shadows (shadow maps
             // ignore opacity), so shadow casting follows the settled state.
             f.mesh.castShadow = f.targetOpacity > 0.5;
             f.targetColor.copy(slabTargetColor(f));
         }
         const focused = focusedFloor !== null;
+        architectureTargetFactor = focused ? 0.1 : 1;
         shellTargetOpacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
         shellEdgesTargetOpacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
         fresnelTargetOpacity = focused ? FRESNEL_OPACITY.focused : FRESNEL_OPACITY.tower;
@@ -554,6 +980,9 @@ export function createCampusScene(
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     renderer.domElement.setAttribute('aria-hidden', 'true');
     container.appendChild(renderer.domElement);
 
@@ -580,14 +1009,14 @@ export function createCampusScene(
     }
 
     const camera = new PerspectiveCamera(45, 1, 0.1, 500);
-    camera.position.set(46, towerHeight * 0.9 + 18, 46);
+    camera.position.set(68, 54, 68);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, towerHeight / 2, 0);
+    controls.target.set(0, towerHeight / 2 + 4, 0);
     controls.enableDamping = !reducedMotion;
     controls.maxPolarAngle = Math.PI * 0.52;
     controls.minDistance = 18;
-    controls.maxDistance = 160;
+    controls.maxDistance = 190;
 
     // Idle drift: after a quiet spell the camera orbits slowly so the scene
     // feels alive; any user touch (or a floor/room selection) parks it again.
@@ -621,7 +1050,12 @@ export function createCampusScene(
             f.mesh.material.opacity += (f.targetOpacity - f.mesh.material.opacity) * k;
             f.mesh.material.color.lerp(f.targetColor, k);
             // Labels ride their slab's opacity so they fade with the exploded view.
-            f.labelMaterial.opacity = f.mesh.material.opacity;
+            f.labelMaterial.opacity +=
+                (f.targetLabelOpacity - f.labelMaterial.opacity) * k;
+        }
+        for (const entry of architectureMaterials) {
+            const targetOpacity = entry.baseOpacity * architectureTargetFactor;
+            entry.material.opacity += (targetOpacity - entry.material.opacity) * k;
         }
         shellMaterial.opacity += (shellTargetOpacity - shellMaterial.opacity) * k;
         shellEdgesMaterial.opacity +=
@@ -775,6 +1209,10 @@ export function createCampusScene(
                 f.labelMaterial.dispose();
                 f.labelTexture.dispose();
             }
+            architecture.traverse((object) => {
+                if (object instanceof Mesh) object.geometry.dispose();
+            });
+            for (const entry of architectureMaterials) entry.material.dispose();
             slabGeometry.dispose();
             roomGeometry.dispose();
             groundGeometry.dispose();

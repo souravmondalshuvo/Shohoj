@@ -412,8 +412,8 @@ export function Component() {
     <section className="shell-page campus-page" data-testid="campus-page">
       <h1>Campus Map</h1>
       <p className="shell-muted">
-        The Merul Badda tower, drawn live from the class schedule feed — pick a floor to see its
-        rooms and what&apos;s free right now.
+        A public-reference reconstruction of BRACU&apos;s Merul Badda campus, connected to the live
+        class schedule — pick a floor to see its rooms and what&apos;s free right now.
       </p>
 
       {feedError !== null ? (
@@ -589,6 +589,32 @@ export function Component() {
               <i className="campus-dot campus-dot--selected" /> Selected
             </span>
           </div>
+
+          <details className="campus-evidence" data-testid="campus-evidence">
+            <summary>Model accuracy &amp; public sources</summary>
+            <p>
+              Building form and amenities follow BRAC University&apos;s published campus information
+              and WOHA&apos;s project record. Room codes and availability come from CONNECT. Exact
+              room footprints, doors, lift and escalator positions, and internal circulation remain
+              schematic and drawing-pending until approved BRACU plans are available. This model is
+              not suitable for emergency navigation.
+            </p>
+            <div className="campus-evidence-links">
+              <a href="https://www.bracu.ac.bd/campus-360" target="_blank" rel="noreferrer">
+                BRACU Campus 360
+              </a>
+              <a
+                href="https://www.bracu.ac.bd/student-life/brac-university-campus"
+                target="_blank"
+                rel="noreferrer"
+              >
+                BRACU campus information
+              </a>
+              <a href="https://woha.net/project/brac-university/" target="_blank" rel="noreferrer">
+                WOHA project record
+              </a>
+            </div>
+          </details>
 
           {selectedParsed && (
             <div className="campus-room-panel" data-testid="campus-room-panel">
