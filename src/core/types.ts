@@ -6,12 +6,32 @@ export type SemesterSeason = 'Spring' | 'Summer' | 'Fall';
 export type GradeInput = GradeLetter | '';
 export type GradePointInput = number | string | '';
 
+/**
+ * One graded component of a running course — a midterm, a quiz set (#500).
+ *
+ * The persisted shape lives in core rather than beside the marks model: core
+ * owns what goes on disk and into the cloud document, and a feature module
+ * owning the storage contract would invert the layering.
+ *
+ * `weight` is the component's share of the final course mark, in percent.
+ * `score`/`outOf` are raw marks as received ("18 out of 25"). A null `score`
+ * means not graded yet, which is not the same as zero.
+ */
+export interface CourseMarkComponent {
+  name: string;
+  weight: number;
+  score: number | null;
+  outOf: number;
+}
+
 export interface CourseEntry {
   name: string;
   credits: number;
   grade: GradeInput | string;
   gradePoint?: GradePointInput;
   faculty?: string;
+  /** Only on running-semester courses the student is tracking (#500). */
+  marks?: CourseMarkComponent[];
 }
 
 export interface SemesterEntry {
