@@ -96,6 +96,41 @@ const TRANSCRIPT = [
  * absent — see UNCOVERED in twinParity.test.js.
  */
 export const FIXTURES = {
+  courseMarks: {
+    letterForMark: [[100], [97], [96.99], [85], [84.99], [50], [49.99], [0], [-5]],
+    computeCourseMarks: [
+      // The worked example: mid 18/25, quizzes 8/10, final to come.
+      [
+        [
+          { name: 'Midterm', weight: 25, score: 18, outOf: 25 },
+          { name: 'Quizzes', weight: 15, score: 8, outOf: 10 },
+          { name: 'Final', weight: 60, score: null, outOf: 100 },
+        ],
+      ],
+      // Partial syllabus — weights below 100.
+      [
+        [
+          { name: 'Midterm', weight: 25, score: 20, outOf: 25 },
+          { name: 'Assignment', weight: 15, score: null, outOf: 100 },
+        ],
+      ],
+      // Everything secured, and nothing graded.
+      [
+        [
+          { name: 'Coursework', weight: 90, score: 90, outOf: 90 },
+          { name: 'Final', weight: 10, score: null, outOf: 100 },
+        ],
+      ],
+      [[{ name: 'Final', weight: 100, score: null, outOf: 100 }]],
+      // Degenerate: no usable weight, divide-by-zero bait, bonus and negatives.
+      [[]],
+      [[{ name: 'Ghost', weight: 0, score: 10, outOf: 10 }]],
+      [[{ name: 'Broken', weight: 50, score: 10, outOf: 0 }]],
+      [[{ name: 'Bonus', weight: 25, score: 30, outOf: 25 }]],
+      [[{ name: 'Penalty', weight: 50, score: -10, outOf: 50 }]],
+    ],
+  },
+
   calendarExport: {
     firstOnOrAfter: [
       [new Date('2026-08-03T00:00:00Z'), 'SUNDAY'],
@@ -107,7 +142,13 @@ export const FIXTURES = {
 
   connectFeed: {
     parseTimeToMinutes: [['08:00:00'], ['11:30 AM'], ['1:05 PM'], [''], [null], ['garbage']],
-    normalizeSection: [[SECTION], [SECTION_B], [{ sectionId: 9001 }], [null], [{ courseCode: 'X' }]],
+    normalizeSection: [
+      [SECTION],
+      [SECTION_B],
+      [{ sectionId: 9001 }],
+      [null],
+      [{ courseCode: 'X' }],
+    ],
     parseFeed: [[FEED], [[]], [[null, { sectionId: 1 }]], [null]],
     listCourseCodes: [[FEED], [[]]],
     indexByCourse: [[FEED]],
@@ -267,7 +308,10 @@ export const FIXTURES = {
       [[{ sectionId: 101 }], 101],
       [[], 101],
     ],
-    evaluateWatches: [[[{ sectionId: 101, consumedSeat: 30, capacity: 30 }], FEED], [[], FEED]],
+    evaluateWatches: [
+      [[{ sectionId: 101, consumedSeat: 30, capacity: 30 }], FEED],
+      [[], FEED],
+    ],
   },
 
   semesterBriefing: {
