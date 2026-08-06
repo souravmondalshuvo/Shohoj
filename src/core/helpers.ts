@@ -6,7 +6,7 @@
 // which keeps the typed core free of DOM and Firebase imports. Behavior parity
 // with the JS version is guarded by tests/typedCoreParity.test.js.
 
-import type { SemesterSeason } from './types';
+import type { CourseMarkComponent, SemesterSeason } from './types';
 
 export const SEASON_ORDER: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
 
@@ -72,6 +72,49 @@ function sanitizeGradePointValue(value: unknown): string | number {
   return Number.isFinite(numeric) && numeric >= 0 && numeric <= 4 ? trimmed : '';
 }
 
+/**
+ * Upper bound on tracked components per course (#500).
+ *
+ * Not a syllabus judgement — a bound on what restore will accept, so a
+ * corrupted or hostile document cannot grow the cloud doc without limit. A real
+ * course does not have twenty separately-weighted graded components.
+ */
+export const MAX_MARK_COMPONENTS = 20;
+
+/**
+ * Validate persisted mark components. Returns undefined rather than an empty
+ * array when there is nothing usable, so a course that never tracked marks
+ * stays byte-identical through a save/restore cycle.
+ */
+export function sanitizeMarkComponents(value: unknown): CourseMarkComponent[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const out: CourseMarkComponent[] = [];
+  for (const raw of value) {
+    if (out.length >= MAX_MARK_COMPONENTS) break;
+    if (!raw || typeof raw !== 'object') continue;
+
+    const c = raw as Record<string, unknown>;
+    const weight = typeof c.weight === 'number' && Number.isFinite(c.weight) ? c.weight : NaN;
+    const outOf = typeof c.outOf === 'number' && Number.isFinite(c.outOf) ? c.outOf : NaN;
+    // A component with no weight or no denominator cannot contribute to any
+    // answer, so it is dropped rather than stored as a broken row.
+    if (!(weight > 0) || !(outOf > 0)) continue;
+
+    const score =
+      typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, c.score) : null;
+
+    out.push({
+      name: typeof c.name === 'string' ? stripTags(c.name).slice(0, 40) : '',
+      weight: Math.min(100, weight),
+      score,
+      outOf,
+    });
+  }
+
+  return out.length ? out : undefined;
+}
+
 interface RestoredState {
   currentDept?: string;
   semesters: any[];
@@ -116,13 +159,18 @@ export function sanitizeRestoredState(saved: unknown): RestoredState | null {
     }
     sem.courses = sem.courses
       .filter((c: unknown) => c && typeof c === 'object')
-      .map((c: any) => ({
-        name: typeof c.name === 'string' ? c.name : '',
-        credits: typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
-        grade: typeof c.grade === 'string' ? c.grade : '',
-        gradePoint: sanitizeGradePointValue(c.gradePoint),
-        faculty: typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
-      }));
+      // This map is an allowlist: a field absent here is dropped on restore.
+      .map((c: any) => {
+        const marks = sanitizeMarkComponents(c.marks);
+        return {
+          name: typeof c.name === 'string' ? c.name : '',
+          credits: typeof c.credits === 'number' && isFinite(c.credits) ? c.credits : 0,
+          grade: typeof c.grade === 'string' ? c.grade : '',
+          gradePoint: sanitizeGradePointValue(c.gradePoint),
+          faculty: typeof c.faculty === 'string' ? c.faculty.toUpperCase().slice(0, 6) : '',
+          ...(marks ? { marks } : {}),
+        };
+      });
     return true;
   });
 
