@@ -12,6 +12,9 @@
 // returned a value versus threw, so a twin cannot look covered on nothing but
 // mutual TypeErrors.
 
+/** A frozen clock for any export that takes an injectable `now`. */
+const FIXED_NOW = 1_767_225_600_000; // 2026-01-01T00:00:00Z
+
 const SECTION = {
   sectionId: 101,
   courseCode: 'CSE220',
@@ -239,7 +242,15 @@ export const FIXTURES = {
   },
 
   seatWatch: {
-    makeWatch: [[SECTION], [SECTION_B], [null]],
+    // makeWatch/addWatch stamp `addedAt` from an injectable clock that defaults
+    // to Date.now(). Pass one explicitly: letting it default makes the two
+    // calls disagree whenever they straddle a millisecond — a flake, not drift.
+    // Injecting beats projecting it away, because the field stays asserted.
+    makeWatch: [
+      [SECTION, FIXED_NOW],
+      [SECTION_B, FIXED_NOW],
+      [null, FIXED_NOW],
+    ],
     hasSeat: [[SECTION], [SECTION_B]],
     indexBySectionId: [[FEED], [[]]],
     parseWatches: [['[]'], ['not json'], [null], ['[{"sectionId":101}]']],
@@ -249,8 +260,8 @@ export const FIXTURES = {
       [[], 101],
     ],
     addWatch: [
-      [[], { sectionId: 101, courseCode: 'CSE220' }],
-      [[{ sectionId: 101 }], { sectionId: 101 }],
+      [[], { sectionId: 101, courseCode: 'CSE220' }, FIXED_NOW],
+      [[{ sectionId: 101 }], { sectionId: 101 }, FIXED_NOW],
     ],
     removeWatch: [
       [[{ sectionId: 101 }], 101],
