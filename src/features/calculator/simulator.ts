@@ -226,6 +226,29 @@ export function computeRetakeCandidates(
     startYear: inputs.startYear,
   });
 
+  // Whether a withdrawn course is still owed. getRetakenKeys cannot answer
+  // this: it supersedes by comparing grade points, and a withdrawal has none,
+  // so a completed second attempt never marks the W row as retaken. Without
+  // this the student is told to re-enroll in a course they already finished.
+  // A second withdrawal of the same course collapses into one row for the same
+  // reason — it is one outstanding course, not two.
+  const attemptedElsewhere = new Set<string>();
+  for (const sem of inputs.semesters) {
+    if (sem.summary) continue;
+    for (const c of sem.courses) {
+      const name = c.name.trim().toLowerCase();
+      // A running row counts: the course is being taken now, not still owed.
+      if (name && c.grade !== 'W' && (c.grade || sem.running)) attemptedElsewhere.add(name);
+    }
+  }
+  const offeredWithdrawals = new Set<string>();
+  const stillOwed = (rawName: string) => {
+    const name = rawName.trim().toLowerCase();
+    if (attemptedElsewhere.has(name) || offeredWithdrawals.has(name)) return false;
+    offeredWithdrawals.add(name);
+    return true;
+  };
+
   const candidates: RetakeCandidate[] = [];
   for (const sem of inputs.semesters) {
     if (sem.running || sem.summary) continue;
@@ -239,6 +262,7 @@ export function computeRetakeCandidates(
       if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
       if (!isWithdrawal && (gp as number) >= 3.0) return; // B and above — no improvement mechanism
+      if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = (sem.name ?? '').replace(/\s*\(.*\)$/, '');
       const cgpa = totals.cgpa as number;
