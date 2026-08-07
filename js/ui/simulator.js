@@ -297,6 +297,29 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
   const retakenKeys = getRetakenKeys();
   const candidates = [];
 
+  // Whether a withdrawn course is still owed. getRetakenKeys supersedes by
+  // comparing grade points, and a withdrawal has none, so a completed second
+  // attempt never marks the W row as retaken — without this the student is
+  // told to re-enroll in a course they already finished. Two withdrawals of
+  // the same course collapse into one row for the same reason. Mirrors
+  // computeRetakeCandidates in src/features/calculator/simulator.ts.
+  const attemptedElsewhere = new Set();
+  state.semesters.forEach(sem => {
+    if (sem.summary) return;
+    sem.courses.forEach(c => {
+      const name = c.name.trim().toLowerCase();
+      // A running row counts: the course is being taken now, not still owed.
+      if (name && c.grade !== 'W' && (c.grade || sem.running)) attemptedElsewhere.add(name);
+    });
+  });
+  const offeredWithdrawals = new Set();
+  const stillOwed = rawName => {
+    const name = rawName.trim().toLowerCase();
+    if (attemptedElsewhere.has(name) || offeredWithdrawals.has(name)) return false;
+    offeredWithdrawals.add(name);
+    return true;
+  };
+
   state.semesters.forEach(sem => {
     if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
@@ -308,6 +331,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
       if (!isWithdrawal && gp >= 3.0) return; // B and above — no improvement mechanism available
+      if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
       const key = `${c.name}||${semLabel}`;
