@@ -291,3 +291,119 @@ test('stacking selections accumulates boosts and recomputes the target need', ()
   const impossible = computeRetakeImpact(cands, new Set([cands[0].key]), t, '4.0', '3');
   assert.equal(impossible.targetLine.kind, 'over-perfect');
 });
+
+// ── Withdrawals (#499) ───────────────────────────────────────────────────────
+//
+// A W has no grade point, so it used to be dropped by the same guard that drops
+// P and I. It belongs in the list — it is a course still owed — but not on the
+// same arithmetic: a retake re-scores credits already inside the divisor, while
+// a withdrawal adds credits to it.
+
+test('a withdrawal is a candidate, on additive rather than replacement math', () => {
+  // 3 credits of C (2.0) counted, plus a withdrawn 3-credit course that is not.
+  const sems = [
+    semester('Fall 2024', [course('Physics (PHY111)', 'C'), course('Chem (CHE101)', 'W')]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  assert.equal(t.cgpaCredits, 3); // the W is attempted, not counted toward CGPA
+  assert.equal(t.points, 6);
+  assert.equal(t.cgpa, 2.0);
+
+  const cands = computeRetakeCandidates(inputs(sems), t);
+  const w = cands.find((c) => c.grade === 'W');
+  assert.ok(w, 'the withdrawn course is offered');
+  assert.equal(w.isWithdrawal, true);
+  assert.equal(w.gp, null); // nothing to improve on
+  assert.equal(w.strategy, null); // neither retake nor repeat
+
+  // Taking it for a B: (6 + 3×3) / (3 + 3) = 2.5, so the boost is +0.50 —
+  // not the 3×(3−0)/3 = 3.00 the replacement formula would have produced.
+  assert.equal(w.cgpaIfB.toFixed(2), '2.50');
+  assert.equal(w.boostToB.toFixed(2), '0.50');
+  assert.equal(w.cgpaIfA.toFixed(2), '3.00');
+
+  // The graded C still outranks it, and both sit on one scale.
+  assert.deepEqual(cands.map((c) => c.name), ['Physics (PHY111)', 'Chem (CHE101)']);
+});
+
+test('a withdrawal above the target grade reports a negative boost', () => {
+  // The honest answer for a 4.00 student: sitting a course fresh for a B is a
+  // loss, and ranking it as a gain would be a lie.
+  const sems = [
+    semester('Fall 2024', [course('Algebra (MAT110)', 'A'), course('Chem (CHE101)', 'W')]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  const [w] = computeRetakeCandidates(inputs(sems), t);
+
+  assert.equal(w.grade, 'W');
+  assert.ok(w.boostToB < 0, 'a B drags a 4.00 down');
+  assert.equal(w.cgpaIfB.toFixed(2), '3.50'); // (12 + 9) / 6
+  assert.equal(w.boostToB.toFixed(2), '-0.50');
+  assert.equal(w.boostToA.toFixed(2), '0.00'); // an A leaves it exactly where it was
+});
+
+test('P and I stay out of the candidate list', () => {
+  const sems = [semester('Fall 2024', [course('Thesis (CSE400)', 'P'), course('Seminar (CSE401)', 'I')])];
+  const t = simulatorTotals(inputs(sems));
+  assert.deepEqual(computeRetakeCandidates(inputs(sems), t), []);
+});
+
+test('a withdrawal already taken again is not offered twice', () => {
+  const sems = [
+    semester('Fall 2024', [course('Physics (PHY111)', 'W')]),
+    semester('Spring 2025', [course('Physics (PHY111)', 'B+')]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  assert.deepEqual(computeRetakeCandidates(inputs(sems), t), []);
+});
+
+test('withdrawing from the same course twice offers it once', () => {
+  // Two W rows are two attempts but one outstanding course, and the list is a
+  // list of things to do. (The A is only here to give the totals a CGPA —
+  // with nothing graded there is no ratio to project against.)
+  const sems = [
+    semester('Fall 2024', [course('Physics (PHY111)', 'W'), course('Alg (MAT110)', 'A')]),
+    semester('Spring 2025', [course('Physics (PHY111)', 'W')]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  assert.deepEqual(
+    computeRetakeCandidates(inputs(sems), t).map((c) => c.name),
+    ['Physics (PHY111)'],
+  );
+});
+
+test('a course being taken right now is not also offered as a withdrawal', () => {
+  const sems = [
+    semester('Fall 2024', [course('Physics (PHY111)', 'W'), course('Alg (MAT110)', 'C')]),
+    semester('Running', [course('Physics (PHY111)', '')], { running: true }),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  assert.deepEqual(
+    computeRetakeCandidates(inputs(sems), t).map((c) => c.name),
+    ['Alg (MAT110)'],
+  );
+});
+
+test('a selected withdrawal grows the credit divisor in the impact line', () => {
+  const sems = [
+    semester('Fall 2024', [course('Physics (PHY111)', 'C'), course('Chem (CHE101)', 'W')]),
+  ];
+  const t = simulatorTotals(inputs(sems));
+  const cands = computeRetakeCandidates(inputs(sems), t);
+  const w = cands.find((c) => c.isWithdrawal);
+  const graded = cands.find((c) => !c.isWithdrawal);
+
+  const onlyW = computeRetakeImpact(cands, new Set([w.key]), t, '3.0', '30');
+  assert.equal(onlyW.cgpaAfter.toFixed(2), '2.50'); // 15 points over 6 credits
+  assert.equal(onlyW.cumBoost.toFixed(2), '0.50');
+  // Needed GPA must be computed over 6 + 30 credits, not the original 3 + 30:
+  // (3.0 × 36 − 15) / 30 = 3.10. Holding the divisor fixed would say 2.80.
+  assert.equal(onlyW.targetLine.kind, 'need');
+  assert.equal(onlyW.targetLine.neededGpa.toFixed(2), '3.10');
+
+  // A graded-only selection is unchanged by that: the divisor never moves, so
+  // the recomputation still agrees with the row's own boost.
+  const onlyGraded = computeRetakeImpact(cands, new Set([graded.key]), t, '3.0', '30');
+  assert.equal(onlyGraded.cumBoost.toFixed(6), graded.boostToB.toFixed(6));
+  assert.equal(onlyGraded.cgpaAfter.toFixed(2), '3.00');
+});
