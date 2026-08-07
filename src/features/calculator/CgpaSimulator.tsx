@@ -60,9 +60,36 @@ const INSIGHT_COPY = {
 
 function gradeColor(grade: string): string {
   if (grade === 'F' || grade === 'F(NT)') return '#e74c3c';
+  if (grade === 'W') return 'var(--text3)'; // absent outcome, not a poor one
   if (grade === 'D' || grade === 'D-' || grade === 'D+') return '#e67e22';
   return '#F0A500';
 }
+
+/**
+ * Which of the three routes back into a course this row is. A withdrawal is
+ * neither of the existing two: there is no failing grade to retake and no
+ * result to sit a repeat exam against — the student simply enrols again.
+ */
+type BadgeKind = 'retake' | 'repeat' | 'reenroll';
+
+function badgeKind(c: RetakeCandidate): BadgeKind {
+  if (c.isWithdrawal) return 'reenroll';
+  return c.strategy === 'repeat' ? 'repeat' : 'retake';
+}
+
+const BADGE_LABEL: Record<BadgeKind, string> = {
+  retake: 'Retake',
+  repeat: 'Repeat',
+  reenroll: 'Re-enroll',
+};
+
+const STRATEGY_TITLE: Record<BadgeKind, string> = {
+  retake: 'Retake: re-enroll in the course for a full semester. Allowed up to twice for F grades.',
+  repeat:
+    'Repeat: sit a special exam once within 2 semesters of initial enrollment. No grade cap — latest grade counts for CGPA.',
+  reenroll:
+    'Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.',
+};
 
 /** The goal ladder shown before a target is typed (#502). Row curation lives in
  * the model (visibleMilestoneRows) so both front ends share it. */
@@ -379,9 +406,10 @@ function RetakeSection({
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <span
-                      className={`sim-strategy-badge ${c.strategy === 'repeat' ? 'repeat' : 'retake'}`}
+                      className={`sim-strategy-badge ${badgeKind(c)}`}
+                      title={STRATEGY_TITLE[badgeKind(c)]}
                     >
-                      {c.strategy === 'repeat' ? 'Repeat' : 'Retake'}
+                      {BADGE_LABEL[badgeKind(c)]}
                     </span>
                   </td>
                   <td
@@ -390,7 +418,15 @@ function RetakeSection({
                   >
                     {c.credits}
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 700, color: '#2ECC71' }}>
+                  <td
+                    style={{
+                      textAlign: 'center',
+                      fontWeight: 700,
+                      // A withdrawal taken again for a B can land below the
+                      // current CGPA. Green would read as a gain either way.
+                      color: c.boostToB < 0 ? '#e74c3c' : '#2ECC71',
+                    }}
+                  >
                     {c.cgpaIfB.toFixed(2)}
                   </td>
                   <td style={{ textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>
@@ -453,6 +489,15 @@ function RetakeSection({
           <span className="sim-strategy-badge repeat">REPEAT</span> Special exam, once, within 2
           semesters (below B, no grade cap)
         </span>
+        {/* Only explained when one is actually on the table — unlike the two
+            standing routes, this badge describes a state most students never
+            have a row in. */}
+        {candidates.some((c) => c.isWithdrawal) && (
+          <span>
+            <span className="sim-strategy-badge reenroll">RE-ENROLL</span> Withdrawn — adds credits
+            instead of replacing a grade, so it can lower your CGPA
+          </span>
+        )}
       </div>
     </div>
   );
