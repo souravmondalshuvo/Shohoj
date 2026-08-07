@@ -65,7 +65,10 @@ export default function CourseRow({
   const name = course.name ?? '';
   const grade = (course.grade ?? '') as string;
   const trimmedName = name.trim();
-  const supersedeLabel = grade === 'F' || grade === 'F(NT)' ? 'Retaken' : 'Repeated';
+  // A withdrawal is re-enrolled in, not sat again as a special exam, so it is
+  // labelled alongside F rather than with the repeat-eligible grades.
+  const supersedeLabel =
+    grade === 'F' || grade === 'F(NT)' || grade === 'W' ? 'Retaken' : 'Repeated';
 
   const showCreditDot =
     !!trimmedName && course.credits > 0 && !NORMAL_CREDITS.includes(course.credits);
@@ -103,7 +106,27 @@ export default function CourseRow({
         )}
       </span>
 
-      {isPassFailSlot ? (
+      {grade === 'W' ? (
+        // There is no number to type for a withdrawal, so — as with NT — the
+        // row shows the state as a badge instead of a grade-point value. Muted
+        // rather than red: a W is not a failing outcome, it is an absent one.
+        <span
+          className="grade-w-badge"
+          title="Withdrawn — counts toward attempted credits, but carries no grade point and does not affect CGPA."
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--text3)',
+            textAlign: 'center',
+            padding: '4px 6px',
+            background: 'var(--chip-hover)',
+            borderRadius: 6,
+            border: '1px solid var(--chip-border)',
+          }}
+        >
+          W
+        </span>
+      ) : isPassFailSlot ? (
         grade === 'F(NT)' ? (
           <span
             style={{
