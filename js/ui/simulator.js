@@ -301,17 +301,27 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
+      const isWithdrawal = c.grade === 'W';
       const gp = GRADES[c.grade];
-      if (gp === undefined || gp === null) return;
+      // W is the one null-grade-point row that belongs here: a course still
+      // owed, not a settled outcome like P or I (#499).
+      if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (gp >= 3.0) return; // B and above — no improvement mechanism available
+      if (!isWithdrawal && gp >= 3.0) return; // B and above — no improvement mechanism available
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
       const key = `${c.name}||${semLabel}`;
-      const boostToB  = c.credits * (3.0 - gp) / currentCredits;
-      const boostToA  = c.credits * (4.0 - gp) / currentCredits;
-      const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat'
-      candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
+      // A retake re-scores credits already in the divisor; a withdrawal adds
+      // its credits to it, so the boost can come out negative. Mirrors
+      // computeRetakeCandidates in src/features/calculator/simulator.ts.
+      const cgpaAtTarget = t => (currentPts + c.credits * t) / (currentCredits + c.credits);
+      const boostToB  = isWithdrawal ? cgpaAtTarget(3.0) - currentCgpa
+                                     : c.credits * (3.0 - gp) / currentCredits;
+      const boostToA  = isWithdrawal ? cgpaAtTarget(4.0) - currentCgpa
+                                     : c.credits * (4.0 - gp) / currentCredits;
+      const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat' | null
+      candidates.push({ name: c.name, grade: c.grade, gp: isWithdrawal ? null : gp,
+                        credits: c.credits, isWithdrawal,
                         sem: semLabel, key, boostToB, boostToA,
                         boostPerCredit: boostToB / c.credits, strategy });
     });
@@ -341,13 +351,26 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
 
   const gradeCol = g =>
     (g === 'F' || g === 'F(NT)') ? '#e74c3c' :
+    g === 'W' ? 'var(--text3)' : // absent outcome, not a poor one
     (g === 'D' || g === 'D-' || g === 'D+') ? '#e67e22' : '#F0A500';
 
   // ── Strategy badge HTML ────────────────────────────────────────────────────
   // Retake = F grade, must re-enroll for a full semester (up to 2 times)
   // Repeat = below B (non-F), can sit a special exam (once, within 2 semesters)
   //          No grade cap — same intake-based policy applies for CGPA
-  const strategyBadge = (strategy) => {
+  // Withdrawn (#499): neither existing route fits — no failing grade to retake
+  // and no result to sit a repeat exam against. The student enrols again, and
+  // the tooltip states the cost: these credits join the CGPA rather than
+  // replacing a grade, so the outcome can pull it down.
+  const strategyBadge = (strategy, isWithdrawal) => {
+    if (isWithdrawal) {
+      return `<span style="
+        font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+        background:var(--chip-hover);color:var(--text3);
+        border:1px solid var(--chip-border);
+        border-radius:4px;padding:2px 6px;white-space:nowrap;
+      " title="Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.">Re-enroll</span>`;
+    }
     if (strategy === 'repeat') {
       return `<span style="
         font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
@@ -364,13 +387,21 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     " title="Retake: re-enroll in the course for a full semester. Allowed up to twice for F grades.">Retake</span>`;
   };
 
-  let cumBoost = 0;
   let ptsAfter  = currentPts;
   let credAfter = currentCredits;
 
   const rows = top.map((c, idx) => {
     const checked = _retakeChecked.has(c.key);
-    if (checked) { cumBoost += c.boostToB; ptsAfter += c.credits * (3.0 - c.gp); }
+    if (checked) {
+      if (c.isWithdrawal) {
+        // No grade to replace — the course joins the CGPA for the first time,
+        // so both sides of the ratio move.
+        ptsAfter  += c.credits * 3.0;
+        credAfter += c.credits;
+      } else {
+        ptsAfter  += c.credits * (3.0 - c.gp);
+      }
+    }
     const cgpaIfB = Math.min(4.0, currentCgpa + c.boostToB).toFixed(2);
     const cgpaIfA = Math.min(4.0, currentCgpa + c.boostToA).toFixed(2);
     const chk = checked
@@ -388,14 +419,18 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         <span style="color:var(--text3)"> → </span>
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
-      <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy)}</td>
+      <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy, c.isWithdrawal)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)" title="Credits you spend to take this course again">${escHtml(String(c.credits))}</td>
-      <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:${c.boostToB < 0 ? '#e74c3c' : '#2ECC71'}">${cgpaIfB}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
     </tr>`;
   }).join('');
 
-  const cgpaAfterRetakes = Math.min(4.0, currentCgpa + cumBoost);
+  // Recomputed from the adjusted totals rather than summed from the per-row
+  // boosts: summing is exact only while the divisor holds still, which a
+  // selected withdrawal breaks. For an all-retake selection the two agree.
+  const cgpaAfterRetakes = Math.min(4.0, credAfter > 0 ? ptsAfter / credAfter : currentCgpa);
+  const cumBoost = cgpaAfterRetakes - currentCgpa;
   const checkedCount = _retakeChecked.size;
 
   let retakeImpactHtml = '';
@@ -429,7 +464,11 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
       </div>`;
   }
 
-  // ── Legend explaining the two badges ──────────────────────────────────────
+  // ── Legend explaining the badges ──────────────────────────────────────────
+  // The re-enroll entry appears only when a withdrawal is actually on the
+  // table; unlike the two standing routes it describes a state most students
+  // never have a row in.
+  const hasWithdrawal = top.some(c => c.isWithdrawal);
   const legendHtml = `
     <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3);">
       <span style="display:flex;align-items:center;gap:5px;">
@@ -440,6 +479,10 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         <span style="font-size:9px;font-weight:700;background:rgba(86,180,233,0.12);color:#56B4E9;border:1px solid rgba(86,180,233,0.30);border-radius:4px;padding:1px 5px;">REPEAT</span>
         Special exam, once, within 2 semesters (below B, no grade cap)
       </span>
+      ${hasWithdrawal ? `<span style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;background:var(--chip-hover);color:var(--text3);border:1px solid var(--chip-border);border-radius:4px;padding:1px 5px;">RE-ENROLL</span>
+        Withdrawn — adds credits instead of replacing a grade, so it can lower your CGPA
+      </span>` : ''}
     </div>`;
 
   return `
