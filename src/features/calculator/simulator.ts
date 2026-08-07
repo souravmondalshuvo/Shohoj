@@ -172,20 +172,32 @@ export interface RetakeCandidate {
   readonly key: string;
   readonly name: string;
   readonly grade: string;
-  readonly gp: number;
+  /** Grade point being improved on — `null` for a withdrawal, which has none. */
+  readonly gp: number | null;
   readonly credits: number;
   readonly semLabel: string;
-  /** CGPA gain if raised to B (3.0) / to A (4.0). */
+  /**
+   * The row is a withdrawal (#499). It earns its place in the list by being a
+   * course the student still owes, but the arithmetic is not the same: there is
+   * no grade to replace, so taking it again *adds* credits to the CGPA divisor
+   * instead of re-scoring credits already counted. That makes the boost
+   * genuinely negative for a student above the target grade — sitting a course
+   * fresh for a B drags a 3.8 down — and saying so is the point.
+   */
+  readonly isWithdrawal: boolean;
+  /** CGPA gain if raised to B (3.0) / to A (4.0). Negative is meaningful. */
   readonly boostToB: number;
   readonly boostToA: number;
   /**
    * CGPA gain per credit spent, raising to B — `boostToB / credits`.
    *
-   * Because `boostToB` carries credits in its numerator this reduces to
-   * `(3.0 - gp) / cgpaCredits`, so ranking by it is ranking by how far below B
-   * the grade sits, independent of course size. That is the point: a 1-credit D
-   * buys more lift per credit than a 3-credit C, while the raw boost says the
-   * opposite.
+   * For a graded retake `boostToB` carries credits in its numerator, so this
+   * reduces to `(3.0 - gp) / cgpaCredits`: ranking by it is ranking by how far
+   * below B the grade sits, independent of course size. That is the point: a
+   * 1-credit D buys more lift per credit than a 3-credit C, while the raw boost
+   * says the opposite. A withdrawal does not reduce that way — its boost is the
+   * full recomputation — but dividing by credits still expresses the same
+   * question, so the two rank on one scale.
    */
   readonly boostPerCredit: number;
   readonly cgpaIfB: number;
@@ -219,26 +231,43 @@ export function computeRetakeCandidates(
     if (sem.running || sem.summary) continue;
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
+      const isWithdrawal = c.grade === 'W';
       const gp = GRADES[c.grade as keyof typeof GRADES];
-      if (gp === undefined || gp === null) return;
+      // W is the one null-grade-point row that belongs here: it is a course
+      // still owed, not an outcome to leave alone (#499). Every other
+      // null/unknown grade — P, I, blank — has nothing to act on.
+      if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (gp >= 3.0) return; // B and above — no improvement mechanism
+      if (!isWithdrawal && (gp as number) >= 3.0) return; // B and above — no improvement mechanism
 
       const semLabel = (sem.name ?? '').replace(/\s*\(.*\)$/, '');
-      const boostToB = (c.credits * (3.0 - gp)) / totals.cgpaCredits;
-      const boostToA = (c.credits * (4.0 - gp)) / totals.cgpaCredits;
+      const cgpa = totals.cgpa as number;
+
+      // A retake re-scores credits already in the divisor; a withdrawal adds
+      // its credits to it. Those are different sums, so the two are computed
+      // apart and only the resulting deltas are compared.
+      const cgpaAtTarget = (target: number) =>
+        (totals.points + c.credits * target) / (totals.cgpaCredits + c.credits);
+      const boostToB = isWithdrawal
+        ? cgpaAtTarget(3.0) - cgpa
+        : (c.credits * (3.0 - (gp as number))) / totals.cgpaCredits;
+      const boostToA = isWithdrawal
+        ? cgpaAtTarget(4.0) - cgpa
+        : (c.credits * (4.0 - (gp as number))) / totals.cgpaCredits;
+
       candidates.push({
         key: `${c.name}||${semLabel}`,
         name: c.name,
         grade: c.grade,
-        gp,
+        gp: isWithdrawal ? null : (gp as number),
         credits: c.credits,
         semLabel,
+        isWithdrawal,
         boostToB,
         boostToA,
         boostPerCredit: boostToB / c.credits,
-        cgpaIfB: Math.min(4.0, (totals.cgpa as number) + boostToB),
-        cgpaIfA: Math.min(4.0, (totals.cgpa as number) + boostToA),
+        cgpaIfB: Math.min(4.0, cgpa + boostToB),
+        cgpaIfA: Math.min(4.0, cgpa + boostToA),
         strategy: gpaCoreGetImprovementStrategy(c.grade),
       });
     });
@@ -287,21 +316,31 @@ export function computeRetakeImpact(
   remainingRaw: string,
 ): RetakeImpact {
   const cgpa = totals.cgpa ?? 0;
-  let cumBoost = 0;
   let ptsAfter = totals.points;
+  let creditsAfter = totals.cgpaCredits;
   for (const c of candidates) {
     if (!selectedKeys.has(c.key)) continue;
-    cumBoost += c.boostToB;
-    ptsAfter += c.credits * (3.0 - c.gp);
+    if (c.isWithdrawal) {
+      // No grade to replace — the course joins the CGPA for the first time,
+      // so both sides of the ratio move.
+      ptsAfter += c.credits * 3.0;
+      creditsAfter += c.credits;
+    } else {
+      ptsAfter += c.credits * (3.0 - (c.gp as number));
+    }
   }
   const checkedCount = [...selectedKeys].filter((k) => candidates.some((c) => c.key === k)).length;
-  const cgpaAfter = Math.min(4.0, cgpa + cumBoost);
+  const cgpaAfter = Math.min(4.0, creditsAfter > 0 ? ptsAfter / creditsAfter : cgpa);
+  // Derived from the recomputed CGPA rather than summed from the per-row
+  // boosts: summing is exact only while the divisor holds still, which a
+  // selected withdrawal breaks. For an all-retake selection the two agree.
+  const cumBoost = cgpaAfter - cgpa;
 
   const target = parseFloat(targetRaw);
   const remaining = parseFloat(remainingRaw) || 0;
   let targetLine: RetakeImpact['targetLine'] = null;
   if (checkedCount > 0 && !Number.isNaN(target) && target > 0 && remaining > 0) {
-    const neededGpa = (target * (totals.cgpaCredits + remaining) - ptsAfter) / remaining;
+    const neededGpa = (target * (creditsAfter + remaining) - ptsAfter) / remaining;
     targetLine =
       neededGpa > 4.0
         ? { kind: 'over-perfect' }
