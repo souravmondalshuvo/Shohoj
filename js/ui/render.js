@@ -502,7 +502,9 @@ export function renderSemesters() {
         </div>
         ${sem.courses.map((c, i) => {
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-          const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)') ? 'Retaken' : 'Repeated';
+          // Mirrors CourseRow.tsx: a withdrawal is re-enrolled in, not sat
+          // again as a special exam, so it is labelled alongside F.
+          const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)' || c.grade === 'W') ? 'Retaken' : 'Repeated';
           const _courseCode = getReviewableCourseCode(c.name);
           const canRate = !sem.summary && !!c.name.trim()
             && !!c.grade && c.grade !== 'I'
@@ -525,7 +527,9 @@ export function renderSemesters() {
                 ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
                 : ''
             }</span>
-          ${c.credits === 0 && c.name.trim() !== ''
+          ${c.grade === 'W'
+            ? `<span class="grade-w-badge" title="Withdrawn — counts toward attempted credits, but carries no grade point and does not affect CGPA." style="font-size:12px;font-weight:700;color:var(--text3);text-align:center;padding:4px 6px;background:var(--chip-hover);border-radius:6px;border:1px solid var(--chip-border);">W</span>`
+            : c.credits === 0 && c.name.trim() !== ''
             ? c.grade === 'F(NT)'
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
               : `<select class="pf-select" data-action="render:pfChange" data-sem-id="${sem.id}" data-idx="${i}">
