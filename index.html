@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-yVsdcFSu6Zutk99I4xsdAklpOEW1yhcQFdOigMWNm54='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-7hchDlaaY1dml5FDJqAYKS1ePUYBZ77Rj+HvdpDnbAI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25246,7 +25246,9 @@ function renderSemesters() {
         </div>
         ${sem.courses.map((c, i) => {
           const isRetaken = retakenKeys.has(`${sem.id}-${i}`);
-          const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)') ? 'Retaken' : 'Repeated';
+          // Mirrors CourseRow.tsx: a withdrawal is re-enrolled in, not sat
+          // again as a special exam, so it is labelled alongside F.
+          const supersedeBadgeLabel = (c.grade === 'F' || c.grade === 'F(NT)' || c.grade === 'W') ? 'Retaken' : 'Repeated';
           const _courseCode = getReviewableCourseCode(c.name);
           const canRate = !sem.summary && !!c.name.trim()
             && !!c.grade && c.grade !== 'I'
@@ -25269,7 +25271,9 @@ function renderSemesters() {
                 ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
                 : ''
             }</span>
-          ${c.credits === 0 && c.name.trim() !== ''
+          ${c.grade === 'W'
+            ? `<span class="grade-w-badge" title="Withdrawn — counts toward attempted credits, but carries no grade point and does not affect CGPA." style="font-size:12px;font-weight:700;color:var(--text3);text-align:center;padding:4px 6px;background:var(--chip-hover);border-radius:6px;border:1px solid var(--chip-border);">W</span>`
+            : c.credits === 0 && c.name.trim() !== ''
             ? c.grade === 'F(NT)'
               ? `<span style="font-size:12px;font-weight:700;color:#e74c3c;text-align:center;padding:4px 6px;background:rgba(231,76,60,0.10);border-radius:6px;border:1px solid rgba(231,76,60,0.25);">NT</span>`
               : `<select class="pf-select" data-action="render:pfChange" data-sem-id="${sem.id}" data-idx="${i}">
@@ -26023,21 +26027,55 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
   const retakenKeys = getRetakenKeys();
   const candidates = [];
 
+  // Whether a withdrawn course is still owed. getRetakenKeys supersedes by
+  // comparing grade points, and a withdrawal has none, so a completed second
+  // attempt never marks the W row as retaken — without this the student is
+  // told to re-enroll in a course they already finished. Two withdrawals of
+  // the same course collapse into one row for the same reason. Mirrors
+  // computeRetakeCandidates in src/features/calculator/simulator.ts.
+  const attemptedElsewhere = new Set();
+  state.semesters.forEach(sem => {
+    if (sem.summary) return;
+    sem.courses.forEach(c => {
+      const name = c.name.trim().toLowerCase();
+      // A running row counts: the course is being taken now, not still owed.
+      if (name && c.grade !== 'W' && (c.grade || sem.running)) attemptedElsewhere.add(name);
+    });
+  });
+  const offeredWithdrawals = new Set();
+  const stillOwed = rawName => {
+    const name = rawName.trim().toLowerCase();
+    if (attemptedElsewhere.has(name) || offeredWithdrawals.has(name)) return false;
+    offeredWithdrawals.add(name);
+    return true;
+  };
+
   state.semesters.forEach(sem => {
     if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
+      const isWithdrawal = c.grade === 'W';
       const gp = GRADES[c.grade];
-      if (gp === undefined || gp === null) return;
+      // W is the one null-grade-point row that belongs here: a course still
+      // owed, not a settled outcome like P or I (#499).
+      if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (gp >= 3.0) return; // B and above — no improvement mechanism available
+      if (!isWithdrawal && gp >= 3.0) return; // B and above — no improvement mechanism available
+      if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
       const key = `${c.name}||${semLabel}`;
-      const boostToB  = c.credits * (3.0 - gp) / currentCredits;
-      const boostToA  = c.credits * (4.0 - gp) / currentCredits;
-      const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat'
-      candidates.push({ name: c.name, grade: c.grade, gp, credits: c.credits,
+      // A retake re-scores credits already in the divisor; a withdrawal adds
+      // its credits to it, so the boost can come out negative. Mirrors
+      // computeRetakeCandidates in src/features/calculator/simulator.ts.
+      const cgpaAtTarget = t => (currentPts + c.credits * t) / (currentCredits + c.credits);
+      const boostToB  = isWithdrawal ? cgpaAtTarget(3.0) - currentCgpa
+                                     : c.credits * (3.0 - gp) / currentCredits;
+      const boostToA  = isWithdrawal ? cgpaAtTarget(4.0) - currentCgpa
+                                     : c.credits * (4.0 - gp) / currentCredits;
+      const strategy  = getImprovementStrategy(c.grade); // 'retake' | 'repeat' | null
+      candidates.push({ name: c.name, grade: c.grade, gp: isWithdrawal ? null : gp,
+                        credits: c.credits, isWithdrawal,
                         sem: semLabel, key, boostToB, boostToA,
                         boostPerCredit: boostToB / c.credits, strategy });
     });
@@ -26067,13 +26105,26 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
 
   const gradeCol = g =>
     (g === 'F' || g === 'F(NT)') ? '#e74c3c' :
+    g === 'W' ? 'var(--text3)' : // absent outcome, not a poor one
     (g === 'D' || g === 'D-' || g === 'D+') ? '#e67e22' : '#F0A500';
 
   // ── Strategy badge HTML ────────────────────────────────────────────────────
   // Retake = F grade, must re-enroll for a full semester (up to 2 times)
   // Repeat = below B (non-F), can sit a special exam (once, within 2 semesters)
   //          No grade cap — same intake-based policy applies for CGPA
-  const strategyBadge = (strategy) => {
+  // Withdrawn (#499): neither existing route fits — no failing grade to retake
+  // and no result to sit a repeat exam against. The student enrols again, and
+  // the tooltip states the cost: these credits join the CGPA rather than
+  // replacing a grade, so the outcome can pull it down.
+  const strategyBadge = (strategy, isWithdrawal) => {
+    if (isWithdrawal) {
+      return `<span style="
+        font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+        background:var(--chip-hover);color:var(--text3);
+        border:1px solid var(--chip-border);
+        border-radius:4px;padding:2px 6px;white-space:nowrap;
+      " title="Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.">Withdrawn</span>`;
+    }
     if (strategy === 'repeat') {
       return `<span style="
         font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
@@ -26090,13 +26141,21 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
     " title="Retake: re-enroll in the course for a full semester. Allowed up to twice for F grades.">Retake</span>`;
   };
 
-  let cumBoost = 0;
   let ptsAfter  = currentPts;
   let credAfter = currentCredits;
 
   const rows = top.map((c, idx) => {
     const checked = _retakeChecked.has(c.key);
-    if (checked) { cumBoost += c.boostToB; ptsAfter += c.credits * (3.0 - c.gp); }
+    if (checked) {
+      if (c.isWithdrawal) {
+        // No grade to replace — the course joins the CGPA for the first time,
+        // so both sides of the ratio move.
+        ptsAfter  += c.credits * 3.0;
+        credAfter += c.credits;
+      } else {
+        ptsAfter  += c.credits * (3.0 - c.gp);
+      }
+    }
     const cgpaIfB = Math.min(4.0, currentCgpa + c.boostToB).toFixed(2);
     const cgpaIfA = Math.min(4.0, currentCgpa + c.boostToA).toFixed(2);
     const chk = checked
@@ -26114,14 +26173,18 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
         <span style="color:var(--text3)"> → </span>
         <span style="font-weight:700;color:#2ECC71">B</span>
       </td>
-      <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy)}</td>
+      <td style="padding:6px 8px;text-align:center">${strategyBadge(c.strategy, c.isWithdrawal)}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)" title="Credits you spend to take this course again">${escHtml(String(c.credits))}</td>
-      <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:#2ECC71">${cgpaIfB}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:12px;font-weight:700;color:${c.boostToB < 0 ? '#e74c3c' : '#2ECC71'}">${cgpaIfB}</td>
       <td style="padding:6px 8px;text-align:center;font-size:11px;color:var(--text3)">${cgpaIfA} <span style="font-size:9px">(if A)</span></td>
     </tr>`;
   }).join('');
 
-  const cgpaAfterRetakes = Math.min(4.0, currentCgpa + cumBoost);
+  // Recomputed from the adjusted totals rather than summed from the per-row
+  // boosts: summing is exact only while the divisor holds still, which a
+  // selected withdrawal breaks. For an all-retake selection the two agree.
+  const cgpaAfterRetakes = Math.min(4.0, credAfter > 0 ? ptsAfter / credAfter : currentCgpa);
+  const cumBoost = cgpaAfterRetakes - currentCgpa;
   const checkedCount = _retakeChecked.size;
 
   let retakeImpactHtml = '';
@@ -26155,7 +26218,11 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
       </div>`;
   }
 
-  // ── Legend explaining the two badges ──────────────────────────────────────
+  // ── Legend explaining the badges ──────────────────────────────────────────
+  // The re-enroll entry appears only when a withdrawal is actually on the
+  // table; unlike the two standing routes it describes a state most students
+  // never have a row in.
+  const hasWithdrawal = top.some(c => c.isWithdrawal);
   const legendHtml = `
     <div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3);">
       <span style="display:flex;align-items:center;gap:5px;">
@@ -26166,6 +26233,10 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
         <span style="font-size:9px;font-weight:700;background:rgba(86,180,233,0.12);color:#56B4E9;border:1px solid rgba(86,180,233,0.30);border-radius:4px;padding:1px 5px;">REPEAT</span>
         Special exam, once, within 2 semesters (below B, no grade cap)
       </span>
+      ${hasWithdrawal ? `<span style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:9px;font-weight:700;background:var(--chip-hover);color:var(--text3);border:1px solid var(--chip-border);border-radius:4px;padding:1px 5px;">WITHDRAWN</span>
+        Adds credits instead of replacing a grade, so it can lower your CGPA
+      </span>` : ''}
     </div>`;
 
   return `
