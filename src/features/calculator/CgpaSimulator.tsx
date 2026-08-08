@@ -68,26 +68,32 @@ function gradeColor(grade: string): string {
 /**
  * Which of the three routes back into a course this row is. A withdrawal is
  * neither of the existing two: there is no failing grade to retake and no
- * result to sit a repeat exam against — the student simply enrols again.
+ * result to sit a repeat exam against.
+ *
+ * It is labelled by its state rather than by an action, because every action
+ * word here is already taken — the Retake legend describes itself as
+ * "re-enroll for a full semester", so a badge called Re-enroll reads as a
+ * synonym for it. "Withdrawn" also matches the badge the course row shows, so
+ * the two surfaces name the same thing the same way.
  */
-type BadgeKind = 'retake' | 'repeat' | 'reenroll';
+type BadgeKind = 'retake' | 'repeat' | 'withdrawn';
 
 function badgeKind(c: RetakeCandidate): BadgeKind {
-  if (c.isWithdrawal) return 'reenroll';
+  if (c.isWithdrawal) return 'withdrawn';
   return c.strategy === 'repeat' ? 'repeat' : 'retake';
 }
 
 const BADGE_LABEL: Record<BadgeKind, string> = {
   retake: 'Retake',
   repeat: 'Repeat',
-  reenroll: 'Re-enroll',
+  withdrawn: 'Withdrawn',
 };
 
 const STRATEGY_TITLE: Record<BadgeKind, string> = {
   retake: 'Retake: re-enroll in the course for a full semester. Allowed up to twice for F grades.',
   repeat:
     'Repeat: sit a special exam once within 2 semesters of initial enrollment. No grade cap — latest grade counts for CGPA.',
-  reenroll:
+  withdrawn:
     'Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.',
 };
 
@@ -494,8 +500,8 @@ function RetakeSection({
             have a row in. */}
         {candidates.some((c) => c.isWithdrawal) && (
           <span>
-            <span className="sim-strategy-badge reenroll">RE-ENROLL</span> Withdrawn — adds credits
-            instead of replacing a grade, so it can lower your CGPA
+            <span className="sim-strategy-badge withdrawn">WITHDRAWN</span> Adds credits instead of
+            replacing a grade, so it can lower your CGPA
           </span>
         )}
       </div>
