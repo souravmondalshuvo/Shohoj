@@ -393,7 +393,7 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         background:var(--chip-hover);color:var(--text3);
         border:1px solid var(--chip-border);
         border-radius:4px;padding:2px 6px;white-space:nowrap;
-      " title="Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.">Re-enroll</span>`;
+      " title="Withdrawn: no grade to improve. Enrolling again adds these credits to your CGPA rather than replacing a grade, so the result can pull your CGPA down as well as up.">Withdrawn</span>`;
     }
     if (strategy === 'repeat') {
       return `<span style="
@@ -504,8 +504,8 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
         Special exam, once, within 2 semesters (below B, no grade cap)
       </span>
       ${hasWithdrawal ? `<span style="display:flex;align-items:center;gap:5px;">
-        <span style="font-size:9px;font-weight:700;background:var(--chip-hover);color:var(--text3);border:1px solid var(--chip-border);border-radius:4px;padding:1px 5px;">RE-ENROLL</span>
-        Withdrawn — adds credits instead of replacing a grade, so it can lower your CGPA
+        <span style="font-size:9px;font-weight:700;background:var(--chip-hover);color:var(--text3);border:1px solid var(--chip-border);border-radius:4px;padding:1px 5px;">WITHDRAWN</span>
+        Adds credits instead of replacing a grade, so it can lower your CGPA
       </span>` : ''}
     </div>`;
 
