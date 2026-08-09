@@ -90,16 +90,22 @@ export function computeCourseMarks(components) {
     };
   });
 
+  // The pace mark — what the course lands on if the rest scores at the rate the
+  // graded components did — is exactly inHandPercent, not a separate number:
+  //   (earned + remaining × earned/graded) / total = earned/graded.
+  const inHandPercent = gradedWeight > 0 ? (earned / gradedWeight) * 100 : null;
+
   return {
     totalWeight,
     gradedWeight,
     remainingWeight,
     weightsComplete: Math.abs(totalWeight - 100) < 1e-9,
-    inHandPercent: gradedWeight > 0 ? (earned / gradedWeight) * 100 : null,
+    inHandPercent,
     ceiling,
     floor,
     bestLetter: letterForMark(ceiling),
     worstLetter: letterForMark(floor),
+    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent),
     targets,
   };
 }

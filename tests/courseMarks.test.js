@@ -148,6 +148,57 @@ test('a partial syllabus with something still to come still projects', () => {
   assert.equal(target(result, 'A').state, 'unreachable');
 });
 
+// ── The pace projection (what feeds the CGPA) ────────────────────────────────
+
+test('the projected letter reads the rate the graded components set', () => {
+  // 30 of 40 in hand = 75% → B, the letter this course is on pace for.
+  const result = computeCourseMarks([
+    comp('Midterm', 25, 18, 25),
+    comp('Quizzes', 15, 8, 10),
+    comp('Final', 60, null, 100),
+  ]);
+
+  assert.equal(round(result.inHandPercent), 75);
+  assert.equal(result.projectedLetter, 'B');
+});
+
+test('the pace sits between the floor and the ceiling', () => {
+  const result = computeCourseMarks([
+    comp('Midterm', 30, 24, 30),
+    comp('Quiz', 20, 15, 20),
+    comp('Final', 50, null, 100),
+  ]);
+
+  assert.ok(result.floor <= result.inHandPercent && result.inHandPercent <= result.ceiling);
+  const order = MARK_SCALE.map((t) => t.letter);
+  const rank = (l) => order.indexOf(l);
+  assert.ok(rank(result.bestLetter) <= rank(result.projectedLetter));
+  assert.ok(rank(result.projectedLetter) <= rank(result.worstLetter));
+});
+
+test('a pace is not a guarantee — it can outrun everything secured', () => {
+  // 100% on a fifth of the course: on pace for A+, floor still F. Both are true
+  // and the UI has to show them together, so the model must report both.
+  const result = computeCourseMarks([comp('Quizzes', 20, 20, 20), comp('Final', 80, null, 100)]);
+  assert.equal(result.projectedLetter, 'A+');
+  assert.equal(result.worstLetter, 'F');
+});
+
+test('nothing graded has no pace to read', () => {
+  const result = computeCourseMarks([comp('Final', 100, null, 100)]);
+  assert.equal(result.inHandPercent, null);
+  assert.equal(result.projectedLetter, null, 'an ungraded course must not project an F');
+});
+
+test('a fully graded course projects the letter it actually earned', () => {
+  const result = computeCourseMarks([comp('Midterm', 40, 34, 40), comp('Final', 60, 51, 60)]);
+  assert.equal(result.remainingWeight, 0);
+  assert.equal(round(result.inHandPercent), 85);
+  assert.equal(result.projectedLetter, 'A-');
+  assert.equal(result.projectedLetter, result.worstLetter, 'nothing left to play for');
+  assert.equal(result.projectedLetter, result.bestLetter);
+});
+
 // ── Degenerate input ─────────────────────────────────────────────────────────
 
 test('nothing to compute from returns null rather than a fake answer', () => {
