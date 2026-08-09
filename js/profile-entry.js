@@ -22,12 +22,35 @@ import {
   sbcNoRoutineHtml,
   sbcUnavailableHtml,
 } from './ui/semesterBriefingCard.js';
+import {
+  renderUnlockMap,
+  umcHtmlFor,
+  umcLoadingHtml,
+  umcNoTranscriptHtml,
+  umcUnavailableHtml,
+} from './ui/unlockMapCard.js';
 import { fetchConnectFeed } from './core/connectFeedClient.js';
 import { buildRoomBusyIndex } from './core/freeRooms.js';
 
 // Where the Routine tab persists `{ picks: { COURSE: sectionId|null } }`.
 const PENTRY_ROUTINE_KEY = 'shohoj_routine_v1';
 const PENTRY_BRIEFING_HOST = 'pfBriefingHost';
+const PENTRY_UNLOCK_HOST = 'pfUnlockHost';
+
+// Transcript-derived snapshot, written by the calculator's import flow.
+const PENTRY_PROFILE_SNAPSHOT_KEY = 'shohoj_connect_profile_v1';
+
+function _pentry_academicSnapshot() {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(PENTRY_PROFILE_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function _pentry_onProfilePage() {
   return document.body && document.body.dataset && document.body.dataset.page === 'profile';
@@ -80,6 +103,31 @@ async function _pentry_loadBriefing() {
   }
 }
 
+/**
+ * Fill the "Next registration" slot (#478).
+ *
+ * Shares the briefing's feed read: same client, same 10-minute cache, so this
+ * zone costs no extra request. Without an imported transcript there is nothing
+ * to join against, so it invites the import rather than showing an empty map.
+ */
+async function _pentry_loadUnlockMap() {
+  if (!document.getElementById(PENTRY_UNLOCK_HOST)) return;
+
+  const snapshot = _pentry_academicSnapshot();
+  if (!snapshot) {
+    renderUnlockMap(PENTRY_UNLOCK_HOST, umcNoTranscriptHtml());
+    return;
+  }
+
+  renderUnlockMap(PENTRY_UNLOCK_HOST, umcLoadingHtml());
+  try {
+    const feed = await fetchConnectFeed();
+    renderUnlockMap(PENTRY_UNLOCK_HOST, umcHtmlFor(snapshot, feed.sections));
+  } catch {
+    renderUnlockMap(PENTRY_UNLOCK_HOST, umcUnavailableHtml());
+  }
+}
+
 function _pentry_mountShell() {
   const host = document.getElementById('profilePageHost');
   if (!host || host.dataset.mounted === '1') return;
@@ -101,8 +149,9 @@ function _pentry_route() {
   if (!_pentry_onProfilePage()) return;
   _pentry_mountShell();
   renderProfileTab('profilePageContent', { includeSeatAlerts: false, includeBriefing: true });
-  // Fire-and-forget: the briefing fills its own slot when the feed lands.
+  // Fire-and-forget: each zone fills its own slot when the feed lands.
   _pentry_loadBriefing();
+  _pentry_loadUnlockMap();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

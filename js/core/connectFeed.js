@@ -101,6 +101,9 @@ export function normalizeSection(raw) {
         classEndDate: normalizeDateOnly(schedule && schedule.classEndDate),
         midExam,
         finalExam,
+        // Kept raw: the boolean expression is the prereq module's to parse
+        // (#478), and normalizing it here would put a grammar in the feed layer.
+        prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
     };
 }
 

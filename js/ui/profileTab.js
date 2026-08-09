@@ -362,10 +362,11 @@ export function academicProfileSectionHtml(profile) {
 // seat-alerts card: that card needs the Seats tab's live runtime globals, which
 // aren't loaded standalone — the Seats tab still owns the watchlist + toggle.
 //
-// opts.includeBriefing (default false) emits an empty slot above the cards for
-// the "This semester" block (#476), filled asynchronously by whoever holds the
-// section feed — profile-entry.js on the standalone page. Kept a slot rather
-// than a parameter so a slow or dead feed never delays the account hub.
+// opts.includeBriefing (default false) emits two empty slots above the cards —
+// the "This semester" block (#476) and the "Next registration" unlock map
+// (#478) — filled asynchronously by whoever holds the section feed:
+// profile-entry.js on the standalone page. Kept as slots rather than parameters
+// so a slow or dead feed never delays the account hub.
 export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync, academic, opts = {}) {
   const includeSeatAlerts = opts.includeSeatAlerts !== false;
   const includeBriefing = opts.includeBriefing === true;
@@ -389,6 +390,7 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastS
         <button class="pf-signout-btn" data-action="profile:signout">Sign out</button>
       </div>
       ${includeBriefing ? '<div id="pfBriefingHost" class="pf-briefing"></div>' : ''}
+      ${includeBriefing ? '<div id="pfUnlockHost" class="pf-briefing"></div>' : ''}
       <div class="pf-sections">
         ${academicProfileSectionHtml(academic)}
         ${includeSeatAlerts ? seatAlertsSectionHtml(seatAlerts) : ''}
