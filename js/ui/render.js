@@ -14,6 +14,7 @@ import { openReviewModal } from './reviews.js';
 import { normalizeInitials } from '../core/faculty.js';
 import { fetchReviewsForFaculty, aggregateRatings } from '../core/reviews.js';
 import { registerAction } from '../core/dispatch.js';
+import { computeCourseMarks } from '../core/courseMarks.js';
 
 registerAction('render:editSummary',     el => showSummaryForm(Number(el.dataset.semId)));
 registerAction('render:removeSemester',  el => removeSemester(Number(el.dataset.semId)));
@@ -29,6 +30,181 @@ registerAction('render:addCourse',       el => addCourse(Number(el.dataset.semId
 registerAction('render:addSemester',     () => addSemester());
 registerAction('render:showSummaryForm', () => showSummaryForm());
 registerAction('render:loadSample',      () => loadSampleData());
+
+// ── Per-course marks tracker (#500) ──────────────────────────────────────────
+// Mirrors CourseMarksPanel.tsx. Which rows are expanded is view state, so it
+// lives here rather than in the saved document.
+const _openMarks = new Set();
+
+registerAction('render:toggleMarks', el => {
+  const key = `${el.dataset.semId}-${el.dataset.idx}`;
+  if (!_openMarks.delete(key)) _openMarks.add(key);
+  renderSemesters();
+});
+registerAction('render:markField',       el => onMarkField(el));
+registerAction('render:addMarkComponent', el =>
+  setMarks(Number(el.dataset.semId), Number(el.dataset.idx),
+    [...marksOf(courseAt(Number(el.dataset.semId), Number(el.dataset.idx))), blankMarkComponent()]));
+registerAction('render:removeMarkComponent', el => {
+  const semId = Number(el.dataset.semId), idx = Number(el.dataset.idx);
+  const ci = Number(el.dataset.ci);
+  setMarks(semId, idx, marksOf(courseAt(semId, idx)).filter((_, n) => n !== ci));
+});
+registerAction('render:applyProjected',  el =>
+  applyProjectedLetter(Number(el.dataset.semId), Number(el.dataset.idx), el.dataset.letter));
+
+function courseAt(semId, idx) {
+  return state.semesters.find(s => s.id === semId)?.courses?.[idx] ?? null;
+}
+
+function marksOf(course) {
+  return Array.isArray(course?.marks) ? course.marks : [];
+}
+
+function blankMarkComponent() {
+  return { name: '', weight: 0, score: null, outOf: 100 };
+}
+
+/** Mirrors setCourseMarks in mutations.ts: empty deletes the key, never stores []. */
+function setMarks(semId, idx, marks) {
+  const course = courseAt(semId, idx);
+  if (!course) return;
+  if (marks.length === 0) delete course.marks;
+  else course.marks = marks;
+  saveState();
+  window._shohoj_renderAndRecalc();
+}
+
+/** Blank score means "not graded yet"; blank weight/outOf mean zero. */
+function onMarkField(el) {
+  const semId = Number(el.dataset.semId), idx = Number(el.dataset.idx);
+  const ci = Number(el.dataset.ci), field = el.dataset.field;
+  const course = courseAt(semId, idx);
+  if (!course) return;
+
+  const rows = marksOf(course).length ? marksOf(course).map(m => ({ ...m })) : [blankMarkComponent()];
+  while (rows.length <= ci) rows.push(blankMarkComponent());
+
+  if (field === 'name') {
+    rows[ci].name = el.value;
+  } else if (field === 'score') {
+    const n = Number(el.value);
+    rows[ci].score = el.value.trim() === '' || !Number.isFinite(n) ? null : n;
+  } else {
+    const n = Number(el.value);
+    rows[ci][field] = Number.isFinite(n) ? n : 0;
+  }
+
+  setMarks(semId, idx, rows);
+
+  // Same focus restore autoDetectGrade does: the whole container re-rendered
+  // out from under the caret, so put it back where the student left it.
+  const back = document.querySelector(
+    `[data-action="render:markField"][data-sem-id="${semId}"][data-idx="${idx}"][data-ci="${ci}"][data-field="${field}"]`,
+  );
+  if (back) {
+    back.focus();
+    const len = back.value.length;
+    back.setSelectionRange(len, len);
+  }
+}
+
+function applyProjectedLetter(semId, idx, letter) {
+  const course = courseAt(semId, idx);
+  if (!course || !letter) return;
+  course.grade = letter;
+  course.gradePoint = GRADES[letter] ?? '';
+  saveState();
+  window._shohoj_renderAndRecalc();
+}
+
+/** One decimal, but never "83.0" when it is 83. */
+function markPct(n) {
+  const rounded = Math.round(n * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+/** Mirrors CourseMarksPanel.tsx. */
+function marksPanelHtml(sem, c, i) {
+  const rows = marksOf(c).length ? marksOf(c) : [blankMarkComponent()];
+  const r = computeCourseMarks(rows);
+  const d = `data-sem-id="${sem.id}" data-idx="${i}"`;
+  const name = (c.name || '').trim();
+
+  const fieldsHtml = rows.map((row, ci) => `
+          <div class="course-marks-row">
+            <input type="text" class="course-marks-name" placeholder="Midterm"
+              aria-label="Component ${ci + 1} name" value="${escAttr(row.name || '')}"
+              data-action="render:markField" ${d} data-ci="${ci}" data-field="name" />
+            <input type="text" inputmode="decimal" placeholder="25"
+              aria-label="Component ${ci + 1} weight, percent of the course"
+              value="${escAttr(row.weight === 0 ? '' : String(row.weight))}"
+              data-action="render:markField" ${d} data-ci="${ci}" data-field="weight" />
+            <input type="text" inputmode="decimal" placeholder="—"
+              aria-label="Component ${ci + 1} score, blank if not graded yet"
+              value="${escAttr(row.score === null || row.score === undefined ? '' : String(row.score))}"
+              data-action="render:markField" ${d} data-ci="${ci}" data-field="score" />
+            <input type="text" inputmode="decimal" placeholder="25"
+              aria-label="Component ${ci + 1} total marks"
+              value="${escAttr(row.outOf === 0 ? '' : String(row.outOf))}"
+              data-action="render:markField" ${d} data-ci="${ci}" data-field="outOf" />
+            <button class="btn-remove-course" aria-label="Remove component ${ci + 1}"
+              data-action="render:removeMarkComponent" ${d} data-ci="${ci}">×</button>
+          </div>`).join('');
+
+  let readout;
+  if (!r) {
+    readout = `<p class="course-marks-empty">Give at least one component a weight to see where this course stands.</p>`;
+  } else {
+    const reachable = r.targets.filter(t => t.state === 'reachable');
+    const secured = r.targets.filter(t => t.state === 'secured');
+    readout = `
+        <div class="course-marks-readout">
+          <div class="course-marks-stats">
+            <span class="course-marks-stat"><strong>${r.inHandPercent === null ? '—' : markPct(r.inHandPercent) + '%'}</strong><small>in hand</small></span>
+            <span class="course-marks-stat"><strong>${escHtml(r.worstLetter)} → ${escHtml(r.bestLetter)}</strong><small>floor → ceiling</small></span>
+            <span class="course-marks-stat"><strong>${escHtml(r.projectedLetter || '—')}</strong><small>on pace for</small></span>
+          </div>
+          ${!r.weightsComplete
+            ? `<p class="course-marks-note">Weights total ${markPct(r.totalWeight)}%, not 100% — these figures describe the part of the syllabus you have entered.</p>`
+            : ''}
+          ${secured.length
+            ? `<p class="course-marks-note course-marks-secured"><strong>${escHtml(secured[0].letter)}</strong> is secured — you hold it even if everything left scores zero.</p>`
+            : ''}
+          ${r.remainingWeight > 0 && reachable.length
+            ? `<ul class="course-marks-targets">${reachable.map(t => `
+              <li><span class="course-marks-target-letter">${escHtml(t.letter)}</span><span>needs <strong>${markPct(t.neededOnRemaining)}%</strong> of the remaining ${markPct(r.remainingWeight)}%</span></li>`).join('')}</ul>`
+            : ''}
+          ${r.remainingWeight > 0 && !reachable.length && !secured.length
+            ? `<p class="course-marks-note">No letter above F is still reachable from here.</p>`
+            : ''}
+          ${r.projectedLetter
+            ? `<button class="btn-add-course course-marks-apply" data-action="render:applyProjected" ${d} data-letter="${escAttr(r.projectedLetter)}"${c.grade === r.projectedLetter ? ' disabled' : ''}>${
+                c.grade === r.projectedLetter
+                  ? `${escHtml(r.projectedLetter)} applied to this course`
+                  : `Use ${escHtml(r.projectedLetter)} in my CGPA projection`
+              }</button>`
+            : ''}
+        </div>`;
+  }
+
+  return `
+      <div class="course-marks-panel">
+        <div class="course-marks-head">
+          <span class="course-marks-title">Marks${name ? ` — ${escHtml(name)}` : ''}</span>
+          <span class="course-marks-hint">Enter each graded component off your syllabus. Nothing here changes your CGPA until you apply a letter.</span>
+        </div>
+        <div class="course-marks-grid">
+          <div class="course-marks-row course-marks-header">
+            <span>Component</span><span>Weight %</span><span>Score</span><span>Out of</span><span></span>
+          </div>${fieldsHtml}
+        </div>
+        <div class="add-course-row">
+          <button class="btn-add-course" data-action="render:addMarkComponent" ${d}>+ Add component</button>
+        </div>
+        ${readout}
+      </div>`;
+}
 
 const _facultyCourseAggCache = new Map();
 
@@ -511,6 +687,10 @@ export function renderSemesters() {
             && !!_courseCode;
           const facInit = normalizeInitials(c.faculty || '');
           const showChip = canRate && !!facInit;
+          // The tracker answers "what do I need on the final", which only means
+          // something while the course is still being sat.
+          const canTrackMarks = !!sem.running && !sem.summary;
+          const marksOpen = _openMarks.has(`${sem.id}-${i}`);
           return `
         <div class="course-row${isRetaken ? ' retaken' : ''}">
           <div class="course-input-wrap" style="position:relative;">
@@ -555,12 +735,15 @@ export function renderSemesters() {
             };${c.credits === 0 && c.grade !== 'P' && c.grade !== 'F' ? 'visibility:hidden' : ''}"
           >${escHtml(c.grade) || '—'}</span>
           <div class="course-row-actions">
+            ${canTrackMarks
+              ? `<button class="course-marks-pill${marksOpen ? ' open' : ''}" data-action="render:toggleMarks" data-sem-id="${sem.id}" data-idx="${i}" aria-expanded="${marksOpen}" title="Track marks and see what you need on what's left">📊</button>`
+              : ''}
             ${showChip
               ? `<button class="course-faculty-chip" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" data-fac="${escAttr(facInit)}" data-ccode="${escAttr(_courseCode)}" title="${escAttr(facInit)} — view or edit your review"><span class="fac-init">${escHtml(facInit)}</span><span class="fac-score" data-score>–</span></button>`
               : (canRate ? `<button class="course-rate-pill" data-action="render:rateCourse" data-sem-id="${sem.id}" data-idx="${i}" title="Rate this faculty">+ Rate</button>` : '')}
             <button class="btn-remove-course" data-action="render:removeCourse" data-sem-id="${sem.id}" data-idx="${i}">×</button>
           </div>
-        </div>`;
+        </div>${canTrackMarks && marksOpen ? marksPanelHtml(sem, c, i) : ''}`;
         }).join('')}
       </div>
       <div class="add-course-row">
