@@ -11098,6 +11098,81 @@ body[data-page='admin'] .orb {
    same floor: 88px clears a six-character code in Syne 800 (~86px), where the
    old fixed 62px clipped it into the date. Anything longer widens that one row
    instead of colliding. */
+/* ── Next registration / unlock map (#478) ──────────────────────────────── */
+.umc-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.umc-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px;
+  border-radius: 10px;
+  transition: background 0.18s;
+}
+.umc-row:hover {
+  background: rgba(46, 204, 113, 0.05);
+}
+.umc-row + .umc-row {
+  border-top: 1px solid var(--hairline);
+}
+.umc-row-main {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.umc-row-side {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.umc-row-side strong {
+  color: var(--green);
+  font-weight: 700;
+}
+.umc-dim {
+  color: var(--text3);
+  font-size: 12px;
+}
+.umc-more {
+  font-size: 11px;
+  color: var(--text3);
+  padding: 6px 8px 0;
+}
+.umc-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  background: var(--chip-hover);
+  border: 1px solid var(--chip-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+.umc-sub {
+  font-size: 11.5px;
+  color: var(--text3);
+  line-height: 1.55;
+  margin-top: 4px;
+}
+.umc-sub strong {
+  color: var(--green);
+}
+.umc-lead {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 4px;
+}
+.umc-card-accent {
+  border-color: rgba(46, 204, 113, 0.35);
+  background: rgba(46, 204, 113, 0.06);
+}
+
 .pfb-row {
   display: grid;
   grid-template-columns: auto minmax(88px, max-content) minmax(0, 1fr) auto auto;

@@ -118,6 +118,12 @@ export interface NormalizedSection {
   classEndDate: string | null;
   midExam: ExamSlot | null;
   finalExam: ExamSlot | null;
+  /**
+   * The feed's raw prerequisite expression, e.g. `(PHY111 AND MAT110) OR
+   * (MAT105 AND PHY110)`. Empty string when the course declares none. Parsing
+   * lives in `prereq.ts` (#478).
+   */
+  prerequisiteCourses: string;
 }
 
 export interface ParseResult {
@@ -244,6 +250,9 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     classEndDate: normalizeDateOnly(raw.sectionSchedule?.classEndDate),
     midExam,
     finalExam,
+    // Kept raw: the boolean expression is the prereq module's to parse (#478),
+    // and normalizing it here would put a grammar in the feed layer.
+    prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
   };
 }
 
