@@ -15,6 +15,48 @@
 /** A frozen clock for any export that takes an injectable `now`. */
 const FIXED_NOW = 1_767_225_600_000; // 2026-01-01T00:00:00Z
 
+/** A prerequisite chain plus two unconstrained courses (#478). */
+const OFFERED_COURSES = [
+  {
+    courseCode: 'CSE110',
+    courseName: 'Programming Language I',
+    credits: 3,
+    prerequisiteCourses: '',
+  },
+  {
+    courseCode: 'CSE111',
+    courseName: 'Programming Language II',
+    credits: 3,
+    prerequisiteCourses: '(CSE110)',
+  },
+  {
+    courseCode: 'CSE220',
+    courseName: 'Data Structures',
+    credits: 3,
+    prerequisiteCourses: '(CSE111)',
+  },
+  { courseCode: 'CSE221', courseName: 'Algorithms', credits: 3, prerequisiteCourses: '(CSE220)' },
+  {
+    courseCode: 'CSE321',
+    courseName: 'Operating Systems',
+    credits: 3,
+    prerequisiteCourses: '(CSE221)',
+  },
+  {
+    courseCode: 'EEE101',
+    courseName: 'Electrical Circuits',
+    credits: 3,
+    prerequisiteCourses: '(PHY111 AND MAT110) OR (MAT105 AND PHY110)',
+  },
+  {
+    courseCode: 'CSE499',
+    courseName: 'Thesis',
+    credits: 6,
+    prerequisiteCourses: 'consult advisor',
+  },
+  { courseCode: 'MAT110', courseName: 'Calculus', credits: 3, prerequisiteCourses: '' },
+];
+
 const SECTION = {
   sectionId: 101,
   courseCode: 'CSE220',
@@ -205,6 +247,81 @@ export const FIXTURES = {
       [{ points: 0, cgpaCredits: 0, remaining: 0 }],
     ],
     isGoal: [[{ id: 'perfect' }], [{ id: 'probation' }]],
+  },
+
+  prereq: {
+    parsePrerequisites: [
+      ['(CSE221)'],
+      ['(PHY111 AND MAT110) OR (MAT105 AND PHY110)'],
+      ['(CSE340 AND CSE321 AND CSE331) OR (EEE410 AND CSE321 AND CSE331)'],
+      ['CSE110 AND CSE111 OR CSE221'],
+      ['(EEE101L)'],
+      [''],
+      [null],
+      // Malformed, each a different way to be wrong.
+      ['(CSE221'],
+      ['CSE221)'],
+      ['CSE221 AND'],
+      ['CSE221 CSE110'],
+      ['NOT CSE221'],
+      ['consult advisor'],
+      ['()'],
+    ],
+    evaluatePrerequisites: [
+      ['(PHY111 AND MAT110) OR (MAT105 AND PHY110)', new Set(['PHY111'])],
+      ['(PHY111 AND MAT110) OR (MAT105 AND PHY110)', new Set(['MAT105', 'PHY110'])],
+      ['CSE340 AND CSE321 AND CSE331', new Set(['CSE321'])],
+      ['(CSE221)', new Set()],
+      ['consult advisor', new Set()],
+      ['', new Set()],
+    ],
+    gradeSatisfiesPrereq: [['A'], ['D-'], ['P'], ['F'], ['F(NT)'], ['W'], ['I'], [''], ['  ']],
+    normalizePrereqCode: [['cse220'], ['  CSE220  '], [''], [null]],
+    prereqCodes: [
+      [{ kind: 'course', code: 'CSE221' }],
+      [
+        {
+          kind: 'or',
+          children: [
+            {
+              kind: 'and',
+              children: [
+                { kind: 'course', code: 'PHY111' },
+                { kind: 'course', code: 'MAT110' },
+              ],
+            },
+            { kind: 'course', code: 'MAT105' },
+          ],
+        },
+      ],
+    ],
+    // completedCodes is absent on purpose: its second argument is an injected
+    // extractCode function, and the harness structuredClones every fixture arg.
+    // Its grade policy is the same gradeSatisfiesPrereq covered just above.
+    buildUnlockMap: [
+      [OFFERED_COURSES, new Set(['CSE110'])],
+      [OFFERED_COURSES, new Set(['CSE110', 'CSE111'])],
+      [OFFERED_COURSES, new Set()],
+      // Duplicate sections, one without the prerequisite string.
+      [
+        [
+          {
+            courseCode: 'CSE220',
+            courseName: 'Data Structures',
+            credits: 3,
+            prerequisiteCourses: '',
+          },
+          {
+            courseCode: 'CSE220',
+            courseName: 'Data Structures',
+            credits: 3,
+            prerequisiteCourses: '(CSE111)',
+          },
+        ],
+        new Set(),
+      ],
+      [[], new Set()],
+    ],
   },
 
   'planner-core': {
