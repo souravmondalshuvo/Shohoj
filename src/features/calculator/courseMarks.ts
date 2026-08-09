@@ -111,6 +111,20 @@ export interface CourseMarks {
   readonly floor: number;
   readonly bestLetter: GradeLetter;
   readonly worstLetter: GradeLetter;
+  /**
+   * The letter the course lands on if the remaining components score at the
+   * same rate as the graded ones — the honest middle between `worstLetter` and
+   * `bestLetter`, and the one worth feeding a CGPA projection.
+   *
+   * The pace mark is exactly `inHandPercent`, not a separate number:
+   *
+   *     (earned + remaining × earned/graded) / total
+   *   = (earned/graded) × (graded + remaining) / total
+   *   = earned/graded                                  [graded + remaining = total]
+   *
+   * Null while nothing is graded — a pace needs at least one result to read.
+   */
+  readonly projectedLetter: GradeLetter | null;
   /** Every letter above F, highest first. */
   readonly targets: readonly MarkTarget[];
 }
@@ -179,16 +193,19 @@ export function computeCourseMarks(components: readonly MarkComponent[]): Course
     };
   });
 
+  const inHandPercent = gradedWeight > 0 ? (earned / gradedWeight) * 100 : null;
+
   return {
     totalWeight,
     gradedWeight,
     remainingWeight,
     weightsComplete: Math.abs(totalWeight - 100) < 1e-9,
-    inHandPercent: gradedWeight > 0 ? (earned / gradedWeight) * 100 : null,
+    inHandPercent,
     ceiling,
     floor,
     bestLetter: letterForMark(ceiling),
     worstLetter: letterForMark(floor),
+    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent),
     targets,
   };
 }
