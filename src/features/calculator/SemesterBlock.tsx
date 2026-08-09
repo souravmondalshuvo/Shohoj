@@ -12,9 +12,12 @@ import {
   gpaCoreCalcSemesterGpa as calcSemesterGpa,
   gpaCoreGetSemesterCreditWarning as getSemesterCreditWarning,
 } from '../../core/gpa';
+import { useState } from 'react';
+
 import { normalizeInitials } from '../../core/faculty';
-import type { SemesterEntry } from '../../core/types';
+import type { CourseMarkComponent, SemesterEntry } from '../../core/types';
 import CourseRow from './CourseRow';
+import CourseMarksPanel from './CourseMarksPanel';
 import type { CourseSuggestion } from './courseSearch';
 import { gpaBadgeColors } from './colors';
 import { getReviewableCourseCode } from './reviewableCourse';
@@ -45,6 +48,10 @@ export interface SemesterBlockProps {
   readonly onCoursePassFailChange: (idx: number, value: string) => void;
   readonly onRateCourse: (idx: number) => void;
   readonly onRemoveCourse: (idx: number) => void;
+  /** Replace a course's tracked mark components (#500). Running semesters only. */
+  readonly onCourseMarksChange?: (idx: number, marks: CourseMarkComponent[]) => void;
+  /** Write the pace letter from the marks tracker onto the course. */
+  readonly onApplyProjectedLetter?: (idx: number, letter: string) => void;
 
   /** This block is the current drag-over target (adds the .drag-over class). */
   readonly isDragOver?: boolean;
@@ -70,6 +77,8 @@ export default function SemesterBlock({
   onCoursePassFailChange,
   onRateCourse,
   onRemoveCourse,
+  onCourseMarksChange,
+  onApplyProjectedLetter,
   isDragOver = false,
   onDragStartBlock,
   onDragOverBlock,
@@ -77,6 +86,8 @@ export default function SemesterBlock({
   onDragEndBlock,
 }: SemesterBlockProps) {
   const isRunning = !!sem.running;
+  // Which rows have the marks tracker expanded — view state, not saved data.
+  const [openMarks, setOpenMarks] = useState<ReadonlySet<number>>(() => new Set());
   const gpa = calcSemesterGpa(sem);
   const warning = getSemesterCreditWarning(sem);
   const isIncomplete = !isRunning && sem.courses.some((c) => (c.name ?? '').trim() && !c.grade);
@@ -208,6 +219,9 @@ export default function SemesterBlock({
             grade !== 'I' &&
             !!courseCode;
           const facInit = normalizeInitials(course.faculty ?? '');
+          // The tracker answers "what do I need on the final", which only means
+          // something while the course is still being sat.
+          const canTrackMarks = isRunning && !sem.summary && !!onCourseMarksChange;
           return (
             <CourseRow
               key={i}
@@ -227,6 +241,26 @@ export default function SemesterBlock({
               onPassFailChange={(v) => onCoursePassFailChange(i, v)}
               onRate={() => onRateCourse(i)}
               onRemove={() => onRemoveCourse(i)}
+              canTrackMarks={canTrackMarks}
+              marksOpen={openMarks.has(i)}
+              onToggleMarks={() =>
+                setOpenMarks((prev) => {
+                  const next = new Set(prev);
+                  if (!next.delete(i)) next.add(i);
+                  return next;
+                })
+              }
+              marksPanel={
+                canTrackMarks ? (
+                  <CourseMarksPanel
+                    courseName={course.name ?? ''}
+                    components={course.marks ?? []}
+                    currentGrade={grade}
+                    onChange={(marks) => onCourseMarksChange?.(i, marks)}
+                    onApplyProjected={(letter) => onApplyProjectedLetter?.(i, letter)}
+                  />
+                ) : null
+              }
             />
           );
         })}
