@@ -8,7 +8,7 @@
 // Semester *creation* with calendar-aware naming (addSemester) stays separate —
 // it needs department data and lives in its own typed helper.
 
-import type { CourseEntry, SemesterEntry } from '../../core/types';
+import type { CourseEntry, CourseMarkComponent, SemesterEntry } from '../../core/types';
 
 /** A fresh blank course row, matching the legacy addCourse shape. */
 export function blankCourse(): CourseEntry {
@@ -49,6 +49,37 @@ export function updateCourse(
     return {
       ...sem,
       courses: sem.courses.map((course, i) => (i === index ? { ...course, ...patch } : course)),
+    };
+  });
+}
+
+/**
+ * Set (or clear) a course's tracked mark components (#500).
+ *
+ * Empty deletes the key rather than storing `[]`: a course nobody tracked must
+ * stay byte-identical to what it was before the feature existed, so that
+ * clearing the last component leaves no trace in the saved document.
+ */
+export function setCourseMarks(
+  semesters: readonly SemesterEntry[],
+  semId: number,
+  index: number,
+  marks: readonly CourseMarkComponent[],
+): SemesterEntry[] {
+  return semesters.map((sem) => {
+    if (sem.id !== semId) return sem;
+    return {
+      ...sem,
+      courses: sem.courses.map((course, i) => {
+        if (i !== index) return course;
+        if (marks.length === 0) {
+          if (!('marks' in course)) return course;
+          const next = { ...course };
+          delete next.marks;
+          return next;
+        }
+        return { ...course, marks: marks.map((m) => ({ ...m })) };
+      }),
     };
   });
 }

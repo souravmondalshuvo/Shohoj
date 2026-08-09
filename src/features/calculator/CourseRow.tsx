@@ -44,6 +44,13 @@ export interface CourseRowProps {
   readonly onPassFailChange: (value: string) => void;
   readonly onRate: () => void;
   readonly onRemove: () => void;
+
+  /** Running-semester course → offer the marks tracker (#500). */
+  readonly canTrackMarks?: boolean;
+  readonly marksOpen?: boolean;
+  readonly onToggleMarks?: () => void;
+  /** The tracker itself, rendered under the row while open. */
+  readonly marksPanel?: React.ReactNode;
 }
 
 export default function CourseRow({
@@ -61,6 +68,10 @@ export default function CourseRow({
   onPassFailChange,
   onRate,
   onRemove,
+  canTrackMarks = false,
+  marksOpen = false,
+  onToggleMarks,
+  marksPanel,
 }: CourseRowProps) {
   const name = course.name ?? '';
   const grade = (course.grade ?? '') as string;
@@ -87,128 +98,143 @@ export default function CourseRow({
         : '';
 
   return (
-    <div className={`course-row${isRetaken ? ' retaken' : ''}`}>
-      <div className="course-input-wrap" style={{ position: 'relative' }}>
-        <CourseNameInput
-          id={`course-input-${semId}-${index}`}
-          value={name}
-          catalog={catalog}
-          onPick={onNamePick}
-          onResolve={onNameResolve}
-        />
-        {isRetaken && <span className="retaken-badge">{supersedeLabel}</span>}
-      </div>
+    <>
+      <div className={`course-row${isRetaken ? ' retaken' : ''}`}>
+        <div className="course-input-wrap" style={{ position: 'relative' }}>
+          <CourseNameInput
+            id={`course-input-${semId}-${index}`}
+            value={name}
+            catalog={catalog}
+            onPick={onNamePick}
+            onResolve={onNameResolve}
+          />
+          {isRetaken && <span className="retaken-badge">{supersedeLabel}</span>}
+        </div>
 
-      <span className="credits-static-wrap">
-        <span className="credits-static">{course.credits}</span>
-        {showCreditDot && (
-          <span className="credit-error-dot" title={`Unusual credit value: ${course.credits}`} />
-        )}
-      </span>
-
-      {grade === 'W' ? (
-        // There is no number to type for a withdrawal, so — as with NT — the
-        // row shows the state as a badge instead of a grade-point value. Muted
-        // rather than red: a W is not a failing outcome, it is an absent one.
-        <span
-          className="grade-w-badge"
-          title="Withdrawn — counts toward attempted credits, but carries no grade point and does not affect CGPA."
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--text3)',
-            textAlign: 'center',
-            padding: '4px 6px',
-            background: 'var(--chip-hover)',
-            borderRadius: 6,
-            border: '1px solid var(--chip-border)',
-          }}
-        >
-          W
+        <span className="credits-static-wrap">
+          <span className="credits-static">{course.credits}</span>
+          {showCreditDot && (
+            <span className="credit-error-dot" title={`Unusual credit value: ${course.credits}`} />
+          )}
         </span>
-      ) : isPassFailSlot ? (
-        grade === 'F(NT)' ? (
+
+        {grade === 'W' ? (
+          // There is no number to type for a withdrawal, so — as with NT — the
+          // row shows the state as a badge instead of a grade-point value. Muted
+          // rather than red: a W is not a failing outcome, it is an absent one.
           <span
+            className="grade-w-badge"
+            title="Withdrawn — counts toward attempted credits, but carries no grade point and does not affect CGPA."
             style={{
               fontSize: 12,
               fontWeight: 700,
-              color: '#e74c3c',
+              color: 'var(--text3)',
               textAlign: 'center',
               padding: '4px 6px',
-              background: 'rgba(231,76,60,0.10)',
+              background: 'var(--chip-hover)',
               borderRadius: 6,
-              border: '1px solid rgba(231,76,60,0.25)',
+              border: '1px solid var(--chip-border)',
             }}
           >
-            NT
+            W
           </span>
-        ) : (
-          <select
-            className="pf-select"
-            value={grade === 'P' || grade === 'F' ? grade : ''}
-            onChange={(e) => onPassFailChange(e.target.value)}
-          >
-            <option value="" disabled>
-              Pass / Fail
-            </option>
-            <option value="P">P - Pass</option>
-            <option value="F">F - Fail</option>
-          </select>
-        )
-      ) : (
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder="0.0 – 4.0"
-          value={gradePointValue}
-          onChange={(e) => onGradePointChange(e.target.value)}
-          onBlur={onGradePointBlur}
-          style={{ textAlign: 'center' }}
-        />
-      )}
-
-      <span
-        className="grade-letter"
-        id={`gl-${semId}-${index}`}
-        style={{
-          color: gradeLetterColor(grade),
-          visibility: course.credits === 0 && grade !== 'P' && grade !== 'F' ? 'hidden' : undefined,
-        }}
-      >
-        {grade || '—'}
-      </span>
-
-      <div className="course-row-actions">
-        {showChip ? (
-          <button
-            type="button"
-            className="course-faculty-chip"
-            data-fac={faculty.initials}
-            data-ccode={faculty.courseCode}
-            title={`${faculty.initials} — view or edit your review`}
-            onClick={onRate}
-          >
-            <span className="fac-init">{faculty.initials}</span>
-            <span className="fac-score" data-score>
-              {chipScore}
+        ) : isPassFailSlot ? (
+          grade === 'F(NT)' ? (
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#e74c3c',
+                textAlign: 'center',
+                padding: '4px 6px',
+                background: 'rgba(231,76,60,0.10)',
+                borderRadius: 6,
+                border: '1px solid rgba(231,76,60,0.25)',
+              }}
+            >
+              NT
             </span>
-          </button>
+          ) : (
+            <select
+              className="pf-select"
+              value={grade === 'P' || grade === 'F' ? grade : ''}
+              onChange={(e) => onPassFailChange(e.target.value)}
+            >
+              <option value="" disabled>
+                Pass / Fail
+              </option>
+              <option value="P">P - Pass</option>
+              <option value="F">F - Fail</option>
+            </select>
+          )
         ) : (
-          canRate && (
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="0.0 – 4.0"
+            value={gradePointValue}
+            onChange={(e) => onGradePointChange(e.target.value)}
+            onBlur={onGradePointBlur}
+            style={{ textAlign: 'center' }}
+          />
+        )}
+
+        <span
+          className="grade-letter"
+          id={`gl-${semId}-${index}`}
+          style={{
+            color: gradeLetterColor(grade),
+            visibility:
+              course.credits === 0 && grade !== 'P' && grade !== 'F' ? 'hidden' : undefined,
+          }}
+        >
+          {grade || '—'}
+        </span>
+
+        <div className="course-row-actions">
+          {canTrackMarks && (
             <button
               type="button"
-              className="course-rate-pill"
-              title="Rate this faculty"
+              className={`course-marks-pill${marksOpen ? ' open' : ''}`}
+              title="Track marks and see what you need on what's left"
+              aria-expanded={marksOpen}
+              onClick={onToggleMarks}
+            >
+              📊
+            </button>
+          )}
+          {showChip ? (
+            <button
+              type="button"
+              className="course-faculty-chip"
+              data-fac={faculty.initials}
+              data-ccode={faculty.courseCode}
+              title={`${faculty.initials} — view or edit your review`}
               onClick={onRate}
             >
-              + Rate
+              <span className="fac-init">{faculty.initials}</span>
+              <span className="fac-score" data-score>
+                {chipScore}
+              </span>
             </button>
-          )
-        )}
-        <button type="button" className="btn-remove-course" onClick={onRemove}>
-          ×
-        </button>
+          ) : (
+            canRate && (
+              <button
+                type="button"
+                className="course-rate-pill"
+                title="Rate this faculty"
+                onClick={onRate}
+              >
+                + Rate
+              </button>
+            )
+          )}
+          <button type="button" className="btn-remove-course" onClick={onRemove}>
+            ×
+          </button>
+        </div>
       </div>
-    </div>
+      {canTrackMarks && marksOpen && marksPanel}
+    </>
   );
 }

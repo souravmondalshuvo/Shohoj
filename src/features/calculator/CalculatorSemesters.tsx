@@ -19,7 +19,7 @@ import {
   gpaCoreGetRetakenKeys as getRetakenKeys,
   gpaCoreNormalizeGradePoint as normalizeGradePoint,
 } from '../../core/gpa';
-import { detectGrade } from '../../core/grades';
+import { GRADES, detectGrade, type GradeLetter } from '../../core/grades';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import SemesterBlock from './SemesterBlock';
 import SummaryBlock from './SummaryBlock';
@@ -32,6 +32,7 @@ import {
   removeCourse,
   removeSemester,
   reorderSemesters,
+  setCourseMarks,
   updateCourse,
 } from './mutations';
 import {
@@ -191,6 +192,20 @@ export default function CalculatorSemesters() {
             }
             onRateCourse={(idx) => bridge.rateForCourse(sem.id, idx)}
             onRemoveCourse={(idx) => commit(removeCourse(semesters, sem.id, idx))}
+            onCourseMarksChange={(idx, marks) =>
+              commit(setCourseMarks(semesters, sem.id, idx, marks))
+            }
+            // Applying writes the letter and its points onto the course, so the
+            // running-semester projection picks it up through exactly the path a
+            // typed grade already takes — no second route into the CGPA.
+            onApplyProjectedLetter={(idx, letter) =>
+              commit(
+                updateCourse(semesters, sem.id, idx, {
+                  grade: letter,
+                  gradePoint: GRADES[letter as GradeLetter] ?? '',
+                }),
+              )
+            }
             isDragOver={dragOverId === sem.id && dragSrcId !== null && dragSrcId !== sem.id}
             onDragStartBlock={() => setDragSrcId(sem.id)}
             onDragOverBlock={() => {
