@@ -793,7 +793,7 @@ section {
 }
 .course-row {
   display: grid;
-  grid-template-columns: 1fr 72px 96px 36px 92px;
+  grid-template-columns: 1fr 72px 96px 36px 118px;
   gap: 8px;
   padding: 8px 1.2rem;
   align-items: center;
@@ -891,6 +891,7 @@ section {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 4px;
   min-width: 0;
 }
@@ -1932,7 +1933,7 @@ h1[data-reveal-hero].visible {
     grid-template-columns: repeat(2, 1fr);
   }
   .course-row {
-    grid-template-columns: 1fr 44px 84px 30px 86px;
+    grid-template-columns: 1fr 44px 84px 30px 112px;
     gap: 5px;
     padding: 7px 1rem;
   }
@@ -1990,7 +1991,7 @@ h1[data-reveal-hero].visible {
     margin: 0 1.5rem 1.2rem;
   }
   .course-row {
-    grid-template-columns: 1fr 50px 90px 32px 88px;
+    grid-template-columns: 1fr 50px 90px 32px 114px;
     gap: 6px;
   }
 }
