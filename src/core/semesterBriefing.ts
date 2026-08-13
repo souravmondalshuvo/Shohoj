@@ -336,7 +336,9 @@ function sbAbsoluteMinutes(date: string, minuteOfDay: number): number | null {
  * exams still ahead, the gap back to an exam already sat is history, not
  * something the student still has to recover from.
  */
-function sbCrunchOver(run: readonly (ExamEntry & { absStart: number; absEnd: number })[]): ExamCrunch {
+function sbCrunchOver(
+  run: readonly (ExamEntry & { absStart: number; absEnd: number })[],
+): ExamCrunch {
   let tightestGapHours: number | null = null;
   let sameDayCount = 0;
   for (let i = 1; i < run.length; i++) {
