@@ -214,19 +214,52 @@ function briefingStub() {
 
 const BRIEF = '#pfBriefingHost';
 
-test('the briefing orders exams and flags the two that share a day', async ({ page }) => {
+// The exam block opens on whichever period is still ahead (#530), so the wall
+// clock is part of the fixture: midterms run 25–27 Jul 2026, finals 14 Sep.
+// Times below are UTC; campus reads them at +6.
+const BEFORE_MIDS = '2026-07-01T09:00:00Z';
+const MIDS_UNDERWAY = '2026-07-26T12:00:00Z'; // CSE251 and CSE220 sat, two to go
+const AFTER_MIDS = '2026-08-13T09:00:00Z';
+
+async function bootAt(page, wallClock) {
+  await page.clock.setFixedTime(new Date(wallClock));
   await boot(page, briefingStub);
+}
+
+test('the briefing orders exams and flags the two that share a day', async ({ page }) => {
+  await bootAt(page, BEFORE_MIDS);
   const rows = page.locator(`${BRIEF} .pfb-row-code`);
   await expect(rows).toHaveText(['CSE251', 'CSE220', 'MAT215', 'MAT111']);
   await expect(page.locator(`${BRIEF} .pfb-chip.hot`)).toContainText('same day');
 });
 
 test('the exam switch flips to finals without refetching', async ({ page }) => {
-  await boot(page, briefingStub);
+  await bootAt(page, BEFORE_MIDS);
   await expect(page.locator(`${BRIEF} .pfb-rows`)).toContainText('Sat 25 Jul');
   await page.locator(`${BRIEF} [data-action="briefing:examKind"][data-kind="final"]`).click();
   await expect(page.locator(`${BRIEF} .pfb-rows`)).toContainText('Mon 14 Sep');
   await expect(page.locator(`${BRIEF} .pfb-seg[data-kind="final"]`)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('exams already sat are marked done, not left looking pending', async ({ page }) => {
+  await bootAt(page, MIDS_UNDERWAY);
+  const rows = page.locator(`${BRIEF} .pfb-row`);
+  await expect(rows.nth(0)).toHaveClass(/is-past/);
+  await expect(rows.nth(1)).toHaveClass(/is-past/);
+  await expect(rows.nth(0).locator('.pfb-chip')).toHaveText('done');
+  await expect(rows.nth(2)).not.toHaveClass(/is-past/);
+  await expect(rows.nth(2).locator('.pfb-chip')).toHaveText('next up');
+  // Each card carries a verdict; the exam one is the card holding the rows.
+  await expect(page.locator(`${BRIEF} .pfb-card:has(.pfb-rows) .pfb-verdict`))
+    .toContainText('Next: MAT215');
+});
+
+test('once the midterms are over the block opens on finals', async ({ page }) => {
+  await bootAt(page, AFTER_MIDS);
+  await expect(page.locator(`${BRIEF} .pfb-seg[data-kind="final"]`)).toHaveAttribute('aria-pressed', 'true');
+  const exams = page.locator(`${BRIEF} .pfb-rows`);
+  await expect(exams).toContainText('Mon 14 Sep');
+  await expect(exams).not.toContainText('Sat 25 Jul', { timeout: 1000 });
 });
 
 test('the week card measures contact time, dead time and campus days', async ({ page }) => {
