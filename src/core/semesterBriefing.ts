@@ -415,28 +415,30 @@ export function buildExamBriefing(
   const whole = sbCrunchOver(dated);
   const firstAhead = dated.findIndex((entry) => !entry.isPast);
   const ahead = firstAhead === -1 ? [] : dated.slice(firstAhead);
-  const nextExam = ahead.length > 0 ? ahead[0] : null;
+
+  // The absolute-minute fields are working state; the public entries drop them.
+  const exams: ExamEntry[] = dated.map((entry) => ({
+    courseCode: entry.courseCode,
+    sectionName: entry.sectionName,
+    facultyInitials: entry.facultyInitials,
+    date: entry.date,
+    startMin: entry.startMin,
+    endMin: entry.endMin,
+    gapHoursFromPrev: entry.gapHoursFromPrev,
+    sameDayAsPrev: entry.sameDayAsPrev,
+    isPast: entry.isPast,
+  }));
 
   return {
     kind,
-    exams: dated.map((entry) => ({
-      courseCode: entry.courseCode,
-      sectionName: entry.sectionName,
-      facultyInitials: entry.facultyInitials,
-      date: entry.date,
-      startMin: entry.startMin,
-      endMin: entry.endMin,
-      gapHoursFromPrev: entry.gapHoursFromPrev,
-      sameDayAsPrev: entry.sameDayAsPrev,
-      isPast: entry.isPast,
-    })),
+    exams,
     spanHours: whole.spanHours,
     tightestGapHours: whole.tightestGapHours,
     sameDayCount: whole.sameDayCount,
     missing,
     upcoming: ahead.length > 0 ? sbCrunchOver(ahead) : null,
-    nextExam: nextExam === null ? null : { ...nextExam },
-    hoursUntilNext: nextExam === null ? null : (nextExam.absStart - nowMin) / 60,
+    nextExam: firstAhead === -1 ? null : exams[firstAhead],
+    hoursUntilNext: firstAhead === -1 ? null : (dated[firstAhead].absStart - nowMin) / 60,
     pastCount: dated.length - ahead.length,
   };
 }
