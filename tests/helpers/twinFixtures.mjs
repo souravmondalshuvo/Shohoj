@@ -98,6 +98,45 @@ const CLASHING = {
 
 const FEED = [SECTION, SECTION_B, CLASHING];
 
+/**
+ * Normalized sections (post-parseFeed shape) with both exam periods dated, for
+ * the briefing's clock-aware builders. Written out rather than parsed so the
+ * fixture stays independent of the connectFeed twin.
+ */
+const examSection = (over) => ({
+  sectionId: 201, courseCode: 'CSE110', courseName: 'C', credits: 3, sectionName: '01',
+  capacity: 30, consumedSeat: 10, isFull: false, facultyInitials: 'ABC',
+  roomName: '09A-20C', semesterSessionId: 20262, classSlots: [],
+  classStartDate: null, classEndDate: null,
+  midExam: null, finalExam: null, prerequisiteCourses: '',
+  ...over,
+});
+
+const EXAM_SECTIONS = [
+  examSection({
+    sectionId: 201, courseCode: 'CSE110',
+    midExam: { date: '2026-07-25', startMin: 990, endMin: 1110 },
+    finalExam: { date: '2026-09-12', startMin: 990, endMin: 1110 },
+  }),
+  examSection({
+    sectionId: 202, courseCode: 'MAT110',
+    midExam: { date: '2026-07-27', startMin: 510, endMin: 630 },
+    finalExam: { date: '2026-09-14', startMin: 510, endMin: 630 },
+  }),
+  // No final date: the `missing` list has to survive the twin crossing too.
+  examSection({
+    sectionId: 203, courseCode: 'PHY111',
+    midExam: { date: '2026-07-27', startMin: 840, endMin: 960 },
+  }),
+];
+
+/** Campus-time (UTC+6) instants around the fixture's July midterms. */
+const EXAM_CLOCK = {
+  beforeMids: Date.parse('2026-07-01T03:00:00Z'),
+  midway: Date.parse('2026-07-26T03:00:00Z'),
+  afterMids: Date.parse('2026-08-13T04:00:00Z'),
+};
+
 const SEMESTER = {
   id: 1,
   name: 'Fall 2024',
@@ -436,6 +475,23 @@ export const FIXTURES = {
     formatDuration: [[0], [45], [125]],
     parseRoomFloor: [['09A-20C'], ['UB40101'], [''], [null]],
     collectRoutineSlots: [[[]], [[SECTION, SECTION_B]]],
+    campusMinutesAt: [[0], [EXAM_CLOCK.beforeMids]],
+    // The clock argument is pinned: a twin that defaulted to Date.now() on one
+    // side only would still agree here, and agreeing by accident is the drift
+    // this contract exists to catch.
+    buildExamBriefing: [
+      [EXAM_SECTIONS, 'mid', EXAM_CLOCK.beforeMids],
+      [EXAM_SECTIONS, 'mid', EXAM_CLOCK.midway],
+      [EXAM_SECTIONS, 'mid', EXAM_CLOCK.afterMids],
+      [EXAM_SECTIONS, 'final', EXAM_CLOCK.afterMids],
+      [[], 'mid', EXAM_CLOCK.beforeMids],
+    ],
+    pickExamKind: [
+      [EXAM_SECTIONS, EXAM_CLOCK.beforeMids],
+      [EXAM_SECTIONS, EXAM_CLOCK.midway],
+      [EXAM_SECTIONS, EXAM_CLOCK.afterMids],
+      [[], EXAM_CLOCK.afterMids],
+    ],
   },
 
   'transcript-core': {
