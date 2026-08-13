@@ -162,6 +162,20 @@ export function buildWeekSummary(sections, options = {}) {
     };
 }
 
+/**
+ * Campus runs on Asia/Dhaka — UTC+6 all year, no DST. Exam dates arrive as a
+ * bare `YYYY-MM-DD` plus a minute-of-day and are placed on the UTC line below,
+ * so a wall clock has to be shifted into that same frame before the two can be
+ * compared. Read the viewer's clock as UTC instead and an exam would flip to
+ * "done" hours early or late for anyone outside Bangladesh.
+ */
+export const CAMPUS_UTC_OFFSET_MIN = 6 * 60;
+
+/** A wall-clock instant in the same absolute-minute frame as the exam dates. */
+export function campusMinutesAt(now) {
+    return Math.floor(now / 60000) + CAMPUS_UTC_OFFSET_MIN;
+}
+
 /** Absolute minutes since epoch for an ISO date + minute-of-day. UTC, so DST-free. */
 function sbAbsoluteMinutes(date, minuteOfDay) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
@@ -175,12 +189,40 @@ function sbAbsoluteMinutes(date, minuteOfDay) {
 }
 
 /**
+ * Crunch measurements over `run`, which must be consecutive exams in date
+ * order. Links into whatever preceded the run are ignored: for a slice of the
+ * exams still ahead, the gap back to an exam already sat is history, not
+ * something the student still has to recover from.
+ */
+function sbCrunchOver(run) {
+    let tightestGapHours = null;
+    let sameDayCount = 0;
+    for (let i = 1; i < run.length; i++) {
+        if (run[i].sameDayAsPrev) sameDayCount++;
+        const gapHours = run[i].gapHoursFromPrev;
+        if (gapHours !== null && (tightestGapHours === null || gapHours < tightestGapHours)) {
+            tightestGapHours = gapHours;
+        }
+    }
+    const last = run.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), run[0]);
+    return {
+        count: run.length,
+        spanHours: (last.absEnd - run[0].absStart) / 60,
+        tightestGapHours,
+        sameDayCount,
+    };
+}
+
+/**
  * Order the student's exams for one kind and measure the recovery time between
  * them. Sections without a date for that kind are reported in `missing` rather
  * than silently dropped — a half-known exam season is worth flagging.
  * Returns null when no picked section carries a date at all.
+ *
+ * `now` splits the period into sat and pending: an exam counts as past once it
+ * has *finished*, so one in progress still reads as the exam at hand.
  */
-export function buildExamBriefing(sections, kind) {
+export function buildExamBriefing(sections, kind, now = Date.now()) {
     const missing = [];
     const dated = [];
 
@@ -205,6 +247,7 @@ export function buildExamBriefing(sections, kind) {
             endMin: exam.endMin,
             gapHoursFromPrev: null,
             sameDayAsPrev: false,
+            isPast: false,
             absStart,
             absEnd,
         });
@@ -213,20 +256,20 @@ export function buildExamBriefing(sections, kind) {
     if (dated.length === 0) return null;
     dated.sort((a, b) => a.absStart - b.absStart || a.courseCode.localeCompare(b.courseCode));
 
-    let tightestGapHours = null;
-    let sameDayCount = 0;
-    for (let i = 1; i < dated.length; i++) {
+    const nowMin = campusMinutesAt(now);
+    for (let i = 0; i < dated.length; i++) {
+        dated[i].isPast = dated[i].absEnd <= nowMin;
+        if (i === 0) continue;
         const prev = dated[i - 1];
         const current = dated[i];
-        const gapHours = (current.absStart - prev.absEnd) / 60;
-        current.gapHoursFromPrev = gapHours;
+        current.gapHoursFromPrev = (current.absStart - prev.absEnd) / 60;
         current.sameDayAsPrev = current.date === prev.date;
-        if (current.sameDayAsPrev) sameDayCount++;
-        if (tightestGapHours === null || gapHours < tightestGapHours) tightestGapHours = gapHours;
     }
 
-    const first = dated[0];
-    const last = dated.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), dated[0]);
+    const whole = sbCrunchOver(dated);
+    const firstAhead = dated.findIndex(entry => !entry.isPast);
+    const ahead = firstAhead === -1 ? [] : dated.slice(firstAhead);
+    const nextExam = ahead.length > 0 ? ahead[0] : null;
 
     return {
         kind,
@@ -239,12 +282,53 @@ export function buildExamBriefing(sections, kind) {
             endMin: entry.endMin,
             gapHoursFromPrev: entry.gapHoursFromPrev,
             sameDayAsPrev: entry.sameDayAsPrev,
+            isPast: entry.isPast,
         })),
-        spanHours: (last.absEnd - first.absStart) / 60,
-        tightestGapHours,
-        sameDayCount,
+        spanHours: whole.spanHours,
+        tightestGapHours: whole.tightestGapHours,
+        sameDayCount: whole.sameDayCount,
         missing,
+        upcoming: ahead.length > 0 ? sbCrunchOver(ahead) : null,
+        nextExam: nextExam === null ? null : { ...nextExam },
+        hoursUntilNext: nextExam === null ? null : (nextExam.absStart - nowMin) / 60,
+        pastCount: dated.length - ahead.length,
     };
+}
+
+/**
+ * Which exam period the student should be looking at right now.
+ *
+ * Midterms hold the view while any of them is still ahead; once the last one
+ * has been sat, finals are what's left of the semester — even before their
+ * dates are published, because "no final dates yet" is the honest answer at
+ * that point and the old midterm list is not. With nothing dated either way
+ * there is no season to be wrong about, so midterms lead as before.
+ *
+ * Pure, and only ever a default: the card's toggle still overrides it.
+ */
+export function pickExamKind(sections, now = Date.now()) {
+    const nowMin = campusMinutesAt(now);
+    let midDated = false;
+    let finalDated = false;
+    let midAhead = false;
+
+    for (const section of sections) {
+        for (const kind of ['mid', 'final']) {
+            const exam = kind === 'mid' ? section.midExam : section.finalExam;
+            if (!exam) continue;
+            const absEnd = sbAbsoluteMinutes(exam.date, exam.endMin);
+            if (absEnd === null) continue;
+            if (kind === 'mid') {
+                midDated = true;
+                if (absEnd > nowMin) midAhead = true;
+            } else {
+                finalDated = true;
+            }
+        }
+    }
+
+    if (midAhead) return 'mid';
+    return midDated || finalDated ? 'final' : 'mid';
 }
 
 /**
