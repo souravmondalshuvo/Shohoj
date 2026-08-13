@@ -22,6 +22,7 @@ import {
   formatClock,
   formatDuration,
   parseRoomFloor,
+  pickExamKind,
   suggestGapRooms,
   BRIEFING_WEEK_ORDER,
   NOTABLE_FLOOR_DELTA,
@@ -68,6 +69,25 @@ export function sbcFormatHours(hours) {
   return Number.isInteger(rounded) ? `${rounded}h` : `${rounded.toFixed(1)}h`;
 }
 
+/**
+ * How far off the next exam is, in the words a student would use. Always a
+ * noun phrase so it can follow a course code after a comma ("CSE251, tomorrow"),
+ * including the case where the exam has already started but not finished.
+ */
+export function sbcFormatCountdown(hours) {
+  if (!Number.isFinite(hours)) return '';
+  if (hours <= 0) return 'underway now';
+  if (hours < 1) return 'within the hour';
+  if (hours < 24) return `in ${Math.round(hours)}h`;
+  if (hours < 48) return 'tomorrow';
+  return `in ${Math.round(hours / 24)} days`;
+}
+
+/** Singular noun for an exam period — "midterm" / "final". */
+function sbcKindLabel(kind) {
+  return kind === 'final' ? 'final' : 'midterm';
+}
+
 /** A gap this tight between exams is the thing worth shouting about. */
 function sbcGapTone(hours) {
   if (!Number.isFinite(hours)) return '';
@@ -82,30 +102,50 @@ function sbcGapTone(hours) {
  * The sentence a student actually reads. Everything else in the card is
  * evidence for it, so it has to be true of *their* data, not a template with
  * numbers dropped in — a comfortable exam spread must read as comfortable.
+ *
+ * It also has to be true of *today*: the crunch that matters is the one still
+ * ahead, so the measurements come from `brief.upcoming` and the exams already
+ * sat only ever appear as history. A finished period says it is finished
+ * instead of restating a spread the student has already lived through.
  */
 export function sbcExamVerdict(brief) {
   if (!brief || !Array.isArray(brief.exams) || brief.exams.length === 0) return '';
-  const n = brief.exams.length;
-  if (n === 1) {
-    return `One exam this round — <b>${escHtml(brief.exams[0].courseCode)}</b> on ${escHtml(sbcFormatExamDate(brief.exams[0].date))}.`;
+  const label = sbcKindLabel(brief.kind);
+
+  if (!brief.upcoming) {
+    const last = brief.exams[brief.exams.length - 1];
+    const when = escHtml(sbcFormatExamDate(last.date));
+    return brief.exams.length === 1
+      ? `Your only ${label}, <b>${escHtml(last.courseCode)}</b>, is done — sat ${when}.`
+      : `All ${brief.exams.length} ${label}s are done — the last was ${when}.`;
   }
 
-  const sameDay = brief.exams.filter(e => e.sameDayAsPrev);
-  const span = sbcFormatHours(brief.spanHours);
+  const { count, spanHours, tightestGapHours, sameDayCount } = brief.upcoming;
+  const next = brief.nextExam;
+  const lead = `Next: <b>${escHtml(next.courseCode)}</b>, ${escHtml(sbcFormatCountdown(brief.hoursUntilNext))}.`;
 
-  if (brief.spanHours <= 72) {
-    const tail = sameDay.length > 0
-      ? ` — and <em>${escHtml(sameDay[0].courseCode)} shares a day with the exam before it</em>`
+  if (count === 1) {
+    return brief.pastCount > 0
+      ? `${lead} The last ${label} of the round.`
+      : `${lead} Your only ${label} this round.`;
+  }
+
+  const span = escHtml(sbcFormatHours(spanHours));
+  const left = brief.pastCount > 0 ? `${count} left` : `All ${count}`;
+
+  if (spanHours <= 72) {
+    const tail = sameDayCount > 0
+      ? ` — and <em>${sameDayCount} share${sameDayCount === 1 ? 's' : ''} a day with the exam before it</em>`
       : '';
-    return `All ${n} exams fall inside <span class="hot">${escHtml(span)}</span>${tail}.`;
+    return `${lead} ${left} fall inside <span class="hot">${span}</span>${tail}.`;
   }
-  if (sameDay.length > 0) {
-    return `${n} exams across ${escHtml(span)}, with <em>${sameDay.length} landing on a day that already has one</em>.`;
+  if (sameDayCount > 0) {
+    return `${lead} ${left} across ${span}, with <em>${sameDayCount} landing on a day that already has one</em>.`;
   }
-  if (Number.isFinite(brief.tightestGapHours) && brief.tightestGapHours < 24) {
-    return `${n} exams across ${escHtml(span)}; your tightest turnaround is <em>${escHtml(sbcFormatHours(brief.tightestGapHours))}</em>.`;
+  if (Number.isFinite(tightestGapHours) && tightestGapHours < 24) {
+    return `${lead} ${left} across ${span}; your tightest turnaround is <em>${escHtml(sbcFormatHours(tightestGapHours))}</em>.`;
   }
-  return `${n} exams across ${escHtml(span)}, with at least a day between each. <b>That's a kind spread.</b>`;
+  return `${lead} ${left} across ${span}, with at least a day between each. <b>That's a kind spread.</b>`;
 }
 
 export function sbcExamCardHtml(brief, kind = 'mid') {
@@ -126,15 +166,25 @@ export function sbcExamCardHtml(brief, kind = 'mid') {
       </section>`;
   }
 
-  const rows = brief.exams.map(exam => {
-    const tone = exam.sameDayAsPrev ? 'hot' : sbcGapTone(exam.gapHoursFromPrev);
-    const chip = exam.gapHoursFromPrev === null
-      ? '<span class="pfb-chip cool">first up</span>'
-      : exam.sameDayAsPrev
-        ? `<span class="pfb-chip hot">same day · ${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} later</span>`
-        : `<span class="pfb-chip ${tone}">${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} gap</span>`;
+  // The first exam still ahead opens a fresh run: whatever gap separates it
+  // from the one before is a recovery the student has already made, so it gets
+  // the same "first up" treatment as a period that hasn't started.
+  const firstAhead = brief.exams.findIndex(e => !e.isPast);
+
+  const rows = brief.exams.map((exam, i) => {
+    // A sat exam keeps its place in the order (the sequence is the story) but
+    // drops the crunch chip: a turnaround already survived is not a warning.
+    const opensRun = i === firstAhead;
+    const tone = exam.isPast || opensRun ? '' : exam.sameDayAsPrev ? 'hot' : sbcGapTone(exam.gapHoursFromPrev);
+    const chip = exam.isPast
+      ? '<span class="pfb-chip done">done</span>'
+      : opensRun
+        ? `<span class="pfb-chip cool">${brief.pastCount > 0 ? 'next up' : 'first up'}</span>`
+        : exam.sameDayAsPrev
+          ? `<span class="pfb-chip hot">same day · ${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} later</span>`
+          : `<span class="pfb-chip ${tone}">${escHtml(sbcFormatHours(exam.gapHoursFromPrev))} gap</span>`;
     return `
-        <li class="pfb-row">
+        <li class="pfb-row${exam.isPast ? ' is-past' : ''}">
           <span class="pfb-row-dot ${tone === 'hot' ? 'hot' : ''}" aria-hidden="true"></span>
           <span class="pfb-row-code">${escHtml(exam.courseCode)}</span>
           <span class="pfb-row-when"><b>${escHtml(sbcFormatExamDate(exam.date))}</b> · ${escHtml(formatClock(exam.startMin))}–${escHtml(formatClock(exam.endMin))}</span>
@@ -362,12 +412,14 @@ export function sbcNoRoutineHtml() {
  * is the campus-wide room index (all sections, not just theirs) so gap rooms
  * can be suggested. Pure — the caller does the fetching.
  */
-export function sbcBriefingHtml(sections, busyIndex, kind = 'mid') {
+export function sbcBriefingHtml(sections, busyIndex, kind = null, now = Date.now()) {
   const picked = Array.isArray(sections) ? sections : [];
   if (picked.length === 0) return sbcNoRoutineHtml();
 
+  // No explicit kind means "whichever period is still ahead" — see pickExamKind.
+  const shown = (kind === 'mid' || kind === 'final') ? kind : pickExamKind(picked, now);
   const week = buildWeekSummary(picked);
-  const brief = buildExamBriefing(picked, kind);
+  const brief = buildExamBriefing(picked, shown, now);
   const suggestions = busyIndex
     ? week.gaps.map(gap => suggestGapRooms(busyIndex, gap))
     : week.gaps.map(() => ({ sameFloor: [], elsewhere: [], total: 0 }));
@@ -377,7 +429,7 @@ export function sbcBriefingHtml(sections, busyIndex, kind = 'mid') {
       <h2>This semester</h2>
       <span class="pfb-zone-sub">${picked.length} course${picked.length === 1 ? '' : 's'} · from your saved routine</span>
     </div>
-    ${sbcExamCardHtml(brief, kind)}
+    ${sbcExamCardHtml(brief, shown)}
     ${sbcWeekCardHtml(week)}
     ${sbcGapRoomsCardHtml(week.gaps, suggestions)}`;
 }
@@ -385,17 +437,22 @@ export function sbcBriefingHtml(sections, busyIndex, kind = 'mid') {
 // ── DOM wiring ────────────────────────────────────────────────────────────────
 
 // Held so the Midterms/Finals switch can repaint without re-fetching the feed.
-let _sbcState = { hostId: null, sections: [], busyIndex: null, kind: 'mid' };
+let _sbcState = { hostId: null, sections: [], busyIndex: null, kind: null };
 
+// `kind` is optional: omit it and the period is chosen from the clock, which is
+// what the first paint wants. The toggle passes an explicit kind, and that
+// choice then sticks for the session — a student who went looking for the other
+// period shouldn't have it swapped back out from under them on a repaint.
 export function renderSemesterBriefing(hostId, sections, busyIndex, kind) {
   if (typeof document === 'undefined') return;
   const host = document.getElementById(hostId);
   if (!host) return;
+  const picked = Array.isArray(sections) ? sections : [];
   _sbcState = {
     hostId,
-    sections: Array.isArray(sections) ? sections : [],
+    sections: picked,
     busyIndex: busyIndex || null,
-    kind: kind === 'final' ? 'final' : 'mid',
+    kind: (kind === 'mid' || kind === 'final') ? kind : pickExamKind(picked),
   };
   // Every interpolation above goes through escHtml.
   // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
