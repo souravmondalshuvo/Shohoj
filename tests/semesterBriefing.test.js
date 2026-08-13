@@ -10,10 +10,12 @@ import {
     MIN_GAP_MINUTES,
     buildExamBriefing,
     buildWeekSummary,
+    campusMinutesAt,
     collectRoutineSlots,
     formatClock,
     formatDuration,
     parseRoomFloor,
+    pickExamKind,
     roomsFreeThroughout,
     suggestGapRooms,
 } from '../js/core/semesterBriefing.js';
@@ -209,14 +211,29 @@ test('the week order runs Saturday → Friday', () => {
 
 console.log('\nsemesterBriefing — exam crunch');
 
+/**
+ * A wall-clock instant on campus (UTC+6) as a unix ms timestamp. Every exam
+ * assertion below pins the clock through this, so the suite measures the
+ * fixture rather than drifting into "all past" as real time moves.
+ */
+function campusTime(wallClock) {
+    return Date.parse(`${wallClock}Z`) - 6 * 60 * 60 * 1000;
+}
+
+// The fixture's midterms run Sat 25 → Mon 27 Jul 2026; finals, Sat 12 → Mon 14 Sep.
+const BEFORE_MIDS = campusTime('2026-07-01T09:00');
+const MIDS_HALFWAY = campusTime('2026-07-26T09:00'); // CSE251 sat, CSE220 still to come
+const AFTER_MIDS = campusTime('2026-08-13T10:00');
+const AFTER_FINALS = campusTime('2026-10-01T09:00');
+
 test('orders midterms chronologically across days', () => {
-    const brief = buildExamBriefing(ROUTINE, 'mid');
+    const brief = buildExamBriefing(ROUTINE, 'mid', BEFORE_MIDS);
     eq(brief.exams.map(e => e.courseCode), ['CSE251', 'CSE220', 'MAT215', 'MAT111']);
     eq(brief.missing, []);
 });
 
 test('measures the recovery gap between consecutive exams', () => {
-    const brief = buildExamBriefing(ROUTINE, 'mid');
+    const brief = buildExamBriefing(ROUTINE, 'mid', BEFORE_MIDS);
     eq(brief.exams[0].gapHoursFromPrev, null, 'nothing precedes the first');
     eq(brief.exams[1].gapHoursFromPrev, 19.5, 'Sat 18:30 → Sun 14:00');
     eq(brief.exams[2].gapHoursFromPrev, 16.5, 'Sun 16:00 → Mon 08:30');
@@ -225,18 +242,18 @@ test('measures the recovery gap between consecutive exams', () => {
 });
 
 test('flags two exams landing on one day', () => {
-    const brief = buildExamBriefing(ROUTINE, 'mid');
+    const brief = buildExamBriefing(ROUTINE, 'mid', BEFORE_MIDS);
     eq(brief.exams.map(e => e.sameDayAsPrev), [false, false, false, true]);
     eq(brief.sameDayCount, 1);
 });
 
 test('spans the whole exam season', () => {
-    const brief = buildExamBriefing(ROUTINE, 'mid');
+    const brief = buildExamBriefing(ROUTINE, 'mid', BEFORE_MIDS);
     eq(brief.spanHours, 47.5, 'first exam start Sat 16:30 → last exam end Mon 16:00');
 });
 
 test('finals are read from their own dates', () => {
-    const brief = buildExamBriefing(ROUTINE, 'final');
+    const brief = buildExamBriefing(ROUTINE, 'final', BEFORE_MIDS);
     eq(brief.kind, 'final');
     eq(brief.exams.map(e => e.date),
         ['2026-09-12', '2026-09-13', '2026-09-14', '2026-09-14']);
@@ -287,6 +304,88 @@ test('a single exam has no gap to measure', () => {
     eq(brief.tightestGapHours, null);
     eq(brief.sameDayCount, 0);
     eq(brief.spanHours, 2);
+});
+
+console.log('\nsemesterBriefing — exams against the clock');
+
+test('every exam is pending before the season starts', () => {
+    const brief = buildExamBriefing(ROUTINE, 'mid', BEFORE_MIDS);
+    eq(brief.exams.map(e => e.isPast), [false, false, false, false]);
+    eq(brief.pastCount, 0);
+    eq(brief.nextExam.courseCode, 'CSE251');
+    eq(brief.upcoming.count, 4);
+});
+
+test('an exam is past only once it has finished', () => {
+    // CSE251 runs Sat 25 Jul 16:30–18:30 campus time.
+    const during = buildExamBriefing(ROUTINE, 'mid', campusTime('2026-07-25T17:30'));
+    eq(during.exams[0].isPast, false, 'an exam in progress is still the exam at hand');
+    eq(during.nextExam.courseCode, 'CSE251');
+
+    const atTheBell = buildExamBriefing(ROUTINE, 'mid', campusTime('2026-07-25T18:30'));
+    eq(atTheBell.exams[0].isPast, true, 'past the moment it ends');
+    eq(atTheBell.nextExam.courseCode, 'CSE220');
+});
+
+test('the countdown is read in campus time, not the viewer\'s', () => {
+    // 09:00 in Dhaka on exam morning is 3h before MAT215's 12:00 start.
+    const brief = buildExamBriefing(ROUTINE, 'mid', campusTime('2026-07-27T05:30'));
+    eq(brief.nextExam.courseCode, 'MAT215');
+    eq(brief.hoursUntilNext, 3, 'Mon 05:30 → 08:30');
+    eq(campusMinutesAt(0), 360, 'the epoch is 06:00 on campus');
+});
+
+test('upcoming measures what is left, not the whole season', () => {
+    const brief = buildExamBriefing(ROUTINE, 'mid', MIDS_HALFWAY);
+    eq(brief.pastCount, 1, 'CSE251 is sat');
+    eq(brief.upcoming.count, 3);
+    eq(brief.upcoming.spanHours, 26, 'Sun 14:00 → Mon 16:00');
+    eq(brief.upcoming.tightestGapHours, 3.5, 'the 19.5h gap back to CSE251 is history');
+    eq(brief.upcoming.sameDayCount, 1);
+    eq(brief.spanHours, 47.5, 'the season as published is unchanged');
+    eq(brief.tightestGapHours, 3.5);
+});
+
+test('a finished season reports nothing upcoming', () => {
+    const brief = buildExamBriefing(ROUTINE, 'mid', AFTER_MIDS);
+    eq(brief.exams.every(e => e.isPast), true);
+    eq(brief.upcoming, null);
+    eq(brief.nextExam, null);
+    eq(brief.hoursUntilNext, null);
+    eq(brief.pastCount, 4);
+});
+
+test('the default period follows the clock', () => {
+    eq(pickExamKind(ROUTINE, BEFORE_MIDS), 'mid');
+    eq(pickExamKind(ROUTINE, MIDS_HALFWAY), 'mid', 'one midterm left still holds the view');
+    eq(pickExamKind(ROUTINE, AFTER_MIDS), 'final', 'mids done — finals are what is left');
+    eq(pickExamKind(ROUTINE, AFTER_FINALS), 'final', 'a finished season is not swapped back to mids');
+});
+
+test('mids done with no final dates still points at finals', () => {
+    // The honest answer is "no final dates yet", not last month's midterms.
+    const midsOnly = parseFeed([
+        sec({
+            sectionId: 30, courseCode: 'CSE110', courseName: 'C', sectionName: '01', roomName: '09A-01C',
+            sectionSchedule: {
+                classSchedules: [],
+                midExamDate: '2026-07-26', midExamStartTime: '14:00', midExamEndTime: '16:00',
+            },
+        }),
+    ]).sections;
+    eq(pickExamKind(midsOnly, AFTER_MIDS), 'final');
+    eq(buildExamBriefing(midsOnly, 'final', AFTER_MIDS), null, 'and that period has nothing to show');
+});
+
+test('nothing dated at all leaves midterms leading', () => {
+    const undated = parseFeed([
+        sec({
+            sectionId: 31, courseCode: 'CSE110', courseName: 'C', sectionName: '01', roomName: '09A-01C',
+            sectionSchedule: { classSchedules: [] },
+        }),
+    ]).sections;
+    eq(pickExamKind(undated, AFTER_MIDS), 'mid');
+    eq(pickExamKind([], AFTER_MIDS), 'mid');
 });
 
 console.log('\nsemesterBriefing — where to wait');
