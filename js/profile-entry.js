@@ -97,7 +97,8 @@ async function _pentry_loadBriefing() {
       renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcNoRoutineHtml());
       return;
     }
-    renderSemesterBriefing(PENTRY_BRIEFING_HOST, picked, buildRoomBusyIndex(feed.sections), 'mid');
+    // No kind passed: the card opens on whichever exam period is still ahead.
+    renderSemesterBriefing(PENTRY_BRIEFING_HOST, picked, buildRoomBusyIndex(feed.sections));
   } catch {
     renderSemesterBriefingState(PENTRY_BRIEFING_HOST, sbcUnavailableHtml());
   }
