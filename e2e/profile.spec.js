@@ -369,3 +369,68 @@ test('picks that no longer exist in the feed fall back to the routine invite', a
   });
   await expect(page.locator(BRIEF)).toContainText('Pick your sections');
 });
+
+// ── Next registration, scoped to the student's degree (#539) ─────────────────
+// The zone used to rank every course in the catalogue, so a CSE student's
+// "highest leverage" came back as BCH101 Basic Biochemistry.
+
+const UNLOCK = '#pfUnlockHost';
+
+function crossDeptStub() {
+  window._shohoj_userProfile = () => ({
+    signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+  });
+
+  const section = (id, code, name, prereq) => ({
+    sectionId: id, courseCode: code, courseName: name, sectionName: '01',
+    courseCredit: 3, capacity: 30, consumedSeat: 1, faculties: 'ABC',
+    roomName: '09A-01C', semesterSessionId: 20262, prerequisiteCourses: prereq,
+    sectionSchedule: { classSchedules: [{ day: 'SUNDAY', startTime: '08:00', endTime: '09:20' }] },
+  });
+
+  localStorage.setItem('shohoj_connect_feed_v1', JSON.stringify({
+    fetchedAt: Date.now(), etag: null,
+    payload: [
+      // Biochemistry opens two doors; CSE opens one. Unfiltered, BCH101 wins.
+      section(1, 'BCH101', 'Basic Biochemistry', ''),
+      section(2, 'BCH201', 'Human Physiology', '(BCH101)'),
+      section(3, 'BCH301', 'Enzymology', '(BCH101)'),
+      section(4, 'CSE111', 'Programming Language II', '(CSE110)'),
+      section(5, 'CSE220', 'Data Structures', '(CSE111)'),
+      section(6, 'ARC102', 'Design II', '(ARC101)'),
+    ],
+  }));
+
+  localStorage.setItem('shohoj_connect_profile_v1', JSON.stringify({
+    sid: '20301234', name: 'Test Student',
+    program: 'B.Sc. in Computer Science and Engineering (CSE)',
+    cgpa: 3.2, earnedCredits: 3,
+    semesters: [{ name: 'Fall 2024', courses: [{ name: 'Programming Language I (CSE110)', credits: 3, grade: 'A' }] }],
+    savedAt: Date.now(),
+  }));
+}
+
+test('the unlock map is scoped to the student\'s own degree', async ({ page }) => {
+  await boot(page, crossDeptStub);
+  const zone = page.locator(UNLOCK);
+  await expect(zone).toContainText('Next registration');
+  await expect(zone).toContainText('CSE111');
+  await expect(zone).not.toContainText('BCH101');
+  await expect(zone).not.toContainText('ARC102');
+  // Highest leverage must come from their own program, not the biggest number.
+  await expect(zone.locator('.umc-lead')).toContainText('CSE111');
+  await expect(zone).toContainText('Filtered to your program');
+});
+
+test('the scope switch reveals every department and goes back', async ({ page }) => {
+  await boot(page, crossDeptStub);
+  const zone = page.locator(UNLOCK);
+
+  await zone.locator('[data-action="unlock:showAll"]').click();
+  await expect(zone).toContainText('BCH101');
+  await expect(zone).toContainText('Showing every department');
+
+  await zone.locator('[data-action="unlock:programOnly"]').click();
+  await expect(zone).not.toContainText('BCH101');
+  await expect(zone).toContainText('Filtered to your program');
+});
