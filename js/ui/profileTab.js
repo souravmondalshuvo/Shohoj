@@ -10,6 +10,7 @@
 
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import { gpaCoreCalcSemesterGpa } from '../core/gpa-core.js';
 
 // Read identity through the global installed by review-service.js. Kept behind
 // typeof guards so the module is import-safe in a bare Node test (no window).
@@ -263,12 +264,68 @@ export function dangerZoneSectionHtml() {
     </section>`;
 }
 
-// Academic-profile card: the student's transcript-derived identity (SID, name,
-// program) plus CGPA, credits earned and semester history. Pure — takes the
-// snapshot object (or null). Empty/partial snapshots fall back to the import CTA.
+/**
+ * Semester history as a GPA series (#532). The stored snapshot carries each
+ * semester's courses with their grades and credits, so the GPA is derivable —
+ * and derived through the calculator's own rule set rather than a second
+ * implementation, so F(NT) stays attempted and P/I stay out of the average.
+ *
+ * A semester with nothing graded (a running term, or one that is all pass/fail)
+ * yields `gpa: null`. That is a real state, not a zero: charting it as 0.00
+ * would draw a crash that never happened.
+ *
+ * Pure; exported for unit tests.
+ */
+/**
+ * Whether two names are the same person as far as this card is concerned.
+ * Case and spacing differ freely between a Google profile and a grade sheet
+ * ("SOURAV MONDAL" vs "Sourav  Mondal"); neither difference is worth a row.
+ * Pure; exported for unit tests.
+ */
+export function pfSameName(a, b) {
+  const norm = v => String(v || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const left = norm(a);
+  return left !== '' && left === norm(b);
+}
+
+export function pfSemesterGpaSeries(semesters) {
+  const list = Array.isArray(semesters) ? semesters : [];
+  return list.map(s => {
+    const courses = Array.isArray(s.courses) ? s.courses : [];
+    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }) : null;
+    return {
+      name: String(s.name || ''),
+      courseCount: courses.length,
+      gpa: (typeof gpa === 'number' && Number.isFinite(gpa)) ? gpa : null,
+    };
+  });
+}
+
+/**
+ * Change in GPA from the previous graded semester to the latest one. Null with
+ * fewer than two graded semesters — there is no trend in a single point, and a
+ * chip that invented one would be the same sin as the CGPA chip it replaces.
+ *
+ * Pure; exported for unit tests.
+ */
+export function pfGpaTrend(series) {
+  const graded = (Array.isArray(series) ? series : []).filter(s => s.gpa !== null);
+  if (graded.length < 2) return null;
+  const latest = graded[graded.length - 1];
+  const previous = graded[graded.length - 2];
+  return {
+    delta: latest.gpa - previous.gpa,
+    from: previous.name,
+    to: latest.name,
+  };
+}
+
+// Academic-profile card: the student's transcript-derived identity (SID,
+// program) plus CGPA, credits earned and the semester GPA history. Pure — takes
+// the snapshot object (or null). Empty/partial snapshots fall back to the CTA.
 // No <input>, no CONNECT credential surface — this only reflects an already-
 // imported grade sheet that lives in this browser.
-export function academicProfileSectionHtml(profile) {
+export function academicProfileSectionHtml(profile, accountName = '') {
   const p = (profile && typeof profile === 'object') ? profile : null;
   const hasData = !!p && (p.sid || p.name || (Array.isArray(p.semesters) && p.semesters.length));
 
@@ -303,36 +360,61 @@ export function academicProfileSectionHtml(profile) {
     : cgpaNum >= 2.5 ? 'mid'
     : 'low';
 
+  // The account header already renders the student's name at heading size, so
+  // the row only earns its place when the transcript disagrees with it — an
+  // official name that differs from the Google one is worth showing, the same
+  // name twice is not.
+  const transcriptName = pfCleanName(p.name);
   const rows = [];
-  if (p.sid)     rows.push(['Student ID', p.sid]);
-  if (p.name)    rows.push(['Name', pfCleanName(p.name)]);
+  if (p.sid) rows.push(['Student ID', p.sid]);
+  if (transcriptName && !pfSameName(transcriptName, accountName)) {
+    rows.push(['Name on transcript', transcriptName]);
+  }
   if (p.program) rows.push(['Program', p.program]);
   const detailRows = rows.map(([k, v]) =>
     `<div class="pf-detail-row"><span class="pf-detail-key">${escHtml(k)}</span><span class="pf-detail-val">${escHtml(String(v))}</span></div>`
   ).join('');
 
-  // Course count per semester drives a relative bar; the busiest term sets 100%.
-  const maxCourses = semesters.reduce(
-    (m, s) => Math.max(m, Array.isArray(s.courses) ? s.courses.length : 0), 0) || 1;
-  const semList = semesters.length === 0 ? '' : `
-      <div class="pf-subhead">Semester history <span class="pf-card-count">${semesters.length} semester${semesters.length === 1 ? '' : 's'}</span></div>
-      <ul class="pf-timeline">${semesters.map(s => {
-        const n = Array.isArray(s.courses) ? s.courses.length : 0;
-        const w = Math.round((n / maxCourses) * 100);
+  // Semester GPA on the 4.0 scale drives the bar, so the history answers "am I
+  // climbing or sliding?" — the course count it used to plot was near-constant
+  // across a normal degree and told the student nothing.
+  const series = pfSemesterGpaSeries(semesters);
+  const semList = series.length === 0 ? '' : `
+      <div class="pf-subhead">Semester GPA</div>
+      <ul class="pf-timeline">${series.map(s => {
+        const known = s.gpa !== null;
+        const w = known ? Math.round((s.gpa / 4) * 100) : 0;
+        const tone = !known ? 'na'
+          : s.gpa >= 3.5 ? 'high'
+          : s.gpa >= 3.0 ? 'good'
+          : s.gpa >= 2.5 ? 'mid'
+          : 'low';
         return `
         <li class="pf-tl-item">
-          <span class="pf-tl-dot" aria-hidden="true"></span>
-          <span class="pf-tl-name">${escHtml(s.name || '')}</span>
-          <span class="pf-tl-bar" aria-hidden="true"><span class="pf-tl-fill" style="--pf-w:${w}"></span></span>
-          <span class="pf-tl-count">${n} course${n === 1 ? '' : 's'}</span>
+          <span class="pf-tl-dot pf-tl-dot--${tone}" aria-hidden="true"></span>
+          <span class="pf-tl-name">${escHtml(s.name)}</span>
+          <span class="pf-tl-bar" aria-hidden="true"><span class="pf-tl-fill pf-tl-fill--${tone}" style="--pf-w:${w}"></span></span>
+          <span class="pf-tl-count">${known ? escHtml(s.gpa.toFixed(2)) : '<span class="pf-tl-na">no grades yet</span>'}</span>
         </li>`;
       }).join('')}</ul>`;
+
+  // The head chip carries what the gauge can't: which way the last term moved.
+  const trend = pfGpaTrend(series);
+  const trendChip = trend === null ? '' : (() => {
+    const rounded = Math.abs(trend.delta).toFixed(2);
+    if (Number.parseFloat(rounded) === 0) {
+      return `<span class="pf-card-count pf-trend pf-trend--flat" title="${escAttr(`${trend.from} → ${trend.to}`)}">level last term</span>`;
+    }
+    const up = trend.delta > 0;
+    return `<span class="pf-card-count pf-trend pf-trend--${up ? 'up' : 'down'}"
+                  title="${escAttr(`${trend.from} → ${trend.to}`)}">${up ? '▲' : '▼'} ${escHtml(rounded)} last term</span>`;
+  })();
 
   return `
     <section class="pf-card pf-acard">
       <div class="pf-card-head">
         <h3 class="pf-card-title">🎓 Academic profile</h3>
-        <span class="pf-card-count">CGPA ${escHtml(cgpa)}</span>
+        ${trendChip}
       </div>
       <div class="pf-acard-top">
         <div class="pf-gauge pf-gauge--${band}" style="--pf-pct:${pct.toFixed(1)}">
@@ -392,7 +474,7 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastS
       ${includeBriefing ? '<div id="pfBriefingHost" class="pf-briefing"></div>' : ''}
       ${includeBriefing ? '<div id="pfUnlockHost" class="pf-briefing"></div>' : ''}
       <div class="pf-sections">
-        ${academicProfileSectionHtml(academic)}
+        ${academicProfileSectionHtml(academic, p.displayName || '')}
         ${includeSeatAlerts ? seatAlertsSectionHtml(seatAlerts) : ''}
         ${routineSummarySectionHtml(routine)}
         ${reviewsSectionHtml(reviews)}
