@@ -1,18 +1,27 @@
 // tests/assistantClient.test.js
 //
-// Covers the pure Shohoj Assistant client (src/features/assistant/
-// assistantClient.ts): transcript clamping to the Worker's contract, and the
-// guard order + HTTP→typed-error mapping of sendAssistantTurn. All offline —
-// fetch and the token getter are injected.
+// Covers the pure Shohoj Assistant client: transcript clamping to the Worker's
+// contract, the guard order + HTTP→typed-error mapping of sendAssistantTurn,
+// the tab-aware starter prompts, and sessionStorage transcript persistence. All
+// offline — fetch, the token getter, and storage are injected.
+//
+// Imports go through the shell's typed boundary (src/features/assistant/
+// assistantClient.ts) on purpose: it is a re-export of the vanilla-JS
+// implementation in js/core/assistantClient.js that the legacy bundle ships, so
+// exercising it here proves both front-ends share one client (#533).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
   ASSISTANT_MAX_MESSAGES,
+  ASSISTANT_TRANSCRIPT_KEY,
   clampTranscript,
+  examplePromptsForTab,
   fetchAssistantAvailability,
+  readStoredTranscript,
   sendAssistantTurn,
+  writeStoredTranscript,
 } from '../src/features/assistant/assistantClient.ts';
 
 const user = (content) => ({ role: 'user', content });
@@ -194,4 +203,67 @@ test('fetchAssistantAvailability is unconfigured with no worker URL', async () =
     fetchImpl: async () => { throw new Error('must not be called'); },
   });
   assert.equal(availability, 'unconfigured');
+});
+
+// ── Starter prompts (#533) ────────────────────────────────────────────────────
+
+test('examplePromptsForTab offers three prompts for any tab, seat-first on Seats', () => {
+  const seats = examplePromptsForTab('seats');
+  assert.equal(seats.length, 3);
+  assert.match(seats[0], /seats/i);
+
+  const fallback = examplePromptsForTab('calculator');
+  assert.equal(fallback.length, 3);
+  // Unknown/absent tabs fall back to the general set rather than throwing.
+  assert.deepEqual(examplePromptsForTab(undefined), fallback);
+  assert.deepEqual(examplePromptsForTab('not-a-tab'), fallback);
+});
+
+// ── Transcript persistence (#533) ─────────────────────────────────────────────
+
+function fakeStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return {
+    getItem: k => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => map.set(k, String(v)),
+    removeItem: k => map.delete(k),
+    has: k => map.has(k),
+  };
+}
+
+test('a written transcript reads back identically', () => {
+  const storage = fakeStorage();
+  const transcript = [user('what is my cgpa?'), reply('3.42'), user('and next term?')];
+  writeStoredTranscript(storage, transcript);
+  assert.deepEqual(readStoredTranscript(storage), transcript);
+});
+
+test('writing an empty transcript clears the key rather than storing []', () => {
+  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '[{"role":"user","content":"x"}]' });
+  writeStoredTranscript(storage, []);
+  assert.equal(storage.has(ASSISTANT_TRANSCRIPT_KEY), false);
+  assert.deepEqual(readStoredTranscript(storage), []);
+});
+
+test('a stored transcript is clamped to the Worker contract on read', () => {
+  const oversize = [];
+  for (let i = 0; i < 15; i++) oversize.push(user(`q${i}`), reply(`a${i}`));
+  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify(oversize) });
+  const restored = readStoredTranscript(storage);
+  assert.ok(restored.length <= ASSISTANT_MAX_MESSAGES);
+  assert.equal(restored[0].role, 'user');
+});
+
+test('corrupt, missing, or unavailable storage yields an empty transcript', () => {
+  assert.deepEqual(readStoredTranscript(fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '{oops' })), []);
+  assert.deepEqual(readStoredTranscript(fakeStorage()), []);
+  assert.deepEqual(readStoredTranscript(null), []);
+  const throwing = {
+    getItem() { throw new Error('denied'); },
+    setItem() { throw new Error('denied'); },
+    removeItem() { throw new Error('denied'); },
+  };
+  assert.deepEqual(readStoredTranscript(throwing), []);
+  // Writing through a hostile storage must not break the chat.
+  writeStoredTranscript(throwing, [user('hi')]);
 });
