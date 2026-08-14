@@ -7387,6 +7387,20 @@ body[data-page="admin"] .orb { display: none !important; }
   line-height: 1.55;
   margin-top: 4px;
 }
+/* Scope line: which degree the map is filtered to, and the way out of it. */
+.umc-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.umc-scope-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-green);
+  background: rgba(46,204,113,0.12);
+  border: 1px solid var(--chip-border);
+  border-radius: 999px;
+  padding: 3px 11px;
+  cursor: pointer;
+}
+.umc-scope-btn:hover { background: rgba(46,204,113,0.2); }
 .umc-sub strong {
   color: var(--green);
 }
