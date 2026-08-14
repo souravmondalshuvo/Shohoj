@@ -1,0 +1,335 @@
+// js/ui/assistantFab.js
+//
+// Shohoj Assistant (#533) on the legacy page: a floating launcher pill in the
+// bottom-right plus a chat drawer. Mounted once on <body>, so it follows the
+// student across every calculator tab — the Seats and Routine tabs are where
+// "are there seats in MAT216?" actually gets asked, not the hero.
+//
+// The Worker side already exists and is untouched (#435): POST /api/assistant
+// verifies the Firebase token, bakes the uid into its own loaders, and answers
+// only from that student's data. This module is transport + DOM.
+//
+// Gating mirrors the React shell exactly, and the third condition is the #455
+// lesson — the drawer once shipped while ANTHROPIC_API_KEY was unset and failed
+// on every single turn. The launcher appears only when:
+//   - the Worker URL is configured,
+//   - the student is signed in (the endpoint requires a token), and
+//   - GET /ready affirmatively reports the assistant configured.
+// An inconclusive probe keeps the launcher hidden. Signed-out visitors get no
+// launcher at all rather than a button that dead-ends in an auth wall.
+//
+// Everything is built with createElement + textContent and wired with
+// addEventListener: model output is never parsed as HTML, and prod CSP drops
+// inline on* attributes anyway (script-src-attr).
+
+import {
+  examplePromptsForTab,
+  fetchAssistantAvailability,
+  readStoredTranscript,
+  sendAssistantTurn,
+  writeStoredTranscript,
+} from '../core/assistantClient.js';
+
+const DRAWER_NOTE =
+  'Answers use only your own saved data. Chats aren’t saved — they reset when you close this tab.';
+
+let _fab = null;
+let _drawer = null;
+let _logEl = null;
+let _inputEl = null;
+let _sendEl = null;
+let _transcript = [];
+let _pending = false;
+let _error = null;
+let _availability = 'unknown';
+// The readiness probe runs at most once per page load. refreshLauncher() is
+// called on every auth change (which flaps repeatedly while Firestore settles),
+// so a probe that re-armed itself on a non-ready answer would spin: fail →
+// refresh → probe → fail. An inconclusive probe therefore keeps the launcher
+// hidden until the next reload rather than retrying in a loop.
+let _probed = false;
+// The cloud flush (see assistant-service.js) only has to happen once per page
+// load — after that, ordinary saves keep Firestore current.
+let _flushed = false;
+
+// ── Environment ───────────────────────────────────────────────────────────────
+
+function workerUrl() {
+  const u = window._shohoj_papers_worker_url;
+  return typeof u === 'string' && u.startsWith('http') ? u.replace(/\/$/, '') : null;
+}
+
+function signedIn() {
+  return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+}
+
+function authReady() {
+  return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
+}
+
+function getToken() {
+  return typeof window._shohoj_idToken === 'function'
+    ? window._shohoj_idToken()
+    : Promise.resolve(null);
+}
+
+/** Which calculator tab the student is on, for the starter prompts. */
+function activeTab() {
+  const el = document.querySelector('#calcTabs [data-tab].active');
+  if (el?.dataset?.tab) return el.dataset.tab;
+  try {
+    return sessionStorage.getItem('shohoj_active_tab') || '';
+  } catch (_e) {
+    return '';
+  }
+}
+
+function persist() {
+  try {
+    writeStoredTranscript(sessionStorage, _transcript);
+  } catch (_e) {
+    /* storage unavailable — the chat just won't survive a tab switch */
+  }
+}
+
+// ── Drawer rendering ──────────────────────────────────────────────────────────
+
+function bubble(role, text, extraClass) {
+  const div = document.createElement('div');
+  div.className =
+    'assistant-bubble ' +
+    (role === 'user' ? 'assistant-bubble--user' : 'assistant-bubble--reply') +
+    (extraClass ? ' ' + extraClass : '');
+  div.textContent = text;
+  return div;
+}
+
+function renderEmptyState() {
+  const wrap = document.createElement('div');
+  wrap.className = 'assistant-empty';
+  const p = document.createElement('p');
+  p.textContent = 'Ask about your CGPA goals, prerequisites, or seat availability. Try one:';
+  wrap.appendChild(p);
+  examplePromptsForTab(activeTab()).forEach(prompt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'assistant-example';
+    btn.textContent = prompt;
+    btn.addEventListener('click', () => ask(prompt));
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function renderLog() {
+  if (!_logEl) return;
+  _logEl.replaceChildren();
+
+  if (_transcript.length === 0 && !_pending) {
+    _logEl.appendChild(renderEmptyState());
+  } else {
+    _transcript.forEach(m => _logEl.appendChild(bubble(m.role, m.content)));
+    if (_pending) {
+      _logEl.appendChild(bubble('assistant', 'Thinking…', 'assistant-bubble--pending'));
+    }
+  }
+
+  if (_error) {
+    const err = document.createElement('div');
+    err.className = 'assistant-error';
+    err.setAttribute('role', 'alert');
+    err.textContent = _error;
+    _logEl.appendChild(err);
+  }
+
+  _logEl.scrollTo({ top: _logEl.scrollHeight });
+  if (_sendEl) _sendEl.disabled = _pending || !_inputEl?.value.trim();
+  if (_inputEl) _inputEl.disabled = _pending;
+}
+
+async function ask(question) {
+  const content = String(question || '').trim();
+  if (!content || _pending) return;
+
+  _transcript = [..._transcript, { role: 'user', content }];
+  if (_inputEl) _inputEl.value = '';
+  _error = null;
+  _pending = true;
+  persist();
+  renderLog();
+
+  try {
+    // The Worker answers from users/{uid} in Firestore. Push anything still
+    // sitting in the local debounce window first, or a student who just typed
+    // their grades is told they have no saved semesters.
+    if (!_flushed) {
+      _flushed = true;
+      if (typeof window._shohoj_flushCloudSave === 'function') {
+        await window._shohoj_flushCloudSave();
+      }
+    }
+    const result = await sendAssistantTurn(_transcript, { workerUrl: workerUrl(), getToken });
+    if (result.ok) {
+      _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
+      persist();
+    } else {
+      _error = result.error;
+    }
+  } finally {
+    _pending = false;
+    renderLog();
+    _inputEl?.focus();
+  }
+}
+
+function buildDrawer() {
+  const aside = document.createElement('aside');
+  aside.className = 'assistant-drawer';
+  aside.id = 'assistantDrawer';
+  aside.setAttribute('role', 'dialog');
+  aside.setAttribute('aria-label', 'Shohoj Assistant');
+  aside.setAttribute('aria-modal', 'false');
+
+  const header = document.createElement('header');
+  header.className = 'assistant-drawer-header';
+  const title = document.createElement('h2');
+  title.className = 'assistant-drawer-title';
+  title.textContent = 'Shohoj Assistant';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'assistant-drawer-close';
+  close.setAttribute('aria-label', 'Close assistant');
+  close.textContent = '✕';
+  close.addEventListener('click', () => closeDrawer());
+  header.append(title, close);
+
+  const note = document.createElement('p');
+  note.className = 'assistant-drawer-note';
+  note.textContent = DRAWER_NOTE;
+
+  _logEl = document.createElement('div');
+  _logEl.className = 'assistant-log';
+  _logEl.setAttribute('aria-live', 'polite');
+
+  const form = document.createElement('form');
+  form.className = 'assistant-composer';
+  _inputEl = document.createElement('textarea');
+  _inputEl.className = 'assistant-input';
+  _inputEl.rows = 2;
+  _inputEl.maxLength = 4000;
+  _inputEl.placeholder = 'Ask about your courses…';
+  _inputEl.setAttribute('aria-label', 'Message the assistant');
+  _sendEl = document.createElement('button');
+  _sendEl.type = 'submit';
+  _sendEl.className = 'assistant-send';
+  _sendEl.textContent = 'Send';
+  _sendEl.disabled = true;
+  form.append(_inputEl, _sendEl);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    ask(_inputEl.value);
+  });
+  _inputEl.addEventListener('input', () => {
+    _sendEl.disabled = _pending || !_inputEl.value.trim();
+  });
+  _inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      ask(_inputEl.value);
+    }
+  });
+
+  aside.append(header, note, _logEl, form);
+  return aside;
+}
+
+function onKeydown(e) {
+  if (e.key === 'Escape' && _drawer) closeDrawer();
+}
+
+function openDrawer() {
+  if (_drawer) return;
+  _transcript = readStoredTranscript(typeof sessionStorage !== 'undefined' ? sessionStorage : null);
+  _error = null;
+  _drawer = buildDrawer();
+  document.body.appendChild(_drawer);
+  document.addEventListener('keydown', onKeydown);
+  if (_fab) _fab.style.display = 'none';
+  renderLog();
+  _inputEl?.focus();
+}
+
+function closeDrawer() {
+  if (!_drawer) return;
+  document.removeEventListener('keydown', onKeydown);
+  _drawer.remove();
+  _drawer = null;
+  _logEl = null;
+  _inputEl = null;
+  _sendEl = null;
+  if (_fab) {
+    _fab.style.display = '';
+    _fab.focus();
+  }
+}
+
+// ── Launcher gate ─────────────────────────────────────────────────────────────
+
+function mountFab() {
+  if (_fab) return;
+  _fab = document.createElement('button');
+  _fab.type = 'button';
+  _fab.className = 'assistant-fab';
+  _fab.id = 'assistantFab';
+  _fab.setAttribute('aria-label', 'Open Shohoj Assistant');
+  const spark = document.createElement('span');
+  spark.setAttribute('aria-hidden', 'true');
+  spark.textContent = '✦';
+  _fab.append(spark, document.createTextNode(' Assistant'));
+  _fab.addEventListener('click', () => openDrawer());
+  document.body.appendChild(_fab);
+}
+
+function unmountFab() {
+  closeDrawer();
+  _fab?.remove();
+  _fab = null;
+}
+
+function probe() {
+  if (_probed) return;
+  const base = workerUrl();
+  if (!base) return;
+  _probed = true;
+  fetchAssistantAvailability({ workerUrl: base }).then(next => {
+    _availability = next;
+    // Only a 'ready' answer has anything to show. Re-entering refreshLauncher()
+    // on any other result would just call probe() again — see _probed above.
+    if (next === 'ready') refreshLauncher();
+  });
+}
+
+/** Re-evaluate the three gate conditions and mount/unmount accordingly. */
+export function refreshLauncher() {
+  if (!workerUrl() || !authReady() || !signedIn()) {
+    unmountFab();
+    return;
+  }
+  if (_availability !== 'ready') {
+    probe();
+    unmountFab();
+    return;
+  }
+  mountFab();
+}
+
+export function initAssistantFab() {
+  refreshLauncher();
+  // Auth resolves after boot and can flap while Firestore settles, so the
+  // launcher follows the auth state rather than the first frame's answer.
+  window.addEventListener('shohoj:auth-changed', () => refreshLauncher());
+}
+
+// Test seam: lets the e2e spec drive the gate without a real Firebase session.
+window.__shohojAssistantRefresh = refreshLauncher;
