@@ -76,9 +76,15 @@ export function examplePromptsForTab(tabId: string | null | undefined): readonly
 
 export function readStoredTranscript(
   storage: AssistantTranscriptStorage | null | undefined,
+  owner: string | null | undefined,
 ): AssistantMessage[];
 
 export function writeStoredTranscript(
   storage: AssistantTranscriptStorage | null | undefined,
   transcript: readonly AssistantMessage[],
+  owner: string | null | undefined,
+): void;
+
+export function clearStoredTranscript(
+  storage: AssistantTranscriptStorage | null | undefined,
 ): void;
