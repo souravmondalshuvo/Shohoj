@@ -25,8 +25,10 @@
 //
 // Pure: no DOM, no fetch, no storage.
 
-import { GRADES, type GradeLetter } from './grades.ts';
+import { type GradeLetter } from './grades.ts';
 import type { CourseCode } from './types.ts';
+import { UNIVERSITIES } from './university.ts';
+import type { GradeScale } from './university.ts';
 
 // ---------------------------------------------------------------------------
 // Which grades satisfy a prerequisite
@@ -38,8 +40,10 @@ import type { CourseCode } from './types.ts';
  *
  * The policy, stated rather than implied:
  *
- *   - Any letter carrying grade points (A+ … D-) satisfies. D- is BRACU's
- *     lowest passing grade, so it earns the credit and clears the prerequisite.
+ *   - Any letter carrying grade points above zero satisfies — down to the
+ *     campus's own lowest pass, which is D- at BRACU and D at NSU. Reading the
+ *     threshold off the scale rather than naming a letter means a campus that
+ *     awards no D- is not quietly held to one.
  *   - `P` satisfies. A pass is a pass; it carries no points by design.
  *   - `F` and `F(NT)` do not. The course was attempted and not passed.
  *   - `W` does not. A withdrawal consumed an attempt but produced no result —
@@ -47,16 +51,24 @@ import type { CourseCode } from './types.ts';
  *   - `I` does not, and neither does a blank grade. Both mean "no result yet",
  *     which is the running semester's normal state.
  *
- * Deliberately NOT modelled: programs that demand a minimum grade above D- in
- * a specific prerequisite chain. That rule is per-program and not in any data
- * the app holds, and inventing it would block students the honest way round.
- * Erring toward showing the course matches rule 1 at the top of this file.
+ * Deliberately NOT modelled: programs that demand a minimum grade above the
+ * lowest pass in a specific prerequisite chain. That rule is per-program and
+ * not in any data the app holds, and inventing it would block students the
+ * honest way round. Erring toward showing the course matches rule 1 at the top
+ * of this file.
  */
-export function gradeSatisfiesPrereq(grade: string | null | undefined): boolean {
+export function gradeSatisfiesPrereq(
+  grade: string | null | undefined,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
+): boolean {
   const letter = String(grade ?? '').trim() as GradeLetter;
   if (letter === 'P') return true;
   if (letter === 'F' || letter === 'F(NT)' || letter === 'W' || letter === 'I') return false;
-  const points = GRADES[letter];
+  // A letter the campus does not award reads as undefined, so it satisfies
+  // nothing — an A+ on an NSU transcript is a data error, not a pass.
+  const points = Object.prototype.hasOwnProperty.call(scale.points, letter)
+    ? scale.points[letter]
+    : undefined;
   return typeof points === 'number' && points > 0;
 }
 
