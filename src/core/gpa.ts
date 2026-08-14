@@ -1,6 +1,6 @@
 import type { GradeLetter } from './grades.ts';
 import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types.ts';
-import { UNIVERSITIES } from './university.ts';
+import { isRepeatableGrade, UNIVERSITIES } from './university.ts';
 import type {
   GradeScale,
   RepeatEligibility,
@@ -276,9 +276,7 @@ function gpaCoreIsRepeatEligibleImpl(
 
   const gp = gradePointFor(grade, scale);
   if (gp === undefined || gp === null) return false;
-  // BRACU repeats strictly below the threshold; NSU's "B or lower" includes a
-  // grade sitting exactly on it.
-  return eligibility.inclusive ? gp <= eligibility.threshold : gp < eligibility.threshold;
+  return isRepeatableGrade(gp, eligibility);
 }
 
 function gpaCoreGetImprovementStrategyImpl(
