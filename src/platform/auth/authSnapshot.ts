@@ -11,6 +11,8 @@
 // (the legacy app already exposes identity on window._shohoj_*) or, standalone,
 // the anonymous source. The normalization is pure and unit-tested.
 
+import { isUniversityId, universityForEmail, type UniversityId } from '../../core/university.ts';
+
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
 export interface AuthSnapshot {
@@ -18,6 +20,14 @@ export interface AuthSnapshot {
   readonly uid: string | null;
   readonly email: string | null;
   readonly isAdmin: boolean;
+  /**
+   * The campus this user belongs to, resolved from their email domain.
+   *
+   * Null for a signed-out user, and also null for an admin whose address is not
+   * on any registered campus — the admin claim admits them, but it does not
+   * invent a campus for them, so the UI must ask rather than assume.
+   */
+  readonly university: UniversityId | null;
 }
 
 export const ANONYMOUS: AuthSnapshot = {
@@ -25,6 +35,7 @@ export const ANONYMOUS: AuthSnapshot = {
   uid: null,
   email: null,
   isAdmin: false,
+  university: null,
 };
 
 export const LOADING: AuthSnapshot = {
@@ -32,6 +43,7 @@ export const LOADING: AuthSnapshot = {
   uid: null,
   email: null,
   isAdmin: false,
+  university: null,
 };
 
 /** Loose shape of the legacy identity globals (all optional / untrusted). */
@@ -40,6 +52,7 @@ export interface RawIdentity {
   readonly uid?: unknown;
   readonly email?: unknown;
   readonly isAdmin?: unknown;
+  readonly university?: unknown;
 }
 
 function asString(value: unknown): string | null {
@@ -51,16 +64,25 @@ function asString(value: unknown): string | null {
  * ready the status is `loading`; a present uid means `authenticated`, otherwise
  * `anonymous`. `isAdmin` is only ever true for an authenticated user — a client
  * convenience for hiding controls, never a security decision.
+ *
+ * The campus is derived from the email rather than trusted from the reading:
+ * these globals are untrusted input, and a caller that could name its own
+ * campus could read another campus's data through a UI that believed it. An
+ * explicitly supplied `university` is honoured only when it is a registered id
+ * AND the email does not already resolve to a different one.
  */
 export function normalizeAuthSnapshot(raw: RawIdentity): AuthSnapshot {
   if (raw.authReady !== true) return LOADING;
   const uid = asString(raw.uid);
   if (uid === null) return ANONYMOUS;
+  const email = asString(raw.email);
+  const fromEmail = universityForEmail(email)?.id ?? null;
   return {
     status: 'authenticated',
     uid,
-    email: asString(raw.email),
+    email,
     isAdmin: raw.isAdmin === true,
+    university: fromEmail ?? (isUniversityId(raw.university) ? raw.university : null),
   };
 }
 
