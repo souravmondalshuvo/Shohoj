@@ -48,6 +48,8 @@ const BRACU_UID = 'bracu_user';
 const BRACU_EMAIL = 'student@g.bracu.ac.bd';
 const OTHER_BRACU_UID = 'bracu_other';
 const OTHER_BRACU_EMAIL = 'other@g.bracu.ac.bd';
+const NSU_UID = 'nsu_user';
+const NSU_EMAIL = 'student@northsouth.edu';
 const OUTSIDE_UID = 'random_user';
 const OUTSIDE_EMAIL = 'someone@example.com';
 const ADMIN_UID = 'admin_user';
@@ -71,6 +73,13 @@ async function test(name, fn) {
 }
 
 function bracuCtx(uid = BRACU_UID, email = BRACU_EMAIL) {
+  return testEnv.authenticatedContext(uid, {
+    email,
+    email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  });
+}
+function nsuCtx(uid = NSU_UID, email = NSU_EMAIL) {
   return testEnv.authenticatedContext(uid, {
     email,
     email_verified: true,
@@ -435,6 +444,7 @@ async function run() {
       text: 'something is broken',
       anonymous: false,
       uid: BRACU_UID,
+      university: 'bracu',
       createdAt: serverTimestamp(),
       ...extra,
     };
@@ -610,6 +620,7 @@ async function run() {
     contactLink: 'https://m.me/example',
     capacity: 6,
     creatorUid: BRACU_UID,
+    university: 'bracu',
     createdAt: serverTimestamp(),
     ...extra,
   });
@@ -619,7 +630,7 @@ async function run() {
       await setDoc(doc(ctx.firestore(), 'studyGroups', id), {
         courseCode: 'CSE220', title: 'Seeded', mode: 'online',
         contactLink: 'https://m.me/x', capacity: 6,
-        creatorUid: BRACU_UID, createdAt: new Date(), ...data,
+        creatorUid: BRACU_UID, university: 'bracu', createdAt: new Date(), ...data,
       });
     });
   };
@@ -742,6 +753,7 @@ async function run() {
       title: 'Black umbrella',
       status: 'open',
       creatorUid: BRACU_UID,
+      university: 'bracu',
       createdAt: serverTimestamp(),
       ...extra,
     };
@@ -851,6 +863,100 @@ async function run() {
     const admin = adminCtx().firestore();
     await assertSucceeds(getDoc(doc(admin, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
     await assertSucceeds(deleteDoc(doc(admin, 'lostFoundClaims', `lf1_${OTHER_BRACU_UID}`)));
+  });
+
+  // ── Campus isolation ─────────────────────────────────────────────────
+  // The point of tenancy: a student at one campus must never see another
+  // campus's data. Every one of these would be a data leak if it inverted.
+
+  const seedRaw = async (collection, id, data) => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), collection, id), data);
+    });
+  };
+
+  await test('campus isolation: NSU cannot read BRACU documents', async () => {
+    await seedRaw('studyGroups', 'grp_bracu', {
+      courseCode: 'CSE220', title: 'BRACU group', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, university: 'bracu', createdAt: new Date(),
+    });
+    await seedRaw('lostFoundPosts', 'lf_bracu', {
+      type: 'lost', title: 'BRACU umbrella', status: 'open',
+      creatorUid: BRACU_UID, university: 'bracu', createdAt: new Date(),
+    });
+    await seedRaw('appFeedback', 'fb_bracu', {
+      type: 'bug', text: 'BRACU only', anonymous: true,
+      university: 'bracu', createdAt: new Date(),
+    });
+
+    const nsu = nsuCtx().firestore();
+    await assertFails(getDoc(doc(nsu, 'studyGroups', 'grp_bracu')));
+    await assertFails(getDoc(doc(nsu, 'lostFoundPosts', 'lf_bracu')));
+    await assertFails(getDoc(doc(nsu, 'appFeedback', 'fb_bracu')));
+
+    // ...and BRACU still can, so the gate is scoping rather than just denying.
+    const bracu = bracuCtx().firestore();
+    await assertSucceeds(getDoc(doc(bracu, 'studyGroups', 'grp_bracu')));
+    await assertSucceeds(getDoc(doc(bracu, 'lostFoundPosts', 'lf_bracu')));
+    await assertSucceeds(getDoc(doc(bracu, 'appFeedback', 'fb_bracu')));
+  });
+
+  await test('campus isolation: BRACU cannot read NSU documents', async () => {
+    await seedRaw('studyGroups', 'grp_nsu', {
+      courseCode: 'CSE225', title: 'NSU group', mode: 'online',
+      contactLink: 'https://m.me/y', capacity: 6,
+      creatorUid: NSU_UID, university: 'nsu', createdAt: new Date(),
+    });
+    await assertFails(getDoc(doc(bracuCtx().firestore(), 'studyGroups', 'grp_nsu')));
+    await assertSucceeds(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'grp_nsu')));
+  });
+
+  await test('campus isolation: a client cannot label a document as another campus', async () => {
+    const nsu = nsuCtx().firestore();
+    // An NSU student writing a BRACU-labelled group would plant a document
+    // inside a campus they do not belong to.
+    await assertFails(setDoc(doc(nsu, 'studyGroups', 'planted'), {
+      courseCode: 'CSE220', title: 'Planted', mode: 'online',
+      contactLink: 'https://m.me/z', capacity: 6,
+      creatorUid: NSU_UID, university: 'bracu', createdAt: serverTimestamp(),
+    }));
+    // Their own campus is fine.
+    await assertSucceeds(setDoc(doc(nsu, 'studyGroups', 'legit'), {
+      courseCode: 'CSE220', title: 'Legit', mode: 'online',
+      contactLink: 'https://m.me/z', capacity: 6,
+      creatorUid: NSU_UID, university: 'nsu', createdAt: serverTimestamp(),
+    }));
+    // An unregistered campus id is not a campus.
+    await assertFails(setDoc(doc(nsu, 'studyGroups', 'invented'), {
+      courseCode: 'CSE220', title: 'Invented', mode: 'online',
+      contactLink: 'https://m.me/z', capacity: 6,
+      creatorUid: NSU_UID, university: 'harvard', createdAt: serverTimestamp(),
+    }));
+  });
+
+  await test('campus isolation: pre-tenancy documents belong to BRACU', async () => {
+    // Everything written before tenancy existed has no university field, and
+    // all of it is BRACU's — the app served nobody else. BRACU must still read
+    // it, and NSU must not inherit it.
+    await seedRaw('studyGroups', 'grp_legacy', {
+      courseCode: 'CSE220', title: 'Legacy group', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, createdAt: new Date(),
+    });
+    await assertSucceeds(getDoc(doc(bracuCtx().firestore(), 'studyGroups', 'grp_legacy')));
+    await assertFails(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'grp_legacy')));
+  });
+
+  await test('campus isolation: an outsider is still refused everywhere', async () => {
+    await seedRaw('studyGroups', 'grp_any', {
+      courseCode: 'CSE220', title: 'Any', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, university: 'bracu', createdAt: new Date(),
+    });
+    const outsider = outsiderCtx().firestore();
+    await assertFails(getDoc(doc(outsider, 'studyGroups', 'grp_any')));
+    await assertFails(getDoc(doc(outsider, 'appFeedback', 'anything')));
   });
 
   await testEnv.cleanup();
