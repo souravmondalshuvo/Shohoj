@@ -57,17 +57,28 @@ export const POINTS_TO_GRADE = [
   [0.0, 'F'],
 ] as const satisfies readonly (readonly [number, GradeLetter])[];
 
-export function detectGrade(value: string | number): GradeLetter | '' {
+/**
+ * Map a numeric grade point back to the nearest letter.
+ *
+ * Takes the point→letter table rather than a UniversityProfile on purpose:
+ * university.ts imports this module, so importing it back would be a cycle.
+ * Callers with a profile pass `profile.grades.pointsToGrade`; the default is
+ * BRACU's table, which is what every existing caller already assumed.
+ */
+export function detectGrade(
+  value: string | number,
+  pointsToGrade: readonly (readonly [number, GradeLetter])[] = POINTS_TO_GRADE,
+): GradeLetter | '' {
   const n = typeof value === 'number' ? value : Number.parseFloat(value);
   if (Number.isNaN(n)) return '';
 
-  for (const [point, letter] of POINTS_TO_GRADE) {
+  for (const [point, letter] of pointsToGrade) {
     if (Math.abs(n - point) < 0.01) return letter;
   }
 
   let closest: GradeLetter | '' = '';
   let minDiff = Number.POSITIVE_INFINITY;
-  for (const [point, letter] of POINTS_TO_GRADE) {
+  for (const [point, letter] of pointsToGrade) {
     const diff = Math.abs(n - point);
     if (diff < minDiff) {
       minDiff = diff;
