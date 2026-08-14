@@ -83,6 +83,7 @@ import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
+import { initAssistantFab } from './ui/assistantFab.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -906,6 +907,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initReveal();
   initCursor();
   initDotMatrix(document.getElementById('themeToggle'));
+
+  // Assistant launcher — mounts itself only once auth resolves and the Worker
+  // reports the assistant configured, so this call is safe before either.
+  initAssistantFab();
 
   // Auto-launch demo mode when embedded via ?demo=1 (e.g. the portfolio
   // site's live preview iframe). Skipped if local data already exists, so it
