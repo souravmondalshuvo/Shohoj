@@ -12,10 +12,13 @@ import assert from 'node:assert/strict';
 import {
   buildUnlockMap,
   completedCodes,
+  coursePrefix,
   evaluatePrerequisites,
+  filterToSubjects,
   gradeSatisfiesPrereq,
   parsePrerequisites,
   prereqCodes,
+  programSubjects,
 } from '../src/core/prereq.ts';
 
 const set = (...codes) => new Set(codes);
@@ -305,4 +308,74 @@ test('ordering is deterministic', () => {
     a.unlocked.map((c) => c.code),
     b.unlocked.map((c) => c.code),
   );
+});
+
+// ── Program relevance (#539) ────────────────────────────────────────────────
+// A CSE student was being told BCH101 was their highest-leverage course,
+// because the map ranked every course in the catalogue.
+
+const PROGRAMS = {
+  CSE: {
+    label: 'B.Sc. in Computer Science and Engineering (CSE)',
+    presets: [
+      { courses: [{ name: 'Programming Language I (CSE110)' }, { name: 'Principles of Physics I (PHY111)' }] },
+      { courses: [{ name: 'Differential Calculus (MAT110)' }] },
+    ],
+  },
+  ARC: {
+    label: 'Bachelor of Architecture (ARC)',
+    presets: [{ courses: [{ name: 'Design I (ARC101)' }] }],
+  },
+};
+
+test('a course code yields its subject, and refuses to guess', () => {
+  assert.equal(coursePrefix('CSE220'), 'CSE');
+  assert.equal(coursePrefix('mat110'), 'MAT');
+  assert.equal(coursePrefix('BCH101'), 'BCH');
+  assert.equal(coursePrefix('12345'), '');
+  assert.equal(coursePrefix(''), '');
+  assert.equal(coursePrefix(null), '');
+});
+
+test('program subjects come from the curriculum, widened by what was actually taken', () => {
+  const subjects = programSubjects(
+    'B.Sc. in Computer Science and Engineering (CSE)',
+    PROGRAMS,
+    set('CSE110', 'ECO101'),
+  );
+  assert.ok(subjects.has('CSE') && subjects.has('PHY') && subjects.has('MAT'), 'the curriculum');
+  assert.ok(subjects.has('ECO'), 'an elective the model curriculum omits is still theirs');
+  assert.ok(!subjects.has('ARC'), 'another degree is not');
+});
+
+test('an unknown program means no filter, not an empty one', () => {
+  // Reading this as "nothing is relevant" would blank the zone for anyone whose
+  // program label we fail to match — worse than showing them everything.
+  assert.equal(programSubjects('B.Sc. in Underwater Basketry', PROGRAMS, set('CSE110')).size, 0);
+  assert.equal(programSubjects('', PROGRAMS, set('CSE110')).size, 0);
+  assert.equal(programSubjects(null, PROGRAMS).size, 0);
+
+  const all = [{ courseCode: 'ARC101', courseName: 'Design', credits: 3 }];
+  assert.deepEqual(filterToSubjects(all, new Set()), all, 'empty set passes everything through');
+});
+
+test('the filter runs before the unlock count, so leverage is program-relative', () => {
+  // BCH101 opens two biochemistry courses; CSE110 opens one CSE course. Ranked
+  // across the whole catalogue, biochemistry wins — for a CSE student.
+  const catalogue = [
+    { courseCode: 'BCH101', courseName: 'Basic Biochemistry', credits: 3, prerequisiteCourses: '' },
+    { courseCode: 'BCH201', courseName: 'Human Physiology', credits: 3, prerequisiteCourses: '(BCH101)' },
+    { courseCode: 'BCH301', courseName: 'Enzymology', credits: 3, prerequisiteCourses: '(BCH101)' },
+    { courseCode: 'CSE110', courseName: 'Programming I', credits: 3, prerequisiteCourses: '' },
+    { courseCode: 'CSE111', courseName: 'Programming II', credits: 3, prerequisiteCourses: '(CSE110)' },
+  ];
+
+  const unfiltered = buildUnlockMap(catalogue, set());
+  assert.equal(unfiltered.highestLeverage.code, 'BCH101', 'the bug, reproduced');
+
+  const subjects = programSubjects(PROGRAMS.CSE.label, PROGRAMS, set());
+  const mine = buildUnlockMap(filterToSubjects(catalogue, subjects), set());
+  assert.equal(mine.highestLeverage.code, 'CSE110', 'ranked within the degree');
+  assert.equal(mine.highestLeverage.unlockCount, 1, 'counting only doors this student can walk through');
+  assert.ok(!mine.unlocked.some((c) => c.code.startsWith('BCH')), 'no biochemistry in a CSE map');
 });
