@@ -11072,6 +11072,13 @@ body[data-page='admin'] .orb {
   background: rgba(91, 157, 255, 0.12);
   border-color: rgba(91, 157, 255, 0.3);
 }
+/* An exam already sat: neutral on purpose — it is a record, not a warning. */
+.pfb-chip.done {
+  color: var(--text3);
+  background: transparent;
+  border-color: var(--hairline);
+  font-weight: 600;
+}
 
 .pfb-note {
   font-size: 11px;
@@ -11243,6 +11250,19 @@ body[data-page='admin'] .orb {
 }
 .pfb-row:hover {
   background: rgba(46, 204, 113, 0.05);
+}
+/* Sat exams stay readable but stop competing with the ones still ahead. The
+   date keeps its strikethrough-free weight; only the ink drops back. */
+.pfb-row.is-past {
+  opacity: 0.55;
+}
+.pfb-row.is-past .pfb-row-code,
+.pfb-row.is-past .pfb-row-when b {
+  color: var(--text2);
+}
+.pfb-row.is-past .pfb-row-dot {
+  background: var(--text3);
+  box-shadow: none;
 }
 .pfb-row + .pfb-row {
   border-top: 1px solid var(--hairline);
