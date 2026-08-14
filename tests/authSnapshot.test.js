@@ -60,3 +60,39 @@ test('anonymous source has no ID token', async () => {
 });
 
 console.log('auth snapshot tests passed');
+
+test('the campus comes from the email, not from the untrusted reading', () => {
+  const bracu = normalizeAuthSnapshot({
+    authReady: true,
+    uid: 'u1',
+    email: 'student@g.bracu.ac.bd',
+  });
+  assert.equal(bracu.university, 'bracu');
+
+  const nsu = normalizeAuthSnapshot({
+    authReady: true,
+    uid: 'u2',
+    email: 'student@northsouth.edu',
+  });
+  assert.equal(nsu.university, 'nsu');
+
+  // These globals are untrusted input. A reading that names a campus its own
+  // email contradicts must not win, or a caller could read another campus's
+  // data through a UI that believed the claim.
+  const spoofed = normalizeAuthSnapshot({
+    authReady: true,
+    uid: 'u3',
+    email: 'student@g.bracu.ac.bd',
+    university: 'nsu',
+  });
+  assert.equal(spoofed.university, 'bracu');
+
+  // An unregistered id is ignored rather than carried through.
+  const junk = normalizeAuthSnapshot({
+    authReady: true,
+    uid: 'u4',
+    email: 'someone@gmail.com',
+    university: 'harvard',
+  });
+  assert.equal(junk.university, null);
+});
