@@ -19,13 +19,18 @@ import {
   gpaCoreGetRetakenKeys,
   type ImprovementStrategy,
 } from '../../core/gpa.ts';
-import { GRADES } from '../../core/grades.ts';
 import type { SemesterEntry } from '../../core/types.ts';
+import { isRepeatableGrade, UNIVERSITIES } from '../../core/university.ts';
+import type { GradeScale, RepeatEligibility } from '../../core/university.ts';
 
 export interface SimulatorInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: string;
   readonly startYear: string;
+  /** Campus grading scale. Defaults to BRACU's. */
+  readonly scale?: GradeScale;
+  /** Which grades the campus lets a student repeat. Defaults to BRACU's. */
+  readonly repeat?: RepeatEligibility;
 }
 
 /** The projected totals runSimulator receives from recalc(). */
@@ -221,9 +226,13 @@ export function computeRetakeCandidates(
 ): readonly RetakeCandidate[] {
   if (totals.cgpa === null || !inputs.semesters.length || totals.cgpaCredits <= 0) return [];
 
+  const scale = inputs.scale ?? UNIVERSITIES.bracu.grades;
+  const repeat = inputs.repeat ?? UNIVERSITIES.bracu.repeat;
+
   const retakenKeys = gpaCoreGetRetakenKeys(inputs.semesters, {
     startSeason: inputs.startSeason as never,
     startYear: inputs.startYear,
+    scale: inputs.scale,
   });
 
   // Whether a withdrawn course is still owed. getRetakenKeys cannot answer
@@ -255,13 +264,18 @@ export function computeRetakeCandidates(
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
       const isWithdrawal = c.grade === 'W';
-      const gp = GRADES[c.grade as keyof typeof GRADES];
+      const gp = Object.prototype.hasOwnProperty.call(scale.points, c.grade)
+        ? scale.points[c.grade as keyof typeof scale.points]
+        : undefined;
       // W is the one null-grade-point row that belongs here: it is a course
       // still owed, not an outcome to leave alone (#499). Every other
       // null/unknown grade — P, I, blank — has nothing to act on.
       if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (!isWithdrawal && (gp as number) >= 3.0) return; // B and above — no improvement mechanism
+      // Anything the campus won't let you repeat has no improvement mechanism.
+      // This mirrors gpaCoreIsRepeatEligible: BRACU stops strictly below 3.0 so
+      // a B is excluded, while NSU's "B or lower" keeps it.
+      if (!isWithdrawal && !isRepeatableGrade(gp as number, repeat)) return;
       if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = (sem.name ?? '').replace(/\s*\(.*\)$/, '');
