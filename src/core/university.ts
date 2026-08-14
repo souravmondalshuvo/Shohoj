@@ -341,6 +341,24 @@ export function allUniversityDomains(): string[] {
   return Object.values(UNIVERSITIES).flatMap((p) => [...p.emailDomains]);
 }
 
+/**
+ * Whether a grade point is low enough that the campus lets the student repeat
+ * it for improvement.
+ *
+ * Defined once, here, on purpose. The same boundary is asked in two places —
+ * the GPA core's eligibility check and the simulator's retake shortlist — and
+ * BRACU and NSU sit on opposite sides of it for a B at exactly 3.0. Two copies
+ * of the comparison is two chances to get the boundary wrong.
+ */
+export function isRepeatableGrade(
+  gradePoint: number,
+  eligibility: RepeatEligibility,
+): boolean {
+  return eligibility.inclusive
+    ? gradePoint <= eligibility.threshold
+    : gradePoint < eligibility.threshold;
+}
+
 /** Whether a campus has a feature switched on. */
 export function hasFeature(
   profile: UniversityProfile | null,
