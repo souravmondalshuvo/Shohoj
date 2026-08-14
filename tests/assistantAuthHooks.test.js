@@ -17,6 +17,7 @@ function install(overrides = {}) {
   installAssistantAuthHooks(
     {
       getCurrentUser: () => ({ uid: 'u1' }),
+      isCloudSettled: () => true,
       getIdToken: async () => 'id-token',
       saveSnapshot: async snap => {
         calls.saved.push(snap);
@@ -69,6 +70,20 @@ test('the flush is a no-op when signed out or with nothing stored locally', asyn
   assert.equal(await empty.scope._shohoj_flushCloudSave(), false);
 });
 
+// The window between shohoj:auth-changed and the local-vs-cloud decision is
+// real: auth-changed fires as soon as the user object exists, and the migration
+// dialog can sit on screen for as long as the student takes to answer it.
+// Writing the local snapshot in that window can overwrite the account's cloud
+// copy before the conflict is ever detected.
+test('the flush stands down while sign-in reconciliation is still open', async () => {
+  const { scope, calls } = install({
+    isCloudSettled: () => false,
+    saveSnapshot: async () => { throw new Error('must not be called'); },
+  });
+  assert.equal(await scope._shohoj_flushCloudSave(), false);
+  assert.deepEqual(calls.saved, []);
+});
+
 test('a failed cloud write resolves false instead of blocking the chat turn', async () => {
   const { scope } = install({
     saveSnapshot: async () => {
@@ -83,6 +98,7 @@ test('installing without a global scope is a no-op rather than a crash', () => {
     installAssistantAuthHooks(
       {
         getCurrentUser: () => null,
+        isCloudSettled: () => true,
         getIdToken: async () => null,
         saveSnapshot: async () => false,
         readLocalSnapshot: () => null,
