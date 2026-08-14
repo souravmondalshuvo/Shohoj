@@ -90,6 +90,10 @@ MAIN_JS_FILES = [
     'js/core/planner-core.js',
     'js/ui/planner.js',
     'js/ui/feedback.js',
+    # Shohoj Assistant launcher + its Worker transport (shared with the shell
+    # through js/core/assistantClient.d.ts)
+    'js/core/assistantClient.js',
+    'js/ui/assistantFab.js',
     # Animations
     'js/animations/cursor.js',
     'js/animations/dotmatrix.js',
@@ -152,6 +156,7 @@ PROFILE_JS_FILES = [
 FIREBASE_JS_FILES = [
     'js/auth/firebase-init.js',
     'js/auth/admin-service.js',
+    'js/auth/assistant-service.js',
     'js/auth/auth-service.js',
     'js/auth/paper-service.js',
     'js/auth/review-service.js',
