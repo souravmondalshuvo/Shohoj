@@ -138,6 +138,43 @@ test('retake policies are campus-specific and well formed', () => {
     }
 });
 
+test('repeat eligibility differs at the boundary, not just the threshold', () => {
+    const bracu = UNIVERSITIES.bracu.repeat;
+    const nsu = UNIVERSITIES.nsu.repeat;
+    // Same number, different boundary — a B is exactly 3.0, so it is repeatable
+    // at NSU ("B or lower") and not at BRACU (strictly below 3.0). Collapsing
+    // these to one rule would mislead every B student on one campus or the other.
+    assert.equal(bracu.threshold, nsu.threshold);
+    assert.equal(bracu.inclusive, false);
+    assert.equal(nsu.inclusive, true);
+
+    for (const profile of profiles) {
+        assert.equal(typeof profile.repeat.threshold, 'number', `${profile.id} threshold`);
+        assert.equal(typeof profile.repeat.inclusive, 'boolean', `${profile.id} inclusive`);
+        // The threshold has to sit inside the campus's own scale to mean anything.
+        assert.ok(
+            profile.repeat.threshold <= profile.grades.max,
+            `${profile.id} repeat threshold above its own ceiling`,
+        );
+    }
+});
+
+test('credit load rules are coherent, and absent rather than borrowed', () => {
+    // BRACU's limits are published and enforced.
+    assert.deepEqual(UNIVERSITIES.bracu.creditLoad, { min: 9, max: 15, warnAbove: 12 });
+    // NSU's were not confirmed, so no rules at all — a borrowed warning would be
+    // wrong with confidence, which is worse than staying quiet.
+    assert.equal(UNIVERSITIES.nsu.creditLoad, undefined);
+
+    for (const profile of profiles) {
+        const load = profile.creditLoad;
+        if (load === undefined) continue;
+        assert.ok(load.min > 0, `${profile.id} min`);
+        assert.ok(load.min <= load.warnAbove, `${profile.id} min above warnAbove`);
+        assert.ok(load.warnAbove <= load.max, `${profile.id} warnAbove above max`);
+    }
+});
+
 test('NSU keeps feed-dependent features off until it has a data source', () => {
     const nsu = UNIVERSITIES.nsu;
     // These all derive from BRACU's CONNECT feed or hand-collected Merul Badda
