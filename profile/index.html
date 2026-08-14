@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-aMAD6QuIAs4jOsdprKFFYqf5RtQT5fRrOkmg5zxnINE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-9rkIIqzDEvOjLV9knbAddMuzmHQxu/Ear6oPmL/SYug='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -10828,11 +10828,66 @@ body[data-page='admin'] .orb {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), #6dd36d);
 }
+/* Semester GPA bands — the same scale the CGPA gauge is coloured by, so a
+   3.6 term and a 3.6 CGPA read as the same green. */
+.pf-tl-dot--high,
+.pf-tl-fill--high {
+  --pf-tone: #2ecc71;
+}
+.pf-tl-dot--good,
+.pf-tl-fill--good {
+  --pf-tone: #6dd36d;
+}
+.pf-tl-dot--mid,
+.pf-tl-fill--mid {
+  --pf-tone: #e6b800;
+}
+.pf-tl-dot--low,
+.pf-tl-fill--low {
+  --pf-tone: #e67e22;
+}
+.pf-tl-dot--na,
+.pf-tl-fill--na {
+  --pf-tone: var(--border2);
+}
+.pf-tl-dot[class*='pf-tl-dot--'] {
+  background: var(--pf-tone);
+  box-shadow: none;
+}
+.pf-tl-fill[class*='pf-tl-fill--'] {
+  background: var(--pf-tone);
+}
+/* Tabular figures so the GPA column stacks into a readable line. */
 .pf-tl-count {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text2);
+  font-weight: 700;
+  color: var(--text);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: right;
+}
+/* A semester with nothing graded is a state, not a zero — say so in words. */
+.pf-tl-na {
+  font-weight: 600;
+  color: var(--text3);
+}
+
+/* Trend chip: direction of the last graded term, in place of the CGPA the
+   gauge below already states. */
+.pf-trend {
+  font-variant-numeric: tabular-nums;
+}
+.pf-trend--up {
+  color: var(--ink-green);
+}
+.pf-trend--down {
+  color: var(--ink-amber);
+  background: rgba(241, 196, 15, 0.12);
+  border-color: rgba(241, 196, 15, 0.32);
+}
+.pf-trend--flat {
+  color: var(--text2);
 }
 
 /* Last-synced line in the account header */
@@ -14337,6 +14392,267 @@ if (typeof window !== 'undefined') {
   window._shohoj_registerAction = registerAction;
 }
 
+// ── js/core/grades.js ───────────────────────────────────────────
+const GRADES = {
+  'A+': 4.00, 'A':  4.00, 'A-': 3.70,
+  'B+': 3.30, 'B':  3.00, 'B-': 2.70,
+  'C+': 2.30, 'C':  2.00, 'C-': 1.70,
+  'D+': 1.30, 'D':  1.00, 'D-': 0.70,
+  'F':  0.00, 'F(NT)': 0, 'P':  null, 'I': null,
+  // A withdrawal carries no grade point, but unlike P/I it still consumed an
+  // attempt: calculateCgpaTotals counts it toward attempted credits and nothing
+  // else. See getRetakenKeys for why it never supersedes a grade.
+  'W': null
+};
+
+const POINTS_TO_GRADE = [
+  [4.00, 'A'],  [3.70, 'A-'],
+  [3.30, 'B+'], [3.00, 'B'],  [2.70, 'B-'],
+  [2.30, 'C+'], [2.00, 'C'],  [1.70, 'C-'],
+  [1.30, 'D+'], [1.00, 'D'],  [0.70, 'D-'],
+  [0.00, 'F'],
+];
+
+function detectGrade(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return '';
+  for (const [pt, letter] of POINTS_TO_GRADE) {
+    if (Math.abs(n - pt) < 0.01) return letter;
+  }
+  let closest = null, minDiff = Infinity;
+  for (const [pt, letter] of POINTS_TO_GRADE) {
+    const diff = Math.abs(n - pt);
+    if (diff < minDiff) { minDiff = diff; closest = letter; }
+  }
+  return minDiff <= 0.20 ? closest : '';
+}
+
+// ── js/core/gpa-core.js ─────────────────────────────────────────
+// Twin of src/core/gpa.ts — hand-maintained, not generated.
+// src/core/gpa.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
+const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
+function isGradeLetter(grade) {
+    return Object.prototype.hasOwnProperty.call(GRADES, grade);
+}
+function gradePointFor(grade) {
+    return isGradeLetter(grade) ? GRADES[grade] : undefined;
+}
+function gpaCoreCalcSemesterGpaImpl(semester) {
+    let points = 0;
+    let credits = 0;
+    for (const course of semester.courses) {
+        const gp = gradePointFor(course.grade);
+        if (gp === undefined || !course.credits)
+            continue;
+        if (course.grade === 'P' || course.grade === 'I')
+            continue;
+        if (course.grade === 'F(NT)') {
+            credits += course.credits;
+            continue;
+        }
+        if (gp === null)
+            continue;
+        points += gp * course.credits;
+        credits += course.credits;
+    }
+    return credits > 0 ? points / credits : null;
+}
+function gpaCoreUsesBestGradePolicyImpl(options = {}) {
+    const season = options.startSeason || 'Fall';
+    const year = typeof options.startYear === 'number'
+        ? options.startYear
+        : Number.parseInt(options.startYear || '2024', 10);
+    if (!season || Number.isNaN(year))
+        return false;
+    const seasonIndex = GPA_SEASON_ORDER.indexOf(season);
+    if (year < 2024)
+        return true;
+    if (year === 2024 && seasonIndex === 0)
+        return true;
+    if (year === 2024 && seasonIndex === 1)
+        return true;
+    if (year === 2024 && seasonIndex === 2)
+        return false;
+    return false;
+}
+function getCourseCode(courseName) {
+    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
+    return match ? match[1] : null;
+}
+function getCourseIdentity(courseName) {
+    const code = getCourseCode(courseName);
+    if (code)
+        return code;
+    return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
+}
+function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
+    const bestGrade = typeof options.bestGrade === 'boolean'
+        ? options.bestGrade
+        : gpaCoreUsesBestGradePolicyImpl(options);
+    const attempts = [];
+    for (const semester of semesters) {
+        if (semester.running || semester.summary)
+            continue;
+        semester.courses.forEach((course, index) => {
+            if (!course.name.trim())
+                return;
+            // A withdrawal is not an outcome, so it neither supersedes an earlier
+            // attempt nor is superseded by a later one. Leaving it in the group would
+            // let the latest-attempt policy below (slice(0, -1)) drop a real grade in
+            // favour of a W, which is how a student's passing grade would vanish.
+            if (course.grade === 'W')
+                return;
+            const gp = course.grade && course.grade !== 'F(NT)'
+                ? gradePointFor(course.grade) ?? -1
+                : -1;
+            attempts.push({
+                semId: semester.id,
+                index,
+                key: `${semester.id}-${index}`,
+                groupKey: getCourseIdentity(course.name),
+                gradePoint: gp,
+            });
+        });
+    }
+    const groups = new Map();
+    for (const attempt of attempts) {
+        const group = groups.get(attempt.groupKey) ?? [];
+        group.push(attempt);
+        groups.set(attempt.groupKey, group);
+    }
+    const retakenKeys = new Set();
+    for (const group of groups.values()) {
+        if (group.length < 2)
+            continue;
+        if (bestGrade) {
+            const best = group.reduce((a, b) => (a.gradePoint >= b.gradePoint ? a : b));
+            for (const attempt of group) {
+                if (attempt.key !== best.key)
+                    retakenKeys.add(attempt.key);
+            }
+            continue;
+        }
+        for (const attempt of group.slice(0, -1)) {
+            retakenKeys.add(attempt.key);
+        }
+    }
+    return retakenKeys;
+}
+function calculateCgpaTotals(semesters, options = {}) {
+    const includeRunning = options.includeRunning ?? true;
+    const includeSummary = options.includeSummary ?? true;
+    const retakenKeys = gpaCoreGetRetakenKeysImpl(semesters, options);
+    let points = 0;
+    let attemptedCredits = 0;
+    let earnedCredits = 0;
+    let cgpaCredits = 0;
+    if (includeSummary) {
+        const summaryBlock = semesters.find(semester => semester.summary);
+        if (summaryBlock?.summaryCGPA !== undefined && summaryBlock.summaryCredits !== undefined) {
+            points += summaryBlock.summaryCGPA * summaryBlock.summaryCredits;
+            cgpaCredits += summaryBlock.summaryCredits;
+            attemptedCredits += summaryBlock.summaryAttempted ?? summaryBlock.summaryCredits;
+            earnedCredits += summaryBlock.summaryCredits;
+        }
+    }
+    for (const semester of semesters) {
+        if (semester.summary)
+            continue;
+        if (semester.running && !includeRunning)
+            continue;
+        semester.courses.forEach((course, index) => {
+            const gp = gradePointFor(course.grade);
+            if (gp === undefined || !course.credits)
+                return;
+            if (course.grade === 'P' || course.grade === 'I')
+                return;
+            const isRetaken = retakenKeys.has(`${semester.id}-${index}`);
+            if (!semester.running)
+                attemptedCredits += course.credits;
+            if (!isRetaken && gp !== null) {
+                points += gp * course.credits;
+                cgpaCredits += course.credits;
+            }
+            if (typeof gp === 'number' && gp > 0 && !semester.running && !isRetaken) {
+                earnedCredits += course.credits;
+            }
+        });
+    }
+    return {
+        points,
+        attemptedCredits,
+        earnedCredits,
+        cgpaCredits,
+        cgpa: cgpaCredits > 0 ? points / cgpaCredits : null,
+    };
+}
+function gpaCoreGetSemesterCreditWarningImpl(semester) {
+    const total = semester.courses.reduce((sum, course) => {
+        if (!course.name.trim() || !course.credits)
+            return sum;
+        if (course.grade === 'P' || course.grade === 'F(NT)')
+            return sum;
+        return sum + course.credits;
+    }, 0);
+    if (total === 0)
+        return null;
+    if (total < 9)
+        return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
+    if (total > 15)
+        return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
+    if (total > 12)
+        return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
+    return null;
+}
+function gpaCoreIsRepeatEligibleImpl(grade) {
+    if (grade === 'F' || grade === 'F(NT)')
+        return false;
+    if (grade === 'P' || grade === 'I' || !grade)
+        return false;
+    const gp = gradePointFor(grade);
+    if (gp === undefined || gp === null)
+        return false;
+    return gp < 3.0;
+}
+function gpaCoreGetImprovementStrategyImpl(grade) {
+    if (grade === 'F' || grade === 'F(NT)')
+        return 'retake';
+    if (gpaCoreIsRepeatEligibleImpl(grade))
+        return 'repeat';
+    return null;
+}
+function gpaCoreNormalizeGradePointImpl(raw, mode) {
+    const trimmed = raw.trim();
+    if (/[a-zA-Z]/.test(trimmed))
+        return trimmed;
+    if (trimmed.includes('.'))
+        return trimmed;
+    if (/^[0-4]\d$/.test(trimmed))
+        return `${trimmed[0]}.${trimmed[1]}`;
+    if (mode === 'blur' && /^[0-4]$/.test(trimmed))
+        return `${trimmed}.0`;
+    return trimmed;
+}
+function gpaCoreClampGradePointImpl(value) {
+    const n = Number.parseFloat(value);
+    if (Number.isNaN(n))
+        return value;
+    if (n > 4.0)
+        return '4.0';
+    if (n < 0)
+        return '0.0';
+    return value;
+}
+const gpaCoreCalcSemesterGpa = gpaCoreCalcSemesterGpaImpl;
+const gpaCoreUsesBestGradePolicy = gpaCoreUsesBestGradePolicyImpl;
+const gpaCoreGetRetakenKeys = gpaCoreGetRetakenKeysImpl;
+const gpaCoreGetSemesterCreditWarning = gpaCoreGetSemesterCreditWarningImpl;
+const gpaCoreIsRepeatEligible = gpaCoreIsRepeatEligibleImpl;
+const gpaCoreGetImprovementStrategy = gpaCoreGetImprovementStrategyImpl;
+const gpaCoreNormalizeGradePoint = gpaCoreNormalizeGradePointImpl;
+const gpaCoreClampGradePoint = gpaCoreClampGradePointImpl;
+
 // ── js/ui/profileTab.js ─────────────────────────────────────────
 // js/ui/profileTab.js
 // Profile account hub (#196). A signed-in student's data lives in scattered
@@ -14600,12 +14916,68 @@ function dangerZoneSectionHtml() {
     </section>`;
 }
 
-// Academic-profile card: the student's transcript-derived identity (SID, name,
-// program) plus CGPA, credits earned and semester history. Pure — takes the
-// snapshot object (or null). Empty/partial snapshots fall back to the import CTA.
+/**
+ * Semester history as a GPA series (#532). The stored snapshot carries each
+ * semester's courses with their grades and credits, so the GPA is derivable —
+ * and derived through the calculator's own rule set rather than a second
+ * implementation, so F(NT) stays attempted and P/I stay out of the average.
+ *
+ * A semester with nothing graded (a running term, or one that is all pass/fail)
+ * yields `gpa: null`. That is a real state, not a zero: charting it as 0.00
+ * would draw a crash that never happened.
+ *
+ * Pure; exported for unit tests.
+ */
+/**
+ * Whether two names are the same person as far as this card is concerned.
+ * Case and spacing differ freely between a Google profile and a grade sheet
+ * ("SOURAV MONDAL" vs "Sourav  Mondal"); neither difference is worth a row.
+ * Pure; exported for unit tests.
+ */
+function pfSameName(a, b) {
+  const norm = v => String(v || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const left = norm(a);
+  return left !== '' && left === norm(b);
+}
+
+function pfSemesterGpaSeries(semesters) {
+  const list = Array.isArray(semesters) ? semesters : [];
+  return list.map(s => {
+    const courses = Array.isArray(s.courses) ? s.courses : [];
+    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }) : null;
+    return {
+      name: String(s.name || ''),
+      courseCount: courses.length,
+      gpa: (typeof gpa === 'number' && Number.isFinite(gpa)) ? gpa : null,
+    };
+  });
+}
+
+/**
+ * Change in GPA from the previous graded semester to the latest one. Null with
+ * fewer than two graded semesters — there is no trend in a single point, and a
+ * chip that invented one would be the same sin as the CGPA chip it replaces.
+ *
+ * Pure; exported for unit tests.
+ */
+function pfGpaTrend(series) {
+  const graded = (Array.isArray(series) ? series : []).filter(s => s.gpa !== null);
+  if (graded.length < 2) return null;
+  const latest = graded[graded.length - 1];
+  const previous = graded[graded.length - 2];
+  return {
+    delta: latest.gpa - previous.gpa,
+    from: previous.name,
+    to: latest.name,
+  };
+}
+
+// Academic-profile card: the student's transcript-derived identity (SID,
+// program) plus CGPA, credits earned and the semester GPA history. Pure — takes
+// the snapshot object (or null). Empty/partial snapshots fall back to the CTA.
 // No <input>, no CONNECT credential surface — this only reflects an already-
 // imported grade sheet that lives in this browser.
-function academicProfileSectionHtml(profile) {
+function academicProfileSectionHtml(profile, accountName = '') {
   const p = (profile && typeof profile === 'object') ? profile : null;
   const hasData = !!p && (p.sid || p.name || (Array.isArray(p.semesters) && p.semesters.length));
 
@@ -14640,36 +15012,61 @@ function academicProfileSectionHtml(profile) {
     : cgpaNum >= 2.5 ? 'mid'
     : 'low';
 
+  // The account header already renders the student's name at heading size, so
+  // the row only earns its place when the transcript disagrees with it — an
+  // official name that differs from the Google one is worth showing, the same
+  // name twice is not.
+  const transcriptName = pfCleanName(p.name);
   const rows = [];
-  if (p.sid)     rows.push(['Student ID', p.sid]);
-  if (p.name)    rows.push(['Name', pfCleanName(p.name)]);
+  if (p.sid) rows.push(['Student ID', p.sid]);
+  if (transcriptName && !pfSameName(transcriptName, accountName)) {
+    rows.push(['Name on transcript', transcriptName]);
+  }
   if (p.program) rows.push(['Program', p.program]);
   const detailRows = rows.map(([k, v]) =>
     `<div class="pf-detail-row"><span class="pf-detail-key">${escHtml(k)}</span><span class="pf-detail-val">${escHtml(String(v))}</span></div>`
   ).join('');
 
-  // Course count per semester drives a relative bar; the busiest term sets 100%.
-  const maxCourses = semesters.reduce(
-    (m, s) => Math.max(m, Array.isArray(s.courses) ? s.courses.length : 0), 0) || 1;
-  const semList = semesters.length === 0 ? '' : `
-      <div class="pf-subhead">Semester history <span class="pf-card-count">${semesters.length} semester${semesters.length === 1 ? '' : 's'}</span></div>
-      <ul class="pf-timeline">${semesters.map(s => {
-        const n = Array.isArray(s.courses) ? s.courses.length : 0;
-        const w = Math.round((n / maxCourses) * 100);
+  // Semester GPA on the 4.0 scale drives the bar, so the history answers "am I
+  // climbing or sliding?" — the course count it used to plot was near-constant
+  // across a normal degree and told the student nothing.
+  const series = pfSemesterGpaSeries(semesters);
+  const semList = series.length === 0 ? '' : `
+      <div class="pf-subhead">Semester GPA</div>
+      <ul class="pf-timeline">${series.map(s => {
+        const known = s.gpa !== null;
+        const w = known ? Math.round((s.gpa / 4) * 100) : 0;
+        const tone = !known ? 'na'
+          : s.gpa >= 3.5 ? 'high'
+          : s.gpa >= 3.0 ? 'good'
+          : s.gpa >= 2.5 ? 'mid'
+          : 'low';
         return `
         <li class="pf-tl-item">
-          <span class="pf-tl-dot" aria-hidden="true"></span>
-          <span class="pf-tl-name">${escHtml(s.name || '')}</span>
-          <span class="pf-tl-bar" aria-hidden="true"><span class="pf-tl-fill" style="--pf-w:${w}"></span></span>
-          <span class="pf-tl-count">${n} course${n === 1 ? '' : 's'}</span>
+          <span class="pf-tl-dot pf-tl-dot--${tone}" aria-hidden="true"></span>
+          <span class="pf-tl-name">${escHtml(s.name)}</span>
+          <span class="pf-tl-bar" aria-hidden="true"><span class="pf-tl-fill pf-tl-fill--${tone}" style="--pf-w:${w}"></span></span>
+          <span class="pf-tl-count">${known ? escHtml(s.gpa.toFixed(2)) : '<span class="pf-tl-na">no grades yet</span>'}</span>
         </li>`;
       }).join('')}</ul>`;
+
+  // The head chip carries what the gauge can't: which way the last term moved.
+  const trend = pfGpaTrend(series);
+  const trendChip = trend === null ? '' : (() => {
+    const rounded = Math.abs(trend.delta).toFixed(2);
+    if (Number.parseFloat(rounded) === 0) {
+      return `<span class="pf-card-count pf-trend pf-trend--flat" title="${escAttr(`${trend.from} → ${trend.to}`)}">level last term</span>`;
+    }
+    const up = trend.delta > 0;
+    return `<span class="pf-card-count pf-trend pf-trend--${up ? 'up' : 'down'}"
+                  title="${escAttr(`${trend.from} → ${trend.to}`)}">${up ? '▲' : '▼'} ${escHtml(rounded)} last term</span>`;
+  })();
 
   return `
     <section class="pf-card pf-acard">
       <div class="pf-card-head">
         <h3 class="pf-card-title">🎓 Academic profile</h3>
-        <span class="pf-card-count">CGPA ${escHtml(cgpa)}</span>
+        ${trendChip}
       </div>
       <div class="pf-acard-top">
         <div class="pf-gauge pf-gauge--${band}" style="--pf-pct:${pct.toFixed(1)}">
@@ -14729,7 +15126,7 @@ function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastSync, ac
       ${includeBriefing ? '<div id="pfBriefingHost" class="pf-briefing"></div>' : ''}
       ${includeBriefing ? '<div id="pfUnlockHost" class="pf-briefing"></div>' : ''}
       <div class="pf-sections">
-        ${academicProfileSectionHtml(academic)}
+        ${academicProfileSectionHtml(academic, p.displayName || '')}
         ${includeSeatAlerts ? seatAlertsSectionHtml(seatAlerts) : ''}
         ${routineSummarySectionHtml(routine)}
         ${reviewsSectionHtml(reviews)}

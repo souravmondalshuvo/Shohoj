@@ -10846,11 +10846,66 @@ body[data-page='admin'] .orb {
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), #6dd36d);
 }
+/* Semester GPA bands — the same scale the CGPA gauge is coloured by, so a
+   3.6 term and a 3.6 CGPA read as the same green. */
+.pf-tl-dot--high,
+.pf-tl-fill--high {
+  --pf-tone: #2ecc71;
+}
+.pf-tl-dot--good,
+.pf-tl-fill--good {
+  --pf-tone: #6dd36d;
+}
+.pf-tl-dot--mid,
+.pf-tl-fill--mid {
+  --pf-tone: #e6b800;
+}
+.pf-tl-dot--low,
+.pf-tl-fill--low {
+  --pf-tone: #e67e22;
+}
+.pf-tl-dot--na,
+.pf-tl-fill--na {
+  --pf-tone: var(--border2);
+}
+.pf-tl-dot[class*='pf-tl-dot--'] {
+  background: var(--pf-tone);
+  box-shadow: none;
+}
+.pf-tl-fill[class*='pf-tl-fill--'] {
+  background: var(--pf-tone);
+}
+/* Tabular figures so the GPA column stacks into a readable line. */
 .pf-tl-count {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text2);
+  font-weight: 700;
+  color: var(--text);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+  text-align: right;
+}
+/* A semester with nothing graded is a state, not a zero — say so in words. */
+.pf-tl-na {
+  font-weight: 600;
+  color: var(--text3);
+}
+
+/* Trend chip: direction of the last graded term, in place of the CGPA the
+   gauge below already states. */
+.pf-trend {
+  font-variant-numeric: tabular-nums;
+}
+.pf-trend--up {
+  color: var(--ink-green);
+}
+.pf-trend--down {
+  color: var(--ink-amber);
+  background: rgba(241, 196, 15, 0.12);
+  border-color: rgba(241, 196, 15, 0.32);
+}
+.pf-trend--flat {
+  color: var(--text2);
 }
 
 /* Last-synced line in the account header */
