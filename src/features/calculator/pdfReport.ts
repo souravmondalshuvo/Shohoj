@@ -17,9 +17,10 @@ import {
   gpaCoreCalcSemesterGpa,
   gpaCoreGetRetakenKeys,
 } from '../../core/gpa.ts';
-import { GRADES } from '../../core/grades.ts';
 import { stripTags } from '../../core/helpers.ts';
 import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
+import { UNIVERSITIES } from '../../core/university.ts';
+import type { GradeScale } from '../../core/university.ts';
 import type { CalculatorState } from './calculatorState.ts';
 import { estimateSummarySemesters } from './degreeProgress.ts';
 import { deptSeasonsFor, getDepartment } from './departments.ts';
@@ -99,11 +100,17 @@ function cgpaTier(cgpa: number): CgpaTier {
   return cgpa >= 3.5 ? 'green' : cgpa >= 3.0 ? 'green-dark' : cgpa >= 2.5 ? 'amber' : 'red';
 }
 
-function courseRow(course: SemesterEntry['courses'][number], retaken: boolean): PdfReportRow {
+function courseRow(
+  course: SemesterEntry['courses'][number],
+  retaken: boolean,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
+): PdfReportRow {
   const rawName = course.name || '---';
   const name = rawName.length > 68 ? `${rawName.slice(0, 65)}...` : rawName;
 
-  const gp = GRADES[course.grade as keyof typeof GRADES];
+  const gp = Object.prototype.hasOwnProperty.call(scale.points, course.grade)
+    ? scale.points[course.grade as keyof typeof scale.points]
+    : undefined;
   const gpDisplay =
     course.grade === 'F(NT)' ? '0.00' : gp !== undefined && gp !== null ? gp.toFixed(2) : '--';
 
@@ -128,7 +135,11 @@ function courseRow(course: SemesterEntry['courses'][number], retaken: boolean): 
   };
 }
 
-function semesterFooter(semester: SemesterEntry, gpa: number): string {
+function semesterFooter(
+  semester: SemesterEntry,
+  gpa: number,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
+): string {
   const attempted = semester.courses.reduce((sum, c) => {
     if (!c.name.trim() || !c.credits) return sum;
     if (c.grade === 'P' || c.grade === 'I') return sum;
@@ -136,7 +147,9 @@ function semesterFooter(semester: SemesterEntry, gpa: number): string {
   }, 0);
   const failed = semester.courses.reduce((sum, c) => {
     if (!c.name.trim() || !c.credits) return sum;
-    const gp = GRADES[c.grade as keyof typeof GRADES];
+    const gp = Object.prototype.hasOwnProperty.call(scale.points, c.grade)
+      ? scale.points[c.grade as keyof typeof scale.points]
+      : undefined;
     if (gp === undefined || gp === null) return sum;
     return gp === 0 ? sum + c.credits : sum;
   }, 0);
@@ -145,16 +158,22 @@ function semesterFooter(semester: SemesterEntry, gpa: number): string {
 }
 
 /** Build the full report exportPDF draws, from state + an injected clock. */
-export function buildPdfReport(state: CalculatorState, now: Date): PdfReport {
+export function buildPdfReport(
+  state: CalculatorState,
+  now: Date,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
+): PdfReport {
   const totals = calculateCgpaTotals(state.semesters, {
     includeRunning: false,
     includeSummary: true,
     startSeason: state.startSeason as SemesterSeason | '',
     startYear: state.startYear,
+    scale,
   });
   const retakenKeys = gpaCoreGetRetakenKeys(state.semesters, {
     startSeason: state.startSeason as SemesterSeason | '',
     startYear: state.startYear,
+    scale,
   });
 
   const summaryBlock = state.semesters.find((sem) => sem.summary);
@@ -195,8 +214,10 @@ export function buildPdfReport(state: CalculatorState, now: Date): PdfReport {
       rows: sem.courses
         .map((course, index) => ({ course, index }))
         .filter(({ course }) => course.name.trim() || course.grade)
-        .map(({ course, index }) => courseRow(course, retakenKeys.has(`${sem.id}-${index}`))),
-      footer: gpa !== null ? semesterFooter(sem, gpa) : null,
+        .map(({ course, index }) =>
+          courseRow(course, retakenKeys.has(`${sem.id}-${index}`), scale),
+        ),
+      footer: gpa !== null ? semesterFooter(sem, gpa, scale) : null,
     };
   });
 
