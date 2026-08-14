@@ -59,6 +59,9 @@ function expect(actual) {
     academicProfileSectionHtml,
     pfFormatLastSync,
     pfCleanName,
+    pfSameName,
+    pfSemesterGpaSeries,
+    pfGpaTrend,
   } = await import('../js/ui/profileTab.js');
 
   console.log('\nProfile tab view builders:');
@@ -320,33 +323,111 @@ function expect(actual) {
     expect(empty.toLowerCase()).notToContain('password');
   });
 
-  test('academic card: renders SID, name, program, CGPA, credits and semester history', () => {
+  test('academic card: renders SID, program, CGPA, credits and the GPA history', () => {
     const html = academicProfileSectionHtml({
       sid: '20301234', name: 'Ayesha Rahman',
       program: 'B.Sc. in Computer Science and Engineering (CSE)',
       cgpa: 3.745, earnedCredits: 96,
       semesters: [
         { name: 'Fall 2023', courses: [{ name: 'CSE110', credits: 3, grade: 'A' }] },
-        { name: 'Spring 2024', courses: [{}, {}] },
+        { name: 'Spring 2024', courses: [{ name: 'CSE111', credits: 3, grade: 'B' }] },
       ],
-    });
+    }, 'Ayesha Rahman');
     expect(html).toContain('20301234');
-    expect(html).toContain('Ayesha Rahman');
     expect(html).toContain('Computer Science and Engineering');
     expect(html).toContain('3.75');        // CGPA rounded to 2 dp
     expect(html).toContain('96');          // credits earned
     expect(html).toContain('Fall 2023');
-    expect(html).toContain('1 course');    // singular
-    expect(html).toContain('2 semesters'); // history count
+    expect(html).toContain('Semester GPA');
+    expect(html).toContain('4.00');        // Fall 2023 semester GPA
+    expect(html).toContain('3.00');        // Spring 2024 semester GPA
   });
 
-  test('academic card strips a trailing student-level token off the stored name', () => {
+  test('academic card: CGPA is stated once, and the chip carries the trend instead', () => {
     const html = academicProfileSectionHtml({
+      sid: '1', program: 'CSE', cgpa: 3.5, earnedCredits: 30,
+      semesters: [
+        { name: 'Fall 2023', courses: [{ credits: 3, grade: 'B' }] },
+        { name: 'Spring 2024', courses: [{ credits: 3, grade: 'A' }] },
+      ],
+    }, '');
+    expect(html).notToContain('CGPA 3.50');
+    expect(html.match(/3\.50/g).length).toBe(1); // the gauge, and nowhere else
+    expect(html).toContain('▲ 1.00 last term');
+  });
+
+  test('academic card: a single graded semester gets no invented trend', () => {
+    const html = academicProfileSectionHtml({
+      sid: '1', program: 'CSE', cgpa: 3, earnedCredits: 3,
+      semesters: [{ name: 'Fall 2023', courses: [{ credits: 3, grade: 'B' }] }],
+    }, '');
+    expect(html).notToContain('last term');
+    expect(html).notToContain('pf-trend');
+  });
+
+  test('academic card: an ungraded semester reads as such, not as a 0.00 crash', () => {
+    const html = academicProfileSectionHtml({
+      sid: '1', program: 'CSE', cgpa: 3, earnedCredits: 3,
+      semesters: [
+        { name: 'Fall 2023', courses: [{ credits: 3, grade: 'B' }] },
+        { name: 'Summer 2024', courses: [{ credits: 3, grade: '' }] },
+      ],
+    }, '');
+    expect(html).toContain('no grades yet');
+    expect(html).notToContain('0.00');
+    expect(html).notToContain('last term'); // one graded semester is not a trend
+  });
+
+  test('academic card: the transcript name shows only when it differs from the account', () => {
+    const same = academicProfileSectionHtml({
       sid: '24201402', name: 'Sourav Mondal UNDERGRADUATE',
       program: 'B.Sc. in CSE', cgpa: 2.39, earnedCredits: 48, semesters: [],
-    });
-    expect(html).toContain('Sourav Mondal');
-    expect(html).notToContain('UNDERGRADUATE');
+    }, 'Sourav Mondal');
+    expect(same).notToContain('Name on transcript');
+    expect(same).notToContain('UNDERGRADUATE');
+
+    const different = academicProfileSectionHtml({
+      sid: '24201402', name: 'Sourav Mondal UNDERGRADUATE',
+      program: 'B.Sc. in CSE', cgpa: 2.39, earnedCredits: 48, semesters: [],
+    }, 'Shuvo');
+    expect(different).toContain('Name on transcript');
+    expect(different).toContain('Sourav Mondal');
+    expect(different).notToContain('UNDERGRADUATE');
+  });
+
+  test('pfSemesterGpaSeries applies the calculator grade rules, not its own', () => {
+    const series = pfSemesterGpaSeries([
+      // F(NT) is attempted-but-zero; P is outside the average entirely.
+      { name: 'Fall 2023', courses: [{ credits: 3, grade: 'A' }, { credits: 3, grade: 'F(NT)' }] },
+      { name: 'Spring 2024', courses: [{ credits: 3, grade: 'A' }, { credits: 1, grade: 'P' }] },
+      { name: 'Summer 2024', courses: [] },
+    ]);
+    expect(series[0].gpa).toBe(2);   // (4.00×3 + 0×3) / 6
+    expect(series[1].gpa).toBe(4);   // the P credit is excluded, not counted as 0
+    expect(series[2].gpa).toBe(null);
+    expect(series[2].courseCount).toBe(0);
+  });
+
+  test('pfGpaTrend measures the last two graded semesters, skipping ungraded ones', () => {
+    const trend = pfGpaTrend([
+      { name: 'Fall 2023', gpa: 3 },
+      { name: 'Spring 2024', gpa: 3.5 },
+      { name: 'Summer 2024', gpa: null },
+    ]);
+    expect(Math.round(trend.delta * 100)).toBe(50);
+    expect(trend.from).toBe('Fall 2023');
+    expect(trend.to).toBe('Spring 2024');
+
+    expect(pfGpaTrend([{ name: 'Fall 2023', gpa: 3 }])).toBe(null);
+    expect(pfGpaTrend([])).toBe(null);
+    expect(pfGpaTrend(null)).toBe(null);
+  });
+
+  test('pfSameName ignores case and spacing, and never matches an empty name', () => {
+    expect(pfSameName('SOURAV MONDAL', 'Sourav  Mondal')).toBe(true);
+    expect(pfSameName('Sourav Mondal', 'Shuvo')).toBe(false);
+    expect(pfSameName('', '')).toBe(false);
+    expect(pfSameName(null, undefined)).toBe(false);
   });
 
   test('pfCleanName drops UNDERGRADUATE/GRADUATE suffixes, keeps clean names', () => {
