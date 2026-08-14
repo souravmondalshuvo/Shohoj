@@ -23,6 +23,7 @@
 // inline on* attributes anyway (script-src-attr).
 
 import {
+  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
   readStoredTranscript,
@@ -48,9 +49,10 @@ let _availability = 'unknown';
 // refresh → probe → fail. An inconclusive probe therefore keeps the launcher
 // hidden until the next reload rather than retrying in a loop.
 let _probed = false;
-// The cloud flush (see assistant-service.js) only has to happen once per page
-// load — after that, ordinary saves keep Firestore current.
-let _flushed = false;
+// Whose chat is in _transcript. Campus machines are shared, so a change of uid
+// — including a sign-out — has to drop the previous student's turns rather than
+// let them show up in the drawer, or be replayed as the next student's context.
+let _owner = null;
 
 // ── Environment ───────────────────────────────────────────────────────────────
 
@@ -59,8 +61,12 @@ function workerUrl() {
   return typeof u === 'string' && u.startsWith('http') ? u.replace(/\/$/, '') : null;
 }
 
+function currentUid() {
+  return (typeof window._shohoj_currentUid === 'function' && window._shohoj_currentUid()) || null;
+}
+
 function signedIn() {
-  return typeof window._shohoj_currentUid === 'function' && !!window._shohoj_currentUid();
+  return !!currentUid();
 }
 
 function authReady() {
@@ -84,12 +90,18 @@ function activeTab() {
   }
 }
 
-function persist() {
+function storage() {
   try {
-    writeStoredTranscript(sessionStorage, _transcript);
+    return sessionStorage;
   } catch (_e) {
-    /* storage unavailable — the chat just won't survive a tab switch */
+    // Storage can be unreachable (private mode, blocked cookies). The helpers
+    // are null-safe, so the chat simply won't survive a tab switch.
+    return null;
   }
+}
+
+function persist() {
+  writeStoredTranscript(storage(), _transcript, _owner);
 }
 
 // ── Drawer rendering ──────────────────────────────────────────────────────────
@@ -161,12 +173,11 @@ async function ask(question) {
   try {
     // The Worker answers from users/{uid} in Firestore. Push anything still
     // sitting in the local debounce window first, or a student who just typed
-    // their grades is told they have no saved semesters.
-    if (!_flushed) {
-      _flushed = true;
-      if (typeof window._shohoj_flushCloudSave === 'function') {
-        await window._shohoj_flushCloudSave();
-      }
+    // their grades is told they have no saved semesters. This runs before every
+    // turn, not just the first: edits made between questions sit in the same
+    // debounce window, and a stale answer to a later question is just as wrong.
+    if (typeof window._shohoj_flushCloudSave === 'function') {
+      await window._shohoj_flushCloudSave();
     }
     const result = await sendAssistantTurn(_transcript, { workerUrl: workerUrl(), getToken });
     if (result.ok) {
@@ -250,7 +261,7 @@ function onKeydown(e) {
 
 function openDrawer() {
   if (_drawer) return;
-  _transcript = readStoredTranscript(typeof sessionStorage !== 'undefined' ? sessionStorage : null);
+  _transcript = readStoredTranscript(storage(), _owner);
   _error = null;
   _drawer = buildDrawer();
   document.body.appendChild(_drawer);
@@ -312,6 +323,18 @@ function probe() {
 
 /** Re-evaluate the three gate conditions and mount/unmount accordingly. */
 export function refreshLauncher() {
+  const uid = currentUid();
+  if (uid !== _owner) {
+    const previous = _owner;
+    _owner = uid;
+    _transcript = [];
+    _error = null;
+    // A sign-out, or a different student on a shared machine: drop the stored
+    // record as well, so nothing of theirs is left in the tab. Going from "not
+    // known yet" to a uid is just auth resolving after boot — the stored record
+    // is uid-stamped and only reads back for its owner, so it can be adopted.
+    if (previous !== null || uid === null) clearStoredTranscript(storage());
+  }
   if (!workerUrl() || !authReady() || !signedIn()) {
     unmountFab();
     return;
@@ -330,6 +353,3 @@ export function initAssistantFab() {
   // launcher follows the auth state rather than the first frame's answer.
   window.addEventListener('shohoj:auth-changed', () => refreshLauncher());
 }
-
-// Test seam: lets the e2e spec drive the gate without a real Firebase session.
-window.__shohojAssistantRefresh = refreshLauncher;
