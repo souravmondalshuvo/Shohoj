@@ -30,6 +30,7 @@ export {
   ASSISTANT_MAX_MESSAGE_CHARS,
   ASSISTANT_TRANSCRIPT_KEY,
   clampTranscript,
+  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
   readStoredTranscript,
