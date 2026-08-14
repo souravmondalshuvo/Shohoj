@@ -76,6 +76,35 @@ export type RetakePolicy =
   /** `best` for students who started strictly before `cutoff`, `latest` after. */
   | { readonly kind: 'best-before'; readonly cutoff: Term };
 
+/**
+ * Per-semester credit load limits, used to warn a student that a registration
+ * is under- or over-loaded.
+ *
+ * Optional on purpose: a campus whose limits we have not confirmed shows no
+ * warning at all, which is strictly better than showing another campus's.
+ */
+export interface CreditLoadRules {
+  /** Below this, the student is under the full-time minimum. */
+  readonly min: number;
+  /** Above this, registration is not permitted at all. */
+  readonly max: number;
+  /** Above this but within `max`, registration needs departmental approval. */
+  readonly warnAbove: number;
+}
+
+/**
+ * Which grades a student may repeat to improve them.
+ *
+ * `inclusive` is not a detail: BRACU allows a repeat strictly below 3.0, while
+ * NSU's published rule is "B or lower" — and a B is exactly 3.0. The same
+ * threshold with the wrong boundary tells a whole cohort of B students the
+ * wrong thing about whether they can retake.
+ */
+export interface RepeatEligibility {
+  readonly threshold: number;
+  readonly inclusive: boolean;
+}
+
 /** Feature slices a campus can switch on, keyed to the shell's routes. */
 export type FeatureId =
   | 'bus'
@@ -117,6 +146,9 @@ export interface UniversityProfile {
    * make", so callers should not surface a limit that was never stated.
    */
   readonly maxRetakes?: number;
+  readonly repeat: RepeatEligibility;
+  /** Omitted where the campus's limits are not confirmed — see CreditLoadRules. */
+  readonly creditLoad?: CreditLoadRules;
   /** Features this campus has the data to support. Everything else stays hidden. */
   readonly features: readonly FeatureId[];
 }
@@ -144,6 +176,10 @@ const BRACU: UniversityProfile = {
   // Mirrors gpaCoreUsesBestGradePolicyImpl: students who started before Fall
   // 2024 keep the best attempt, everyone from Fall 2024 on keeps the latest.
   retake: { kind: 'best-before', cutoff: { season: 'Fall', year: 2024 } },
+  // gpaCoreIsRepeatEligibleImpl: strictly below 3.0, so a B is not repeatable.
+  repeat: { threshold: 3.0, inclusive: false },
+  // gpaCoreGetSemesterCreditWarningImpl.
+  creditLoad: { min: 9, max: 15, warnAbove: 12 },
   features: [
     'bus',
     'cafeteria',
@@ -225,6 +261,12 @@ const NSU: UniversityProfile = {
   // "Only the best grade will be used to calculate the CGPA" — unconditional,
   // with no start-term cutoff of the kind BRACU applies.
   retake: { kind: 'best' },
+  // "A student may repeat a course in which the grade is 'B' or lower" — a B is
+  // exactly 3.0, so unlike BRACU the threshold includes it.
+  repeat: { threshold: 3.0, inclusive: true },
+  // creditLoad is deliberately absent: NSU's per-semester minimum and maximum
+  // were not confirmed, and no warning beats BRACU's warning shown to an NSU
+  // student.
   features: [
     // Everything here works from a transcript the student supplies.
     'calculator',
