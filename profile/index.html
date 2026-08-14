@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-g2MgBffAa16khBKc3c+U3XPHucmW3D0JXyAQFhEHscs=' 'sha256-9hziqLNBQ5YZrt3oqzRh59Kjmrz+tZMxotcddKN6hxI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-g2MgBffAa16khBKc3c+U3XPHucmW3D0JXyAQFhEHscs=' 'sha256-EtV3ZCeXFP9kCyVohpD99QMYbPQ+tMlXUg9tjK2XliQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -7427,6 +7427,20 @@ body[data-page="admin"] .orb { display: none !important; }
   line-height: 1.55;
   margin-top: 4px;
 }
+/* Scope line: which degree the map is filtered to, and the way out of it. */
+.umc-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.umc-scope-btn {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-green);
+  background: rgba(46,204,113,0.12);
+  border: 1px solid var(--chip-border);
+  border-radius: 999px;
+  padding: 3px 11px;
+  cursor: pointer;
+}
+.umc-scope-btn:hover { background: rgba(46,204,113,0.2); }
 .umc-sub strong {
   color: var(--green);
 }
@@ -13023,6 +13037,78 @@ function completedCodes(courses, extractCode) {
   return out;
 }
 
+/**
+ * The subject prefix of a course code — `CSE220` → `CSE`, `MAT110` → `MAT`.
+ * Empty when the code doesn't split that way, so an unparseable code can never
+ * be silently grouped under some other subject.
+ */
+function coursePrefix(code) {
+  const match = /^([A-Z]{2,4})\d/.exec(normalizePrereqCode(code));
+  return match ? match[1] : '';
+}
+
+/**
+ * The subjects a student's degree actually draws on.
+ *
+ * Two sources, unioned, because neither alone is honest:
+ *
+ *   - the program's model curriculum, which is what the degree is made of;
+ *   - the subjects the student has already taken, which catches the electives
+ *     the model curriculum omits — a real transcript is evidence no table can
+ *     override.
+ *
+ * The departments table is injected rather than imported: this module stays a
+ * pure prerequisite layer that knows nothing about the catalogue.
+ *
+ * An unrecognized program label yields an empty set, which callers must read as
+ * "no filter" rather than "nothing is relevant": guessing a degree from a label
+ * we don't know would be worse than showing everything.
+ */
+function programSubjects(programLabel, programs, completed = new Set()) {
+  const subjects = new Set();
+
+  const label = String(programLabel ?? '').trim().toLowerCase();
+  const entry = label === ''
+    ? undefined
+    : Object.values(programs ?? {}).find(p => String(p?.label ?? '').trim().toLowerCase() === label);
+
+  if (entry) {
+    for (const preset of entry.presets ?? []) {
+      for (const course of preset.courses ?? []) {
+        // Curriculum entries carry the code in parentheses: "Algorithms (CSE221)".
+        const code = /\(([A-Za-z]{2,4}\d{3})\)/.exec(String(course?.name ?? ''))?.[1];
+        const prefix = coursePrefix(code);
+        if (prefix) subjects.add(prefix);
+      }
+    }
+  }
+
+  // Only extend a program we recognized. Without one there is no filter at all,
+  // and seeding it from the transcript alone would narrow the map to whatever
+  // the student happened to take first.
+  if (subjects.size > 0) {
+    for (const code of completed) {
+      const prefix = coursePrefix(code);
+      if (prefix) subjects.add(prefix);
+    }
+  }
+
+  return subjects;
+}
+
+/**
+ * Keep only what belongs to the student's degree. An empty subject set means we
+ * could not identify the program, and everything passes through unchanged.
+ *
+ * This runs *before* the unlock map is built, not after it: `unlockCount` is
+ * measured across the courses it is given, so filtering the rendered lists
+ * alone would still rank a course by doors it opens into another department.
+ */
+function filterToSubjects(offered, subjects) {
+  if (subjects.size === 0) return [...offered];
+  return offered.filter(course => subjects.has(coursePrefix(course.courseCode)));
+}
+
 /** Collapse the feed's per-section rows to one entry per course. */
 function distinctCourses(offered) {
   const byCode = new Map();
@@ -13109,6 +13195,613 @@ function buildUnlockMap(offered, completed) {
   return { unlocked, oneAway, highestLeverage, failedOpenCount, hasPrereqData };
 }
 
+// ── js/core/departments.js ──────────────────────────────────────
+const DEPARTMENTS = {
+  CSE: {
+    label: 'B.Sc. in Computer Science and Engineering (CSE)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Programming Language I (CSE110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Programming Language-II (CSE111)', credits: 3, grade: '' },
+        { name: 'Discrete Mathematics (CSE230)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Data Structures (CSE220)', credits: 3, grade: '' },
+        { name: 'Circuits and Electronics (CSE250)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Algorithms (CSE221)', credits: 3, grade: '' },
+        { name: 'Computer Architecture (CSE340)', credits: 3, grade: '' },
+        { name: 'Software Engineering (CSE470)', credits: 3, grade: '' },
+        { name: 'Linear Algebra (MAT215)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Database Systems (CSE370)', credits: 3, grade: '' },
+        { name: 'Operating Systems (CSE321)', credits: 3, grade: '' },
+        { name: 'Computer Networks (CSE421)', credits: 3, grade: '' },
+        { name: 'Artificial Intelligence (CSE422)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  EEE: {
+    label: 'BSc EEE — Electrical & Electronic Engineering',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Electrical Circuits I (EEE101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Computer Programming (EEE103)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits II (EEE203)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Electronic Circuits I (EEE205)', credits: 3, grade: '' },
+        { name: 'Signals and Systems (EEE243)', credits: 3, grade: '' },
+        { name: 'Linear Algebra (MAT215)', credits: 3, grade: '' },
+        { name: 'Statistics & Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Energy Conversion I (EEE221)', credits: 3, grade: '' },
+        { name: 'Electromagnetic Waves and Fields (EEE241)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (EEE283)', credits: 3, grade: '' },
+        { name: 'Numerical Techniques (EEE282)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  BBA: {
+    label: 'Bachelor of Business Administration (BBA)',
+    totalCredits: 130,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Business - Basics, Ethics and Environment (BUS102)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Financial Accounting (ACT201)', credits: 3, grade: '' },
+        { name: 'Business Communication (BUS201)', credits: 3, grade: '' },
+        { name: 'Introduction to Microeconomics (ECO101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Introduction to Macroeconomics (ECO102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Management Accounting (ACT202)', credits: 3, grade: '' },
+        { name: 'Management Practices and Organizational Behavior (MGT213)', credits: 3, grade: '' },
+        { name: 'Principles of Marketing (MKT201)', credits: 3, grade: '' },
+        { name: 'Computer Applications in Business (MSC221)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Principles of Entrepreneurship (BUS321)', credits: 3, grade: '' },
+        { name: 'Financial Environment and Banking (FIN201)', credits: 3, grade: '' },
+        { name: 'Quantitative Methods for Business (BUS209)', credits: 3, grade: '' },
+        { name: 'Business Law and Corporate Governance (BUS204)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'International Business (BUS301)', credits: 3, grade: '' },
+        { name: 'Financial Management (FIN301)', credits: 3, grade: '' },
+        { name: 'Human Resource Management (MGT301)', credits: 3, grade: '' },
+        { name: 'Marketing Management (MKT301)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  ECO: {
+    label: 'B.S.S. in Economics (ECO)',
+    totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Introduction to Microeconomics (ECO101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Introduction to Macroeconomics (ECO102)', credits: 3, grade: '' },
+        { name: 'Mathematics for Business and Economics (ECO201)', credits: 3, grade: '' },
+        { name: 'Statistical Methods for Business and Economics (ECO202)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Intermediate Microeconomics I (ECO206)', credits: 3, grade: '' },
+        { name: 'Intermediate Macroeconomics I (ECO207)', credits: 3, grade: '' },
+        { name: 'Introduction to Econometrics (ECO303)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Intermediate Microeconomics II (ECO208)', credits: 3, grade: '' },
+        { name: 'Intermediate Macroeconomics II (ECO209)', credits: 3, grade: '' },
+        { name: 'History of Economic Thought (ECO310)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  ENG: {
+    label: 'B.A. in English (ENG)',
+    totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Linguistics (ENG111)', credits: 3, grade: '' },
+        { name: 'Introduction to English Poetry (ENG113)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Introduction to English Drama (ENG114)', credits: 3, grade: '' },
+        { name: 'Introduction to English Prose (ENG115)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Survey of English Literature I (ENG213)', credits: 3, grade: '' },
+        { name: 'Sociolinguistics (ENG211)', credits: 3, grade: '' },
+        { name: 'Discourse Analysis (ENG221)', credits: 3, grade: '' },
+        { name: 'The Study of English (ENG242)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  ARC: {
+    label: 'B.Arch. in Architecture (ARC)',
+    totalCredits: 207,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Design I: Basic Design (ARC101)', credits: 4.5, grade: '' },
+        { name: 'Graphic Communication I (ARC111)', credits: 3, grade: '' },
+        { name: 'Introduction to Architecture (ARC121)', credits: 2, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Design II (ARC102)', credits: 4.5, grade: '' },
+        { name: 'Graphic Communication II (ARC112)', credits: 1.5, grade: '' },
+        { name: 'CAD: Computer Aided Design (ARC113)', credits: 1.5, grade: '' },
+        { name: 'History of Art and Architecture I (ARC122)', credits: 2, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'History of Art and Architecture II (ARC123)', credits: 2, grade: '' },
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Design III (ARC201)', credits: 6, grade: '' },
+        { name: 'Construction I (ARC241)', credits: 2, grade: '' },
+        { name: 'History of Art and Architecture III (ARC224)', credits: 2, grade: '' },
+        { name: 'Computer Graphics (ARC214)', credits: 1.5, grade: '' },
+      ]},
+    ]
+  },
+  PHR: {
+    label: 'B.Sc. in Pharmacy (PHR)',
+    totalCredits: 164,
+    seasons: ['Spring', 'Summer'],
+    presets: [
+      { name: 'Spring — Semester 1', courses: [
+        { name: 'Inorganic Chemistry I (PHB101)', credits: 3, grade: '' },
+        { name: 'Pharmaceutical Microbiology I (PHB102)', credits: 3, grade: '' },
+        { name: 'Physiology & Anatomy I (PHB103)', credits: 3, grade: '' },
+        { name: 'Organic Chemistry I (PHB104)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 2', courses: [
+        { name: 'Inorganic Chemistry II (PHB105)', credits: 3, grade: '' },
+        { name: 'Physical Pharmacy I (PHB106)', credits: 3, grade: '' },
+        { name: 'Pharmaceutical Microbiology II (PHB108)', credits: 3, grade: '' },
+        { name: 'Organic Chemistry II (PHB109)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 3', courses: [
+        { name: 'Mathematics and Elementary Statistics (PHB107)', credits: 3, grade: '' },
+        { name: 'Pharmacognosy & Herbal Medicine (PHB202)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 4', courses: [
+        { name: 'Physical Pharmacy II (PHB203)', credits: 3, grade: '' },
+        { name: 'Pharmaceutical Analysis I (PHB204)', credits: 3, grade: '' },
+        { name: 'Pharmacology I (PHB205)', credits: 3, grade: '' },
+        { name: 'Pharmaceutical Calculations (PHB206)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  LAW: {
+    label: 'Bachelor of Laws (LLB)',
+    totalCredits: 135,
+    seasons: ['Spring', 'Fall'],
+    presets: [
+      { name: 'Spring — Semester 1', courses: [
+        { name: 'The Jurisprudence of Legal Concepts (LAW101)', credits: 3, grade: '' },
+        { name: 'Obligations: Contract Law (LAW102)', credits: 3, grade: '' },
+        { name: 'Delict: Law of Tort (LAW103)', credits: 3, grade: '' },
+        { name: 'Muslim Family Law and Reforms (LAW202)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 2', courses: [
+        { name: 'Constitutional Law (LAW104)', credits: 3, grade: '' },
+        { name: 'Equitable Principles and Specific Relief (LAW201)', credits: 3, grade: '' },
+        { name: 'Property Law and Transfer (LAW203)', credits: 3, grade: '' },
+        { name: 'Law of Registration and Limitation (LAW204)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Business Law (LAW205)', credits: 3, grade: '' },
+        { name: 'Criminal Law (LAW302)', credits: 3, grade: '' },
+        { name: 'Company Law (LAW303)', credits: 3, grade: '' },
+        { name: 'International Law (Public) (LAW304)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  CS: {
+    label: 'B.Sc. in Computer Science (CS)',
+    totalCredits: 124,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Programming Language I (CSE110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Remedial Mathematics (MAT092)', credits: 0, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Programming Language-II (CSE111)', credits: 3, grade: '' },
+        { name: 'Discrete Mathematics (CSE230)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Data Structures (CSE220)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (CSE260)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Algorithms (CSE221)', credits: 3, grade: '' },
+        { name: 'Numerical Methods (CSE330)', credits: 3, grade: '' },
+        { name: 'Computer Architecture (CSE340)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Operating Systems (CSE321)', credits: 3, grade: '' },
+        { name: 'Automata and Computability (CSE331)', credits: 3, grade: '' },
+        { name: 'Database Systems (CSE370)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  ECE: {
+    label: 'B.Sc. in Electronic & Communication Engineering (ECE)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Principles of Chemistry (CHE110)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits I (ECE101)', credits: 3, grade: '' },
+        { name: 'Computer Programming (ECE103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits II (ECE203)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+        { name: 'Electronic Circuits I (ECE205)', credits: 3, grade: '' },
+        { name: 'Numerical Techniques (ECE282)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Electromagnetic Waves and Fields (ECE241)', credits: 3, grade: '' },
+        { name: 'Signals and Systems (ECE243)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (ECE283)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  ANT: {
+    label: 'B.S.S. in Anthropology (ANT)',
+    totalCredits: 120,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Introduction to Anthropology (ANT101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Sociology (SOC101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Biological Anthropology (ANT104)', credits: 3, grade: '' },
+        { name: 'Language, Society and Culture (ANT201)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Introduction to Statistics (STA101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Inequality and Power (ANT202)', credits: 3, grade: '' },
+        { name: 'Social Theory (ANT203)', credits: 3, grade: '' },
+        { name: 'Gender and Society (ANT350)', credits: 3, grade: '' },
+        { name: 'World Civilization and Culture (HUM101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'History of Anthropological Thought (ANT301)', credits: 3, grade: '' },
+        { name: 'Politics, Domination and Society (ANT320)', credits: 3, grade: '' },
+        { name: 'Economy and Society (ANT321)', credits: 3, grade: '' },
+        { name: 'Research Methodology (ANT376)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Contemporary Issues in Anthropological Theory (ANT302)', credits: 3, grade: '' },
+        { name: 'Anthropology of Development (ANT330)', credits: 3, grade: '' },
+        { name: 'Reading Ethnography: Understanding the Anthropological Method (ANT375)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  PHY: {
+    label: 'B.Sc. in Physics (PHY)',
+    totalCredits: 132,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Physics (PHY102)', credits: 2, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Waves, Oscillation and Acoustics (PHY113)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Electricity and Magnetism (PHY115)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Solid State Physics (PHY201)', credits: 3, grade: '' },
+        { name: 'Basic Electronics (PHY306)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  APE: {
+    label: 'B.Sc. in Applied Physics & Electronics (APE)',
+    totalCredits: 130,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Mechanics, Properties of Matter, Waves & Oscillations (APE101)', credits: 3, grade: '' },
+        { name: 'Introduction to Computer Science (CSE101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Mathematics (MAT102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Thermal Physics, Radiation & Statistical Mechanics (APE102)', credits: 3, grade: '' },
+        { name: 'Electrical Circuits I (APE103)', credits: 3, grade: '' },
+        { name: 'Calculus (MAT105)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Bangladesh Studies (DEV101)', credits: 3, grade: '' },
+        { name: 'APE Lab I (APE104)', credits: 1.5, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Solid State Physics & Materials Science (APE201)', credits: 3, grade: '' },
+        { name: 'Electrodynamics & Electromagnetic Waves & Fields (APE202)', credits: 3, grade: '' },
+        { name: 'Electricity and Magnetism (PHY115)', credits: 3, grade: '' },
+        { name: 'Matrices, Linear Algebra & Differential Equations (MAT203)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Electrical Circuits II (APE203)', credits: 3, grade: '' },
+        { name: 'Digital Logic Design (APE204)', credits: 3, grade: '' },
+        { name: 'Electronic Devices and Circuits I (APE205)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Complex Variables & Fourier Analysis (MAT204)', credits: 3, grade: '' },
+        { name: 'Optics (PHY202)', credits: 3, grade: '' },
+        { name: 'APE Lab II (APE206)', credits: 1.5, grade: '' },
+      ]},
+    ]
+  },
+  MAT: {
+    label: 'B.Sc. in Mathematics (MAT)',
+    totalCredits: 127,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Differential Calculus (MAT110)', credits: 3, grade: '' },
+        { name: 'Principles of Physics I (PHY111)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Integral Calculus (MAT120)', credits: 3, grade: '' },
+        { name: 'Basic Algebra (MAT121)', credits: 3, grade: '' },
+        { name: 'Principles of Physics II (PHY112)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Emergence of Bangladesh (EMB101)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Calculus I (MAT123)', credits: 3, grade: '' },
+        { name: 'Complex Variables & Laplace Transformations (MAT215)', credits: 3, grade: '' },
+        { name: 'Elements of Statistics and Probability (STA201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Calculus II (MAT211)', credits: 3, grade: '' },
+        { name: 'Linear Algebra & Fourier Analysis (MAT216)', credits: 3, grade: '' },
+        { name: 'Differential Equations I (MAT222)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Complex Variables & Fourier Analysis (MAT204)', credits: 3, grade: '' },
+        { name: 'Introduction to Numerical Methods (MAT205)', credits: 3, grade: '' },
+        { name: 'Mathematics Lab I (MAT250)', credits: 2, grade: '' },
+      ]},
+    ]
+  },
+  MIC: {
+    label: 'B.Sc. in Microbiology (MIC)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'General Microbiology (MIC101)', credits: 3, grade: '' },
+        { name: 'Basic Biochemistry (BCH101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Introduction to Biology (BIO101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Basic Techniques in Microbiology (MIC102)', credits: 3, grade: '' },
+        { name: 'Biophysical Chemistry (BCH102)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Bangladesh Studies (DEV101)', credits: 3, grade: '' },
+        { name: 'Introduction to Computer Science (CSE101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Microbial Chemistry (MIC201)', credits: 3, grade: '' },
+        { name: 'Microbial Metabolism (MIC202)', credits: 3, grade: '' },
+        { name: 'Human Physiology (BCH201)', credits: 3, grade: '' },
+        { name: 'Introduction to Molecular Biology (MIC206)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Environmental Microbiology (MIC203)', credits: 3, grade: '' },
+        { name: 'Medical Microbiology (MIC204)', credits: 3, grade: '' },
+        { name: 'Basic Immunology (MIC300)', credits: 3, grade: '' },
+        { name: 'Advanced Molecular Biology (MIC310)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Virology (MIC301)', credits: 3, grade: '' },
+        { name: 'Food Microbiology (MIC302)', credits: 3, grade: '' },
+        { name: 'Pharmaceutical Microbiology (MIC306)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+  BIO: {
+    label: 'B.Sc. in Biotechnology (BIO)',
+    totalCredits: 136,
+    seasons: ['Spring', 'Summer', 'Fall'],
+    presets: [
+      { name: 'Fall — Semester 1', courses: [
+        { name: 'Introduction to Biotechnology and Genetic Engineering (BTE101)', credits: 3, grade: '' },
+        { name: 'Introduction to Biology (BIO101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of English (ENG101)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Mathematics (MAT101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 2', courses: [
+        { name: 'Microbial World (BTE102)', credits: 3, grade: '' },
+        { name: 'Plants and People (BTE103)', credits: 3, grade: '' },
+        { name: 'Basic Biochemistry (BCH101)', credits: 3, grade: '' },
+        { name: 'English Composition I (ENG102)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 3', courses: [
+        { name: 'Bangla Language & Literature (BNG103)', credits: 3, grade: '' },
+        { name: 'Ethics and Culture (HUM103)', credits: 3, grade: '' },
+        { name: 'Bangladesh Studies (DEV101)', credits: 3, grade: '' },
+        { name: 'Introduction to Computer Science (CSE101)', credits: 3, grade: '' },
+      ]},
+      { name: 'Fall — Semester 4', courses: [
+        { name: 'Bioorganic Chemistry (BTE201)', credits: 3, grade: '' },
+        { name: 'Biophysical Chemistry (BCH102)', credits: 3, grade: '' },
+        { name: 'Introduction to Molecular Biology (BTE203)', credits: 3, grade: '' },
+        { name: 'Human Physiology (BCH201)', credits: 3, grade: '' },
+      ]},
+      { name: 'Spring — Semester 5', courses: [
+        { name: 'Metabolism (BTE202)', credits: 3, grade: '' },
+        { name: 'Fundamentals of Genetic Engineering (BTE204)', credits: 3, grade: '' },
+        { name: 'Enzyme and Enzyme Kinetics (BCH202)', credits: 3, grade: '' },
+      ]},
+      { name: 'Summer — Semester 6', courses: [
+        { name: 'Microbial Biotechnology (BTE302)', credits: 3, grade: '' },
+        { name: 'Basic Immunology (BTE303)', credits: 3, grade: '' },
+        { name: 'Advanced Molecular Biology (BTE307)', credits: 3, grade: '' },
+      ]},
+    ]
+  },
+};
+
 // ── js/ui/unlockMapCard.js ──────────────────────────────────────
 // js/ui/unlockMapCard.js
 //
@@ -13189,7 +13882,31 @@ function umcNoPrereqDataHtml() {
  * The zone itself. `map` is a buildUnlockMap result; nothing here decides
  * eligibility, it only chooses words.
  */
-function umcZoneHtml(map) {
+/**
+ * The line that says whose degree this is filtered to, and the way out.
+ *
+ * The model curriculum in DEPARTMENTS is a model, not the registrar's rulebook
+ * — gen-ed electives outside it are real — so the filter is stated plainly and
+ * the unfiltered map is one click away rather than unreachable. Wired through
+ * dispatch because the production CSP blocks inline handlers.
+ */
+function umcScopeHtml(scope) {
+  if (!scope || scope.subjects.length === 0) return '';
+  if (scope.showAll) {
+    return `
+      <div class="pfb-note umc-scope">
+        Showing every department on offer.
+        <button class="umc-scope-btn" data-action="unlock:programOnly">Back to my program</button>
+      </div>`;
+  }
+  return `
+      <div class="pfb-note umc-scope">
+        Filtered to your program — ${escHtml(scope.subjects.join(', '))}.
+        <button class="umc-scope-btn" data-action="unlock:showAll">Show all departments</button>
+      </div>`;
+}
+
+function umcZoneHtml(map, scope = null) {
   const leverage = map.highestLeverage;
 
   const unlockedCard = `
@@ -13245,6 +13962,7 @@ function umcZoneHtml(map) {
     ${leverageCard}
     ${unlockedCard}
     ${oneAwayCard}
+    ${umcScopeHtml(scope)}
     ${caveat}`;
 }
 
@@ -13254,15 +13972,24 @@ function umcZoneHtml(map) {
  * Returns the HTML to paint. Kept separate from the DOM write so the decision
  * of *which* state to show is unit-testable.
  */
-function umcHtmlFor(snapshot, sections) {
+function umcHtmlFor(snapshot, sections, opts = {}) {
   const semesters = Array.isArray(snapshot?.semesters) ? snapshot.semesters : [];
   const courses = semesters.flatMap(s => (Array.isArray(s.courses) ? s.courses : []));
   if (courses.length === 0) return umcNoTranscriptHtml();
 
   const completed = completedCodes(courses, getCourseCode);
-  const map = buildUnlockMap(sections, completed);
+
+  // Narrow to the student's degree *before* the map is built. unlockCount is
+  // measured across whatever is passed in, so filtering afterwards would still
+  // rank a course by the doors it opens in a department they will never enter —
+  // which is how a CSE student came to be told BCH101 was their best move.
+  const subjects = programSubjects(snapshot?.program, opts.programs || DEPARTMENTS, completed);
+  const showAll = opts.showAll === true;
+  const offered = showAll ? sections : filterToSubjects(sections, subjects);
+
+  const map = buildUnlockMap(offered, completed);
   if (!map.hasPrereqData) return umcNoPrereqDataHtml();
-  return umcZoneHtml(map);
+  return umcZoneHtml(map, { subjects: [...subjects].sort(), showAll });
 }
 
 /** Paint any of the above into a host element. */
@@ -13275,6 +14002,24 @@ function renderUnlockMap(hostId, html) {
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   host.innerHTML = html;
 }
+
+// Held so the scope switch can repaint without re-reading the feed — the same
+// arrangement the briefing card uses for its Midterms/Finals toggle.
+let _umcState = { hostId: null, snapshot: null, sections: [], showAll: false };
+
+/** Paint the zone and remember what it was built from, for the scope toggle. */
+function renderUnlockMapFor(hostId, snapshot, sections, showAll = false) {
+  _umcState = { hostId, snapshot, sections: Array.isArray(sections) ? sections : [], showAll };
+  renderUnlockMap(hostId, umcHtmlFor(snapshot, _umcState.sections, { showAll }));
+}
+
+function _umcSetScope(showAll) {
+  if (!_umcState.hostId || _umcState.showAll === showAll) return;
+  renderUnlockMapFor(_umcState.hostId, _umcState.snapshot, _umcState.sections, showAll);
+}
+
+registerAction('unlock:showAll', () => _umcSetScope(true));
+registerAction('unlock:programOnly', () => _umcSetScope(false));
 
 // ── js/animations/cursor.js ─────────────────────────────────────
 function initCursor() {
@@ -13448,7 +14193,9 @@ async function _pentry_loadUnlockMap() {
   renderUnlockMap(PENTRY_UNLOCK_HOST, umcLoadingHtml());
   try {
     const feed = await fetchConnectFeed();
-    renderUnlockMap(PENTRY_UNLOCK_HOST, umcHtmlFor(snapshot, feed.sections));
+    // Paint through the stateful helper so the program/all-departments switch
+    // can repaint from the same feed read.
+    renderUnlockMapFor(PENTRY_UNLOCK_HOST, snapshot, feed.sections);
   } catch {
     renderUnlockMap(PENTRY_UNLOCK_HOST, umcUnavailableHtml());
   }
