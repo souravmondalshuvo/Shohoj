@@ -7,8 +7,9 @@
 // block's attempted figure — the exact base projectCGPA has always used.
 
 import { gpaCoreGetRetakenKeys } from '../../core/gpa.ts';
-import { GRADES } from '../../core/grades.ts';
 import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
+import { UNIVERSITIES } from '../../core/university.ts';
+import type { GradeScale } from '../../core/university.ts';
 
 export interface PlannerTotals {
   readonly pts: number;
@@ -20,13 +21,17 @@ export interface PlannerTotalsInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: SemesterSeason | '';
   readonly startYear: string;
+  /** Campus grading scale. Defaults to BRACU's. */
+  readonly scale?: GradeScale;
 }
 
 /** Grade points + credits backing the impact projection (playground parity). */
 export function getPlannerTotals(inputs: PlannerTotalsInputs): PlannerTotals {
+  const scale = inputs.scale ?? UNIVERSITIES.bracu.grades;
   const retakenKeys = gpaCoreGetRetakenKeys(inputs.semesters, {
     startSeason: inputs.startSeason,
     startYear: inputs.startYear,
+    scale: inputs.scale,
   });
   let pts = 0;
   let cr = 0;
@@ -40,7 +45,9 @@ export function getPlannerTotals(inputs: PlannerTotalsInputs): PlannerTotals {
   for (const sem of inputs.semesters) {
     if (sem.summary) continue;
     sem.courses.forEach((course, index) => {
-      const gp = GRADES[course.grade as keyof typeof GRADES];
+      const gp = Object.prototype.hasOwnProperty.call(scale.points, course.grade)
+        ? scale.points[course.grade as keyof typeof scale.points]
+        : undefined;
       if (gp === undefined || gp === null || !course.credits) return;
       if (course.grade === 'P' || course.grade === 'I' || course.grade === 'F(NT)') return;
       if (retakenKeys.has(`${sem.id}-${index}`)) return;
