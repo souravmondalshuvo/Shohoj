@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-9hziqLNBQ5YZrt3oqzRh59Kjmrz+tZMxotcddKN6hxI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-g2MgBffAa16khBKc3c+U3XPHucmW3D0JXyAQFhEHscs=' 'sha256-9hziqLNBQ5YZrt3oqzRh59Kjmrz+tZMxotcddKN6hxI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -7644,6 +7644,220 @@ body[data-page="admin"] .orb { display: none !important; }
   .pfb-skel { animation: none; }
 }
 
+/* ── Shohoj Assistant (#533) ───────────────────────────────────────────────────
+   Floating launcher + chat drawer, mounted on <body> by js/ui/assistantFab.js.
+   Pill language throughout, mirroring the shell's .assistant-* block in
+   css/shell-routes.css so the two front-ends look like one product. Sits under
+   the modal backdrops (z-index 9999) — a chat panel should never cover a
+   confirm dialog — and above the nav (100). */
+.assistant-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 300;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  color: #06120b;
+  background: var(--green);
+  border: 1px solid var(--green);
+  box-shadow: 0 8px 26px rgba(46, 204, 113, 0.35);
+  transition: transform var(--transition);
+}
+.assistant-fab:hover {
+  transform: translateY(-2px);
+}
+.assistant-fab:focus-visible {
+  outline: 2px solid var(--ink-green);
+  outline-offset: 3px;
+}
+.assistant-drawer {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 28px));
+  height: min(560px, calc(100dvh - 28px));
+  /* Opaque, like the maintenance banner: the drawer floats over the animated
+     orbs, and a translucent surface drops text contrast below AA as they move. */
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.assistant-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px;
+}
+.assistant-drawer-title {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text1);
+}
+.assistant-drawer-close {
+  min-height: 32px;
+  min-width: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text2);
+  background: var(--chip-hover);
+  border: 1px solid var(--chip-border);
+}
+.assistant-drawer-close:hover {
+  color: var(--text1);
+}
+.assistant-drawer-note {
+  margin: 0;
+  padding: 0 14px 8px;
+  font-size: 11px;
+  color: var(--text3);
+}
+.assistant-log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+}
+.assistant-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.assistant-empty p {
+  margin: 4px 0;
+}
+.assistant-example {
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text1);
+  background: var(--chip-hover);
+  border: 1px solid var(--chip-border);
+}
+.assistant-example:hover {
+  border-color: var(--border);
+}
+.assistant-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text1);
+}
+.assistant-bubble--user {
+  align-self: flex-end;
+  background: var(--green-glow);
+  border: 1px solid var(--border);
+  border-bottom-right-radius: 4px;
+}
+.assistant-bubble--reply {
+  align-self: flex-start;
+  background: var(--card-bg-2);
+  border: 1px solid var(--card-border);
+  border-bottom-left-radius: 4px;
+}
+.assistant-bubble--pending {
+  color: var(--text3);
+  font-style: italic;
+}
+.assistant-error {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: #e05252;
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.3);
+}
+.assistant-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--hairline);
+}
+.assistant-input {
+  flex: 1;
+  resize: none;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text1);
+  background: var(--input-bg);
+  border: 1px solid var(--chip-border);
+}
+.assistant-input::placeholder {
+  color: var(--text3);
+}
+.assistant-send {
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #06120b;
+  background: var(--green);
+  border: 1px solid var(--green);
+}
+.assistant-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.assistant-drawer-close:focus-visible,
+.assistant-example:focus-visible,
+.assistant-input:focus-visible,
+.assistant-send:focus-visible {
+  outline: 2px solid var(--ink-green);
+  outline-offset: 2px;
+}
+@media (max-width: 520px) {
+  .assistant-drawer {
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    width: auto;
+    height: min(72dvh, 560px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-fab {
+    transition: none;
+  }
+  .assistant-fab:hover {
+    transform: none;
+  }
+}
+
 </style>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
   </head>
@@ -7752,6 +7966,65 @@ function installAdminAccessHooks({ isAdminUser }) {
   };
 }
 
+// ── js/auth/assistant-service.js ────────────────────────────────
+// js/auth/assistant-service.js
+//
+// The two identity bridges the Shohoj Assistant launcher needs on the legacy
+// page (#533). The launcher lives in the main bundle, which is a classic script
+// and cannot import firebase.js (a separate type="module" block) — so, as with
+// installReviewIdentityHooks, firebase.js installs window hooks and the UI
+// module calls them.
+//
+// Nothing here is assistant-specific policy: it is the same trust model as the
+// rest of the _shohoj_* bridges. The token is only ever handed to the Worker,
+// which verifies it and scopes every lookup to that uid server-side.
+
+/**
+ * Install the Assistant's auth hooks.
+ *
+ * @param {object} deps
+ * @param {() => unknown} deps.getCurrentUser  Current Firebase user, or null.
+ * @param {() => boolean} deps.isCloudSettled  Whether sign-in reconciliation finished.
+ * @param {() => Promise<string|null>} deps.getIdToken  Fresh ID token, or null.
+ * @param {(snap: unknown) => Promise<boolean>} deps.saveSnapshot  Immediate cloud write.
+ * @param {() => unknown} deps.readLocalSnapshot  Parsed local state, or null.
+ * @param {object} [scope]  Injectable global (tests).
+ */
+function installAssistantAuthHooks(
+  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot },
+  scope = typeof window !== 'undefined' ? window : undefined,
+) {
+  if (!scope) return;
+
+  scope._shohoj_idToken = function() {
+    return getCurrentUser() ? getIdToken() : Promise.resolve(null);
+  };
+
+  // The Assistant answers from users/{uid} in Firestore, not from localStorage,
+  // so a student whose latest edits are still sitting in the debounce window
+  // would be told they have no saved semesters. The drawer flushes through this
+  // before every turn; without a signed-in user or local data there is nothing
+  // to push and the caller carries on regardless.
+  //
+  // It deliberately does nothing while sign-in reconciliation is still open:
+  // auth-changed fires before the local-vs-cloud comparison, so writing the
+  // local snapshot here could overwrite the account's cloud copy before the
+  // conflict is detected — or while the migration dialog is still on screen
+  // waiting for the student to choose. A slightly stale answer is recoverable;
+  // silently overwriting a semester of work is not.
+  scope._shohoj_flushCloudSave = async function() {
+    if (!getCurrentUser()) return false;
+    if (typeof isCloudSettled === 'function' && !isCloudSettled()) return false;
+    const snap = readLocalSnapshot();
+    if (!snap) return false;
+    try {
+      return await saveSnapshot(snap);
+    } catch (_e) {
+      return false;
+    }
+  };
+}
+
 // ── js/auth/auth-service.js ─────────────────────────────────────
 function isSafeAvatarUrl(url) {
   if (!url || typeof url !== 'string') return false;
@@ -7844,6 +8117,13 @@ function getDataFingerprint(raw) {
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser    = null;
 let _authReady           = false;
+// Whether the local-vs-cloud decision for this sign-in has been made.
+// shohoj:auth-changed fires as soon as the user object exists, which is BEFORE
+// loadFromCloud() and the migration modal — so anything that writes
+// users/{uid} on a user action in that window (the Assistant's flush, see
+// assistant-service.js) could overwrite the cloud copy before the conflict is
+// even detected. Signed out there is nothing to reconcile.
+let _cloudReconciled     = true;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
@@ -7989,6 +8269,8 @@ async function loadFromCloud() {
 
 // ── Real-time listener ────────────────────────────────────────────────────────
 function startRealtimeSync(uid) {
+  // Reached only once the local-vs-cloud decision is settled, on every branch.
+  _cloudReconciled = true;
   if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
 
   // Skip the very first snapshot — it's always the current state we just loaded,
@@ -8535,6 +8817,7 @@ function initAuth() {
 
       updateAuthUI(user);
       showNudgeBanner(false);
+      _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
@@ -8600,6 +8883,7 @@ function initAuth() {
 
     } else {
       currentUser = null;
+      _cloudReconciled = true;
       notifyAuthStateReady();
       stopRealtimeSync();
       clearCloudAppliedFlag();
@@ -8620,6 +8904,8 @@ function initAuth() {
 // Writes to localStorage so the app's state restore logic can read it, then
 // calls the live state functions to update the UI immediately.
 function applyCloudData(cloudData) {
+  // The other terminal branch of the reconciliation (cloud wins).
+  _cloudReconciled = true;
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
@@ -8738,6 +9024,23 @@ window._shohoj_seatAlertIdentity = () =>
 installReviewIdentityHooks({
   getCurrentUser: () => currentUser,
   isAuthReady: () => _authReady,
+});
+
+// ── Assistant hooks ───────────────────────────────────────────────────────────
+// The Assistant launcher (js/ui/assistantFab.js) ships in the main bundle and
+// talks to the Worker directly; it needs a token, and it needs any pending
+// local edits flushed first, because the Worker answers from users/{uid}.
+
+installAssistantAuthHooks({
+  getCurrentUser: () => currentUser,
+  isCloudSettled: () => _cloudReconciled,
+  getIdToken: () => getCurrentUserIdToken(currentUser),
+  saveSnapshot: snap => saveToCloud(snap, { immediate: true }),
+  readLocalSnapshot: () => {
+    let raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+    return parseStoredState(raw);
+  },
 });
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a

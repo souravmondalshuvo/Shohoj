@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-T/hc2z/IZefFnrAzT42ik8SGZMwNONLoWpIlfdUkPbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-OVspeyKzmsNh0aEJqPKlym/oglknranXqsK9DJtun4s='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-g2MgBffAa16khBKc3c+U3XPHucmW3D0JXyAQFhEHscs=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-zbOwPHMJQakOGpAtkBHc2XLYi6POE1Sby5EDsaEsvyY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7662,6 +7662,220 @@ body[data-page="admin"] .orb { display: none !important; }
   .pfb-skel { animation: none; }
 }
 
+/* ── Shohoj Assistant (#533) ───────────────────────────────────────────────────
+   Floating launcher + chat drawer, mounted on <body> by js/ui/assistantFab.js.
+   Pill language throughout, mirroring the shell's .assistant-* block in
+   css/shell-routes.css so the two front-ends look like one product. Sits under
+   the modal backdrops (z-index 9999) — a chat panel should never cover a
+   confirm dialog — and above the nav (100). */
+.assistant-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 300;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  color: #06120b;
+  background: var(--green);
+  border: 1px solid var(--green);
+  box-shadow: 0 8px 26px rgba(46, 204, 113, 0.35);
+  transition: transform var(--transition);
+}
+.assistant-fab:hover {
+  transform: translateY(-2px);
+}
+.assistant-fab:focus-visible {
+  outline: 2px solid var(--ink-green);
+  outline-offset: 3px;
+}
+.assistant-drawer {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 28px));
+  height: min(560px, calc(100dvh - 28px));
+  /* Opaque, like the maintenance banner: the drawer floats over the animated
+     orbs, and a translucent surface drops text contrast below AA as they move. */
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.assistant-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 6px;
+}
+.assistant-drawer-title {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text1);
+}
+.assistant-drawer-close {
+  min-height: 32px;
+  min-width: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text2);
+  background: var(--chip-hover);
+  border: 1px solid var(--chip-border);
+}
+.assistant-drawer-close:hover {
+  color: var(--text1);
+}
+.assistant-drawer-note {
+  margin: 0;
+  padding: 0 14px 8px;
+  font-size: 11px;
+  color: var(--text3);
+}
+.assistant-log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--hairline);
+}
+.assistant-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text2);
+}
+.assistant-empty p {
+  margin: 4px 0;
+}
+.assistant-example {
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text1);
+  background: var(--chip-hover);
+  border: 1px solid var(--chip-border);
+}
+.assistant-example:hover {
+  border-color: var(--border);
+}
+.assistant-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text1);
+}
+.assistant-bubble--user {
+  align-self: flex-end;
+  background: var(--green-glow);
+  border: 1px solid var(--border);
+  border-bottom-right-radius: 4px;
+}
+.assistant-bubble--reply {
+  align-self: flex-start;
+  background: var(--card-bg-2);
+  border: 1px solid var(--card-border);
+  border-bottom-left-radius: 4px;
+}
+.assistant-bubble--pending {
+  color: var(--text3);
+  font-style: italic;
+}
+.assistant-error {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: #e05252;
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.3);
+}
+.assistant-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--hairline);
+}
+.assistant-input {
+  flex: 1;
+  resize: none;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text1);
+  background: var(--input-bg);
+  border: 1px solid var(--chip-border);
+}
+.assistant-input::placeholder {
+  color: var(--text3);
+}
+.assistant-send {
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #06120b;
+  background: var(--green);
+  border: 1px solid var(--green);
+}
+.assistant-send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.assistant-drawer-close:focus-visible,
+.assistant-example:focus-visible,
+.assistant-input:focus-visible,
+.assistant-send:focus-visible {
+  outline: 2px solid var(--ink-green);
+  outline-offset: 2px;
+}
+@media (max-width: 520px) {
+  .assistant-drawer {
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    width: auto;
+    height: min(72dvh, 560px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-fab {
+    transition: none;
+  }
+  .assistant-fab:hover {
+    transform: none;
+  }
+}
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -8336,6 +8550,65 @@ function installAdminAccessHooks({ isAdminUser }) {
   };
 }
 
+// ── js/auth/assistant-service.js ────────────────────────────────
+// js/auth/assistant-service.js
+//
+// The two identity bridges the Shohoj Assistant launcher needs on the legacy
+// page (#533). The launcher lives in the main bundle, which is a classic script
+// and cannot import firebase.js (a separate type="module" block) — so, as with
+// installReviewIdentityHooks, firebase.js installs window hooks and the UI
+// module calls them.
+//
+// Nothing here is assistant-specific policy: it is the same trust model as the
+// rest of the _shohoj_* bridges. The token is only ever handed to the Worker,
+// which verifies it and scopes every lookup to that uid server-side.
+
+/**
+ * Install the Assistant's auth hooks.
+ *
+ * @param {object} deps
+ * @param {() => unknown} deps.getCurrentUser  Current Firebase user, or null.
+ * @param {() => boolean} deps.isCloudSettled  Whether sign-in reconciliation finished.
+ * @param {() => Promise<string|null>} deps.getIdToken  Fresh ID token, or null.
+ * @param {(snap: unknown) => Promise<boolean>} deps.saveSnapshot  Immediate cloud write.
+ * @param {() => unknown} deps.readLocalSnapshot  Parsed local state, or null.
+ * @param {object} [scope]  Injectable global (tests).
+ */
+function installAssistantAuthHooks(
+  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot },
+  scope = typeof window !== 'undefined' ? window : undefined,
+) {
+  if (!scope) return;
+
+  scope._shohoj_idToken = function() {
+    return getCurrentUser() ? getIdToken() : Promise.resolve(null);
+  };
+
+  // The Assistant answers from users/{uid} in Firestore, not from localStorage,
+  // so a student whose latest edits are still sitting in the debounce window
+  // would be told they have no saved semesters. The drawer flushes through this
+  // before every turn; without a signed-in user or local data there is nothing
+  // to push and the caller carries on regardless.
+  //
+  // It deliberately does nothing while sign-in reconciliation is still open:
+  // auth-changed fires before the local-vs-cloud comparison, so writing the
+  // local snapshot here could overwrite the account's cloud copy before the
+  // conflict is detected — or while the migration dialog is still on screen
+  // waiting for the student to choose. A slightly stale answer is recoverable;
+  // silently overwriting a semester of work is not.
+  scope._shohoj_flushCloudSave = async function() {
+    if (!getCurrentUser()) return false;
+    if (typeof isCloudSettled === 'function' && !isCloudSettled()) return false;
+    const snap = readLocalSnapshot();
+    if (!snap) return false;
+    try {
+      return await saveSnapshot(snap);
+    } catch (_e) {
+      return false;
+    }
+  };
+}
+
 // ── js/auth/auth-service.js ─────────────────────────────────────
 function isSafeAvatarUrl(url) {
   if (!url || typeof url !== 'string') return false;
@@ -8428,6 +8701,13 @@ function getDataFingerprint(raw) {
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentUser    = null;
 let _authReady           = false;
+// Whether the local-vs-cloud decision for this sign-in has been made.
+// shohoj:auth-changed fires as soon as the user object exists, which is BEFORE
+// loadFromCloud() and the migration modal — so anything that writes
+// users/{uid} on a user action in that window (the Assistant's flush, see
+// assistant-service.js) could overwrite the cloud copy before the conflict is
+// even detected. Signed out there is nothing to reconcile.
+let _cloudReconciled     = true;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
@@ -8573,6 +8853,8 @@ async function loadFromCloud() {
 
 // ── Real-time listener ────────────────────────────────────────────────────────
 function startRealtimeSync(uid) {
+  // Reached only once the local-vs-cloud decision is settled, on every branch.
+  _cloudReconciled = true;
   if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
 
   // Skip the very first snapshot — it's always the current state we just loaded,
@@ -9119,6 +9401,7 @@ function initAuth() {
 
       updateAuthUI(user);
       showNudgeBanner(false);
+      _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
@@ -9184,6 +9467,7 @@ function initAuth() {
 
     } else {
       currentUser = null;
+      _cloudReconciled = true;
       notifyAuthStateReady();
       stopRealtimeSync();
       clearCloudAppliedFlag();
@@ -9204,6 +9488,8 @@ function initAuth() {
 // Writes to localStorage so the app's state restore logic can read it, then
 // calls the live state functions to update the UI immediately.
 function applyCloudData(cloudData) {
+  // The other terminal branch of the reconciliation (cloud wins).
+  _cloudReconciled = true;
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
@@ -9322,6 +9608,23 @@ window._shohoj_seatAlertIdentity = () =>
 installReviewIdentityHooks({
   getCurrentUser: () => currentUser,
   isAuthReady: () => _authReady,
+});
+
+// ── Assistant hooks ───────────────────────────────────────────────────────────
+// The Assistant launcher (js/ui/assistantFab.js) ships in the main bundle and
+// talks to the Worker directly; it needs a token, and it needs any pending
+// local edits flushed first, because the Worker answers from users/{uid}.
+
+installAssistantAuthHooks({
+  getCurrentUser: () => currentUser,
+  isCloudSettled: () => _cloudReconciled,
+  getIdToken: () => getCurrentUserIdToken(currentUser),
+  saveSnapshot: snap => saveToCloud(snap, { immediate: true }),
+  readLocalSnapshot: () => {
+    let raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+    return parseStoredState(raw);
+  },
 });
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
@@ -29143,6 +29446,596 @@ window._shohoj_fbAdminDel = async function(feedbackId) {
   }
 };
 
+// ── js/core/assistantClient.js ──────────────────────────────────
+// js/core/assistantClient.js
+//
+// Transport for the Shohoj Assistant Worker endpoint (#435, POST
+// /api/assistant, worker/index.js handleAssistant). One stateless chat turn:
+// the caller sends the visible transcript plus the new user message and gets a
+// single reply string back.
+//
+// Authored here, in vanilla JS, because BOTH front-ends need it: the legacy
+// bundle (build3.py flattens js/ into shohoj.html, which cannot load .ts) and
+// the React shell, which imports it through js/core/assistantClient.d.ts —
+// the same catalog.js / departments.js precedent. src/features/assistant/
+// assistantClient.ts is a typed re-export of this file, so there is exactly ONE
+// implementation of the Worker contract on the client side.
+//
+// Mirrors the Worker's transcript contract (≤20 messages, ≤4000 chars each,
+// first and last must be user turns) so a payload built here is never rejected
+// as malformed. Config, token getter, and fetch are injected so the module is
+// unit-testable offline (the reviewsWriteRepo pattern).
+
+const ASSISTANT_MAX_MESSAGES = 20;
+const ASSISTANT_MAX_MESSAGE_CHARS = 4000;
+
+const ASSISTANT_UNAVAILABLE_MESSAGE =
+  'The assistant is temporarily unavailable. Please try again in a bit.';
+
+/**
+ * Trim a transcript to what the Worker accepts: at most the last
+ * ASSISTANT_MAX_MESSAGES entries, starting on a user turn (leading assistant
+ * turns left over from the cut are dropped), each within the char limit.
+ */
+function clampTranscript(messages) {
+  const sane = (Array.isArray(messages) ? messages : []).filter(
+    m =>
+      m &&
+      (m.role === 'user' || m.role === 'assistant') &&
+      typeof m.content === 'string' &&
+      m.content.trim().length > 0 &&
+      m.content.length <= ASSISTANT_MAX_MESSAGE_CHARS,
+  );
+  let tail = sane.slice(-ASSISTANT_MAX_MESSAGES);
+  while (tail.length > 0 && tail[0].role !== 'user') tail = tail.slice(1);
+  return tail;
+}
+
+/**
+ * Ask the Worker whether the Assistant's backend dependency is configured.
+ *
+ * Unauthenticated on purpose: readiness is not user-specific, so the probe can
+ * run before/without a token and the endpoint exposes booleans only — never key
+ * material. See `readinessReport()` in worker/index.js.
+ *
+ * Returns 'ready' | 'unconfigured' | 'unknown'. Callers treat 'unknown' the
+ * same as 'unconfigured' when deciding whether to show an entry point. That is
+ * the conservative direction: #455 was a live feature that looked available and
+ * failed on every turn, and showing a button we cannot stand behind is worse
+ * than briefly hiding one that works. The probe is cheap and re-runs on mount,
+ * so a transient blip self-heals.
+ */
+async function fetchAssistantAvailability(options) {
+  const { workerUrl, fetchImpl = fetch, signal } = options || {};
+  if (!workerUrl) return 'unconfigured';
+
+  let res;
+  try {
+    res = await fetchImpl(`${String(workerUrl).replace(/\/$/, '')}/ready`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal,
+    });
+  } catch (_e) {
+    return 'unknown';
+  }
+  if (!res.ok) return 'unknown';
+
+  const body = await res.json().catch(() => null);
+  const configured = body?.capabilities?.assistant;
+  if (typeof configured !== 'boolean') return 'unknown';
+  return configured ? 'ready' : 'unconfigured';
+}
+
+/** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
+async function sendAssistantTurn(transcript, options) {
+  const { workerUrl, getToken, fetchImpl = fetch } = options || {};
+  if (!workerUrl) {
+    return {
+      ok: false,
+      code: 'unconfigured',
+      error: 'The assistant is not configured on this build.',
+    };
+  }
+
+  const messages = clampTranscript(transcript);
+  if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+    return { ok: false, code: 'invalid', error: 'Type a question to ask the assistant.' };
+  }
+
+  let token;
+  try {
+    token = await getToken();
+  } catch (_e) {
+    token = null;
+  }
+  if (!token) {
+    return { ok: false, code: 'unauthenticated', error: 'Sign in to use the assistant.' };
+  }
+
+  let res;
+  try {
+    res = await fetchImpl(`${String(workerUrl).replace(/\/$/, '')}/api/assistant`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages }),
+    });
+  } catch (_e) {
+    return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
+  }
+
+  if (res.ok) {
+    const body = await res.json().catch(() => null);
+    if (body && typeof body.reply === 'string' && body.reply.trim()) {
+      return { ok: true, reply: body.reply };
+    }
+    return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
+  }
+  if (res.status === 401) {
+    return {
+      ok: false,
+      code: 'unauthenticated',
+      error: 'Your session expired — sign in again to continue.',
+    };
+  }
+  if (res.status === 429) {
+    return { ok: false, code: 'rate-limited', error: 'Slow down a little — try again in a minute.' };
+  }
+  if (res.status === 400) {
+    return { ok: false, code: 'invalid', error: 'That message could not be sent. Try rephrasing it.' };
+  }
+  return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
+}
+
+// ── Starter prompts ───────────────────────────────────────────────────────────
+// The empty drawer offers three examples. Which three depends on where the
+// student is: on the Seats/Routine tabs a seat question is the likely one, on
+// the calculator a CGPA goal is. These are ordinary user messages — no Worker
+// change is involved, only which text the chip sends.
+
+const ASSISTANT_DEFAULT_PROMPTS = Object.freeze([
+  'What GPA do I need to reach a 3.5 CGPA?',
+  'Can I take CSE370 next semester?',
+  'Are there open seats in MAT216?',
+]);
+
+const ASSISTANT_TAB_PROMPTS = Object.freeze({
+  seats: Object.freeze([
+    'Are there open seats in MAT216?',
+    'Which sections of CSE370 still have room?',
+    'Can I take CSE370 next semester?',
+  ]),
+  routine: Object.freeze([
+    'Are there open seats in MAT216?',
+    'Can I take CSE370 next semester?',
+    'What GPA do I need to reach a 3.5 CGPA?',
+  ]),
+  planner: Object.freeze([
+    'Can I take CSE370 next semester?',
+    'What are the prerequisites for CSE470?',
+    'What GPA do I need to reach a 3.5 CGPA?',
+  ]),
+  tracker: Object.freeze([
+    'What GPA do I need to reach a 3.5 CGPA?',
+    'What happens to my CGPA if I get a 3.7 next semester?',
+    'Can I take CSE370 next semester?',
+  ]),
+});
+
+/** The three starter prompts for a calculator tab id; falls back to the defaults. */
+function examplePromptsForTab(tabId) {
+  const key = typeof tabId === 'string' ? tabId : '';
+  return ASSISTANT_TAB_PROMPTS[key] || ASSISTANT_DEFAULT_PROMPTS;
+}
+
+// ── Transcript persistence ────────────────────────────────────────────────────
+// sessionStorage only, and only so the chat survives a tab switch or an
+// accidental close within the same browser tab. Nothing reaches localStorage or
+// any server, so the drawer's "chats aren't saved" note still holds: the
+// transcript dies with the tab.
+//
+// Every record is stamped with the uid that wrote it and only reads back for
+// that same uid. Campus machines are shared: without the stamp, a student who
+// chats and signs out leaves their questions — and the model's answers about
+// their grades — sitting in the tab for whoever signs in next, and those turns
+// would be replayed to the Worker as the next student's context.
+
+const ASSISTANT_TRANSCRIPT_KEY = 'shohoj_assistant_transcript';
+
+/**
+ * Read the stored transcript for `owner`, clamped to the Worker contract.
+ * Returns [] when nothing is stored, when it belongs to a different uid, or
+ * when storage is unreadable. Never throws.
+ */
+function readStoredTranscript(storage, owner) {
+  try {
+    const raw = storage?.getItem(ASSISTANT_TRANSCRIPT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    // An unstamped record predates uid scoping (or was hand-written); it has no
+    // provable owner, so nobody may read it.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+    if (!parsed.owner || parsed.owner !== owner) return [];
+    return clampTranscript(parsed.messages);
+  } catch (_e) {
+    return [];
+  }
+}
+
+/** Persist a transcript for `owner` in this browser tab. Never throws. */
+function writeStoredTranscript(storage, transcript, owner) {
+  try {
+    const clamped = clampTranscript(transcript);
+    if (!owner || clamped.length === 0) {
+      storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
+      return;
+    }
+    storage?.setItem(ASSISTANT_TRANSCRIPT_KEY, JSON.stringify({ owner, messages: clamped }));
+  } catch (_e) {
+    /* storage unavailable (private mode, quota) — the chat just won't persist */
+  }
+}
+
+/** Drop any stored transcript, whoever owns it. Never throws. */
+function clearStoredTranscript(storage) {
+  try {
+    storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
+  } catch (_e) {
+    /* storage unavailable — nothing was persisted anyway */
+  }
+}
+
+// ── js/ui/assistantFab.js ───────────────────────────────────────
+// js/ui/assistantFab.js
+//
+// Shohoj Assistant (#533) on the legacy page: a floating launcher pill in the
+// bottom-right plus a chat drawer. Mounted once on <body>, so it follows the
+// student across every calculator tab — the Seats and Routine tabs are where
+// "are there seats in MAT216?" actually gets asked, not the hero.
+//
+// The Worker side already exists and is untouched (#435): POST /api/assistant
+// verifies the Firebase token, bakes the uid into its own loaders, and answers
+// only from that student's data. This module is transport + DOM.
+//
+// Gating mirrors the React shell exactly, and the third condition is the #455
+// lesson — the drawer once shipped while ANTHROPIC_API_KEY was unset and failed
+// on every single turn. The launcher appears only when:
+//   - the Worker URL is configured,
+//   - the student is signed in (the endpoint requires a token), and
+//   - GET /ready affirmatively reports the assistant configured.
+// An inconclusive probe keeps the launcher hidden. Signed-out visitors get no
+// launcher at all rather than a button that dead-ends in an auth wall.
+//
+// Everything is built with createElement + textContent and wired with
+// addEventListener: model output is never parsed as HTML, and prod CSP drops
+// inline on* attributes anyway (script-src-attr).
+
+const DRAWER_NOTE =
+  'Answers use only your own saved data. Chats aren’t saved — they reset when you close this tab.';
+
+let _fab = null;
+let _drawer = null;
+let _logEl = null;
+let _inputEl = null;
+let _sendEl = null;
+let _transcript = [];
+let _pending = false;
+let _error = null;
+let _availability = 'unknown';
+// The readiness probe runs at most once per page load. refreshLauncher() is
+// called on every auth change (which flaps repeatedly while Firestore settles),
+// so a probe that re-armed itself on a non-ready answer would spin: fail →
+// refresh → probe → fail. An inconclusive probe therefore keeps the launcher
+// hidden until the next reload rather than retrying in a loop.
+let _probed = false;
+// Whose chat is in _transcript. Campus machines are shared, so a change of uid
+// — including a sign-out — has to drop the previous student's turns rather than
+// let them show up in the drawer, or be replayed as the next student's context.
+let _owner = null;
+
+// ── Environment ───────────────────────────────────────────────────────────────
+
+function workerUrl() {
+  const u = window._shohoj_papers_worker_url;
+  return typeof u === 'string' && u.startsWith('http') ? u.replace(/\/$/, '') : null;
+}
+
+function currentUid() {
+  return (typeof window._shohoj_currentUid === 'function' && window._shohoj_currentUid()) || null;
+}
+
+function signedIn() {
+  return !!currentUid();
+}
+
+function authReady() {
+  return typeof window._shohoj_isAuthReady === 'function' ? !!window._shohoj_isAuthReady() : true;
+}
+
+function getToken() {
+  return typeof window._shohoj_idToken === 'function'
+    ? window._shohoj_idToken()
+    : Promise.resolve(null);
+}
+
+/** Which calculator tab the student is on, for the starter prompts. */
+function activeTab() {
+  const el = document.querySelector('#calcTabs [data-tab].active');
+  if (el?.dataset?.tab) return el.dataset.tab;
+  try {
+    return sessionStorage.getItem('shohoj_active_tab') || '';
+  } catch (_e) {
+    return '';
+  }
+}
+
+function storage() {
+  try {
+    return sessionStorage;
+  } catch (_e) {
+    // Storage can be unreachable (private mode, blocked cookies). The helpers
+    // are null-safe, so the chat simply won't survive a tab switch.
+    return null;
+  }
+}
+
+function persist() {
+  writeStoredTranscript(storage(), _transcript, _owner);
+}
+
+// ── Drawer rendering ──────────────────────────────────────────────────────────
+
+function bubble(role, text, extraClass) {
+  const div = document.createElement('div');
+  div.className =
+    'assistant-bubble ' +
+    (role === 'user' ? 'assistant-bubble--user' : 'assistant-bubble--reply') +
+    (extraClass ? ' ' + extraClass : '');
+  div.textContent = text;
+  return div;
+}
+
+function renderEmptyState() {
+  const wrap = document.createElement('div');
+  wrap.className = 'assistant-empty';
+  const p = document.createElement('p');
+  p.textContent = 'Ask about your CGPA goals, prerequisites, or seat availability. Try one:';
+  wrap.appendChild(p);
+  examplePromptsForTab(activeTab()).forEach(prompt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'assistant-example';
+    btn.textContent = prompt;
+    btn.addEventListener('click', () => ask(prompt));
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function renderLog() {
+  if (!_logEl) return;
+  _logEl.replaceChildren();
+
+  if (_transcript.length === 0 && !_pending) {
+    _logEl.appendChild(renderEmptyState());
+  } else {
+    _transcript.forEach(m => _logEl.appendChild(bubble(m.role, m.content)));
+    if (_pending) {
+      _logEl.appendChild(bubble('assistant', 'Thinking…', 'assistant-bubble--pending'));
+    }
+  }
+
+  if (_error) {
+    const err = document.createElement('div');
+    err.className = 'assistant-error';
+    err.setAttribute('role', 'alert');
+    err.textContent = _error;
+    _logEl.appendChild(err);
+  }
+
+  _logEl.scrollTo({ top: _logEl.scrollHeight });
+  if (_sendEl) _sendEl.disabled = _pending || !_inputEl?.value.trim();
+  if (_inputEl) _inputEl.disabled = _pending;
+}
+
+async function ask(question) {
+  const content = String(question || '').trim();
+  if (!content || _pending) return;
+
+  _transcript = [..._transcript, { role: 'user', content }];
+  if (_inputEl) _inputEl.value = '';
+  _error = null;
+  _pending = true;
+  persist();
+  renderLog();
+
+  try {
+    // The Worker answers from users/{uid} in Firestore. Push anything still
+    // sitting in the local debounce window first, or a student who just typed
+    // their grades is told they have no saved semesters. This runs before every
+    // turn, not just the first: edits made between questions sit in the same
+    // debounce window, and a stale answer to a later question is just as wrong.
+    if (typeof window._shohoj_flushCloudSave === 'function') {
+      await window._shohoj_flushCloudSave();
+    }
+    const result = await sendAssistantTurn(_transcript, { workerUrl: workerUrl(), getToken });
+    if (result.ok) {
+      _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
+      persist();
+    } else {
+      _error = result.error;
+    }
+  } finally {
+    _pending = false;
+    renderLog();
+    _inputEl?.focus();
+  }
+}
+
+function buildDrawer() {
+  const aside = document.createElement('aside');
+  aside.className = 'assistant-drawer';
+  aside.id = 'assistantDrawer';
+  aside.setAttribute('role', 'dialog');
+  aside.setAttribute('aria-label', 'Shohoj Assistant');
+  aside.setAttribute('aria-modal', 'false');
+
+  const header = document.createElement('header');
+  header.className = 'assistant-drawer-header';
+  const title = document.createElement('h2');
+  title.className = 'assistant-drawer-title';
+  title.textContent = 'Shohoj Assistant';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'assistant-drawer-close';
+  close.setAttribute('aria-label', 'Close assistant');
+  close.textContent = '✕';
+  close.addEventListener('click', () => closeDrawer());
+  header.append(title, close);
+
+  const note = document.createElement('p');
+  note.className = 'assistant-drawer-note';
+  note.textContent = DRAWER_NOTE;
+
+  _logEl = document.createElement('div');
+  _logEl.className = 'assistant-log';
+  _logEl.setAttribute('aria-live', 'polite');
+
+  const form = document.createElement('form');
+  form.className = 'assistant-composer';
+  _inputEl = document.createElement('textarea');
+  _inputEl.className = 'assistant-input';
+  _inputEl.rows = 2;
+  _inputEl.maxLength = 4000;
+  _inputEl.placeholder = 'Ask about your courses…';
+  _inputEl.setAttribute('aria-label', 'Message the assistant');
+  _sendEl = document.createElement('button');
+  _sendEl.type = 'submit';
+  _sendEl.className = 'assistant-send';
+  _sendEl.textContent = 'Send';
+  _sendEl.disabled = true;
+  form.append(_inputEl, _sendEl);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    ask(_inputEl.value);
+  });
+  _inputEl.addEventListener('input', () => {
+    _sendEl.disabled = _pending || !_inputEl.value.trim();
+  });
+  _inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      ask(_inputEl.value);
+    }
+  });
+
+  aside.append(header, note, _logEl, form);
+  return aside;
+}
+
+function onKeydown(e) {
+  if (e.key === 'Escape' && _drawer) closeDrawer();
+}
+
+function openDrawer() {
+  if (_drawer) return;
+  _transcript = readStoredTranscript(storage(), _owner);
+  _error = null;
+  _drawer = buildDrawer();
+  document.body.appendChild(_drawer);
+  document.addEventListener('keydown', onKeydown);
+  if (_fab) _fab.style.display = 'none';
+  renderLog();
+  _inputEl?.focus();
+}
+
+function closeDrawer() {
+  if (!_drawer) return;
+  document.removeEventListener('keydown', onKeydown);
+  _drawer.remove();
+  _drawer = null;
+  _logEl = null;
+  _inputEl = null;
+  _sendEl = null;
+  if (_fab) {
+    _fab.style.display = '';
+    _fab.focus();
+  }
+}
+
+// ── Launcher gate ─────────────────────────────────────────────────────────────
+
+function mountFab() {
+  if (_fab) return;
+  _fab = document.createElement('button');
+  _fab.type = 'button';
+  _fab.className = 'assistant-fab';
+  _fab.id = 'assistantFab';
+  _fab.setAttribute('aria-label', 'Open Shohoj Assistant');
+  const spark = document.createElement('span');
+  spark.setAttribute('aria-hidden', 'true');
+  spark.textContent = '✦';
+  _fab.append(spark, document.createTextNode(' Assistant'));
+  _fab.addEventListener('click', () => openDrawer());
+  document.body.appendChild(_fab);
+}
+
+function unmountFab() {
+  closeDrawer();
+  _fab?.remove();
+  _fab = null;
+}
+
+function probe() {
+  if (_probed) return;
+  const base = workerUrl();
+  if (!base) return;
+  _probed = true;
+  fetchAssistantAvailability({ workerUrl: base }).then(next => {
+    _availability = next;
+    // Only a 'ready' answer has anything to show. Re-entering refreshLauncher()
+    // on any other result would just call probe() again — see _probed above.
+    if (next === 'ready') refreshLauncher();
+  });
+}
+
+/** Re-evaluate the three gate conditions and mount/unmount accordingly. */
+function refreshLauncher() {
+  const uid = currentUid();
+  if (uid !== _owner) {
+    const previous = _owner;
+    _owner = uid;
+    _transcript = [];
+    _error = null;
+    // A sign-out, or a different student on a shared machine: drop the stored
+    // record as well, so nothing of theirs is left in the tab. Going from "not
+    // known yet" to a uid is just auth resolving after boot — the stored record
+    // is uid-stamped and only reads back for its owner, so it can be adopted.
+    if (previous !== null || uid === null) clearStoredTranscript(storage());
+  }
+  if (!workerUrl() || !authReady() || !signedIn()) {
+    unmountFab();
+    return;
+  }
+  if (_availability !== 'ready') {
+    probe();
+    unmountFab();
+    return;
+  }
+  mountFab();
+}
+
+function initAssistantFab() {
+  refreshLauncher();
+  // Auth resolves after boot and can flap while Firestore settles, so the
+  // launcher follows the auth state rather than the first frame's answer.
+  window.addEventListener('shohoj:auth-changed', () => refreshLauncher());
+}
+
 // ── js/animations/cursor.js ─────────────────────────────────────
 function initCursor() {
   const dot        = document.getElementById('cursor-dot');
@@ -30269,6 +31162,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initReveal();
   initCursor();
   initDotMatrix(document.getElementById('themeToggle'));
+
+  // Assistant launcher — mounts itself only once auth resolves and the Worker
+  // reports the assistant configured, so this call is safe before either.
+  initAssistantFab();
 
   // Auto-launch demo mode when embedded via ?demo=1 (e.g. the portfolio
   // site's live preview iframe). Skipped if local data already exists, so it
