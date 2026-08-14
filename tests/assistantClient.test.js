@@ -17,6 +17,7 @@ import {
   ASSISTANT_MAX_MESSAGES,
   ASSISTANT_TRANSCRIPT_KEY,
   clampTranscript,
+  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
   readStoredTranscript,
@@ -231,39 +232,73 @@ function fakeStorage(initial = {}) {
   };
 }
 
-test('a written transcript reads back identically', () => {
+test('a written transcript reads back identically for its owner', () => {
   const storage = fakeStorage();
   const transcript = [user('what is my cgpa?'), reply('3.42'), user('and next term?')];
-  writeStoredTranscript(storage, transcript);
-  assert.deepEqual(readStoredTranscript(storage), transcript);
+  writeStoredTranscript(storage, transcript, 'uid-a');
+  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), transcript);
 });
 
-test('writing an empty transcript clears the key rather than storing []', () => {
-  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '[{"role":"user","content":"x"}]' });
-  writeStoredTranscript(storage, []);
+// Campus machines are shared. A transcript is one student's questions and the
+// model's answers about their grades, so the next person to sign in must never
+// see it — and it must never be replayed to the Worker as their context.
+test('a transcript never reads back for a different uid', () => {
+  const storage = fakeStorage();
+  writeStoredTranscript(storage, [user('my cgpa?'), reply('3.42')], 'uid-a');
+  assert.deepEqual(readStoredTranscript(storage, 'uid-b'), []);
+  assert.deepEqual(readStoredTranscript(storage, null), []);
+  assert.deepEqual(readStoredTranscript(storage, undefined), []);
+});
+
+test('an unstamped legacy record is unreadable rather than assumed yours', () => {
+  const legacy = JSON.stringify([{ role: 'user', content: 'someone else' }]);
+  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: legacy });
+  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), []);
+});
+
+test('writing without an owner, or with nothing to say, clears the key', () => {
+  const stored = { [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify({ owner: 'uid-a', messages: [user('x')] }) };
+
+  const empty = fakeStorage({ ...stored });
+  writeStoredTranscript(empty, [], 'uid-a');
+  assert.equal(empty.has(ASSISTANT_TRANSCRIPT_KEY), false);
+
+  const anonymous = fakeStorage({ ...stored });
+  writeStoredTranscript(anonymous, [user('x')], null);
+  assert.equal(anonymous.has(ASSISTANT_TRANSCRIPT_KEY), false);
+});
+
+test('clearStoredTranscript drops the record whoever owns it', () => {
+  const storage = fakeStorage();
+  writeStoredTranscript(storage, [user('x')], 'uid-a');
+  clearStoredTranscript(storage);
   assert.equal(storage.has(ASSISTANT_TRANSCRIPT_KEY), false);
-  assert.deepEqual(readStoredTranscript(storage), []);
+  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), []);
 });
 
 test('a stored transcript is clamped to the Worker contract on read', () => {
   const oversize = [];
   for (let i = 0; i < 15; i++) oversize.push(user(`q${i}`), reply(`a${i}`));
-  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify(oversize) });
-  const restored = readStoredTranscript(storage);
+  const storage = fakeStorage({
+    [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify({ owner: 'uid-a', messages: oversize }),
+  });
+  const restored = readStoredTranscript(storage, 'uid-a');
   assert.ok(restored.length <= ASSISTANT_MAX_MESSAGES);
   assert.equal(restored[0].role, 'user');
 });
 
 test('corrupt, missing, or unavailable storage yields an empty transcript', () => {
-  assert.deepEqual(readStoredTranscript(fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '{oops' })), []);
-  assert.deepEqual(readStoredTranscript(fakeStorage()), []);
-  assert.deepEqual(readStoredTranscript(null), []);
+  const corrupt = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '{oops' });
+  assert.deepEqual(readStoredTranscript(corrupt, 'uid-a'), []);
+  assert.deepEqual(readStoredTranscript(fakeStorage(), 'uid-a'), []);
+  assert.deepEqual(readStoredTranscript(null, 'uid-a'), []);
   const throwing = {
     getItem() { throw new Error('denied'); },
     setItem() { throw new Error('denied'); },
     removeItem() { throw new Error('denied'); },
   };
-  assert.deepEqual(readStoredTranscript(throwing), []);
-  // Writing through a hostile storage must not break the chat.
-  writeStoredTranscript(throwing, [user('hi')]);
+  assert.deepEqual(readStoredTranscript(throwing, 'uid-a'), []);
+  // Writing or clearing through a hostile storage must not break the chat.
+  writeStoredTranscript(throwing, [user('hi')], 'uid-a');
+  clearStoredTranscript(throwing);
 });
