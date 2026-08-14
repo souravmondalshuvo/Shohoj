@@ -30,6 +30,7 @@ import {
   where,
 } from './firebase-init.js';
 import { installAdminAccessHooks } from './admin-service.js';
+import { installAssistantAuthHooks } from './assistant-service.js';
 import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
 import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
 import { installReviewIdentityHooks } from './review-service.js';
@@ -932,6 +933,22 @@ window._shohoj_seatAlertIdentity = () =>
 installReviewIdentityHooks({
   getCurrentUser: () => currentUser,
   isAuthReady: () => _authReady,
+});
+
+// ── Assistant hooks ───────────────────────────────────────────────────────────
+// The Assistant launcher (js/ui/assistantFab.js) ships in the main bundle and
+// talks to the Worker directly; it needs a token, and it needs any pending
+// local edits flushed first, because the Worker answers from users/{uid}.
+
+installAssistantAuthHooks({
+  getCurrentUser: () => currentUser,
+  getIdToken: () => getCurrentUserIdToken(currentUser),
+  saveSnapshot: snap => saveToCloud(snap, { immediate: true }),
+  readLocalSnapshot: () => {
+    let raw = null;
+    try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
+    return parseStoredState(raw);
+  },
 });
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
