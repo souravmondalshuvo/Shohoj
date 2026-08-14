@@ -123,6 +123,11 @@ PROFILE_JS_FILES = [
     'js/config/runtime-config.js',
     'js/core/helpers.js',
     'js/core/dispatch.js',
+    # Semester GPA for the academic card's history comes from the calculator's
+    # own grade rules (#532), so the profile bundle carries gpa-core + its
+    # grade table rather than a second copy of the policy.
+    'js/core/grades.js',
+    'js/core/gpa-core.js',
     'js/ui/profileTab.js',
     # "This semester" briefing: the student's picks joined against the live
     # section feed (exam crunch, week measurement, gap rooms). Dependencies
