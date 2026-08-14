@@ -158,3 +158,51 @@ test('long lists roll up rather than printing everything', () => {
   const html = umcHtmlFor(snapshotWith([{ name: 'Programming (CSE110)', grade: 'A' }]), many);
   assert.match(html, /\+7 more/); // 15 unlocked, 8 shown
 });
+
+// ── Program relevance (#539) ─────────────────────────────────────────────────
+
+const PROGRAMS = {
+  CSE: {
+    label: 'B.Sc. in Computer Science and Engineering (CSE)',
+    presets: [{ courses: [{ name: 'Programming Language I (CSE110)' }] }],
+  },
+};
+
+const CROSS_DEPT = [
+  ...SECTIONS,
+  { courseCode: 'BCH101', courseName: 'Basic Biochemistry', credits: 3, prerequisiteCourses: '' },
+  { courseCode: 'BCH201', courseName: 'Human Physiology', credits: 3, prerequisiteCourses: '(BCH101)' },
+  { courseCode: 'ARC102', courseName: 'Design II', credits: 3, prerequisiteCourses: '(ARC101)' },
+];
+
+const cseSnapshot = {
+  program: PROGRAMS.CSE.label,
+  semesters: [{ name: 'Fall 2024', courses: [{ name: 'Programming (CSE110)', grade: 'A' }] }],
+};
+
+test('a known program keeps other degrees out of the map', () => {
+  const html = umcHtmlFor(cseSnapshot, CROSS_DEPT, { programs: PROGRAMS });
+  assert.doesNotMatch(html, /BCH101/, 'no biochemistry for a CSE student');
+  assert.doesNotMatch(html, /ARC102/, 'no architecture either');
+  assert.match(html, /CSE111/, 'their own department survives');
+  assert.match(html, /Filtered to your program/);
+  assert.match(html, /data-action="unlock:showAll"/, 'and a way out of the filter');
+});
+
+test('showing all departments restores the unfiltered map', () => {
+  const html = umcHtmlFor(cseSnapshot, CROSS_DEPT, { programs: PROGRAMS, showAll: true });
+  assert.match(html, /BCH101/);
+  assert.match(html, /Showing every department/);
+  assert.match(html, /data-action="unlock:programOnly"/, 'and a way back');
+});
+
+test('an unrecognized program filters nothing and says nothing', () => {
+  const html = umcHtmlFor(
+    { ...cseSnapshot, program: 'B.Sc. in Underwater Basketry' },
+    CROSS_DEPT,
+    { programs: PROGRAMS },
+  );
+  assert.match(html, /BCH101/, 'better everything than a blank zone');
+  assert.doesNotMatch(html, /Filtered to your program/, 'and no claim we filtered');
+  assert.doesNotMatch(html, /data-action="unlock:showAll"/);
+});
