@@ -2,10 +2,10 @@ import type { GradeLetter } from './grades.ts';
 import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types.ts';
 import { UNIVERSITIES } from './university.ts';
 import type {
-  CreditLoadRules,
   GradeScale,
   RepeatEligibility,
   RetakePolicy,
+  UniversityProfile,
 } from './university.ts';
 
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
@@ -237,12 +237,17 @@ export function calculateCgpaTotals(
   };
 }
 
+// Takes the whole profile rather than its creditLoad, deliberately. A campus
+// with no confirmed limits has `creditLoad: undefined`, and a default parameter
+// fires on undefined — so passing those absent rules directly would silently
+// fall back to BRACU's numbers, which is the exact failure this is meant to
+// prevent. Passing the profile keeps "no limits published" distinguishable from
+// "no profile given".
 function gpaCoreGetSemesterCreditWarningImpl(
   semester: Pick<SemesterEntry, 'courses'>,
-  // A campus with no confirmed limits produces no warning at all, rather than
-  // borrowing another campus's numbers.
-  rules: CreditLoadRules | undefined = DEFAULT.creditLoad,
+  profile: UniversityProfile = DEFAULT,
 ): SemesterCreditWarning | null {
+  const rules = profile.creditLoad;
   if (!rules) return null;
 
   const total = semester.courses.reduce((sum, course) => {
