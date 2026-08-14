@@ -98,6 +98,28 @@ const CLASHING = {
 
 const FEED = [SECTION, SECTION_B, CLASHING];
 
+/** Two programs and a cross-department catalogue, for the relevance filter (#539). */
+const TWIN_PROGRAMS = {
+  CSE: {
+    label: 'B.Sc. in Computer Science and Engineering (CSE)',
+    presets: [
+      { courses: [{ name: 'Programming Language I (CSE110)' }, { name: 'Principles of Physics I (PHY111)' }] },
+      { courses: [{ name: 'Differential Calculus (MAT110)' }] },
+    ],
+  },
+  ARC: {
+    label: 'Bachelor of Architecture (ARC)',
+    presets: [{ courses: [{ name: 'Design I (ARC101)' }] }],
+  },
+};
+
+const TWIN_CATALOGUE = [
+  { courseCode: 'CSE110', courseName: 'Programming I', credits: 3, prerequisiteCourses: '' },
+  { courseCode: 'MAT110', courseName: 'Calculus', credits: 3, prerequisiteCourses: '' },
+  { courseCode: 'ARC101', courseName: 'Design I', credits: 3, prerequisiteCourses: '' },
+  { courseCode: 'BCH101', courseName: 'Biochemistry', credits: 3, prerequisiteCourses: '' },
+];
+
 /**
  * Normalized sections (post-parseFeed shape) with both exam periods dated, for
  * the briefing's clock-aware builders. Written out rather than parsed so the
@@ -316,6 +338,21 @@ export const FIXTURES = {
     ],
     gradeSatisfiesPrereq: [['A'], ['D-'], ['P'], ['F'], ['F(NT)'], ['W'], ['I'], [''], ['  ']],
     normalizePrereqCode: [['cse220'], ['  CSE220  '], [''], [null]],
+    coursePrefix: [['CSE220'], ['mat110'], ['12345'], [''], [null]],
+    // Program relevance (#539). The unknown-label case matters most: both sides
+    // must return an empty set, which callers read as "no filter".
+    programSubjects: [
+      [TWIN_PROGRAMS.CSE.label, TWIN_PROGRAMS, new Set(['CSE110', 'ECO101'])],
+      [TWIN_PROGRAMS.ARC.label, TWIN_PROGRAMS, new Set()],
+      ['B.Sc. in Underwater Basketry', TWIN_PROGRAMS, new Set(['CSE110'])],
+      ['', TWIN_PROGRAMS, new Set()],
+      [null, TWIN_PROGRAMS, new Set()],
+    ],
+    filterToSubjects: [
+      [TWIN_CATALOGUE, new Set(['CSE', 'MAT'])],
+      [TWIN_CATALOGUE, new Set()],
+      [[], new Set(['CSE'])],
+    ],
     prereqCodes: [
       [{ kind: 'course', code: 'CSE221' }],
       [
