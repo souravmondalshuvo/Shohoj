@@ -1,13 +1,29 @@
-import { GRADES } from './grades.ts';
 import type { GradeLetter } from './grades.ts';
 import type { CgpaTotals, CourseEntry, SemesterEntry, SemesterSeason } from './types.ts';
+import { UNIVERSITIES } from './university.ts';
+import type {
+  CreditLoadRules,
+  GradeScale,
+  RepeatEligibility,
+  RetakePolicy,
+} from './university.ts';
 
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
+
+// Every campus-specific rule below defaults to BRACU's. The live app and the
+// legacy js/core twin both call these with no profile, and
+// tests/typedCoreParity.test.js compares the two — so the zero-argument
+// behaviour of this module must stay exactly what it was before tenancy.
+const DEFAULT = UNIVERSITIES.bracu;
 
 export interface RetakePolicyOptions {
   bestGrade?: boolean;
   startSeason?: SemesterSeason | '';
   startYear?: number | string | '';
+  /** Campus grading scale. Defaults to BRACU's. */
+  scale?: GradeScale;
+  /** Campus retake rule. Defaults to BRACU's start-term-gated policy. */
+  retake?: RetakePolicy;
 }
 
 export interface CgpaOptions extends RetakePolicyOptions {
@@ -22,20 +38,26 @@ export interface SemesterCreditWarning {
   msg: string;
 }
 
-function isGradeLetter(grade: string): grade is GradeLetter {
-  return Object.prototype.hasOwnProperty.call(GRADES, grade);
+function isGradeLetter(grade: string, scale: GradeScale): grade is GradeLetter {
+  return Object.prototype.hasOwnProperty.call(scale.points, grade);
 }
 
-function gradePointFor(grade: string): number | null | undefined {
-  return isGradeLetter(grade) ? GRADES[grade] : undefined;
+function gradePointFor(grade: string, scale: GradeScale = DEFAULT.grades): number | null | undefined {
+  return isGradeLetter(grade, scale) ? scale.points[grade] : undefined;
 }
 
-function gpaCoreCalcSemesterGpaImpl(semester: Pick<SemesterEntry, 'courses'>): number | null {
+// The 'P' / 'I' / 'F(NT)' branches below are BRACU letters and are left exactly
+// as they were: they are inert on a campus that does not award them, and
+// parity with js/core matters more here than tidying a redundant check.
+function gpaCoreCalcSemesterGpaImpl(
+  semester: Pick<SemesterEntry, 'courses'>,
+  scale: GradeScale = DEFAULT.grades,
+): number | null {
   let points = 0;
   let credits = 0;
 
   for (const course of semester.courses) {
-    const gp = gradePointFor(course.grade);
+    const gp = gradePointFor(course.grade, scale);
     if (gp === undefined || !course.credits) continue;
     if (course.grade === 'P' || course.grade === 'I') continue;
     if (course.grade === 'F(NT)') {
@@ -51,6 +73,14 @@ function gpaCoreCalcSemesterGpaImpl(semester: Pick<SemesterEntry, 'courses'>): n
 }
 
 function gpaCoreUsesBestGradePolicyImpl(options: RetakePolicyOptions = {}): boolean {
+  const policy = options.retake ?? DEFAULT.retake;
+  if (policy.kind === 'best') return true;
+  if (policy.kind === 'latest') return false;
+
+  // 'best-before': the student's START term decides, not the retake's. The
+  // defaults below are what the pre-tenancy implementation assumed when a start
+  // term was missing, and they must stay — an unknown start term resolved to
+  // Fall 2024, which is on the 'latest' side of BRACU's own cutoff.
   const season = options.startSeason || 'Fall';
   const year =
     typeof options.startYear === 'number'
@@ -59,12 +89,16 @@ function gpaCoreUsesBestGradePolicyImpl(options: RetakePolicyOptions = {}): bool
 
   if (!season || Number.isNaN(year)) return false;
 
+  if (year < policy.cutoff.year) return true;
+  if (year > policy.cutoff.year) return false;
+
+  // Same year as the cutoff: compare seasons. An unrecognised season is not
+  // ordered against the cutoff at all, and falls to 'latest' exactly as the
+  // original chain of equality checks did.
   const seasonIndex = GPA_SEASON_ORDER.indexOf(season as SemesterSeason);
-  if (year < 2024) return true;
-  if (year === 2024 && seasonIndex === 0) return true;
-  if (year === 2024 && seasonIndex === 1) return true;
-  if (year === 2024 && seasonIndex === 2) return false;
-  return false;
+  const cutoffIndex = GPA_SEASON_ORDER.indexOf(policy.cutoff.season);
+  if (seasonIndex < 0 || cutoffIndex < 0) return false;
+  return seasonIndex < cutoffIndex;
 }
 
 export function getCourseCode(courseName: string): string | null {
@@ -85,6 +119,7 @@ function gpaCoreGetRetakenKeysImpl(
   semesters: readonly SemesterEntry[],
   options: RetakePolicyOptions = {},
 ): Set<string> {
+  const scale = options.scale ?? DEFAULT.grades;
   const bestGrade =
     typeof options.bestGrade === 'boolean'
       ? options.bestGrade
@@ -108,7 +143,7 @@ function gpaCoreGetRetakenKeysImpl(
       // favour of a W, which is how a student's passing grade would vanish.
       if (course.grade === 'W') return;
       const gp =
-        course.grade && course.grade !== 'F(NT)' ? (gradePointFor(course.grade) ?? -1) : -1;
+        course.grade && course.grade !== 'F(NT)' ? (gradePointFor(course.grade, scale) ?? -1) : -1;
       attempts.push({
         semId: semester.id,
         index,
@@ -152,6 +187,7 @@ export function calculateCgpaTotals(
 ): CgpaTotals {
   const includeRunning = options.includeRunning ?? true;
   const includeSummary = options.includeSummary ?? true;
+  const scale = options.scale ?? DEFAULT.grades;
   const retakenKeys = gpaCoreGetRetakenKeysImpl(semesters, options);
 
   let points = 0;
@@ -174,7 +210,7 @@ export function calculateCgpaTotals(
     if (semester.running && !includeRunning) continue;
 
     semester.courses.forEach((course, index) => {
-      const gp = gradePointFor(course.grade);
+      const gp = gradePointFor(course.grade, scale);
       if (gp === undefined || !course.credits) return;
       if (course.grade === 'P' || course.grade === 'I') return;
 
@@ -203,7 +239,12 @@ export function calculateCgpaTotals(
 
 function gpaCoreGetSemesterCreditWarningImpl(
   semester: Pick<SemesterEntry, 'courses'>,
+  // A campus with no confirmed limits produces no warning at all, rather than
+  // borrowing another campus's numbers.
+  rules: CreditLoadRules | undefined = DEFAULT.creditLoad,
 ): SemesterCreditWarning | null {
+  if (!rules) return null;
+
   const total = semester.courses.reduce((sum, course) => {
     if (!course.name.trim() || !course.credits) return sum;
     if (course.grade === 'P' || course.grade === 'F(NT)') return sum;
@@ -211,27 +252,37 @@ function gpaCoreGetSemesterCreditWarningImpl(
   }, 0);
 
   if (total === 0) return null;
-  if (total < 9)
-    return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
-  if (total > 15)
-    return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
-  if (total > 12)
+  if (total < rules.min)
+    return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below ${rules.min}-credit minimum` };
+  if (total > rules.max)
+    return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds ${rules.max}-credit maximum` };
+  if (total > rules.warnAbove)
     return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
   return null;
 }
 
-function gpaCoreIsRepeatEligibleImpl(grade: string): boolean {
+function gpaCoreIsRepeatEligibleImpl(
+  grade: string,
+  scale: GradeScale = DEFAULT.grades,
+  eligibility: RepeatEligibility = DEFAULT.repeat,
+): boolean {
   if (grade === 'F' || grade === 'F(NT)') return false;
   if (grade === 'P' || grade === 'I' || !grade) return false;
 
-  const gp = gradePointFor(grade);
+  const gp = gradePointFor(grade, scale);
   if (gp === undefined || gp === null) return false;
-  return gp < 3.0;
+  // BRACU repeats strictly below the threshold; NSU's "B or lower" includes a
+  // grade sitting exactly on it.
+  return eligibility.inclusive ? gp <= eligibility.threshold : gp < eligibility.threshold;
 }
 
-function gpaCoreGetImprovementStrategyImpl(grade: string): ImprovementStrategy {
+function gpaCoreGetImprovementStrategyImpl(
+  grade: string,
+  scale: GradeScale = DEFAULT.grades,
+  eligibility: RepeatEligibility = DEFAULT.repeat,
+): ImprovementStrategy {
   if (grade === 'F' || grade === 'F(NT)') return 'retake';
-  if (gpaCoreIsRepeatEligibleImpl(grade)) return 'repeat';
+  if (gpaCoreIsRepeatEligibleImpl(grade, scale, eligibility)) return 'repeat';
   return null;
 }
 
@@ -244,10 +295,15 @@ function gpaCoreNormalizeGradePointImpl(raw: string, mode: 'input' | 'blur'): st
   return trimmed;
 }
 
-function gpaCoreClampGradePointImpl(value: string): string {
+function gpaCoreClampGradePointImpl(
+  value: string,
+  scale: GradeScale = DEFAULT.grades,
+): string {
   const n = Number.parseFloat(value);
   if (Number.isNaN(n)) return value;
-  if (n > 4.0) return '4.0';
+  // toFixed(1) rather than String(): a 4.0 ceiling must render as "4.0", which
+  // is what the field showed before the scale became configurable.
+  if (n > scale.max) return scale.max.toFixed(1);
   if (n < 0) return '0.0';
   return value;
 }
