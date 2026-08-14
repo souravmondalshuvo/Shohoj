@@ -11,8 +11,15 @@
 // the briefing card's `pfb-*` classes so the two zones read as one page.
 
 import { escHtml } from '../core/helpers.js';
-import { buildUnlockMap, completedCodes } from '../core/prereq.js';
+import {
+  buildUnlockMap,
+  completedCodes,
+  filterToSubjects,
+  programSubjects,
+} from '../core/prereq.js';
 import { getCourseCode } from '../core/gpa-core.js';
+import { registerAction } from '../core/dispatch.js';
+import { DEPARTMENTS } from '../core/departments.js';
 
 /** How many rows a list shows before rolling the rest into a "+N more". */
 const UMC_VISIBLE = 8;
@@ -81,7 +88,31 @@ export function umcNoPrereqDataHtml() {
  * The zone itself. `map` is a buildUnlockMap result; nothing here decides
  * eligibility, it only chooses words.
  */
-export function umcZoneHtml(map) {
+/**
+ * The line that says whose degree this is filtered to, and the way out.
+ *
+ * The model curriculum in DEPARTMENTS is a model, not the registrar's rulebook
+ * — gen-ed electives outside it are real — so the filter is stated plainly and
+ * the unfiltered map is one click away rather than unreachable. Wired through
+ * dispatch because the production CSP blocks inline handlers.
+ */
+function umcScopeHtml(scope) {
+  if (!scope || scope.subjects.length === 0) return '';
+  if (scope.showAll) {
+    return `
+      <div class="pfb-note umc-scope">
+        Showing every department on offer.
+        <button class="umc-scope-btn" data-action="unlock:programOnly">Back to my program</button>
+      </div>`;
+  }
+  return `
+      <div class="pfb-note umc-scope">
+        Filtered to your program — ${escHtml(scope.subjects.join(', '))}.
+        <button class="umc-scope-btn" data-action="unlock:showAll">Show all departments</button>
+      </div>`;
+}
+
+export function umcZoneHtml(map, scope = null) {
   const leverage = map.highestLeverage;
 
   const unlockedCard = `
@@ -137,6 +168,7 @@ export function umcZoneHtml(map) {
     ${leverageCard}
     ${unlockedCard}
     ${oneAwayCard}
+    ${umcScopeHtml(scope)}
     ${caveat}`;
 }
 
@@ -146,15 +178,24 @@ export function umcZoneHtml(map) {
  * Returns the HTML to paint. Kept separate from the DOM write so the decision
  * of *which* state to show is unit-testable.
  */
-export function umcHtmlFor(snapshot, sections) {
+export function umcHtmlFor(snapshot, sections, opts = {}) {
   const semesters = Array.isArray(snapshot?.semesters) ? snapshot.semesters : [];
   const courses = semesters.flatMap(s => (Array.isArray(s.courses) ? s.courses : []));
   if (courses.length === 0) return umcNoTranscriptHtml();
 
   const completed = completedCodes(courses, getCourseCode);
-  const map = buildUnlockMap(sections, completed);
+
+  // Narrow to the student's degree *before* the map is built. unlockCount is
+  // measured across whatever is passed in, so filtering afterwards would still
+  // rank a course by the doors it opens in a department they will never enter —
+  // which is how a CSE student came to be told BCH101 was their best move.
+  const subjects = programSubjects(snapshot?.program, opts.programs || DEPARTMENTS, completed);
+  const showAll = opts.showAll === true;
+  const offered = showAll ? sections : filterToSubjects(sections, subjects);
+
+  const map = buildUnlockMap(offered, completed);
   if (!map.hasPrereqData) return umcNoPrereqDataHtml();
-  return umcZoneHtml(map);
+  return umcZoneHtml(map, { subjects: [...subjects].sort(), showAll });
 }
 
 /** Paint any of the above into a host element. */
@@ -167,3 +208,21 @@ export function renderUnlockMap(hostId, html) {
   // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
   host.innerHTML = html;
 }
+
+// Held so the scope switch can repaint without re-reading the feed — the same
+// arrangement the briefing card uses for its Midterms/Finals toggle.
+let _umcState = { hostId: null, snapshot: null, sections: [], showAll: false };
+
+/** Paint the zone and remember what it was built from, for the scope toggle. */
+export function renderUnlockMapFor(hostId, snapshot, sections, showAll = false) {
+  _umcState = { hostId, snapshot, sections: Array.isArray(sections) ? sections : [], showAll };
+  renderUnlockMap(hostId, umcHtmlFor(snapshot, _umcState.sections, { showAll }));
+}
+
+function _umcSetScope(showAll) {
+  if (!_umcState.hostId || _umcState.showAll === showAll) return;
+  renderUnlockMapFor(_umcState.hostId, _umcState.snapshot, _umcState.sections, showAll);
+}
+
+registerAction('unlock:showAll', () => _umcSetScope(true));
+registerAction('unlock:programOnly', () => _umcSetScope(false));
