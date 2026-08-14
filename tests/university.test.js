@@ -82,13 +82,91 @@ test('BRACU profile matches the constants the calculator already uses', () => {
     assert.deepEqual(bracu.emailDomains, ['g.bracu.ac.bd']);
 });
 
+test('NSU matches the published grading policy, including what it does NOT award', () => {
+    const nsu = UNIVERSITIES.nsu;
+    assert.deepEqual(nsu.emailDomains, ['northsouth.edu']);
+    assert.equal(nsu.grades.max, 4.0);
+
+    const expected = {
+        A: 4.0, 'A-': 3.7, 'B+': 3.3, B: 3.0, 'B-': 2.7, 'C+': 2.3,
+        C: 2.0, 'C-': 1.7, 'D+': 1.3, D: 1.0, F: 0.0, I: null, W: null,
+    };
+    assert.deepEqual(nsu.grades.points, expected);
+
+    // The two differences from BRACU that would silently corrupt a CGPA if the
+    // BRACU scale were ever applied to an NSU transcript.
+    assert.equal(gradePointOn(nsu.grades, 'A+'), undefined, 'NSU awards no A+');
+    assert.equal(gradePointOn(nsu.grades, 'D-'), undefined, 'NSU awards no D-');
+    // An A is the ceiling, where BRACU has A+ sharing 4.0 with A.
+    assert.equal(gradePointOn(nsu.grades, 'A'), 4.0);
+});
+
+test('BRACU and NSU disagree exactly where the policies disagree', () => {
+    const bracu = UNIVERSITIES.bracu.grades;
+    const nsu = UNIVERSITIES.nsu.grades;
+    // Same ceiling, reached by a different letter set.
+    assert.equal(bracu.max, nsu.max);
+    for (const letter of ['A+', 'D-']) {
+        assert.notEqual(gradePointOn(bracu, letter), undefined, `BRACU awards ${letter}`);
+        assert.equal(gradePointOn(nsu, letter), undefined, `NSU does not award ${letter}`);
+    }
+    // Every letter NSU does award must score identically on both campuses, so a
+    // shared letter can never mean two different things.
+    for (const [letter, point] of Object.entries(nsu.points)) {
+        assert.equal(gradePointOn(bracu, letter), point, `${letter} disagrees across campuses`);
+    }
+});
+
+test('retake policies are campus-specific and well formed', () => {
+    // BRACU's rule turns on the student's start term; NSU's does not.
+    assert.deepEqual(UNIVERSITIES.bracu.retake, {
+        kind: 'best-before',
+        cutoff: { season: 'Fall', year: 2024 },
+    });
+    assert.deepEqual(UNIVERSITIES.nsu.retake, { kind: 'best' });
+
+    for (const profile of profiles) {
+        assert.ok(['best', 'latest', 'best-before'].includes(profile.retake.kind), `${profile.id} retake kind`);
+        if (profile.retake.kind === 'best-before') {
+            assert.ok(Number.isInteger(profile.retake.cutoff.year), `${profile.id} cutoff year`);
+            assert.ok(profile.retake.cutoff.season.length > 0, `${profile.id} cutoff season`);
+        }
+        // An unverified cap must stay unset rather than be guessed at.
+        if (profile.maxRetakes !== undefined) {
+            assert.ok(Number.isInteger(profile.maxRetakes) && profile.maxRetakes > 0, `${profile.id} maxRetakes`);
+        }
+    }
+});
+
+test('NSU keeps feed-dependent features off until it has a data source', () => {
+    const nsu = UNIVERSITIES.nsu;
+    // These all derive from BRACU's CONNECT feed or hand-collected Merul Badda
+    // campus data. Shipping them for NSU would render empty tabs, not features.
+    for (const feature of ['seats', 'routine', 'rooms', 'campus', 'bus', 'cafeteria', 'lostFound']) {
+        assert.equal(hasFeature(nsu, feature), false, `NSU should not enable ${feature}`);
+        assert.equal(hasFeature(UNIVERSITIES.bracu, feature), true, `BRACU should enable ${feature}`);
+    }
+    // The transcript-driven core must work on day one.
+    for (const feature of ['calculator', 'planner', 'degree', 'transcript']) {
+        assert.equal(hasFeature(nsu, feature), true, `NSU should enable ${feature}`);
+    }
+});
+
+test('universityForEmail tells the two campuses apart', () => {
+    assert.equal(universityForEmail('someone@northsouth.edu')?.id, 'nsu');
+    assert.equal(universityForEmail('someone@g.bracu.ac.bd')?.id, 'bracu');
+    // Lookalikes of the newly added domain must fail closed too.
+    assert.equal(universityForEmail('someone@notnorthsouth.edu'), null);
+    assert.equal(universityForEmail('someone@northsouth.edu.attacker.com'), null);
+});
+
 test('the default campus is registered', () => {
     assert.ok(isUniversityId(DEFAULT_UNIVERSITY_ID));
     assert.equal(getUniversity(DEFAULT_UNIVERSITY_ID)?.id, DEFAULT_UNIVERSITY_ID);
 });
 
 test('getUniversity and isUniversityId reject anything unregistered', () => {
-    for (const junk of ['nsu', 'BRACU', '', null, undefined, 42, {}, 'constructor', '__proto__', 'toString']) {
+    for (const junk of ['iub', 'BRACU', 'NSU', '', null, undefined, 42, {}, 'constructor', '__proto__', 'toString']) {
         assert.equal(isUniversityId(junk), false, `isUniversityId(${String(junk)})`);
         assert.equal(getUniversity(junk), null, `getUniversity(${String(junk)})`);
     }
