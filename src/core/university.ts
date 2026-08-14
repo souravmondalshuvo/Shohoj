@@ -31,9 +31,10 @@ import {
   type GradeLetter,
   type GradePoint,
 } from './grades.ts';
+import type { SemesterSeason } from './types.ts';
 
 /** Every campus Shohoj can serve. */
-export type UniversityId = 'bracu';
+export type UniversityId = 'bracu' | 'nsu';
 
 /**
  * A campus grading scale.
@@ -54,6 +55,26 @@ export interface GradeScale {
   /** Highest attainable grade point — the CGPA ceiling for this campus. */
   readonly max: number;
 }
+
+/** A start term, as coarse as the retake rules need it to be. */
+export interface Term {
+  readonly season: SemesterSeason;
+  readonly year: number;
+}
+
+/**
+ * How a campus counts a course that was taken more than once.
+ *
+ * `best` keeps the highest attempt, `latest` keeps the most recent one. BRACU
+ * switched from one to the other partway through, and which rule applies to a
+ * given student depends on when they *started* — not on when they retook — so
+ * `best-before` carries the cutoff term rather than a plain boolean.
+ */
+export type RetakePolicy =
+  | { readonly kind: 'best' }
+  | { readonly kind: 'latest' }
+  /** `best` for students who started strictly before `cutoff`, `latest` after. */
+  | { readonly kind: 'best-before'; readonly cutoff: Term };
 
 /** Feature slices a campus can switch on, keyed to the shell's routes. */
 export type FeatureId =
@@ -89,6 +110,13 @@ export interface UniversityProfile {
    */
   readonly emailDomains: readonly string[];
   readonly grades: GradeScale;
+  readonly retake: RetakePolicy;
+  /**
+   * How many times a course may be retaken, if the campus caps it. `undefined`
+   * means no published cap — not "unlimited proven", just "not our claim to
+   * make", so callers should not surface a limit that was never stated.
+   */
+  readonly maxRetakes?: number;
   /** Features this campus has the data to support. Everything else stays hidden. */
   readonly features: readonly FeatureId[];
 }
@@ -113,6 +141,9 @@ const BRACU: UniversityProfile = {
   // deliberate decision — not a side effect of this refactor.
   emailDomains: ['g.bracu.ac.bd'],
   grades: BRACU_SCALE,
+  // Mirrors gpaCoreUsesBestGradePolicyImpl: students who started before Fall
+  // 2024 keep the best attempt, everyone from Fall 2024 on keeps the latest.
+  retake: { kind: 'best-before', cutoff: { season: 'Fall', year: 2024 } },
   features: [
     'bus',
     'cafeteria',
@@ -134,9 +165,92 @@ const BRACU: UniversityProfile = {
   ],
 };
 
+// ── NSU ─────────────────────────────────────────────────────────────────────
+// Scale transcribed from the official grading policy
+// (northsouth.edu/academic/grading-policy.html) and cross-checked against
+// Scholaro's credential registry; the two agree letter for letter.
+//
+// Two differences from BRACU that the calculator has to get right: NSU awards
+// no `A+` (an A is the 4.0 ceiling) and no `D-` (a D at 1.0 is the lowest pass).
+// Both are simply absent from `points`, so gradePointOn reports them as
+// undefined — "not awarded here" — rather than silently scoring them.
+//
+// Deliberately unresolved, pending confirmation from the registrar:
+//   • whether NSU awards a `P` grade — the policy page lists only I and W;
+//   • whether a `W` consumes an attempt for credit accounting, as it does at
+//     BRACU;
+//   • whether the one-retake cap is university-wide or only the ECE
+//     department's, which is why maxRetakes is left unset rather than guessed.
+const NSU_SCALE: GradeScale = {
+  points: {
+    A: 4.0,
+    'A-': 3.7,
+    'B+': 3.3,
+    B: 3.0,
+    'B-': 2.7,
+    'C+': 2.3,
+    C: 2.0,
+    'C-': 1.7,
+    'D+': 1.3,
+    D: 1.0,
+    F: 0.0,
+    I: null,
+    W: null,
+  },
+  pointsToGrade: [
+    [4.0, 'A'],
+    [3.7, 'A-'],
+    [3.3, 'B+'],
+    [3.0, 'B'],
+    [2.7, 'B-'],
+    [2.3, 'C+'],
+    [2.0, 'C'],
+    [1.7, 'C-'],
+    [1.3, 'D+'],
+    [1.0, 'D'],
+    [0.0, 'F'],
+  ],
+  max: 4.0,
+};
+
+const NSU: UniversityProfile = {
+  id: 'nsu',
+  name: 'North South University',
+  shortName: 'NSU',
+  // NSU runs on Google Workspace, so the existing Google sign-in covers it.
+  // Unlike BRACU there is no separate student subdomain, so this domain does
+  // not by itself distinguish a student from faculty or staff.
+  emailDomains: ['northsouth.edu'],
+  grades: NSU_SCALE,
+  // "Only the best grade will be used to calculate the CGPA" — unconditional,
+  // with no start-term cutoff of the kind BRACU applies.
+  retake: { kind: 'best' },
+  features: [
+    // Everything here works from a transcript the student supplies.
+    'calculator',
+    'degree',
+    'feedback',
+    'planner',
+    'profile',
+    'transcript',
+    // User-generated: functional from day one, simply empty until students post.
+    'groups',
+    'papers',
+    'reviews',
+  ],
+  // Deliberately off, and why:
+  //   seats/routine/rooms/campus — all derive from BRACU's CONNECT feed. NSU's
+  //     portal is RDS (rds3.northsouth.edu) and no equivalent public feed is
+  //     known, so these would render empty shells rather than a working tab.
+  //   bus/cafeteria — hand-collected Merul Badda campus data.
+  //   lostFound — keyed to BRACU's `FFZ-NNK` tower room codes.
+  //   difficulty — derived from review volume, meaningless at zero reviews.
+};
+
 /** Every registered campus, keyed by id. */
 export const UNIVERSITIES: Readonly<Record<UniversityId, UniversityProfile>> = {
   bracu: BRACU,
+  nsu: NSU,
 };
 
 /**
