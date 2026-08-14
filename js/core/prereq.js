@@ -179,6 +179,78 @@ export function completedCodes(courses, extractCode) {
   return out;
 }
 
+/**
+ * The subject prefix of a course code — `CSE220` → `CSE`, `MAT110` → `MAT`.
+ * Empty when the code doesn't split that way, so an unparseable code can never
+ * be silently grouped under some other subject.
+ */
+export function coursePrefix(code) {
+  const match = /^([A-Z]{2,4})\d/.exec(normalizePrereqCode(code));
+  return match ? match[1] : '';
+}
+
+/**
+ * The subjects a student's degree actually draws on.
+ *
+ * Two sources, unioned, because neither alone is honest:
+ *
+ *   - the program's model curriculum, which is what the degree is made of;
+ *   - the subjects the student has already taken, which catches the electives
+ *     the model curriculum omits — a real transcript is evidence no table can
+ *     override.
+ *
+ * The departments table is injected rather than imported: this module stays a
+ * pure prerequisite layer that knows nothing about the catalogue.
+ *
+ * An unrecognized program label yields an empty set, which callers must read as
+ * "no filter" rather than "nothing is relevant": guessing a degree from a label
+ * we don't know would be worse than showing everything.
+ */
+export function programSubjects(programLabel, programs, completed = new Set()) {
+  const subjects = new Set();
+
+  const label = String(programLabel ?? '').trim().toLowerCase();
+  const entry = label === ''
+    ? undefined
+    : Object.values(programs ?? {}).find(p => String(p?.label ?? '').trim().toLowerCase() === label);
+
+  if (entry) {
+    for (const preset of entry.presets ?? []) {
+      for (const course of preset.courses ?? []) {
+        // Curriculum entries carry the code in parentheses: "Algorithms (CSE221)".
+        const code = /\(([A-Za-z]{2,4}\d{3})\)/.exec(String(course?.name ?? ''))?.[1];
+        const prefix = coursePrefix(code);
+        if (prefix) subjects.add(prefix);
+      }
+    }
+  }
+
+  // Only extend a program we recognized. Without one there is no filter at all,
+  // and seeding it from the transcript alone would narrow the map to whatever
+  // the student happened to take first.
+  if (subjects.size > 0) {
+    for (const code of completed) {
+      const prefix = coursePrefix(code);
+      if (prefix) subjects.add(prefix);
+    }
+  }
+
+  return subjects;
+}
+
+/**
+ * Keep only what belongs to the student's degree. An empty subject set means we
+ * could not identify the program, and everything passes through unchanged.
+ *
+ * This runs *before* the unlock map is built, not after it: `unlockCount` is
+ * measured across the courses it is given, so filtering the rendered lists
+ * alone would still rank a course by doors it opens into another department.
+ */
+export function filterToSubjects(offered, subjects) {
+  if (subjects.size === 0) return [...offered];
+  return offered.filter(course => subjects.has(coursePrefix(course.courseCode)));
+}
+
 /** Collapse the feed's per-section rows to one entry per course. */
 function distinctCourses(offered) {
   const byCode = new Map();
