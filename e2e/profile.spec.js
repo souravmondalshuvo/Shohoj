@@ -88,6 +88,34 @@ test('the academic-profile card renders the stored transcript snapshot', async (
   await expect(content).toContainText('Fall 2023');
 });
 
+test('the semester history plots GPA, and CGPA is stated once (#532)', async ({ page }) => {
+  await boot(page, () => {
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@g.bracu.ac.bd', displayName: 'Test Student', photoURL: null,
+    });
+    localStorage.setItem('shohoj_connect_profile_v1', JSON.stringify({
+      sid: '20301234', name: 'Test Student', program: 'B.Sc. in CSE',
+      cgpa: 3.25, earnedCredits: 12,
+      semesters: [
+        { name: 'Fall 2023', courses: [{ name: 'CSE110', credits: 3, grade: 'B' }] },
+        { name: 'Spring 2024', courses: [{ name: 'CSE111', credits: 3, grade: 'A' }] },
+        { name: 'Summer 2024', courses: [{ name: 'CSE250', credits: 3, grade: '' }] },
+      ],
+      savedAt: Date.now(),
+    }));
+  });
+  const card = page.locator(`${HOST} .pf-acard`);
+  await expect(card).toContainText('Semester GPA');
+  // Per-semester GPAs, not course counts.
+  await expect(card.locator('.pf-tl-count')).toHaveText(['3.00', '4.00', 'no grades yet']);
+  // The trend chip replaces the CGPA restatement.
+  await expect(card.locator('.pf-trend')).toHaveText('▲ 1.00 last term');
+  await expect(card).not.toContainText('CGPA 3.25');
+  await expect(card.getByText('3.25')).toHaveCount(1);
+  // The account header already carries the name; the card doesn't repeat it.
+  await expect(card).not.toContainText('Name on transcript');
+});
+
 test('the routine and reviews cards render the student\'s saved data', async ({ page }) => {
   await boot(page, () => {
     window._shohoj_userProfile = () => ({
