@@ -19,7 +19,8 @@ import {
   gpaCoreGetRetakenKeys as getRetakenKeys,
   gpaCoreNormalizeGradePoint as normalizeGradePoint,
 } from '../../core/gpa';
-import { GRADES, detectGrade, type GradeLetter } from '../../core/grades';
+import { detectGrade, type GradeLetter } from '../../core/grades';
+import { UNIVERSITIES } from '../../core/university';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import SemesterBlock from './SemesterBlock';
 import SummaryBlock from './SummaryBlock';
@@ -43,6 +44,12 @@ import {
 import { useCalculatorBridge } from './calculatorBridge';
 
 const DEFAULT_SEASONS: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
+
+// The signed-in student's campus is not available to this component yet — it
+// arrives with the sign-in portal, which is what resolves a user to a profile.
+// Until then this is BRACU's scale, named as such rather than reached for as a
+// bare constant, so switching it is one line and an obvious one.
+const scale = UNIVERSITIES.bracu.grades;
 
 export default function CalculatorSemesters() {
   const bridge = useCalculatorBridge();
@@ -174,7 +181,7 @@ export default function CalculatorSemesters() {
               commit(
                 updateCourse(semesters, sem.id, idx, {
                   gradePoint: value,
-                  grade: detectGrade(value),
+                  grade: detectGrade(value, scale.pointsToGrade),
                 }),
               )
             }
@@ -183,7 +190,7 @@ export default function CalculatorSemesters() {
               commit(
                 updateCourse(semesters, sem.id, idx, {
                   gradePoint: norm,
-                  grade: detectGrade(norm),
+                  grade: detectGrade(norm, scale.pointsToGrade),
                 }),
               );
             }}
@@ -202,7 +209,7 @@ export default function CalculatorSemesters() {
               commit(
                 updateCourse(semesters, sem.id, idx, {
                   grade: letter,
-                  gradePoint: GRADES[letter as GradeLetter] ?? '',
+                  gradePoint: scale.points[letter as GradeLetter] ?? '',
                 }),
               )
             }
