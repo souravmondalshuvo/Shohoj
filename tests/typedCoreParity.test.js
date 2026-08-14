@@ -76,6 +76,9 @@ const srcCore = path.join(repoRoot, 'src', 'core');
 const coreFiles = [
   'grades.ts',
   'types.ts',
+  // gpa.ts and planner.ts read their campus rules from the university registry,
+  // so it has to be transpiled alongside them or their imports dangle.
+  'university.ts',
   'gpa.ts',
   'planner.ts',
   'transcript.ts',
