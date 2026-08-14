@@ -1,5 +1,6 @@
-import { GRADES } from './grades';
 import { getCourseCode } from './gpa';
+import { UNIVERSITIES } from './university';
+import type { GradeScale } from './university';
 import type {
   CourseCatalog,
   CourseCatalogEntry,
@@ -335,9 +336,12 @@ function plannerCoreProjectCgpaImpl(
   currentCredits: number,
   plannedCredits: number,
   assumedGrade: string,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
 ): CgpaProjection {
-  const gradePoint = Object.prototype.hasOwnProperty.call(GRADES, assumedGrade)
-    ? GRADES[assumedGrade as keyof typeof GRADES]
+  // An assumed grade the campus does not award projects nothing, rather than
+  // projecting a number borrowed from another campus's scale.
+  const gradePoint = Object.prototype.hasOwnProperty.call(scale.points, assumedGrade)
+    ? scale.points[assumedGrade as keyof typeof scale.points]
     : undefined;
 
   const current = currentCredits > 0 ? currentPoints / currentCredits : null;
