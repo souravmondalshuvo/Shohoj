@@ -187,31 +187,54 @@ export function examplePromptsForTab(tabId) {
 // accidental close within the same browser tab. Nothing reaches localStorage or
 // any server, so the drawer's "chats aren't saved" note still holds: the
 // transcript dies with the tab.
+//
+// Every record is stamped with the uid that wrote it and only reads back for
+// that same uid. Campus machines are shared: without the stamp, a student who
+// chats and signs out leaves their questions — and the model's answers about
+// their grades — sitting in the tab for whoever signs in next, and those turns
+// would be replayed to the Worker as the next student's context.
 
 export const ASSISTANT_TRANSCRIPT_KEY = 'shohoj_assistant_transcript';
 
-/** Read a stored transcript, clamped to the Worker contract. Never throws. */
-export function readStoredTranscript(storage) {
+/**
+ * Read the stored transcript for `owner`, clamped to the Worker contract.
+ * Returns [] when nothing is stored, when it belongs to a different uid, or
+ * when storage is unreadable. Never throws.
+ */
+export function readStoredTranscript(storage, owner) {
   try {
     const raw = storage?.getItem(ASSISTANT_TRANSCRIPT_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return clampTranscript(parsed);
+    // An unstamped record predates uid scoping (or was hand-written); it has no
+    // provable owner, so nobody may read it.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+    if (!parsed.owner || parsed.owner !== owner) return [];
+    return clampTranscript(parsed.messages);
   } catch (_e) {
     return [];
   }
 }
 
-/** Persist a transcript for this browser tab. Never throws. */
-export function writeStoredTranscript(storage, transcript) {
+/** Persist a transcript for `owner` in this browser tab. Never throws. */
+export function writeStoredTranscript(storage, transcript, owner) {
   try {
     const clamped = clampTranscript(transcript);
-    if (clamped.length === 0) {
+    if (!owner || clamped.length === 0) {
       storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
       return;
     }
-    storage?.setItem(ASSISTANT_TRANSCRIPT_KEY, JSON.stringify(clamped));
+    storage?.setItem(ASSISTANT_TRANSCRIPT_KEY, JSON.stringify({ owner, messages: clamped }));
   } catch (_e) {
     /* storage unavailable (private mode, quota) — the chat just won't persist */
+  }
+}
+
+/** Drop any stored transcript, whoever owns it. Never throws. */
+export function clearStoredTranscript(storage) {
+  try {
+    storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
+  } catch (_e) {
+    /* storage unavailable — nothing was persisted anyway */
   }
 }
