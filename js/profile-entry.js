@@ -24,7 +24,7 @@ import {
 } from './ui/semesterBriefingCard.js';
 import {
   renderUnlockMap,
-  umcHtmlFor,
+  renderUnlockMapFor,
   umcLoadingHtml,
   umcNoTranscriptHtml,
   umcUnavailableHtml,
@@ -123,7 +123,9 @@ async function _pentry_loadUnlockMap() {
   renderUnlockMap(PENTRY_UNLOCK_HOST, umcLoadingHtml());
   try {
     const feed = await fetchConnectFeed();
-    renderUnlockMap(PENTRY_UNLOCK_HOST, umcHtmlFor(snapshot, feed.sections));
+    // Paint through the stateful helper so the program/all-departments switch
+    // can repaint from the same feed read.
+    renderUnlockMapFor(PENTRY_UNLOCK_HOST, snapshot, feed.sections);
   } catch {
     renderUnlockMap(PENTRY_UNLOCK_HOST, umcUnavailableHtml());
   }
