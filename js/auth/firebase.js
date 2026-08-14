@@ -697,6 +697,15 @@ export function initAuth() {
 
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
+    // Deliberately still BRACU-only, unlike the shell's registry-driven guard
+    // in src/platform/auth/firebaseAuthSource.ts.
+    //
+    // This is the legacy bundle, and it is BRACU all the way down: the baked-in
+    // bracu-section.json, the course catalog, seats, routine and the campus map
+    // have no notion of another campus. Admitting an NSU student here would
+    // sign them in to a BRACU app wearing their name, which is worse than
+    // turning them away. Multi-campus sign-in belongs to the shell, which is
+    // where the university registry is actually wired up.
     let tokenClaims = null;
     if (user) {
       const tokenResult = await user.getIdTokenResult(true).catch(() => null);
