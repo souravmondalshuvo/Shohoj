@@ -39,6 +39,13 @@ import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
 let _authReady           = false;
+// Whether the local-vs-cloud decision for this sign-in has been made.
+// shohoj:auth-changed fires as soon as the user object exists, which is BEFORE
+// loadFromCloud() and the migration modal — so anything that writes
+// users/{uid} on a user action in that window (the Assistant's flush, see
+// assistant-service.js) could overwrite the cloud copy before the conflict is
+// even detected. Signed out there is nothing to reconcile.
+let _cloudReconciled     = true;
 let _unsubscribeSnapshot  = null;
 const STORAGE_KEY         = 'shohoj_cgpa_v1';
 const LAST_SYNC_KEY       = 'shohoj_last_sync';
@@ -184,6 +191,8 @@ async function loadFromCloud() {
 
 // ── Real-time listener ────────────────────────────────────────────────────────
 function startRealtimeSync(uid) {
+  // Reached only once the local-vs-cloud decision is settled, on every branch.
+  _cloudReconciled = true;
   if (_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
 
   // Skip the very first snapshot — it's always the current state we just loaded,
@@ -730,6 +739,7 @@ export function initAuth() {
 
       updateAuthUI(user);
       showNudgeBanner(false);
+      _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
       try { localRaw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
@@ -795,6 +805,7 @@ export function initAuth() {
 
     } else {
       currentUser = null;
+      _cloudReconciled = true;
       notifyAuthStateReady();
       stopRealtimeSync();
       clearCloudAppliedFlag();
@@ -815,6 +826,8 @@ export function initAuth() {
 // Writes to localStorage so the app's state restore logic can read it, then
 // calls the live state functions to update the UI immediately.
 function applyCloudData(cloudData) {
+  // The other terminal branch of the reconciliation (cloud wins).
+  _cloudReconciled = true;
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
@@ -942,6 +955,7 @@ installReviewIdentityHooks({
 
 installAssistantAuthHooks({
   getCurrentUser: () => currentUser,
+  isCloudSettled: () => _cloudReconciled,
   getIdToken: () => getCurrentUserIdToken(currentUser),
   saveSnapshot: snap => saveToCloud(snap, { immediate: true }),
   readLocalSnapshot: () => {
