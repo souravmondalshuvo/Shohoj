@@ -17,9 +17,10 @@
 // confidence interval.
 
 import { calcSemesterGpa } from '../../core/gpa.ts';
-import { GRADES } from '../../core/grades.ts';
 import { countSemesters, stripTags } from '../../core/helpers.ts';
 import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
+import { UNIVERSITIES } from '../../core/university.ts';
+import type { GradeScale } from '../../core/university.ts';
 import type { DepartmentInfo } from './departments.ts';
 
 const GLOBAL_ORDER: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
@@ -29,6 +30,8 @@ export interface ProgressInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: string;
   readonly startYear: string;
+  /** Campus grading scale. Defaults to BRACU's. */
+  readonly scale?: GradeScale;
 }
 
 export interface TrackerNode {
@@ -192,12 +195,17 @@ export function observedPace(
 /** Earned credits within one semester, by the tracker's rules: running
  * semesters count every credited named course; completed ones only graded,
  * passing, non-P/I/F(NT) courses. */
-function semesterCredits(semester: SemesterEntry): number {
+function semesterCredits(
+  semester: SemesterEntry,
+  scale: GradeScale = UNIVERSITIES.bracu.grades,
+): number {
   return semester.courses.reduce((sum, c) => {
     if (!c.name.trim() || !c.credits) return sum;
     if (semester.running) return sum + c.credits;
     if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
-    const gp = GRADES[c.grade as keyof typeof GRADES];
+    const gp = Object.prototype.hasOwnProperty.call(scale.points, c.grade)
+      ? scale.points[c.grade as keyof typeof scale.points]
+      : undefined;
     if (gp === undefined || gp === null || gp <= 0) return sum;
     return sum + c.credits;
   }, 0);
@@ -211,6 +219,7 @@ export function computeDegreeProgress(
 ): DegreeProgress | null {
   const totalRequired = dept ? dept.totalCredits : 0;
   const deptSeasons: readonly string[] = dept ? dept.seasons : GLOBAL_ORDER;
+  const scale = inputs.scale ?? UNIVERSITIES.bracu.grades;
 
   const summaryBlock = inputs.semesters.find((s) => s.summary);
   const gradedSemesters = inputs.semesters.filter(
@@ -222,7 +231,7 @@ export function computeDegreeProgress(
           c.name.trim() &&
           c.grade &&
           c.grade !== 'W' &&
-          GRADES[c.grade as keyof typeof GRADES] !== undefined,
+          Object.prototype.hasOwnProperty.call(scale.points, c.grade),
       ),
   );
   if ((!gradedSemesters.length && !summaryBlock) || !totalRequired) return null;
@@ -235,7 +244,7 @@ export function computeDegreeProgress(
       id: sem.id,
       label: sem.name ? stripTags(sem.name).replace(/\s*\(.*\)$/, '') : 'Semester',
       gpa: calcSemesterGpa(sem),
-      credits: semesterCredits(sem),
+      credits: semesterCredits(sem, scale),
       courseCount: sem.courses.filter((c) => c.name.trim()).length,
       running: !!sem.running,
     });
