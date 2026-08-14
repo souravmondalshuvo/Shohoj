@@ -21,6 +21,7 @@
 // signInWithCredential) is deferred; the explicit button is the legacy
 // fallback path already.
 
+import { UNIVERSITIES, universityForEmail, type UniversityId } from '../../core/university.ts';
 import { ANONYMOUS, LOADING, type AuthSnapshot, type AuthSource } from './authSnapshot.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { createLogger } from '../observability/logger.ts';
@@ -62,10 +63,20 @@ export interface FirebaseAuthSource extends AuthSource {
   onEvent(listener: (event: AuthEvent) => void): () => void;
 }
 
-export const REJECTED_MESSAGE = '⚠ Only verified BRACU Google accounts are supported';
-export const SIGN_IN_FAILED_MESSAGE = '⚠ Sign-in failed — please try again';
+/**
+ * Built from the registry rather than written out, so adding a campus updates
+ * what a rejected student is told instead of leaving them staring at a list
+ * that no longer includes them.
+ */
+function supportedCampusList(): string {
+  const names = Object.values(UNIVERSITIES).map((p) => p.shortName);
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+}
 
-const BRACU_DOMAIN = '@g.bracu.ac.bd';
+export const REJECTED_MESSAGE =
+  `⚠ Sign in with a verified ${supportedCampusList()} Google account`;
+export const SIGN_IN_FAILED_MESSAGE = '⚠ Sign-in failed — please try again';
 
 async function defaultBackend(
   config: FirebaseConfig,
@@ -89,19 +100,37 @@ async function defaultBackend(
 interface TokenVerdict {
   readonly allowed: boolean;
   readonly isAdmin: boolean;
+  /**
+   * The campus the email resolves to, or null when no registered campus claims
+   * the domain. An admin is admitted on the claim alone, so an admin on an
+   * unrecognised address is `allowed` with a null campus — admitted, but not
+   * assigned to a campus we cannot actually derive.
+   */
+  readonly university: UniversityId | null;
 }
 
-/** The legacy initAuth enforcement, as a pure decision over the token claims. */
-export function evaluateBracuAccess(
+/**
+ * The sign-in enforcement, as a pure decision over the token claims.
+ *
+ * Same three conditions as before — a registered campus domain, a verified
+ * address, and Google as the provider — with the single hardcoded BRACU domain
+ * replaced by a registry lookup. An unrecognised domain is rejected, which is
+ * the behaviour the app already had for everyone who wasn't at BRACU.
+ */
+export function evaluateCampusAccess(
   user: Pick<FirebaseUserLike, 'email' | 'emailVerified'>,
   claims: Record<string, unknown> | null,
 ): TokenVerdict {
   const isAdmin = claims?.admin === true;
-  const isBracuEmail = (user.email ?? '').toLowerCase().endsWith(BRACU_DOMAIN);
+  const profile = universityForEmail(user.email ?? '');
   const isVerifiedEmail = user.emailVerified === true || claims?.email_verified === true;
   const firebaseClaims = claims?.firebase as { sign_in_provider?: unknown } | undefined;
   const isGoogleProvider = firebaseClaims?.sign_in_provider === 'google.com';
-  return { allowed: (isBracuEmail && isVerifiedEmail && isGoogleProvider) || isAdmin, isAdmin };
+  return {
+    allowed: (profile !== null && isVerifiedEmail && isGoogleProvider) || isAdmin,
+    isAdmin,
+    university: profile?.id ?? null,
+  };
 }
 
 /** Create the Firebase-backed source. The SDK loads on the first subscribe. */
@@ -135,7 +164,7 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
     // Legacy: a failed token read yields null claims and falls through to the
     // enforcement check (which then rejects unless the email checks pass).
     const token = await user.getIdTokenResult(true).catch(() => null);
-    const verdict = evaluateBracuAccess(user, token?.claims ?? null);
+    const verdict = evaluateCampusAccess(user, token?.claims ?? null);
     if (!verdict.allowed) {
       currentUser = null;
       if (backend) await backend.signOut().catch(() => {});
@@ -149,6 +178,7 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
       uid: user.uid,
       email: user.email ?? null,
       isAdmin: verdict.isAdmin,
+      university: verdict.university,
     });
   };
 
