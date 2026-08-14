@@ -20,7 +20,8 @@ const WORKER = 'https://shohoj-papers.souravmondal033.workers.dev';
 // the first refreshLauncher() call already sees a signed-in student.
 function signedInStub(worker) {
   window._shohoj_papers_worker_url = worker;
-  window._shohoj_currentUid = () => 'u1';
+  window.__uid = 'u1';
+  window._shohoj_currentUid = () => window.__uid;
   window._shohoj_isAuthReady = () => true;
   window._shohoj_idToken = async () => 'id-token';
   // Records that the drawer flushed local edits before its first turn.
@@ -139,6 +140,45 @@ test('asking a question posts the transcript and renders the reply', async ({ pa
   expect(turns[0].body).toEqual({ messages: [{ role: 'user', content: 'what is my cgpa?' }] });
   // Pending local edits are pushed first, or the Worker reads stale Firestore data.
   expect(await page.evaluate(() => window.__flushes)).toBe(1);
+
+  // Every turn flushes, not just the first: an edit made between questions sits
+  // in the same debounce window, and a stale answer later is just as wrong.
+  await page.locator('.assistant-input').fill('and next semester?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--user')).toHaveCount(2);
+  expect(await page.evaluate(() => window.__flushes)).toBe(2);
+});
+
+// Campus machines are shared. One student's questions — and the model's answers
+// about their grades — must not survive into the next student's session, on
+// screen or in the payload.
+test('a chat does not survive a sign-out into the next student session', async ({ page }) => {
+  const { turns } = await boot(page);
+  await fab(page).click();
+  await page.locator('.assistant-input').fill('what is my cgpa?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--reply')).toHaveText('Your CGPA is 3.42.');
+  await page.keyboard.press('Escape');
+
+  // Student A signs out, student B signs in on the same tab.
+  await page.evaluate(() => {
+    window.__uid = null;
+    window.dispatchEvent(new CustomEvent('shohoj:auth-changed', { detail: { signedIn: false } }));
+    window.__uid = 'u2';
+    window.dispatchEvent(new CustomEvent('shohoj:auth-changed', { detail: { signedIn: true } }));
+  });
+
+  await fab(page).click();
+  await expect(page.locator('.assistant-bubble')).toHaveCount(0);
+  await expect(drawer(page)).toContainText('Try one:');
+
+  // …and nothing of A's is replayed as B's context.
+  await page.locator('.assistant-input').fill('what about me?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--reply')).toHaveCount(1);
+  expect(turns[turns.length - 1].body).toEqual({
+    messages: [{ role: 'user', content: 'what about me?' }],
+  });
 });
 
 test('a model reply is rendered as text, never as markup', async ({ page }) => {
