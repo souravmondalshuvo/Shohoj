@@ -141,10 +141,12 @@ PROFILE_JS_FILES = [
     'js/core/freeRooms.js',
     'js/core/semesterBriefing.js',
     'js/ui/semesterBriefingCard.js',
-    # "Next registration" unlock map (#478). Shipped without these two entries,
-    # so the zone threw ReferenceError in the bundle while working in dev, where
-    # js/ loads un-bundled (#535). prereq.js reads grades.js, listed above.
+    # "Next registration" unlock map (#478). Shipped without these entries, so
+    # the zone threw ReferenceError in the bundle while working in dev, where
+    # js/ loads un-bundled (#535). prereq.js reads grades.js, listed above;
+    # departments.js supplies the model curricula the map filters by (#539).
     'js/core/prereq.js',
+    'js/core/departments.js',
     'js/ui/unlockMapCard.js',
     'js/animations/cursor.js',
     'js/profile-entry.js',
