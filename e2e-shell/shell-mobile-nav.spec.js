@@ -15,8 +15,15 @@ import AxeBuilder from '@axe-core/playwright';
 
 import { navigateTo } from './_nav.js';
 
+// Emulate a phone, not just a narrow window (#536). Width alone leaves
+// Chromium reporting `(hover: hover) and (pointer: fine)`, and ShellTabs reads
+// exactly that to choose its semantics — so the coarse-pointer path this block
+// is named for never ran, and the hover path did. Playwright parks the pointer
+// where it last clicked, so the re-render after navigation fired a fresh
+// mouseenter on the trigger and re-opened the menu the route change had just
+// closed: a ~50% flake that a real phone, with no hover, cannot reproduce.
 test.describe('mobile viewport', () => {
-  test.use({ viewport: { width: 375, height: 812 } });
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
 
   test('a group opens, navigates, and closes on selection', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
