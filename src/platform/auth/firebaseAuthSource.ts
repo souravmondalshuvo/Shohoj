@@ -74,8 +74,7 @@ function supportedCampusList(): string {
   return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
-export const REJECTED_MESSAGE =
-  `⚠ Sign in with a verified ${supportedCampusList()} Google account`;
+export const REJECTED_MESSAGE = `⚠ Sign in with a verified ${supportedCampusList()} Google account`;
 export const SIGN_IN_FAILED_MESSAGE = '⚠ Sign-in failed — please try again';
 
 async function defaultBackend(

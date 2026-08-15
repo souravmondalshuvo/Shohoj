@@ -25,12 +25,7 @@
 // decisions — a guessed value here is a wrong number on a real student's
 // transcript, so no profile ships on a best guess.
 
-import {
-  GRADES,
-  POINTS_TO_GRADE,
-  type GradeLetter,
-  type GradePoint,
-} from './grades.ts';
+import { GRADES, POINTS_TO_GRADE, type GradeLetter, type GradePoint } from './grades.ts';
 import type { SemesterSeason } from './types.ts';
 
 /** Every campus Shohoj can serve. */
@@ -367,8 +362,7 @@ export const UNIVERSITIES: Readonly<Record<UniversityId, UniversityProfile>> = {
 export const DEFAULT_UNIVERSITY_ID: UniversityId = 'bracu';
 
 export function isUniversityId(value: unknown): value is UniversityId {
-  return typeof value === 'string'
-    && Object.prototype.hasOwnProperty.call(UNIVERSITIES, value);
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(UNIVERSITIES, value);
 }
 
 /** Look up a profile by id, or `null` if the id is not registered. */
@@ -415,20 +409,14 @@ export function allUniversityDomains(): string[] {
  * BRACU and NSU sit on opposite sides of it for a B at exactly 3.0. Two copies
  * of the comparison is two chances to get the boundary wrong.
  */
-export function isRepeatableGrade(
-  gradePoint: number,
-  eligibility: RepeatEligibility,
-): boolean {
+export function isRepeatableGrade(gradePoint: number, eligibility: RepeatEligibility): boolean {
   return eligibility.inclusive
     ? gradePoint <= eligibility.threshold
     : gradePoint < eligibility.threshold;
 }
 
 /** Whether a campus has a feature switched on. */
-export function hasFeature(
-  profile: UniversityProfile | null,
-  feature: FeatureId,
-): boolean {
+export function hasFeature(profile: UniversityProfile | null, feature: FeatureId): boolean {
   return profile != null && profile.features.includes(feature);
 }
 
@@ -439,10 +427,7 @@ export function hasFeature(
  * callers must distinguish from `null` — a grade that exists but carries no
  * point (P/I/W) and therefore participates in credit accounting differently.
  */
-export function gradePointOn(
-  scale: GradeScale,
-  letter: string,
-): GradePoint | undefined {
+export function gradePointOn(scale: GradeScale, letter: string): GradePoint | undefined {
   return Object.prototype.hasOwnProperty.call(scale.points, letter)
     ? scale.points[letter as GradeLetter]
     : undefined;
