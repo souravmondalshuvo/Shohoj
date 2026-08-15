@@ -212,6 +212,36 @@ unhealthy even though students are still getting answers.
 `assistantFallback` (both configured). It is unauthenticated, so it reports
 booleans only and never names a vendor.
 
+### Monthly spend ceiling
+
+The assistant runs on **one person's API key** while serving a whole campus, so
+the risk that matters is not a bad answer — it is an unbounded bill. The per-uid
+rate limit caps how fast one student can ask; `ASSISTANT_MONTHLY_BUDGET_USD`
+(default `5`) caps what everyone together can spend in a calendar month.
+
+- Estimated spend accumulates in Firestore at `assistantBudget/{YYYY-MM}` — no
+  new binding, because the service account is already wired here.
+- Each answered turn adds `tokens x price`, using the **higher** of any
+  conflicting published price. Overestimating trips the ceiling early and costs
+  a few unanswered questions; underestimating overshoots the number you set,
+  which is the thing this exists to prevent. Your provider dashboard remains the
+  source of truth for what was actually spent.
+- Reaching the ceiling returns 503 `assistant_budget_exhausted` until the month
+  rolls over. Setting it to `0` switches the assistant off without touching keys.
+- If the ledger cannot be read, the endpoint **fails closed** — same policy as
+  the paid rate limiter. No ledger, no spending.
+
+`GET /ready` deliberately does *not* consult the ledger: it is called on every
+page load by the launcher gate, and a Firestore read per page load is a poor
+trade for hiding a button. An exhausted month therefore shows up when a student
+actually asks, as the drawer's "temporarily unavailable" message.
+
+Raise or lower the ceiling in `wrangler.toml` and redeploy:
+
+```bash
+npx wrangler deploy
+```
+
 If the email channel is not fully configured (`RESEND_API_KEY` missing, or
 `EMAIL_FROM` missing / set to the Resend test sender), uploads and the cron
 still run — but the emails are skipped and an operational error is logged. Email

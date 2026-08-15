@@ -49,6 +49,11 @@ FIREBASE_PROJECT_ID = "shohoj"
 ALLOWED_ORIGINS = "https://souravmondalshuvo.github.io,http://localhost:5173,http://127.0.0.1:5173"
 ADMIN_EMAIL = "admin.shohoj@gmail.com"
 ADMIN_MODERATION_URL = "https://souravmondalshuvo.github.io/Shohoj/admin/"
+# Ceiling on estimated Assistant model spend per calendar month, in USD. The
+# assistant runs on ONE person's API key while serving a campus, so this is the
+# stop on an unbounded bill. Reaching it makes /api/assistant refuse turns until
+# the month rolls over; "0" switches the assistant off without removing keys.
+ASSISTANT_MONTHLY_BUDGET_USD = "5"
 # Sender for seat-alert + admin-upload emails. MUST be a sender on a domain you
 # have verified in Resend (SPF + DKIM) — see worker/README.md. Leave UNSET until
 # then: the Resend test sender (onboarding@resend.dev) only delivers to the
