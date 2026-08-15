@@ -34,12 +34,14 @@
 //                           OAuth2 access tokens that authorize the
 //                           Firestore REST writes for /upload metadata and
 //                           /reviews
+//   OPENAI_API_KEY          OpenAI key for the /api/assistant fallback (#544);
+//                           optional — without it Claude is the only provider
 //   ANTHROPIC_API_KEY       Claude API key for /api/assistant — lives only
 //                           here, never shipped to the client
 
-import Anthropic from '@anthropic-ai/sdk';
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
-import { loadSeatIndexFromFeed, runAssistantLoop, validateAssistantMessages } from './assistant.js';
+import { loadSeatIndexFromFeed, validateAssistantMessages } from './assistant.js';
+import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import { isKnownCourse } from './catalog.generated.js';
 
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
@@ -505,7 +507,12 @@ export function readinessReport(env) {
   const e = env || {};
   const emailCfg = seatAlertEmailConfig(e);
   return {
-    assistant: !!e.ANTHROPIC_API_KEY,
+    // True when ANY model provider is configured — the front-ends gate their
+    // launcher on this and do not care which vendor answers. Naming the
+    // providers here would violate the booleans-only rule above, so the only
+    // extra fact exposed is whether a second one is armed to catch failures.
+    assistant: !!e.ANTHROPIC_API_KEY || !!e.OPENAI_API_KEY,
+    assistantFallback: !!e.ANTHROPIC_API_KEY && !!e.OPENAI_API_KEY,
     papers: !!e.SERVICE_ACCOUNT_JSON && !!e.PAPERS_BUCKET,
     email: emailCfg.ok,
     rateLimits: {
@@ -1128,11 +1135,12 @@ async function handleAssistant(request, env, origin) {
   // Configuration check BEFORE the rate limit: when the assistant is not
   // configured at all (#455) every turn is going to 503 anyway, so burning the
   // caller's rate-limit quota on it would be pure punishment.
-  if (!env.ANTHROPIC_API_KEY) {
+  const providers = buildAssistantProviders(env);
+  if (providers.length === 0) {
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
   }
   // Paid endpoint: a throwing limiter denies rather than granting unmetered
-  // Anthropic spend. See the rateLimit() policy note.
+  // model spend. See the rateLimit() policy note.
   if (
     !(await rateLimit(env, uid, 'assistant', {
       binding: env.ASSISTANT_RATE_LIMIT,
@@ -1169,9 +1177,24 @@ async function handleAssistant(request, env, origin) {
     loadSeatIndex: () => loadSeatIndexFromFeed(SEAT_FEED_URL),
   };
 
-  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1 });
   try {
-    const reply = await runAssistantLoop({ anthropic, messages, ctx });
+    const { reply } = await runAssistantTurn({
+      providers,
+      messages,
+      ctx,
+      // A fallback is a real operational event — the primary provider is
+      // failing for someone — so it is logged even though the student sees a
+      // normal answer. No transcript, no uid: the reason only.
+      onFallback: (failure) =>
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'assistant_provider_fallback',
+            provider: failure.provider,
+            reason: failure.reason,
+          }),
+        ),
+    });
     return jsonResponse({ reply }, { status: 200 }, env, origin);
   } catch (e) {
     console.error(
