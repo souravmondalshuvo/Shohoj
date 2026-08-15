@@ -1167,7 +1167,7 @@ export function seatAlertEmailConfig(env) {
 // the tool loaders below close over that uid — the model (and the client)
 // never supply a user identifier, so a prompt-injected tool call cannot be
 // redirected at another student's document.
-async function handleAssistant(request, env, origin) {
+async function handleAssistant(request, env, origin, execCtx) {
   const originCheck = requireBrowserOriginAllowed(request, env, origin);
   if (originCheck) return originCheck;
 
@@ -1250,7 +1250,7 @@ async function handleAssistant(request, env, origin) {
         return null;
       }
     },
-    loadSeatIndex: () => loadSeatIndexFromFeed(SEAT_FEED_URL),
+    loadSeatIndex: () => loadSeatIndexCached(),
   };
 
   try {
@@ -1271,18 +1271,17 @@ async function handleAssistant(request, env, origin) {
           }),
         ),
     });
-    // Record what the answer cost. A ledger write that fails must not lose the
-    // student their answer — it is logged loudly instead, because a ceiling
-    // that silently stops counting is worse than no ceiling.
-    try {
-      await recordAssistantSpend(
-        env,
-        budgetToken,
-        month,
-        spentUsd,
-        estimateCostUsd(provider, usage),
-      );
-    } catch (e) {
+    // Record what the answer cost — but off the response path (#553): the
+    // student has no reason to wait on our bookkeeping. A write that fails must
+    // not lose them their answer either, so it is logged loudly instead,
+    // because a ceiling that silently stops counting is worse than no ceiling.
+    const record = recordAssistantSpend(
+      env,
+      budgetToken,
+      month,
+      spentUsd,
+      estimateCostUsd(provider, usage),
+    ).catch((e) => {
       console.error(
         JSON.stringify({
           level: 'error',
@@ -1291,6 +1290,13 @@ async function handleAssistant(request, env, origin) {
           errorMessage: e?.message || String(e),
         }),
       );
+    });
+    // waitUntil keeps the isolate alive for it; without one (tests, or a
+    // runtime that does not provide it) fall back to awaiting.
+    if (typeof execCtx?.waitUntil === 'function') {
+      execCtx.waitUntil(record);
+    } else {
+      await record;
     }
     return jsonResponse({ reply }, { status: 200 }, env, origin);
   } catch (e) {
@@ -1369,6 +1375,39 @@ async function firestorePatchFields(env, token, path, obj) {
 // this does not need. It is never billing-grade accounting; the provider
 // dashboard is.
 const ASSISTANT_BUDGET_COLLECTION = 'assistantBudget';
+
+// The seat tool reads the whole CONNECT feed — 3.6 MB, ~0.8s, plus a parse —
+// and did so on every seat question (#553). Seat counts move on the order of
+// minutes, so a short TTL is free accuracy-wise and removes that cost from
+// every consecutive question. Per-isolate and best-effort by design: a cold
+// isolate simply fetches once, which is the behaviour we already had.
+const SEAT_INDEX_TTL_MS = 60_000;
+let _seatIndexCache = { at: 0, index: null, inFlight: null };
+
+export function __resetSeatIndexCacheForTests() {
+  _seatIndexCache = { at: 0, index: null, inFlight: null };
+}
+
+export async function loadSeatIndexCached(now = Date.now()) {
+  if (_seatIndexCache.index && now - _seatIndexCache.at < SEAT_INDEX_TTL_MS) {
+    return _seatIndexCache.index;
+  }
+  // Two questions arriving together should share one download, not race it.
+  if (_seatIndexCache.inFlight) return _seatIndexCache.inFlight;
+
+  _seatIndexCache.inFlight = loadSeatIndexFromFeed(SEAT_FEED_URL)
+    .then((index) => {
+      _seatIndexCache = { at: Date.now(), index, inFlight: null };
+      return index;
+    })
+    .catch((e) => {
+      // A failed fetch must not be cached as "no seats" — clear and rethrow so
+      // the next question tries again and the tool reports a real error.
+      _seatIndexCache.inFlight = null;
+      throw e;
+    });
+  return _seatIndexCache.inFlight;
+}
 
 async function readAssistantSpend(env, token, month) {
   const fields = await firestoreGetFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`);
@@ -1642,7 +1681,7 @@ export default {
       if (request.method === 'POST' && url.pathname === '/reviews')
         return withRequestId(await handleReview(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
-        return withRequestId(await handleAssistant(request, env, origin), requestId);
+        return withRequestId(await handleAssistant(request, env, origin, ctx), requestId);
       return jsonResponse(
         { error: 'Not found' },
         { status: 404, headers: { 'X-Request-Id': requestId } },
