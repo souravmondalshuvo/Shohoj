@@ -948,6 +948,53 @@ async function run() {
     await assertFails(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'grp_legacy')));
   });
 
+  await test('both client shapes are accepted: with a campus and without', async () => {
+    // Two clients write these collections and cannot be upgraded atomically —
+    // the legacy bundle at the site root sends no campus, the shell under /app/
+    // does. Requiring the field would deny every legacy create the moment these
+    // rules deploy, and legacy is the main production app.
+    const db = bracuCtx().firestore();
+
+    // Shell shape: campus present, pinned to the writer's own.
+    await assertSucceeds(setDoc(doc(db, 'studyGroups', 'shellshape'), {
+      courseCode: 'CSE220', title: 'Shell shape', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, university: 'bracu', createdAt: serverTimestamp(),
+    }));
+
+    // Legacy shape: no campus at all. Reads back as BRACU via docCampus.
+    await assertSucceeds(setDoc(doc(db, 'studyGroups', 'legacyshape'), {
+      courseCode: 'CSE220', title: 'Legacy shape', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, createdAt: serverTimestamp(),
+    }));
+    await assertSucceeds(getDoc(doc(db, 'studyGroups', 'legacyshape')));
+    await assertFails(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'legacyshape')));
+
+    // Optional does NOT mean unchecked: a present-but-wrong campus is refused.
+    await assertFails(setDoc(doc(db, 'studyGroups', 'wrongcampus'), {
+      courseCode: 'CSE220', title: 'Wrong', mode: 'online',
+      contactLink: 'https://m.me/x', capacity: 6,
+      creatorUid: BRACU_UID, university: 'nsu', createdAt: serverTimestamp(),
+    }));
+  });
+
+  await test('feedback and lost&found accept both shapes too', async () => {
+    const db = bracuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_legacy'), {
+      type: 'bug', text: 'legacy shape, no campus', anonymous: true,
+      createdAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb_wrong'), {
+      type: 'bug', text: 'wrong campus', anonymous: true,
+      university: 'nsu', createdAt: serverTimestamp(),
+    }));
+    await assertSucceeds(setDoc(doc(db, 'lostFoundPosts', 'lf_legacy'), {
+      type: 'lost', title: 'Legacy umbrella', status: 'open',
+      creatorUid: BRACU_UID, createdAt: serverTimestamp(),
+    }));
+  });
+
   await test('campus isolation: an outsider is still refused everywhere', async () => {
     await seedRaw('studyGroups', 'grp_any', {
       courseCode: 'CSE220', title: 'Any', mode: 'online',
