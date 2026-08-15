@@ -1891,6 +1891,39 @@ async function makeServiceAccountJson() {
     assertEq(answered.provider, 'claude');
   });
 
+  await test('readiness counts all three providers without naming any', () => {
+    assertEq(readinessReport({ ...ENV }).assistant, false);
+    assertEq(readinessReport({ ...ENV, GEMINI_API_KEY: 'k' }).assistant, true, 'free alone is enough');
+    assertEq(readinessReport({ ...ENV, GEMINI_API_KEY: 'k' }).assistantFallback, false);
+    const two = readinessReport({ ...ENV, GEMINI_API_KEY: 'k', ANTHROPIC_API_KEY: 'k' });
+    assertEq(two.assistantFallback, true, 'free + paid is an armed fallback');
+    const all = readinessReport({
+      ...ENV, GEMINI_API_KEY: 'k', ANTHROPIC_API_KEY: 'k', OPENAI_API_KEY: 'k',
+    });
+    assertEq(all.assistantFallback, true);
+    assert(!/gemini|google|claude|openai|anthropic|gpt/i.test(JSON.stringify(all)),
+      'the unauthenticated endpoint still names no vendor');
+  });
+
+  await test('a Gemini answer is read whichever envelope key carries it', async () => {
+    // The reference documents `steps`; review claimed `outputs`. A mismatch
+    // would fail silently — empty answers, skipped tool calls — so both work.
+    const answerFrom = async (body) => {
+      const { text } = await runGeminiTurn({
+        apiKey: 'k',
+        messages: [{ role: 'user', content: 'hi' }],
+        ctx: {},
+        fetchImpl: async () => json(body),
+      });
+      return text;
+    };
+    const content = [{ type: 'text', text: 'Your CGPA is 3.50.' }];
+    assertEq(await answerFrom({ id: 'i', steps: [{ type: 'model_output', content }] }),
+      'Your CGPA is 3.50.');
+    assertEq(await answerFrom({ id: 'i', outputs: [{ type: 'model_output', content }] }),
+      'Your CGPA is 3.50.');
+  });
+
   await test('free-tier turns are charged nothing by the ceiling', () => {
     assertEq(estimateCostUsd('gemini', { inputTokens: 1e6, outputTokens: 1e6 }), 0);
   });
