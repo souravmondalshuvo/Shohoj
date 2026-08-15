@@ -62,6 +62,14 @@ service cloud.firestore {
 
     // The caller's own campus, and only their own — a client cannot label a
     // document as belonging somewhere it is not.
+    //
+    // Checked only when the field is PRESENT. It is deliberately optional on
+    // create, because two clients write these collections and they cannot be
+    // upgraded atomically: the legacy bundle at the site root sends no campus,
+    // the React shell under /app/ does. Requiring it would deny every legacy
+    // create the moment these rules deploy — and the legacy bundle is the main
+    // production app. A missing field reads back as 'bracu' via docCampus,
+    // which is correct: legacy admits BRACU accounts only.
     function writingOwnCampus(data) {
       return 'university' in data
         && validCampus(data.university)
@@ -164,8 +172,8 @@ service cloud.firestore {
 
     function validFeedbackPayload(d) {
       return d.keys().hasOnly(['type','text','context','anonymous','uid','university','createdAt'])
-        && d.keys().hasAll(['type','text','anonymous','university','createdAt'])
-        && writingOwnCampus(d)
+        && d.keys().hasAll(['type','text','anonymous','createdAt'])
+        && (!('university' in d) || writingOwnCampus(d))
         && validFeedbackType(d.type)
         && d.text is string
         && d.text.size() >= 3
@@ -326,8 +334,8 @@ service cloud.firestore {
 
     function validStudyGroupPayload(d) {
       return d.keys().hasOnly(['courseCode','title','description','mode','schedule','contactLink','capacity','creatorUid','university','createdAt'])
-        && d.keys().hasAll(['courseCode','title','mode','contactLink','capacity','creatorUid','university','createdAt'])
-        && writingOwnCampus(d)
+        && d.keys().hasAll(['courseCode','title','mode','contactLink','capacity','creatorUid','createdAt'])
+        && (!('university' in d) || writingOwnCampus(d))
         && d.courseCode is string
         && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
         && d.title is string
@@ -424,8 +432,8 @@ service cloud.firestore {
 
     function validLostFoundPostPayload(d) {
       return d.keys().hasOnly(['type','title','description','locationHint','roomCode','status','creatorUid','university','createdAt'])
-        && d.keys().hasAll(['type','title','status','creatorUid','university','createdAt'])
-        && writingOwnCampus(d)
+        && d.keys().hasAll(['type','title','status','creatorUid','createdAt'])
+        && (!('university' in d) || writingOwnCampus(d))
         && validLostFoundType(d.type)
         && d.title is string
         && d.title.size() >= 3
