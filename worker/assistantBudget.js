@@ -16,6 +16,10 @@
 
 /** USD per million tokens, by provider. Higher of any conflicting published tier. */
 export const ASSISTANT_PRICES_USD_PER_MTOK = {
+  // Free tier (#550): genuinely $0, which is the entire reason it leads the
+  // provider chain. If billing is ever enabled on that Google account this
+  // MUST be updated, or the ceiling will happily count real spend as free.
+  gemini: { input: 0, output: 0 },
   claude: { input: 1, output: 5 },
   openai: { input: 1, output: 6 },
 };
