@@ -14,6 +14,7 @@ import worker, {
   __setTestJwksForTests,
   corsHeaders,
   isAllowedFirebasePayload,
+  campusOfEmail,
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
@@ -268,6 +269,60 @@ async function makeServiceAccountJson() {
       email_verified: false,
       admin: true,
       firebase: { sign_in_provider: 'password' },
+    }));
+  });
+
+  await test('verified NSU Google account is allowed', () => {
+    assert(isAllowedFirebasePayload({
+      email: 'student@northsouth.edu',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
+    }));
+  });
+
+  await test('the same three conditions still apply to NSU', () => {
+    assert(!isAllowedFirebasePayload({
+      email: 'student@northsouth.edu',
+      email_verified: false,
+      firebase: { sign_in_provider: 'google.com' },
+    }));
+    assert(!isAllowedFirebasePayload({
+      email: 'student@northsouth.edu',
+      email_verified: true,
+      firebase: { sign_in_provider: 'password' },
+    }));
+  });
+
+  console.log('\nCampus resolution:');
+
+  await test('campusOfEmail resolves each registered campus', () => {
+    assertEq(campusOfEmail('student@g.bracu.ac.bd'), 'bracu');
+    assertEq(campusOfEmail('student@northsouth.edu'), 'nsu');
+  });
+
+  await test('campusOfEmail fails closed on lookalikes and junk', () => {
+    // Suffix lookalikes are the attack the anchored regexes exist for: an
+    // unanchored match would hand BRACU's data to attacker.com.
+    for (const bad of [
+      'x@g.bracu.ac.bd.attacker.com',
+      'x@northsouth.edu.attacker.com',
+      'x@notg.bracu.ac.bd',
+      'x@bracu.ac.bd',
+      'x@gmail.com',
+      '',
+      null,
+      undefined,
+      42,
+    ]) {
+      assertEq(campusOfEmail(bad), '', `should not resolve ${String(bad)}`);
+    }
+  });
+
+  await test('an unrecognised domain is refused even when verified via Google', () => {
+    assert(!isAllowedFirebasePayload({
+      email: 'student@someuni.edu',
+      email_verified: true,
+      firebase: { sign_in_provider: 'google.com' },
     }));
   });
 
