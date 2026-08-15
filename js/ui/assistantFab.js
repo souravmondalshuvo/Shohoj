@@ -133,6 +133,27 @@ function renderEmptyState() {
   return wrap;
 }
 
+// A live indicator, not the word "Thinking…" sitting still. Several seconds of
+// static text reads as a frozen panel, which makes the wait feel longer than it
+// is (#553). The dots animate; the word stays for screen readers, which cannot
+// see a pulse.
+function pendingBubble() {
+  const div = document.createElement('div');
+  div.className = 'assistant-bubble assistant-bubble--reply assistant-bubble--pending';
+
+  const label = document.createElement('span');
+  label.className = 'assistant-sr-only';
+  label.textContent = 'Thinking…';
+
+  const dots = document.createElement('span');
+  dots.className = 'assistant-typing';
+  dots.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < 3; i++) dots.appendChild(document.createElement('i'));
+
+  div.append(label, dots);
+  return div;
+}
+
 function renderLog() {
   if (!_logEl) return;
   _logEl.replaceChildren();
@@ -141,9 +162,7 @@ function renderLog() {
     _logEl.appendChild(renderEmptyState());
   } else {
     _transcript.forEach(m => _logEl.appendChild(bubble(m.role, m.content)));
-    if (_pending) {
-      _logEl.appendChild(bubble('assistant', 'Thinking…', 'assistant-bubble--pending'));
-    }
+    if (_pending) _logEl.appendChild(pendingBubble());
   }
 
   if (_error) {
