@@ -13,6 +13,7 @@
 //   - upvotes live in `appFeedbackUpvotes` under the deterministic
 //     `${feedbackId}_${uid}` id (one vote per user per item).
 
+import { campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
 import {
@@ -79,7 +80,7 @@ async function defaultBackend(
   recaptchaV3SiteKey?: string,
 ): Promise<FeedbackBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
-  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
   const {
     getFirestore,
     collection,
@@ -131,6 +132,10 @@ async function defaultBackend(
         text: draft.text,
         context: {},
         anonymous: draft.anonymous,
+        // Required by rules and pinned to this session's own campus. Note this
+        // is NOT identifying: it is the campus, not the person, so it does not
+        // de-anonymise anonymous feedback the way a uid would.
+        university: campusStamp(auth),
         createdAt: serverTimestamp(),
       };
       if (!draft.anonymous) data.uid = uid;

@@ -13,6 +13,7 @@
 //     pinning the joiner's own verified email.
 //   - reports live in `studyGroupReports` under `${uid}_${groupId}`.
 
+import { campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import {
   GROUPS_LIMIT,
@@ -58,7 +59,7 @@ async function defaultBackend(
   recaptchaV3SiteKey?: string,
 ): Promise<StudyGroupsBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
-  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
   const {
     getFirestore,
     collection,
@@ -137,6 +138,8 @@ async function defaultBackend(
         contactLink: draft.contactLink,
         capacity: draft.capacity,
         creatorUid: uid,
+        // Required by rules and pinned to this session's own campus.
+        university: campusStamp(auth),
         createdAt: serverTimestamp(),
       };
       if (draft.description !== '') data.description = draft.description;
