@@ -38,6 +38,13 @@ import {
   validateAssistantMessages,
 } from '../assistant.js';
 import {
+  DEFAULT_MONTHLY_BUDGET_USD,
+  estimateCostUsd,
+  isBudgetExhausted,
+  monthKey,
+  monthlyBudgetUsd,
+} from '../assistantBudget.js';
+import {
   buildAssistantProviders,
   openAiTools,
   ProviderUnavailable,
@@ -1412,6 +1419,10 @@ async function makeServiceAccountJson() {
       if (call.url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'service-account-token', expires_in: 3600 });
       }
+      if (/\/documents\/assistantBudget\//.test(call.url)) {
+        if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+        return json({});
+      }
       const userDocMatch = call.url.match(/\/documents\/users\/([^/?]+)/);
       if (userDocMatch) {
         firestoreUserGets.push(userDocMatch[1]);
@@ -1491,8 +1502,6 @@ async function makeServiceAccountJson() {
 
   console.log('\nAssistant providers (#544 — Claude, OpenAI fallback):');
 
-  const OPENAI_URL_TEST = 'https://api.openai.com/v1/responses';
-
   // A Responses API envelope. `output` carries messages and function_calls;
   // status is 'completed' unless a test says otherwise.
   function openAiResponse(output, overrides = {}) {
@@ -1510,6 +1519,10 @@ async function makeServiceAccountJson() {
       const call = await readFetchCall(input, init);
       if (call.url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'service-account-token', expires_in: 3600 });
+      }
+      if (/\/documents\/assistantBudget\//.test(call.url)) {
+        if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+        return json({});
       }
       if (/\/documents\/users\//.test(call.url)) {
         return json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } });
@@ -1688,12 +1701,13 @@ async function makeServiceAccountJson() {
     const ok = await runAssistantTurn({
       providers: [
         { name: 'claude', run: async () => { order.push('claude'); throw new ProviderUnavailable('claude', 'HTTP 503'); } },
-        { name: 'openai', run: async () => { order.push('openai'); return 'answered'; } },
+        { name: 'openai', run: async () => { order.push('openai'); return { text: 'answered', usage: { inputTokens: 10, outputTokens: 5 } }; } },
       ],
       messages: [], ctx: {},
     });
     assertEq(ok.reply, 'answered');
     assertEq(ok.provider, 'openai');
+    assertEq(ok.usage.outputTokens, 5, 'usage rides along for the spend ledger');
     assertEq(order.join(','), 'claude,openai');
 
     // A bug in our own code must surface, not trigger a second paid attempt.
@@ -1710,6 +1724,133 @@ async function makeServiceAccountJson() {
       escaped = e;
     }
     assert(escaped instanceof TypeError, 'non-provider failures propagate untouched');
+  });
+
+  console.log('\nAssistant spend ceiling (#544):');
+
+  await test('the month key is UTC and zero-padded', () => {
+    assertEq(monthKey(new Date('2026-08-15T23:59:00Z')), '2026-08');
+    assertEq(monthKey(new Date('2026-01-01T00:00:00Z')), '2026-01');
+    // A local-time key would roll the ledger over at the wrong moment for a
+    // Dhaka-based owner reading a UTC-scheduled bill.
+    assertEq(monthKey(new Date('2026-12-31T18:30:00Z')), '2026-12');
+  });
+
+  await test('cost is estimated from real token usage, per provider', () => {
+    // 1M input + 1M output on Claude at $1/$5.
+    assertEq(estimateCostUsd('claude', { inputTokens: 1e6, outputTokens: 1e6 }), 6);
+    // A realistic turn is a fraction of a cent.
+    const turn = estimateCostUsd('claude', { inputTokens: 5000, outputTokens: 400 });
+    assert(turn > 0 && turn < 0.01, `a turn should cost under a cent, got ${turn}`);
+  });
+
+  await test('missing or junk usage is charged, never treated as free', () => {
+    // A reporting gap must not read as a free turn, or the ceiling stops working.
+    assertEq(estimateCostUsd('claude', undefined), 0);
+    assertEq(estimateCostUsd('claude', { inputTokens: -5, outputTokens: NaN }), 0);
+    // An unknown provider is charged at the most expensive rate we know.
+    const unknown = estimateCostUsd('mystery-vendor', { inputTokens: 1e6, outputTokens: 0 });
+    assert(unknown >= estimateCostUsd('claude', { inputTokens: 1e6, outputTokens: 0 }));
+  });
+
+  await test('the configured ceiling falls back on junk, and 0 means off', () => {
+    assertEq(monthlyBudgetUsd({}), DEFAULT_MONTHLY_BUDGET_USD);
+    assertEq(monthlyBudgetUsd({ ASSISTANT_MONTHLY_BUDGET_USD: 'abc' }), DEFAULT_MONTHLY_BUDGET_USD);
+    assertEq(monthlyBudgetUsd({ ASSISTANT_MONTHLY_BUDGET_USD: '-3' }), DEFAULT_MONTHLY_BUDGET_USD);
+    assertEq(monthlyBudgetUsd({ ASSISTANT_MONTHLY_BUDGET_USD: '12.5' }), 12.5);
+    assertEq(monthlyBudgetUsd({ ASSISTANT_MONTHLY_BUDGET_USD: '0' }), 0, 'an explicit off switch');
+    assert(isBudgetExhausted(0, 0), 'a zero ceiling refuses every turn');
+    assert(!isBudgetExhausted(4.99, 5));
+    assert(isBudgetExhausted(5, 5), 'reaching the ceiling counts as exhausted');
+  });
+
+  await test('a spent-out month refuses the turn without calling any model', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          return json({ fields: { spentUsd: { doubleValue: 5.01 } } });
+        }
+        // Reaching a model API here would mean the ceiling did not hold.
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'what is my cgpa?' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test', ASSISTANT_MONTHLY_BUDGET_USD: '5' }, {}));
+
+      assertEq(res.status, 503);
+      assertEq((await res.json()).error, 'assistant_budget_exhausted');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('an unreadable ledger fails CLOSED rather than spending blind', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          return new Response('boom', { status: 500 });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
+
+      assertEq(res.status, 503, 'no ledger, no spending');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('an answered turn is written to the month ledger', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    const writes = [];
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') {
+            return json({ fields: { spentUsd: { doubleValue: 0.25 } } });
+          }
+          writes.push(JSON.parse(call.body));
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          return json(assistantMessage({
+            content: [{ type: 'text', text: 'Your CGPA is 3.50.' }],
+            usage: { input_tokens: 5000, output_tokens: 400 },
+          }));
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'what is my cgpa?' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
+
+      assertEq(res.status, 200);
+      assertEq(writes.length, 1, 'the turn is recorded');
+      const spent = writes[0].fields.spentUsd.doubleValue;
+      assert(spent > 0.25, `the ledger grew from 0.25, got ${spent}`);
+      assert(spent < 0.26, `one turn must not cost a cent, got ${spent}`);
+    } finally {
+      __setTestJwksForTests(null);
+    }
   });
 
   console.log('\nReadiness / capabilities (GET /ready):');
