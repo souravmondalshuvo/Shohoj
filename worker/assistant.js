@@ -154,7 +154,12 @@ export function validateAssistantMessages(raw) {
 export async function loadSeatIndexFromFeed(feedUrl, fetchImpl = fetch) {
   const res = await fetchImpl(feedUrl, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`Seat feed fetch failed: ${res.status}`);
-  return indexByCourse(parseFeed(await res.json()));
+  // parseFeed returns { sections, dropped } — indexByCourse takes the array.
+  // Passing the wrapper made every seat question throw "sections is not
+  // iterable" inside the tool, which the loop reported to the model as a tool
+  // error, so the assistant has never been able to answer about seats (#553).
+  // Every other call site (routineTab, seatsTab) already unwraps it.
+  return indexByCourse(parseFeed(await res.json()).sections);
 }
 
 async function loadSemesters(ctx) {
