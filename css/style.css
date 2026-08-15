@@ -7631,6 +7631,10 @@ body[data-page="admin"] .orb { display: none !important; }
   border: 1px solid var(--green);
   box-shadow: 0 8px 26px rgba(46, 204, 113, 0.35);
   transition: transform var(--transition);
+  transform-origin: 100% 100%;
+  /* Also replays when the drawer closes: closeDrawer() flips the launcher back
+     from display:none, and an animation restarts when an element is re-shown. */
+  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .assistant-fab:hover {
   transform: translateY(-2px);
@@ -7638,6 +7642,51 @@ body[data-page="admin"] .orb { display: none !important; }
 .assistant-fab:focus-visible {
   outline: 2px solid var(--ink-green);
   outline-offset: 3px;
+}
+/* The panel grows out of the launcher's corner instead of snapping into place,
+   so the FAB visibly becomes the drawer. The rows settle a beat behind it, which
+   reads as one object arriving rather than four stacked boxes. Exit is the same
+   move, faster and without the overshoot-friendly easing — js/ui/assistantFab.js
+   holds the node in the DOM until it finishes. */
+@keyframes assistantDrawerIn {
+  from {
+    opacity: 0;
+    transform: translate3d(14px, 22px, 0) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes assistantDrawerOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(10px, 16px, 0) scale(0.92);
+  }
+}
+@keyframes assistantRowIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes assistantFabIn {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .assistant-drawer {
   position: fixed;
@@ -7655,6 +7704,37 @@ body[data-page="admin"] .orb { display: none !important; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   overflow: hidden;
+  transform-origin: 100% 100%;
+  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.assistant-drawer-header,
+.assistant-drawer-note,
+.assistant-log,
+.assistant-composer {
+  animation: assistantRowIn 260ms ease-out both;
+}
+.assistant-drawer-header {
+  animation-delay: 70ms;
+}
+.assistant-drawer-note {
+  animation-delay: 110ms;
+}
+.assistant-log {
+  animation-delay: 150ms;
+}
+.assistant-composer {
+  animation-delay: 190ms;
+}
+.assistant-drawer--closing {
+  animation: assistantDrawerOut 170ms ease-in both;
+  /* No clicks land on a panel that is on its way out. */
+  pointer-events: none;
+}
+.assistant-drawer--closing .assistant-drawer-header,
+.assistant-drawer--closing .assistant-drawer-note,
+.assistant-drawer--closing .assistant-log,
+.assistant-drawer--closing .assistant-composer {
+  animation: none;
 }
 .assistant-drawer-header {
   display: flex;
@@ -7875,8 +7955,21 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .assistant-fab {
     transition: none;
+    animation: none;
   }
   .assistant-fab:hover {
     transform: none;
+  }
+  .assistant-drawer,
+  .assistant-drawer-header,
+  .assistant-drawer-note,
+  .assistant-log,
+  .assistant-composer {
+    animation: none;
+  }
+  /* Not `animation: none`: closeDrawer() waits for animationend before pulling
+     the node, so the exit keeps a name and simply runs instantly. */
+  .assistant-drawer--closing {
+    animation: assistantDrawerOut 1ms linear both;
   }
 }
