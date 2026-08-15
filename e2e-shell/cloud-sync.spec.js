@@ -9,7 +9,7 @@
 // signed-out shell (CloudSyncProvider mounted, anonymous → the save queue
 // no-ops).
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 const VALID_GLOBALS = {
   _shohoj_firebase_config: {
@@ -42,7 +42,7 @@ test('offline shell: no migration modal, local save works', async ({ page }) => 
   await expect(page.getByTestId('cloud-migration-modal')).toHaveCount(0);
 });
 
-test('valid-config but signed-out shell: cloud sync is inert, no modal, save works', async ({ page }) => {
+anonymousTest('valid-config but signed-out shell: cloud sync is inert, no modal, save works', async ({ page }) => {
   await page.addInitScript((globals) => {
     Object.assign(window, globals);
   }, VALID_GLOBALS);
@@ -54,6 +54,9 @@ test('valid-config but signed-out shell: cloud sync is inert, no modal, save wor
     timeout: 15_000,
   });
 
-  await loadDemoAndPersist(page);
+  // Nothing to migrate, because a signed-out visitor has no calculator to put
+  // data into — the gate stands where the app used to be. What still matters is
+  // that a cloud-capable shell offers no migration modal to someone signed out.
+  await expect(page.getByTestId('signin-portal')).toBeVisible();
   await expect(page.getByTestId('cloud-migration-modal')).toHaveCount(0);
 });

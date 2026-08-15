@@ -4,7 +4,7 @@
 // (#315) over the shared persisted calculator state (shohoj_cgpa_v1), and the
 // LAST placeholder swap before cutover.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seedState(page) {
   return page.addInitScript(() => {

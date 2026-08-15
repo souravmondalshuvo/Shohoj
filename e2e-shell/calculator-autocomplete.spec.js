@@ -11,7 +11,7 @@
 // mismatch tracked separately).
 
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 // A stable, well-known BRACU course present in the shipped catalogue.
 const KNOWN_CODE = 'CSE110';

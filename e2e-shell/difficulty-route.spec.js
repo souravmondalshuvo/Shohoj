@@ -5,7 +5,7 @@
 // recent-reviews feed; the route aggregates it per course into difficulty +
 // workload cards, with a department filter, sort controls, and an empty state.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

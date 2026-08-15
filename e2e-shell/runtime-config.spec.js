@@ -7,7 +7,7 @@
 // injects the globals via addInitScript — which runs before page scripts, and
 // the stub never overwrites them.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 const VALID_GLOBALS = {
   _shohoj_firebase_config: {

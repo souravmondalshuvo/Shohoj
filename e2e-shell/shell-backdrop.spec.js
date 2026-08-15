@@ -12,7 +12,7 @@
 // first paint. That failure is silent: the markup is present and the tests that
 // query text still pass, while a user sees a blank page.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

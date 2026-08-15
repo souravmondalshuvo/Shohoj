@@ -5,7 +5,7 @@
 // success toast deferred in #309): announcement via a polite status role,
 // the success auto-dismiss (3s provider default), and manual dismissal.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 const DEMO_TOAST = 'Demo mode loaded. Explore CGPA, planner, and degree progress.';
 

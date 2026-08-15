@@ -7,7 +7,7 @@
 // trend deterministic regardless of the real clock (no summary block, so
 // nothing clock-estimated).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

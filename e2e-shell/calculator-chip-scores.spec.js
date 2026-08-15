@@ -8,7 +8,7 @@
 // least three reviews exist (render.js HIDE_UNDER), and a submitted review
 // invalidates the pair so its chip re-aggregates.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 // A repo stub over an in-memory `key -> reviews` store. Only fetchByFaculty is
 // exercised by the chips; the rest satisfy the ReviewsRepo shape.

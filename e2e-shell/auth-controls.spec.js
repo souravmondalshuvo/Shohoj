@@ -8,7 +8,7 @@
 // Sign in button renders. Real sign-in needs live Google/Firebase and stays
 // covered by the unit-tested source + the legacy page.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 const VALID_GLOBALS = {
   _shohoj_firebase_config: {
@@ -38,7 +38,7 @@ test('the offline shell renders no auth UI and never loads the Firebase chunk', 
   expect(firebaseRequests, 'no Firebase SDK chunk on the offline shell').toEqual([]);
 });
 
-test('a cloud-capable shell shows Sign in once the auth state settles', async ({ page }) => {
+anonymousTest('a cloud-capable shell shows Sign in once the auth state settles', async ({ page }) => {
   await page.addInitScript((globals) => {
     Object.assign(window, globals);
   }, VALID_GLOBALS);

@@ -7,7 +7,7 @@
 // the Worker endpoint, asserting the request carries the Firebase bearer token
 // and only the client-shaped transcript (no uid — the Worker derives it).
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 const VALID_GLOBALS = {
   _shohoj_firebase_config: {
@@ -65,7 +65,7 @@ test('the offline shell renders no assistant launcher', async ({ page }) => {
   await expect(page.locator('.assistant-fab')).toHaveCount(0);
 });
 
-test('a signed-out cloud shell renders no assistant launcher', async ({ page }) => {
+anonymousTest('a signed-out cloud shell renders no assistant launcher', async ({ page }) => {
   await page.addInitScript((globals) => {
     Object.assign(window, globals);
   }, VALID_GLOBALS);

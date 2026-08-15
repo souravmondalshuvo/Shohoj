@@ -10,7 +10,7 @@
 // the dropdown has to be usable by keyboard and AT, and the bar must not spill
 // sideways at 360px.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 import AxeBuilder from '@axe-core/playwright';
 
 import { navigateTo } from './_nav.js';

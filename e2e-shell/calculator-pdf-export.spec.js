@@ -6,7 +6,7 @@
 // so the tests assert what the report drew and saved; the failure test blocks
 // the CDN and expects the legacy error copy as a toast.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function stubJsPdf(page) {
   return page.addInitScript(() => {

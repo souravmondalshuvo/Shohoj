@@ -5,7 +5,7 @@
 // recent-reviews feed; the route aggregates it into a faculty directory that
 // search filters by initials, with an empty state when the feed is empty.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

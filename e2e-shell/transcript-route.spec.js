@@ -4,7 +4,7 @@
 // state (shohoj_cgpa_v1). Seeded through localStorage — the same store the
 // /calculator route reads/writes, which is the point: one dataset, two views.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

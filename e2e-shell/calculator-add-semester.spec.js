@@ -8,7 +8,7 @@
 // and the headline flipping to "Projected CGPA" when a running semester
 // exists.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openCalculator(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

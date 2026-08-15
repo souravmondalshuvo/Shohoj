@@ -9,7 +9,7 @@
 // today, deferred to the full visual-system integration (same precedent as
 // the a11y color-contrast carve-out in a11y-routes.spec.js).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

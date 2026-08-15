@@ -8,7 +8,7 @@
 // through a stubbed window.__shohojReportRepo. #363: a card's "+ Add your rating"
 // opens RateFacultyModal (prefilled) and submits through a stubbed relay.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, installAuth } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 
@@ -90,6 +90,13 @@ test('⭐ on a course with no reviews shows the empty state', async ({ page }) =
 
 test('a snippet Report opens the dialog and files a report via the stub repo', async ({ page }) => {
   await installRepo(page);
+  // The report carries the signed-in uid from the auth snapshot, which now
+  // outranks the _shohoj_currentUid stand-in below, so the snapshot has to
+  // agree with what this test asserts was sent.
+  await installAuth(page, {
+    status: 'authenticated', uid: 'e2e-uid', email: 'me@g.bracu.ac.bd',
+    isAdmin: false, university: 'bracu',
+  });
   await page.addInitScript(() => {
     window._shohoj_currentUid = () => 'e2e-uid';
     window.__shohojReportRepo = {

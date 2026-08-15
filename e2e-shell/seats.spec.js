@@ -8,7 +8,7 @@
 // an almost-full section (38/40 > 85%), and a full section (40/40); MAT110 has
 // one open section so search/sort/filter can be checked across courses.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seedFeed(page) {
   return page.addInitScript(() => {
