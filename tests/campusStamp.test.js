@@ -41,34 +41,48 @@ test('campusStamp returns empty rather than guessing a campus', () => {
     assert.equal(campusStamp({ currentUser: { email: 'x@g.bracu.ac.bd.attacker.com' } }), '');
 });
 
-test('every collection whose rules require `university` has a repo that stamps it', () => {
+test('rules accept the campus a repo stamps, and never demand it', () => {
+    // The invariant changed after the first fix shipped, and the reason is the
+    // deploy boundary. Two clients write these collections and cannot be
+    // upgraded together: the legacy bundle at the site root sends no campus,
+    // the shell under /app/ does. So the rules must
+    //
+    //   ACCEPT the field  — or the shell's creates are denied, and
+    //   NOT REQUIRE it    — or legacy's creates are denied the moment the
+    //                       rules deploy, taking down the main production app.
+    //
+    // Requiring it is the mistake this test exists to prevent a second time.
     const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
 
-    // Collections created by the CLIENT, mapped to the repo that writes them.
-    // Worker-written collections (facultyReviews, papers) are excluded: the
-    // Worker stamps those itself and bypasses rules entirely.
     const clientWritten = [
-        ['studyGroups', 'src/platform/firebase/studyGroupsRepo.ts', 'validStudyGroupPayload'],
-        ['appFeedback', 'src/platform/firebase/feedbackRepo.ts', 'validFeedbackPayload'],
-        ['lostFoundPosts', 'src/platform/firebase/lostFoundRepo.ts', 'validLostFoundPostPayload'],
+        ['src/platform/firebase/studyGroupsRepo.ts', 'validStudyGroupPayload'],
+        ['src/platform/firebase/feedbackRepo.ts', 'validFeedbackPayload'],
+        ['src/platform/firebase/lostFoundRepo.ts', 'validLostFoundPostPayload'],
     ];
 
-    for (const [collection, repoPath, validator] of clientWritten) {
+    for (const [repoPath, validator] of clientWritten) {
         const fn = rules.slice(rules.indexOf(`function ${validator}(`));
         const body = fn.slice(0, fn.indexOf('\n    }'));
-        const rulesRequire =
-            body.includes("'university'") || body.includes('writingOwnCampus');
+
+        const hasOnly = body.slice(body.indexOf('hasOnly('), body.indexOf('])', body.indexOf('hasOnly(')));
+        const hasAll = body.slice(body.indexOf('hasAll('), body.indexOf('])', body.indexOf('hasAll(')));
+
+        assert.ok(
+            hasOnly.includes("'university'"),
+            `${validator} must ACCEPT university — the shell stamps it and would be denied`,
+        );
+        assert.ok(
+            !hasAll.includes("'university'"),
+            `${validator} must NOT require university — the legacy bundle sends none, ` +
+            `and every legacy create would be denied when these rules deploy`,
+        );
+        // Optional is not unchecked: a present field is still pinned to the writer.
+        assert.ok(
+            body.includes("!('university' in d) || writingOwnCampus(d)"),
+            `${validator} must still pin a present university to the writer's own campus`,
+        );
 
         const repo = fs.readFileSync(path.join(ROOT, repoPath), 'utf8');
-        const repoStamps = repo.includes('campusStamp(');
-
-        assert.equal(
-            repoStamps,
-            rulesRequire,
-            rulesRequire
-                ? `${validator} requires university, but ${repoPath} never calls campusStamp — ` +
-                  `every create on ${collection} would be denied in production`
-                : `${repoPath} stamps a campus that ${validator} does not require`,
-        );
+        assert.ok(repo.includes('campusStamp('), `${repoPath} should stamp the campus`);
     }
 });
