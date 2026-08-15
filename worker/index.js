@@ -34,8 +34,12 @@
 //                           OAuth2 access tokens that authorize the
 //                           Firestore REST writes for /upload metadata and
 //                           /reviews
+//   GEMINI_API_KEY          Google AI key for /api/assistant (#550). The free
+//                           tier needs no billing, so this is the default way
+//                           to run the assistant at zero cost; it LEADS the
+//                           provider chain when set
 //   OPENAI_API_KEY          OpenAI key for the /api/assistant fallback (#544);
-//                           optional — without it Claude is the only provider
+//                           optional — a paid net under the free provider
 //   ASSISTANT_MONTHLY_BUDGET_USD  Ceiling on estimated model spend per calendar
 //                           month (default 5). 0 switches the assistant off
 //                           without removing the keys.
@@ -539,8 +543,9 @@ export function readinessReport(env) {
     // launcher on this and do not care which vendor answers. Naming the
     // providers here would violate the booleans-only rule above, so the only
     // extra fact exposed is whether a second one is armed to catch failures.
-    assistant: !!e.ANTHROPIC_API_KEY || !!e.OPENAI_API_KEY,
-    assistantFallback: !!e.ANTHROPIC_API_KEY && !!e.OPENAI_API_KEY,
+    assistant: !!e.GEMINI_API_KEY || !!e.ANTHROPIC_API_KEY || !!e.OPENAI_API_KEY,
+    assistantFallback:
+      [e.GEMINI_API_KEY, e.ANTHROPIC_API_KEY, e.OPENAI_API_KEY].filter(Boolean).length > 1,
     papers: !!e.SERVICE_ACCOUNT_JSON && !!e.PAPERS_BUCKET,
     email: emailCfg.ok,
     rateLimits: {
