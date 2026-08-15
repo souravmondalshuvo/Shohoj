@@ -197,6 +197,64 @@ test('universityForEmail tells the two campuses apart', () => {
     assert.equal(universityForEmail('someone@northsouth.edu.attacker.com'), null);
 });
 
+test('mark scales are coherent and descend to F at zero', () => {
+    for (const profile of profiles) {
+        const marks = profile.grades.marks;
+        assert.ok(marks.length > 0, `${profile.id} has no mark scale`);
+        let previous = Number.POSITIVE_INFINITY;
+        for (const tier of marks) {
+            assert.ok(tier.min <= previous, `${profile.id} mark tiers not descending at ${tier.letter}`);
+            previous = tier.min;
+            // A cutoff for a letter the campus does not award would be unreachable.
+            assert.notEqual(
+                gradePointOn(profile.grades, tier.letter),
+                undefined,
+                `${profile.id} has a cutoff for ${tier.letter}, which it does not award`,
+            );
+        }
+        const last = marks[marks.length - 1];
+        assert.equal(last.letter, 'F', `${profile.id} scale must bottom out at F`);
+        assert.equal(last.min, 0, `${profile.id} F must start at 0 so every mark maps`);
+    }
+});
+
+test('NSU mark cutoffs match the published table', () => {
+    assert.deepEqual(UNIVERSITIES.nsu.grades.marks, [
+        { letter: 'A', min: 93 },
+        { letter: 'A-', min: 90 },
+        { letter: 'B+', min: 87 },
+        { letter: 'B', min: 83 },
+        { letter: 'B-', min: 80 },
+        { letter: 'C+', min: 77 },
+        { letter: 'C', min: 73 },
+        { letter: 'C-', min: 70 },
+        { letter: 'D+', min: 67 },
+        { letter: 'D', min: 60 },
+        { letter: 'F', min: 0 },
+    ]);
+});
+
+test('the same mark earns a different letter on each campus', () => {
+    const letterFor = (profile, mark) => {
+        for (const tier of profile.grades.marks) if (mark >= tier.min) return tier.letter;
+        return 'F';
+    };
+    const bracu = UNIVERSITIES.bracu;
+    const nsu = UNIVERSITIES.nsu;
+
+    // 85 is an A- at BRACU and only a B at NSU — two letters apart.
+    assert.equal(letterFor(bracu, 85), 'A-');
+    assert.equal(letterFor(nsu, 85), 'B');
+
+    // The one that really matters: 55 passes at BRACU and fails at NSU.
+    assert.equal(letterFor(bracu, 55), 'D+');
+    assert.equal(letterFor(nsu, 55), 'F');
+
+    // And a genuine A is harder to reach at NSU.
+    assert.equal(letterFor(bracu, 92), 'A');
+    assert.equal(letterFor(nsu, 92), 'A-');
+});
+
 test('the default campus is registered', () => {
     assert.ok(isUniversityId(DEFAULT_UNIVERSITY_ID));
     assert.equal(getUniversity(DEFAULT_UNIVERSITY_ID)?.id, DEFAULT_UNIVERSITY_ID);
