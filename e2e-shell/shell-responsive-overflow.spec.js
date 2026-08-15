@@ -12,7 +12,7 @@
 // width. Demo data / a stubbed reviews repo give each surface real content to
 // measure (same seams as a11y-routes.spec.js and reviews-dialog-a11y.spec.js).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

@@ -7,7 +7,7 @@
 // the legacy season-reset on switching to an incompatible department, the
 // demo pre-selecting CSE, and setup persistence across a reload.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openCalculator(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

@@ -10,7 +10,7 @@
 // #238 axe smoke now covers every route named there (profile is scanned in its
 // signed-in state via the RootLayout auth seam).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 import AxeBuilder from '@axe-core/playwright';

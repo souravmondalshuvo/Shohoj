@@ -9,7 +9,7 @@
 // touches the CGPA until the student applies a letter. Both are asserted here,
 // because both are the feature's promises rather than incidental behaviour.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 const SEED = {
   currentDept: 'CSE',

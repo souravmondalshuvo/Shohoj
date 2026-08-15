@@ -9,7 +9,7 @@
 // is MONDAY). Times are driven through the time input, so the assertions don't
 // depend on the wall clock.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seedFeed(page) {
   return page.addInitScript(() => {

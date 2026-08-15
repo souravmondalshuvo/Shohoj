@@ -7,7 +7,7 @@
 // the real pinned CDN build is exercised only by the failure test, which
 // blocks the CDN and asserts the legacy error copy.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 // One positioned item per transcript line; y falls 20 per row so the
 // flattener breaks rows exactly like a real grade sheet.

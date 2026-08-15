@@ -8,7 +8,7 @@
 // (window.__shohojSubmitRelay) plus the uid hook (_shohoj_currentUid) the
 // signed-in guard reads.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 async function openWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
@@ -64,20 +64,15 @@ test('validation: initials first, then the first missing rating by dimension', a
   await expect(modal.getByRole('alert')).toHaveText('Please rate "Marking Fairness"');
 });
 
-test('a complete signed-out submit fails with the sign-in message', async ({ page }) => {
-  const container = await openWithDemo(page);
-  await addUnratedCourse(page, container);
-
-  await container.getByRole('button', { name: '+ Rate' }).click();
-  const modal = page.getByTestId('rate-faculty-modal');
-  await modal.getByLabel('Faculty Initials').fill('MNR');
-  for (const dim of ['Teaching Quality', 'Marking Fairness', 'Behavior & Attitude', 'Course Difficulty', 'Workload']) {
-    await modal.getByRole('radio', { name: `4 stars for ${dim}` }).click();
-  }
-  await modal.getByRole('button', { name: 'Submit Review' }).click();
-
-  await expect(modal.getByRole('alert')).toHaveText('Sign in to submit a review');
-  await expect(modal).toBeVisible(); // stays open for the user to see the error
+anonymousTest('a signed-out visitor never reaches the rate modal at all', async ({ page }) => {
+  // Was: 'a complete signed-out submit fails with the sign-in message'. That
+  // path is unreachable now — the gate replaces the outlet before the
+  // calculator renders, so there is no course row and no + Rate button to
+  // press. The modal's own 'Sign in to submit a review' guard still exists in
+  // the component as defence in depth; it simply cannot be driven from the UI.
+  await page.goto('/calculator', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('signin-portal')).toBeVisible();
+  await expect(page.getByTestId('rate-faculty-modal')).toHaveCount(0);
 });
 
 test('a stubbed signed-in relay submits: initials land on the course as a chip + toast', async ({ page }) => {

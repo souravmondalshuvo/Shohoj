@@ -6,7 +6,7 @@
 // (window.__shohojAuthSource) — no real Firebase session needed. The saved-
 // routine summary reads the Routine route's persisted picks.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 // Stand in for a signed-in student. Only the AuthProvider reads this (get /
 // subscribe / getIdToken); the header sign-in/out controls are untouched.
@@ -59,10 +59,12 @@ function seedReviews(page, entries) {
   }, entries);
 }
 
-test('signed-out students see the sign-in prompt, not the hub', async ({ page }) => {
+anonymousTest('signed-out students get the campus gate, never the hub', async ({ page }) => {
+  // The route's own signed-out panel (profile-signedout) is now unreachable:
+  // the gate replaces the whole outlet before any route renders.
   await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByTestId('profile-page')).toBeVisible();
-  await expect(page.getByTestId('profile-signedout')).toBeVisible();
+  await expect(page.getByTestId('signin-portal')).toBeVisible();
+  await expect(page.getByTestId('profile-page')).toHaveCount(0);
   await expect(page.getByTestId('profile-account')).toHaveCount(0);
 });
 

@@ -6,7 +6,7 @@
 //   window.__shohojPapersIdentity — signed-in stand-in ({uid,email})
 //   window.__shohojPapersRepo     — repo fake over an in-page array
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seed(page, { failLoad = false } = {}) {
   return page.addInitScript(({ failLoad }) => {

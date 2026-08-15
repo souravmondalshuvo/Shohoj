@@ -5,7 +5,7 @@
 // deterministic: CGPA 3.50 over 18 credits (63 points), CSE dept → remaining
 // credits auto-fill to 136 − 18 = 118.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

@@ -6,7 +6,7 @@
 //   window.__shohojFeedbackIdentity — signed-in stand-in ({uid,email,isAdmin?})
 //   window.__shohojFeedbackRepo     — repo fake backed by an in-page array
 
-import { expect, test } from '@playwright/test';
+import { expect, test, installAuth } from '../e2e-support/authFixture.js';
 
 function seed(page, { admin = false } = {}) {
   return page.addInitScript(({ admin }) => {
@@ -96,6 +96,11 @@ test('submit validates, sends, clears the box, and lands on the board', async ({
 });
 
 test('admin sees delete; confirm removes the item', async ({ page }) => {
+  // isAdmin comes from the auth snapshot, which outranks seed()'s admin flag.
+  await installAuth(page, {
+    status: 'authenticated', uid: 'u_me', email: 'me@g.bracu.ac.bd',
+    isAdmin: true, university: 'bracu',
+  });
   await seed(page, { admin: true });
   await gotoFeedback(page);
 

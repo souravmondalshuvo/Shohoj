@@ -12,7 +12,7 @@
 // absolute paths on initial load, so the route is reached by deep-linking
 // /calculator directly (the SPA preview server falls back to index.html).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function gotoCalculator(page) {
   await page.addInitScript(() => localStorage.clear());

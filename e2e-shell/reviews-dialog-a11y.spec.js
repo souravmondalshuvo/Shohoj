@@ -6,7 +6,7 @@
 // moves into the dialog on open, Tab/Shift+Tab cycles within it, and closing
 // restores focus to whatever opened it.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

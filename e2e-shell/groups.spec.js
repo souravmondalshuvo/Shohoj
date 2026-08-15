@@ -6,7 +6,7 @@
 //   window.__shohojGroupsIdentity — signed-in stand-in ({uid,email})
 //   window.__shohojGroupsRepo     — repo fake over in-page arrays
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seed(page) {
   return page.addInitScript(() => {

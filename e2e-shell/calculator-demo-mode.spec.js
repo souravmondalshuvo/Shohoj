@@ -7,7 +7,7 @@
 // (cancel keeps it, confirm replaces it), persistence across reload, and the
 // demo calendar driving the next added semester's name.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openCalculator(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

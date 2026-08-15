@@ -6,7 +6,7 @@
 // the seeded demo plan CSE221/MAT120/PHY112 (9 credits, all prereqs met;
 // CSE221 carries the CSE230 soft-prereq note).
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 import { navigateTo } from './_nav.js';
 

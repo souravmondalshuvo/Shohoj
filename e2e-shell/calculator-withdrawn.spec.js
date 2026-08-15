@@ -9,7 +9,7 @@
 // a numeric 0.0–4.0 input, so there is no way to type a W. That is exactly why
 // the state renders as a badge.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 const SEED = {
   currentDept: 'CSE',

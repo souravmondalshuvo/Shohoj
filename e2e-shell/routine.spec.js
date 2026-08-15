@@ -9,7 +9,7 @@
 // one section that overlaps CSE110 §01 in time — so picking both surfaces a
 // class clash, and repicking CSE110 to its Monday section clears it.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 function seedFeed(page) {
   return page.addInitScript(() => {

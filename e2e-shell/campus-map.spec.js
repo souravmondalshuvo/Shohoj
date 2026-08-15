@@ -6,7 +6,7 @@
 // Room 07A-01C is scheduled 0:00–23:59 every day, so its "in class now" state
 // is deterministic whenever the suite runs.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 const FEED_KEY = 'shohoj_connect_feed_v1';
 

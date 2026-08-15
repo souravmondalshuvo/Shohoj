@@ -6,7 +6,7 @@
 // has a review shows the read-only "Review already submitted" state instead of
 // the form. A fresh course (no faculty → no probe hit) still opens the form.
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../e2e-support/authFixture.js';
 
 async function openWithDemo(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });

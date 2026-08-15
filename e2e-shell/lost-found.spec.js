@@ -6,7 +6,7 @@
 // Claims are recorded on window.__lfClaims so tests can assert the exact
 // payload the real repo would write to the queue.
 
-import { expect, test } from '@playwright/test';
+import { expect, test, anonymousTest } from '../e2e-support/authFixture.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -131,9 +131,11 @@ test('room codes deep-link into the campus map', async ({ page }) => {
   await expect(link).toHaveAttribute('href', '/campus?room=09G-31T');
 });
 
-test('without a signed-in identity the board asks for BRACU sign-in', async ({ page }) => {
-  await openBoard(page, { identity: false });
-  await expect(page.getByTestId('lostfound-signin')).toBeVisible();
+anonymousTest('without a signed-in identity the gate stands in for the board', async ({ page }) => {
+  // Not openBoard(): it waits for lostfound-page, which the gate never renders.
+  await page.goto('/lost-found', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('signin-portal')).toBeVisible();
+  await expect(page.getByTestId('lostfound-page')).toHaveCount(0);
   await expect(page.getByTestId('lostfound-item')).toHaveCount(0);
 });
 
