@@ -195,7 +195,22 @@ function ShellSurface({ children }: { readonly children: React.ReactNode }) {
  */
 function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
   const { status } = useAuth();
+  const { pathname } = useLocation();
   const authed = status === 'authenticated';
+
+  // '/' is exempt. It is the pitch, not the product: nothing on it depends on
+  // knowing a campus, it is the page people share and search engines read, and
+  // meeting a stranger with a demand for their university account reads like a
+  // phishing page. A signed-out visitor gets the hero AND the portal; every
+  // route that actually applies grading rules stays gated.
+  //
+  // Order is load bearing: the portal renders AFTER the outlet. Putting it
+  // first pushes .hero and #features down and breaks two of the e2e-visual
+  // parity captures (desktop features, both themes) — measured, not guessed.
+  // Rendering it last leaves those elements exactly where the baselines expect.
+  // The prominent signed-out affordances are the nav's Sign in button and the
+  // hero's own CTAs, which lead into gated routes anyway.
+  const isLanding = pathname === '/';
 
   return (
     <>
@@ -206,7 +221,12 @@ function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
           skip link's target, and an anchor pointing at nothing is an a11y bug
           that only appears when signed out. */}
       <main id="main-content" className="shell-main calc-body" tabIndex={-1}>
-        {status === 'loading' ? null : authed ? <Outlet /> : <SignInPortal source={source} />}
+        {status === 'loading' ? null : (
+          <>
+            {authed || isLanding ? <Outlet /> : null}
+            {authed ? null : <SignInPortal source={source} />}
+          </>
+        )}
       </main>
     </>
   );
