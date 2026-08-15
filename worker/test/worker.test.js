@@ -10,6 +10,8 @@
 
 import { exportJWK, exportPKCS8, generateKeyPair, SignJWT } from 'jose';
 import worker, {
+  __resetSeatIndexCacheForTests,
+  loadSeatIndexCached,
   AuthError,
   __setTestJwksForTests,
   corsHeaders,
@@ -1924,6 +1926,34 @@ async function makeServiceAccountJson() {
       'Your CGPA is 3.50.');
   });
 
+  await test('Gemini turns ask for low thinking effort, on every round', async () => {
+    const bodies = [];
+    await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'can I take CSE370?' }],
+      ctx: { loadUserSnapshot: async () => JSON.parse(ALICE_SNAPSHOT) },
+      fetchImpl: async (url, init) => {
+        const body = JSON.parse(init.body);
+        bodies.push(body);
+        if (bodies.length === 1) {
+          return json({
+            id: 'i1',
+            steps: [{ type: 'function_call', id: 'c1', name: 'check_prerequisite',
+              arguments: { course_code: 'CSE370' } }],
+          });
+        }
+        return json(geminiSays('Not yet.'));
+      },
+    });
+    // Medium is the default and applies to the tool-pick round too, which is
+    // pure plumbing — both rounds must ask for low (#553).
+    assertEq(bodies.length, 2);
+    assertEq(bodies[0].thinking_level, 'low');
+    assertEq(bodies[1].thinking_level, 'low');
+    // thinking_level and the legacy thinking_budget together are a 400.
+    for (const body of bodies) assertEq(body.thinking_budget, undefined);
+  });
+
   await test('free-tier turns are charged nothing by the ceiling', () => {
     assertEq(estimateCostUsd('gemini', { inputTokens: 1e6, outputTokens: 1e6 }), 0);
   });
@@ -2050,6 +2080,72 @@ async function makeServiceAccountJson() {
       const spent = writes[0].fields.spentUsd.doubleValue;
       assert(spent > 0.25, `the ledger grew from 0.25, got ${spent}`);
       assert(spent < 0.26, `one turn must not cost a cent, got ${spent}`);
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  console.log('\nAssistant latency (#553):');
+
+  await test('the seat feed is downloaded once per TTL window, not per question', async () => {
+    __resetSeatIndexCacheForTests();
+    let fetches = 0;
+    const feedBody = [{
+      courseCode: 'CSE220', courseName: 'DS', sectionName: '01', capacity: 30, consumedSeat: 10,
+      sectionType: 'THEORY', sectionSchedule: { classSchedules: [] },
+    }];
+    const res = await withMockedFetch(async (input, init = {}) => {
+      const call = await readFetchCall(input, init);
+      if (call.url.startsWith(SEAT_FEED_URL)) {
+        fetches++;
+        return json(feedBody);
+      }
+      throw new Error(`unexpected fetch: ${call.url}`);
+    }, async () => {
+      // Two seat lookups back to back — the 3.6 MB feed should move once.
+      const a = await executeAssistantTool('check_seat_status', { course_code: 'CSE220' },
+        { loadSeatIndex: () => loadSeatIndexCached() });
+      const b = await executeAssistantTool('check_seat_status', { course_code: 'CSE220' },
+        { loadSeatIndex: () => loadSeatIndexCached() });
+      return [a, b];
+    });
+    assertEq(fetches, 1, 'the second question reuses the cached feed');
+    assertEq(res[0].course_code, 'CSE220');
+    assertEq(res[1].course_code, 'CSE220');
+    __resetSeatIndexCacheForTests();
+  });
+
+  await test('an answered turn does not wait on the ledger write', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    const deferred = [];
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('nf', { status: 404 });
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          return json(assistantMessage({
+            content: [{ type: 'text', text: 'Your CGPA is 3.50.' }],
+            usage: { input_tokens: 100, output_tokens: 20 },
+          }));
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'what is my cgpa?' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' },
+      // A real execution context: the write is handed to waitUntil, not awaited.
+      { waitUntil: (p) => deferred.push(p) }));
+
+      assertEq(res.status, 200);
+      assertEq(deferred.length, 1, 'the accounting was deferred, not awaited');
+      await Promise.all(deferred);
     } finally {
       __setTestJwksForTests(null);
     }
