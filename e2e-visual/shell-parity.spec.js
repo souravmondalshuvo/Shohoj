@@ -1,4 +1,7 @@
-import { test, expect } from '@playwright/test';
+// Visual parity captures the SIGNED-OUT shell against legacy baselines
+// (HomeRoute swaps its CTA on uid), so these must not use the signed-in
+// default fixture.
+import { anonymousTest as test, expect } from '../e2e-support/authFixture.js';
 import {
   primeTheme,
   stabilize,
