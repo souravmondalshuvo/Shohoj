@@ -278,8 +278,19 @@ function onKeydown(e) {
   if (e.key === 'Escape' && _drawer) closeDrawer();
 }
 
+/** The panel on its way out, still in the DOM only for its exit animation. */
+let _exiting = null;
+
+/** Drop a closing panel immediately — used when it is in the way. */
+function dropExiting() {
+  _exiting?.remove();
+  _exiting = null;
+}
+
 function openDrawer() {
   if (_drawer) return;
+  // Reopening mid-exit would stack two panels in the same corner.
+  dropExiting();
   _transcript = readStoredTranscript(storage(), _owner);
   _error = null;
   _drawer = buildDrawer();
@@ -292,8 +303,10 @@ function openDrawer() {
 
 function closeDrawer() {
   if (!_drawer) return;
+  const node = _drawer;
   document.removeEventListener('keydown', onKeydown);
-  _drawer.remove();
+  // Detach the state refs up front: from here on the panel is scenery, and a
+  // turn that resolves during the animation must not render into it.
   _drawer = null;
   _logEl = null;
   _inputEl = null;
@@ -302,6 +315,23 @@ function closeDrawer() {
     _fab.style.display = '';
     _fab.focus();
   }
+
+  dropExiting();
+  _exiting = node;
+  node.classList.add('assistant-drawer--closing');
+  // animationend is the signal; the timer is the safety net for the cases where
+  // it never arrives (backgrounded tab, animations switched off at the browser
+  // level), so a dead panel can't be left sitting on the page. Child rows also
+  // bubble animationend, hence the target check.
+  const finish = () => {
+    if (_exiting !== node) return;
+    _exiting = null;
+    node.remove();
+  };
+  node.addEventListener('animationend', e => {
+    if (e.target === node) finish();
+  });
+  setTimeout(finish, 600);
 }
 
 // ── Launcher gate ─────────────────────────────────────────────────────────────
