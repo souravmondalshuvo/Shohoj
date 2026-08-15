@@ -182,22 +182,34 @@ wrangler secret put RESEND_API_KEY
 
 ## Assistant model providers
 
-`POST /api/assistant` runs a tool loop over the student's own data. Two
-providers can serve it, each gated by its own secret:
+`POST /api/assistant` runs a tool loop over the student's own data. Three
+providers can serve it, each gated by its own secret, tried in this order:
 
 ```bash
-wrangler secret put ANTHROPIC_API_KEY   # Claude — answers by default
-wrangler secret put OPENAI_API_KEY      # OpenAI — catches Claude's failures
+wrangler secret put GEMINI_API_KEY      # Google — FREE tier, answers first
+wrangler secret put ANTHROPIC_API_KEY   # Claude — paid, catches failures
+wrangler secret put OPENAI_API_KEY      # OpenAI — paid, last resort
 ```
+
+**The free tier is the intended way to run this.** Shohoj is a free student
+project funded by one person, so a per-token bill is the difference between
+shipping the assistant and leaving it switched off. `GEMINI_API_KEY` alone runs
+the whole feature at zero cost and needs no billing enabled on the Google
+account. The paid providers are a net under it, not the default.
 
 | Secrets set | Behaviour |
 | ----------- | --------- |
-| Neither | `/api/assistant` returns 503, `GET /ready` reports `assistant: false`, and both front-ends hide their launcher rather than offer a button that cannot answer |
-| `ANTHROPIC_API_KEY` only | Claude serves every turn; a failure is a failure |
-| `OPENAI_API_KEY` only | OpenAI serves every turn |
-| Both | Claude answers; on a 5xx, 429, timeout, network error, bad key, or a reply truncated before any text, the **same turn** is retried on OpenAI |
+| None | `/api/assistant` returns 503, `GET /ready` reports `assistant: false`, and both front-ends hide their launcher rather than offer a button that cannot answer |
+| `GEMINI_API_KEY` only | Free tier serves every turn. When its shared quota is spent, students get a failure until it resets |
+| One paid key only | That provider serves every turn |
+| Free + paid | Gemini answers; on a 5xx, 429 (shared quota spent), timeout, network error or bad key, the **same turn** is retried on the next provider |
 
-Fallback is whole-turn, never mid-tool-loop — the two APIs express tool calling
+Free-tier rate limits are **per project, shared by every student** — not per
+user. At peak (registration week) some turns will be refused; that is what the
+paid fallback is for, if you choose to fund one. Check the current limits in
+your Google AI Studio dashboard.
+
+Fallback is whole-turn, never mid-tool-loop — the APIs express tool calling
 differently, and translating a half-finished tool conversation between them
 under failure conditions is not worth the bugs. It fires only on infrastructure
 failure: a model that answers, refuses, or declines is a real result, and a
