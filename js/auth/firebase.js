@@ -972,6 +972,9 @@ installAssistantAuthHooks({
     try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
     return parseStoredState(raw);
   },
+  // Same content hash the sign-in reconciliation compares with, so "unchanged"
+  // means exactly what it means everywhere else in the sync path.
+  fingerprint: (snap) => getDataFingerprint(snap),
 });
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
