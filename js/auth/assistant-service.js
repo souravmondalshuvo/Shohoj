@@ -19,13 +19,18 @@
  * @param {() => Promise<string|null>} deps.getIdToken  Fresh ID token, or null.
  * @param {(snap: unknown) => Promise<boolean>} deps.saveSnapshot  Immediate cloud write.
  * @param {() => unknown} deps.readLocalSnapshot  Parsed local state, or null.
+ * @param {(raw: unknown) => string} deps.fingerprint  Content hash of a snapshot.
  * @param {object} [scope]  Injectable global (tests).
  */
 export function installAssistantAuthHooks(
-  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot },
+  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot, fingerprint },
   scope = typeof window !== 'undefined' ? window : undefined,
 ) {
   if (!scope) return;
+
+  // What the cloud already has, as far as this tab knows. Lets a flush be
+  // skipped when nothing has changed since the last one (#553).
+  let lastFlushed = null;
 
   scope._shohoj_idToken = function() {
     return getCurrentUser() ? getIdToken() : Promise.resolve(null);
@@ -48,8 +53,18 @@ export function installAssistantAuthHooks(
     if (typeof isCloudSettled === 'function' && !isCloudSettled()) return false;
     const snap = readLocalSnapshot();
     if (!snap) return false;
+
+    // Only write when the data actually moved. The staleness this guards
+    // against (#544) is caused by EDITS sitting in the save debounce; a second
+    // question about unchanged data does not need a second write, and paying
+    // one per question is a Firestore round trip added to every answer (#553).
+    const mark = typeof fingerprint === 'function' ? fingerprint(snap) : null;
+    if (mark && mark === lastFlushed) return true;
+
     try {
-      return await saveSnapshot(snap);
+      const saved = await saveSnapshot(snap);
+      if (saved && mark) lastFlushed = mark;
+      return saved;
     } catch (_e) {
       return false;
     }
