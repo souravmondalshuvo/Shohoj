@@ -44,6 +44,15 @@ export type UniversityId = 'bracu' | 'nsu';
  * `undefined` — "this campus does not award that grade" — which callers already
  * treat the same way they treat an unrecognised grade today.
  */
+/**
+ * One band of an absolute mark → letter scale. `min` is inclusive: on BRACU's
+ * table a mark of exactly 85.0 is an A-, not a B+.
+ */
+export interface MarkTier {
+  readonly letter: GradeLetter;
+  readonly min: number;
+}
+
 export interface GradeScale {
   /** Letter → grade point. `null` means the grade carries no point (P/I/W). */
   readonly points: Readonly<Partial<Record<GradeLetter, GradePoint>>>;
@@ -54,6 +63,18 @@ export interface GradeScale {
   readonly pointsToGrade: readonly (readonly [number, GradeLetter])[];
   /** Highest attainable grade point — the CGPA ceiling for this campus. */
   readonly max: number;
+  /**
+   * Absolute mark → letter cutoffs, highest first, used by the course-marks
+   * model to answer "what do I need on the final for an A-".
+   *
+   * These diverge far more between campuses than the grade points do, and in
+   * the direction that hurts: BRACU awards an A- from 85 while NSU needs 90,
+   * and BRACU passes a D at 52 where NSU needs 60. Applying one campus's
+   * cutoffs to the other's marks overstates a letter by a full grade in
+   * places, which is exactly the kind of quiet wrongness that makes a student
+   * plan the wrong final.
+   */
+  readonly marks: readonly MarkTier[];
 }
 
 /** A start term, as coarse as the retake rules need it to be. */
@@ -158,10 +179,37 @@ export interface UniversityProfile {
 // so introducing this registry cannot drift from what the calculator does
 // today. Once every call site reads through a profile, ./grades.ts keeps the
 // letter types and the BRACU numbers move inline here.
+// ┌───────────────────────────────────────────────────────────────────────────┐
+// │ VERIFY BEFORE RELYING ON THIS. These cutoffs are the commonly published    │
+// │ BRACU scale, but they are not sourced from a document in this repo and the │
+// │ university has revised grading policy before. Confirm against the current  │
+// │ official Grading Policy and correct here — this is the single definition.  │
+// │                                                                            │
+// │ Note the inversion worth fixing: NSU's cutoffs below ARE sourced from the  │
+// │ registrar's published table, so the campus we support best is the one we   │
+// │ just added.                                                                │
+// └───────────────────────────────────────────────────────────────────────────┘
+const BRACU_MARKS: readonly MarkTier[] = [
+  { letter: 'A+', min: 97 },
+  { letter: 'A', min: 90 },
+  { letter: 'A-', min: 85 },
+  { letter: 'B+', min: 80 },
+  { letter: 'B', min: 75 },
+  { letter: 'B-', min: 70 },
+  { letter: 'C+', min: 65 },
+  { letter: 'C', min: 60 },
+  { letter: 'C-', min: 57 },
+  { letter: 'D+', min: 55 },
+  { letter: 'D', min: 52 },
+  { letter: 'D-', min: 50 },
+  { letter: 'F', min: 0 },
+];
+
 const BRACU_SCALE: GradeScale = {
   points: GRADES,
   pointsToGrade: POINTS_TO_GRADE,
   max: 4.0,
+  marks: BRACU_MARKS,
 };
 
 const BRACU: UniversityProfile = {
@@ -247,6 +295,23 @@ const NSU_SCALE: GradeScale = {
     [0.0, 'F'],
   ],
   max: 4.0,
+  // Transcribed from the same official grading policy page as the points
+  // above, where the letter table and the mark ranges sit side by side. Note
+  // how much stricter these are than BRACU's: an A- needs 90 rather than 85,
+  // and a passing D needs 60 rather than 52.
+  marks: [
+    { letter: 'A', min: 93 },
+    { letter: 'A-', min: 90 },
+    { letter: 'B+', min: 87 },
+    { letter: 'B', min: 83 },
+    { letter: 'B-', min: 80 },
+    { letter: 'C+', min: 77 },
+    { letter: 'C', min: 73 },
+    { letter: 'C-', min: 70 },
+    { letter: 'D+', min: 67 },
+    { letter: 'D', min: 60 },
+    { letter: 'F', min: 0 },
+  ],
 };
 
 const NSU: UniversityProfile = {
