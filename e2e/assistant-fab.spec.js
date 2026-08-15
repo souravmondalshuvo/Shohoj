@@ -41,7 +41,9 @@ function signedInStub(worker) {
  *  - stub: init script (omit for the signed-out case)
  */
 async function boot(page, opts = {}) {
-  const { assistant = true, reply = 'Your CGPA is 3.42.', status = 200, stub = signedInStub } = opts;
+  const {
+    assistant = true, reply = 'Your CGPA is 3.42.', status = 200, stub = signedInStub, hold = null,
+  } = opts;
   const turns = [];
   page.on('dialog', d => d.accept());
   await page.addInitScript(() => {
@@ -50,7 +52,7 @@ async function boot(page, opts = {}) {
   });
   if (stub) await page.addInitScript(stub, WORKER);
 
-  await page.route('https://**/*', route => {
+  await page.route('https://**/*', async route => {
     const url = route.request().url();
     const cors = { 'access-control-allow-origin': '*' };
     if (url === `${WORKER}/ready`) {
@@ -64,6 +66,8 @@ async function boot(page, opts = {}) {
         auth: route.request().headers().authorization,
         body: JSON.parse(route.request().postData() || '{}'),
       });
+      // Optionally keep the turn in flight so the pending state can be examined.
+      if (hold) await hold;
       return route.fulfill({
         status, contentType: 'application/json', headers: cors,
         body: JSON.stringify(status === 200 ? { reply } : { error: 'nope' }),
@@ -191,6 +195,32 @@ test('a model reply is rendered as text, never as markup', async ({ page }) => {
   await expect(bubble).toHaveText('<img src=x onerror="window.__xss=1">');
   await expect(bubble.locator('img')).toHaveCount(0);
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+});
+
+// A static "Thinking…" during a multi-second wait reads as a frozen panel.
+test('the pending state animates, and still announces itself to screen readers', async ({ page }) => {
+  // Hold the reply open so the pending state can be inspected mid-flight.
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  const { turns } = await boot(page, { hold: held });
+  await fab(page).click();
+  await page.locator('.assistant-input').fill('what is my cgpa?');
+  await page.locator('.assistant-send').click();
+
+  const pending = page.locator('.assistant-bubble--pending');
+  await expect(pending).toBeVisible();
+  // Three dots, animating — not the word sitting still.
+  await expect(pending.locator('.assistant-typing i')).toHaveCount(3);
+  const animated = await pending.locator('.assistant-typing i').first().evaluate(
+    (el) => getComputedStyle(el).animationName,
+  );
+  expect(animated).not.toBe('none');
+  // The word remains for anyone who cannot see a pulse.
+  await expect(pending.locator('.assistant-sr-only')).toHaveText('Thinking…');
+
+  release();
+  await expect(page.locator('.assistant-bubble--reply')).toContainText('3.42');
+  expect(turns).toHaveLength(1);
 });
 
 test('a failed turn shows an error and keeps the question in the log', async ({ page }) => {
