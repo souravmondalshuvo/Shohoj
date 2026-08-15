@@ -36,12 +36,21 @@
 //                           /reviews
 //   OPENAI_API_KEY          OpenAI key for the /api/assistant fallback (#544);
 //                           optional — without it Claude is the only provider
+//   ASSISTANT_MONTHLY_BUDGET_USD  Ceiling on estimated model spend per calendar
+//                           month (default 5). 0 switches the assistant off
+//                           without removing the keys.
 //   ANTHROPIC_API_KEY       Claude API key for /api/assistant — lives only
 //                           here, never shipped to the client
 
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
 import { loadSeatIndexFromFeed, validateAssistantMessages } from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
+import {
+  estimateCostUsd,
+  isBudgetExhausted,
+  monthKey,
+  monthlyBudgetUsd,
+} from './assistantBudget.js';
 import { isKnownCourse } from './catalog.generated.js';
 
 const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
@@ -1161,6 +1170,39 @@ async function handleAssistant(request, env, origin) {
     return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 }, env, origin);
   }
 
+  // Spend ceiling — checked last of the guards, immediately before any money is
+  // spent. It costs a Firestore read, so it deliberately sits behind the rate
+  // limiter and the payload validation: a flood of junk requests should be
+  // turned away by the cheap checks, not turned into reads on the ledger.
+  //
+  // Fails CLOSED. If the ledger cannot be read we do not know what has been
+  // spent, and guessing wrong runs up someone's personal card — the same policy
+  // the paid rate limiter already follows.
+  const month = monthKey();
+  const budgetUsd = monthlyBudgetUsd(env);
+  let spentUsd;
+  let budgetToken;
+  try {
+    budgetToken = await getServiceAccountAccessToken(env);
+    spentUsd = await readAssistantSpend(env, budgetToken, month);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'assistant_budget_read_failed',
+        month,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
+  }
+  if (isBudgetExhausted(spentUsd, budgetUsd)) {
+    console.warn(
+      JSON.stringify({ level: 'warn', event: 'assistant_budget_exhausted', month, budgetUsd }),
+    );
+    return jsonResponse({ error: 'assistant_budget_exhausted' }, { status: 503 }, env, origin);
+  }
+
   // Capability-style loaders: the uid is interpolated into the Firestore path
   // HERE, server-side. assistant.js never sees a uid at all.
   const ctx = {
@@ -1178,7 +1220,7 @@ async function handleAssistant(request, env, origin) {
   };
 
   try {
-    const { reply } = await runAssistantTurn({
+    const { reply, provider, usage } = await runAssistantTurn({
       providers,
       messages,
       ctx,
@@ -1195,6 +1237,27 @@ async function handleAssistant(request, env, origin) {
           }),
         ),
     });
+    // Record what the answer cost. A ledger write that fails must not lose the
+    // student their answer — it is logged loudly instead, because a ceiling
+    // that silently stops counting is worse than no ceiling.
+    try {
+      await recordAssistantSpend(
+        env,
+        budgetToken,
+        month,
+        spentUsd,
+        estimateCostUsd(provider, usage),
+      );
+    } catch (e) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'assistant_budget_write_failed',
+          month,
+          errorMessage: e?.message || String(e),
+        }),
+      );
+    }
     return jsonResponse({ reply }, { status: 200 }, env, origin);
   } catch (e) {
     console.error(
@@ -1259,6 +1322,31 @@ async function firestorePatchFields(env, token, path, obj) {
     body: JSON.stringify({ fields: toFirestoreFields(obj) }),
   });
   if (!res.ok) throw new Error(`Firestore patch ${path} ${res.status}`);
+}
+
+// ── Assistant spend ledger (#544) ────────────────────────────────────────────
+// One document per calendar month at assistantBudget/{YYYY-MM}. Firestore
+// rather than a new KV namespace because the service account is already wired
+// here — a spend cap nobody can be bothered to configure protects nobody.
+//
+// Read-modify-write, so two turns landing in the same instant can lose an
+// update and undercount slightly. That is acceptable for a safety net measured
+// in dollars, and the alternative (transactional increments) buys precision
+// this does not need. It is never billing-grade accounting; the provider
+// dashboard is.
+const ASSISTANT_BUDGET_COLLECTION = 'assistantBudget';
+
+async function readAssistantSpend(env, token, month) {
+  const fields = await firestoreGetFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`);
+  const spent = Number(fields?.spentUsd);
+  return Number.isFinite(spent) && spent > 0 ? spent : 0;
+}
+
+async function recordAssistantSpend(env, token, month, spentUsd, costUsd) {
+  await firestorePatchFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`, {
+    spentUsd: spentUsd + costUsd,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 // Poll the feed once, fan out over every user's watchlist, email on drops, and
