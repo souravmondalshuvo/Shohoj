@@ -140,7 +140,15 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
         ))}
         {pending && (
           <div className="assistant-bubble assistant-bubble--reply assistant-bubble--pending">
-            Thinking…
+            {/* Motion, not a static word: several seconds of unchanging text
+                reads as a frozen panel. The word stays for screen readers,
+                which cannot see a pulse. */}
+            <span className="assistant-sr-only">Thinking…</span>
+            <span className="assistant-typing" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
           </div>
         )}
         {error && (
