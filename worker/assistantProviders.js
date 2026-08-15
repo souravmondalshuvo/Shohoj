@@ -78,10 +78,14 @@ function claudeText(content) {
  * Bounded tool loop against the Anthropic Messages API (no beta SDK features):
  * call the model, execute any requested tools against the uid-scoped ctx, feed
  * the results back, stop when it answers or the round cap is hit.
+ *
+ * Resolves to { text, usage } — tokens summed across every round, because the
+ * spend ceiling has to account for the tool rounds too, not just the last call.
  */
 export async function runClaudeTurn({ anthropic, messages, ctx }) {
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   let lastText = '';
+  const usage = { inputTokens: 0, outputTokens: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let response;
@@ -99,8 +103,11 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
       throw new ProviderUnavailable('claude', e?.status ? `HTTP ${e.status}` : 'request failed', e);
     }
 
+    usage.inputTokens += Number(response?.usage?.input_tokens) || 0;
+    usage.outputTokens += Number(response?.usage?.output_tokens) || 0;
+
     lastText = claudeText(response.content) || lastText;
-    if (response.stop_reason !== 'tool_use') return lastText || NO_ANSWER;
+    if (response.stop_reason !== 'tool_use') return { text: lastText || NO_ANSWER, usage };
 
     convo.push({ role: 'assistant', content: response.content });
     const results = [];
@@ -124,7 +131,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
     convo.push({ role: 'user', content: results });
   }
 
-  return lastText || TOO_MANY_ROUNDS;
+  return { text: lastText || TOO_MANY_ROUNDS, usage };
 }
 
 // ── OpenAI ────────────────────────────────────────────────────────────────────
@@ -153,7 +160,7 @@ function openAiText(output) {
     .trim();
 }
 
-/** The same bounded tool loop, in Responses API terms. */
+/** The same bounded tool loop, in Responses API terms. Same { text, usage }. */
 export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }) {
   // The system prompt rides as the first input item; the Responses API keeps
   // the whole exchange — messages, tool calls, tool outputs — in one array.
@@ -163,6 +170,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   ];
   const tools = openAiTools();
   let lastText = '';
+  const usage = { inputTokens: 0, outputTokens: 0 };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let res;
@@ -195,6 +203,9 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
       throw new ProviderUnavailable('openai', 'unreadable response', e);
     }
 
+    usage.inputTokens += Number(body?.usage?.input_tokens) || 0;
+    usage.outputTokens += Number(body?.usage?.output_tokens) || 0;
+
     const output = Array.isArray(body?.output) ? body.output : [];
     const calls = output.filter((item) => item.type === 'function_call');
     lastText = openAiText(output) || lastText;
@@ -209,7 +220,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
           `incomplete: ${body?.incomplete_details?.reason || 'unknown'}`,
         );
       }
-      return lastText || NO_ANSWER;
+      return { text: lastText || NO_ANSWER, usage };
     }
 
     // Echo the calls back verbatim, then answer each one. Both halves must
@@ -237,7 +248,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     }
   }
 
-  return lastText || TOO_MANY_ROUNDS;
+  return { text: lastText || TOO_MANY_ROUNDS, usage };
 }
 
 // ── Orchestration ─────────────────────────────────────────────────────────────
@@ -273,8 +284,13 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
 
 /**
  * Run one turn, falling through the provider list on infrastructure failures.
- * Resolves with the reply and which provider produced it; rejects with the last
- * failure when every provider is exhausted.
+ * Resolves with the reply, which provider produced it, and the tokens it cost;
+ * rejects with the last failure when every provider is exhausted.
+ *
+ * Usage is reported for the provider that ANSWERED. Tokens burned by a failed
+ * attempt are not billed to us in any recoverable way — a 5xx or a dropped
+ * connection has no usage block to read — so the ledger cannot count what it
+ * cannot see. It is one more reason the ceiling errs on the expensive side.
  */
 export async function runAssistantTurn({ providers, messages, ctx, onFallback }) {
   if (!providers || providers.length === 0) {
@@ -283,7 +299,8 @@ export async function runAssistantTurn({ providers, messages, ctx, onFallback })
   let lastFailure = null;
   for (const provider of providers) {
     try {
-      return { reply: await provider.run({ messages, ctx }), provider: provider.name };
+      const { text, usage } = await provider.run({ messages, ctx });
+      return { reply: text, provider: provider.name, usage };
     } catch (e) {
       if (!(e instanceof ProviderUnavailable)) throw e;
       lastFailure = e;
