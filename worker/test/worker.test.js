@@ -47,9 +47,11 @@ import {
 } from '../assistantBudget.js';
 import {
   buildAssistantProviders,
+  GEMINI_URL,
   openAiTools,
   ProviderUnavailable,
   runAssistantTurn,
+  runGeminiTurn,
   runOpenAiTurn,
 } from '../assistantProviders.js';
 
@@ -1779,6 +1781,118 @@ async function makeServiceAccountJson() {
       escaped = e;
     }
     assert(escaped instanceof TypeError, 'non-provider failures propagate untouched');
+  });
+
+  console.log('\nGemini free tier (#550):');
+
+  // An Interactions API envelope: text lives in steps[].content[], tool calls
+  // arrive as function_call steps.
+  const geminiSays = (text) => ({
+    id: 'int_1',
+    steps: [{ type: 'model_generated', content: [{ type: 'text', text }] }],
+    usage: { total_input_tokens: 900, total_output_tokens: 120 },
+  });
+
+  await test('the free provider leads, with paid ones behind it', () => {
+    const free = buildAssistantProviders({ GEMINI_API_KEY: 'k' });
+    assertEq(free.length, 1);
+    assertEq(free[0].name, 'gemini', 'a free key alone runs the whole assistant');
+
+    const all = buildAssistantProviders({
+      GEMINI_API_KEY: 'k', ANTHROPIC_API_KEY: 'k', OPENAI_API_KEY: 'k',
+    });
+    assertEq(all.map((p) => p.name).join(','), 'gemini,claude,openai',
+      'paid providers are the net under the free one, never the default');
+  });
+
+  await test('a Gemini turn sends the shared rules and reads the answer back', async () => {
+    let sent = null;
+    const { text, usage } = await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'what is my cgpa?' }],
+      ctx: {},
+      fetchImpl: async (url, init) => {
+        assertEq(String(url), GEMINI_URL);
+        assertEq(init.headers['x-goog-api-key'], 'k', 'the key travels in the header');
+        sent = JSON.parse(init.body);
+        return json(geminiSays('Your CGPA is 3.50.'));
+      },
+    });
+    assertEq(text, 'Your CGPA is 3.50.');
+    assertEq(sent.system_instruction, ASSISTANT_SYSTEM, 'the same scope rules, not a weaker copy');
+    assertEq(sent.tools.length, ASSISTANT_TOOLS.length);
+    assert(sent.input.includes('what is my cgpa?'), 'the transcript is replayed');
+    assertEq(usage.inputTokens, 900, 'usage is read for observability');
+  });
+
+  await test('a Gemini tool call runs the uid-scoped executor and continues the interaction', async () => {
+    const bodies = [];
+    let toolRan = null;
+    const { text } = await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'can I take CSE370?' }],
+      // The ctx the Worker builds: capability-style, carrying no identifier.
+      ctx: { loadUserSnapshot: async () => JSON.parse(ALICE_SNAPSHOT) },
+      fetchImpl: async (url, init) => {
+        const body = JSON.parse(init.body);
+        bodies.push(body);
+        if (bodies.length === 1) {
+          return json({
+            id: 'int_42',
+            steps: [{
+              type: 'function_call',
+              id: 'call_9',
+              name: 'check_prerequisite',
+              // Gemini hands arguments back already parsed, unlike OpenAI.
+              arguments: { course_code: 'CSE370', uid: 'uid_bob' },
+            }],
+          });
+        }
+        toolRan = body.input[0];
+        return json(geminiSays('You have not completed CSE220 yet.'));
+      },
+    });
+
+    assertEq(text, 'You have not completed CSE220 yet.');
+    assertEq(bodies[1].previous_interaction_id, 'int_42', 'the tool round continues the interaction');
+    assertEq(toolRan.type, 'function_result');
+    assertEq(toolRan.call_id, 'call_9');
+    // The uid the model invented is ignored: the executor reads the caller's
+    // own data through ctx, which carries no identifier at all.
+    const payload = JSON.parse(toolRan.result[0].text);
+    assertEq(payload.course_code, 'CSE370');
+    assert('can_take' in payload, 'the real prerequisite executor ran');
+    assert(!JSON.stringify(bodies[1]).includes('uid_bob'), 'the invented uid reaches no lookup');
+  });
+
+  await test('a free-tier 429 is an outage, and falls through to a paid provider', async () => {
+    let failure = null;
+    try {
+      await runGeminiTurn({
+        apiKey: 'k',
+        messages: [{ role: 'user', content: 'hi' }],
+        ctx: {},
+        fetchImpl: async () => json({ error: 'quota' }, { status: 429 }),
+      });
+    } catch (e) {
+      failure = e;
+    }
+    assert(failure instanceof ProviderUnavailable, 'shared quota exhaustion is not a refusal');
+    assert(/free-tier quota/.test(failure.reason), 'the reason says why, for the log');
+
+    // And in the chain, that means the paid net catches it.
+    const answered = await runAssistantTurn({
+      providers: [
+        { name: 'gemini', run: async () => { throw new ProviderUnavailable('gemini', 'HTTP 429 (free-tier quota)'); } },
+        { name: 'claude', run: async () => ({ text: 'answered', usage: { inputTokens: 1, outputTokens: 1 } }) },
+      ],
+      messages: [], ctx: {},
+    });
+    assertEq(answered.provider, 'claude');
+  });
+
+  await test('free-tier turns are charged nothing by the ceiling', () => {
+    assertEq(estimateCostUsd('gemini', { inputTokens: 1e6, outputTokens: 1e6 }), 0);
   });
 
   console.log('\nAssistant spend ceiling (#544):');
