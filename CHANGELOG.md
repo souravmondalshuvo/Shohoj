@@ -6,6 +6,12 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- **The assistant can answer about seats now.** Asking "are there open seats in MAT216?" never actually worked: the seat lookup crashed inside the assistant every time, and the model covered for it with a vague answer instead of a number. The section feed is now read correctly, and cached briefly so a run of seat questions doesn't re-download it each time. (#553)
+
+### Changed
+- **The assistant answers faster.** Several things were making you wait that had nothing to do with the answer: the model was reasoning harder than these questions need, the whole section feed was re-downloaded for every seat question, your data was re-uploaded before every question even when nothing had changed, and the reply waited on internal bookkeeping to finish. All four are fixed, with no change to what it can answer or to the rule that it only ever reads your own data. (#553)
+
 ### Added
 - **The assistant runs on a free model tier.** Shohoj is free and funded by one person, so the assistant now runs on Google's free Gemini tier by default — no billing, no per-question cost, no reason to leave the feature switched off. Paid models stay wired as a fallback for whoever wants to fund one: if the free tier's shared quota runs out, a configured paid provider picks the question up. Same three tools, same rules, same guarantee that it only ever reads your own data. (#550)
 - **A spending ceiling on the assistant.** The assistant talks to a paid API on one person's key, so it now has a monthly cap: estimated spend accumulates per calendar month, and once it reaches the configured ceiling the assistant declines further questions until the month rolls over rather than quietly running up a bill. The estimate is deliberately pessimistic, so the cap trips early rather than late, and if the ledger can't be read the assistant stops rather than spending blind. Setting the ceiling to zero is a clean off switch that doesn't require pulling any keys. (#544)
