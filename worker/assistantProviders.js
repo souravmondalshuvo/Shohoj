@@ -276,20 +276,30 @@ function geminiPrompt(messages) {
     .join('\n\n');
 }
 
+// The reference documents the produced items as `steps` (and that is what the
+// live API returns), but review flagged `outputs`, and a shape mismatch here
+// would fail silently — every answer empty, every tool call skipped. Reading
+// both costs one line and removes the whole risk.
 function geminiSteps(body) {
-  return Array.isArray(body?.steps) ? body.steps : [];
+  if (Array.isArray(body?.steps)) return body.steps;
+  if (Array.isArray(body?.outputs)) return body.outputs;
+  return [];
 }
 
 function geminiText(body) {
   if (typeof body?.output_text === 'string' && body.output_text.trim()) {
     return body.output_text.trim();
   }
-  return geminiSteps(body)
-    .flatMap((step) => (Array.isArray(step.content) ? step.content : []))
-    .filter((part) => part?.type === 'text' && typeof part.text === 'string')
-    .map((part) => part.text)
-    .join('')
-    .trim();
+  return (
+    geminiSteps(body)
+      .flatMap((step) => (Array.isArray(step.content) ? step.content : []))
+      .filter((part) => part?.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      // Newline, not empty string: separate parts are separate blocks here, and
+      // concatenating them bare runs the end of one into the start of the next.
+      .join('\n')
+      .trim()
+  );
 }
 
 // Usage is reported for observability only — the free tier bills nothing, so
@@ -329,13 +339,16 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
       throw new ProviderUnavailable('gemini', 'request failed', e);
     }
     if (!res.ok) {
+      // Google's error bodies say WHY — wrong key, quota exhausted, model not
+      // available to this project — and the first live call is exactly when
+      // that matters. Truncated, and it carries no student data: this is the
+      // API's own complaint about the request envelope.
+      const detail = (await res.text().catch(() => '')).slice(0, 200).replace(/\s+/g, ' ').trim();
       // 429 on the free tier means the whole project's shared quota is spent,
       // not that this student asked too often. It is an outage from our side,
       // so it falls through to a paid provider when one is configured.
-      throw new ProviderUnavailable(
-        'gemini',
-        res.status === 429 ? 'HTTP 429 (free-tier quota)' : `HTTP ${res.status}`,
-      );
+      const base = res.status === 429 ? 'HTTP 429 (free-tier quota)' : `HTTP ${res.status}`;
+      throw new ProviderUnavailable('gemini', detail ? `${base}: ${detail}` : base);
     }
 
     let body;
