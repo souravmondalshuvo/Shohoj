@@ -43,6 +43,14 @@ export const OPENAI_URL = 'https://api.openai.com/v1/responses';
 export const OPENAI_MAX_OUTPUT_TOKENS = 4096;
 export const OPENAI_REASONING_EFFORT = 'low';
 
+// Gemini's free tier is what makes this assistant runnable at all: Shohoj is a
+// free student project funded by one person, and a per-token bill is the
+// difference between shipping the feature and leaving it switched off. Free
+// therefore LEADS the provider chain (#550) — paid providers are the safety
+// net, not the default.
+export const GEMINI_MODEL = 'gemini-3.6-flash';
+export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+
 const MAX_TOOL_ROUNDS = 5;
 
 const NO_ANSWER = 'Sorry, I could not produce an answer. Please try rephrasing.';
@@ -251,16 +259,153 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   return { text: lastText || TOO_MANY_ROUNDS, usage };
 }
 
+// ── Gemini ────────────────────────────────────────────────────────────────────
+
+/**
+ * Flatten the transcript into one prompt.
+ *
+ * Shohoj keeps no server-side conversation state — the client replays the
+ * visible transcript on every turn — so there is no interaction id to continue
+ * from. Speaker labels are the plainest way to hand the model the history it
+ * needs; `previous_interaction_id` is used only for the tool round-trip WITHIN
+ * a turn, which is what it is for.
+ */
+function geminiPrompt(messages) {
+  return messages
+    .map((m) => `${m.role === 'assistant' ? 'Assistant' : 'Student'}: ${m.content}`)
+    .join('\n\n');
+}
+
+function geminiSteps(body) {
+  return Array.isArray(body?.steps) ? body.steps : [];
+}
+
+function geminiText(body) {
+  if (typeof body?.output_text === 'string' && body.output_text.trim()) {
+    return body.output_text.trim();
+  }
+  return geminiSteps(body)
+    .flatMap((step) => (Array.isArray(step.content) ? step.content : []))
+    .filter((part) => part?.type === 'text' && typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('')
+    .trim();
+}
+
+// Usage is reported for observability only — the free tier bills nothing, so
+// the ledger charges Gemini zero. Field names are read defensively because a
+// missing count must never break a turn.
+function geminiUsage(body) {
+  const usage = body?.usage || body?.usage_metadata || {};
+  return {
+    inputTokens: Number(usage.total_input_tokens ?? usage.input_tokens) || 0,
+    outputTokens: Number(usage.total_output_tokens ?? usage.output_tokens) || 0,
+  };
+}
+
+/** The same bounded tool loop against the Interactions API. Same { text, usage }. */
+export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }) {
+  // Tool declarations happen to use the same shape OpenAI's Responses API
+  // wants, so there is one translation, not two.
+  const tools = openAiTools();
+  const usage = { inputTokens: 0, outputTokens: 0 };
+  let payload = {
+    model: GEMINI_MODEL,
+    system_instruction: ASSISTANT_SYSTEM,
+    tools,
+    input: geminiPrompt(messages),
+  };
+  let lastText = '';
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    let res;
+    try {
+      res = await fetchImpl(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      throw new ProviderUnavailable('gemini', 'request failed', e);
+    }
+    if (!res.ok) {
+      // 429 on the free tier means the whole project's shared quota is spent,
+      // not that this student asked too often. It is an outage from our side,
+      // so it falls through to a paid provider when one is configured.
+      throw new ProviderUnavailable(
+        'gemini',
+        res.status === 429 ? 'HTTP 429 (free-tier quota)' : `HTTP ${res.status}`,
+      );
+    }
+
+    let body;
+    try {
+      body = await res.json();
+    } catch (e) {
+      throw new ProviderUnavailable('gemini', 'unreadable response', e);
+    }
+
+    const turnUsage = geminiUsage(body);
+    usage.inputTokens += turnUsage.inputTokens;
+    usage.outputTokens += turnUsage.outputTokens;
+    lastText = geminiText(body) || lastText;
+
+    const calls = geminiSteps(body).filter((step) => step?.type === 'function_call');
+    if (calls.length === 0) return { text: lastText || NO_ANSWER, usage };
+
+    const results = [];
+    for (const call of calls) {
+      let out;
+      try {
+        // Arguments arrive parsed here, unlike OpenAI's JSON string — accept
+        // both rather than assuming, since a malformed value is the model's
+        // mistake and belongs in the tool result, not in a provider failure.
+        const args =
+          typeof call.arguments === 'string' ? JSON.parse(call.arguments || '{}') : call.arguments;
+        out = JSON.stringify(await executeAssistantTool(call.name, args || {}, ctx));
+      } catch (e) {
+        out = `Error: ${e?.message || 'tool failed'}`;
+      }
+      results.push({
+        type: 'function_result',
+        name: call.name,
+        call_id: call.call_id ?? call.id,
+        result: [{ type: 'text', text: out }],
+      });
+    }
+
+    // Continue THIS turn against the interaction the model just created.
+    payload = {
+      model: GEMINI_MODEL,
+      previous_interaction_id: body.id,
+      tools,
+      input: results,
+    };
+  }
+
+  return { text: lastText || TOO_MANY_ROUNDS, usage };
+}
+
 // ── Orchestration ─────────────────────────────────────────────────────────────
 
 /**
- * The providers this deployment can actually use, in fallback order. Each is
- * gated by its own secret: with neither, the caller must 503 rather than
- * pretend the assistant exists (#455); with only one, that one serves every
- * turn; with both, Claude leads.
+ * The providers this deployment can actually use, in fallback order: Gemini
+ * (free tier) → Claude → OpenAI. Each is gated by its own secret. With none,
+ * the caller must 503 rather than pretend the assistant exists (#455); with
+ * one, that one serves every turn; with several, the free one leads and the
+ * paid ones catch its failures.
  */
 export function buildAssistantProviders(env, { fetchImpl } = {}) {
   const providers = [];
+  // Free first (#550). Shohoj is funded by one person; a paid provider should
+  // only ever be reached because the free one could not answer.
+  if (env?.GEMINI_API_KEY) {
+    providers.push({
+      name: 'gemini',
+      run: ({ messages, ctx }) =>
+        runGeminiTurn({ apiKey: env.GEMINI_API_KEY, messages, ctx, fetchImpl }),
+    });
+  }
   if (env?.ANTHROPIC_API_KEY) {
     providers.push({
       name: 'claude',
