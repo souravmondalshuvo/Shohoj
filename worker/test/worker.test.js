@@ -32,6 +32,7 @@ import worker, {
   SEAT_FEED_URL,
 } from '../index.js';
 import {
+  ASSISTANT_SYSTEM,
   ASSISTANT_TOOLS,
   executeAssistantTool,
   validateAssistantMessages,
@@ -1614,6 +1615,38 @@ async function makeServiceAccountJson() {
     assertEq(result.call_id, 'call_1');
     assertEq(JSON.parse(result.output).current.cgpa, 3.5, 'Alice\'s numbers, not Bob\'s');
     assert(!seen.openaiBodies[1].includes('BOBSECRET'), 'the canary never appears');
+  });
+
+  // The assistant runs on the project owner's own API key, so an off-topic
+  // question is a bill for a service Shohoj does not offer. Scope is enforced by
+  // the system prompt and by there being no data path to anything but this
+  // student's record — so this guards the rules against silent deletion rather
+  // than proving model behaviour, which no mocked test can do.
+  await test('the system prompt confines the assistant to Shohoj academics', () => {
+    assert(/SCOPE/.test(ASSISTANT_SYSTEM), 'the scope section exists');
+    for (const inScope of ['CGPA', 'rerequisite', 'seat', 'egree progress']) {
+      assert(ASSISTANT_SYSTEM.includes(inScope), `scope names ${inScope}`);
+    }
+    for (const outOfScope of ['coding', 'homework', 'medical', 'persona']) {
+      assert(ASSISTANT_SYSTEM.includes(outOfScope), `out-of-scope list names ${outOfScope}`);
+    }
+    assert(/Decline out-of-scope/.test(ASSISTANT_SYSTEM), 'it is told how to decline');
+    assert(/assignment, exam or lab work/.test(ASSISTANT_SYSTEM), 'doing the coursework is refused');
+  });
+
+  await test('both providers are driven by the same system prompt', async () => {
+    let sent = null;
+    await runOpenAiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'what is my cgpa?' }],
+      ctx: {},
+      fetchImpl: async (url, init) => {
+        sent = JSON.parse(init.body);
+        return json(openAiSays('3.50'));
+      },
+    });
+    assertEq(sent.input[0].role, 'system');
+    assertEq(sent.input[0].content, ASSISTANT_SYSTEM, 'no second, weaker copy of the rules');
   });
 
   await test('OpenAI tool schemas carry no user-identifier parameter', () => {
