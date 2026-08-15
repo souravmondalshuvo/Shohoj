@@ -1,5 +1,5 @@
 // worker/assistant.js — Shohoj Assistant (#435): tool schemas, system prompt,
-// tool executors, and the Claude tool-use loop for POST /api/assistant.
+// and tool executors for POST /api/assistant.
 //
 // Security invariant: nothing in this module ever sees or accepts a user id.
 // The Worker route (index.js) verifies the Firebase ID token, bakes the uid
@@ -7,6 +7,11 @@
 // interpolated server-side), and hands this module capability-style loaders.
 // Tool inputs from the model carry no user identifier — extra fields a
 // prompt-injected model might invent (user_id, uid, ...) are simply ignored.
+//
+// This module is the Assistant's shared brain: the system prompt, the tool
+// schemas, and the uid-scoped executors. The model providers that drive it —
+// Claude, with OpenAI as the fallback — live in assistantProviders.js, so
+// adding a provider cannot add or drop a tool (#544).
 //
 // Academic logic is REUSED, not reimplemented: CGPA totals and the goal
 // simulator come from the same modules the calculator ships (js/core/gpa-core,
@@ -23,9 +28,8 @@ import { parseFeed, indexByCourse } from '../js/core/connectFeed.js';
 import { courseSeatSummary, seatInfo, sortSections } from '../js/core/seatStatus.js';
 import { computeSimulation } from '../src/features/calculator/simulator.ts';
 
-export const ASSISTANT_MODEL = 'claude-haiku-4-5-20251001';
-export const ASSISTANT_MAX_TOKENS = 1024;
-const MAX_TOOL_ROUNDS = 5;
+// Transcript limits, mirrored by the client so a payload it builds is never
+// rejected as malformed (js/core/assistantClient.js).
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
@@ -257,56 +261,4 @@ export async function executeAssistantTool(name, input, ctx) {
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
-}
-
-function extractText(content) {
-  return (content || [])
-    .filter((block) => block.type === 'text' && typeof block.text === 'string')
-    .map((block) => block.text)
-    .join('')
-    .trim();
-}
-
-// Manual bounded tool loop (no beta SDK dependency in the production Worker):
-// call Claude, execute any requested tools against the uid-scoped ctx, feed
-// results back, stop when Claude answers or the round cap is hit.
-export async function runAssistantLoop({ anthropic, messages, ctx }) {
-  const convo = messages.map((m) => ({ role: m.role, content: m.content }));
-  let lastText = '';
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await anthropic.messages.create({
-      model: ASSISTANT_MODEL,
-      max_tokens: ASSISTANT_MAX_TOKENS,
-      system: ASSISTANT_SYSTEM,
-      tools: ASSISTANT_TOOLS,
-      messages: convo,
-    });
-    lastText = extractText(response.content) || lastText;
-    if (response.stop_reason !== 'tool_use') {
-      return lastText || 'Sorry, I could not produce an answer. Please try rephrasing.';
-    }
-    convo.push({ role: 'assistant', content: response.content });
-    const results = [];
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue;
-      let content;
-      let isError = false;
-      try {
-        content = JSON.stringify(await executeAssistantTool(block.name, block.input, ctx));
-      } catch (e) {
-        content = `Error: ${e?.message || 'tool failed'}`;
-        isError = true;
-      }
-      results.push({
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content,
-        ...(isError ? { is_error: true } : {}),
-      });
-    }
-    convo.push({ role: 'user', content: results });
-  }
-  return (
-    lastText || 'Sorry, that took too many steps to answer. Please ask a more specific question.'
-  );
 }
