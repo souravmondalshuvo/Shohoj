@@ -18,39 +18,25 @@
 // under the worst case, not under the current average.
 
 import { GRADES, type GradeLetter } from '../../core/grades.ts';
+import { UNIVERSITIES, type MarkTier } from '../../core/university.ts';
 
 /**
- * BRACU's absolute mark → letter scale, highest first.
+ * BRACU's absolute mark → letter scale — the default when no campus is given.
  *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ VERIFY BEFORE RELYING ON THIS. These cutoffs are the commonly published │
- * │ BRACU scale, but they are not sourced from a document in this repo and  │
- * │ the university has revised grading policy before. Confirm against the   │
- * │ current official Grading Policy and correct here — this table is the    │
- * │ single definition, so a fix is one edit and the tests re-pin it.        │
- * └─────────────────────────────────────────────────────────────────────────┘
- *
- * `min` is inclusive: a mark of exactly 85.0 is an A-, not a B+.
+ * The table itself now lives on the university profile (src/core/university.ts)
+ * because the cutoffs differ sharply between campuses: BRACU awards an A- from
+ * 85 while NSU needs 90, and BRACU passes a D at 52 where NSU needs 60. Using
+ * one campus's cutoffs on the other's marks overstates a letter by a full grade
+ * in places. Re-exported here so existing callers keep working unchanged.
  */
-export const MARK_SCALE: readonly { readonly letter: GradeLetter; readonly min: number }[] = [
-  { letter: 'A+', min: 97 },
-  { letter: 'A', min: 90 },
-  { letter: 'A-', min: 85 },
-  { letter: 'B+', min: 80 },
-  { letter: 'B', min: 75 },
-  { letter: 'B-', min: 70 },
-  { letter: 'C+', min: 65 },
-  { letter: 'C', min: 60 },
-  { letter: 'C-', min: 57 },
-  { letter: 'D+', min: 55 },
-  { letter: 'D', min: 52 },
-  { letter: 'D-', min: 50 },
-  { letter: 'F', min: 0 },
-];
+export const MARK_SCALE: readonly MarkTier[] = UNIVERSITIES.bracu.grades.marks;
 
 /** The letter an overall course mark earns. */
-export function letterForMark(mark: number): GradeLetter {
-  for (const tier of MARK_SCALE) {
+export function letterForMark(
+  mark: number,
+  marks: readonly MarkTier[] = MARK_SCALE,
+): GradeLetter {
+  for (const tier of marks) {
     if (mark >= tier.min) return tier.letter;
   }
   return 'F';
@@ -162,7 +148,10 @@ function earnedWeight(components: readonly MarkComponent[]): number {
  * carries usable weight. A partial syllabus is not a refusal case: it is the
  * normal one.
  */
-export function computeCourseMarks(components: readonly MarkComponent[]): CourseMarks | null {
+export function computeCourseMarks(
+  components: readonly MarkComponent[],
+  marks: readonly MarkTier[] = MARK_SCALE,
+): CourseMarks | null {
   const usable = components.filter(isUsable);
   const totalWeight = usable.reduce((s, c) => s + c.weight, 0);
   if (totalWeight <= 0) return null;
@@ -176,7 +165,7 @@ export function computeCourseMarks(components: readonly MarkComponent[]): Course
   const floor = (earned / totalWeight) * 100;
   const ceiling = ((earned + remainingWeight) / totalWeight) * 100;
 
-  const targets = MARK_SCALE.filter((tier) => tier.letter !== 'F').map((tier): MarkTarget => {
+  const targets = marks.filter((tier) => tier.letter !== 'F').map((tier): MarkTarget => {
     const base = {
       letter: tier.letter,
       gradePoint: gradePointOf(tier.letter),
@@ -203,9 +192,9 @@ export function computeCourseMarks(components: readonly MarkComponent[]): Course
     inHandPercent,
     ceiling,
     floor,
-    bestLetter: letterForMark(ceiling),
-    worstLetter: letterForMark(floor),
-    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent),
+    bestLetter: letterForMark(ceiling, marks),
+    worstLetter: letterForMark(floor, marks),
+    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent, marks),
     targets,
   };
 }
