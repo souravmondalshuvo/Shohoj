@@ -12,6 +12,7 @@
 //   - claims use the deterministic `${postId}_${uid}` id (one per user/post).
 //   - every createdAt is serverTimestamp() (rules pin `== request.time`).
 
+import { campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import type { LostFoundDraft, LostFoundPost } from '../../core/lostFound.ts';
 
@@ -43,7 +44,7 @@ async function defaultBackend(
   recaptchaV3SiteKey?: string,
 ): Promise<LostFoundBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
-  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
   const {
     getFirestore,
     collection,
@@ -89,6 +90,8 @@ async function defaultBackend(
         ...draft,
         status: 'open',
         creatorUid: uid,
+        // Required by rules and pinned to this session's own campus.
+        university: campusStamp(auth),
         createdAt: serverTimestamp(),
       });
       batch.set(doc(db, 'lostFoundContacts', postRef.id), {
