@@ -174,11 +174,43 @@ Edit `wrangler.toml` if these change:
 Admin authorization is not configured with an env var. It is enforced from the
 Firebase ID token's `admin: true` custom claim.
 
-Secret:
+Secrets:
 
 ```bash
 wrangler secret put RESEND_API_KEY
 ```
+
+## Assistant model providers
+
+`POST /api/assistant` runs a tool loop over the student's own data. Two
+providers can serve it, each gated by its own secret:
+
+```bash
+wrangler secret put ANTHROPIC_API_KEY   # Claude — answers by default
+wrangler secret put OPENAI_API_KEY      # OpenAI — catches Claude's failures
+```
+
+| Secrets set | Behaviour |
+| ----------- | --------- |
+| Neither | `/api/assistant` returns 503, `GET /ready` reports `assistant: false`, and both front-ends hide their launcher rather than offer a button that cannot answer |
+| `ANTHROPIC_API_KEY` only | Claude serves every turn; a failure is a failure |
+| `OPENAI_API_KEY` only | OpenAI serves every turn |
+| Both | Claude answers; on a 5xx, 429, timeout, network error, bad key, or a reply truncated before any text, the **same turn** is retried on OpenAI |
+
+Fallback is whole-turn, never mid-tool-loop — the two APIs express tool calling
+differently, and translating a half-finished tool conversation between them
+under failure conditions is not worth the bugs. It fires only on infrastructure
+failure: a model that answers, refuses, or declines is a real result, and a
+throwing tool executor is our own bug that would fail identically on the other
+provider.
+
+Each fallback logs `assistant_provider_fallback` with the provider and reason
+(no transcript, no uid). If that event is frequent, the primary provider is
+unhealthy even though students are still getting answers.
+
+`GET /ready` reports `assistant` (any provider configured) and
+`assistantFallback` (both configured). It is unauthenticated, so it reports
+booleans only and never names a vendor.
 
 If the email channel is not fully configured (`RESEND_API_KEY` missing, or
 `EMAIL_FROM` missing / set to the Resend test sender), uploads and the cron
