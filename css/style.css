@@ -7747,7 +7747,69 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .assistant-bubble--pending {
   color: var(--text3);
-  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+}
+/* Announced to screen readers, invisible on screen: they get the word, sighted
+   users get the motion (#553). */
+.assistant-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.assistant-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.assistant-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0.35;
+  animation: assistant-typing 1.2s infinite ease-in-out;
+}
+.assistant-typing i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.assistant-typing i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes assistant-typing {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+@keyframes assistant-typing-fade {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+/* Reduced motion still needs to look alive: the dots breathe instead of
+   bouncing, rather than freezing into three static circles. */
+@media (prefers-reduced-motion: reduce) {
+  .assistant-typing i {
+    animation: assistant-typing-fade 1.6s infinite ease-in-out;
+    transform: none;
+  }
 }
 .assistant-error {
   padding: 8px 12px;
