@@ -28,9 +28,13 @@ const CLOUD_GLOBALS = {
 const asCloudShell = (page) =>
     page.addInitScript((globals) => Object.assign(window, globals), CLOUD_GLOBALS);
 
-test('a signed-out visitor gets the portal on the landing route', async ({ page }) => {
+test('the landing page stays public, with the portal above the hero', async ({ page }) => {
+    // '/' is the pitch, not the product. A stranger should be able to read it
+    // without handing over a university account first.
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('signin-portal')).toBeVisible();
+    await expect(page.locator('.hero')).toBeVisible();
+    await expect(page.locator('#features')).toBeVisible();
 });
 
 test('a cloud-capable shell offers the sign-in button', async ({ page }) => {
@@ -51,6 +55,9 @@ test('the portal stands in for a deep-linked route, not just the landing page', 
     for (const path of ['/calculator', '/planner', '/profile', '/reviews']) {
         await page.goto(path, { waitUntil: 'domcontentloaded' });
         await expect(page.getByTestId('signin-portal'), `${path} should be gated`).toBeVisible();
+        // Unlike '/', these render no route content at all — a calculator whose
+        // grading scale we cannot choose must not appear.
+        await expect(page.locator('.hero'), `${path} should not fall back to the hero`).toHaveCount(0);
     }
 });
 
