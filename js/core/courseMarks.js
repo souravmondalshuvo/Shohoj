@@ -16,6 +16,12 @@ import { GRADES } from './grades.js';
  * official Grading Policy and correct here and in the typed twin.
  *
  * `min` is inclusive: a mark of exactly 85.0 is an A-, not a B+.
+ *
+ * The typed twin reads this table off the university profile so a second campus
+ * can supply its own; here it stays inline and BRACU-only on purpose. This is
+ * the legacy bundle, which is BRACU all the way down (see js/auth/firebase.js) —
+ * it has no other campus to serve. The optional parameter exists only to keep
+ * the two signatures identical for tests/twinParity.test.js.
  */
 export const MARK_SCALE = [
   { letter: 'A+', min: 97 },
@@ -34,8 +40,8 @@ export const MARK_SCALE = [
 ];
 
 /** The letter an overall course mark earns. */
-export function letterForMark(mark) {
-  for (const tier of MARK_SCALE) {
+export function letterForMark(mark, marks = MARK_SCALE) {
+  for (const tier of marks) {
     if (mark >= tier.min) return tier.letter;
   }
   return 'F';
@@ -67,7 +73,7 @@ function earnedWeight(components) {
  * Returns null only when no component carries usable weight — a partial
  * syllabus is the normal case, not a refusal case.
  */
-export function computeCourseMarks(components) {
+export function computeCourseMarks(components, marks = MARK_SCALE) {
   const usable = components.filter(isUsable);
   const totalWeight = usable.reduce((s, c) => s + c.weight, 0);
   if (totalWeight <= 0) return null;
@@ -79,7 +85,7 @@ export function computeCourseMarks(components) {
   const floor = (earned / totalWeight) * 100;
   const ceiling = ((earned + remainingWeight) / totalWeight) * 100;
 
-  const targets = MARK_SCALE.filter(tier => tier.letter !== 'F').map(tier => {
+  const targets = marks.filter(tier => tier.letter !== 'F').map(tier => {
     const base = { letter: tier.letter, gradePoint: gradePointOf(tier.letter), cutoff: tier.min };
     if (floor >= tier.min) return { ...base, neededOnRemaining: null, state: 'secured' };
     if (ceiling < tier.min) return { ...base, neededOnRemaining: null, state: 'unreachable' };
@@ -103,9 +109,9 @@ export function computeCourseMarks(components) {
     inHandPercent,
     ceiling,
     floor,
-    bestLetter: letterForMark(ceiling),
-    worstLetter: letterForMark(floor),
-    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent),
+    bestLetter: letterForMark(ceiling, marks),
+    worstLetter: letterForMark(floor, marks),
+    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent, marks),
     targets,
   };
 }
