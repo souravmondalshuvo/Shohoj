@@ -23,6 +23,7 @@ import { NotificationViewport } from '../NotificationViewport';
 import { ShellBackdrop } from '../ShellBackdrop';
 import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
+import { SignInPortal } from '../SignInPortal';
 import { CloudSyncProvider } from '../providers/CloudSyncProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
@@ -30,7 +31,10 @@ import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeCo
 import { anonymousAuthSource, type AuthSource } from '../../platform/auth/authSnapshot';
 import { AssistantLauncher } from '../../features/assistant/AssistantDrawer';
 import { FacultyReviewsProvider } from '../../features/calculator/FacultyReviewsProvider';
-import { createFirebaseAuthSource } from '../../platform/auth/firebaseAuthSource';
+import {
+  createFirebaseAuthSource,
+  type FirebaseAuthSource,
+} from '../../platform/auth/firebaseAuthSource';
 
 // Raw runtime config from the window._shohoj_* globals that /runtime-config.js
 // sets before the module entry runs (#329). Read once at module scope — the
@@ -173,6 +177,41 @@ function ShellSurface({ children }: { readonly children: React.ReactNode }) {
   );
 }
 
+/**
+ * The campus gate.
+ *
+ * Signing in is what resolves a student to a campus, and the campus decides the
+ * grading scale, the catalog and which features exist — so before we know who
+ * someone is there is no correct version of the app to render. Showing the
+ * calculator anyway would mean applying one university's grading rules to
+ * another university's transcript, which produces a confidently wrong CGPA.
+ *
+ * This is a correctness gate, not a security one: Firestore rules remain the
+ * authorization boundary, and hidden UI has never been authorization.
+ *
+ * `loading` renders nothing rather than the portal. Flashing a sign-in page at
+ * a student who is already signed in reads as being logged out, and a beat of
+ * blank is the lesser evil.
+ */
+function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
+  const { status } = useAuth();
+  const authed = status === 'authenticated';
+
+  return (
+    <>
+      {/* Tabs are hidden while signed out: nineteen routes that all resolve to
+          the same sign-in page is worse than no tabs at all. */}
+      {authed ? <ShellTabs /> : null}
+      {/* `<main id="main-content">` stays mounted in every state — it is the
+          skip link's target, and an anchor pointing at nothing is an a11y bug
+          that only appears when signed out. */}
+      <main id="main-content" className="shell-main calc-body" tabIndex={-1}>
+        {status === 'loading' ? null : authed ? <Outlet /> : <SignInPortal source={source} />}
+      </main>
+    </>
+  );
+}
+
 /** Builds the auth source from the validated config and renders the chrome. */
 function ShellChrome() {
   const config = useRuntimeConfig();
@@ -230,16 +269,13 @@ function ShellChrome() {
           no way to reach any route. Rendering it here does not affect parity:
           e2e-visual captures nav, .hero and #features as individual elements,
           so a sibling between them changes none of their pixels. */}
+      {/* `.calc-body` is legacy's padding box INSIDE each panel (style.css:397,
+          1.5rem/2rem, with a variant at every breakpoint). <main> occupies the
+          same slot — panel content — so taking the class gives the shell
+          legacy's exact inset responsively, instead of re-deriving one number
+          per route. See GatedMain for why the tabs and outlet are conditional. */}
       <ShellSurface>
-        <ShellTabs />
-        {/* `.calc-body` is legacy's padding box INSIDE each panel
-            (style.css:397, 1.5rem/2rem, with a variant at every breakpoint).
-            <main> occupies the same slot here — panel content — so taking the
-            class gives the shell legacy's exact inset responsively, instead of
-            re-deriving one number per route. */}
-        <main id="main-content" className="shell-main calc-body" tabIndex={-1}>
-          <Outlet />
-        </main>
+        <GatedMain source={firebaseSource} />
       </ShellSurface>
       <NotificationViewport />
       {/* Shohoj Assistant (#435): renders only signed-in on a cloud shell. */}
