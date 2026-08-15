@@ -27,8 +27,8 @@ export function SignInPortal({ source }: SignInPortalProps) {
       <h1 className="shell-signin-title">Sign in to Shohoj</h1>
 
       <p className="shell-signin-lede">
-        Shohoj works from your university&rsquo;s own grading rules. Signing in with
-        your student email is how it knows which ones to apply.
+        Shohoj works from your university&rsquo;s own grading rules. Signing in with your student
+        email is how it knows which ones to apply.
       </p>
 
       {source ? (
@@ -64,8 +64,8 @@ export function SignInPortal({ source }: SignInPortalProps) {
           a better pitch than a vague one, and it is the same claim the privacy
           doc makes — cloud sync is opt-in, and it is not this. */}
       <p className="shell-signin-note">
-        Signing in identifies your university and unlocks reviews, study groups and
-        alerts. Your grades stay in this browser until you turn on sync.
+        Signing in identifies your university and unlocks reviews, study groups and alerts. Your
+        grades stay in this browser until you turn on sync.
       </p>
     </div>
   );

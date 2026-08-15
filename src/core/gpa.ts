@@ -42,7 +42,10 @@ function isGradeLetter(grade: string, scale: GradeScale): grade is GradeLetter {
   return Object.prototype.hasOwnProperty.call(scale.points, grade);
 }
 
-function gradePointFor(grade: string, scale: GradeScale = DEFAULT.grades): number | null | undefined {
+function gradePointFor(
+  grade: string,
+  scale: GradeScale = DEFAULT.grades,
+): number | null | undefined {
   return isGradeLetter(grade, scale) ? scale.points[grade] : undefined;
 }
 
@@ -258,9 +261,15 @@ function gpaCoreGetSemesterCreditWarningImpl(
 
   if (total === 0) return null;
   if (total < rules.min)
-    return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below ${rules.min}-credit minimum` };
+    return {
+      type: 'error',
+      msg: `\u26a0 ${total} credits \u2014 below ${rules.min}-credit minimum`,
+    };
   if (total > rules.max)
-    return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds ${rules.max}-credit maximum` };
+    return {
+      type: 'error',
+      msg: `\u26d4 ${total} credits \u2014 exceeds ${rules.max}-credit maximum`,
+    };
   if (total > rules.warnAbove)
     return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
   return null;
@@ -298,10 +307,7 @@ function gpaCoreNormalizeGradePointImpl(raw: string, mode: 'input' | 'blur'): st
   return trimmed;
 }
 
-function gpaCoreClampGradePointImpl(
-  value: string,
-  scale: GradeScale = DEFAULT.grades,
-): string {
+function gpaCoreClampGradePointImpl(value: string, scale: GradeScale = DEFAULT.grades): string {
   const n = Number.parseFloat(value);
   if (Number.isNaN(n)) return value;
   // toFixed(1) rather than String(): a 4.0 ceiling must render as "4.0", which

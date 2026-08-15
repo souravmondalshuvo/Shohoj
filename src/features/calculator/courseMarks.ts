@@ -32,10 +32,7 @@ import { UNIVERSITIES, type MarkTier } from '../../core/university.ts';
 export const MARK_SCALE: readonly MarkTier[] = UNIVERSITIES.bracu.grades.marks;
 
 /** The letter an overall course mark earns. */
-export function letterForMark(
-  mark: number,
-  marks: readonly MarkTier[] = MARK_SCALE,
-): GradeLetter {
+export function letterForMark(mark: number, marks: readonly MarkTier[] = MARK_SCALE): GradeLetter {
   for (const tier of marks) {
     if (mark >= tier.min) return tier.letter;
   }
@@ -165,22 +162,24 @@ export function computeCourseMarks(
   const floor = (earned / totalWeight) * 100;
   const ceiling = ((earned + remainingWeight) / totalWeight) * 100;
 
-  const targets = marks.filter((tier) => tier.letter !== 'F').map((tier): MarkTarget => {
-    const base = {
-      letter: tier.letter,
-      gradePoint: gradePointOf(tier.letter),
-      cutoff: tier.min,
-    };
-    if (floor >= tier.min) return { ...base, neededOnRemaining: null, state: 'secured' };
-    if (ceiling < tier.min) return { ...base, neededOnRemaining: null, state: 'unreachable' };
-    return {
-      ...base,
-      // remainingWeight > 0 here: at zero, floor and ceiling are equal, so every
-      // tier is decided by the two branches above.
-      neededOnRemaining: ((tier.min / 100) * totalWeight - earned) / (remainingWeight / 100),
-      state: 'reachable',
-    };
-  });
+  const targets = marks
+    .filter((tier) => tier.letter !== 'F')
+    .map((tier): MarkTarget => {
+      const base = {
+        letter: tier.letter,
+        gradePoint: gradePointOf(tier.letter),
+        cutoff: tier.min,
+      };
+      if (floor >= tier.min) return { ...base, neededOnRemaining: null, state: 'secured' };
+      if (ceiling < tier.min) return { ...base, neededOnRemaining: null, state: 'unreachable' };
+      return {
+        ...base,
+        // remainingWeight > 0 here: at zero, floor and ceiling are equal, so every
+        // tier is decided by the two branches above.
+        neededOnRemaining: ((tier.min / 100) * totalWeight - earned) / (remainingWeight / 100),
+        state: 'reachable',
+      };
+    });
 
   const inHandPercent = gradedWeight > 0 ? (earned / gradedWeight) * 100 : null;
 
