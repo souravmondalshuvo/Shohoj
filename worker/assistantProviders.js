@@ -51,6 +51,15 @@ export const OPENAI_REASONING_EFFORT = 'low';
 export const GEMINI_MODEL = 'gemini-3.6-flash';
 export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
+// thinking_level defaults to medium, and it applies to BOTH round-trips of a
+// turn — pick the tool, then answer. These questions are grounded in our own
+// executors: the CGPA, the prerequisite verdict and the seat counts are
+// computed by Shohoj and handed to the model, so deep reasoning buys nothing
+// and costs the student seconds of waiting (#553). Mirrors the `low` reasoning
+// effort already set on the OpenAI path. Never send this alongside the legacy
+// thinking_budget parameter — together they are a 400.
+export const GEMINI_THINKING_LEVEL = 'low';
+
 const MAX_TOOL_ROUNDS = 5;
 
 const NO_ANSWER = 'Sorry, I could not produce an answer. Please try rephrasing.';
@@ -322,6 +331,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   let payload = {
     model: GEMINI_MODEL,
     system_instruction: ASSISTANT_SYSTEM,
+    thinking_level: GEMINI_THINKING_LEVEL,
     tools,
     input: geminiPrompt(messages),
   };
@@ -391,6 +401,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     payload = {
       model: GEMINI_MODEL,
       previous_interaction_id: body.id,
+      thinking_level: GEMINI_THINKING_LEVEL,
       tools,
       input: results,
     };
