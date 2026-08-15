@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-dVr4CMUNv+klFjxW43ye1aOKNXR+6RsJO/CG3sjQxls=' 'sha256-FHDXCmLayTKS4KPJNfwJZZVHsjyFE0714SN7thQxbl0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-FHDXCmLayTKS4KPJNfwJZZVHsjyFE0714SN7thQxbl0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -7787,7 +7787,69 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 .assistant-bubble--pending {
   color: var(--text3);
-  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+}
+/* Announced to screen readers, invisible on screen: they get the word, sighted
+   users get the motion (#553). */
+.assistant-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.assistant-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.assistant-typing i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0.35;
+  animation: assistant-typing 1.2s infinite ease-in-out;
+}
+.assistant-typing i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.assistant-typing i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes assistant-typing {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+@keyframes assistant-typing-fade {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+/* Reduced motion still needs to look alive: the dots breathe instead of
+   bouncing, rather than freezing into three static circles. */
+@media (prefers-reduced-motion: reduce) {
+  .assistant-typing i {
+    animation: assistant-typing-fade 1.6s infinite ease-in-out;
+    transform: none;
+  }
 }
 .assistant-error {
   padding: 8px 12px;
@@ -7990,13 +8052,18 @@ function installAdminAccessHooks({ isAdminUser }) {
  * @param {() => Promise<string|null>} deps.getIdToken  Fresh ID token, or null.
  * @param {(snap: unknown) => Promise<boolean>} deps.saveSnapshot  Immediate cloud write.
  * @param {() => unknown} deps.readLocalSnapshot  Parsed local state, or null.
+ * @param {(raw: unknown) => string} deps.fingerprint  Content hash of a snapshot.
  * @param {object} [scope]  Injectable global (tests).
  */
 function installAssistantAuthHooks(
-  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot },
+  { getCurrentUser, isCloudSettled, getIdToken, saveSnapshot, readLocalSnapshot, fingerprint },
   scope = typeof window !== 'undefined' ? window : undefined,
 ) {
   if (!scope) return;
+
+  // What the cloud already has, as far as this tab knows. Lets a flush be
+  // skipped when nothing has changed since the last one (#553).
+  let lastFlushed = null;
 
   scope._shohoj_idToken = function() {
     return getCurrentUser() ? getIdToken() : Promise.resolve(null);
@@ -8019,8 +8086,18 @@ function installAssistantAuthHooks(
     if (typeof isCloudSettled === 'function' && !isCloudSettled()) return false;
     const snap = readLocalSnapshot();
     if (!snap) return false;
+
+    // Only write when the data actually moved. The staleness this guards
+    // against (#544) is caused by EDITS sitting in the save debounce; a second
+    // question about unchanged data does not need a second write, and paying
+    // one per question is a Firestore round trip added to every answer (#553).
+    const mark = typeof fingerprint === 'function' ? fingerprint(snap) : null;
+    if (mark && mark === lastFlushed) return true;
+
     try {
-      return await saveSnapshot(snap);
+      const saved = await saveSnapshot(snap);
+      if (saved && mark) lastFlushed = mark;
+      return saved;
     } catch (_e) {
       return false;
     }
@@ -9052,6 +9129,9 @@ installAssistantAuthHooks({
     try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
     return parseStoredState(raw);
   },
+  // Same content hash the sign-in reconciliation compares with, so "unchanged"
+  // means exactly what it means everywhere else in the sync path.
+  fingerprint: (snap) => getDataFingerprint(snap),
 });
 
 // Reviews are written through the Cloudflare Worker (`POST /reviews`) using a
