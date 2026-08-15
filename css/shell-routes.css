@@ -999,14 +999,64 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   font: inherit; font-weight: 600; font-size: 14px;
   background: var(--green); border: 1px solid var(--green); color: #0b0f0d;
   box-shadow: 0 8px 26px rgba(46,204,113,0.35);
+  transform-origin: 100% 100%;
+  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .assistant-fab:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+/* Opening motion, mirroring the legacy page: the panel grows out of the
+   launcher's corner and the rows settle a beat behind it. AssistantDrawer.tsx
+   keeps the node mounted through the exit animation. */
+@keyframes assistantDrawerIn {
+  from { opacity: 0; transform: translate3d(14px, 22px, 0) scale(0.88); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes assistantDrawerOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translate3d(10px, 16px, 0) scale(0.92); }
+}
+@keyframes assistantRowIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes assistantFabIn {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: none; }
+}
 .assistant-drawer {
   position: fixed; right: 12px; bottom: 12px; z-index: 40;
   display: flex; flex-direction: column;
   width: min(380px, calc(100vw - 24px)); height: min(560px, calc(100dvh - 24px));
   background: var(--bg); border: 1px solid var(--c-border2); border-radius: 16px;
   box-shadow: var(--shadow-card); overflow: hidden;
+  transform-origin: 100% 100%;
+  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.assistant-drawer-header,
+.assistant-drawer-note,
+.assistant-log,
+.assistant-composer { animation: assistantRowIn 260ms ease-out both; }
+.assistant-drawer-header { animation-delay: 70ms; }
+.assistant-drawer-note { animation-delay: 110ms; }
+.assistant-log { animation-delay: 150ms; }
+.assistant-composer { animation-delay: 190ms; }
+.assistant-drawer--closing {
+  animation: assistantDrawerOut 170ms ease-in both;
+  pointer-events: none;
+}
+.assistant-drawer--closing .assistant-drawer-header,
+.assistant-drawer--closing .assistant-drawer-note,
+.assistant-drawer--closing .assistant-log,
+.assistant-drawer--closing .assistant-composer { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .assistant-fab,
+  .assistant-drawer,
+  .assistant-drawer-header,
+  .assistant-drawer-note,
+  .assistant-log,
+  .assistant-composer { animation: none; }
+  /* Not `animation: none`: the drawer unmounts on animationend, so the exit
+     keeps a name and simply runs instantly. */
+  .assistant-drawer--closing { animation: assistantDrawerOut 1ms linear both; }
 }
 .assistant-drawer-header {
   display: flex; align-items: center; justify-content: space-between;
