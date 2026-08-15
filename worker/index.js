@@ -53,7 +53,26 @@ import {
 } from './assistantBudget.js';
 import { isKnownCourse } from './catalog.generated.js';
 
-const BRACU_EMAIL_RE = /^[^@]+@g\.bracu\.ac\.bd$/;
+// Campus registry, mirroring src/core/university.ts and the campusOfEmail
+// helper in firestore.rules. The Worker is plain JS on Cloudflare and cannot
+// import the typed core, so this is a hand-maintained third copy — keep all
+// three in step when adding a university.
+//
+// Anchored ^...$ on purpose: an unanchored match would let
+// `x@g.bracu.ac.bd.attacker.com` through as a BRACU student.
+const CAMPUS_EMAIL_RES = [
+  ['bracu', /^[^@]+@g\.bracu\.ac\.bd$/],
+  ['nsu', /^[^@]+@northsouth\.edu$/],
+];
+
+/** The campus an address belongs to, or '' when no registered campus claims it. */
+export function campusOfEmail(email) {
+  if (typeof email !== 'string') return '';
+  for (const [id, re] of CAMPUS_EMAIL_RES) {
+    if (re.test(email)) return id;
+  }
+  return '';
+}
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
 const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
@@ -99,12 +118,12 @@ export class AuthError extends Error {}
 
 export function isAllowedFirebasePayload(payload) {
   const isAdmin = payload?.admin === true;
-  const isVerifiedBracuGoogleUser =
+  const isVerifiedCampusUser =
     !!payload?.email &&
     payload.email_verified === true &&
     payload.firebase?.sign_in_provider === 'google.com' &&
-    BRACU_EMAIL_RE.test(payload.email);
-  return isAdmin || isVerifiedBracuGoogleUser;
+    campusOfEmail(payload.email) !== '';
+  return isAdmin || isVerifiedCampusUser;
 }
 
 async function verifyFirebaseToken(token, env) {
@@ -625,6 +644,9 @@ async function handleUpload(request, env, origin, ctx) {
     downloads: 0,
     flagCount: 0,
     approved: false,
+    // Same service-account bypass as reviews: stamp the campus here or the doc
+    // silently defaults to BRACU's on read.
+    university: campusOfEmail(claims?.email),
     createdAt: new Date(),
   };
   if (semester) paperDoc.semester = semester;
@@ -940,12 +962,19 @@ async function handleReview(request, env, origin) {
   const hash = await sha256Hex(`${uid}|${facultyInitials}|${courseCode}`);
   const docId = `${facultyInitials}_${courseCode}_${hash}`;
 
+  // The Worker writes with a service-account token, which BYPASSES
+  // firestore.rules — so nothing downstream will add this for us. Without it
+  // the doc has no `university` field and the rules' read-side fallback treats
+  // it as BRACU's: an NSU student's review would be filed under BRACU,
+  // invisible to them and leaking into BRACU's feed.
+  const university = campusOfEmail(claims?.email);
   const fields = toFirestoreFields({
     facultyInitials,
     courseCode,
     semester: semester || '',
     text: text || '',
     ratings,
+    university,
     createdAt: new Date(),
   });
 
