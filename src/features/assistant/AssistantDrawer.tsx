@@ -30,12 +30,18 @@ const EXAMPLE_PROMPTS: readonly string[] = [
   'Are there open seats in MAT216?',
 ];
 
+/** Safety net for the exit animation — see the effect below. */
+const EXIT_FALLBACK_MS = 600;
+
 interface AssistantDrawerProps {
   readonly workerUrl: string | null | undefined;
+  /** True once the panel is animating out; it stays mounted until `onClosed`. */
+  readonly closing: boolean;
   readonly onClose: () => void;
+  readonly onClosed: () => void;
 }
 
-function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
+function AssistantDrawer({ workerUrl, closing, onClose, onClosed }: AssistantDrawerProps) {
   const getIdToken = useIdToken();
   const [transcript, setTranscript] = useState<readonly AssistantMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -60,6 +66,15 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // The unmount normally rides on animationend. This is the fallback for the
+  // cases where that event never arrives — a backgrounded tab, or animations
+  // switched off at the browser level — so the panel can't get stuck open.
+  useEffect(() => {
+    if (!closing) return;
+    const timer = window.setTimeout(onClosed, EXIT_FALLBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [closing, onClosed]);
 
   const ask = async (question: string) => {
     const content = question.trim();
@@ -88,10 +103,15 @@ function AssistantDrawer({ workerUrl, onClose }: AssistantDrawerProps) {
 
   return (
     <aside
-      className="assistant-drawer"
+      className={closing ? 'assistant-drawer assistant-drawer--closing' : 'assistant-drawer'}
       role="dialog"
       aria-label="Shohoj Assistant"
       aria-modal="false"
+      // Rows animate too and their events bubble, so only the panel's own
+      // animation ends the close.
+      onAnimationEnd={(event) => {
+        if (closing && event.target === event.currentTarget) onClosed();
+      }}
     >
       <header className="assistant-drawer-header">
         <h2 className="assistant-drawer-title">Shohoj Assistant</h2>
@@ -205,6 +225,9 @@ export interface AssistantLauncherProps {
 export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
   const auth = useAuth();
   const [open, setOpen] = useState(false);
+  // The drawer owns its exit animation, so closing is a two-step: mark it
+  // closing, then unmount when the animation reports back.
+  const [closing, setClosing] = useState(false);
   const [availability, setAvailability] = useState<AssistantAvailability>('unknown');
 
   const signedIn = auth.status === 'authenticated';
@@ -237,7 +260,17 @@ export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
           <span aria-hidden="true">✦</span> Assistant
         </button>
       )}
-      {open && <AssistantDrawer workerUrl={workerUrl} onClose={() => setOpen(false)} />}
+      {open && (
+        <AssistantDrawer
+          workerUrl={workerUrl}
+          closing={closing}
+          onClose={() => setClosing(true)}
+          onClosed={() => {
+            setClosing(false);
+            setOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }
