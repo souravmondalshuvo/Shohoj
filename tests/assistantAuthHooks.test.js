@@ -24,6 +24,7 @@ function install(overrides = {}) {
         return true;
       },
       readLocalSnapshot: () => ({ semesters: [{ name: 'Spring 2026' }] }),
+      fingerprint: (snap) => JSON.stringify(snap),
       ...overrides,
     },
     scope,
@@ -82,6 +83,40 @@ test('the flush stands down while sign-in reconciliation is still open', async (
   });
   assert.equal(await scope._shohoj_flushCloudSave(), false);
   assert.deepEqual(calls.saved, []);
+});
+
+// Flushing before every turn is what keeps answers off stale data (#544), but
+// a second question about unchanged data does not need a second write — and
+// paying one per question adds a Firestore round trip to every answer (#553).
+test('an unchanged snapshot is not flushed twice', async () => {
+  const { scope, calls } = install();
+  assert.equal(await scope._shohoj_flushCloudSave(), true);
+  assert.equal(await scope._shohoj_flushCloudSave(), true, 'still reports success');
+  assert.equal(calls.saved.length, 1, 'but only one write happened');
+});
+
+test('an edit between questions is flushed', async () => {
+  let semesters = [{ name: 'Spring 2026' }];
+  const { scope, calls } = install({ readLocalSnapshot: () => ({ semesters }) });
+  await scope._shohoj_flushCloudSave();
+  semesters = [{ name: 'Spring 2026' }, { name: 'Summer 2026' }];
+  await scope._shohoj_flushCloudSave();
+  assert.equal(calls.saved.length, 2, 'changed data reaches the cloud before the next answer');
+});
+
+test('a failed flush is retried on the next turn rather than remembered as done', async () => {
+  let fail = true;
+  const { scope, calls } = install({
+    saveSnapshot: async (snap) => {
+      calls.saved.push(snap);
+      if (fail) throw new Error('offline');
+      return true;
+    },
+  });
+  assert.equal(await scope._shohoj_flushCloudSave(), false);
+  fail = false;
+  assert.equal(await scope._shohoj_flushCloudSave(), true);
+  assert.equal(calls.saved.length, 2, 'the failure did not mark the data as flushed');
 });
 
 test('a failed cloud write resolves false instead of blocking the chat turn', async () => {
