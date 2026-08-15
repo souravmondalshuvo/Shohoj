@@ -14,11 +14,6 @@ export const DECORATIVE = [
   '#cursor-glow',
   '.orb', // three CSS-animated gradient blobs
   '#scroll-progress',
-  // Legacy-only chrome, not animation: the nav's "✦ New app · beta" link exists
-  // solely to advertise the shell. Once the shell replaces legacy at the root
-  // there is no separate new app to link to, so it has no counterpart to match
-  // and is excluded rather than faked.
-  '.nav-beta',
 ];
 
 /** Every element the legacy reveal system toggles `.visible` on. */
@@ -129,11 +124,10 @@ export const ADMIN_TARGETS = [{ name: 'admin-link', selector: '#adminNavBtn' }];
  * The admin pill is 93.4375px wide on BOTH pages — identical padding, gap, font
  * and border. But an element screenshot is snapped to whole device pixels, and
  * where a fractional width lands depends on the element's x-origin. That origin
- * legitimately differs between the two navs: legacy carries `.nav-beta` and its
- * signed-out auth pill to the left of the link, the shell's admin capture
- * carries neither. Same pill, different offset, so the bitmaps came out 95px
- * and 94px and Playwright rejected the pair on size before comparing a single
- * colour.
+ * legitimately differs between the two navs: legacy carries its signed-out auth
+ * pill to the left of the link, the shell's admin capture does not. Same pill,
+ * different offset, so the bitmaps came out 95px and 94px and Playwright
+ * rejected the pair on size before comparing a single colour.
  *
  * Pinning to (0,0) gives both sides the same origin, so the snap is identical
  * and the diff is left comparing what it is meant to compare: the pill's fill,
