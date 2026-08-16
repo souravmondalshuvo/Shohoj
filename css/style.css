@@ -7631,13 +7631,8 @@ body[data-page="admin"] .orb { display: none !important; }
   border: 1px solid var(--green);
   box-shadow: 0 8px 26px rgba(46, 204, 113, 0.35);
   transition: transform var(--transition);
-  transform-origin: 100% 100%;
-  /* Also replays when the drawer closes: closeDrawer() flips the launcher back
-     from display:none, and an animation restarts when an element is re-shown.
-     `backwards`, not `both`: a forwards fill keeps applying transform:none from
-     the animation origin once it ends, which outranks the rule below and leaves
-     the hover lift dead. */
-  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  /* No entrance animation of its own any more: the pill's arrival is the
+     closing morph's last act, and a pop on top of that read as a bounce. */
 }
 /* A slow ring breathing out of the launcher, so it reads as live rather than as
    one more static button in the corner. It rides a pseudo-element instead of the
@@ -7674,29 +7669,76 @@ body[data-page="admin"] .orb { display: none !important; }
   outline: 2px solid var(--ink-green);
   outline-offset: 3px;
 }
-/* The panel grows out of the launcher's corner instead of snapping into place,
-   so the FAB visibly becomes the drawer. The rows settle a beat behind it, which
-   reads as one object arriving rather than four stacked boxes. Exit is the same
-   move, faster and without the overshoot-friendly easing — js/ui/assistantFab.js
-   holds the node in the DOM until it finishes. */
-@keyframes assistantDrawerIn {
+/* During the morph the pill stays on screen, above the panel growing out from
+   underneath it, and hands over: its label fades while the panel's own green
+   wash — identical fill, same rectangle — takes the shape on. Hiding the pill
+   at the click instead would break the one thing this move is for. */
+@keyframes assistantFabHandoff {
   from {
-    opacity: 0;
-    transform: translate3d(14px, 22px, 0) scale(0.88);
+    opacity: 1;
   }
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
 }
-@keyframes assistantDrawerOut {
+@keyframes assistantFabReturn {
   from {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
   to {
+    opacity: 1;
+  }
+}
+.assistant-fab--morphing {
+  z-index: 301;
+  animation: assistantFabHandoff 130ms ease-in 90ms both;
+}
+.assistant-fab--returning {
+  z-index: 301;
+  animation: assistantFabReturn 150ms ease-out 130ms backwards;
+}
+.assistant-fab--morphing::after,
+.assistant-fab--returning::after {
+  animation: none;
+}
+/* The launcher pill becomes the panel, in view.
+   The shape itself is animated in JS — js/core/assistantMorph.js clips the
+   panel to the pill's rectangle and grows the clip — because the pill's rect
+   has to be measured, not guessed. What is here are the layers that ride on
+   top of that shape: a green wash that starts as the pill's own fill and
+   drains away, and the chat contents arriving once the box is nearly formed.
+   Contents deliberately wait: text reflowing inside a shape that is still
+   changing is what makes this kind of move look cheap. */
+/* The wash holds while the shape is still pill-sized and drains as it opens
+   out. Fading it from the first frame instead leaves a dark green box next to a
+   bright green pill during the handover — two objects, which is the opposite of
+   what the move is for. */
+@keyframes assistantWashOut {
+  0% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.94;
+  }
+  70% {
     opacity: 0;
-    transform: translate3d(10px, 16px, 0) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes assistantWashIn {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.15;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
   }
 }
 @keyframes assistantRowIn {
@@ -7709,14 +7751,12 @@ body[data-page="admin"] .orb { display: none !important; }
     transform: none;
   }
 }
-@keyframes assistantFabIn {
+@keyframes assistantRowOut {
   from {
-    opacity: 0;
-    transform: scale(0.82);
+    opacity: 1;
   }
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
 }
 .assistant-drawer {
@@ -7735,29 +7775,44 @@ body[data-page="admin"] .orb { display: none !important; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  transform-origin: 100% 100%;
-  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.assistant-drawer-header,
-.assistant-drawer-note,
-.assistant-log,
-.assistant-composer {
-  animation: assistantRowIn 260ms ease-out both;
+/* The wash: the pill's green, laid over the whole panel and drained off as the
+   shape opens out. Because the panel is clipped to the pill at frame one, all
+   that is on screen then is a green pill — the same one the student clicked. */
+.assistant-drawer--morphing::before,
+.assistant-drawer--closing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--green);
 }
-.assistant-drawer-header {
-  animation-delay: 70ms;
+.assistant-drawer--morphing::before {
+  animation: assistantWashOut 420ms linear both;
 }
-.assistant-drawer-note {
-  animation-delay: 110ms;
+.assistant-drawer--closing::before {
+  animation: assistantWashIn 280ms linear both;
 }
-.assistant-log {
-  animation-delay: 150ms;
+.assistant-drawer--morphing .assistant-drawer-header,
+.assistant-drawer--morphing .assistant-drawer-note,
+.assistant-drawer--morphing .assistant-log,
+.assistant-drawer--morphing .assistant-composer {
+  animation: assistantRowIn 240ms ease-out both;
 }
-.assistant-composer {
-  animation-delay: 190ms;
+.assistant-drawer--morphing .assistant-drawer-header {
+  animation-delay: 210ms;
+}
+.assistant-drawer--morphing .assistant-drawer-note {
+  animation-delay: 245ms;
+}
+.assistant-drawer--morphing .assistant-log {
+  animation-delay: 280ms;
+}
+.assistant-drawer--morphing .assistant-composer {
+  animation-delay: 315ms;
 }
 .assistant-drawer--closing {
-  animation: assistantDrawerOut 170ms ease-in both;
   /* No clicks land on a panel that is on its way out. */
   pointer-events: none;
 }
@@ -7765,7 +7820,7 @@ body[data-page="admin"] .orb { display: none !important; }
 .assistant-drawer--closing .assistant-drawer-note,
 .assistant-drawer--closing .assistant-log,
 .assistant-drawer--closing .assistant-composer {
-  animation: none;
+  animation: assistantRowOut 110ms ease-in both;
 }
 .assistant-drawer-header {
   display: flex;
@@ -7994,16 +8049,25 @@ body[data-page="admin"] .orb { display: none !important; }
   .assistant-fab:hover {
     transform: none;
   }
-  .assistant-drawer,
-  .assistant-drawer-header,
-  .assistant-drawer-note,
-  .assistant-log,
-  .assistant-composer {
+  /* canMorphPanel() reports false here, so the panel is never clipped and no
+     JS-driven shape runs; these switch off the layers that would have ridden
+     on it. The drawer simply appears and disappears. */
+  .assistant-fab--morphing,
+  .assistant-fab--returning,
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before,
+  .assistant-drawer--morphing .assistant-drawer-header,
+  .assistant-drawer--morphing .assistant-drawer-note,
+  .assistant-drawer--morphing .assistant-log,
+  .assistant-drawer--morphing .assistant-composer,
+  .assistant-drawer--closing .assistant-drawer-header,
+  .assistant-drawer--closing .assistant-drawer-note,
+  .assistant-drawer--closing .assistant-log,
+  .assistant-drawer--closing .assistant-composer {
     animation: none;
   }
-  /* Not `animation: none`: closeDrawer() waits for animationend before pulling
-     the node, so the exit keeps a name and simply runs instantly. */
-  .assistant-drawer--closing {
-    animation: assistantDrawerOut 1ms linear both;
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before {
+    display: none;
   }
 }
