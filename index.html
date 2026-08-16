@@ -7691,8 +7691,39 @@ body[data-page="admin"] .orb { display: none !important; }
   transition: transform var(--transition);
   transform-origin: 100% 100%;
   /* Also replays when the drawer closes: closeDrawer() flips the launcher back
-     from display:none, and an animation restarts when an element is re-shown. */
-  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+     from display:none, and an animation restarts when an element is re-shown.
+     `backwards`, not `both`: a forwards fill keeps applying transform:none from
+     the animation origin once it ends, which outranks the rule below and leaves
+     the hover lift dead. */
+  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+/* A slow ring breathing out of the launcher, so it reads as live rather than as
+   one more static button in the corner. It rides a pseudo-element instead of the
+   button's own box-shadow: the ring can then be called off on hover — the moment
+   the student is already looking at it — without freezing a half-expanded ring,
+   and it leaves the :hover lift on transform alone. */
+@keyframes assistantFabPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 13px rgba(46, 204, 113, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+.assistant-fab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: assistantFabPulse 2800ms ease-out 900ms infinite;
+}
+.assistant-fab:hover::after,
+.assistant-fab:focus-visible::after {
+  animation: none;
 }
 .assistant-fab:hover {
   transform: translateY(-2px);
@@ -8013,6 +8044,9 @@ body[data-page="admin"] .orb { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .assistant-fab {
     transition: none;
+    animation: none;
+  }
+  .assistant-fab::after {
     animation: none;
   }
   .assistant-fab:hover {
