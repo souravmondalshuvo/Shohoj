@@ -30,6 +30,7 @@ import {
   sendAssistantTurn,
   writeStoredTranscript,
 } from '../core/assistantClient.js';
+import { ASSISTANT_MORPH_CLOSE_MS, morphPanel } from '../core/assistantMorph.js';
 
 const DRAWER_NOTE =
   'Answers use only your own saved data. Chats aren’t saved — they reset when you close this tab.';
@@ -280,6 +281,8 @@ function onKeydown(e) {
 
 /** The panel on its way out, still in the DOM only for its exit animation. */
 let _exiting = null;
+/** The opening morph, kept so a quick close can call it off mid-flight. */
+let _openMorph = null;
 
 /** Drop a closing panel immediately — used when it is in the way. */
 function dropExiting() {
@@ -293,11 +296,40 @@ function openDrawer() {
   dropExiting();
   _transcript = readStoredTranscript(storage(), _owner);
   _error = null;
+  // Measured while the pill is still on screen — a display:none launcher has an
+  // empty rect, and this rect is the whole starting shape of the morph.
+  const pill = _fab ? _fab.getBoundingClientRect() : null;
   _drawer = buildDrawer();
+  _drawer.classList.add('assistant-drawer--morphing');
   document.body.appendChild(_drawer);
   document.addEventListener('keydown', onKeydown);
-  if (_fab) _fab.style.display = 'none';
   renderLog();
+
+  const node = _drawer;
+  const morph = morphPanel(node, pill, 'open');
+  _openMorph = morph;
+  if (!morph) {
+    // No morph to run (reduced motion, or no Web Animations API): the panel
+    // simply appears, as it did before the move existed.
+    node.classList.remove('assistant-drawer--morphing');
+    if (_fab) _fab.style.display = 'none';
+  } else {
+    // The pill rides above the panel and fades on its own schedule (CSS), so
+    // the handover is visible rather than a cut. It only leaves the layout once
+    // the shape has finished travelling.
+    _fab?.classList.add('assistant-fab--morphing');
+    const settle = () => {
+      node.classList.remove('assistant-drawer--morphing');
+      morph.cancel();
+      if (_fab) {
+        _fab.classList.remove('assistant-fab--morphing');
+        // Guard the case where the student closed again mid-morph: the pill is
+        // back on duty by then and must not be hidden out from under them.
+        if (_drawer === node) _fab.style.display = 'none';
+      }
+    };
+    morph.finished.then(settle, () => {});
+  }
   _inputEl?.focus();
 }
 
@@ -311,27 +343,40 @@ function closeDrawer() {
   _logEl = null;
   _inputEl = null;
   _sendEl = null;
-  if (_fab) {
-    _fab.style.display = '';
-    _fab.focus();
-  }
+  // A close landing mid-open: drop the opening shape so the two morphs don't
+  // fight over the same clip.
+  _openMorph?.cancel();
+  _openMorph = null;
+  node.classList.remove('assistant-drawer--morphing');
+
+  // The pill has to be back in the layout before it can be measured, and it is
+  // the target the panel shrinks into, so it comes back first either way.
+  if (_fab) _fab.style.display = '';
+  const pill = _fab ? _fab.getBoundingClientRect() : null;
 
   dropExiting();
+  const morph = morphPanel(node, pill, 'close');
+  if (!morph) {
+    node.remove();
+    _fab?.focus();
+    return;
+  }
+
   _exiting = node;
   node.classList.add('assistant-drawer--closing');
-  // animationend is the signal; the timer is the safety net for the cases where
-  // it never arrives (backgrounded tab, animations switched off at the browser
-  // level), so a dead panel can't be left sitting on the page. Child rows also
-  // bubble animationend, hence the target check.
+  _fab?.classList.add('assistant-fab--returning');
   const finish = () => {
     if (_exiting !== node) return;
     _exiting = null;
     node.remove();
+    _fab?.classList.remove('assistant-fab--returning');
   };
-  node.addEventListener('animationend', e => {
-    if (e.target === node) finish();
-  });
-  setTimeout(finish, 600);
+  // finished settles on its own; the timer is the safety net for the cases
+  // where it never does (a backgrounded tab pauses the animation), so a dead
+  // panel can't be left sitting on the page.
+  morph.finished.then(finish, finish);
+  setTimeout(finish, ASSISTANT_MORPH_CLOSE_MS + 400);
+  _fab?.focus();
 }
 
 // ── Launcher gate ─────────────────────────────────────────────────────────────
