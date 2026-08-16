@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-wOOig4grRcjlOFnDdivOUazPnjua3HEvr/uHR/5Wqic='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-iDoo/CuOs84F7PrM+iICBWAHYAswv5Mo24b3RV1CxZs='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7689,13 +7689,8 @@ body[data-page="admin"] .orb { display: none !important; }
   border: 1px solid var(--green);
   box-shadow: 0 8px 26px rgba(46, 204, 113, 0.35);
   transition: transform var(--transition);
-  transform-origin: 100% 100%;
-  /* Also replays when the drawer closes: closeDrawer() flips the launcher back
-     from display:none, and an animation restarts when an element is re-shown.
-     `backwards`, not `both`: a forwards fill keeps applying transform:none from
-     the animation origin once it ends, which outranks the rule below and leaves
-     the hover lift dead. */
-  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  /* No entrance animation of its own any more: the pill's arrival is the
+     closing morph's last act, and a pop on top of that read as a bounce. */
 }
 /* A slow ring breathing out of the launcher, so it reads as live rather than as
    one more static button in the corner. It rides a pseudo-element instead of the
@@ -7732,29 +7727,76 @@ body[data-page="admin"] .orb { display: none !important; }
   outline: 2px solid var(--ink-green);
   outline-offset: 3px;
 }
-/* The panel grows out of the launcher's corner instead of snapping into place,
-   so the FAB visibly becomes the drawer. The rows settle a beat behind it, which
-   reads as one object arriving rather than four stacked boxes. Exit is the same
-   move, faster and without the overshoot-friendly easing — js/ui/assistantFab.js
-   holds the node in the DOM until it finishes. */
-@keyframes assistantDrawerIn {
+/* During the morph the pill stays on screen, above the panel growing out from
+   underneath it, and hands over: its label fades while the panel's own green
+   wash — identical fill, same rectangle — takes the shape on. Hiding the pill
+   at the click instead would break the one thing this move is for. */
+@keyframes assistantFabHandoff {
   from {
-    opacity: 0;
-    transform: translate3d(14px, 22px, 0) scale(0.88);
+    opacity: 1;
   }
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
 }
-@keyframes assistantDrawerOut {
+@keyframes assistantFabReturn {
   from {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
   to {
+    opacity: 1;
+  }
+}
+.assistant-fab--morphing {
+  z-index: 301;
+  animation: assistantFabHandoff 130ms ease-in 90ms both;
+}
+.assistant-fab--returning {
+  z-index: 301;
+  animation: assistantFabReturn 150ms ease-out 130ms backwards;
+}
+.assistant-fab--morphing::after,
+.assistant-fab--returning::after {
+  animation: none;
+}
+/* The launcher pill becomes the panel, in view.
+   The shape itself is animated in JS — js/core/assistantMorph.js clips the
+   panel to the pill's rectangle and grows the clip — because the pill's rect
+   has to be measured, not guessed. What is here are the layers that ride on
+   top of that shape: a green wash that starts as the pill's own fill and
+   drains away, and the chat contents arriving once the box is nearly formed.
+   Contents deliberately wait: text reflowing inside a shape that is still
+   changing is what makes this kind of move look cheap. */
+/* The wash holds while the shape is still pill-sized and drains as it opens
+   out. Fading it from the first frame instead leaves a dark green box next to a
+   bright green pill during the handover — two objects, which is the opposite of
+   what the move is for. */
+@keyframes assistantWashOut {
+  0% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.94;
+  }
+  70% {
     opacity: 0;
-    transform: translate3d(10px, 16px, 0) scale(0.92);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes assistantWashIn {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.15;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
   }
 }
 @keyframes assistantRowIn {
@@ -7767,14 +7809,12 @@ body[data-page="admin"] .orb { display: none !important; }
     transform: none;
   }
 }
-@keyframes assistantFabIn {
+@keyframes assistantRowOut {
   from {
-    opacity: 0;
-    transform: scale(0.82);
+    opacity: 1;
   }
   to {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
   }
 }
 .assistant-drawer {
@@ -7793,29 +7833,44 @@ body[data-page="admin"] .orb { display: none !important; }
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  transform-origin: 100% 100%;
-  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.assistant-drawer-header,
-.assistant-drawer-note,
-.assistant-log,
-.assistant-composer {
-  animation: assistantRowIn 260ms ease-out both;
+/* The wash: the pill's green, laid over the whole panel and drained off as the
+   shape opens out. Because the panel is clipped to the pill at frame one, all
+   that is on screen then is a green pill — the same one the student clicked. */
+.assistant-drawer--morphing::before,
+.assistant-drawer--closing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--green);
 }
-.assistant-drawer-header {
-  animation-delay: 70ms;
+.assistant-drawer--morphing::before {
+  animation: assistantWashOut 420ms linear both;
 }
-.assistant-drawer-note {
-  animation-delay: 110ms;
+.assistant-drawer--closing::before {
+  animation: assistantWashIn 280ms linear both;
 }
-.assistant-log {
-  animation-delay: 150ms;
+.assistant-drawer--morphing .assistant-drawer-header,
+.assistant-drawer--morphing .assistant-drawer-note,
+.assistant-drawer--morphing .assistant-log,
+.assistant-drawer--morphing .assistant-composer {
+  animation: assistantRowIn 240ms ease-out both;
 }
-.assistant-composer {
-  animation-delay: 190ms;
+.assistant-drawer--morphing .assistant-drawer-header {
+  animation-delay: 210ms;
+}
+.assistant-drawer--morphing .assistant-drawer-note {
+  animation-delay: 245ms;
+}
+.assistant-drawer--morphing .assistant-log {
+  animation-delay: 280ms;
+}
+.assistant-drawer--morphing .assistant-composer {
+  animation-delay: 315ms;
 }
 .assistant-drawer--closing {
-  animation: assistantDrawerOut 170ms ease-in both;
   /* No clicks land on a panel that is on its way out. */
   pointer-events: none;
 }
@@ -7823,7 +7878,7 @@ body[data-page="admin"] .orb { display: none !important; }
 .assistant-drawer--closing .assistant-drawer-note,
 .assistant-drawer--closing .assistant-log,
 .assistant-drawer--closing .assistant-composer {
-  animation: none;
+  animation: assistantRowOut 110ms ease-in both;
 }
 .assistant-drawer-header {
   display: flex;
@@ -8052,17 +8107,26 @@ body[data-page="admin"] .orb { display: none !important; }
   .assistant-fab:hover {
     transform: none;
   }
-  .assistant-drawer,
-  .assistant-drawer-header,
-  .assistant-drawer-note,
-  .assistant-log,
-  .assistant-composer {
+  /* canMorphPanel() reports false here, so the panel is never clipped and no
+     JS-driven shape runs; these switch off the layers that would have ridden
+     on it. The drawer simply appears and disappears. */
+  .assistant-fab--morphing,
+  .assistant-fab--returning,
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before,
+  .assistant-drawer--morphing .assistant-drawer-header,
+  .assistant-drawer--morphing .assistant-drawer-note,
+  .assistant-drawer--morphing .assistant-log,
+  .assistant-drawer--morphing .assistant-composer,
+  .assistant-drawer--closing .assistant-drawer-header,
+  .assistant-drawer--closing .assistant-drawer-note,
+  .assistant-drawer--closing .assistant-log,
+  .assistant-drawer--closing .assistant-composer {
     animation: none;
   }
-  /* Not `animation: none`: closeDrawer() waits for animationend before pulling
-     the node, so the exit keeps a name and simply runs instantly. */
-  .assistant-drawer--closing {
-    animation: assistantDrawerOut 1ms linear both;
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before {
+    display: none;
   }
 }
 
@@ -29903,6 +29967,121 @@ function clearStoredTranscript(storage) {
   }
 }
 
+// ── js/core/assistantMorph.js ───────────────────────────────────
+// js/core/assistantMorph.js
+//
+// The geometry behind the Assistant's opening move: the launcher pill grows
+// into the chat panel, and shrinks back into the pill on the way out.
+//
+// The panel is not scaled — a 150×44 pill scaled up to a 380×560 box would
+// stretch every corner and every glyph on the way. Instead the panel is mounted
+// at its final size and CLIPPED to the pill's rectangle, and the clip is what
+// animates. Corners interpolate from the pill's 999px radius down to the
+// panel's, so the shape genuinely travels between the two; the CSS layers on
+// top of this (the green wash, the content fade) sell the colour change.
+//
+// Authored in vanilla JS because both front-ends need it and build3.py flattens
+// js/ into shohoj.html without a TypeScript step — the assistantClient.js
+// precedent. The shell consumes it through js/core/assistantMorph.d.ts, so the
+// two front-ends cannot drift apart on the timings or the maths.
+
+/** How long the pill takes to become the panel. */
+const ASSISTANT_MORPH_OPEN_MS = 420;
+/** The way back is quicker: leaving should not cost the student a beat. */
+const ASSISTANT_MORPH_CLOSE_MS = 280;
+
+// Opening: quick off the mark, then a long glide into place — the shape stays
+// readable the whole way, which is the entire point of the move.
+const MORPH_EASING_OPEN = 'cubic-bezier(0.32, 0.72, 0, 1)';
+// Closing is the mirror. Reusing the opening curve collapses the panel almost
+// entirely in the first third and then dawdles, which reads as a glitch rather
+// than as the panel going back where it came from.
+const MORPH_EASING_CLOSE = 'cubic-bezier(0.5, 0, 0.9, 0.45)';
+
+/**
+ * The clip that makes the panel look exactly like the launcher pill.
+ *
+ * Insets are measured from the panel's own edges inward to the pill, so the
+ * clip is expressed in the panel's coordinate space. They are floored at 0: a
+ * pill that sits outside the panel's box (a narrow viewport, a mid-scroll
+ * measurement) would otherwise produce a negative inset, which clips nothing
+ * and makes the panel appear fully formed at frame one.
+ *
+ * @param {DOMRect|{top:number,right:number,bottom:number,left:number,width:number,height:number}} panelRect
+ * @param {DOMRect|{top:number,right:number,bottom:number,left:number,width:number,height:number}} pillRect
+ * @returns {string} a clip-path inset() value
+ */
+function pillClipPath(panelRect, pillRect) {
+  const top = Math.max(0, pillRect.top - panelRect.top);
+  const right = Math.max(0, panelRect.right - pillRect.right);
+  const bottom = Math.max(0, panelRect.bottom - pillRect.bottom);
+  const left = Math.max(0, pillRect.left - panelRect.left);
+  // Half the short side is what a 999px pill radius resolves to anyway; using
+  // the resolved number keeps the interpolation honest at both ends.
+  const radius = Math.max(0, Math.min(pillRect.width, pillRect.height) / 2);
+  return `inset(${round(top)}px ${round(right)}px ${round(bottom)}px ${round(left)}px round ${round(radius)}px)`;
+}
+
+/**
+ * The clip for the fully open panel: nothing clipped, the panel's own corners.
+ * @param {string} radius computed border-radius of the panel
+ */
+function panelClipPath(radius) {
+  const corner = typeof radius === 'string' && radius.trim() ? radius.trim() : '0px';
+  return `inset(0px 0px 0px 0px round ${corner})`;
+}
+
+function round(n) {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Whether the morph should run at all.
+ *
+ * Two ways it should not: the browser has no Web Animations API (the panel then
+ * simply appears, which is the pre-morph behaviour), or the student asked for
+ * reduced motion — a 420ms shape change is exactly what that setting is about.
+ *
+ * @param {Element|null} panel
+ * @param {Window} [win]
+ */
+function canMorphPanel(panel, win) {
+  const view = win || (typeof window !== 'undefined' ? window : null);
+  if (!panel || typeof panel.animate !== 'function' || !view) return false;
+  if (typeof view.matchMedia !== 'function') return true;
+  return !view.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Animate the panel between the pill's shape and its own.
+ *
+ * Returns the Animation so callers can await `finished` — the panel must stay
+ * in the DOM until the closing morph is done, and the launcher must not be
+ * hidden until the opening one is.
+ *
+ * @param {HTMLElement} panel the drawer
+ * @param {DOMRect} pillRect the launcher's rect, measured while it was visible
+ * @param {'open'|'close'} direction
+ * @returns {Animation|null} null when the morph cannot or should not run
+ */
+function morphPanel(panel, pillRect, direction) {
+  if (!pillRect || !canMorphPanel(panel)) return null;
+  const view = panel.ownerDocument?.defaultView || window;
+  const pill = pillClipPath(panel.getBoundingClientRect(), pillRect);
+  const full = panelClipPath(view.getComputedStyle(panel).borderRadius);
+  const opening = direction !== 'close';
+  return panel.animate(
+    [{ clipPath: opening ? pill : full }, { clipPath: opening ? full : pill }],
+    {
+      duration: opening ? ASSISTANT_MORPH_OPEN_MS : ASSISTANT_MORPH_CLOSE_MS,
+      easing: opening ? MORPH_EASING_OPEN : MORPH_EASING_CLOSE,
+      // Held at the end frame: the closing panel must stay pill-shaped for the
+      // frame or two between the animation finishing and the node being pulled.
+      fill: 'both',
+    },
+  );
+}
+
 // ── js/ui/assistantFab.js ───────────────────────────────────────
 // js/ui/assistantFab.js
 //
@@ -30177,6 +30356,8 @@ function onKeydown(e) {
 
 /** The panel on its way out, still in the DOM only for its exit animation. */
 let _exiting = null;
+/** The opening morph, kept so a quick close can call it off mid-flight. */
+let _openMorph = null;
 
 /** Drop a closing panel immediately — used when it is in the way. */
 function dropExiting() {
@@ -30190,11 +30371,40 @@ function openDrawer() {
   dropExiting();
   _transcript = readStoredTranscript(storage(), _owner);
   _error = null;
+  // Measured while the pill is still on screen — a display:none launcher has an
+  // empty rect, and this rect is the whole starting shape of the morph.
+  const pill = _fab ? _fab.getBoundingClientRect() : null;
   _drawer = buildDrawer();
+  _drawer.classList.add('assistant-drawer--morphing');
   document.body.appendChild(_drawer);
   document.addEventListener('keydown', onKeydown);
-  if (_fab) _fab.style.display = 'none';
   renderLog();
+
+  const node = _drawer;
+  const morph = morphPanel(node, pill, 'open');
+  _openMorph = morph;
+  if (!morph) {
+    // No morph to run (reduced motion, or no Web Animations API): the panel
+    // simply appears, as it did before the move existed.
+    node.classList.remove('assistant-drawer--morphing');
+    if (_fab) _fab.style.display = 'none';
+  } else {
+    // The pill rides above the panel and fades on its own schedule (CSS), so
+    // the handover is visible rather than a cut. It only leaves the layout once
+    // the shape has finished travelling.
+    _fab?.classList.add('assistant-fab--morphing');
+    const settle = () => {
+      node.classList.remove('assistant-drawer--morphing');
+      morph.cancel();
+      if (_fab) {
+        _fab.classList.remove('assistant-fab--morphing');
+        // Guard the case where the student closed again mid-morph: the pill is
+        // back on duty by then and must not be hidden out from under them.
+        if (_drawer === node) _fab.style.display = 'none';
+      }
+    };
+    morph.finished.then(settle, () => {});
+  }
   _inputEl?.focus();
 }
 
@@ -30208,27 +30418,40 @@ function closeDrawer() {
   _logEl = null;
   _inputEl = null;
   _sendEl = null;
-  if (_fab) {
-    _fab.style.display = '';
-    _fab.focus();
-  }
+  // A close landing mid-open: drop the opening shape so the two morphs don't
+  // fight over the same clip.
+  _openMorph?.cancel();
+  _openMorph = null;
+  node.classList.remove('assistant-drawer--morphing');
+
+  // The pill has to be back in the layout before it can be measured, and it is
+  // the target the panel shrinks into, so it comes back first either way.
+  if (_fab) _fab.style.display = '';
+  const pill = _fab ? _fab.getBoundingClientRect() : null;
 
   dropExiting();
+  const morph = morphPanel(node, pill, 'close');
+  if (!morph) {
+    node.remove();
+    _fab?.focus();
+    return;
+  }
+
   _exiting = node;
   node.classList.add('assistant-drawer--closing');
-  // animationend is the signal; the timer is the safety net for the cases where
-  // it never arrives (backgrounded tab, animations switched off at the browser
-  // level), so a dead panel can't be left sitting on the page. Child rows also
-  // bubble animationend, hence the target check.
+  _fab?.classList.add('assistant-fab--returning');
   const finish = () => {
     if (_exiting !== node) return;
     _exiting = null;
     node.remove();
+    _fab?.classList.remove('assistant-fab--returning');
   };
-  node.addEventListener('animationend', e => {
-    if (e.target === node) finish();
-  });
-  setTimeout(finish, 600);
+  // finished settles on its own; the timer is the safety net for the cases
+  // where it never does (a backgrounded tab pauses the animation), so a dead
+  // panel can't be left sitting on the page.
+  morph.finished.then(finish, finish);
+  setTimeout(finish, ASSISTANT_MORPH_CLOSE_MS + 400);
+  _fab?.focus();
 }
 
 // ── Launcher gate ─────────────────────────────────────────────────────────────
