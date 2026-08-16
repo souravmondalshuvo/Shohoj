@@ -1000,8 +1000,22 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   background: var(--green); border: 1px solid var(--green); color: #0b0f0d;
   box-shadow: 0 8px 26px rgba(46,204,113,0.35);
   transform-origin: 100% 100%;
-  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* `backwards`, not `both`: a forwards fill would keep applying the animation's
+     transform after it ends and outrank any later transform on the button. */
+  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
+/* Pulse ring, mirroring the legacy launcher: on a pseudo-element so hover can
+   call it off cleanly and the button's own transform stays free. */
+@keyframes assistantFabPulse {
+  0% { box-shadow: 0 0 0 0 rgba(46,204,113,0.4); }
+  70% { box-shadow: 0 0 0 13px rgba(46,204,113,0); }
+  100% { box-shadow: 0 0 0 0 rgba(46,204,113,0); }
+}
+.assistant-fab::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  animation: assistantFabPulse 2800ms ease-out 900ms infinite;
+}
+.assistant-fab:hover::after, .assistant-fab:focus-visible::after { animation: none; }
 .assistant-fab:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 /* Opening motion, mirroring the legacy page: the panel grows out of the
    launcher's corner and the rows settle a beat behind it. AssistantDrawer.tsx
@@ -1049,6 +1063,7 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .assistant-drawer--closing .assistant-composer { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .assistant-fab,
+  .assistant-fab::after,
   .assistant-drawer,
   .assistant-drawer-header,
   .assistant-drawer-note,
