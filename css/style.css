@@ -7681,22 +7681,46 @@ body[data-page="admin"] .orb { display: none !important; }
    holds the node in the DOM until it finishes. */
 @keyframes assistantDrawerIn {
   from {
-    opacity: 0;
-    transform: translate3d(14px, 22px, 0) scale(0.88);
+    opacity: 0.55;
+    /* Roughly the launcher's footprint: ~130x44 against a 380x560 panel. The
+       axes scale independently so the box unfolds out of a pill rather than
+       ballooning from a small square. */
+    transform: scale(0.34, 0.08);
+    border-radius: 999px;
+  }
+  55% {
+    opacity: 1;
+    border-radius: 26px;
   }
   to {
     opacity: 1;
     transform: none;
+    border-radius: var(--radius);
+  }
+}
+/* The contents cannot ride the unfold — text inside a box scaling from 8% height
+   is unreadably squashed — so they arrive once the panel has most of its size. */
+@keyframes assistantDrawerContentIn {
+  from {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 @keyframes assistantDrawerOut {
   from {
     opacity: 1;
     transform: none;
+    border-radius: var(--radius);
   }
   to {
-    opacity: 0;
-    transform: translate3d(10px, 16px, 0) scale(0.92);
+    opacity: 0.4;
+    transform: scale(0.34, 0.08);
+    border-radius: 999px;
   }
 }
 @keyframes assistantRowIn {
@@ -7736,28 +7760,33 @@ body[data-page="admin"] .orb { display: none !important; }
   box-shadow: var(--shadow-card);
   overflow: hidden;
   transform-origin: 100% 100%;
-  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Long enough to read as a movement rather than a flicker: the point is that
+     the student sees the launcher become the panel. */
+  animation: assistantDrawerIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .assistant-drawer-header,
 .assistant-drawer-note,
 .assistant-log,
 .assistant-composer {
-  animation: assistantRowIn 260ms ease-out both;
+  /* Held back until the panel is most of the way open: text inside a box that
+     is still 8% of its height is unreadably squashed, so the rows wait rather
+     than distort. */
+  animation: assistantRowIn 220ms ease-out both;
 }
 .assistant-drawer-header {
-  animation-delay: 70ms;
+  animation-delay: 240ms;
 }
 .assistant-drawer-note {
-  animation-delay: 110ms;
+  animation-delay: 270ms;
 }
 .assistant-log {
-  animation-delay: 150ms;
+  animation-delay: 300ms;
 }
 .assistant-composer {
-  animation-delay: 190ms;
+  animation-delay: 330ms;
 }
 .assistant-drawer--closing {
-  animation: assistantDrawerOut 170ms ease-in both;
+  animation: assistantDrawerOut 260ms cubic-bezier(0.55, 0, 0.65, 0.2) both;
   /* No clicks land on a panel that is on its way out. */
   pointer-events: none;
 }
@@ -7765,7 +7794,9 @@ body[data-page="admin"] .orb { display: none !important; }
 .assistant-drawer--closing .assistant-drawer-note,
 .assistant-drawer--closing .assistant-log,
 .assistant-drawer--closing .assistant-composer {
-  animation: none;
+  /* Out quickly, so the panel folds back into a pill rather than a pill with
+     squashed text printed on it. */
+  animation: assistantDrawerContentIn 90ms ease-in reverse both;
 }
 .assistant-drawer-header {
   display: flex;
