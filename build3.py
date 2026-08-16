@@ -90,9 +90,10 @@ MAIN_JS_FILES = [
     'js/core/planner-core.js',
     'js/ui/planner.js',
     'js/ui/feedback.js',
-    # Shohoj Assistant launcher + its Worker transport (shared with the shell
-    # through js/core/assistantClient.d.ts)
+    # Shohoj Assistant launcher + its Worker transport and opening morph (both
+    # shared with the shell through their .d.ts boundaries)
     'js/core/assistantClient.js',
+    'js/core/assistantMorph.js',
     'js/ui/assistantFab.js',
     # Animations
     'js/animations/cursor.js',
