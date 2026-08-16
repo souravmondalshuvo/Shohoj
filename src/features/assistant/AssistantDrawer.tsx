@@ -14,8 +14,13 @@
 // configured) AND the student is signed in — the endpoint requires a BRACU
 // token, so an anonymous FAB would only lead to a dead end.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import {
+  ASSISTANT_MORPH_CLOSE_MS,
+  morphPanel,
+  type AssistantMorphRect,
+} from '../../../js/core/assistantMorph.js';
 import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
 import {
   fetchAssistantAvailability,
@@ -30,18 +35,36 @@ const EXAMPLE_PROMPTS: readonly string[] = [
   'Are there open seats in MAT216?',
 ];
 
-/** Safety net for the exit animation — see the effect below. */
-const EXIT_FALLBACK_MS = 600;
+/** Safety net for the closing morph — see the effect below. */
+const EXIT_FALLBACK_MS = ASSISTANT_MORPH_CLOSE_MS + 400;
+
+/**
+ * Where the panel is in the pill→panel→pill cycle.
+ *
+ * `opening` and `closing` are the two morphs; the launcher stays mounted
+ * through both of them, because the pill is one end of the shape being
+ * animated and it has to be measurable and on screen.
+ */
+type AssistantPhase = 'idle' | 'opening' | 'open' | 'closing';
 
 interface AssistantDrawerProps {
   readonly workerUrl: string | null | undefined;
-  /** True once the panel is animating out; it stays mounted until `onClosed`. */
-  readonly closing: boolean;
+  readonly phase: AssistantPhase;
+  /** The launcher's rect, measured while it was still visible. */
+  readonly pillRect: AssistantMorphRect | null;
   readonly onClose: () => void;
+  readonly onOpened: () => void;
   readonly onClosed: () => void;
 }
 
-function AssistantDrawer({ workerUrl, closing, onClose, onClosed }: AssistantDrawerProps) {
+function AssistantDrawer({
+  workerUrl,
+  phase,
+  pillRect,
+  onClose,
+  onOpened,
+  onClosed,
+}: AssistantDrawerProps) {
   const getIdToken = useIdToken();
   const [transcript, setTranscript] = useState<readonly AssistantMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -49,6 +72,7 @@ function AssistantDrawer({ workerUrl, closing, onClose, onClosed }: AssistantDra
   const [error, setError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -67,14 +91,45 @@ function AssistantDrawer({ workerUrl, closing, onClose, onClosed }: AssistantDra
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // The unmount normally rides on animationend. This is the fallback for the
-  // cases where that event never arrives — a backgrounded tab, or animations
-  // switched off at the browser level — so the panel can't get stuck open.
+  // The opening morph: the panel is mounted at full size and clipped back to
+  // the pill, and the clip grows. It runs once, on mount.
   useEffect(() => {
-    if (!closing) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const morph = morphPanel(panel, pillRect, 'open');
+    if (!morph) {
+      // Reduced motion, or no Web Animations API: the panel simply appears.
+      onOpened();
+      return;
+    }
+    morph.finished.then(
+      () => {
+        morph.cancel();
+        onOpened();
+      },
+      () => {},
+    );
+    return () => morph.cancel();
+    // Mount-only by design: pillRect is captured at the click and never
+    // changes for this panel, and onOpened is stable (useCallback below).
+  }, []);
+
+  // The closing morph, back down into the pill. The panel stays mounted until
+  // it finishes; the timer is the fallback for the cases where `finished`
+  // never settles (a backgrounded tab pauses the animation), so the panel
+  // can't get stuck open.
+  useEffect(() => {
+    if (phase !== 'closing') return;
+    const panel = panelRef.current;
+    const morph = panel ? morphPanel(panel, pillRect, 'close') : null;
+    if (!morph) {
+      onClosed();
+      return;
+    }
+    morph.finished.then(onClosed, onClosed);
     const timer = window.setTimeout(onClosed, EXIT_FALLBACK_MS);
     return () => window.clearTimeout(timer);
-  }, [closing, onClosed]);
+  }, [phase, pillRect, onClosed]);
 
   const ask = async (question: string) => {
     const content = question.trim();
@@ -103,15 +158,17 @@ function AssistantDrawer({ workerUrl, closing, onClose, onClosed }: AssistantDra
 
   return (
     <aside
-      className={closing ? 'assistant-drawer assistant-drawer--closing' : 'assistant-drawer'}
+      ref={panelRef}
+      className={
+        phase === 'closing'
+          ? 'assistant-drawer assistant-drawer--closing'
+          : phase === 'opening'
+            ? 'assistant-drawer assistant-drawer--morphing'
+            : 'assistant-drawer'
+      }
       role="dialog"
       aria-label="Shohoj Assistant"
       aria-modal="false"
-      // Rows animate too and their events bubble, so only the panel's own
-      // animation ends the close.
-      onAnimationEnd={(event) => {
-        if (closing && event.target === event.currentTarget) onClosed();
-      }}
     >
       <header className="assistant-drawer-header">
         <h2 className="assistant-drawer-title">Shohoj Assistant</h2>
@@ -224,11 +281,23 @@ export interface AssistantLauncherProps {
  */
 export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
   const auth = useAuth();
-  const [open, setOpen] = useState(false);
-  // The drawer owns its exit animation, so closing is a two-step: mark it
-  // closing, then unmount when the animation reports back.
-  const [closing, setClosing] = useState(false);
+  // Not a boolean: the pill and the panel are two ends of one shape, so both
+  // are on screen during either morph, and only a fully open panel gets the
+  // corner to itself.
+  const [phase, setPhase] = useState<AssistantPhase>('idle');
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const pillRectRef = useRef<AssistantMorphRect | null>(null);
   const [availability, setAvailability] = useState<AssistantAvailability>('unknown');
+
+  // Stable identities: the drawer runs its morphs from effects keyed on these,
+  // and a fresh closure on every render would start a second closing morph
+  // partway through the first — visibly, from the wrong shape.
+  const close = useCallback(() => setPhase('closing'), []);
+  const opened = useCallback(
+    () => setPhase((current) => (current === 'opening' ? 'open' : current)),
+    [],
+  );
+  const closed = useCallback(() => setPhase('idle'), []);
 
   const signedIn = auth.status === 'authenticated';
 
@@ -250,25 +319,41 @@ export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
 
   return (
     <>
-      {!open && (
+      {phase !== 'open' && (
         <button
+          ref={fabRef}
           type="button"
-          className="assistant-fab"
-          onClick={() => setOpen(true)}
+          className={
+            phase === 'opening'
+              ? 'assistant-fab assistant-fab--morphing'
+              : phase === 'closing'
+                ? 'assistant-fab assistant-fab--returning'
+                : 'assistant-fab'
+          }
+          // Hidden from assistive tech and from the tab order mid-morph: it is
+          // scenery for those few hundred milliseconds, and the panel behind it
+          // is the thing that now matters.
+          aria-hidden={phase === 'idle' ? undefined : true}
+          tabIndex={phase === 'idle' ? undefined : -1}
+          onClick={() => {
+            // Measured while the pill is still on screen — this rect is the
+            // starting shape of the morph.
+            pillRectRef.current = fabRef.current?.getBoundingClientRect() ?? null;
+            setPhase('opening');
+          }}
           aria-label="Open Shohoj Assistant"
         >
           <span aria-hidden="true">✦</span> Assistant
         </button>
       )}
-      {open && (
+      {phase !== 'idle' && (
         <AssistantDrawer
           workerUrl={workerUrl}
-          closing={closing}
-          onClose={() => setClosing(true)}
-          onClosed={() => {
-            setClosing(false);
-            setOpen(false);
-          }}
+          phase={phase}
+          pillRect={pillRectRef.current}
+          onClose={close}
+          onOpened={opened}
+          onClosed={closed}
         />
       )}
     </>
