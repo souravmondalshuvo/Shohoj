@@ -1867,6 +1867,71 @@ async function makeServiceAccountJson() {
     assert(!JSON.stringify(bodies[1]).includes('uid_bob'), 'the invented uid reaches no lookup');
   });
 
+  // Production evidence (#556): generativelanguage returned 4xx on 5 requests
+  // against 12 successes — the failures are the tool continuations, so seat
+  // questions, which always need a tool, never answered.
+  await test('a refused tool continuation is retried as a grounded prompt', async () => {
+    const bodies = [];
+    const { text } = await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'is there any seat available for CSE220?' }],
+      ctx: {
+        loadSeatIndex: async () => new Map([['CSE220', [
+          { sectionId: 1, courseCode: 'CSE220', sectionName: '01', capacity: 30, consumedSeat: 12, isFull: false },
+        ]]]),
+      },
+      fetchImpl: async (url, init) => {
+        const body = JSON.parse(init.body);
+        bodies.push(body);
+        if (bodies.length === 1) {
+          return json({
+            id: 'int_7',
+            steps: [{ type: 'function_call', id: 'c1', name: 'check_seat_status',
+              arguments: { course_code: 'CSE220' } }],
+          });
+        }
+        // The documented continuation is refused, exactly as production shows.
+        if (body.previous_interaction_id) {
+          return json({ error: { message: 'Invalid input for interaction' } }, { status: 400 });
+        }
+        return json(geminiSays('CSE220 Section 01 has 18 seats left.'));
+      },
+    });
+
+    assertEq(text, 'CSE220 Section 01 has 18 seats left.', 'the student still gets the answer');
+    assertEq(bodies.length, 3, 'first call, refused continuation, grounded retry');
+    // The retry uses only the plain shape that works in production...
+    assertEq(bodies[2].previous_interaction_id, undefined);
+    assertEq(typeof bodies[2].input, 'string');
+    // ...and carries the real tool output, so no number is invented.
+    assert(bodies[2].input.includes('check_seat_status'), 'the tool is named');
+    assert(bodies[2].input.includes('seats_left'), 'the executor output is the grounding');
+    assertEq(bodies[2].system_instruction, ASSISTANT_SYSTEM, 'the scope rules still apply');
+  });
+
+  await test('a refused continuation is retried once, never in a loop', async () => {
+    let calls = 0;
+    let failure = null;
+    try {
+      await runGeminiTurn({
+        apiKey: 'k',
+        messages: [{ role: 'user', content: 'seats in CSE220?' }],
+        ctx: { loadSeatIndex: async () => new Map() },
+        fetchImpl: async () => {
+          calls++;
+          if (calls === 1) {
+            return json({ id: 'i', steps: [{ type: 'function_call', id: 'c', name: 'check_seat_status', arguments: { course_code: 'CSE220' } }] });
+          }
+          return json({ error: 'still bad' }, { status: 400 });
+        },
+      });
+    } catch (e) {
+      failure = e;
+    }
+    assert(failure instanceof ProviderUnavailable, 'a persistently bad request surfaces');
+    assertEq(calls, 3, 'one attempt, one refused continuation, one grounded retry — then stop');
+  });
+
   await test('a free-tier 429 is an outage, and falls through to a paid provider', async () => {
     let failure = null;
     try {
