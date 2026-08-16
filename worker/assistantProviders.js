@@ -322,6 +322,28 @@ function geminiUsage(body) {
   };
 }
 
+/**
+ * Restate the question with the tool output as grounding text.
+ *
+ * The fallback path when the API rejects the documented tool continuation
+ * (#556). It uses only the request shape we have proven works in production —
+ * a plain `input` string — so the student gets a grounded answer even when the
+ * structured round-trip is refused. The model still cannot invent numbers: the
+ * figures here come from the same uid-scoped executors, they are simply
+ * delivered as text rather than as function_result items.
+ */
+function geminiGroundedPrompt(messages, grounding) {
+  const facts = grounding.map((g) => `Result of ${g.name}: ${g.output}`).join('\n');
+  return [
+    geminiPrompt(messages),
+    '',
+    "Data retrieved from the student's own Shohoj record for this question:",
+    facts,
+    '',
+    'Answer the question using only the data above.',
+  ].join('\n');
+}
+
 /** The same bounded tool loop against the Interactions API. Same { text, usage }. */
 export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }) {
   // Tool declarations happen to use the same shape OpenAI's Responses API
@@ -336,6 +358,10 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     input: geminiPrompt(messages),
   };
   let lastText = '';
+  // Tool output collected this turn, kept so the turn can be restarted as a
+  // grounded prompt if the structured continuation is refused.
+  let grounding = [];
+  let continuationRefused = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let res;
@@ -348,6 +374,39 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     } catch (e) {
       throw new ProviderUnavailable('gemini', 'request failed', e);
     }
+
+    // A 4xx on a CONTINUATION is a disagreement about request shape, not an
+    // outage: the first request of the same turn just succeeded with the same
+    // key, model and quota. Retry once as a fresh, grounded prompt rather than
+    // failing the student — and only once, so a genuinely broken request
+    // cannot loop.
+    if (
+      !res.ok &&
+      res.status >= 400 &&
+      res.status < 500 &&
+      res.status !== 429 &&
+      payload.previous_interaction_id &&
+      !continuationRefused
+    ) {
+      const why = (await res.text().catch(() => '')).slice(0, 200).replace(/\s+/g, ' ').trim();
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          event: 'assistant_gemini_continuation_refused',
+          status: res.status,
+          detail: why,
+        }),
+      );
+      continuationRefused = true;
+      payload = {
+        model: GEMINI_MODEL,
+        system_instruction: ASSISTANT_SYSTEM,
+        thinking_level: GEMINI_THINKING_LEVEL,
+        input: geminiGroundedPrompt(messages, grounding),
+      };
+      continue;
+    }
+
     if (!res.ok) {
       // Google's error bodies say WHY — wrong key, quota exhausted, model not
       // available to this project — and the first live call is exactly when
@@ -395,6 +454,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
         call_id: call.call_id ?? call.id,
         result: [{ type: 'text', text: out }],
       });
+      grounding.push({ name: call.name, output: out });
     }
 
     // Continue THIS turn against the interaction the model just created.
