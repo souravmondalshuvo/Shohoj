@@ -999,10 +999,8 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   font: inherit; font-weight: 600; font-size: 14px;
   background: var(--green); border: 1px solid var(--green); color: #0b0f0d;
   box-shadow: 0 8px 26px rgba(46,204,113,0.35);
-  transform-origin: 100% 100%;
-  /* `backwards`, not `both`: a forwards fill would keep applying the animation's
-     transform after it ends and outrank any later transform on the button. */
-  animation: assistantFabIn 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  /* No entrance animation of its own any more: the pill's arrival is the
+     closing morph's last act. */
 }
 /* Pulse ring, mirroring the legacy launcher: on a pseudo-element so hover can
    call it off cleanly and the button's own transform stays free. */
@@ -1017,61 +1015,99 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 }
 .assistant-fab:hover::after, .assistant-fab:focus-visible::after { animation: none; }
 .assistant-fab:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-/* Opening motion, mirroring the legacy page: the panel grows out of the
-   launcher's corner and the rows settle a beat behind it. AssistantDrawer.tsx
-   keeps the node mounted through the exit animation. */
-@keyframes assistantDrawerIn {
-  from { opacity: 0; transform: translate3d(14px, 22px, 0) scale(0.88); }
-  to { opacity: 1; transform: none; }
+/* The launcher pill becomes the panel, mirroring the legacy page. The shape is
+   animated in JS (js/core/assistantMorph.js clips the panel to the measured
+   pill rect and grows the clip); these are the layers riding on top of it — the
+   pill's green draining away, and the contents arriving once the box has nearly
+   finished forming. */
+/* Holds while the shape is still pill-sized, then drains as it opens out — a
+   wash that fades from frame one leaves a dark box beside a bright pill. */
+@keyframes assistantWashOut {
+  0% { opacity: 1; }
+  30% { opacity: 0.94; }
+  70% { opacity: 0; }
+  100% { opacity: 0; }
 }
-@keyframes assistantDrawerOut {
-  from { opacity: 1; transform: none; }
-  to { opacity: 0; transform: translate3d(10px, 16px, 0) scale(0.92); }
+@keyframes assistantWashIn {
+  0% { opacity: 0; }
+  35% { opacity: 0.15; }
+  80% { opacity: 1; }
+  100% { opacity: 1; }
 }
 @keyframes assistantRowIn {
   from { opacity: 0; transform: translateY(7px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes assistantFabIn {
-  from { opacity: 0; transform: scale(0.82); }
-  to { opacity: 1; transform: none; }
+@keyframes assistantRowOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
+@keyframes assistantFabHandoff {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes assistantFabReturn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* The pill stays on screen through the morph, above the panel growing out from
+   under it, and hands over as its label fades. */
+.assistant-fab--morphing {
+  z-index: 41;
+  animation: assistantFabHandoff 130ms ease-in 90ms both;
+}
+.assistant-fab--returning {
+  z-index: 41;
+  animation: assistantFabReturn 150ms ease-out 130ms backwards;
+}
+.assistant-fab--morphing::after, .assistant-fab--returning::after { animation: none; }
 .assistant-drawer {
   position: fixed; right: 12px; bottom: 12px; z-index: 40;
   display: flex; flex-direction: column;
   width: min(380px, calc(100vw - 24px)); height: min(560px, calc(100dvh - 24px));
   background: var(--bg); border: 1px solid var(--c-border2); border-radius: 16px;
   box-shadow: var(--shadow-card); overflow: hidden;
-  transform-origin: 100% 100%;
-  animation: assistantDrawerIn 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.assistant-drawer-header,
-.assistant-drawer-note,
-.assistant-log,
-.assistant-composer { animation: assistantRowIn 260ms ease-out both; }
-.assistant-drawer-header { animation-delay: 70ms; }
-.assistant-drawer-note { animation-delay: 110ms; }
-.assistant-log { animation-delay: 150ms; }
-.assistant-composer { animation-delay: 190ms; }
-.assistant-drawer--closing {
-  animation: assistantDrawerOut 170ms ease-in both;
-  pointer-events: none;
+.assistant-drawer--morphing::before,
+.assistant-drawer--closing::before {
+  content: ''; position: absolute; inset: 0; z-index: 2;
+  pointer-events: none; background: var(--green);
 }
+.assistant-drawer--morphing::before { animation: assistantWashOut 420ms linear both; }
+.assistant-drawer--closing::before { animation: assistantWashIn 280ms linear both; }
+.assistant-drawer--morphing .assistant-drawer-header,
+.assistant-drawer--morphing .assistant-drawer-note,
+.assistant-drawer--morphing .assistant-log,
+.assistant-drawer--morphing .assistant-composer { animation: assistantRowIn 240ms ease-out both; }
+.assistant-drawer--morphing .assistant-drawer-header { animation-delay: 210ms; }
+.assistant-drawer--morphing .assistant-drawer-note { animation-delay: 245ms; }
+.assistant-drawer--morphing .assistant-log { animation-delay: 280ms; }
+.assistant-drawer--morphing .assistant-composer { animation-delay: 315ms; }
+.assistant-drawer--closing { pointer-events: none; }
 .assistant-drawer--closing .assistant-drawer-header,
 .assistant-drawer--closing .assistant-drawer-note,
 .assistant-drawer--closing .assistant-log,
-.assistant-drawer--closing .assistant-composer { animation: none; }
+.assistant-drawer--closing .assistant-composer { animation: assistantRowOut 110ms ease-in both; }
 @media (prefers-reduced-motion: reduce) {
+  /* canMorphPanel() reports false here, so no JS-driven shape runs; these
+     switch off the layers that would have ridden on it. */
   .assistant-fab,
   .assistant-fab::after,
+  .assistant-fab--morphing,
+  .assistant-fab--returning,
   .assistant-drawer,
-  .assistant-drawer-header,
-  .assistant-drawer-note,
-  .assistant-log,
-  .assistant-composer { animation: none; }
-  /* Not `animation: none`: the drawer unmounts on animationend, so the exit
-     keeps a name and simply runs instantly. */
-  .assistant-drawer--closing { animation: assistantDrawerOut 1ms linear both; }
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before,
+  .assistant-drawer--morphing .assistant-drawer-header,
+  .assistant-drawer--morphing .assistant-drawer-note,
+  .assistant-drawer--morphing .assistant-log,
+  .assistant-drawer--morphing .assistant-composer,
+  .assistant-drawer--closing .assistant-drawer-header,
+  .assistant-drawer--closing .assistant-drawer-note,
+  .assistant-drawer--closing .assistant-log,
+  .assistant-drawer--closing .assistant-composer { animation: none; }
+  .assistant-drawer--morphing::before,
+  .assistant-drawer--closing::before { display: none; }
 }
 .assistant-drawer-header {
   display: flex; align-items: center; justify-content: space-between;
