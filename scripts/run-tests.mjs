@@ -17,7 +17,7 @@
  *   node scripts/run-tests.mjs reviews   # run only tests whose name matches
  */
 
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -55,6 +55,25 @@ function discover() {
   return found;
 }
 
+// The worker is its own npm package (worker/package.json), so its dependencies
+// live in worker/node_modules and a root `npm ci` does not install them. Without
+// them worker/test/*.test.js dies on an opaque ERR_MODULE_NOT_FOUND naming a
+// package that *is* correctly declared, which reads like a missing dependency
+// and sends you hunting through the root package.json for a bug that isn't
+// there. Fail early on the real cause instead. CI installs both (see ci.yml).
+function requireWorkerDeps(files) {
+  if (!files.some((f) => f.split(path.sep)[0] === 'worker')) return;
+  if (existsSync(path.join(ROOT, 'worker', 'node_modules'))) return;
+
+  console.error(
+    'worker/node_modules is missing — the worker is a separate npm package,\n' +
+      'so its dependencies are not installed by a root `npm ci`.\n\n' +
+      '  npm ci --prefix worker\n\n' +
+      'Then re-run this command.',
+  );
+  process.exit(1);
+}
+
 function main() {
   const filter = process.argv[2];
   let files = discover();
@@ -66,6 +85,8 @@ function main() {
     console.error(filter ? `No test files match "${filter}".` : 'No test files discovered.');
     process.exit(1);
   }
+
+  requireWorkerDeps(files);
 
   console.log(`Running ${files.length} test file${files.length === 1 ? '' : 's'}:\n`);
 
