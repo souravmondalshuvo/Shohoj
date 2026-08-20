@@ -18,7 +18,7 @@ import {
   type AuthSource,
   anonymousAuthSource,
 } from '../../platform/auth/authSnapshot';
-import { getUniversity, type UniversityProfile } from '../../core/university';
+import { getUniversity, universityForEmail, type UniversityProfile } from '../../core/university';
 
 interface AuthContextValue {
   readonly snapshot: AuthSnapshot;
@@ -77,6 +77,15 @@ export function useIdToken(): () => Promise<string | null> {
  * beat, and a blank beat is cheaper than a wrong CGPA.
  */
 export function useUniversity(): UniversityProfile | null {
-  const { university } = useAuthContext().snapshot;
-  return useMemo(() => getUniversity(university), [university]);
+  const { university, email } = useAuthContext().snapshot;
+  return useMemo(() => {
+    // The email wins, exactly as normalizeAuthSnapshot decides it: a verified
+    // domain is evidence, whereas the `university` field is whatever the
+    // source put there. Deriving here as well means the answer does not depend
+    // on which AuthSource produced the snapshot — an injected source (the e2e
+    // seam, a test fake) never goes through the normalizer, and would
+    // otherwise present a signed-in student with no campus at all.
+    const fromEmail = universityForEmail(email);
+    return fromEmail ?? getUniversity(university);
+  }, [university, email]);
 }
