@@ -537,13 +537,21 @@ export default function CgpaSimulator() {
     });
   }, [auto, remainingFocused]);
 
-  const totals = simulatorTotals(inputs);
+  // The retake shortlist turns on the campus repeat boundary, and BRACU and NSU
+  // sit on opposite sides of it for a B at exactly 3.0 — BRACU excludes it,
+  // NSU includes it. Same inputs, different shortlist.
+  const simInputs = {
+    ...inputs,
+    scale: bridge.university.grades,
+    repeat: bridge.university.repeat,
+  };
+  const totals = simulatorTotals(simInputs);
   const outcome = computeSimulation(totals, target, remaining);
   const summaryOnly = isSummaryOnly(inputs.semesters);
   const candidates =
     outcome.kind === 'prompt' || summaryOnly
       ? []
-      : computeRetakeCandidates(inputs, totals, ranking);
+      : computeRetakeCandidates(simInputs, totals, ranking);
   const impact = computeRetakeImpact(candidates, selected, totals, target, remaining);
 
   // The ladder answers "what can I still reach", which is only a useful lead-in
