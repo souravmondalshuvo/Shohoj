@@ -60,6 +60,14 @@ export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/inte
 // thinking_budget parameter — together they are a 400.
 export const GEMINI_THINKING_LEVEL = 'low';
 
+// It rides inside generation_config, NOT at the top level of the payload. Sent
+// top-level the API answers "Unknown parameter 'thinking_level'" and rejects
+// the request outright (#563) — and because that 400 lands on the FIRST call of
+// a turn, there is no interaction to retry against and the whole turn fails.
+// One frozen object shared by every payload so the three call sites below
+// cannot drift apart again.
+const GEMINI_GENERATION_CONFIG = Object.freeze({ thinking_level: GEMINI_THINKING_LEVEL });
+
 const MAX_TOOL_ROUNDS = 5;
 
 const NO_ANSWER = 'Sorry, I could not produce an answer. Please try rephrasing.';
@@ -353,7 +361,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   let payload = {
     model: GEMINI_MODEL,
     system_instruction: ASSISTANT_SYSTEM,
-    thinking_level: GEMINI_THINKING_LEVEL,
+    generation_config: GEMINI_GENERATION_CONFIG,
     tools,
     input: geminiPrompt(messages),
   };
@@ -401,7 +409,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
       payload = {
         model: GEMINI_MODEL,
         system_instruction: ASSISTANT_SYSTEM,
-        thinking_level: GEMINI_THINKING_LEVEL,
+        generation_config: GEMINI_GENERATION_CONFIG,
         input: geminiGroundedPrompt(messages, grounding),
       };
       continue;
@@ -461,7 +469,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     payload = {
       model: GEMINI_MODEL,
       previous_interaction_id: body.id,
-      thinking_level: GEMINI_THINKING_LEVEL,
+      generation_config: GEMINI_GENERATION_CONFIG,
       tools,
       input: results,
     };
