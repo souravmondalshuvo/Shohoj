@@ -11,6 +11,7 @@
 // legacy page keeps its canvas until cutover).
 
 import { calcSemesterGpa } from '../../core/gpa.ts';
+import type { GradeScale } from '../../core/university.ts';
 import { stripTags } from '../../core/helpers.ts';
 import type { SemesterEntry } from '../../core/types.ts';
 
@@ -36,11 +37,11 @@ function trendLabel(semester: SemesterEntry): string {
     .replace(/(\d{4})/, (year) => `'${year.slice(2)}`);
 }
 
-export function computeGpaTrend(semesters: readonly SemesterEntry[]): GpaTrend {
+export function computeGpaTrend(semesters: readonly SemesterEntry[], scale: GradeScale): GpaTrend {
   const points: TrendPoint[] = [];
   for (const semester of semesters) {
     if (semester.running || semester.summary) continue;
-    const gpa = calcSemesterGpa(semester);
+    const gpa = calcSemesterGpa(semester, scale);
     if (gpa === null) continue;
     points.push({ label: trendLabel(semester), gpa });
   }
