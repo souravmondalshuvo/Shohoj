@@ -16,6 +16,7 @@ import { createContext, useContext, useSyncExternalStore } from 'react';
 
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import type { CourseSuggestion } from './courseSearch';
+import { UNIVERSITIES, type UniversityProfile } from '../../core/university.ts';
 
 export interface CalculatorInputs {
   readonly semesters: readonly SemesterEntry[];
@@ -134,10 +135,27 @@ export interface CalculatorBridge {
   rateForCourse(semId: number, index: number): void;
   /** Open the transcript-import picker (legacy: click #transcriptFileInput). */
   importTranscript(): void;
+  /**
+   * The campus whose academic rules apply — grading scale, retake policy,
+   * repeat eligibility, credit-load limits.
+   *
+   * Non-nullable on purpose. Every consumer needs a scale to render a grade at
+   * all, and an optional one would be reached past with `?? BRACU` at a dozen
+   * call sites, which is the exact bug this is here to close. Deciding the
+   * campus is the provider's job: the shell supplies the signed-in student's
+   * profile and renders nothing until auth settles, while the legacy island
+   * path supplies BRACU because legacy admits no other domain.
+   */
+  readonly university: UniversityProfile;
 }
 
 /** Default bridge: delegates the whole surface to the legacy window globals. */
 export const legacyWindowBridge: CalculatorBridge = {
+  // The legacy page gates sign-in on @g.bracu.ac.bd (js/auth/firebase.js), so
+  // this path has exactly one possible campus. It is named here rather than
+  // left implicit so that the day legacy learns about other campuses, the
+  // compiler points at this line.
+  university: UNIVERSITIES.bracu,
   useInputs: useCalculatorInputs,
   commit(semesters) {
     window._shohoj_setSemesters?.(semesters);
