@@ -18,6 +18,7 @@ import {
   type AuthSource,
   anonymousAuthSource,
 } from '../../platform/auth/authSnapshot';
+import { getUniversity, type UniversityProfile } from '../../core/university';
 
 interface AuthContextValue {
   readonly snapshot: AuthSnapshot;
@@ -58,4 +59,24 @@ export function useAuth(): AuthSnapshot {
 /** The current ID token getter (null when signed out). Throws outside <AuthProvider>. */
 export function useIdToken(): () => Promise<string | null> {
   return useAuthContext().getIdToken;
+}
+
+/**
+ * The signed-in student's university profile, or `null` when no campus is
+ * resolved — signed out, still loading, or an admin on a non-campus address.
+ *
+ * This is the seam that makes the app multi-tenant. `AuthSnapshot.university`
+ * is decided once, from the verified email domain, at the auth boundary; every
+ * consumer reads the profile from here rather than re-deriving it, so there is
+ * exactly one answer to "which campus is this" per render.
+ *
+ * Callers must handle `null` rather than substituting a default campus. Falling
+ * back to BRACU is how an NSU student silently gets BRACU's grading scale — the
+ * failure this hook exists to prevent. Where a scale is genuinely required
+ * before one is known, render nothing and wait: `status === 'loading'` is a
+ * beat, and a blank beat is cheaper than a wrong CGPA.
+ */
+export function useUniversity(): UniversityProfile | null {
+  const { university } = useAuthContext().snapshot;
+  return useMemo(() => getUniversity(university), [university]);
 }
