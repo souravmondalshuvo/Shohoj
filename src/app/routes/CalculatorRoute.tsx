@@ -84,6 +84,8 @@ import {
 import { useConfirm } from '../providers/ModalProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { useNotifications } from '../../state/NotificationProvider';
+import { useUniversity } from '../providers/AuthProvider';
+import { CampusRequired } from '../routing/CampusRequired';
 
 // Catalogue lookup for the transcript import's post-parse cleanup (the legacy
 // COURSE_DB[code] access). Built once at module scope from the typed catalogue.
@@ -93,6 +95,10 @@ const COURSE_BY_CODE = new Map(
 const lookupCourse = (code: string) => COURSE_BY_CODE.get(code) ?? null;
 
 export function Component() {
+  // The signed-in student's campus decides the grading scale this whole route
+  // renders against. Null only reaches here for an admin with no campus of
+  // their own, since RequireFeature turns every other case away.
+  const university = useUniversity();
   // One store instance for the route's lifetime (load seed + every persist).
   const location = useLocation();
   const navigate = useNavigate();
@@ -139,64 +145,72 @@ export function Component() {
   // Reducer-backed bridge. CalculatorSemesters only ever commits a fully-formed
   // semester list (it computes via the immutable mutations), so `commit` maps to
   // a 'replace' that keeps the current start season/year.
-  const bridge = useMemo<CalculatorBridge>(
-    () => ({
-      useInputs: () => ({
-        semesters: state.semesters,
-        startSeason: state.startSeason as SemesterSeason | '',
-        startYear: state.startYear,
-        currentDept: state.currentDept,
-      }),
-      commit: (semesters: SemesterEntry[]) =>
-        dispatch({ type: 'replace', state: { ...state, semesters } }),
-      isKnownCode: isKnownCourseCode,
-      catalog: BRACU_COURSE_CATALOG,
-      addSemester: () =>
-        dispatch({
-          type: 'addSemester',
-          name: nextCompletedSemesterName(state, new Date(), deptSeasonsFor(state.currentDept)),
-        }),
-      addRunningSemester: () =>
-        dispatch({
-          type: 'addRunningSemester',
-          name: nextRunningSemesterName(state, new Date(), deptSeasonsFor(state.currentDept)),
-        }),
-      loadDemo: () => {
-        void (async () => {
-          if (state.semesters.length > 0) {
-            const ok = await confirm({
-              title: 'Load demo data?',
-              message: 'This will replace your current data with demo data.',
-              confirmLabel: 'Load demo',
-              danger: true,
-            });
-            if (!ok) return;
-          }
-          dispatch({ type: 'replace', state: demoCalculatorState() });
-          // Same copy loadSampleData() shows via _shohoj_showToast.
-          notify({
-            kind: 'success',
-            message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.',
-          });
-        })();
-      },
-      rateForCourse: (semId: number, index: number) => {
-        // openRateForCourse parity: only a graded catalog course is rateable.
-        const sem = state.semesters.find((s) => s.id === semId);
-        const course = sem?.courses[index];
-        if (!course) return;
-        if (!getReviewableCourseCode(course.name, isKnownCourseCode)) {
-          notify({
-            kind: 'error',
-            message: 'Select a valid catalog course before submitting a faculty review.',
-          });
-          return;
-        }
-        setRateTarget({ semId, index });
-      },
-      importTranscript: () => transcriptImportRef.current?.open(),
-    }),
-    [state, confirm, notify],
+  const bridge = useMemo<CalculatorBridge | null>(
+    () =>
+      university === null
+        ? null
+        : ({
+            university,
+            useInputs: () => ({
+              semesters: state.semesters,
+              startSeason: state.startSeason as SemesterSeason | '',
+              startYear: state.startYear,
+              currentDept: state.currentDept,
+            }),
+            commit: (semesters: SemesterEntry[]) =>
+              dispatch({ type: 'replace', state: { ...state, semesters } }),
+            isKnownCode: isKnownCourseCode,
+            catalog: BRACU_COURSE_CATALOG,
+            addSemester: () =>
+              dispatch({
+                type: 'addSemester',
+                name: nextCompletedSemesterName(
+                  state,
+                  new Date(),
+                  deptSeasonsFor(state.currentDept),
+                ),
+              }),
+            addRunningSemester: () =>
+              dispatch({
+                type: 'addRunningSemester',
+                name: nextRunningSemesterName(state, new Date(), deptSeasonsFor(state.currentDept)),
+              }),
+            loadDemo: () => {
+              void (async () => {
+                if (state.semesters.length > 0) {
+                  const ok = await confirm({
+                    title: 'Load demo data?',
+                    message: 'This will replace your current data with demo data.',
+                    confirmLabel: 'Load demo',
+                    danger: true,
+                  });
+                  if (!ok) return;
+                }
+                dispatch({ type: 'replace', state: demoCalculatorState() });
+                // Same copy loadSampleData() shows via _shohoj_showToast.
+                notify({
+                  kind: 'success',
+                  message: 'Demo mode loaded. Explore CGPA, planner, and degree progress.',
+                });
+              })();
+            },
+            rateForCourse: (semId: number, index: number) => {
+              // openRateForCourse parity: only a graded catalog course is rateable.
+              const sem = state.semesters.find((s) => s.id === semId);
+              const course = sem?.courses[index];
+              if (!course) return;
+              if (!getReviewableCourseCode(course.name, isKnownCourseCode)) {
+                notify({
+                  kind: 'error',
+                  message: 'Select a valid catalog course before submitting a faculty review.',
+                });
+                return;
+              }
+              setRateTarget({ semId, index });
+            },
+            importTranscript: () => transcriptImportRef.current?.open(),
+          } satisfies CalculatorBridge),
+    [state, confirm, notify, university],
   );
 
   // The hero's "Try Demo Mode" lives on Home, but loadDemo is bridge-scoped to
@@ -208,7 +222,7 @@ export function Component() {
   const demoRequested = (location.state as { loadDemo?: boolean } | null)?.loadDemo === true;
   const demoHandled = useRef(false);
   useEffect(() => {
-    if (!demoRequested || demoHandled.current) return;
+    if (!demoRequested || demoHandled.current || bridge === null) return;
     demoHandled.current = true;
     navigate(location.pathname, { replace: true, state: null });
     bridge.loadDemo();
@@ -233,6 +247,12 @@ export function Component() {
       dispatch({ type: 'setStart', startSeason: '', startYear: state.startYear });
     }
   };
+
+  // Every hook above has run, so this early return is safe. It is placed here
+  // rather than at the top of the component precisely because of that: the
+  // alternative is defaulting the scale to BRACU so the hooks have something
+  // to chew on, which is the bug this route is being changed to fix.
+  if (bridge === null) return <CampusRequired />;
 
   return (
     <section className="shell-page">
