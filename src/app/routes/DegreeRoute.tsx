@@ -20,35 +20,44 @@ import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculat
 import { getDepartment } from '../../features/calculator/departments.ts';
 import DegreeTracker from '../../features/calculator/DegreeTracker.tsx';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
+import { useUniversity } from '../providers/AuthProvider';
+import { CampusRequired } from '../routing/CampusRequired';
 
 export function Component() {
+  const university = useUniversity();
   const store = useMemo(() => createBrowserStore(), []);
   const state = useMemo(() => loadCalculatorState(store).state, [store]);
 
-  const bridge = useMemo<CalculatorBridge>(
-    () => ({
-      useInputs: () => ({
-        semesters: state.semesters,
-        startSeason: state.startSeason as SemesterSeason | '',
-        startYear: state.startYear,
-        currentDept: state.currentDept,
-      }),
-      // Read-only view: the tracker never calls these, and nothing here should.
-      commit: () => {},
-      isKnownCode: isKnownCourseCode,
-      catalog: BRACU_COURSE_CATALOG,
-      addSemester: () => {},
-      addRunningSemester: () => {},
-      loadDemo: () => {},
-      rateForCourse: () => {},
-      importTranscript: () => {},
-    }),
-    [state],
+  const bridge = useMemo<CalculatorBridge | null>(
+    () =>
+      university === null
+        ? null
+        : ({
+            university,
+            useInputs: () => ({
+              semesters: state.semesters,
+              startSeason: state.startSeason as SemesterSeason | '',
+              startYear: state.startYear,
+              currentDept: state.currentDept,
+            }),
+            // Read-only view: the tracker never calls these, and nothing here should.
+            commit: () => {},
+            isKnownCode: isKnownCourseCode,
+            catalog: BRACU_COURSE_CATALOG,
+            addSemester: () => {},
+            addRunningSemester: () => {},
+            loadDemo: () => {},
+            rateForCourse: () => {},
+            importTranscript: () => {},
+          } satisfies CalculatorBridge),
+    [state, university],
   );
 
   // The tracker renders null until a department is picked — mirror that here
   // so the empty state can explain where to set things up.
   const hasTracker = getDepartment(state.currentDept) !== null;
+
+  if (bridge === null) return <CampusRequired />;
 
   return (
     <section className="shell-page degree-page" data-testid="degree-page">
