@@ -1,1 +1,0 @@
-import{r as e}from"./university-B1poWM1n.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
