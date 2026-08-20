@@ -308,7 +308,7 @@ export function Component() {
                       const { jsPDF } = await loadJsPdf();
                       drawPdfReport(
                         new jsPDF({ unit: 'mm', format: 'a4' }),
-                        buildPdfReport(state, new Date()),
+                        buildPdfReport(state, new Date(), bridge.university.grades),
                       );
                     } catch (err) {
                       notify({
