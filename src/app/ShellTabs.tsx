@@ -18,13 +18,18 @@
 //   - coarse pointers have no hover, so a click toggles
 //   - only one group is open at a time; outside-click and Escape close all
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
+
+import { useUniversity } from './providers/AuthProvider';
+import { hasFeature, type FeatureId, type UniversityProfile } from '../core/university';
 
 interface TabLeaf {
   readonly to: string;
   readonly label: string;
   readonly icon: string;
+  /** The campus feature this tab needs; mirrors the route's own guard. */
+  readonly feature: FeatureId;
 }
 
 interface TabGroup {
@@ -42,16 +47,16 @@ const isGroup = (entry: TabEntry): entry is TabGroup => 'items' in entry;
  *  / Groups. Profile is deliberately absent: legacy reaches it from the
  *  top-right account pill, not the tab bar (index.html:439). */
 const TABS: readonly TabEntry[] = [
-  { to: '/calculator', label: 'Calculator', icon: '🧮' },
+  { to: '/calculator', label: 'Calculator', icon: '🧮', feature: 'calculator' },
   {
     group: 'plan',
     label: 'Plan',
     icon: '📅',
     items: [
-      { to: '/planner', label: 'Planner', icon: '📅' },
-      { to: '/routine', label: 'Routine', icon: '🗓️' },
-      { to: '/transcript', label: 'Transcript', icon: '📄' },
-      { to: '/degree-progress', label: 'Degree', icon: '🎓' },
+      { to: '/planner', label: 'Planner', icon: '📅', feature: 'planner' },
+      { to: '/routine', label: 'Routine', icon: '🗓️', feature: 'routine' },
+      { to: '/transcript', label: 'Transcript', icon: '📄', feature: 'transcript' },
+      { to: '/degree-progress', label: 'Degree', icon: '🎓', feature: 'degree' },
     ],
   },
   {
@@ -59,9 +64,9 @@ const TABS: readonly TabEntry[] = [
     label: 'Courses',
     icon: '📚',
     items: [
-      { to: '/reviews', label: 'Reviews', icon: '⭐' },
-      { to: '/difficulty', label: 'Difficulty', icon: '🗺️' },
-      { to: '/papers', label: 'Papers', icon: '📚' },
+      { to: '/reviews', label: 'Reviews', icon: '⭐', feature: 'reviews' },
+      { to: '/difficulty', label: 'Difficulty', icon: '🗺️', feature: 'difficulty' },
+      { to: '/papers', label: 'Papers', icon: '📚', feature: 'papers' },
     ],
   },
   {
@@ -69,24 +74,47 @@ const TABS: readonly TabEntry[] = [
     label: 'Campus',
     icon: '🏫',
     items: [
-      { to: '/seats', label: 'Seats', icon: '🪑' },
-      { to: '/rooms', label: 'Free Rooms', icon: '🚪' },
-      { to: '/campus', label: 'Campus Map', icon: '📍' },
-      { to: '/bus', label: 'Bus', icon: '🚌' },
-      { to: '/lost-found', label: 'Lost & Found', icon: '🎒' },
-      { to: '/cafeteria', label: 'Cafeteria', icon: '🍽️' },
+      { to: '/seats', label: 'Seats', icon: '🪑', feature: 'seats' },
+      { to: '/rooms', label: 'Free Rooms', icon: '🚪', feature: 'rooms' },
+      { to: '/campus', label: 'Campus Map', icon: '📍', feature: 'campus' },
+      { to: '/bus', label: 'Bus', icon: '🚌', feature: 'bus' },
+      { to: '/lost-found', label: 'Lost & Found', icon: '🎒', feature: 'lostFound' },
+      { to: '/cafeteria', label: 'Cafeteria', icon: '🍽️', feature: 'cafeteria' },
       // Legacy has no Feedback link anywhere in the nav, and the top level is
       // capped at five slots, so it lands in a group. Placement is a judgment
       // call — move it if another group reads better.
-      { to: '/feedback', label: 'Feedback', icon: '💬' },
+      { to: '/feedback', label: 'Feedback', icon: '💬', feature: 'feedback' },
     ],
   },
-  { to: '/groups', label: 'Groups', icon: '🧑‍🤝‍🧑' },
+  { to: '/groups', label: 'Groups', icon: '🧑‍🤝‍🧑', feature: 'groups' },
 ];
 
+/**
+ * The tab bar for one campus: entries whose feature the profile enables.
+ *
+ * A group whose every child is filtered out disappears entirely rather than
+ * rendering an empty dropdown — at NSU the whole Campus group goes, because
+ * every screen in it is a projection of BRACU's CONNECT feed or hand-collected
+ * Merul Badda data.
+ *
+ * A null profile (signed out, or an admin with no campus of their own) keeps
+ * the full bar. Signed-out never renders this component, and hiding tabs from
+ * an admin would take away the screens they moderate — the same exemption
+ * RequireFeature and firestore.rules make.
+ */
+function tabsFor(profile: UniversityProfile | null): readonly TabEntry[] {
+  if (profile === null) return TABS;
+  const keep = (leaf: TabLeaf) => hasFeature(profile, leaf.feature);
+  return TABS.flatMap((entry): TabEntry[] => {
+    if (!isGroup(entry)) return keep(entry) ? [entry] : [];
+    const items = entry.items.filter(keep);
+    return items.length > 0 ? [{ ...entry, items }] : [];
+  });
+}
+
 /** The group containing a path, or null when the path is a single tab. */
-function groupOf(pathname: string): string | null {
-  for (const entry of TABS) {
+function groupOf(entries: readonly TabEntry[], pathname: string): string | null {
+  for (const entry of entries) {
     if (isGroup(entry) && entry.items.some((item) => item.to === pathname)) return entry.group;
   }
   return null;
@@ -94,6 +122,8 @@ function groupOf(pathname: string): string | null {
 
 export function ShellTabs() {
   const { pathname } = useLocation();
+  const university = useUniversity();
+  const entries = useMemo(() => tabsFor(university), [university]);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -152,13 +182,13 @@ export function ShellTabs() {
     slider.style.transform = `translateX(${active.offsetLeft}px)`;
   }, [pathname]);
 
-  const activeGroup = groupOf(pathname);
+  const activeGroup = groupOf(entries, pathname);
 
   return (
     <div className="calc-tabs" ref={barRef}>
       <div className="calc-tab-slider" ref={sliderRef} />
 
-      {TABS.map((entry) => {
+      {entries.map((entry) => {
         if (!isGroup(entry)) {
           return (
             <NavLink
