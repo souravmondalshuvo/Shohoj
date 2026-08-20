@@ -130,8 +130,9 @@ export const STANDING_COPY: Record<
 };
 
 export default function CalculatorResults() {
-  const inputs = useCalculatorBridge().useInputs();
-  const results = computeCalculatorResults(inputs);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const results = computeCalculatorResults(inputs, bridge.university);
   const standing = results.standing !== null ? STANDING_COPY[results.standing] : null;
 
   return (
