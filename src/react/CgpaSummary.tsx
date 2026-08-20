@@ -18,8 +18,9 @@ declare global {
 }
 
 export default function CgpaSummary() {
-  const inputs = useCalculatorBridge().useInputs();
-  const { cgpa, headlineLabel } = computeCalculatorResults(inputs);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const { cgpa, headlineLabel } = computeCalculatorResults(inputs, bridge.university);
 
   return (
     <div data-react-cgpa>
