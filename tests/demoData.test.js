@@ -8,19 +8,23 @@ import assert from 'node:assert/strict';
 
 import { demoCalculatorState } from '../src/features/calculator/demoData.ts';
 import { computeCalculatorResults } from '../src/features/calculator/results.ts';
+import { UNIVERSITIES } from '../src/core/university.ts';
 import { nextCompletedSemesterName } from '../src/features/calculator/semesterNaming.ts';
 
 test('demo state mirrors the legacy recruiter dataset', () => {
   const state = demoCalculatorState();
   assert.equal(state.semesters.length, 2);
-  assert.deepEqual(state.semesters.map(s => s.name), ['Fall 2024', 'Spring 2025']);
+  assert.deepEqual(
+    state.semesters.map((s) => s.name),
+    ['Fall 2024', 'Spring 2025'],
+  );
   assert.equal(state.startSeason, 'Fall');
   assert.equal(state.startYear, '2024');
   assert.equal(state.currentDept, 'CSE'); // loadSampleData() parity (#313)
 
   const fall = state.semesters[0];
   assert.deepEqual(
-    fall.courses.map(c => [c.name, c.grade, c.credits]),
+    fall.courses.map((c) => [c.name, c.grade, c.credits]),
     [
       ['Programming Language I (CSE110)', 'A-', 3],
       ['Fundamentals of English (ENG101)', 'A', 3],
@@ -42,7 +46,7 @@ test('every call returns a fresh, non-aliased object graph', () => {
 
 test('demo data computes the expected results through the shared model', () => {
   const state = demoCalculatorState();
-  const results = computeCalculatorResults(state);
+  const results = computeCalculatorResults(state, UNIVERSITIES.bracu);
   // 6 courses × 3 credits: (3.7+4.0+3.3+3.3+3.7+3.0)×3 / 18 = 3.50 exactly.
   assert.equal(results.cgpa.toFixed(2), '3.50');
   assert.equal(results.standing, 'distinction');
