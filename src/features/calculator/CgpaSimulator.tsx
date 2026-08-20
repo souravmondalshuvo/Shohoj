@@ -522,7 +522,7 @@ export default function CgpaSimulator() {
   // recalc() parity: auto-fill remaining credits from the department
   // requirement minus earned — but never while the field is focused, and never
   // over a manually-typed value (the legacy dataset.auto + activeElement rule).
-  const results = computeCalculatorResults(inputs);
+  const results = computeCalculatorResults(inputs, bridge.university);
   const dept = getDepartment(inputs.currentDept);
   const auto =
     dept && dept.totalCredits > 0
