@@ -10,6 +10,7 @@
 // (colors, copy, emoji) stays in the components.
 
 import { calculateCgpaTotals } from '../../core/gpa.ts';
+import type { UniversityProfile } from '../../core/university.ts';
 import type { SemesterEntry, SemesterSeason } from '../../core/types.ts';
 import { standingTierFor } from './milestones.ts';
 import type { StandingTier } from './milestones.ts';
@@ -98,10 +99,20 @@ function isIncomplete(semester: SemesterEntry): boolean {
   );
 }
 
-export function computeCalculatorResults(inputs: ResultsInputs): CalculatorResults {
+/**
+ * @param university The campus whose rules apply. Required rather than
+ * defaulted: this function produces the headline CGPA, and a default here
+ * would be indistinguishable from a correct answer at every call site.
+ */
+export function computeCalculatorResults(
+  inputs: ResultsInputs,
+  university: UniversityProfile,
+): CalculatorResults {
   const options = {
     startSeason: inputs.startSeason,
     startYear: inputs.startYear,
+    scale: university.grades,
+    retake: university.retake,
   };
   const projected = calculateCgpaTotals(inputs.semesters, {
     ...options,
@@ -115,7 +126,11 @@ export function computeCalculatorResults(inputs: ResultsInputs): CalculatorResul
   });
 
   const hasRunning = inputs.semesters.some((semester) => semester.running);
-  const meterPercent = completed.cgpa !== null ? Math.min((completed.cgpa / 4) * 100, 100) : 0;
+  // Against the campus ceiling, not a literal 4.0. BRACU and NSU both top out
+  // at 4.0 today, so this changes nothing now — but a campus on a 5.0 scale
+  // would otherwise show a full meter at 80%.
+  const meterPercent =
+    completed.cgpa !== null ? Math.min((completed.cgpa / university.grades.max) * 100, 100) : 0;
 
   return {
     cgpa: projected.cgpa,
