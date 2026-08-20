@@ -21,7 +21,8 @@ interface CgpaCreditTotalProps {
 }
 
 export default function CgpaCreditTotal({ metric }: CgpaCreditTotalProps) {
-  const inputs = useCalculatorBridge().useInputs();
-  const results = computeCalculatorResults(inputs);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const results = computeCalculatorResults(inputs, bridge.university);
   return formatCredits(metric === 'attempted' ? results.attemptedCredits : results.earnedCredits);
 }
