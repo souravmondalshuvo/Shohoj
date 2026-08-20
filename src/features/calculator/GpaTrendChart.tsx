@@ -20,8 +20,9 @@ const DIRECTION_COPY: Record<TrendDirection, { label: string; color: string }> =
 };
 
 export default function GpaTrendChart() {
-  const inputs = useCalculatorBridge().useInputs();
-  const trend = computeGpaTrend(inputs.semesters);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const trend = computeGpaTrend(inputs.semesters, bridge.university.grades);
   if (!trend.visible || trend.direction === null) return null;
 
   const geometry = trendChartGeometry(trend.points, VIEW_W, VIEW_H);
