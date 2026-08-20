@@ -36,7 +36,8 @@
 4. Open Semester Planner
 5. View Degree Progress
 6. Explore Faculty Reviews / Past Papers
-7. Review Architecture, Security, and Deployment docs
+7. Visit the standalone [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/), [`/bus/`](https://souravmondalshuvo.github.io/Shohoj/bus/) and [`/lost-found/`](https://souravmondalshuvo.github.io/Shohoj/lost-found/) pages
+8. Review Architecture, Security, and Deployment docs
 
 ## My Role
 
@@ -53,14 +54,23 @@ shipping versus in progress:
   a vanilla-JS application bundled by `build3.py` into `shohoj.html`. A typed
   **React + TypeScript + React Router** rewrite lives alongside it under `src/`
   and is deployed to a beta path (`/app/`). The React shell has reached parity
-  on most routes but is **not yet the default root** — the cutover is a
+  on every route but is **not yet the default root** — the cutover is a
   deliberate, still-pending step (see [docs/architecture/](docs/architecture/)).
-- **The in-app Assistant is gated on its backend.** The chat UI only appears
-  when the Worker reports its Anthropic key is configured (`GET /ready`); until
-  the key is set on the deployed Worker it is intentionally hidden rather than
-  shown-and-broken.
-- **Some features depend on external data feeds** (live seat status, free rooms)
-  that are third-party and best-effort.
+- **Three features are published as standalone pages.** `/campus/`, `/bus/` and
+  `/lost-found/` build from the same typed `src/core` logic through
+  `vite.pages.config.js` and ship on the public site ahead of the cutover, so
+  they are live without waiting on it.
+- **The in-app Assistant is live** and runs on Google's free Gemini tier by
+  default, with OpenAI and Anthropic wired as fallbacks for whoever wants to
+  fund one. It is signed-in only, bounded to degree questions, and hidden
+  outright when the Worker reports no provider is configured (`GET /ready`),
+  rather than offering a button that cannot answer.
+- **Multi-campus tenancy is in progress, not finished.** The campus registry,
+  the sign-in portal, campus-partitioned Firestore rules and the backfill for
+  pre-tenancy documents are all built; a second university is not open to
+  students yet. See [Multi-University Vision](#multi-university-vision).
+- **Some features depend on external data feeds** (live seat status, free rooms,
+  the campus map's room status) that are third-party and best-effort.
 - **No claim of a user base.** This is a portfolio-grade project built for
   BRACU students; adoption numbers are not tracked or advertised.
 
@@ -82,9 +92,14 @@ See [Features — What's Live Today](#features--whats-live-today) and the [Roadm
 | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) | The logging foundation that exists today, and future metrics |
 | [docs/BACKUP_AND_RESTORE.md](docs/BACKUP_AND_RESTORE.md) | Firestore/R2 backup guidance, restore-into-staging, RPO/RTO |
 | [docs/GITHUB_SECURITY_SETTINGS.md](docs/GITHUB_SECURITY_SETTINGS.md) | Admin checklist: private reporting, scanning, branch ruleset, env, secrets |
+| [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) | Step-by-step release process and pre-flight verification |
+| [docs/BETA_TEST_PLAN.md](docs/BETA_TEST_PLAN.md) | Structured beta test plan and scenario coverage |
+| [docs/FULL_REACT_TYPESCRIPT_MIGRATION.md](docs/FULL_REACT_TYPESCRIPT_MIGRATION.md) | The full React/TypeScript migration plan and phase log |
+| [docs/REACT_VITE_MIGRATION.md](docs/REACT_VITE_MIGRATION.md) | The earlier React island / Vite migration notes |
+| [docs/architecture/](docs/architecture/) | Migration roadmap, current state, target architecture, risk register, test matrix, ADRs |
 | [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md) | Script + shot-by-shot storyboard for the 55-second walkthrough (video pending) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and notable changes |
-| [v0.3.0 release notes](docs/RELEASE_NOTES_v0.3.0.md) | Recruiter Demo Release summary and verification |
+| Release notes | [v0.3.0](docs/RELEASE_NOTES_v0.3.0.md) · [v0.4.0](docs/RELEASE_NOTES_v0.4.0.md) · [v0.5.0](docs/RELEASE_NOTES_v0.5.0.md) |
 
 ---
 
@@ -115,6 +130,11 @@ See [Features — What's Live Today](#features--whats-live-today) and the [Roadm
   <img src="assets/screenshots/mobile-view.png" alt="Shohoj mobile view" width="320" />
 </p>
 
+> Screenshots for the newer features (Assistant, Campus Map, Lost & Found, Bus
+> Routes, Next Registration, marks tracker) are not captured yet — the [live
+> site](https://souravmondalshuvo.github.io/Shohoj) is the current reference for
+> those.
+
 ---
 
 ## What is Shohoj?
@@ -141,7 +161,20 @@ Nobody was building a solution. So I decided to build it myself.
 
 ## Features — What's Live Today
 
-### 🗓️ Routine Builder (New)
+### 🤖 Shohoj Assistant (New)
+
+Ask a question in plain language and get an answer computed from **your own saved data**, using the same grading rules and prerequisite logic the calculator already applies — "what GPA do I need for a 3.5?", "can I take CSE370 next semester?", "are there seats in MAT216?"
+
+- **Three tools, nothing more** — the model can call `get_cgpa_scenario`, `check_prerequisite` and `check_seat_status`. It reads your data; it cannot write to it, and it cannot read anyone else's
+- **Bounded to what Shohoj is for** — courses, grades, CGPA, prerequisites, registration, seats, routines, degree progress, and using the app. Anything else gets a one-line decline rather than an off-topic answer
+- **Free-tier by default, with fallbacks** — runs on Google's Gemini free tier so the feature costs nothing to keep on; if that quota runs out, a configured paid provider (OpenAI, then Anthropic) picks the question up. Same system prompt, same tools, same data rules on every provider
+- **A spending ceiling** — estimated spend accumulates per calendar month and the assistant declines once it hits the configured cap, rather than quietly running up a bill on one person's key. The estimate is deliberately pessimistic, and a ceiling of zero is a clean off switch
+- **Your chat never leaves your browser** — it survives switching tabs, but nothing is stored on any server and closing the tab clears it. Unsaved edits are synced before the first question so it answers on your current grades
+- **Signed-out users see no launcher at all**, and neither does anyone when no provider is configured
+
+Available from the launcher on the main site and as a drawer on the React Router shell.
+
+### 🗓️ Routine Builder
 
 Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it.
 
@@ -150,7 +183,7 @@ Build a clash-free weekly class schedule from the live BRACU section feed, then 
 - **Calendar export** — download an `.ics` with class + exam reminders, or share a scannable QR / link of your routine
 - **Time-of-day & day-off filters** — narrow sections to your availability before building
 
-### 🪑 Seat Status & Seat-Drop Alerts (New)
+### 🪑 Seat Status & Seat-Drop Alerts
 
 Live seat availability across every section, with a watchlist that tells you the moment a full section opens.
 
@@ -158,7 +191,7 @@ Live seat availability across every section, with a watchlist that tells you the
 - **In-browser alerts** — watch a full section and get a browser notification + in-app toast when a seat frees up while Shohoj is open
 - **Email alerts** — a cron-triggered Cloudflare Worker polls the feed centrally and emails you on a real full→open transition, even with Shohoj closed (requires an operator-configured verified email sender; fails safe and logs when unconfigured)
 
-### 🏫 Free Rooms (New)
+### 🏫 Free Rooms
 
 Find empty classrooms right now or across the week, computed from the live timetable.
 
@@ -166,16 +199,68 @@ Find empty classrooms right now or across the week, computed from the live timet
 - **Weekly availability** — click a room to see its full-week free/busy grid in a modal
 - **Feed-aware** — derived purely from the scheduled timetable; no ad-hoc booking data is invented
 
-### 👤 Profile (New)
+### 🗺️ Campus Map (New)
+
+A procedural 3D campus tower at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/) that renders live room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab.
+
+- **Live room status in three dimensions** — floors and rooms light by occupancy, so "where is there a free room right now" is a glance rather than a scan
+- **Presentation-only 3D** — the Three.js canvas (light rig, glass envelope, motion) is an enhancement over the accessible underlying room data, never the only way to read it
+- **Standalone page** — published on the public site through the consolidated multi-page build, ahead of the shell cutover
+
+### 🧳 Lost & Found (New)
+
+A campus lost-and-found board at [`/lost-found/`](https://souravmondalshuvo.github.io/Shohoj/lost-found/), built on a **no-contact model**.
+
+- **Contact details stay private** — they are never rendered on the board. A claim is relayed to the poster **by email through the Cloudflare Worker**, so neither side has to publish an address to a public page
+- **Post lost or found items** with type, title, description, a location hint and a room code
+- **Admin moderation** — the admin dashboard has a Lost & Found section for removing abusive or resolved posts
+
+### 🚌 Bus Routes & Timings (New)
+
+Shuttle routes and schedules at [`/bus/`](https://souravmondalshuvo.github.io/Shohoj/bus/), transcribed from the official BRACU transport brochure — available both as a shell route and as a standalone page.
+
+### 🍽️ Cafeteria Guide (New)
+
+A directory of on-campus food outlets on the shell, deliberately conservative about what it claims.
+
+- **No menus, no prices** — those change constantly and a stale price is worse than no price
+- **Hours carry a `verified` flag** — until an outlet's hours are confirmed, the open/closed-now badge is suppressed and the card says "Hours not yet confirmed" rather than asserting a status from placeholder data
+- **The only live element** is the open/closed-now badge, derived from your device clock — no claimed live feed
+
+### 👤 Profile
 
 A signed-in student's account hub — one home for data otherwise scattered across tabs. Gated on the existing Firebase auth; signed-out users see a sign-in prompt.
 
 - **Account header** — name, BRACU email, safe avatar, sign out
 - **Seat watchlist + email-alert toggle** — see what you're watching and arm/pause email alerts independently
-- **Routine + planner snapshot** and **your reviews** — read locally; the reviews list uses a privacy-preserving local receipt so no UID-indexed query can de-anonymize a review
+- **Semester history** — each semester's GPA charted from the transcript you already imported (nothing re-uploaded), with a semester that has nothing graded saying so rather than being drawn as 0.00
+- **Exam crunch** — follows the calendar, opening on whichever exam period is still ahead and leading with the countdown to your next exam; exams already sat read as **done** rather than pending, and dates are compared in campus time
+- **Your reviews** — read locally through a privacy-preserving local receipt, so no UID-indexed query can de-anonymize a review
 - **Hard non-goal** — Shohoj never collects or stores BRACU CONNECT credentials; there is no such field anywhere
 
-### 📅 Semester Planner (New)
+### 🎯 Next Registration (New)
+
+On `/profile/`, what you can actually sign up for next semester — computed by joining the section feed's prerequisite rules against your imported grade sheet, instead of leaving you to cross-reference a transcript with a curriculum PDF.
+
+- **Unlocked now** — everything on offer whose prerequisites you have met
+- **One course away** — courses that open the moment you pass one specific course, listed only when that course is itself takeable right now, so it is a real next step rather than a different wall
+- **Highest-leverage course** — the single thing you can take that opens the most further courses, ranked **within your own program's curriculum plus the subjects you have actually taken**, so "opens N more" means courses *you* would take (with **Show all departments** to lift the filter)
+- **Compound rules read properly** — `(PHY111 AND MAT110) OR (MAT105 AND PHY110)` needs either pair, not all four
+- **Grades count the way BRACU counts them** — any passing letter or a P clears a prerequisite; F, F(NT), W and I don't, so a failed course correctly reappears as the thing to retake
+- **Never falsely ineligible** — a rule Shohoj can't parse is treated as no prerequisite, the course stays listed, and the page tells you how many it couldn't read so you can check with your advisor
+
+### 📊 Per-Course Marks Tracker (New)
+
+Every other projection in Shohoj is denominated in "GPA across your remaining credits", which is true and not something you can act on in week 9. Running-semester course rows carry a **📊** button that answers the question students actually ask each other.
+
+- **Enter components off your syllabus** — midterm, quizzes, assignment: weight, marks scored, marks available
+- **What you're on pace for** — marks in hand, the projected letter, and the honest floor and ceiling (the best and worst letter still arithmetically possible)
+- **What you need on what's left** — for every target still reachable, e.g. "A- needs 91.7% of the remaining 60%". A target you hold no matter what is reported as **secured** (meaning secured under a zero on everything remaining); a target that has become impossible disappears rather than showing a number above 100
+- **Half-known syllabuses are the normal case** — if your weights don't total 100% you still get every figure, with a note saying which part of the course they describe
+- **Opt-in to your CGPA** — a button applies the pace letter to the course when you want it counted, and clearing the last component leaves your data exactly as it was
+- Available on both the classic calculator and the React Router shell, computed by one pure, unit-tested model
+
+### 📅 Semester Planner
 
 Plan your next semester with prerequisite-aware recommendations. Shohoj reads your completed courses and surfaces what you can take now, what is still locked behind missing prerequisites, and what will unlock the most downstream courses if you take it next.
 
@@ -190,7 +275,7 @@ Plan your next semester with prerequisite-aware recommendations. Shohoj reads yo
   <img src="assets/screenshots/semester-planner.png" alt="Semester Planner" width="700" />
 </p>
 
-### 🗺️ Course Difficulty Map (New)
+### 🗺️ Course Difficulty Map
 
 A bird's-eye view of how hard each course actually is, based on real student reviews. Aggregates difficulty and workload ratings across the whole review corpus and surfaces them as a sortable, filterable card grid.
 
@@ -200,7 +285,7 @@ A bird's-eye view of how hard each course actually is, based on real student rev
 - **Sort by code, difficulty, or workload** — flip between alphabetical course code, hardest-first, or heaviest-workload-first ordering
 - **One-click drill-down** — tapping a card jumps straight to the per-course review panel for that course
 
-### ⭐ Faculty Reviews (New)
+### ⭐ Faculty Reviews
 
 Pseudonymous faculty ratings from real BRACU students — stored in Firestore, gated behind BRACU G-Suite sign-in.
 
@@ -228,7 +313,7 @@ Review submissions go through the Cloudflare Worker (`POST /reviews`) before the
 
 The Worker strips identity fields from the public review body before committing. Stronger operator-level anonymity would require a more advanced backend design with blind tokens or another unlinkable submission protocol.
 
-### 📚 Past Papers & Notes (New)
+### 📚 Past Papers & Notes
 
 BRACU-only resource sharing for course papers, notes, assignments, lab reports, and quizzes.
 
@@ -237,13 +322,14 @@ BRACU-only resource sharing for course papers, notes, assignments, lab reports, 
 - **Secure file proxy** — file bodies live in Cloudflare R2 and are accessed only through a Firebase-token-verified Worker
 - **Owner-scoped storage paths** — new uploads are stored under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, and Firestore rules reject metadata that points at another user's upload path
 - **Strict file allowlist** — uploads are capped at 10 MB and restricted to PDF, PNG, JPEG, WebP, or GIF
+- **Content-type sniffing** — pre-migration R2 objects that lack a stored MIME type are identified by magic bytes in both the Worker and the client, so older PDFs and images still preview instead of rendering blank
 - **Report flow** — every paper can be reported once per user for admin review
 
 <p align="center">
   <img src="assets/screenshots/past-papers.png" alt="Past Papers and Notes" width="700" />
 </p>
 
-### 💬 Feedback Board (New)
+### 💬 Feedback Board
 
 In-app product feedback for bugs, feature ideas, and general comments.
 
@@ -252,7 +338,7 @@ In-app product feedback for bugs, feature ideas, and general comments.
 - **Private upvote state** — upvote documents are readable only by the voter or admins, so the UI shows your own vote state rather than exposing global voter data
 - **Admin cleanup** — admin-claim moderators can remove abusive or duplicate feedback
 
-### 🧑‍🤝‍🧑 Study Group Finder (New)
+### 🧑‍🤝‍🧑 Study Group Finder
 
 Post a study group for a course, find classmates, and join open groups — all gated behind BRACU G-Suite sign-in.
 
@@ -263,12 +349,12 @@ Post a study group for a course, find classmates, and join open groups — all g
 - **Report flow** — every group has a Report action writing to an admin-only `studyGroupReports` queue, capped at one report per user per group
 - **Hard non-goal** — Shohoj never collects BRACU CONNECT credentials; the only contact field is a user-supplied public chat link
 
-### 🛡️ Admin Dashboard (New)
+### 🛡️ Admin Dashboard
 
 A separate admin shell at `/admin/` for moderation and audit work.
 
 - **Custom-claim access** — only Firebase users with `admin: true` can open the dashboard or perform admin actions
-- **Moderation queues** — pending papers, paper reports, review reports, and feedback are handled in one place
+- **Moderation queues** — pending papers, paper reports, review reports, feedback, and lost & found posts are handled in one place
 - **Safe file deletion** — reported-paper deletion resolves the paper metadata first, then deletes both the R2 object and Firestore metadata
 - **Audit logs** — admin actions are written to immutable `adminLogs` documents
 
@@ -285,11 +371,12 @@ Sign in with your BRACU G-Suite account (`@g.bracu.ac.bd`) and your data syncs a
 - **Real-time updates** — if you edit on another device, this one reloads automatically
 - **Offline support** — changes save locally and sync when you reconnect
 - **Migration flow** — if you already have local data, a modal lets you choose which to keep
+- **Conflict resolution by choice, not by clock** — when both this device and your account already hold data, a dialog asks which to keep; it never silently overwrites and never picks "most recent" behind your back
 - **Data deletion** — delete your cloud data any time from the sign-out modal
 
 ### 🎓 Smart CGPA Calculator
 
-Full semester-based GPA and CGPA calculation using BRACU's exact grading scale. Supports all grade types — A through F, F(NT) (no transfer), Pass/Fail, and Incomplete. Handles retake and repeat detection automatically with both **best-grade** policy (students starting Spring 2024 or earlier) and **latest-grade** policy (Fall 2024 onwards).
+Full semester-based GPA and CGPA calculation using BRACU's exact grading scale. Supports all grade types — A through F, F(NT) (no transfer), Pass/Fail, Withdrawn (W), and Incomplete. Handles retake and repeat detection automatically with both **best-grade** policy (students starting Spring 2024 or earlier) and **latest-grade** policy (Fall 2024 onwards).
 
 <p align="center">
   <img src="assets/screenshots/calculator.png" alt="CGPA Calculator" width="700" />
@@ -315,12 +402,16 @@ A dedicated panel with two powerful tools for planning your academic future:
 
 Set a target CGPA and see what average GPA you need across your remaining credits. Includes a difficulty assessment, credit-pace breakdown showing how many semesters it'll take at 9/12/15 credits per semester, and a Smart Retake & Repeat Strategy ranked by CGPA impact.
 
+- **Milestone ladder** — before you name a target, the simulator leads with the standing ladder (Perfect Standing, Higher Distinction, Distinction, Good Standing, Satisfactory, and getting off academic probation), marking each as secured, still reachable, or out of reach against your completed CGPA
+
 ### 🔄 Smart Retake & Repeat Strategy
 
 Select courses to retake or repeat and see exactly how your CGPA changes — individually per course and cumulatively. Each course is tagged with its improvement mechanism:
 
 - **Retake** — for F grades. Re-enroll in the course for a full semester (allowed up to twice).
 - **Repeat** — for grades below B (B- through D-). Sit a special exam once, within 2 semesters of the initial enrollment. No grade cap — the latest grade counts.
+- **Withdrawn (W) courses** are offered as candidates too, priced honestly: re-enrolling adds credits rather than replacing a grade, and they're skipped once you have already retaken the course.
+- **Two orderings** — **Best value** (CGPA gained per credit re-sat, the default) or **Biggest jump** (largest absolute gain), because a 1-credit D and a 3-credit C are different kinds of opportunity and a single ordering hides one of them.
 
 Both mechanisms follow the same intake-based CGPA policy (best grade for Spring 2024 and earlier intakes; latest grade for Fall 2024 onwards).
 
@@ -334,7 +425,9 @@ A visual timeline of your GPA across semesters. Spot patterns, track improvement
 
 ### 🎓 Degree Progress Tracker
 
-Visual timeline of your degree journey — credits earned vs total required, semester-by-semester progress nodes, estimated graduation date based on your current pace, and a running credit pace indicator.
+Visual timeline of your degree journey — credits earned vs total required, semester-by-semester progress nodes, and a running credit pace indicator.
+
+- **Graduation as a range, not a false point** — the estimate carries the window around it (earliest and latest), derived from the spread of your own per-semester credit loads: with four or more semesters, the single slowest and single fastest are dropped and the rest set the range. Semesters where you cleared nothing are excluded from the pace but still count on the timeline, and summary blocks — whose semester count is itself an estimate — don't feed the range at all.
 
 <p align="center">
   <img src="assets/screenshots/degree-progress.png" alt="Degree Progress Tracker" width="700" />
@@ -382,7 +475,7 @@ Pre-built semester templates for **CSE, CS, ECE, EEE, BBA, Economics, English, A
 
 ### 🌓 Dark & Light Theme
 
-Full dark and light mode with smooth transitions, persisted across sessions.
+Full dark and light mode with smooth transitions, persisted across sessions (`shohoj_theme`, defaulting to dark). The theme is tokenized and applies to the classic app, the React Router shell, and the standalone `/campus/`, `/bus/` and `/lost-found/` pages alike.
 
 ---
 
@@ -395,6 +488,7 @@ Shohoj is built to feel like a real product, not a student project.
 - **Custom cursor system** — animated dot + ring + glow with hover/click states, circle-to-I-beam morphing with spring easing
 - **Scroll reveal animations** — IntersectionObserver-powered entrance effects with staggered timing
 - **Responsive layout** — works on desktop and mobile with 6 breakpoints (480px → 1920px)
+- **Accessibility as a gate, not a wish** — route-level axe smoke tests across every shell content route, focus trap and restore in dialogs, 44px touch targets, and no-horizontal-overflow guards at 360/414px, all enforced in CI
 
 ---
 
@@ -429,19 +523,21 @@ Shohoj is built to feel like a real product, not a student project.
 | ----------- | ----------------------------------------------------- | ------------------------------------------------------ |
 | Shipping frontend | HTML, CSS, vanilla JavaScript (bundled by `build3.py`) | The production app people use today (`shohoj.html`)    |
 | Beta frontend | TypeScript, React 19, React Router, Vite            | The typed rewrite under `src/`, deployed to `/app/` (not yet the default root) |
+| Standalone pages | Vite multi-page build (`vite.pages.config.js`)     | `/campus/`, `/bus/`, `/lost-found/` — shipped on the public site ahead of the cutover |
+| 3D          | [Three.js](https://threejs.org/)                      | The procedural campus tower on `/campus/` (presentation layer only) |
 | Validation  | [Zod](https://zod.dev/)                               | Runtime schema validation for imported/restored data   |
 | Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF)            | Generating grade report PDFs                            |
 | Charts      | [Chart.js](https://www.chartjs.org/)                  | Admin dashboard and analytics visualizations           |
-| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, and the Assistant relay |
-| Assistant   | Anthropic Claude (Haiku) via the Worker               | In-app assistant; the key lives only on the Worker, never in the client |
-| Build       | Python (`build3.py`) + Vite                           | `build3.py` bundles the shipping app; Vite builds the React shell/pages |
-| Hosting     | GitHub Pages                                          | Static hosting for both the shipping app and the `/app/` beta |
-| Testing     | Node.js test runner + Playwright + `@firebase/rules-unit-testing` | Unit tests (app logic + Worker), browser E2E, and Firestore rules tests against the emulator |
+| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, the Assistant relay, and the seat-alert / lost-&-found cron |
+| Assistant   | Google Gemini (free tier) via the Worker, with OpenAI and Anthropic Claude as fallbacks | In-app assistant; every key lives only on the Worker, never in the client, behind a monthly spend ceiling |
+| Build       | Python (`build3.py`) + Vite                           | `build3.py` bundles the shipping app; Vite builds the React shell and the standalone pages |
+| Hosting     | GitHub Pages                                          | Static hosting for the shipping app, the standalone pages, and the `/app/` beta |
+| Testing     | Node.js test runner + Playwright + `@firebase/rules-unit-testing` | Unit tests (app logic + Worker), browser E2E, visual parity, and Firestore rules tests against the emulator |
 | CI / CD     | GitHub Actions + GitHub Pages                         | One pipeline: full validation on every PR/push; deploy only after it passes, on push to main |
 
-CDN scripts in the shipping app are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering; the React shell bundles its dependencies through Vite instead.
+CDN scripts in the shipping app are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering; the React shell and standalone pages bundle their dependencies through Vite instead.
 
 **Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, format check, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, so a red suite blocks production deployment. Firestore rules/index deploys **fail closed** — if the rules changed but the deploy credentials are missing, the job errors rather than reporting a green deploy over stale production rules. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test; the Worker deploy runs its own `/health` + `/ready` smoke check. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
 
@@ -458,11 +554,11 @@ CDN scripts in the shipping app are loaded with **SRI integrity hashes** (`sha38
 > exact enablement checklist.
 
 **On the two frontends:** the vanilla `js/` app is still what `build3.py` bundles
-and ships, so production stays stable while the typed rewrite is validated. The
-React shell (`src/`) — a parity-tested typed domain core, feature slices, and a
-React Router shell — has migrated most routes and is deployed to `/app/`, but is
-**not yet the default root**. See [docs/architecture/](docs/architecture/) for the
-migration roadmap, target architecture, and decision records.
+and ships at the site root, so production stays stable while the typed rewrite is
+validated. The React shell (`src/`) — a parity-tested typed domain core, feature
+slices, and a React Router shell — has migrated every route and is deployed to
+`/app/`, but is **not yet the default root**. See [docs/architecture/](docs/architecture/)
+for the migration roadmap, target architecture, and decision records.
 
 ### Architecture at a glance
 
@@ -471,12 +567,16 @@ Browser
   │
   │ loads runtime-config.js (Firebase web config, generated from secrets)
   ▼
-GitHub Pages — bundled HTML/CSS/JS (shohoj.html, admin.html, profile.html)
+GitHub Pages
+  ├── /            — bundled HTML/CSS/JS (shohoj.html, admin.html, profile.html)
+  ├── /campus/  /bus/  /lost-found/
+  │                — standalone Vite pages (dist-pages)
+  └── /app/        — React Router shell beta (dist-shell)
   │
   │ Firebase Auth (BRACU @g.bracu.ac.bd sign-in)
   │ App Check (reCAPTCHA v3)
   ▼
-Firestore (rules-enforced for browser clients)
+Firestore (rules-enforced for browser clients; campus-partitioned)
   ├── users/{uid}            — semesters, grades, settings
   ├── facultyReviews/{hash}  — pseudonymous, append-only reviews
   ├── reviewReports/{...}    — moderation queue (admin-read)
@@ -491,11 +591,20 @@ Firestore (rules-enforced for browser clients)
   │                          — member-only roster (own email pinned)
   ├── studyGroupReports/{uid_groupId}
   │                          — study group moderation queue (admin-read)
+  ├── lostFoundPosts/{id}    — lost & found board
+  ├── lostFoundContacts/{id} — private contact details (never public)
+  ├── lostFoundClaims/{id}   — claims, relayed to posters by the cron
+  ├── seatAlertWatches/{uid} — per-user watched sections
+  ├── seatAlertState/{...}   — cron-side full→open transition state
   └── adminLogs/{id}         — admin action audit trail
 
 Cloudflare Worker (auth-proxy, BRACU email + admin claim)
-  ├── POST /reviews — service-account review writes
-  └── R2 — past-paper PDFs and raster images
+  ├── GET  /health          — liveness + request-id
+  ├── GET  /ready           — capability booleans (never key material)
+  ├── POST /upload, GET /download, DELETE /file — R2 past-paper files
+  ├── POST /reviews         — service-account review writes
+  ├── POST /api/assistant   — Assistant relay (Gemini → OpenAI → Claude)
+  └── scheduled()           — seat-drop alert + lost & found claim emails
 
 Firebase custom claim `admin: true`
   ├── set out-of-band via scripts/set_admin_claim.js
@@ -516,8 +625,10 @@ Shohoj has been through a self-directed security review (no external audit is cl
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
 - **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable by BRACU accounts, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable by BRACU accounts, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. Lost & found contact details live in a separate `lostFoundContacts` collection that no client can read. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Campus partitioning** — client-created `studyGroups`, `appFeedback` and `lostFoundPosts` documents must carry a `university` field pinned to the campus of the writer's own verified email, so one campus's writes cannot land in another's data. Documents written before tenancy existed have no field and default to `bracu`; `scripts/backfill_campus.js` stamps them.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
+- **Assistant key isolation and blast-radius limits** — no model provider key ever reaches the browser; the client talks only to `POST /api/assistant`. The Assistant's three tools are read-only and scoped to the caller's own data, and a monthly spend ceiling stops the relay rather than running up an unbounded bill. `GET /ready` reports capability booleans only, never key material.
 - **Pseudonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic, **unsalted** SHA-256 of `uid | faculty | course` (there is no secret salt — the determinism is what enforces one review per user/faculty/course). This is pseudonymity to other users, **not** anonymity: a project admin can correlate writes, and anyone who already knows a UID can reproduce the hash. Full detail in [docs/SECURITY.md](docs/SECURITY.md).
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules (and App Check once console enforcement is verified — see [docs/SECURITY.md](docs/SECURITY.md)), not by hiding the web config.
 
@@ -546,6 +657,8 @@ Shohoj has been through a self-directed security review (no external audit is cl
 | Semester Planner with Prerequisites | ✅ Complete |
 | Faculty Reviews (anonymous, 5-dim)  | ✅ Complete |
 | Course Difficulty Map               | ✅ Complete |
+| Per-course marks tracker            | ✅ Complete |
+| Next Registration (unlock map)      | ✅ Complete |
 
 ### Phase 2 — Community Layer _(Partially Live)_
 
@@ -557,9 +670,15 @@ Shohoj has been through a self-directed security review (no external audit is cl
 | Admin moderation dashboard         | ✅ Live     |
 | Study group finder                 | ✅ Live     |
 
-### Phase 3 — Campus Life
+### Phase 3 — Campus Life _(Mostly Live)_
 
-Interactive campus map, cafeteria guide, bus routes & timings, lost & found board.
+| Feature                            | Status      |
+| ---------------------------------- | ----------- |
+| Interactive campus map (`/campus/`) | ✅ Live    |
+| Lost & found board (`/lost-found/`) | ✅ Live    |
+| Bus routes & timings (`/bus/`)      | ✅ Live    |
+| Cafeteria guide                     | 🔶 Live — outlet directory only; hours unverified until confirmed, no menus or prices |
+| Routine builder / seat status / free rooms | ✅ Live |
 
 ### Phase 4 — Career & Opportunities
 
@@ -571,21 +690,41 @@ Secondhand textbook market, carpooling board, student discount directory.
 
 ### Phase 6 — Intelligence Layer
 
-Smart semester recommendations, burnout warning system, graduation timeline predictor.
+Smart semester recommendations, burnout warning system, graduation timeline predictor. The [Shohoj Assistant](#-shohoj-assistant-new) is the first piece of this layer to ship.
 
 ---
 
 ## Multi-University Vision
 
-Shohoj is designed from Day 1 to scale beyond BRAC University. The architecture supports university-scoped data — a student logs in with their university email, and the system loads their university's entire ecosystem automatically.
+Shohoj is designed to scale beyond BRAC University, and the seams for it are now
+in the codebase rather than in the plan:
 
-| Stage | Scope                                  |
-| ----- | -------------------------------------- |
-| v1.0  | BRAC University                        |
-| v2.0  | NSU, IUB, EWU                          |
-| v3.0  | All private universities in Bangladesh |
-| v4.0  | Public universities (BUET, DU, CUET)   |
-| v5.0  | South Asia                             |
+- **A campus registry** (`src/core/university.ts`) holds each university's
+  grading scale, retake/repeat policy, identifying email domains, and which
+  features it has data for. Adding a campus is an entry there, not a fork of the
+  calculator. No profile ships on a guessed grade point — the numbers come from
+  the registrar or the official student handbook, and a policy that could not be
+  confirmed is left absent rather than inherited from BRACU.
+- **A sign-in portal** gates the shell: sign-in is what resolves a student to a
+  campus, and the campus decides the grading rules, so the shell asks who you
+  are before showing a calculator. A confidently wrong CGPA is worse than a
+  prompt.
+- **Campus-partitioned data** — Firestore rules pin each client-created
+  community document to the writer's own campus, and `scripts/backfill_campus.js`
+  stamps pre-tenancy documents.
+
+**North South University** is the second profile in the registry. It is **not
+open to students yet** — the remaining work is resolving the active profile
+through the whole calculator path so an NSU transcript is scored on NSU's scale.
+Until that lands, Shohoj is a BRACU app.
+
+| Stage | Scope                                  | Status |
+| ----- | -------------------------------------- | ------ |
+| v1.0  | BRAC University                        | ✅ Live |
+| v2.0  | NSU, IUB, EWU                          | 🔶 Tenancy seams built; NSU profile authored, not yet enabled |
+| v3.0  | All private universities in Bangladesh | Planned |
+| v4.0  | Public universities (BUET, DU, CUET)   | Planned |
+| v5.0  | South Asia                             | Planned |
 
 ---
 
@@ -596,26 +735,21 @@ Shohoj/
 ├── assets/
 │   ├── shohoj-logo.png
 │   └── screenshots/
-├── admin/
-│   └── index.html                Admin shell source
-├── profile/
-│   └── index.html                Profile account-hub shell source
+├── admin/index.html              Admin shell source
+├── profile/index.html            Profile account-hub shell source
+├── campus/                       Standalone campus map page (index.html + main.tsx)
+├── bus/                          Standalone bus routes page
+├── lost-found/                   Standalone lost & found page
 ├── css/
 │   └── style.css                 All styles — themes, animations, glassmorphism, auth UI
 ├── data/
 │   ├── faculty_profiles.jsonl    Seed faculty directory injected by build3.py
 │   └── input_reviews.jsonl       Seed faculty reviews injected by build3.py
-├── js/
-│   ├── admin-entry.js            Entry point for the admin bundle
+├── js/                           The shipping vanilla-JS app (bundled by build3.py)
 │   ├── main.js                   Entry point — wires all modules together
-│   ├── auth/
-│   │   ├── firebase-init.js      Firebase SDK imports, config, App Check, Auth, Firestore
-│   │   ├── firebase.js           Auth orchestration, Firestore sync, admin/paper hooks
-│   │   ├── auth-service.js       Auth UI helpers and avatar safety checks
-│   │   ├── user-sync-service.js  Stored-state parsing and sync fingerprint helpers
-│   │   ├── review-service.js     Review identity window hooks
-│   │   ├── paper-service.js      Papers Worker URL and ID token helpers
-│   │   └── admin-service.js      Admin access window hooks
+│   ├── admin-entry.js            Entry point for the admin bundle
+│   ├── auth/                     Firebase init, auth orchestration, and the
+│   │                             admin / paper / review / assistant service hooks
 │   ├── config/
 │   │   ├── runtime-config.template.js
 │   │   └── runtime-config.js     Generated locally/CI, gitignored
@@ -626,73 +760,98 @@ Shohoj/
 │   │   ├── departments.js        16 department definitions with preset semesters
 │   │   ├── catalog.js            Full BRACU course database (857 courses)
 │   │   ├── calculator.js         GPA/CGPA engine, retake/repeat policy, credit warnings
+│   │   ├── courseMarks.js        Per-course marks tracker model
+│   │   ├── milestones.js         Academic-standing milestone ladder
+│   │   ├── semesterBriefing.js   Exam-crunch / semester briefing model
+│   │   ├── prereq.js             Prerequisite rule parsing and evaluation
+│   │   ├── connectFeed*.js       Live CONNECT section-feed fetch + parsing
+│   │   ├── seatStatus.js         Live seat lookup
+│   │   ├── seatWatch.js          Seat watchlist persistence
+│   │   ├── freeRooms.js          Empty-room derivation from the timetable
+│   │   ├── routine*.js           Routine state, suggestions, grid, faculty, export
+│   │   ├── calendarExport.js     .ics generation
+│   │   ├── assistantClient.js    Assistant relay client + drawer morph
 │   │   ├── dispatch.js           Delegated UI action registry
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
 │   │   ├── papers.js             Past-paper validation and storage hooks
 │   │   ├── reviews.js            Review submission & fetch layer, aggregation helpers
 │   │   └── studyGroups.js        Study group validation + Firestore hook wrappers
-│   ├── ui/
-│   │   ├── render.js             Semester rendering, drag-drop reorder, faculty input
-│   │   ├── suggestions.js        Course autocomplete suggestion portal
-│   │   ├── charts.js             Canvas GPA trend chart
-│   │   ├── simulator.js          CGPA Goal Simulator & Smart Retake & Repeat Strategy
-│   │   ├── playground.js         CGPA Playground — Grade Changer & Reverse Solver
-│   │   ├── planner.js            Semester Planner — prereq checks, plan builder, tree view
-│   │   ├── reviews.js            Review modal, per-course panel, reviews directory
-│   │   ├── reviewsTab.js         Reviews tab — directory browse, faculty/course search
-│   │   ├── difficultyMap.js      Course Difficulty Map — aggregated difficulty + workload by course
-│   │   ├── papersTab.js          Past Papers & Notes browse/upload/report UI
-│   │   ├── previewModal.js       Shared paper preview modal
-│   │   ├── feedback.js           Feedback modal and board
-│   │   ├── groupsTab.js          Study Group Finder — post/browse/join/report, member roster
-│   │   ├── adminDashboard.js     Admin moderation dashboard
-│   │   ├── tracker.js            Degree Progress Tracker with timeline
-│   │   └── modals.js             Transcript import modal, PDF export
-│   ├── animations/
-│   │   ├── cursor.js             Custom animated cursor with event delegation
-│   │   ├── dotmatrix.js          Spring-physics dot matrix canvas background
-│   │   └── reveal.js             IntersectionObserver scroll reveal system
-│   └── import/
-│       └── parser.js             BRACU transcript PDF parser (dual-strategy)
+│   ├── ui/                       Tab and panel rendering — calculator, planner,
+│   │                             simulator, playground, reviews, difficulty map,
+│   │                             papers, feedback, groups, routine, seats, free
+│   │                             rooms, profile, unlock map, assistant FAB,
+│   │                             admin dashboard, tracker, modals
+│   ├── animations/               Custom cursor, dot-matrix canvas, scroll reveal
+│   └── import/parser.js          BRACU transcript PDF parser (dual-strategy)
+├── src/                          TypeScript/React rewrite — deployed to /app/, not the default root
+│   ├── core/                     Typed domain logic (gpa, grades, catalog, reviews,
+│   │                             planner, prereq, routine*, seats, rooms, transcript,
+│   │                             busRoutes, cafeteriaOutlets, campusRooms, lostFound,
+│   │                             university), parity-tested vs js/ via tests/typedCoreParity.test.js
+│   ├── features/
+│   │   ├── calculator/           React calculator — semesters, course rows, summary,
+│   │   │                         simulator, degree progress, marks tracker
+│   │   ├── assistant/            Assistant drawer + relay client
+│   │   └── campus/               Three.js campus scene
+│   ├── app/                      React Router shell — providers, layout, sign-in portal,
+│   │                             and every route (calculator, planner, reviews, routine,
+│   │                             seats, rooms, profile, campus, bus, lost & found,
+│   │                             cafeteria, papers, groups, feedback, degree, admin)
+│   ├── platform/
+│   │   ├── auth/                 Typed auth boundary + auth snapshot (incl. campus resolution)
+│   │   ├── configuration/        Runtime config, feature flags, capabilities
+│   │   ├── firebase/             Typed repositories (users, reviews, papers, feedback,
+│   │   │                         study groups, lost & found, seat alerts, campus stamp)
+│   │   └── observability/        Logger + global error handlers
+│   ├── services/storage/         Versioned typed persistence (keyValueStore, migrate, backup, syncDecision)
+│   ├── state/                    Theme + Notification providers
+│   ├── react/                    Island entry points + CGPA summary/meter components
+│   └── shared/                   Shared UI and validation schema
 ├── scripts/
-│   ├── generate_runtime_config.js Generate local runtime-config.js
+│   ├── generate_runtime_config.js  Generate local runtime-config.js
+│   ├── generate-version-json.mjs   Build stamp published with each deploy
+│   ├── generate_worker_catalog.mjs Generate the Worker's course catalog
+│   ├── validate_data.mjs           Data validation gate (CI)
+│   ├── check_bundle_collisions.py  Guard against duplicate top-level names in the bundle
+│   ├── smoke-production.mjs        Post-deploy production smoke test
+│   ├── smoke-worker.mjs            Worker /health + /ready smoke check
+│   ├── parity_report.mjs           js/ vs src/ parity reporting
+│   ├── run-tests.mjs               Unit test runner
+│   ├── backfill_campus.js          Stamp `university` on pre-tenancy documents
 │   ├── rename_faculty_initials.py  Faculty seed-data maintenance helper
-│   ├── seed_faculty.py           Bulk-import faculty profiles into Firestore
-│   ├── seed_reviews.py           Bulk-import LLM-processed faculty reviews into Firestore
-│   └── set_admin_claim.js        Grant/revoke Firebase admin custom claim
+│   ├── seed_faculty.py             Bulk-import faculty profiles into Firestore
+│   ├── seed_reviews.py             Bulk-import LLM-processed faculty reviews into Firestore
+│   └── set_admin_claim.js          Grant/revoke Firebase admin custom claim
 ├── worker/
-│   ├── index.js                  Cloudflare Worker for R2 paper files
+│   ├── index.js                  Cloudflare Worker — R2 files, review writes, cron
+│   ├── assistant.js              Assistant orchestration + the three read-only tools
+│   ├── assistantProviders.js     Gemini / OpenAI / Claude provider adapters
+│   ├── assistantBudget.js        Monthly spend ceiling
+│   ├── catalog.generated.js      Generated course catalog for the Worker
 │   ├── test/worker.test.js       Worker validation tests
 │   └── wrangler.toml             Worker deploy config
 ├── firestore.rules               Firestore security rules
 ├── firestore.indexes.json        Required Firestore composite indexes
 ├── firebase.json                 Firestore emulator config
-├── tests/                        Node test-runner unit suites (see the CI badge for pass status). Representative:
+├── tests/                        105 Node test-runner unit suites (see the CI badge for pass status). Representative:
 │   ├── calculator.test.js        GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            department detection, semester parsing, blob parser
 │   ├── planner.test.js           prereq resolution, plan validation
 │   ├── reviews.test.js           review submission, aggregation, faculty grouping
+│   ├── courseMarks.test.js       marks tracker — pace, floor/ceiling, needed-mark math
 │   ├── studyGroups.test.js       draft validation, mode/course checks, member summary
 │   ├── routine*.test.js          routine state, suggestions, grid, faculty, export
 │   ├── seatStatus/seatWatch      live seat lookup + watchlist persistence
 │   ├── freeRooms.test.js         empty-room derivation from the timetable
 │   ├── profileTab.test.js        account hub — header, watchlist, alert toggle
+│   ├── backfillCampus.test.js    campus backfill — the cases where a mistake is expensive
 │   ├── typedCoreParity.test.js   src/ typed core parity vs the legacy js/ logic
-│   └── firestore.rules.test.js   77 tests — emulator-driven security rules checks
-├── e2e/                          Playwright E2E for the legacy bundled app + routine, seats, free rooms, profile
-├── e2e-shell/                    Playwright E2E for the React Router shell routes (calculator, planner, reviews, seats, profile, campus life, a11y)
-├── e2e-vite/                     Playwright E2E for the Vite island build
-│                                 (45 spec files total across the three configs)
-├── src/                          TypeScript/React migration — opt-in, NOT the default shipping UI
-│   ├── core/                     Typed ports of domain logic (gpa, grades, catalog, reviews, planner, routine*, seats, rooms…), parity-tested vs js/ via tests/typedCoreParity.test.js
-│   ├── features/calculator/      React calculator — semesters, course rows, summary, ARIA combobox autocomplete; shell bridge reads the real typed catalogue
-│   ├── app/                      React Router shell — providers, routes, routing (hosts the migrated /calculator route)
-│   ├── services/storage/         Versioned typed persistence (keyValueStore, migrate, backup, syncDecision) — not yet wired into the legacy path
-│   ├── state/                    Theme + Notification providers (with pure theme.ts / notifications.ts)
-│   ├── platform/                 Runtime config, feature flags, capabilities, logger
-│   ├── react/                    Island entry points + CGPA summary/meter components
-│   ├── firebase/firebase-entry.js  Firebase island entry point
-│   └── shared/                   Shared UI (Button) and validation schema
+│   └── firestore.rules.test.js   84 emulator-driven security rules checks
+├── e2e/                          Playwright E2E for the legacy bundled app (15 specs)
+├── e2e-shell/                    Playwright E2E for the React Router shell routes (42 specs)
+├── e2e-vite/                     Playwright E2E for the Vite island build (3 specs)
+├── e2e-pages/                    Playwright E2E for the built standalone pages (3 specs)
+├── e2e-visual/                   Visual parity: legacy baseline vs shell (2 specs)
 ├── docs/
 │   └── architecture/             Migration roadmap, current state, target architecture, risk register, test matrix, ADRs
 ├── .github/
@@ -702,11 +861,14 @@ Shohoj/
 │   └── dependabot.yml            Monthly grouped dependency-update policy
 │                                 (CodeQL runs via GitHub's default setup, configured in the UI)
 ├── index.html                    Main HTML shell
-├── playwright.config.js          Playwright config for the legacy bundled app E2E
-├── playwright.shell.config.js    Playwright config for the React Router shell E2E
-├── playwright.vite.config.js     Playwright config for the Vite island build E2E
+├── playwright.config.js          Legacy bundled app E2E
+├── playwright.shell.config.js    React Router shell E2E
+├── playwright.vite.config.js     Vite island build E2E
+├── playwright.pages.config.js    Standalone pages E2E
+├── playwright.visual.config.js   Visual parity E2E
 ├── vite.config.js                Vite multi-entry island build config
 ├── vite.shell.config.js          Vite config for the React Router shell
+├── vite.pages.config.js          Vite config for the standalone /campus/, /bus/, /lost-found/ pages
 ├── eslint.config.js              Flat ESLint config (correctness-only)
 ├── tsconfig.json                 Strict no-emit TypeScript check config
 ├── package.json                  Unit, rules, E2E, typecheck, build, and local config scripts
@@ -727,6 +889,7 @@ Visit **[souravmondalshuvo.github.io/Shohoj](https://souravmondalshuvo.github.io
 ```bash
 git clone https://github.com/souravmondalshuvo/Shohoj.git
 cd Shohoj
+npm ci
 ```
 
 Open `index.html` in your browser, or use a local server:
@@ -734,6 +897,18 @@ Open `index.html` in your browser, or use a local server:
 ```bash
 python3 -m http.server 8000
 # Visit http://localhost:8000
+```
+
+**Run the React shell or the standalone pages:**
+
+```bash
+npm run dev:shell
+# React Router shell (the /app/ beta)
+```
+
+```bash
+npm run dev:pages
+# Standalone pages — open /campus/, /bus/, /lost-found/
 ```
 
 **Run tests:**
@@ -746,6 +921,11 @@ npm run test:rules
 # Runs only Firestore rules tests (requires Java 21+)
 ```
 
+```bash
+npm run test:e2e:shell
+# Playwright E2E for the React Router shell
+```
+
 **Build the bundled version:**
 
 ```bash
@@ -756,6 +936,8 @@ python3 build3.py
 > **Note:** You don't need to run the build manually before pushing — the CD pipeline does it automatically on every push to `main`. Run it locally only if you want to preview the bundled output.
 
 > **Cloud sync:** requires a Firebase project. The live site loads its config from `js/config/runtime-config.js`, which is generated at build time from GitHub Actions secrets and is gitignored. For local development, copy `.env.example` to `.env.local`, fill in your Firebase web config, run `npm run config:local` to generate `runtime-config.js`, and make sure `localhost` is added as an authorized domain in your Firebase console.
+
+> **The Assistant** needs at least one model provider key set on the deployed Worker. Without one, `GET /ready` reports the capability as unavailable and the launcher never renders — the feature is hidden rather than shown-and-broken.
 
 ---
 
@@ -799,23 +981,69 @@ Additional notes on Repeat:
 ### CGPA Calculation
 
 - Grade points follow BRACU's official scale (A/A+ = 4.0, D- = 0.70, F = 0.00).
-- Pass (P) and Incomplete (I) grades are excluded from GPA calculations entirely.
+- Pass (P), Withdrawn (W) and Incomplete (I) grades are excluded from GPA calculations entirely.
 - F(NT) grades count the credits in the denominator but contribute 0 grade points.
 - Running semester courses are included in **projected CGPA** but excluded from **earned credits**.
+
+### Shohoj Assistant
+
+- **Signed-in only.** Signed out there is no launcher — the Assistant has no data to reason about and won't guess.
+- **Requires a configured provider.** With no provider key set on the Worker, the launcher does not render at all.
+- **Bounded scope.** It answers about your courses, grades, CGPA, prerequisites, registration, seats, routines, degree progress, and using Shohoj. Other questions — including coursework it could technically do — get a one-line decline. This is a product decision, not a capability limit.
+- **It is an LLM.** The three tools are deterministic and the numbers they return come from the same engines the calculator uses, but the prose around them is model-generated. Treat advising-critical answers as a starting point, not as your department's word.
+- **A monthly ceiling can stop it.** Once estimated spend reaches the configured cap, the Assistant declines until the month rolls over. The estimate is deliberately pessimistic, so it trips early rather than late.
+- **Chat history is browser-only** — never persisted server-side, cleared when you close the tab.
+
+### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
+
+- All four read the **public CONNECT section feed**, which is third-party and best-effort. If the feed is down or changes shape, these features degrade rather than invent data.
+- **Free Rooms and the campus map show scheduled occupancy only.** There is no ad-hoc room booking feed, so a room that is free on the timetable may still be in use by a club, a makeup class, or an event.
+- **Seat email alerts** require an operator-configured verified email sender. Unconfigured, the cron logs and sends nothing rather than failing silently in a way that looks like delivery.
+- The campus map's 3D rendering is a presentation layer. Room status is readable without it.
+
+### Lost & Found
+
+- **Contact details are never shown on the board.** A claim is relayed to the poster by email through the Worker, which means claims depend on the same operator-configured email sender as seat alerts.
+- Shohoj cannot verify that a claimant actually owns an item. The board makes an introduction; the handover is between two people.
+- Posts are moderated after the fact, not before — report a bad post and an admin can remove it.
+
+### Cafeteria Guide
+
+- **No menus and no prices**, deliberately — both change too often for a static dataset to be trustworthy.
+- Opening hours carry a `verified` flag. An outlet whose hours are unconfirmed shows "Hours not yet confirmed" and no open/closed badge, rather than asserting a status from placeholder data.
+- The open/closed-now badge is derived from your device clock, not from a live feed.
+
+### Bus Routes
+
+- Transcribed from the official BRACU transport brochure at a point in time. Routes and timings change; the page reflects the brochure, not a live vehicle feed.
+
+### Next Registration
+
+- Works from **your program's curriculum plus subjects you have actually taken**, so electives outside the standard plan still count. Use **Show all departments** to see the unfiltered list.
+- If your program cannot be identified, nothing is filtered rather than guessed.
+- A prerequisite rule Shohoj cannot parse is treated as **no prerequisite** — the course stays listed and the page tells you how many rules it couldn't read. It errs toward showing you a course you should check with your advisor, never toward hiding one you're eligible for.
+- Requires an imported transcript. Without one you get an invitation to import rather than an empty page.
+
+### Per-Course Marks Tracker
+
+- The components and weights are **yours to enter** — Shohoj has no access to your actual marks or your course outline.
+- "Secured" means secured under a **zero on everything remaining**, not under your current average.
+- If your weights don't total 100%, every figure is still computed, with a note saying which part of the course it describes.
+- Applying the pace letter to a course is an explicit button press; the tracker never changes your CGPA on its own.
 
 ### Cloud Sync
 
 - Requires a `@g.bracu.ac.bd` Google account. Other email addresses are rejected both client-side and by Firestore security rules.
 - Firestore document limit: **512KB per user**. A typical full transcript is well under 50KB, so this limit is unlikely to be reached in practice.
 - Offline changes are saved to `localStorage` and synced automatically when reconnected.
-- Real-time sync: if you edit data on two devices simultaneously, last-write-wins. No merge conflict resolution is performed.
+- When both a device and the account hold data, the conflict is resolved by **asking you**, on a data fingerprint — never by "newest wins". Simultaneous edits on two devices are still last-write-wins within a session; no field-level merge is performed.
 
 ### Semester Planner
 
 - Prerequisite data fully covers **CSE, EEE, ECE, MAT, PHY, BBA, ECO, and ENG** departments (approx. 300 prerequisite rules).
 - **ARC, PHR, APE, MIC, and BIO** have partial coverage: BRACU does not publish an explicit prerequisite table for these lock-step programs, so only the explicit course progressions (Design I→X, Structure I→VI, Pharmacology I→III, Microbiology Lab I→IV, Intro→Advanced sequences, etc.) are encoded as hard prereqs. Non-sequential courses in these departments are intentionally left unlocked rather than inferred.
 - **ANT and LAW** have no prerequisite data — their curricula are topical with no published or roman-numeral progressions, so all their courses show as unlocked.
-- The planner does not check time conflicts or section availability — that requires integration with BRACU CONNECT, which is planned for a future phase.
+- The planner does not check time conflicts or section availability — for that, use the Routine Builder and Seat Status, which read the live section feed.
 
 ### Faculty Reviews
 
@@ -831,7 +1059,7 @@ Additional notes on Repeat:
 - New files are stored in Cloudflare R2 through the Worker under `papers/{COURSE}/{UPLOADER_UID}/{filename}`. Older two-segment paths remain readable/deletable for backward compatibility. Firestore metadata is written by the Worker after upload validation succeeds.
 - Only PDF, PNG, JPEG, WebP, and GIF files are accepted. SVG and other active or executable formats are rejected.
 - Pending paper metadata is visible only to the uploader and admins. Other students can read paper metadata only after approval.
-- File previews are best-effort. If a browser cannot render a PDF inline, use "Open in new tab."
+- File previews are best-effort. Objects uploaded before MIME types were stored are identified by magic bytes; if a browser still cannot render a PDF inline, use "Open in new tab."
 
 ### Study Group Finder
 
@@ -843,8 +1071,14 @@ Additional notes on Repeat:
 
 ### Degree Progress Tracker
 
-- Graduation estimate assumes your **current credit-per-semester pace** remains constant. One unusually light or heavy semester will skew the estimate temporarily.
+- The graduation estimate is a **range**, derived from the observed spread of your own per-semester credit loads — not a statistical confidence interval. With a handful of semesters to go on, a trimmed observed range is something you can check by eye; a p-value would be false rigour.
+- Semesters where you cleared no credits are excluded from the pace calculation but still appear on the timeline. Summary blocks don't feed the range at all, since their semester count is itself an estimate.
 - Credit requirements are sourced from BRACU's published program structure. If your program has been updated recently, the total may differ by a few credits.
+
+### Multi-Campus
+
+- The registry holds **BRACU and NSU** profiles, but campus resolution is not yet threaded through the whole calculator path — so an NSU student would currently be scored on BRACU's scale. NSU is therefore **not open** yet.
+- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, so no credit-load warning is shown for it — better silent than wrong.
 
 ### Browser Support
 
@@ -858,30 +1092,36 @@ Additional notes on Repeat:
 | Mobile Safari (iOS)     | ✅ Supported (y-threshold patch applied) |
 | IE / Legacy Edge        | ❌ Not supported                         |
 
-Touch devices: the custom cursor and dot-matrix animation are automatically disabled on touch devices.
+Touch devices: the custom cursor and dot-matrix animation are automatically disabled on touch devices. The `/campus/` 3D scene requires WebGL; the underlying room data remains readable without it.
 
 ### Data Storage
 
 | Key                | Location     | Contents                                      |
 | ------------------ | ------------ | --------------------------------------------- |
 | `shohoj_cgpa_v1`          | localStorage | All semesters, grades, department, settings                            |
-| `shohoj_theme`            | localStorage | `"dark"` or `"light"`                                                  |
+| `shohoj_theme`            | localStorage | `"dark"` or `"light"` (defaults to dark)                               |
 | `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
+| `shohoj_seat_alerts_enabled` | localStorage | Whether seat-drop email alerts are armed                            |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
 | `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
 | `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
 | `facultyProfiles/{init}`  | Firestore    | Read-only faculty directory seeded by admin scripts                    |
 | `papers/{paperId}`        | Firestore    | Paper metadata — public only after approval; pending docs are uploader/admin only |
 | `paperReports/{uid_paperId}` | Firestore | Admin-only paper reports, deduplicated per user per paper              |
-| `appFeedback/{id}`        | Firestore    | Feedback board entries                                                  |
+| `appFeedback/{id}`        | Firestore    | Feedback board entries (campus-stamped)                                 |
 | `appFeedbackUpvotes/{feedbackId_uid}` | Firestore | Private per-user upvote state, readable by owner/admin only       |
-| `studyGroups/{groupId}`   | Firestore    | Study group posts — course, mode, schedule, public contact link, capacity; immutable after create |
+| `studyGroups/{groupId}`   | Firestore    | Study group posts — course, mode, schedule, public contact link, capacity; immutable after create (campus-stamped) |
 | `studyGroupMembers/{groupId_uid}` | Firestore | Member roster — own BRACU email pinned, readable by fellow members/admin only |
 | `studyGroupReports/{uid_groupId}` | Firestore | Admin-only study group reports, deduplicated per user per group |
+| `lostFoundPosts/{id}`     | Firestore    | Lost & found board entries (campus-stamped)                             |
+| `lostFoundContacts/{id}`  | Firestore    | Poster contact details — never client-readable; used only by the Worker's claim relay |
+| `lostFoundClaims/{id}`    | Firestore    | Claims awaiting relay; the cron emails the poster and drops the claim   |
+| `seatAlertWatches/{uid}`  | Firestore    | Sections you're watching, for the seat-drop email cron                  |
+| `seatAlertState/{...}`    | Firestore    | Cron-side full→open transition state, so an alert fires once            |
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 
-Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
+Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in `sessionStorage` only, so a chat survives a tab switch and is gone when the tab closes — never localStorage, never Firestore, never the Worker. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
 ### What's Production-Ready
 
@@ -895,14 +1135,24 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | CGPA Playground (Grade Changer, Reverse Solver) | ✅ Production-ready                                     |
 | CGPA Goal Simulator                             | ✅ Production-ready                                     |
 | Retake & Repeat Strategy Analyzer               | ✅ Production-ready                                     |
-| Degree Progress Tracker                         | ✅ Stable — graduation estimate is an approximation     |
+| Per-Course Marks Tracker                        | ✅ Production-ready                                     |
+| Degree Progress Tracker                         | ✅ Stable — graduation estimate is a range, not a promise |
 | Semester Planner                                | 🔶 Stable — prereq data incomplete for some departments |
+| Next Registration                               | 🔶 Live — unparseable prereq rules are reported, not hidden |
 | Faculty Reviews                                 | 🔶 Live — corpus seeding in progress                    |
 | Course Difficulty Map                           | 🔶 Live — aggregates grow with the review corpus        |
 | Past Papers & Notes                             | 🔶 Live — moderated community library                   |
 | Feedback Board                                  | ✅ Production-ready                                     |
 | Study Group Finder                              | 🔶 Live — capacity is advisory; contact links are user-supplied |
+| Routine Builder / Seat Status / Free Rooms      | 🔶 Live — depend on the third-party CONNECT feed        |
+| Campus Map                                      | 🔶 Live — scheduled occupancy only, no ad-hoc bookings  |
+| Lost & Found                                    | 🔶 Live — claim relay needs a configured email sender   |
+| Bus Routes                                      | ✅ Live — static, from the official brochure            |
+| Cafeteria Guide                                 | 🔶 Live — outlet directory; hours unverified until confirmed |
+| Shohoj Assistant                                | 🔶 Live — free-tier model, monthly spend ceiling, scope-bounded |
 | Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
+| React Router shell (`/app/`)                    | 🔶 Beta — full route parity, cutover still pending      |
+| Multi-campus tenancy                            | 🔶 In progress — seams built, second campus not enabled |
 
 ---
 
@@ -917,9 +1167,9 @@ Shohoj is built for students, by students. Contributions are welcome.
    ```bash
    git checkout -b feature/your-feature-name
    ```
-3. **Make your changes** — follow the existing code style (vanilla JS, no frontend framework)
-4. **Test** — run `npm test` to verify the unit and Firestore rules tests pass
-5. **Build** — run `python3 build3.py` to regenerate the bundled file
+3. **Make your changes** — match the conventions of whichever frontend you're touching (see below)
+4. **Test** — run `npm test`, and `npm run lint` + `npm run typecheck`, before pushing
+5. **Build** — run `python3 build3.py` if you changed the shipping app, to check the bundle still builds
 6. **Submit a pull request** with a clear description of what you changed and why
 
 ### Ways to Help
@@ -927,17 +1177,33 @@ Shohoj is built for students, by students. Contributions are welcome.
 - **Developers** — pick an open issue or build a planned feature from the roadmap
 - **Designers** — improve UI/UX, suggest layout changes, create assets
 - **BRACU Students** — test the transcript import with your own grade sheet, report bugs
-- **Students from Other Universities** — help adapt Shohoj for your university's grading system
+- **Students from Other Universities** — help adapt Shohoj for your university's grading system (start at `src/core/university.ts`)
 - **Campus Ambassadors** — spread the word at your university when Shohoj expands
 
 ### Code Guidelines
 
-- Shohoj is **vanilla HTML/CSS/JS** — no frontend framework, no bundler beyond `build3.py`
-- All cross-module calls use `window._shohoj_*` to avoid circular imports
-- UI actions should use delegated `data-action` handlers registered through `js/core/dispatch.js`
+**The codebase has two frontends.** Which rules apply depends on where you are:
+
+**`js/` — the shipping vanilla-JS app** (bundled by `build3.py`, served at the site root)
+
+- Vanilla HTML/CSS/JS, no framework. Cross-module calls go through `window._shohoj_*` to avoid circular imports
+- UI actions use delegated `data-action` handlers registered through `js/core/dispatch.js`. **Never inline `on*` attributes** — the production CSP blocks them, and dev/E2E run un-bundled so CI won't catch it
 - **Escape all user-sourced strings** with `escHtml()` / `escAttr()` from `helpers.js` before any `innerHTML` insertion — do not bypass this for convenience
+- `build3.py` flattens every module into one scope, so a duplicate top-level name silently breaks the bundle. `npm run check:collisions` guards this in CI
+- Adding a tab? Wire it into `build3.py`'s `MAIN_JS_FILES` and the `restoreCalcTab` hash branch, then verify with `python3 build3.py` and `npm run test:bundle`
+
+**`src/` — the TypeScript / React Router shell** (Vite, deployed to `/app/`)
+
+- Strict TypeScript, no emit. `npm run typecheck` is a CI gate
+- Domain logic belongs in `src/core/` as pure, framework-free modules, parity-tested against `js/` via `tests/typedCoreParity.test.js`. Keep the two in sync when you change shared behaviour
+- Firebase access goes through the typed repositories in `src/platform/firebase/`, never directly from a component
+- New routes need a route-level Playwright + axe smoke test in `e2e-shell/`
+
+**Everywhere**
+
 - **All new logic must have tests** in the nearest relevant test file, or a new focused test file if the feature needs one
-- Test locally with `npm test` before submitting a pull request
+- **Never commit `shohoj.html`** or any other build artifact — it is generated by `build3.py` in CI
+- If you add a `firebase-auth` or `firestore` import, add a matching export to the smoke-test stub in `productionBundleSmoke.test.js` or `npm run test:bundle` fails
 - Check that **jsPDF export** doesn't break — only ASCII characters in helvetica font strings
 
 ---
