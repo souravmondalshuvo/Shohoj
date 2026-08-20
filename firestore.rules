@@ -43,6 +43,15 @@ service cloud.firestore {
     // Reads therefore default a missing field to 'bracu'. Creates do NOT get
     // that courtesy: every validator below requires the field explicitly, so a
     // new document can never fall into another campus by omission.
+    //
+    // This default covers READS ONLY, and that limit matters. A query that
+    // filters `where('university','==','bracu')` does not match a document
+    // where the field is absent — it is not a null comparison, the document is
+    // simply not in that index. So client queries must not be scoped by campus
+    // until scripts/backfill_campus.js has stamped the existing documents;
+    // doing it the other way round hides every pre-tenancy document from the
+    // students it belongs to, while these rules go on permitting reads nobody
+    // is asking for any more.
     function docCampus(data) {
       return 'university' in data ? data.university : 'bracu';
     }
