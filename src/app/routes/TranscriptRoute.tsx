@@ -26,6 +26,9 @@ import TranscriptImport, {
 import type { SemesterSeason } from '../../core/types.ts';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { useNotifications } from '../../state/NotificationProvider';
+import { useUniversity } from '../providers/AuthProvider';
+import { CampusRequired } from '../routing/CampusRequired';
+import type { GradeScale } from '../../core/university.ts';
 
 const COURSE_BY_CODE = new Map(
   BRACU_COURSE_CATALOG.map((c) => [c.code, { full: c.full, credits: c.credits }]),
@@ -36,7 +39,13 @@ function fmtGpa(value: number | null): string {
   return value !== null ? value.toFixed(2) : '—';
 }
 
-function SemesterCard({ semester }: { readonly semester: SemesterEntry }) {
+function SemesterCard({
+  semester,
+  scale,
+}: {
+  readonly semester: SemesterEntry;
+  readonly scale: GradeScale;
+}) {
   if (semester.summary) {
     return (
       <li className="transcript-sem transcript-sem--summary" data-testid="transcript-summary">
@@ -53,7 +62,7 @@ function SemesterCard({ semester }: { readonly semester: SemesterEntry }) {
       </li>
     );
   }
-  const gpa = semester.running ? null : gpaCoreCalcSemesterGpa(semester);
+  const gpa = semester.running ? null : gpaCoreCalcSemesterGpa(semester, scale);
   const credits = semester.courses.reduce(
     (sum, c) => sum + (c.credits && c.grade !== '' ? c.credits : 0),
     0,
@@ -96,6 +105,7 @@ function SemesterCard({ semester }: { readonly semester: SemesterEntry }) {
 }
 
 export function Component() {
+  const university = useUniversity();
   const { notify } = useNotifications();
   const store = useMemo(() => createBrowserStore(), []);
   const loaded = useMemo(() => loadCalculatorState(store), [store]);
@@ -115,15 +125,23 @@ export function Component() {
 
   const results = useMemo(
     () =>
-      computeCalculatorResults({
-        semesters: state.semesters,
-        startSeason: state.startSeason as SemesterSeason | '',
-        startYear: state.startYear,
-      }),
-    [state],
+      university === null
+        ? null
+        : computeCalculatorResults(
+            {
+              semesters: state.semesters,
+              startSeason: state.startSeason as SemesterSeason | '',
+              startYear: state.startYear,
+            },
+            university,
+          ),
+    [state, university],
   );
 
   const hasData = state.semesters.length > 0;
+
+  // Below every hook — see CalculatorRoute for why the guard sits here.
+  if (university === null || results === null) return <CampusRequired />;
 
   return (
     <section className="shell-page transcript-page" data-testid="transcript-page">
@@ -169,7 +187,7 @@ export function Component() {
           </div>
           <ul className="transcript-sems" data-testid="transcript-sems">
             {state.semesters.map((semester) => (
-              <SemesterCard key={semester.id} semester={semester} />
+              <SemesterCard key={semester.id} semester={semester} scale={university.grades} />
             ))}
           </ul>
         </>
