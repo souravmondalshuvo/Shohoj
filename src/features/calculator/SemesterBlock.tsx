@@ -21,6 +21,7 @@ import CourseMarksPanel from './CourseMarksPanel';
 import type { CourseSuggestion } from './courseSearch';
 import { gpaBadgeColors } from './colors';
 import { getReviewableCourseCode } from './reviewableCourse';
+import { useCalculatorBridge } from './calculatorBridge.ts';
 
 export interface SemesterBlockProps {
   readonly sem: SemesterEntry;
@@ -88,8 +89,12 @@ export default function SemesterBlock({
   const isRunning = !!sem.running;
   // Which rows have the marks tracker expanded — view state, not saved data.
   const [openMarks, setOpenMarks] = useState<ReadonlySet<number>>(() => new Set());
-  const gpa = calcSemesterGpa(sem);
-  const warning = getSemesterCreditWarning(sem);
+  // NSU publishes no confirmed per-semester credit limits, so its profile
+  // carries no creditLoad and getSemesterCreditWarning returns null — no
+  // warning at all, which beats showing BRACU's 9/12/15 to an NSU student.
+  const university = useCalculatorBridge().university;
+  const gpa = calcSemesterGpa(sem, university.grades);
+  const warning = getSemesterCreditWarning(sem, university);
   const isIncomplete = !isRunning && sem.courses.some((c) => (c.name ?? '').trim() && !c.grade);
 
   return (
