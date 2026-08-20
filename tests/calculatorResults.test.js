@@ -6,10 +6,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  computeCalculatorResults,
-  formatCredits,
-} from '../src/features/calculator/results.ts';
+import { UNIVERSITIES } from '../src/core/university.ts';
+
+import { computeCalculatorResults, formatCredits } from '../src/features/calculator/results.ts';
 
 let nextId = 1;
 
@@ -34,8 +33,11 @@ function summaryBlock(cgpa, credits, attempted = credits) {
   };
 }
 
-function compute(semesters) {
-  return computeCalculatorResults({ semesters, startSeason: '', startYear: '' });
+// BRACU explicitly: every expectation below is a BRACU number, and pinning the
+// campus here is what makes this suite a parity guard rather than a test of
+// whatever the default happens to be.
+function compute(semesters, university = UNIVERSITIES.bracu) {
+  return computeCalculatorResults({ semesters, startSeason: '', startYear: '' }, university);
 }
 
 // ── Empty / headline ─────────────────────────────────────────────────────────
@@ -92,7 +94,7 @@ test('only running courses → projected-only meter status with the projected fi
 test('graded meter tiers follow the recalc() cutoffs', () => {
   // Single-course semesters, so the completed CGPA equals the grade point:
   // A 4.0 ≥ 3.75 · A- 3.7 ≥ 3.5 · B+ 3.3 ≥ 3.0 · B- 2.7 ≥ 2.5 · C+ 2.3 below.
-  const byGrade = grade => compute([semester([course('CSE110', grade)])]).meterStatus.kind;
+  const byGrade = (grade) => compute([semester([course('CSE110', grade)])]).meterStatus.kind;
   assert.equal(byGrade('A'), 'outstanding');
   assert.equal(byGrade('A-'), 'excellent');
   assert.equal(byGrade('B+'), 'good');
@@ -115,7 +117,7 @@ test('recovery status interpolates the projected CGPA like recalc() does', () =>
 test('standing tiers follow the BRACU cutoffs on the completed CGPA', () => {
   // 1 summary credit keeps points/credits division exact (cgpa*1/1), so the
   // boundary values compare exactly against the cutoffs.
-  const withSummary = cgpa => compute([summaryBlock(cgpa, 1)]).standing;
+  const withSummary = (cgpa) => compute([summaryBlock(cgpa, 1)]).standing;
   assert.equal(withSummary(4.0), 'perfect');
   assert.equal(withSummary(3.97), 'perfect');
   assert.equal(withSummary(3.96), 'higher-distinction');
