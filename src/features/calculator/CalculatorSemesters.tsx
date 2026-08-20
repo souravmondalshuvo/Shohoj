@@ -20,7 +20,6 @@ import {
   gpaCoreNormalizeGradePoint as normalizeGradePoint,
 } from '../../core/gpa';
 import { detectGrade, type GradeLetter } from '../../core/grades';
-import { UNIVERSITIES } from '../../core/university';
 import type { SemesterEntry, SemesterSeason } from '../../core/types';
 import SemesterBlock from './SemesterBlock';
 import SummaryBlock from './SummaryBlock';
@@ -45,14 +44,11 @@ import { useCalculatorBridge } from './calculatorBridge';
 
 const DEFAULT_SEASONS: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fall'];
 
-// The signed-in student's campus is not available to this component yet — it
-// arrives with the sign-in portal, which is what resolves a user to a profile.
-// Until then this is BRACU's scale, named as such rather than reached for as a
-// bare constant, so switching it is one line and an obvious one.
-const scale = UNIVERSITIES.bracu.grades;
-
 export default function CalculatorSemesters() {
   const bridge = useCalculatorBridge();
+  // The campus the bridge was built for — BRACU on the legacy island, the
+  // signed-in student's profile on the shell route.
+  const scale = bridge.university.grades;
   const { semesters } = bridge.useInputs();
   const [summaryFormVisible, setSummaryFormVisible] = useState(false);
   const [summaryEditId, setSummaryEditId] = useState<number | null>(null);
