@@ -10,6 +10,7 @@
  * Two files are intentionally NOT run here because they need a different
  * harness; they have their own npm scripts:
  *   - firestore.rules.test.js  → `npm run test:rules`  (Firestore emulator)
+ *   - backfillCampus.test.js   → `npm run test:backfill` (Firestore emulator)
  *   - productionBundleSmoke.test.js → `npm run test:bundle` (needs a build)
  *
  * Usage:
@@ -27,6 +28,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Files that must NOT run via this generic runner (they need a special harness).
 const EXCLUDE = new Set([
   'firestore.rules.test.js', // needs the Firestore emulator → npm run test:rules
+  'backfillCampus.test.js', // needs the Firestore emulator → npm run test:backfill
   'productionBundleSmoke.test.js', // needs a built bundle → npm run test:bundle
   'cspInlineHandlers.test.js', // needs a built bundle → npm run test:csp
 ]);
