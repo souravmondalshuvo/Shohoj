@@ -18,8 +18,12 @@ declare global {
 }
 
 export default function CgpaMeter() {
-  const inputs = useCalculatorBridge().useInputs();
-  const { meterPercent, meterPercentLabel, meterStatus } = computeCalculatorResults(inputs);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const { meterPercent, meterPercentLabel, meterStatus } = computeCalculatorResults(
+    inputs,
+    bridge.university,
+  );
 
   return (
     <>
