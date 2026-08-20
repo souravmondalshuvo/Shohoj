@@ -77,7 +77,7 @@ export default function DegreeTracker() {
   const inputs = bridge.useInputs();
   const results = computeCalculatorResults(inputs, bridge.university);
   const progress = computeDegreeProgress(
-    inputs,
+    { ...inputs, scale: bridge.university.grades },
     getDepartment(inputs.currentDept),
     results.earnedCredits,
     new Date(),
