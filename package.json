@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
-    "test": "node scripts/run-tests.mjs && npm run test:rules",
+    "test": "node scripts/run-tests.mjs && npm run test:rules && npm run test:backfill",
     "test:unit": "node scripts/run-tests.mjs",
     "test:one": "node scripts/run-tests.mjs",
     "test:worker": "node worker/test/worker.test.js",
@@ -38,7 +38,9 @@
     "validate:data": "node scripts/validate_data.mjs",
     "typecheck": "tsc --noEmit",
     "set:admin": "node scripts/set_admin_claim.js",
-    "config:local": "node scripts/generate_runtime_config.js"
+    "config:local": "node scripts/generate_runtime_config.js",
+    "backfill:campus": "node scripts/backfill_campus.js",
+    "test:backfill": "firebase emulators:exec --only firestore --project shohoj-test \"node tests/backfillCampus.test.js\""
   },
   "engines": {
     "node": ">=24"
