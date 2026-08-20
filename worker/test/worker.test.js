@@ -2013,10 +2013,15 @@ async function makeServiceAccountJson() {
     // Medium is the default and applies to the tool-pick round too, which is
     // pure plumbing — both rounds must ask for low (#553).
     assertEq(bodies.length, 2);
-    assertEq(bodies[0].thinking_level, 'low');
-    assertEq(bodies[1].thinking_level, 'low');
+    assertEq(bodies[0].generation_config.thinking_level, 'low');
+    assertEq(bodies[1].generation_config.thinking_level, 'low');
+    // ...and it must ride INSIDE generation_config. Asserted top-level, this
+    // test passed against a mocked fetch while the real API rejected every
+    // turn with "Unknown parameter 'thinking_level'" (#563), so the location
+    // is pinned explicitly here.
+    for (const body of bodies) assertEq(body.thinking_level, undefined);
     // thinking_level and the legacy thinking_budget together are a 400.
-    for (const body of bodies) assertEq(body.thinking_budget, undefined);
+    for (const body of bodies) assertEq(body.generation_config.thinking_budget, undefined);
   });
 
   await test('free-tier turns are charged nothing by the ceiling', () => {
