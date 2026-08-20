@@ -5,7 +5,7 @@
 // the part of this file worth pinning down; the hover/click behaviour around
 // it is not.
 
-import { hasFeature, type FeatureId, type UniversityProfile } from '../core/university';
+import { hasFeature, type FeatureId, type UniversityProfile } from '../core/university.ts';
 
 export interface TabLeaf {
   readonly to: string;
