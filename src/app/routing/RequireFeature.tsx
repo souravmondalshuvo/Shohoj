@@ -18,6 +18,7 @@ import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
 
 import { useAuth, useUniversity } from '../providers/AuthProvider';
+import { CampusRequired } from './CampusRequired';
 import { hasFeature, type FeatureId } from '../../core/university';
 
 export interface RequireFeatureProps {
@@ -52,17 +53,7 @@ export function RequireFeature({ feature, children }: RequireFeatureProps) {
   // domain check at sign-in but resolves to nothing now, which means the
   // registry changed under a live session. Say so plainly rather than guessing
   // a campus.
-  if (university === null) {
-    return (
-      <section className="shell-page" role="alert">
-        <h1>Campus not recognised</h1>
-        <p className="shell-muted">
-          We couldn&rsquo;t work out which university this account belongs to. Signing out and back
-          in usually fixes it.
-        </p>
-      </section>
-    );
-  }
+  if (university === null) return <CampusRequired />;
 
   if (!hasFeature(university, feature)) {
     return (
