@@ -73,8 +73,9 @@ function SemesterNode({ node }: { readonly node: TrackerNode }) {
 }
 
 export default function DegreeTracker() {
-  const inputs = useCalculatorBridge().useInputs();
-  const results = computeCalculatorResults(inputs);
+  const bridge = useCalculatorBridge();
+  const inputs = bridge.useInputs();
+  const results = computeCalculatorResults(inputs, bridge.university);
   const progress = computeDegreeProgress(
     inputs,
     getDepartment(inputs.currentDept),
