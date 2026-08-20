@@ -14,6 +14,7 @@ import { useId } from 'react';
 
 import type { CourseMarkComponent } from '../../core/types';
 import { computeCourseMarks, type MarkComponent } from './courseMarks';
+import { useCalculatorBridge } from './calculatorBridge.ts';
 
 /** A blank row, so an empty tracker still has somewhere to type. */
 export function blankMarkComponent(): CourseMarkComponent {
@@ -57,9 +58,13 @@ export default function CourseMarksPanel({
   currentGrade,
 }: CourseMarksPanelProps) {
   const fieldId = useId();
+  // The campus mark cutoffs, which diverge far more than the grade points do:
+  // BRACU awards an A- from 85, NSU needs 90; BRACU passes a D at 52, NSU at
+  // 60. Using the wrong table here tells a student to aim for the wrong final.
+  const { marks } = useCalculatorBridge().university.grades;
   // An empty tracker still shows one row; it is not persisted until edited.
   const rows = components.length > 0 ? components : [blankMarkComponent()];
-  const result = computeCourseMarks(rows as readonly MarkComponent[]);
+  const result = computeCourseMarks(rows as readonly MarkComponent[], marks);
 
   const patchRow = (index: number, patch: Partial<CourseMarkComponent>) => {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
