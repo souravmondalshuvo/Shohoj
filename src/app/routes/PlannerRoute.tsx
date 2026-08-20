@@ -50,6 +50,8 @@ import { getPlannerTotals } from '../../features/calculator/plannerTotals.ts';
 import { nextRunningSemesterName } from '../../features/calculator/semesterNaming.ts';
 import { useConfirm } from '../providers/ModalProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
+import { useUniversity } from '../providers/AuthProvider';
+import { CampusRequired } from '../routing/CampusRequired';
 
 const IMPACT_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D'] as const;
 const DISPLAY_CAP = 25;
@@ -74,6 +76,7 @@ function TreeNode({ node, depth = 0 }: { readonly node: PrereqTreeNode; readonly
 }
 
 export function Component() {
+  const university = useUniversity();
   const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
   const navigate = useNavigate();
@@ -185,10 +188,15 @@ export function Component() {
   const lockedCount = available.filter((c) => !c.canTake && c.isRelevant).length;
   const prereqCoverage = Object.keys(BRACU_PREREQS).length;
 
+  // Every hook has run by here — see CalculatorRoute for why the guard is not
+  // at the top of the component.
+  if (university === null) return <CampusRequired />;
+
   const totals = getPlannerTotals({
     semesters: state.semesters,
     startSeason: state.startSeason as SemesterSeason | '',
     startYear: state.startYear,
+    scale: university.grades,
   });
   const projection = plannerCoreProjectCgpa(
     totals.pts,
