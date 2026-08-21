@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import AxeBuilder from '@axe-core/playwright';
 import { selectCalcTab } from './helpers/tabs.js';
 
@@ -34,6 +35,7 @@ async function boot(page) {
     window.Chart = window.Chart || class { destroy() {} };
     window.pdfjsLib = window.pdfjsLib || {};
   });
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#heroDemoBtn')).toBeVisible();
 }
