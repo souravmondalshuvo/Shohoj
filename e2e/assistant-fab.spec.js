@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for the Shohoj Assistant launcher on the legacy page (#533):
@@ -75,6 +76,8 @@ async function boot(page, opts = {}) {
     }
     return route.abort();
   });
+
+  await unlockCalculator(page);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   return { turns };
