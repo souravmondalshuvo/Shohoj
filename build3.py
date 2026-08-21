@@ -40,6 +40,9 @@ MAIN_JS_FILES = [
     'js/core/dispatch.js',
     'js/core/state.js',
     'js/core/departments.js',
+    # Campus directory for the sign-in portal (display data only; drift-guarded
+    # against src/core/university.ts by tests/universityDirectory.test.js)
+    'js/core/universityDirectory.js',
     # Core (with dependencies)
     'js/core/catalog.js',
     'js/core/gpa-core.js',
@@ -83,6 +86,9 @@ MAIN_JS_FILES = [
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
     'js/ui/groupsTab.js',
+    # Campus gate — the signed-out stand-in for the calculator. Ahead of
+    # render.js/main.js, which drive it.
+    'js/ui/signinPortal.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
