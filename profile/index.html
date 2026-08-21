@@ -8112,6 +8112,193 @@ body[data-page="admin"] .orb { display: none !important; }
   }
 }
 
+/* ══════════════════════════════════════════════════════════
+   SIGN-IN PORTAL / CAMPUS GATE
+   The signed-out stand-in for the calculator (js/ui/signinPortal.js).
+   Sits in the same slot as .calc-wrapper and borrows the same glass
+   surface, so the section keeps its shape whichever one is showing.
+   ══════════════════════════════════════════════════════════ */
+
+/* The gate toggles `hidden` on .calc-wrapper, which carries its own display
+   rules — [hidden] loses to a class selector without this. Scoped rather than
+   global so it cannot surprise anything else that ships a hidden node. */
+#calculator .calc-wrapper[hidden],
+#signinPortal[hidden] {
+  display: none !important;
+}
+
+.signin-portal {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 40px 32px;
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.signin-portal-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.signin-portal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text1);
+  margin: 0 0 10px;
+}
+
+.signin-portal-lede {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text2);
+  margin: 0 auto 24px;
+  max-width: 44ch;
+}
+
+.signin-portal-btn {
+  margin: 0 auto;
+}
+
+/* ── Campus list ── */
+.signin-portal-campuses {
+  margin: 28px auto 0;
+  max-width: 420px;
+  text-align: left;
+}
+
+.signin-portal-campus-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 0 0 10px;
+}
+
+.signin-portal-campus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signin-portal-campus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+/* The campus this build can actually sign in reads as the live one; the others
+   are listed so a student can see Shohoj serves them, but muted so the row does
+   not look like an invitation to a sign-in that would be bounced. */
+.signin-portal-campus.is-served {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.signin-portal-campus-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text1);
+}
+
+.signin-portal-campus-domain {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.signin-portal-campus-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--ink-green);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.signin-portal-campus-link {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-blue);
+  text-decoration: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--chip-border);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.signin-portal-campus-link:hover {
+  background: var(--chip-hover);
+  border-color: var(--ink-blue);
+}
+
+/* ── Notes ── */
+.signin-portal-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text3);
+  margin: 20px auto 0;
+  max-width: 46ch;
+}
+
+.signin-portal-note--demo,
+.signin-portal-note--resume {
+  margin-top: 12px;
+}
+
+/* A text button, not a pill: these are the escape hatches, and they should not
+   compete with Continue with Google for the eye. */
+.signin-portal-demo-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-green);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.signin-portal-demo-link:hover {
+  color: var(--text1);
+}
+
+.signin-portal-demo-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .signin-portal {
+    padding: 30px 18px;
+  }
+  .signin-portal-title {
+    font-size: 19px;
+  }
+  .signin-portal-campus {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .signin-portal-campus-tag,
+  .signin-portal-campus-link {
+    margin-left: 0;
+  }
+}
+
 </style>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->
   </head>

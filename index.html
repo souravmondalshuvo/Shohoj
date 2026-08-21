@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-iDoo/CuOs84F7PrM+iICBWAHYAswv5Mo24b3RV1CxZs='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-oFNDl2onH0uu2CPL5px8pET/QtcOltNCxdmpNRmsBlk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8130,6 +8130,193 @@ body[data-page="admin"] .orb { display: none !important; }
   }
 }
 
+/* ══════════════════════════════════════════════════════════
+   SIGN-IN PORTAL / CAMPUS GATE
+   The signed-out stand-in for the calculator (js/ui/signinPortal.js).
+   Sits in the same slot as .calc-wrapper and borrows the same glass
+   surface, so the section keeps its shape whichever one is showing.
+   ══════════════════════════════════════════════════════════ */
+
+/* The gate toggles `hidden` on .calc-wrapper, which carries its own display
+   rules — [hidden] loses to a class selector without this. Scoped rather than
+   global so it cannot surprise anything else that ships a hidden node. */
+#calculator .calc-wrapper[hidden],
+#signinPortal[hidden] {
+  display: none !important;
+}
+
+.signin-portal {
+  position: relative;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 40px 32px;
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.signin-portal-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.signin-portal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text1);
+  margin: 0 0 10px;
+}
+
+.signin-portal-lede {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text2);
+  margin: 0 auto 24px;
+  max-width: 44ch;
+}
+
+.signin-portal-btn {
+  margin: 0 auto;
+}
+
+/* ── Campus list ── */
+.signin-portal-campuses {
+  margin: 28px auto 0;
+  max-width: 420px;
+  text-align: left;
+}
+
+.signin-portal-campus-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin: 0 0 10px;
+}
+
+.signin-portal-campus-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signin-portal-campus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+/* The campus this build can actually sign in reads as the live one; the others
+   are listed so a student can see Shohoj serves them, but muted so the row does
+   not look like an invitation to a sign-in that would be bounced. */
+.signin-portal-campus.is-served {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.signin-portal-campus-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text1);
+}
+
+.signin-portal-campus-domain {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.signin-portal-campus-tag {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--ink-green);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.signin-portal-campus-link {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-blue);
+  text-decoration: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--chip-border);
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.signin-portal-campus-link:hover {
+  background: var(--chip-hover);
+  border-color: var(--ink-blue);
+}
+
+/* ── Notes ── */
+.signin-portal-note {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text3);
+  margin: 20px auto 0;
+  max-width: 46ch;
+}
+
+.signin-portal-note--demo,
+.signin-portal-note--resume {
+  margin-top: 12px;
+}
+
+/* A text button, not a pill: these are the escape hatches, and they should not
+   compete with Continue with Google for the eye. */
+.signin-portal-demo-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-green);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.signin-portal-demo-link:hover {
+  color: var(--text1);
+}
+
+.signin-portal-demo-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .signin-portal {
+    padding: 30px 18px;
+  }
+  .signin-portal-title {
+    font-size: 19px;
+  }
+  .signin-portal-campus {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .signin-portal-campus-tag,
+  .signin-portal-campus-link {
+    margin-left: 0;
+  }
+}
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -8337,7 +8524,15 @@ body[data-page="admin"] .orb { display: none !important; }
       <p class="section-desc" data-reveal-desc>Built on BRACU's exact grading scale. Add your semesters, enter your grades, and see your live CGPA — plus a simulator to plan your path forward.</p>
     </div>
 
-    <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc><div class="lg-shine"></div><div class="lg-bloom"></div>
+    <!-- Campus gate. Signing in is what resolves a student to a campus, and the
+         campus decides the grading scale — so the tool below stays hidden until
+         we know whose rules to apply. js/ui/signinPortal.js owns both `hidden`
+         attributes; starting hidden means a signed-in visitor never sees the
+         portal flash before auth resolves. Demo mode opens the tool without an
+         account (synthetic data has no campus to get wrong). -->
+    <div id="signinPortal" class="signin-portal lg-surface" data-testid="signin-portal" hidden></div>
+
+    <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc hidden><div class="lg-shine"></div><div class="lg-bloom"></div>
       <!-- Header (global — above tabs) -->
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
@@ -12434,6 +12629,79 @@ const DEPARTMENTS = {
     ]
   },
 };
+
+// ── js/core/universityDirectory.js ──────────────────────────────
+// ── UNIVERSITY DIRECTORY (legacy bundle) ─────────────────────────────────────
+// The campus list the sign-in portal shows a signed-out visitor: which
+// universities Shohoj serves, which email domain identifies a student at each
+// one, and — the part that only matters here — which of them THIS build can
+// actually sign in.
+//
+// This is DISPLAY DATA ONLY. The authoritative registry — grading scales, mark
+// tiers, repeat rules, per-campus feature lists — is src/core/university.ts and
+// stays there. build3.py concatenates plain JS and cannot pull in a .ts module,
+// and the portal only ever needs names and domains, so copying the whole
+// profile here would be four hundred lines of grading policy kept in sync by
+// hope.
+//
+// The domain map is already hand-copied in three places (this file,
+// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This is a fourth
+// copy, so it does not get to drift silently: tests/universityDirectory.test.js
+// transpiles src/core/university.ts and asserts id, name, shortName and
+// emailDomains match entry for entry.
+
+/**
+ * The one campus the legacy bundle is built for.
+ *
+ * Not a preference — a fact about this build. bracu-section.json, the course
+ * catalog, the seat feed, the routine grid and the campus map are all BRACU,
+ * and js/auth/firebase.js turns away any non-BRACU account for exactly that
+ * reason: signing an NSU student in to a BRACU app wearing their name is worse
+ * than turning them away.
+ *
+ * Multi-campus lives in the React shell at /app/, which has the registry wired
+ * through to the grading scale. So the portal names the other campuses and
+ * sends them there rather than pretending this build serves them and letting
+ * the domain check reject them after the Google popup.
+ *
+ * tests/universityDirectory.test.js pins this to the domain literal in
+ * js/auth/firebase.js — broaden one and the test makes you update the other.
+ */
+const LEGACY_CAMPUS_ID = 'bracu';
+
+const UNIVERSITY_DIRECTORY = [
+  {
+    id: 'bracu',
+    name: 'BRAC University',
+    shortName: 'BRACU',
+    emailDomains: ['g.bracu.ac.bd'],
+  },
+  {
+    id: 'nsu',
+    name: 'North South University',
+    shortName: 'NSU',
+    emailDomains: ['northsouth.edu'],
+  },
+];
+
+/** Can this build sign the campus in, or does it have to hand off to the shell? */
+function servedByThisBuild(campusId) {
+  return campusId === LEGACY_CAMPUS_ID;
+}
+
+// Which campus an email address belongs to, or null for a domain we do not
+// serve at all. Case-insensitive: Google hands back whatever casing the student
+// typed, and 'A@G.BRACU.AC.BD' is the same student as the lowercase form.
+// Exact-domain match only — a suffix test would let
+// 'a@g.bracu.ac.bd.attacker.com' resolve to BRACU. Mirrors campusOfEmail in
+// firestore.rules.
+function campusOfEmail(email) {
+  const at = String(email || '').lastIndexOf('@');
+  if (at < 0) return null;
+  const domain = String(email).slice(at + 1).toLowerCase();
+  const match = UNIVERSITY_DIRECTORY.find(u => u.emailDomains.includes(domain));
+  return match ? match.id : null;
+}
 
 // ── js/core/catalog.js ──────────────────────────────────────────
 const COURSE_DB = {};
@@ -25635,6 +25903,299 @@ async function _toggleRoster(groupId) {
   }
 }
 
+// ── js/ui/signinPortal.js ───────────────────────────────────────
+// ── SIGN-IN PORTAL / CAMPUS GATE ─────────────────────────────────────────────
+//
+// The signed-out view of the calculator section.
+//
+// Signing in is what resolves a student to a campus, and the campus decides the
+// grading scale. Until we know who someone is there is no correct version of
+// the calculator to render — showing one anyway means applying BRACU's scale to
+// whatever transcript gets typed in, which produces a confidently wrong CGPA on
+// a number that drives probation, scholarships and graduation.
+//
+// This is a correctness gate, not a security one. firestore.rules is the
+// authorization boundary and hidden UI has never been authorization; nothing
+// here is load bearing for access control.
+//
+// WHAT STAYS PUBLIC: the hero and #features. '/' is the pitch, not the product
+// — nothing on it depends on knowing a campus, it is the page people share and
+// search engines read, and meeting a stranger with a demand for their
+// university account reads like a phishing page. The same split the React
+// shell settled on (src/app/routes/RootLayout.tsx, GatedMain), so the two
+// builds do not disagree about what a signed-out visitor is allowed to see.
+//
+// DEMO MODE IS EXEMPT. See unlockForDemo() below.
+
+// An unlock is per-tab, not persisted to localStorage: someone who tried the
+// demo once should still meet the gate on their next real visit, but a reload
+// inside a demo session (or the portfolio iframe re-rendering) must not yank the
+// calculator away mid-look.
+const UNLOCK_SESSION_KEY = 'shohoj_calc_unlocked';
+
+// The key from js/core/state.js. Read directly rather than imported so this
+// module stays independent of the calculator's state machine — all it needs to
+// know is whether SOMETHING is saved, not what.
+const STATE_STORAGE_KEY = 'shohoj_cgpa_v1';
+
+let _authResolved = false;
+let _signedIn     = false;
+let _unlocked     = false;
+let _lockedMarkupRendered = false;
+
+function readUnlockFlag() {
+  try { return sessionStorage.getItem(UNLOCK_SESSION_KEY) === '1'; } catch (_e) { return false; }
+}
+
+function writeUnlockFlag() {
+  try { sessionStorage.setItem(UNLOCK_SESSION_KEY, '1'); } catch (_e) { /* private mode */ }
+}
+
+/** Does this browser already hold semesters someone entered?
+ *
+ * Signed-out use is not an edge case on this build — it is how Shohoj has
+ * always worked, and the privacy copy promises it ("your grades stay in this
+ * browser until you turn on sync"). Putting a gate in front of data a student
+ * already typed would make good on that promise by hiding it from them, so the
+ * portal offers those students a way through. It is not a silent bypass: they
+ * still land on the portal first, and they still see the case for signing in.
+ *
+ * A new visitor has nothing saved and gets no such door. */
+function hasSavedWork() {
+  let raw;
+  try { raw = localStorage.getItem(STATE_STORAGE_KEY); } catch (_e) { return false; }
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.semesters) && parsed.semesters.length > 0;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function calcWrapperEl() { return document.querySelector('#calculator .calc-wrapper'); }
+function portalEl()      { return document.getElementById('signinPortal'); }
+
+/** Is sign-in even possible on this build?
+ *
+ * The bundle inlines js/config/runtime-config.js, which sets the Firebase
+ * config from deploy-time env. A local build3.py run with no secrets leaves the
+ * `__PLACEHOLDER__` strings in place — the same predicate firebase-init.js uses
+ * to decide whether to call initializeApp. Getting this wrong in the optimistic
+ * direction is what produces a Continue-with-Google button that does nothing,
+ * which is a worse dead end than an honest "not available on this build". */
+function signInAvailable() {
+  const cfg = window._shohoj_firebase_config;
+  return !!(
+    cfg
+    && typeof cfg === 'object'
+    && cfg.apiKey
+    && cfg.projectId
+    && !String(cfg.apiKey).startsWith('__')
+    && !String(cfg.projectId).startsWith('__')
+  );
+}
+
+function campusRowHtml(campus) {
+  const domains = campus.emailDomains.map(d => `@${escHtml(d)}`).join(' · ');
+  // A campus this build cannot sign in is still listed — a student should be
+  // able to find out that Shohoj serves them at all — but it is labelled with
+  // where to actually go, rather than inviting a sign-in the domain check in
+  // js/auth/firebase.js will bounce after the Google popup.
+  const handoff = servedByThisBuild(campus.id)
+    ? '<span class="signin-portal-campus-tag">Sign in here</span>'
+    : `<a class="signin-portal-campus-link" href="app/">Open the multi-campus build →</a>`;
+  return `
+    <li class="signin-portal-campus${servedByThisBuild(campus.id) ? ' is-served' : ''}">
+      <span class="signin-portal-campus-name">${escHtml(campus.shortName)}</span>
+      <span class="signin-portal-campus-domain">${domains}</span>
+      ${handoff}
+    </li>
+  `;
+}
+
+function portalHtml() {
+  const available = signInAvailable();
+  const cta = available
+    ? `<button type="button" class="btn-primary magnetic signin-portal-btn"
+               data-action="auth:signin" data-testid="signin-portal-button">
+         Continue with Google
+       </button>`
+    : `<p class="signin-portal-note" role="status">
+         Sign-in isn&rsquo;t available on this build.
+       </p>`;
+
+  return `
+    <div class="signin-portal-inner">
+      <h3 class="signin-portal-title">Sign in to open the calculator</h3>
+      <p class="signin-portal-lede">
+        Shohoj works from your university&rsquo;s own grading rules. Signing in with your
+        student email is how it knows which ones to apply.
+      </p>
+      ${cta}
+      <div class="signin-portal-campuses">
+        <p class="signin-portal-campus-label">Supported universities</p>
+        <ul class="signin-portal-campus-list">
+          ${UNIVERSITY_DIRECTORY.map(campusRowHtml).join('')}
+        </ul>
+      </div>
+      <p class="signin-portal-note">
+        Signing in identifies your university and unlocks reviews, study groups and alerts.
+        Your grades stay in this browser until you turn on sync.
+      </p>
+      <p class="signin-portal-note signin-portal-note--demo">
+        Just looking?
+        <button type="button" class="signin-portal-demo-link" data-action="portal:demo">
+          Try demo mode
+        </button>
+        — sample data, no account needed.
+      </p>
+      ${hasSavedWork() ? `
+      <p class="signin-portal-note signin-portal-note--resume">
+        Already using Shohoj without an account?
+        <button type="button" class="signin-portal-demo-link" data-action="portal:resume"
+                data-testid="signin-portal-resume">
+          Open my saved semesters
+        </button>
+      </p>` : ''}
+    </div>
+  `;
+}
+
+/**
+ * Paint the current state.
+ *
+ * Three states, and the third is the one that matters:
+ *   signed in / demo → tool, no portal
+ *   signed out       → portal, no tool
+ *   auth unresolved  → NEITHER
+ *
+ * Rendering the portal while auth is still resolving flashes a sign-in page at
+ * someone who is already signed in, which reads as having been logged out. A
+ * beat of empty space is the lesser evil, and it is bounded: initAuth() calls
+ * notifyAuthStateReady() on every path including the no-Firebase one, so this
+ * state always ends.
+ */
+function renderSignInPortal() {
+  const wrapper = calcWrapperEl();
+  const portal  = portalEl();
+  if (!wrapper || !portal) return;
+
+  const unlocked = _signedIn || _unlocked;
+
+  if (!_authResolved && !_unlocked) {
+    wrapper.hidden = true;
+    portal.hidden  = true;
+    return;
+  }
+
+  wrapper.hidden = !unlocked;
+  portal.hidden  = unlocked;
+
+  if (!unlocked) {
+    // Build the markup once per lock, not once per event. shohoj:auth-changed
+    // fires repeatedly while Firestore settles (see the note in papersTab.js),
+    // and re-assigning innerHTML on each one would blow away focus from under
+    // anyone tabbing through the portal's buttons.
+    if (!_lockedMarkupRendered) {
+      // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+      portal.innerHTML = portalHtml();
+      _lockedMarkupRendered = true;
+    }
+  } else {
+    portal.replaceChildren();
+    _lockedMarkupRendered = false;
+  }
+}
+
+/**
+ * Open the calculator for a demo session.
+ *
+ * Demo data is synthetic, so the reason for the gate does not apply to it:
+ * there is no real transcript to score on the wrong campus's scale. Keeping it
+ * behind sign-in would cost the two things the signed-out page is for — the
+ * hero's "Try Demo Mode" CTA, and the portfolio site's live preview iframe,
+ * which loads this page with ?demo=1 and has no one to sign in.
+ *
+ * The demo runs on BRACU's scale, same as the rest of this build.
+ */
+function unlockForDemo() {
+  _unlocked = true;
+  writeUnlockFlag();
+  renderSignInPortal();
+}
+
+/**
+ * Open the calculator for a returning signed-out student.
+ *
+ * Same mechanism as the demo unlock, different reason, and the reason is worth
+ * keeping separate: this one exists because their data is already here. See
+ * hasSavedWork() — the button that calls this is only rendered when there is
+ * something to go back to.
+ */
+function unlockForSavedWork() {
+  _unlocked = true;
+  writeUnlockFlag();
+  renderSignInPortal();
+}
+
+/** Is the tool currently open? main.js checks before running demo data in. */
+function isCalculatorUnlocked() {
+  return _signedIn || _unlocked;
+}
+
+// If auth never resolves, show the portal rather than an empty section.
+//
+// The unresolved state hides BOTH the tool and the portal, which is right for
+// the fraction of a second auth normally takes and very wrong if it never
+// arrives — a CDN hiccup on the Firebase SDK would otherwise leave a permanent
+// blank gap where the calculator should be. The portal is the safe thing to
+// fall back to: it still offers sign-in, and it explains itself.
+const AUTH_RESOLVE_TIMEOUT_MS = 4000;
+
+function initSignInPortal() {
+  _unlocked = readUnlockFlag();
+
+  // Seed from the current state before subscribing. firebase.js is an earlier
+  // module script, so on a warm session it may have already fired
+  // shohoj:auth-changed by the time this runs — a listener alone would then
+  // wait for an event that has been and gone, and a signed-in student would sit
+  // looking at the portal. These two bridges are installed by firebase.js
+  // (js/auth/review-service.js); both are absent if it failed to load, which
+  // the timeout below covers.
+  if (window._shohoj_isAuthReady?.()) {
+    _authResolved = true;
+    _signedIn = !!window._shohoj_userProfile?.().signedIn;
+  } else {
+    setTimeout(() => {
+      if (_authResolved) return;
+      _authResolved = true;
+      renderSignInPortal();
+    }, AUTH_RESOLVE_TIMEOUT_MS);
+  }
+
+  // The portal's own "try demo mode" link. The hero button is wired in main.js,
+  // which owns startDemoMode(); this registers the same action so the link
+  // inside the rendered markup needs no inline handler (the bundle's CSP drops
+  // unsafe-inline, so an inline onclick here would be silently dead in prod).
+  registerAction('portal:demo', () => window._shohoj_startDemo?.());
+  registerAction('portal:resume', () => {
+    unlockForSavedWork();
+    // The tool was hidden while the saved state rendered into it, so repaint at
+    // its real height and put the student where their data is.
+    window._shohoj_renderAndRecalc?.();
+    document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  window.addEventListener('shohoj:auth-changed', e => {
+    _authResolved = true;
+    _signedIn = !!e.detail?.signedIn;
+    renderSignInPortal();
+  });
+
+  renderSignInPortal();
+}
+
 // ── js/ui/render.js ─────────────────────────────────────────────
 registerAction('render:editSummary',     el => showSummaryForm(Number(el.dataset.semId)));
 registerAction('render:removeSemester',  el => removeSemester(Number(el.dataset.semId)));
@@ -31374,11 +31935,20 @@ function scrollToCalculator() {
 }
 
 function startDemoMode() {
+  // Unlock BEFORE loading: the calculator is hidden while signed out, and
+  // loadSampleData() renders into a container inside it. Filling a hidden
+  // subtree works but scrollToCalculator() would then land on a collapsed
+  // section, so the section has to exist at its real height first.
+  unlockForDemo();
   const loaded = loadSampleData();
   if (!loaded) return;
   switchCalcTab('calculator');
   scrollToCalculator();
 }
+
+// The portal's own "try demo mode" link runs through the action dispatcher,
+// which lives in signinPortal.js and must not import main.js back (circular).
+window._shohoj_startDemo = startDemoMode;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
@@ -31653,6 +32223,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Assistant launcher — mounts itself only once auth resolves and the Worker
   // reports the assistant configured, so this call is safe before either.
   initAssistantFab();
+
+  // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
+  initSignInPortal();
 
   // Auto-launch demo mode when embedded via ?demo=1 (e.g. the portfolio
   // site's live preview iframe). Skipped if local data already exists, so it
