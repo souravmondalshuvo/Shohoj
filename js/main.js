@@ -84,6 +84,7 @@ import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 import { initAssistantFab } from './ui/assistantFab.js';
+import { initSignInPortal, unlockForDemo } from './ui/signinPortal.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -632,11 +633,20 @@ function scrollToCalculator() {
 }
 
 function startDemoMode() {
+  // Unlock BEFORE loading: the calculator is hidden while signed out, and
+  // loadSampleData() renders into a container inside it. Filling a hidden
+  // subtree works but scrollToCalculator() would then land on a collapsed
+  // section, so the section has to exist at its real height first.
+  unlockForDemo();
   const loaded = loadSampleData();
   if (!loaded) return;
   switchCalcTab('calculator');
   scrollToCalculator();
 }
+
+// The portal's own "try demo mode" link runs through the action dispatcher,
+// which lives in signinPortal.js and must not import main.js back (circular).
+window._shohoj_startDemo = startDemoMode;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
@@ -911,6 +921,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Assistant launcher — mounts itself only once auth resolves and the Worker
   // reports the assistant configured, so this call is safe before either.
   initAssistantFab();
+
+  // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
+  initSignInPortal();
 
   // Auto-launch demo mode when embedded via ?demo=1 (e.g. the portfolio
   // site's live preview iframe). Skipped if local data already exists, so it
