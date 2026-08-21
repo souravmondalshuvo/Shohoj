@@ -42,6 +42,7 @@ const STATE_STORAGE_KEY = 'shohoj_cgpa_v1';
 let _authResolved = false;
 let _signedIn     = false;
 let _unlocked     = false;
+let _lockedMarkupRendered = false;
 
 function readUnlockFlag() {
   try { return sessionStorage.getItem(UNLOCK_SESSION_KEY) === '1'; } catch (_e) { return false; }
@@ -193,13 +194,19 @@ export function renderSignInPortal() {
   portal.hidden  = unlocked;
 
   if (!unlocked) {
-    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
-    portal.innerHTML = portalHtml();
+    // Build the markup once per lock, not once per event. shohoj:auth-changed
+    // fires repeatedly while Firestore settles (see the note in papersTab.js),
+    // and re-assigning innerHTML on each one would blow away focus from under
+    // anyone tabbing through the portal's buttons.
+    if (!_lockedMarkupRendered) {
+      // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+      portal.innerHTML = portalHtml();
+      _lockedMarkupRendered = true;
+    }
   } else {
     portal.replaceChildren();
+    _lockedMarkupRendered = false;
   }
-
-  document.documentElement.classList.toggle('shohoj-gated', !unlocked);
 }
 
 /**
