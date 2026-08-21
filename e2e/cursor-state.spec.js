@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 
 // The custom cursor derives its shape (dot / hover ring / text I-beam) from
 // body classes toggled by js/animations/cursor.js. These tests guard against
@@ -7,6 +8,7 @@ import { expect, test } from '@playwright/test';
 
 async function boot(page) {
   await page.route('https://**/*', route => route.abort());
+  await unlockCalculator(page);
   await page.goto('/');
   // Plant a fixed-position input to hover; wiggle the mouse over it until the
   // cursor module (loaded with the app bundle) has attached its listeners.
