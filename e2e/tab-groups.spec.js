@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for the grouped tab bar: the ten calculator tabs are now
@@ -16,6 +17,7 @@ async function boot(page) {
     window.Chart = window.Chart || class { destroy() {} };
     window.pdfjsLib = window.pdfjsLib || {};
   });
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#calcTabs')).toBeVisible();
 }
