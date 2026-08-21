@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 
 // Browser coverage for the dedicated /profile/ page (#256). The account pill
 // opens this page; the in-app Profile tab was retired. External requests
@@ -20,6 +21,7 @@ async function boot(page, initScript, initArg) {
   });
   if (initScript) await page.addInitScript(initScript, initArg);
   await page.route('https://**/*', route => route.abort());
+  await unlockCalculator(page);
   await page.goto('/profile/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator(HOST)).toBeVisible();
 }
