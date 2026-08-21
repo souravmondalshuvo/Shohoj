@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser-level coverage for the recent Routine Builder feature work:
@@ -72,6 +73,7 @@ async function setupFeed(page) {
 
 async function boot(page) {
   await setupFeed(page);
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
@@ -126,6 +128,7 @@ test('keyboard: type, ArrowDown, Enter adds the highlighted course', async ({ pa
 
 test('a ?routine= link restores the encoded picks on load', async ({ page }) => {
   await setupFeed(page);
+  await unlockCalculator(page);
   await page.goto('/?routine=CSE110-9001#calculator/routine', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
   // CSE110 Section 01 should be restored and folded to its collapsed summary line.
