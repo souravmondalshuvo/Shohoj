@@ -263,7 +263,15 @@
       <p class="section-desc" data-reveal-desc>Built on BRACU's exact grading scale. Add your semesters, enter your grades, and see your live CGPA — plus a simulator to plan your path forward.</p>
     </div>
 
-    <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc><div class="lg-shine"></div><div class="lg-bloom"></div>
+    <!-- Campus gate. Signing in is what resolves a student to a campus, and the
+         campus decides the grading scale — so the tool below stays hidden until
+         we know whose rules to apply. js/ui/signinPortal.js owns both `hidden`
+         attributes; starting hidden means a signed-in visitor never sees the
+         portal flash before auth resolves. Demo mode opens the tool without an
+         account (synthetic data has no campus to get wrong). -->
+    <div id="signinPortal" class="signin-portal lg-surface" data-testid="signin-portal" hidden></div>
+
+    <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc hidden><div class="lg-shine"></div><div class="lg-bloom"></div>
       <!-- Header (global — above tabs) -->
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
