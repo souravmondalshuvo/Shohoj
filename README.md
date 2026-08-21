@@ -65,10 +65,12 @@ shipping versus in progress:
   fund one. It is signed-in only, bounded to degree questions, and hidden
   outright when the Worker reports no provider is configured (`GET /ready`),
   rather than offering a button that cannot answer.
-- **Multi-campus tenancy is in progress, not finished.** The campus registry,
-  the sign-in portal, campus-partitioned Firestore rules and the backfill for
-  pre-tenancy documents are all built; a second university is not open to
-  students yet. See [Multi-University Vision](#multi-university-vision).
+- **Multi-campus works on the shell, not on the shipping root.** The React
+  shell resolves a student's campus from their email and applies that campus's
+  grading scale, retake/repeat policy and feature set throughout — so an NSU
+  transcript is scored on NSU's rules, and tabs a campus has no data for do not
+  render. The vanilla app at the site root is still BRACU-only, which is one
+  more reason the cutover matters. See [Multi-University Vision](#multi-university-vision).
 - **Some features depend on external data feeds** (live seat status, free rooms,
   the campus map's room status) that are third-party and best-effort.
 - **No claim of a user base.** This is a portfolio-grade project built for
@@ -287,7 +289,7 @@ A bird's-eye view of how hard each course actually is, based on real student rev
 
 ### ⭐ Faculty Reviews
 
-Pseudonymous faculty ratings from real BRACU students — stored in Firestore, gated behind BRACU G-Suite sign-in.
+Pseudonymous faculty ratings from real students — stored in Firestore, gated behind university Google sign-in and scoped to your own campus. The live corpus is BRACU's.
 
 - **5-dimension ratings** — Teaching Quality, Marking Fairness, Behavior & Attitude, Course Difficulty, Workload
 - **Pseudonymous to other users** — the review document body contains no user identifier. Each review's Firestore doc ID is derived from a deterministic SHA-256 hash of `uid + faculty + course`, so the same user's reviews for different courses don't share a visible hash
@@ -315,7 +317,7 @@ The Worker strips identity fields from the public review body before committing.
 
 ### 📚 Past Papers & Notes
 
-BRACU-only resource sharing for course papers, notes, assignments, lab reports, and quizzes.
+Campus-scoped resource sharing for course papers, notes, assignments, lab reports, and quizzes — BRACU's library today.
 
 - **Course-code browsing** — search by catalog course code or browse recent approved uploads
 - **Moderated uploads** — uploads start as `approved: false` and only become public after admin review
@@ -340,7 +342,7 @@ In-app product feedback for bugs, feature ideas, and general comments.
 
 ### 🧑‍🤝‍🧑 Study Group Finder
 
-Post a study group for a course, find classmates, and join open groups — all gated behind BRACU G-Suite sign-in.
+Post a study group for a course, find classmates, and join open groups — all gated behind university Google sign-in, and scoped to your own campus.
 
 - **Post & browse** — create a group with a course code, name, description, meeting mode (online / in-person / hybrid), schedule, capacity, and a group-chat invite link; browse and filter the board by course code or mode
 - **Two-tier connect** — the contact link is the public connect path (visible to every BRACU user), while the member email roster is **member-only**: you join to see who's in, and to be seen, so emails stay opt-in
@@ -364,7 +366,7 @@ A separate admin shell at `/admin/` for moderation and audit work.
 
 ### ☁ Cloud Sync
 
-Sign in with your BRACU G-Suite account (`@g.bracu.ac.bd`) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
+Sign in with your university Google account (`@g.bracu.ac.bd`, or `@northsouth.edu` on the shell) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
 
 - **Google Sign-In** — custom modal with BRACU domain restriction, no browser dialogs
 - **Automatic sync** — data saves to Firestore every time you make a change
@@ -573,7 +575,7 @@ GitHub Pages
   │                — standalone Vite pages (dist-pages)
   └── /app/        — React Router shell beta (dist-shell)
   │
-  │ Firebase Auth (BRACU @g.bracu.ac.bd sign-in)
+  │ Firebase Auth (registered-campus Google sign-in; BRACU-only on the root app)
   │ App Check (reCAPTCHA v3)
   ▼
 Firestore (rules-enforced for browser clients; campus-partitioned)
@@ -624,10 +626,10 @@ Shohoj has been through a self-directed security review (no external audit is cl
 - **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
-- **BRACU domain restriction** — Google Sign-In is restricted to `@g.bracu.ac.bd` accounts only, enforced both client-side after the popup and server-side via Firestore security rules.
-- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only if their token email matches `.*@g\.bracu\.ac\.bd`. Faculty reviews (`facultyReviews/{reviewId}`) are readable by BRACU accounts but client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable by BRACU accounts, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. Lost & found contact details live in a separate `lostFoundContacts` collection that no client can read. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
-- **Campus partitioning** — client-created `studyGroups`, `appFeedback` and `lostFoundPosts` documents must carry a `university` field pinned to the campus of the writer's own verified email, so one campus's writes cannot land in another's data. Documents written before tenancy existed have no field and default to `bracu`; `scripts/backfill_campus.js` stamps them.
-- **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects non-BRACU users, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
+- **Registered-campus restriction** — Google Sign-In is accepted only from a domain a registered campus claims (`g.bracu.ac.bd`, and `northsouth.edu` on the shell), enforced client-side after the popup and server-side via Firestore security rules. The vanilla root app is narrower still: it restricts to `@g.bracu.ac.bd` outright.
+- **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only with a verified Google account on a domain some registered campus claims (`isCampusUser()` — no longer a hardcoded BRACU regex). Faculty reviews (`facultyReviews/{reviewId}`) are readable only by accounts on the review's own campus, and client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable only by accounts on the group's own campus, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. Lost & found contact details live in a separate `lostFoundContacts` collection that no client can read. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
+- **Campus partitioning** — client-created `studyGroups`, `appFeedback` and `lostFoundPosts` documents must carry a `university` field pinned to the campus of the writer's own verified email, so one campus's writes cannot land in another's data. Reads are scoped the same way (`campusMatches`), so a student sees their own campus's boards and reviews, not another's. Documents written before tenancy existed have no field and read as `bracu`, which is what they are by definition; `scripts/backfill_campus.js` stamps them. The Worker mirrors the same registry (`campusOfEmail`) so client and server cannot disagree about who belongs where.
+- **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects accounts on no registered campus, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Assistant key isolation and blast-radius limits** — no model provider key ever reaches the browser; the client talks only to `POST /api/assistant`. The Assistant's three tools are read-only and scoped to the caller's own data, and a monthly spend ceiling stops the relay rather than running up an unbounded bill. `GET /ready` reports capability booleans only, never key material.
 - **Pseudonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic, **unsalted** SHA-256 of `uid | faculty | course` (there is no secret salt — the determinism is what enforces one review per user/faculty/course). This is pseudonymity to other users, **not** anonymity: a project admin can correlate writes, and anyone who already knows a UID can reproduce the hash. Full detail in [docs/SECURITY.md](docs/SECURITY.md).
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules (and App Check once console enforcement is verified — see [docs/SECURITY.md](docs/SECURITY.md)), not by hiding the web config.
@@ -696,15 +698,27 @@ Smart semester recommendations, burnout warning system, graduation timeline pred
 
 ## Multi-University Vision
 
-Shohoj is designed to scale beyond BRAC University, and the seams for it are now
-in the codebase rather than in the plan:
+Shohoj scales beyond BRAC University, and on the React shell that is working
+code rather than a plan:
 
 - **A campus registry** (`src/core/university.ts`) holds each university's
-  grading scale, retake/repeat policy, identifying email domains, and which
-  features it has data for. Adding a campus is an entry there, not a fork of the
-  calculator. No profile ships on a guessed grade point — the numbers come from
-  the registrar or the official student handbook, and a policy that could not be
-  confirmed is left absent rather than inherited from BRACU.
+  grading scale, mark cutoffs, retake/repeat policy, identifying email domains,
+  and which features it has data for. Adding a campus is an entry there, not a
+  fork of the calculator. No profile ships on a guessed grade point — the
+  numbers come from the registrar or the official student handbook, and a policy
+  that could not be confirmed is left absent rather than inherited from BRACU.
+- **Campus rules run the whole calculator path** on the shell — results, the
+  degree tracker, the GPA trend, the goal simulator, retake shortlisting, the
+  marks tracker, planner credit totals and the PDF report all take the active
+  campus's scale rather than assuming BRACU's. The same transcript produces
+  different, correct answers on different campuses, and that is a test, not a
+  claim.
+- **Features are declared per campus.** A route a campus has no data for is not
+  rendered as an empty shell — NSU's profile turns off seats, routine, free
+  rooms and the campus map (they all derive from BRACU's CONNECT feed, and NSU's
+  RDS portal has no known public equivalent), plus bus and cafeteria
+  (hand-collected Merul Badda data) and lost & found (keyed to BRACU's room
+  codes).
 - **A sign-in portal** gates the shell: sign-in is what resolves a student to a
   campus, and the campus decides the grading rules, so the shell asks who you
   are before showing a calculator. A confidently wrong CGPA is worse than a
@@ -713,15 +727,15 @@ in the codebase rather than in the plan:
   community document to the writer's own campus, and `scripts/backfill_campus.js`
   stamps pre-tenancy documents.
 
-**North South University** is the second profile in the registry. It is **not
-open to students yet** — the remaining work is resolving the active profile
-through the whole calculator path so an NSU transcript is scored on NSU's scale.
-Until that lands, Shohoj is a BRACU app.
+**The catch:** all of this lives on the React shell at `/app/`. The vanilla app
+still served at the site root restricts sign-in to `@g.bracu.ac.bd` and computes
+on BRACU's scale, so a second campus becomes real for most users at the cutover,
+not before.
 
 | Stage | Scope                                  | Status |
 | ----- | -------------------------------------- | ------ |
 | v1.0  | BRAC University                        | ✅ Live |
-| v2.0  | NSU, IUB, EWU                          | 🔶 Tenancy seams built; NSU profile authored, not yet enabled |
+| v2.0  | NSU, IUB, EWU                          | 🔶 NSU profile live on the shell (`/app/`); root app still BRACU-only. IUB and EWU not started |
 | v3.0  | All private universities in Bangladesh | Planned |
 | v4.0  | Public universities (BUET, DU, CUET)   | Planned |
 | v5.0  | South Asia                             | Planned |
@@ -833,7 +847,7 @@ Shohoj/
 ├── firestore.rules               Firestore security rules
 ├── firestore.indexes.json        Required Firestore composite indexes
 ├── firebase.json                 Firestore emulator config
-├── tests/                        105 Node test-runner unit suites (see the CI badge for pass status). Representative:
+├── tests/                        106 Node test-runner unit suites (see the CI badge for pass status). Representative:
 │   ├── calculator.test.js        GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            department detection, semester parsing, blob parser
 │   ├── planner.test.js           prereq resolution, plan validation
@@ -844,6 +858,8 @@ Shohoj/
 │   ├── seatStatus/seatWatch      live seat lookup + watchlist persistence
 │   ├── freeRooms.test.js         empty-room derivation from the timetable
 │   ├── profileTab.test.js        account hub — header, watchlist, alert toggle
+│   ├── university.test.js        campus registry — scales, policies, domain resolution
+│   ├── gpaMultiCampus.test.js    the same transcript scored on each campus's rules
 │   ├── backfillCampus.test.js    campus backfill — the cases where a mistake is expensive
 │   ├── typedCoreParity.test.js   src/ typed core parity vs the legacy js/ logic
 │   └── firestore.rules.test.js   84 emulator-driven security rules checks
@@ -1033,7 +1049,7 @@ Additional notes on Repeat:
 
 ### Cloud Sync
 
-- Requires a `@g.bracu.ac.bd` Google account. Other email addresses are rejected both client-side and by Firestore security rules.
+- Requires a Google account on a registered campus domain — `@g.bracu.ac.bd` everywhere, plus `@northsouth.edu` on the shell. Anything else is rejected client-side and by Firestore security rules.
 - Firestore document limit: **512KB per user**. A typical full transcript is well under 50KB, so this limit is unlikely to be reached in practice.
 - Offline changes are saved to `localStorage` and synced automatically when reconnected.
 - When both a device and the account hold data, the conflict is resolved by **asking you**, on a data fingerprint — never by "newest wins". Simultaneous edits on two devices are still last-write-wins within a session; no field-level merge is performed.
@@ -1047,7 +1063,7 @@ Additional notes on Repeat:
 
 ### Faculty Reviews
 
-- Reading and submitting reviews requires sign-in with a `@g.bracu.ac.bd` account — enforced both client-side and by Firestore security rules.
+- Reading and submitting reviews requires sign-in with a registered-campus account — enforced both client-side and by Firestore security rules. Reviews are scoped to your own campus: you see your university's corpus, not another's.
 - Reviews are **immutable once submitted** for students. There is no edit or self-delete flow from the client; if you try to rate the same faculty-course pair again, Shohoj shows your existing review in read-only mode instead. If a review needs to be removed (e.g. abuse), report it so an admin-claim moderator can remove it from the moderation dashboard.
 - Faculty are keyed by **initials only** (2–6 uppercase letters). The full faculty directory with names/departments will be seeded over time via `scripts/seed_reviews.py` and the `facultyProfiles` collection.
 - The review corpus starts empty. A panel showing "no reviews yet" for a course is not a bug — it simply means nobody has rated any faculty for that course yet. Early users carry the cost of seeding.
@@ -1055,7 +1071,7 @@ Additional notes on Repeat:
 
 ### Past Papers & Notes
 
-- Uploading and downloading files requires sign-in with a `@g.bracu.ac.bd` account. Admins use the same Firebase custom claim as the dashboard.
+- Uploading and downloading files requires sign-in with a registered-campus account. Admins use the same Firebase custom claim as the dashboard.
 - New files are stored in Cloudflare R2 through the Worker under `papers/{COURSE}/{UPLOADER_UID}/{filename}`. Older two-segment paths remain readable/deletable for backward compatibility. Firestore metadata is written by the Worker after upload validation succeeds.
 - Only PDF, PNG, JPEG, WebP, and GIF files are accepted. SVG and other active or executable formats are rejected.
 - Pending paper metadata is visible only to the uploader and admins. Other students can read paper metadata only after approval.
@@ -1063,7 +1079,7 @@ Additional notes on Repeat:
 
 ### Study Group Finder
 
-- Posting, joining, and browsing all require sign-in with a `@g.bracu.ac.bd` account, enforced both client-side and by Firestore security rules.
+- Posting, joining, and browsing all require sign-in with a registered-campus account, enforced both client-side and by Firestore security rules, and the board you see is your own campus's.
 - **Capacity is advisory.** Firestore rules cannot count members atomically (the same limitation as feedback upvotes), so the joined/capacity figure and the "Full" state are best-effort client-side checks — a group can occasionally exceed its stated capacity under a race.
 - **The contact link is public to all BRACU users** and is user-supplied. Rules require an `https://` URL and the UI escapes it, but Shohoj can't vouch for where a link leads — report a bad or malicious link and an admin will remove the group.
 - The member email roster is visible only to fellow members; non-members see capacity and the contact link but not who has joined.
@@ -1077,8 +1093,12 @@ Additional notes on Repeat:
 
 ### Multi-Campus
 
-- The registry holds **BRACU and NSU** profiles, but campus resolution is not yet threaded through the whole calculator path — so an NSU student would currently be scored on BRACU's scale. NSU is therefore **not open** yet.
-- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, so no credit-load warning is shown for it — better silent than wrong.
+- Campus rules apply on the **React shell (`/app/`) only**. The vanilla app at the site root restricts sign-in to `@g.bracu.ac.bd` and computes on BRACU's scale — an NSU student needs the shell.
+- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, so **no credit-load warning is shown for NSU at all** — better silent than wrong.
+- **Feed-driven features are off for NSU** — seats, routine, free rooms and the campus map all derive from BRACU's CONNECT feed, and no public equivalent is known for NSU's RDS portal. Bus and cafeteria data is hand-collected for Merul Badda, and lost & found is keyed to BRACU room codes. These routes don't render for an NSU account rather than rendering empty.
+- Community features (reviews, papers, groups, feedback) work for a new campus from day one — they are simply empty until that campus's students post, and campus partitioning keeps them separate.
+- An account on a domain no profile claims is signed in but **campus-unknown**, and sees a notice rather than a calculator applying someone else's grading scale.
+- Stored data written before tenancy existed has no campus field and is read as BRACU, which is what it is by definition.
 
 ### Browser Support
 
@@ -1152,7 +1172,7 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | Shohoj Assistant                                | 🔶 Live — free-tier model, monthly spend ceiling, scope-bounded |
 | Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
 | React Router shell (`/app/`)                    | 🔶 Beta — full route parity, cutover still pending      |
-| Multi-campus tenancy                            | 🔶 In progress — seams built, second campus not enabled |
+| Multi-campus tenancy                            | 🔶 Live on the shell (BRACU + NSU); root app still BRACU-only |
 
 ---
 
