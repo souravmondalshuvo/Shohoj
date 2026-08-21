@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 async function boot(page, viewport) {
@@ -33,6 +34,7 @@ async function boot(page, viewport) {
     window.pdfjsLib = window.pdfjsLib || {};
     window.Chart = window.Chart || class { destroy() {} };
   });
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#heroDemoBtn')).toBeVisible();
 }
@@ -125,6 +127,9 @@ test('summary form Enter confirms under the bundle CSP', async ({ page }) => {
     sessionStorage.clear();
     window.Chart = window.Chart || class { destroy() {} };
   });
+  // This test builds its own page rather than going through boot(), so it has
+  // to clear the campus gate itself.
+  await unlockCalculator(page);
   await page.goto('/shohoj.html', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#heroDemoBtn')).toBeVisible();
 
