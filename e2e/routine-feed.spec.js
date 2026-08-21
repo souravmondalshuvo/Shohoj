@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Regression guard for the CSP/feed bug fixed in #135: the Routine tab fetches
@@ -85,6 +86,8 @@ async function bootRoutine(page, feedMode = 'ok') {
     }
     return route.abort();
   });
+
+  await unlockCalculator(page);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await selectCalcTab(page, "routine");
