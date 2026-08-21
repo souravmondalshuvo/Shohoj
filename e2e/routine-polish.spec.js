@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Verifies the Routine Builder polish pass: numeric section ordering (full
@@ -80,6 +81,7 @@ async function boot(page) {
     }
     return route.abort();
   });
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await selectCalcTab(page, "routine");
   await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
