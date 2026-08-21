@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { unlockCalculator } from './helpers/gate.js';
 import { selectCalcTab } from './helpers/tabs.js';
 
 // Browser coverage for the shared live-feed poller (js/ui/feedLive.js): seat
@@ -52,6 +53,7 @@ async function boot(page) {
     }
     return route.abort();
   });
+  await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await selectCalcTab(page, "seats");
   await expect(page.locator('#tabSeats')).toHaveClass(/active/);
