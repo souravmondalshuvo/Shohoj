@@ -189,6 +189,24 @@ test('Hide clashes removes clashing alternatives from the list', async ({ page }
   await expect(mat.locator('.routine-section-hidden')).toContainText('1 clashing section hidden');
 });
 
+// Where a class actually meets is the point of the routine, so the room rides
+// both the weekly grid block and the folded course row — not just the tooltip.
+test('the weekly grid and the folded course row both name the room', async ({ page }) => {
+  await boot(page);
+  await addCourse(page, 'CSE110');
+  await page.locator('.routine-section-row[data-sid="9001"]').click();
+
+  // Section 01 meets Sun + Tue, both in 09A-10C.
+  const rooms = page.locator('.routine-grid .routine-grid-block-room');
+  await expect(rooms).toHaveCount(2);
+  await expect(rooms.first()).toHaveText('· 09A-10C');
+  // The block keeps its time alongside the room.
+  await expect(page.locator('.routine-grid-block').first()).toContainText('8:00 AM–9:20 AM');
+
+  const collapsed = page.locator('.routine-course-block--collapsed', { hasText: 'CSE110' });
+  await expect(collapsed.locator('.routine-collapsed-room')).toHaveText('09A-10C');
+});
+
 // The dim overlay marks "today" in the weekly grid. CSE110 Section 01 meets
 // Sun + Tue, so the grid shows exactly those two day columns.
 test('on a class day, only today\'s column stays bright', async ({ page }) => {
