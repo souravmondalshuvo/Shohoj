@@ -88,6 +88,13 @@ test('each block emits its course code as a text op', () => {
     // CSE220 appears twice (two slots), MAT215 once = 3
     eq(codes.length, 3);
 });
+test('block text is bounded by the block so a long room cannot spill into the next day', () => {
+    const plan = buildExportPlan(layout, { dayColWidth: 120 });
+    const blockText = plan.ops.filter(o => o.type === 'text' && o.text === 'CSE220');
+    assert(blockText.length > 0, 'expected block text ops');
+    // dayColWidth 120 → block w = 116, minus the 7px inset on each side.
+    for (const op of blockText) eq(op.maxWidth, 102);
+});
 test('title text op present when title given', () => {
     const plan = buildExportPlan(layout, { title: 'Spring 2026 Routine' });
     const titles = plan.ops.filter(o => o.type === 'text' && o.text === 'Spring 2026 Routine');
