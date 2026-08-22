@@ -132,7 +132,7 @@ test('tracker and trend stay hidden without a department / second semester', asy
   await gp.fill('4');
   await gp.blur();
 
-  await expect(page.getByTestId('calculator-results').locator('.cgpa-val')).toHaveText('4.00');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('4.00');
   await expect(page.getByTestId('degree-tracker')).toHaveCount(0); // no dept
   await expect(page.getByTestId('gpa-trend')).toHaveCount(0); // one semester
 });

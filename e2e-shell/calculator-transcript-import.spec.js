@@ -89,14 +89,14 @@ test('a transcript imports end to end: confirm dialog, state, setup, persistence
 
   // Detected department + start semester land in the setup controls.
   const setup = page.getByTestId('calculator-setup');
-  await expect(setup.getByLabel('Department')).toHaveValue('CSE');
-  await expect(setup.getByLabel('Start season')).toHaveValue('Fall');
-  await expect(setup.getByLabel('Start year')).toHaveValue('2022');
+  await expect(setup.getByLabel('Select your department')).toHaveValue('CSE');
+  await expect(setup.getByLabel('Starting semester season')).toHaveValue('Fall');
+  await expect(setup.getByLabel('Starting semester year')).toHaveValue('2022');
 
   // And it persists like any other edit.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#semestersContainer').locator('.semester-label').nth(1)).toHaveText('Spring 2023');
-  await expect(page.getByTestId('calculator-setup').getByLabel('Department')).toHaveValue('CSE');
+  await expect(page.getByTestId('calculator-setup').getByLabel('Select your department')).toHaveValue('CSE');
 });
 
 test('Cancel keeps the calculator untouched', async ({ page }) => {

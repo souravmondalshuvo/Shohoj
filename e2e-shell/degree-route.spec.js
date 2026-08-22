@@ -65,7 +65,11 @@ test('seeded state renders the tracker stats, bar and timeline', async ({ page }
 test('no placeholder remains anywhere: unknown paths 404, degree renders real content', async ({ page }) => {
   await seedState(page);
   await page.goto('/degree-progress', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText('coming soon')).toHaveCount(0);
+  // Scoped to the route's own content. The calculator header above the tabs
+  // carries legacy's two disabled "— Coming Soon" department options
+  // (index.html:320), which are part of the ported picker rather than a route
+  // placeholder, and an unscoped search finds them on every route.
+  await expect(page.locator('main#main-content').getByText('coming soon')).toHaveCount(0);
 
   // The old placeholder element is gone from the router — an unmigrated-style
   // path now falls through to the NotFound route instead.

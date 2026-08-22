@@ -20,10 +20,10 @@ test('dept + start selection produces calendar names with ordinals', async ({ pa
   await openCalculator(page);
   const setup = page.getByTestId('calculator-setup');
 
-  await setup.getByLabel('Department').selectOption('CSE');
+  await setup.getByLabel('Select your department').selectOption('CSE');
   await expect(setup.getByText('136 Total Credits')).toBeVisible();
-  await setup.getByLabel('Start season').selectOption('Spring');
-  await setup.getByLabel('Start year').selectOption('2025');
+  await setup.getByLabel('Starting semester season').selectOption('Spring');
+  await setup.getByLabel('Starting semester year').selectOption('2025');
 
   const container = page.locator('#semestersContainer');
   await container.getByRole('button', { name: '+ Add semester' }).click();
@@ -37,12 +37,12 @@ test('a two-season department scopes the seasons and the calendar math', async (
   await openCalculator(page);
   const setup = page.getByTestId('calculator-setup');
 
-  await setup.getByLabel('Department').selectOption('LAW');
-  const seasonOptions = await setup.getByLabel('Start season').locator('option:not([disabled])').allTextContents();
+  await setup.getByLabel('Select your department').selectOption('LAW');
+  const seasonOptions = await setup.getByLabel('Starting semester season').locator('option:not([disabled])').allTextContents();
   expect(seasonOptions).toEqual(['Spring', 'Fall']);
 
-  await setup.getByLabel('Start season').selectOption('Spring');
-  await setup.getByLabel('Start year').selectOption('2025');
+  await setup.getByLabel('Starting semester season').selectOption('Spring');
+  await setup.getByLabel('Starting semester year').selectOption('2025');
 
   const container = page.locator('#semestersContainer');
   await container.getByRole('button', { name: '+ Add semester' }).click();
@@ -55,10 +55,10 @@ test('switching to a department without the chosen season clears it', async ({ p
   await openCalculator(page);
   const setup = page.getByTestId('calculator-setup');
 
-  await setup.getByLabel('Department').selectOption('CSE');
-  await setup.getByLabel('Start season').selectOption('Summer');
-  await setup.getByLabel('Department').selectOption('LAW'); // no Summer in LAW
-  await expect(setup.getByLabel('Start season')).toHaveValue('');
+  await setup.getByLabel('Select your department').selectOption('CSE');
+  await setup.getByLabel('Starting semester season').selectOption('Summer');
+  await setup.getByLabel('Select your department').selectOption('LAW'); // no Summer in LAW
+  await expect(setup.getByLabel('Starting semester season')).toHaveValue('');
 });
 
 test('demo mode pre-selects CSE and the setup persists across a reload', async ({ page }) => {
@@ -66,14 +66,14 @@ test('demo mode pre-selects CSE and the setup persists across a reload', async (
   await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
 
   const setup = page.getByTestId('calculator-setup');
-  await expect(setup.getByLabel('Department')).toHaveValue('CSE');
+  await expect(setup.getByLabel('Select your department')).toHaveValue('CSE');
   await expect(setup.getByText('136 Total Credits')).toBeVisible();
-  await expect(setup.getByLabel('Start season')).toHaveValue('Fall');
-  await expect(setup.getByLabel('Start year')).toHaveValue('2024');
+  await expect(setup.getByLabel('Starting semester season')).toHaveValue('Fall');
+  await expect(setup.getByLabel('Starting semester year')).toHaveValue('2024');
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
   const setupAfter = page.getByTestId('calculator-setup');
-  await expect(setupAfter.getByLabel('Department')).toHaveValue('CSE');
-  await expect(setupAfter.getByLabel('Start year')).toHaveValue('2024');
+  await expect(setupAfter.getByLabel('Select your department')).toHaveValue('CSE');
+  await expect(setupAfter.getByLabel('Starting semester year')).toHaveValue('2024');
 });

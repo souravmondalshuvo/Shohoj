@@ -21,6 +21,7 @@ import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
 import { ShellBackdrop } from '../ShellBackdrop';
+import { CalcHeader } from '../CalcHeader';
 import { CalculatorProvider } from '../providers/CalculatorProvider';
 import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
@@ -215,9 +216,18 @@ function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
 
   return (
     <>
-      {/* Tabs are hidden while signed out: nineteen routes that all resolve to
-          the same sign-in page is worse than no tabs at all. */}
-      {authed ? <ShellTabs /> : null}
+      {/* Header then tabs, in legacy's order inside .calc-wrapper: the setup
+          wizard and the live CGPA sit ABOVE the bar and stay on screen whatever
+          route is open (index.html:277). Both are hidden while signed out —
+          nineteen routes that all resolve to the same sign-in page is worse
+          than no tabs at all, and legacy keeps the whole .calc-wrapper hidden
+          behind its own gate for the same reason. */}
+      {authed ? (
+        <>
+          <CalcHeader />
+          <ShellTabs />
+        </>
+      ) : null}
       {/* `<main id="main-content">` stays mounted in every state — it is the
           skip link's target, and an anchor pointing at nothing is an a11y bug
           that only appears when signed out. */}

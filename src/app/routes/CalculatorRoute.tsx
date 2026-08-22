@@ -52,7 +52,6 @@ import {
   CalculatorBridgeProvider,
   type CalculatorBridge,
 } from '../../features/calculator/calculatorBridge';
-import CalculatorSetup from '../../features/calculator/CalculatorSetup.tsx';
 import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
@@ -218,16 +217,6 @@ export function Component() {
 
   const hasSemesters = state.semesters.some((s) => !s.summary);
 
-  // Legacy onDeptSelect parity: keep the start season if the new department's
-  // calendar offers it, otherwise clear it back to the placeholder.
-  const onDeptChange = (code: string) => {
-    dispatch({ type: 'setDept', currentDept: code });
-    const seasons = deptSeasonsFor(code) as readonly string[];
-    if (state.startSeason && !seasons.includes(state.startSeason)) {
-      dispatch({ type: 'setStart', startSeason: '', startYear: state.startYear });
-    }
-  };
-
   // Every hook above has run, so this early return is safe. It is placed here
   // rather than at the top of the component precisely because of that: the
   // alternative is defaulting the scale to BRACU so the hooks have something
@@ -235,17 +224,12 @@ export function Component() {
   if (bridge === null) return <CampusRequired />;
 
   return (
+    // No heading and no setup block: legacy's `#tabCalculator` opens straight
+    // onto the semester list, because the "CGPA Calculator" h3 and the
+    // department/start pickers live in `.calc-header` ABOVE the tab bar and are
+    // shared by every tab (#586). Rendering them here as well showed the setup
+    // twice on this one route.
     <section className="shell-page">
-      <h1>CGPA Calculator</h1>
-      <CalculatorSetup
-        currentDept={state.currentDept}
-        startSeason={state.startSeason}
-        startYear={state.startYear}
-        onDeptChange={onDeptChange}
-        onStartChange={(season, year) =>
-          dispatch({ type: 'setStart', startSeason: season, startYear: year })
-        }
-      />
       <CalculatorBridgeProvider value={bridge}>
         <div id="semestersContainer">
           <CalculatorSemesters />

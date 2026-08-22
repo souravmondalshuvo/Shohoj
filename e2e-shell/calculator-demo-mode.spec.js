@@ -26,7 +26,7 @@ test('Try Demo Mode fills the demo semesters and lights up the results', async (
   await expect(container.locator('.semester-label').nth(1)).toHaveText('Spring 2025');
 
   const results = page.getByTestId('calculator-results');
-  await expect(results.locator('.cgpa-val')).toHaveText('3.50');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('3.50');
   await expect(results.locator('.standing-title')).toHaveText('Distinction');
   await expect(results.locator('.footer-stat').first()).toContainText('Credits Attempted: 18');
 
@@ -62,7 +62,7 @@ test('demo over existing data asks first — cancel keeps, confirm replaces', as
   await page.getByRole('dialog').getByRole('button', { name: 'Load demo' }).click();
   await expect(container.locator('.semester-block:not(.summary-block)')).toHaveCount(2);
   await expect(container.locator('.summary-block')).toHaveCount(0);
-  await expect(page.getByTestId('calculator-results').locator('.cgpa-val')).toHaveText('3.50');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('3.50');
 });
 
 test('demo data persists across a reload', async ({ page }) => {
@@ -73,5 +73,5 @@ test('demo data persists across a reload', async ({ page }) => {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
   await expect(page.locator('#semestersContainer .semester-block')).toHaveCount(2);
-  await expect(page.getByTestId('calculator-results').locator('.cgpa-val')).toHaveText('3.50');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('3.50');
 });

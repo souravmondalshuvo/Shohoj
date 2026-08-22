@@ -40,13 +40,13 @@ test('running semester is single, named, and flips the headline to projected', a
   await container.getByRole('button', { name: '+ Add semester' }).click();
 
   const results = page.getByTestId('calculator-results');
-  await expect(results.locator('.cgpa-label')).toHaveText('Current CGPA');
+  await expect(page.locator('.calc-header .cgpa-label')).toHaveText('Current CGPA');
 
   const footer = page.locator('.footer-btn-group');
   await footer.getByRole('button', { name: '🎯 Running Semester' }).click();
   await expect(container.locator('.semester-block')).toHaveCount(2);
   await expect(container.locator('.semester-label').nth(1)).toHaveText('Current Semester (Running)');
-  await expect(results.locator('.cgpa-label')).toHaveText('Projected CGPA');
+  await expect(page.locator('.calc-header .cgpa-label')).toHaveText('Projected CGPA');
 
   // A second running semester is a no-op (legacy guard).
   await footer.getByRole('button', { name: '🎯 Running Semester' }).click();

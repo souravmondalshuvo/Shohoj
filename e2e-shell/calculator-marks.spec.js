@@ -117,7 +117,7 @@ test('marks change nothing until a letter is applied, then flow into the CGPA', 
 }) => {
   await openSeeded(page);
 
-  const headline = page.getByTestId('calculator-results').locator('.cgpa-val');
+  const headline = page.locator('.calc-header .cgpa-val');
   const before = await headline.textContent();
 
   await runningRow(page).locator('.course-marks-pill').click();
