@@ -121,6 +121,22 @@ test('block fields carry section identity', () => {
     eq(sunday.facultyInitials, 'ABC');
     eq(sunday.roomName, '09B-12C');
 });
+test('a lab block carries the lab room, not the theory room', () => {
+    const [withLab] = parseFeed([{
+        sectionId: 1005, courseCode: 'CSE250', courseName: 'CIRCUITS',
+        sectionName: '05', capacity: 30, consumedSeat: 4, faculties: 'MNO',
+        roomName: '09B-12C', labRoomName: '10A-05L',
+        sectionSchedule: {
+            classSchedules: [{ day: 'MONDAY', startTime: '08:00', endTime: '09:20' }],
+        },
+        labSchedules: [{ day: 'WEDNESDAY', startTime: '08:00', endTime: '10:50' }],
+    }]).sections;
+    const layout = computeGridLayout([withLab]);
+    const theory = layout.blocks.find(b => b.day === 'MONDAY');
+    const lab = layout.blocks.find(b => b.day === 'WEDNESDAY');
+    eq(theory.roomName, '09B-12C');
+    eq(lab.roomName, '10A-05L');
+});
 test('CSS grid rows are 1-based; A on Sun 14:00 lands on row 10 (09:30..14:00 = 9 rows)', () => {
     const layout = computeGridLayout([A]);
     // startMin 14:00 = 13:30 + 30; actual startMin = 14:00 (snap-down already on the boundary).
