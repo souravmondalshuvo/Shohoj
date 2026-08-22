@@ -32,6 +32,8 @@
     "check:collisions": "python3 scripts/check_bundle_collisions.py",
     "generate:worker-catalog": "node scripts/generate_worker_catalog.mjs",
     "check:worker-catalog": "node scripts/generate_worker_catalog.mjs --check",
+    "generate:worker-reviews": "node scripts/generate_worker_reviews.mjs",
+    "check:worker-reviews": "node scripts/generate_worker_reviews.mjs --check",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" \"worker/index.js\" \"worker/assistant.js\" \"worker/assistantProviders.js\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" \"worker/index.js\" \"worker/assistant.js\" \"worker/assistantProviders.js\"",
