@@ -132,6 +132,11 @@ jobs:
       # regenerated, the Worker rejects a real course as nonexistent.
       - name: Check worker catalogue is in sync
         run: npm run check:worker-catalog
+      # Same guard for the seeded review corpus: if data/input_reviews.jsonl
+      # gains rows and this is not regenerated, the Assistant quotes a stale
+      # rating while the Routine Builder's ★ shows the current one.
+      - name: Check worker review corpus is in sync
+        run: npm run check:worker-reviews
       - name: Run worker tests
         run: npm run test:worker
 
