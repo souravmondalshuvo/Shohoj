@@ -1436,6 +1436,13 @@ export async function loadFacultyReviewsForCampus(env, token, initials, courseCo
   const rows = await firestoreRunQuery(env, token, {
     from: [{ collectionId: 'facultyReviews' }],
     where: { compositeFilter: { op: 'AND', filters: where } },
+    // Newest first so the 500-row ceiling truncates the oldest tail rather than
+    // an arbitrary slice. Safe to order on: firestore.rules requires createdAt
+    // on every facultyReviews document (`d.createdAt == request.time`), so this
+    // cannot silently exclude rows for want of the field. Both query shapes are
+    // already covered by the existing composite indexes, which end in
+    // createdAt DESC.
+    orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
     limit: 500,
   });
   return rows
