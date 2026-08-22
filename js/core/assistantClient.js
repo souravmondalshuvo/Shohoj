@@ -154,14 +154,18 @@ const ASSISTANT_DEFAULT_PROMPTS = Object.freeze([
 ]);
 
 const ASSISTANT_TAB_PROMPTS = Object.freeze({
+  // Seats and routine are the two tabs where faculty initials and the ★ are on
+  // screen, so that is where the rating question is worth offering (#579). The
+  // prompt names a course rather than a person on purpose — a starter chip
+  // should not put a particular teacher's name in front of every student.
   seats: Object.freeze([
     'Are there open seats in MAT216?',
     'Which sections of CSE370 still have room?',
-    'Can I take CSE370 next semester?',
+    'Who teaches CSE221, and how are they rated?',
   ]),
   routine: Object.freeze([
     'Are there open seats in MAT216?',
-    'Can I take CSE370 next semester?',
+    'Who teaches CSE221, and how are they rated?',
     'What GPA do I need to reach a 3.5 CGPA?',
   ]),
   planner: Object.freeze([
