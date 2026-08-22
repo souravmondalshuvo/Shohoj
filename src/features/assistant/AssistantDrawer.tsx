@@ -181,15 +181,16 @@ function AssistantDrawer({
           ✕
         </button>
       </header>
+      {/* Twin of DRAWER_NOTE in js/ui/assistantFab.js — change both. */}
       <p className="assistant-drawer-note">
-        Answers use only your own saved data. Chats aren’t saved — they reset when you close this
-        panel.
+        Answers use your own saved data and Shohoj’s faculty ratings. Chats aren’t saved — they
+        reset when you close this panel.
       </p>
 
       <div className="assistant-log" ref={logRef} aria-live="polite">
         {transcript.length === 0 && (
           <div className="assistant-empty">
-            <p>Ask about your CGPA goals, prerequisites, or seat availability. Try one:</p>
+            <p>Ask about your CGPA goals, prerequisites, seats, or faculty ratings. Try one:</p>
             {EXAMPLE_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
