@@ -130,6 +130,27 @@ export async function pinFeedAndClock(page) {
   );
 }
 
+/**
+ * Append a <style> to the document.
+ *
+ * Not `page.addStyleTag`: that helper resolves on the injected element's load
+ * event, and it rejects if the page reports a CSP problem while it is waiting.
+ * Both pages ship their CSP in a <meta>, where `frame-ancestors` is ignored and
+ * logged as an error on every load — so the call failed at random with a
+ * message about frame-ancestors that had nothing to do with the stylesheet. It
+ * cost one capture per CI run, never the same one twice.
+ *
+ * Appending the node directly has no load handshake to lose the race with.
+ * Inline styles are permitted: both CSPs keep 'unsafe-inline' in style-src.
+ */
+async function injectStyle(page, css) {
+  await page.evaluate((text) => {
+    const el = document.createElement('style');
+    el.textContent = text;
+    document.head.append(el);
+  }, css);
+}
+
 /** Pin the theme before any script runs, so there is no first-paint flash. */
 export async function primeTheme(page, theme) {
   await page.addInitScript((value) => {
@@ -152,13 +173,14 @@ export async function primeTheme(page, theme) {
  * the DOM instead.
  */
 export async function stabilize(page) {
-  await page.addStyleTag({
-    content: `
+  await injectStyle(
+    page,
+    `
       ${DECORATIVE.join(',')} { display: none !important; }
       html { scroll-behavior: auto !important; }
       *, *::before, *::after { transition-delay: 0ms !important; }
     `,
-  });
+  );
 
   await page.waitForTimeout(SETTLE_MS);
 
@@ -290,9 +312,10 @@ export async function assertNotGated(page, expectFn, route) {
  * which both pages already compute, and the width stays shrink-to-fit.
  */
 export async function pinForCapture(page, selector) {
-  await page.addStyleTag({
-    content: `${selector} { position: fixed !important; left: 0 !important; top: 0 !important; margin: 0 !important; }`,
-  });
+  await injectStyle(
+    page,
+    `${selector} { position: fixed !important; left: 0 !important; top: 0 !important; margin: 0 !important; }`,
+  );
 }
 
 export const VIEWPORTS = [
