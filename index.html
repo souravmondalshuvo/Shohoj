@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-eX/6yLtn2l79zF1rUMkIjgqTZjWDVsbvWYUgCr91Vms='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-P9RGd9Mi7lgvWFqjR8gLJRXhWDMeywEaqxXA6nvhyFY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6309,13 +6309,12 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.4px;
-  /* Course code left, room right. This line has width to spare (the code is
-     ~55px of a 98-126px block), which is what lets the time keep a line of its
-     own instead of sharing one and truncating. */
+  /* Code then room, read as one phrase: "CSE260 • 10B-13C". This line has the
+     width to spare (the code is ~43px of a 98-126px block), which is what lets
+     the time keep a line of its own instead of sharing one and truncating. */
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 3px;
+  min-width: 0;
 }
 /* The code never shrinks; the room ellipsizes first if a window is narrow
    enough that even this packing overflows. */
@@ -6344,8 +6343,8 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Room, right-aligned on the code line (see _gridBlockHTML). Set smaller and
-   lighter than the code so the two read as separate facts, not one string. */
+/* Room, sitting next to the code (see _gridBlockHTML). Smaller and lighter
+   than the code so the two read as separate facts, not one string. */
 .routine-grid-block-room {
   font-size: 9px;
   font-weight: 600;
@@ -6354,6 +6353,14 @@ body[data-page="admin"] .orb { display: none !important; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Separator as a pseudo-element, so the room's own text stays exactly the room
+   name for tests, copy/paste and assistive tech. */
+.routine-grid-block-room::before {
+  content: '\2022';
+  margin: 0 4px;
+  font-weight: 400;
+  opacity: 0.55;
 }
 
 @media (max-width: 720px) {
@@ -20758,19 +20765,18 @@ function buildExportPlan(layout, options = {}) {
         const textMaxWidth = Math.max(1, w - 14);
         ops.push({
             type: 'text', x: x + 7, y: y + 15,
-            text: block.courseCode, font: '700 12px sans-serif',
+            // Code and room on one line, mirroring the on-screen
+            // "CSE260 \u2022 10B-13C". Split into runs so the room can be lighter than
+            // the code and, more to the point, so a long room name is the only
+            // part condensed to fit — one string would have canvas squeeze the
+            // course code along with it.
+            text: block.roomName ? `${block.courseCode} \u2022 ${block.roomName}` : block.courseCode,
+            runs: block.roomName
+                ? [{ text: block.courseCode }, { text: ` \u2022 ${block.roomName}`, font: '400 9px sans-serif' }]
+                : undefined,
+            font: '700 12px sans-serif',
             fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
         });
-        if (block.roomName) {
-            // Right-aligned on the code line, mirroring the on-screen block. The
-            // reserve keeps it clear of the code: 12px bold renders a course code
-            // in well under 56px.
-            ops.push({
-                type: 'text', x: x + w - 7, y: y + 15,
-                text: block.roomName, font: '400 9px sans-serif',
-                fill: theme.blockText, align: 'right', maxWidth: Math.max(1, w - 14 - 56),
-            });
-        }
         if (h >= 32) {
             const fac = block.facultyInitials || 'TBA';
             ops.push({
@@ -20821,8 +20827,28 @@ function paintExportPlan(ctx, plan) {
             ctx.font = op.font;
             ctx.fillStyle = op.fill;
             ctx.textAlign = op.align;
-            if (typeof op.maxWidth === 'number') { ctx.fillText(op.text, op.x, op.y, op.maxWidth); }
-            else { ctx.fillText(op.text, op.x, op.y); }
+            if (op.runs && op.align === 'left') {
+                // Lay the runs out left to right, measuring as we go — the plan
+                // can't measure, so it hands the painter the pieces. Only the
+                // last run is capped, so a long room name condenses on its own
+                // instead of squeezing the course code beside it.
+                let cursor = op.x;
+                const limit = typeof op.maxWidth === 'number' ? op.x + op.maxWidth : Infinity;
+                op.runs.forEach((run, i) => {
+                    ctx.font = run.font || op.font;
+                    const width = ctx.measureText(run.text).width;
+                    const room = limit - cursor;
+                    if (room <= 0) return;
+                    const isLast = i === op.runs.length - 1;
+                    if (isLast && width > room) ctx.fillText(run.text, cursor, op.y, room);
+                    else ctx.fillText(run.text, cursor, op.y);
+                    cursor += Math.min(width, room);
+                });
+            } else if (typeof op.maxWidth === 'number') {
+                ctx.fillText(op.text, op.x, op.y, op.maxWidth);
+            } else {
+                ctx.fillText(op.text, op.x, op.y);
+            }
         }
     }
 }
