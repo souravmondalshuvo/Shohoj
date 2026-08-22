@@ -6293,18 +6293,29 @@ body[data-page="admin"] .orb { display: none !important; }
   font-size: 9px;
   opacity: 0.85;
   letter-spacing: 0.3px;
+  /* One line, ellipsized. Wrapping this to two lines is what pushed the time
+     off the bottom of a 40px slot; "Section" is shortened to "Sec" for the
+     same reason. The folded row below still spells both out in full. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .routine-grid-block-time {
   font-size: 9px;
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
-}
-/* Room shares the time line (see _gridBlockHTML). Kept on one piece so a
-   narrow/split block wraps between the time and the room, never mid-room. */
-.routine-grid-block-room {
+  /* One line: a wrap here overflows the 40px slot of an ordinary 1h20m class.
+     The room leads this line, so a column too narrow for both cuts the time. */
   white-space: nowrap;
-  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Room, leading the time line (see _gridBlockHTML) and weighted above it so
+   it reads as the answer to "where", not as part of the time range. */
+.routine-grid-block-room {
+  font-weight: 700;
   font-variant-numeric: normal;
+  letter-spacing: 0.2px;
 }
 
 @media (max-width: 720px) {
