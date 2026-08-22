@@ -53,6 +53,8 @@ export type DrawOp =
       font: string;
       fill: string;
       align: 'left' | 'center' | 'right';
+      /** Condense the text to this width when painting (canvas `fillText` maxWidth). */
+      maxWidth?: number;
     };
 
 export interface ExportPlan {
@@ -207,6 +209,9 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
       fill: `hsl(${hue}, 60%, 24%)`,
       stroke: `hsl(${hue}, 70%, 50%)`,
     });
+    // Text starts 7px in and must not run past the block's right edge — a long
+    // room name would otherwise spill over the next day's column.
+    const textMaxWidth = Math.max(1, w - 14);
     ops.push({
       type: 'text',
       x: x + 7,
@@ -215,6 +220,7 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
       font: '700 12px sans-serif',
       fill: theme.blockText,
       align: 'left',
+      maxWidth: textMaxWidth,
     });
     if (h >= 32) {
       const fac = block.facultyInitials || 'TBA';
@@ -226,6 +232,7 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
         font: '400 10px sans-serif',
         fill: theme.blockText,
         align: 'left',
+        maxWidth: textMaxWidth,
       });
     }
     if (h >= 46) {
@@ -237,6 +244,7 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
         font: '400 9px sans-serif',
         fill: theme.blockText,
         align: 'left',
+        maxWidth: textMaxWidth,
       });
     }
   }

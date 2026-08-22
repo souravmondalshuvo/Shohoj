@@ -112,24 +112,27 @@ export function buildExportPlan(layout, options = {}) {
             fill: `hsl(${hue}, 60%, 24%)`,
             stroke: `hsl(${hue}, 70%, 50%)`,
         });
+        // Text starts 7px in and must not run past the block's right edge — a
+        // long room name would otherwise spill over the next day's column.
+        const textMaxWidth = Math.max(1, w - 14);
         ops.push({
             type: 'text', x: x + 7, y: y + 15,
             text: block.courseCode, font: '700 12px sans-serif',
-            fill: theme.blockText, align: 'left',
+            fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
         });
         if (h >= 32) {
             const fac = block.facultyInitials || 'TBA';
             ops.push({
                 type: 'text', x: x + 7, y: y + 29,
                 text: `${fac} · Section ${block.sectionName}`, font: '400 10px sans-serif',
-                fill: theme.blockText, align: 'left',
+                fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
             });
         }
         if (h >= 46) {
             ops.push({
                 type: 'text', x: x + 7, y: y + 42,
                 text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}${block.roomName ? ` · ${block.roomName}` : ''}`, font: '400 9px sans-serif',
-                fill: theme.blockText, align: 'left',
+                fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
             });
         }
     }
@@ -167,7 +170,8 @@ export function paintExportPlan(ctx, plan) {
             ctx.font = op.font;
             ctx.fillStyle = op.fill;
             ctx.textAlign = op.align;
-            ctx.fillText(op.text, op.x, op.y);
+            if (typeof op.maxWidth === 'number') { ctx.fillText(op.text, op.x, op.y, op.maxWidth); }
+            else { ctx.fillText(op.text, op.x, op.y); }
         }
     }
 }
