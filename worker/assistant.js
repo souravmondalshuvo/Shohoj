@@ -47,9 +47,13 @@ const FACULTY_INITIALS_RE = /^[A-Z]{2,6}$/;
 // "debug this code", "what's the weather" — is a bill he pays for a service
 // Shohoj does not offer. Narrow scope is also what makes the assistant
 // trustworthy to students: it answers about their degree, and nothing else.
-// Enforcement is the system prompt plus the tools: there is no data path to
-// anything but this student's own academic record, so the worst an off-topic
-// question can do is get declined.
+// Enforcement is the system prompt plus the tools, and the tools reach exactly
+// two things: this student's own academic record, and the community review
+// corpus their campus can already read in the Reviews tab (#579). Neither is
+// another student's private data, so the worst an off-topic question can do is
+// get declined. Note the second one is aggregates only — the ratings cross the
+// boundary, the review text never does, because that text is written by other
+// students and a model must not take instructions from it.
 export const ASSISTANT_SYSTEM = [
   'You are Shohoj Assistant, an in-app helper for one BRACU student using the Shohoj academic planner.',
   '',
