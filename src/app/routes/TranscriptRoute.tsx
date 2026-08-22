@@ -8,24 +8,19 @@
 // are badged, and the header shows the cumulative figures from the shared
 // results model.
 
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Link } from 'react-router';
 
 import { gpaCoreCalcSemesterGpa } from '../../core/gpa.ts';
 import type { SemesterEntry } from '../../core/types.ts';
-import {
-  calculatorReducer,
-  loadCalculatorState,
-  persistCalculatorState,
-} from '../../features/calculator/calculatorState.ts';
 import { BRACU_COURSE_CATALOG } from '../../features/calculator/catalog.ts';
 import { computeCalculatorResults, formatCredits } from '../../features/calculator/results.ts';
 import TranscriptImport, {
   type TranscriptImportHandle,
 } from '../../features/calculator/TranscriptImport.tsx';
 import type { SemesterSeason } from '../../core/types.ts';
-import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { useNotifications } from '../../state/NotificationProvider';
+import { useCalculator } from '../providers/CalculatorProvider';
 import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
 import type { GradeScale } from '../../core/university.ts';
@@ -107,21 +102,8 @@ function SemesterCard({
 export function Component() {
   const university = useUniversity();
   const { notify } = useNotifications();
-  const store = useMemo(() => createBrowserStore(), []);
-  const loaded = useMemo(() => loadCalculatorState(store), [store]);
-  const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
+  const { state, dispatch } = useCalculator();
   const importRef = useRef<TranscriptImportHandle>(null);
-
-  // Persist on mutation only (CalculatorRoute parity — skip the seed write so a
-  // corrupt raw value the load path preserved isn't immediately overwritten).
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!seeded.current) {
-      seeded.current = true;
-      return;
-    }
-    persistCalculatorState(store, state, loaded.stored);
-  }, [store, state, loaded]);
 
   const results = useMemo(
     () =>
