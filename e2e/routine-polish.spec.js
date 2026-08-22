@@ -203,13 +203,24 @@ test('the weekly grid and the folded course row both name the room', async ({ pa
   // The block keeps its time alongside the room.
   await expect(page.locator('.routine-grid-block').first()).toContainText('8:00 AM–9:20 AM');
 
-  // ...and none of it is clipped: an ordinary 1h20m class gets a 40px slot,
-  // which fits exactly three single lines. This is the regression that shipped
-  // in #578 — the room rendered but fell off the bottom of every short block.
-  const fits = await page.locator('.routine-grid-block').evaluateAll((els) =>
-    els.every((el) => el.scrollHeight <= el.getBoundingClientRect().height + 0.5),
-  );
-  expect(fits).toBe(true);
+  // ...and none of it is clipped, in either direction. Both regressions here
+  // were a block promising text it could not show: #580 lost the room off the
+  // bottom of a 40px slot, then #585 truncated the time by sharing a line with
+  // the room. Assert the geometry, not just the text.
+  const clipped = await page.locator('.routine-grid-block').evaluateAll((els) => {
+    const bad = [];
+    for (const el of els) {
+      const code = el.querySelector('.routine-grid-block-code')?.textContent?.trim();
+      if (el.scrollHeight > el.getBoundingClientRect().height + 0.5) bad.push(`${code}: vertical`);
+      for (const line of el.querySelectorAll('div, span')) {
+        if (line.clientWidth > 0 && line.scrollWidth > line.clientWidth + 0.5) {
+          bad.push(`${code}: "${line.textContent.trim()}" needs ${line.scrollWidth}px, has ${line.clientWidth}px`);
+        }
+      }
+    }
+    return bad;
+  });
+  expect(clipped).toEqual([]);
 
   const collapsed = page.locator('.routine-course-block--collapsed', { hasText: 'CSE110' });
   await expect(collapsed.locator('.routine-collapsed-room')).toHaveText('09A-10C');
