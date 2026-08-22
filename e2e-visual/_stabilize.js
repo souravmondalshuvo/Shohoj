@@ -350,8 +350,31 @@ export async function pinForCapture(page, selector) {
  * same box to the same integers and the crops are directly comparable.
  */
 export async function captureBox(page, expect, selector, name) {
-  const box = await page.locator(selector).first().boundingBox();
-  if (box === null) throw new Error(`No box for ${selector} — is it visible?`);
+  const locator = page.locator(selector).first();
+  const raw = await locator.boundingBox();
+  if (raw === null) throw new Error(`No box for ${selector} — is it visible?`);
+
+  // Nudge the box onto whole pixels before clipping.
+  //
+  // Rounding the CLIP is not enough on its own. `.calc-header` is the same
+  // 854x140 box at the same x on both pages, but legacy's sits at y=294.188 and
+  // the shell's at y=145 — so cropping both at their rounded y captures text
+  // rasterised at two different sub-pixel phases. The glyphs land on the same
+  // rows but with different antialiasing, which reads as ~1.3% of pixels
+  // differing: invisible to a person, over the threshold for the gate, and
+  // dependent on the renderer (it never reproduced on macOS, only on CI).
+  //
+  // Translating by the fractional remainder puts both sides on phase 0. The
+  // shift is under one pixel and is applied to whichever side needs it, so it
+  // moves nothing a reader could see — it only stops the two pages being
+  // sampled off different grids.
+  const dx = raw.x - Math.round(raw.x);
+  const dy = raw.y - Math.round(raw.y);
+  if (dx !== 0 || dy !== 0) {
+    await injectStyle(page, `${selector} { transform: translate(${-dx}px, ${-dy}px) !important; }`);
+  }
+
+  const box = (await locator.boundingBox()) ?? raw;
   await expect(page).toHaveScreenshot(name, {
     clip: {
       x: Math.round(box.x),
