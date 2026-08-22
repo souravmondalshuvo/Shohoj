@@ -32,8 +32,12 @@ import {
 } from '../core/assistantClient.js';
 import { ASSISTANT_MORPH_CLOSE_MS, morphPanel } from '../core/assistantMorph.js';
 
+// Kept honest as the tools grow: since #579 the Assistant also reads the
+// faculty ratings your campus already sees in the Reviews tab, so "only your
+// own saved data" would no longer be true. Twin of the note in
+// src/features/assistant/AssistantDrawer.tsx — change both.
 const DRAWER_NOTE =
-  'Answers use only your own saved data. Chats aren’t saved — they reset when you close this tab.';
+  'Answers use your own saved data and Shohoj’s faculty ratings. Chats aren’t saved — they reset when you close this tab.';
 
 let _fab = null;
 let _drawer = null;
@@ -121,7 +125,7 @@ function renderEmptyState() {
   const wrap = document.createElement('div');
   wrap.className = 'assistant-empty';
   const p = document.createElement('p');
-  p.textContent = 'Ask about your CGPA goals, prerequisites, or seat availability. Try one:';
+  p.textContent = 'Ask about your CGPA goals, prerequisites, seats, or faculty ratings. Try one:';
   wrap.appendChild(p);
   examplePromptsForTab(activeTab()).forEach(prompt => {
     const btn = document.createElement('button');
