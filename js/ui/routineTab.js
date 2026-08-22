@@ -934,16 +934,20 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
-  // Room rides the time line rather than a line of its own: blocks are only a
-  // few 14px rows tall and a fourth line would be clipped on a 1h20m class.
+  // Room leads the last line, ahead of the time. A 1h20m class — the common
+  // case — has a 40px slot, which fits exactly three single lines, so the room
+  // needs the full block width to itself rather than sharing line 1 with the
+  // course code (it truncated to "10B-1…" on a narrow column). Leading also
+  // means a column too narrow for both truncates the time, not the room: the
+  // grid position already says when a block meets, but nothing else says where.
   const roomLabel = block.roomName
-    ? ` <span class="routine-grid-block-room">· ${escHtml(block.roomName)}</span>`
+    ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span> · `
     : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Section ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}${roomLabel}</div>
+      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-time">${roomLabel}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
 }

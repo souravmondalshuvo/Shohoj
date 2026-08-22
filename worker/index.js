@@ -1251,6 +1251,34 @@ async function handleAssistant(request, env, origin, execCtx) {
       }
     },
     loadSeatIndex: () => loadSeatIndexCached(),
+    // Campus comes from the verified token's email, never from the request or
+    // the model — the same derivation /reviews uses when it stamps a new row,
+    // so a student reads back exactly the corpus they can write to.
+    loadFacultyReviews: async (initials, courseCode) => {
+      try {
+        const saToken = await getServiceAccountAccessToken(env);
+        return await loadFacultyReviewsForCampus(
+          env,
+          saToken,
+          initials,
+          courseCode,
+          campusOfEmail(claims?.email) || 'bracu',
+        );
+      } catch (e) {
+        // Best-effort by design: the seeded corpus still answers the question,
+        // and a student asking about a teacher should not get an error page
+        // because Firestore hiccuped. Logged because a persistently failing
+        // query would quietly hide every review written since launch.
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'assistant_faculty_reviews_failed',
+            errorMessage: e?.message || String(e),
+          }),
+        );
+        return [];
+      }
+    },
   };
 
   try {
@@ -1344,6 +1372,87 @@ async function firestoreListAll(env, token, collection) {
     pageToken = data.nextPageToken || '';
   } while (pageToken);
   return out;
+}
+
+// Run a structured query against one collection. Unlike firestoreListAll this
+// filters server-side, which matters for facultyReviews: it grows without
+// bound and the Assistant wants one faculty member out of it.
+async function firestoreRunQuery(env, token, structuredQuery) {
+  const res = await fetch(`${firestoreDocsBase(env)}:runQuery`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery }),
+  });
+  if (!res.ok) throw new Error(`Firestore runQuery ${res.status}`);
+  const rows = await res.json();
+  const out = [];
+  // A runQuery response is a stream of frames; frames without `document` are
+  // progress markers, not results.
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (!row?.document) continue;
+    const name = row.document.name || '';
+    out.push({
+      id: name.slice(name.lastIndexOf('/') + 1),
+      fields: fromFirestoreFields(row.document.fields || {}),
+    });
+  }
+  return out;
+}
+
+// Faculty reviews for the Assistant's get_faculty_rating tool (#579), scoped to
+// the student's own campus.
+//
+// The campus filter is applied HERE, in JS, rather than as a second
+// where-clause. A pre-tenancy review has no `university` field at all, and
+// Firestore equality does not match a missing field — so the obvious
+// `where('university','==','bracu')` would silently drop every review written
+// before #574, which is most of them. firestore.rules resolves the same
+// ambiguity the same way (`'university' in data ? data.university : 'bracu'`),
+// and the two must agree or the Assistant would answer from a different corpus
+// than the Reviews tab shows.
+//
+// Text is dropped on the way through: the tool is aggregates-only, and the
+// cheapest way to guarantee student prose never reaches a model is to never
+// load it into the object in the first place.
+export async function loadFacultyReviewsForCampus(env, token, initials, courseCode, campus) {
+  const where = [
+    {
+      fieldFilter: {
+        field: { fieldPath: 'facultyInitials' },
+        op: 'EQUAL',
+        value: { stringValue: initials },
+      },
+    },
+  ];
+  if (courseCode) {
+    where.push({
+      fieldFilter: {
+        field: { fieldPath: 'courseCode' },
+        op: 'EQUAL',
+        value: { stringValue: courseCode },
+      },
+    });
+  }
+  const rows = await firestoreRunQuery(env, token, {
+    from: [{ collectionId: 'facultyReviews' }],
+    where: { compositeFilter: { op: 'AND', filters: where } },
+    // Newest first so the 500-row ceiling truncates the oldest tail rather than
+    // an arbitrary slice. Safe to order on: firestore.rules requires createdAt
+    // on every facultyReviews document (`d.createdAt == request.time`), so this
+    // cannot silently exclude rows for want of the field. Both query shapes are
+    // already covered by the existing composite indexes, which end in
+    // createdAt DESC.
+    orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+    limit: 500,
+  });
+  return rows
+    .filter((r) => (r.fields.university || 'bracu') === campus)
+    .map((r) => ({
+      id: r.id,
+      facultyInitials: r.fields.facultyInitials,
+      courseCode: r.fields.courseCode || '',
+      ratings: r.fields.ratings || {},
+    }));
 }
 
 async function firestoreGetFields(env, token, path) {
