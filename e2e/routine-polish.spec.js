@@ -199,9 +199,17 @@ test('the weekly grid and the folded course row both name the room', async ({ pa
   // Section 01 meets Sun + Tue, both in 09A-10C.
   const rooms = page.locator('.routine-grid .routine-grid-block-room');
   await expect(rooms).toHaveCount(2);
-  await expect(rooms.first()).toHaveText('· 09A-10C');
+  await expect(rooms.first()).toHaveText('09A-10C');
   // The block keeps its time alongside the room.
   await expect(page.locator('.routine-grid-block').first()).toContainText('8:00 AM–9:20 AM');
+
+  // ...and none of it is clipped: an ordinary 1h20m class gets a 40px slot,
+  // which fits exactly three single lines. This is the regression that shipped
+  // in #578 — the room rendered but fell off the bottom of every short block.
+  const fits = await page.locator('.routine-grid-block').evaluateAll((els) =>
+    els.every((el) => el.scrollHeight <= el.getBoundingClientRect().height + 0.5),
+  );
+  expect(fits).toBe(true);
 
   const collapsed = page.locator('.routine-course-block--collapsed', { hasText: 'CSE110' });
   await expect(collapsed.locator('.routine-collapsed-room')).toHaveText('09A-10C');
