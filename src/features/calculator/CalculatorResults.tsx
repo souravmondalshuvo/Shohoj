@@ -17,7 +17,6 @@
 import type { ReactNode } from 'react';
 
 import { useCalculatorBridge } from './calculatorBridge.ts';
-import { gpaBadgeColors } from './colors.ts';
 import DegreeTracker from './DegreeTracker.tsx';
 import GpaTrendChart from './GpaTrendChart.tsx';
 import {
@@ -137,17 +136,8 @@ export default function CalculatorResults() {
 
   return (
     <div data-testid="calculator-results">
-      <div className="cgpa-display">
-        <div
-          className="cgpa-val"
-          style={{
-            color: results.cgpa === null ? 'var(--text3)' : gpaBadgeColors(results.cgpa).color,
-          }}
-        >
-          {results.cgpa !== null ? results.cgpa.toFixed(2) : '—'}
-        </div>
-        <div className="cgpa-label">{results.headlineLabel}</div>
-      </div>
+      {/* The CGPA readout moved to `.calc-header` (#586), where legacy keeps it:
+          above the tabs, visible on every route rather than only this one. */}
 
       {results.incompleteSemesters > 0 && (
         <div className="incomplete-warning" role="status">

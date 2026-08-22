@@ -51,8 +51,8 @@ async function addCourse(page, code, { gradePoint = null } = {}) {
 test('empty calculator shows the invite state: no figure, empty meter, no standing', async ({ page }) => {
   const results = await openCalculator(page);
 
-  await expect(results.locator('.cgpa-val')).toHaveText('—');
-  await expect(results.locator('.cgpa-label')).toHaveText('Current CGPA');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('—');
+  await expect(page.locator('.calc-header .cgpa-label')).toHaveText('Current CGPA');
   await expect(results.locator('.meter-status')).toHaveText('Add your courses to get started.');
   await expect(results.locator('.standing-box')).toHaveCount(0);
   await expect(results.locator('.incomplete-warning')).toHaveCount(0);
@@ -63,8 +63,8 @@ test('grading a course updates headline, meter, standing and credit totals live'
   const results = await openCalculator(page);
   await addCourse(page, KNOWN_CODE, { gradePoint: '4' });
 
-  await expect(results.locator('.cgpa-val')).toHaveText('4.00');
-  await expect(results.locator('.cgpa-label')).toHaveText('Current CGPA');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('4.00');
+  await expect(page.locator('.calc-header .cgpa-label')).toHaveText('Current CGPA');
   await expect(results.locator('.meter-status')).toContainText('Outstanding!');
   await expect(results.locator('.meter-status')).toContainText('4.00');
 
@@ -78,7 +78,7 @@ test('grading a course updates headline, meter, standing and credit totals live'
   // Results recompute from persisted state alone after a reload.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByRole('link', { name: 'Calculator', exact: true }).click();
-  await expect(page.getByTestId('calculator-results').locator('.cgpa-val')).toHaveText('4.00');
+  await expect(page.locator('.calc-header .cgpa-val')).toHaveText('4.00');
 });
 
 test('a named course without a grade raises the incomplete warning', async ({ page }) => {
