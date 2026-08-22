@@ -1,13 +1,18 @@
 // Visual parity captures the SIGNED-OUT shell against legacy baselines
 // (HomeRoute swaps its CTA on uid), so these must not use the signed-in
 // default fixture.
-import { anonymousTest as test, expect } from '../e2e-support/authFixture.js';
+import { anonymousTest as test, test as authedTest, expect } from '../e2e-support/authFixture.js';
 import {
   primeTheme,
   stabilize,
   pinForCapture,
+  assertNotGated,
+  shellRouteContainer,
+  baselineWidth,
+  CAPTURE_ROUTE_PIXELS,
   TARGETS,
   ADMIN_TARGETS,
+  PANEL_TARGETS,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -106,6 +111,43 @@ for (const viewport of VIEWPORTS) {
           await expect(el).toBeVisible();
           await pinForCapture(page, target.selector);
           await expect(el).toHaveScreenshot(shotName(target.name, viewport.name, theme));
+        });
+      }
+    });
+
+    // Route interiors — the captures docs/ROLLBACK.md names as the missing
+    // precondition for a third cutover attempt.
+    //
+    // These use the SIGNED-IN runner, unlike every capture above. The shell
+    // gates each route behind sign-in (GatedMain), so an anonymous run would
+    // capture the sign-in portal for all nine routes and compare it against
+    // nine different legacy panels. assertNotGated makes that failure loud
+    // instead of merely red.
+    authedTest.describe(`shell routes · ${viewport.name} · ${theme}`, () => {
+      authedTest.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      for (const target of PANEL_TARGETS) {
+        authedTest(`${target.name} route matches legacy`, async ({ page }) => {
+          await primeTheme(page, theme);
+          await page.goto(target.route, { waitUntil: 'load' });
+          await stabilize(page);
+          await assertNotGated(page, expect, target.route);
+
+          const el = await shellRouteContainer(page);
+          await expect(el).toBeVisible();
+
+          // The always-on gate: the route renders at legacy's width. Content
+          // height legitimately differs (the shell recomposes panels — see
+          // CAPTURE_ROUTE_PIXELS), but the BOX must match, and comparing a
+          // rounded CSS width against the baseline PNG's own width means the
+          // legacy page stays the single source of that number.
+          const shot = shotName(`route-${target.name}`, viewport.name, theme);
+          const box = await el.boundingBox();
+          expect(Math.round(box.width), `${target.route} container width`).toBe(
+            baselineWidth(shot),
+          );
+
+          if (CAPTURE_ROUTE_PIXELS) await expect(el).toHaveScreenshot(shot);
         });
       }
     });
