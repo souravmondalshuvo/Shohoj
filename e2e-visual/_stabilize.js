@@ -45,6 +45,91 @@ const REVEAL_SELECTORS = [
  */
 const SETTLE_MS = 1800;
 
+/**
+ * The live CONNECT feed, and a fixed instant to read it at.
+ *
+ * Free Rooms answers "which rooms are free NOW", so its panel is a function of
+ * the wall clock and of a third-party feed that changes through the day. Both
+ * projects captured it against whatever was true at capture time, which made
+ * the freerooms baselines rot within hours — four captures failed against
+ * baselines authored the same morning.
+ *
+ * Pinning both makes the panel a pure function again. The fixture is small on
+ * purpose: it is not trying to reproduce a real timetable, only to give both
+ * sides byte-identical input so the comparison is about layout. Routine and
+ * Seats read the same feed and become deterministic for free.
+ */
+export const FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
+
+// A Sunday, mid-morning: inside R1's 08:00-09:20 theory class and the
+// 08:00-10:50 lab, so the panel has both a busy and a free room to render.
+const FIXED_TIME = new Date('2026-08-23T09:00:00+06:00');
+
+function sched(day, start, end) {
+  return {
+    midExamDate: '2026-07-26',
+    midExamStartTime: '11:00:00',
+    midExamEndTime: '13:00:00',
+    finalExamDate: '2026-09-13',
+    finalExamStartTime: '11:00:00',
+    finalExamEndTime: '13:00:00',
+    classSchedules: [{ day, startTime: start, endTime: end }],
+  };
+}
+
+const FEED_FIXTURE = [
+  {
+    courseId: 1,
+    sectionType: 'THEORY',
+    semesterSessionId: 20262,
+    courseCredit: 3,
+    sectionId: 1,
+    courseCode: 'CSE110',
+    courseName: 'Programming Language I',
+    sectionName: '01',
+    capacity: 30,
+    consumedSeat: 10,
+    faculties: 'ABC',
+    roomName: 'R1',
+    sectionSchedule: sched('SUNDAY', '08:00:00', '09:20:00'),
+  },
+  {
+    courseId: 2,
+    sectionType: 'THEORY',
+    semesterSessionId: 20262,
+    courseCredit: 3,
+    sectionId: 2,
+    courseCode: 'MAT110',
+    courseName: 'Mathematics I',
+    sectionName: '01',
+    capacity: 30,
+    consumedSeat: 5,
+    faculties: 'DEF',
+    roomName: 'R2',
+    sectionSchedule: sched('TUESDAY', '10:00:00', '11:20:00'),
+  },
+];
+
+/**
+ * Freeze the clock and serve the feed from a fixture.
+ *
+ * Only the feed URL is intercepted — the legacy specs abort every other https
+ * request, which here would also block Google Fonts and change every glyph in
+ * the frame. Must run before goto: the clock has to be fixed before page
+ * scripts read it, and the route before the feed is requested.
+ */
+export async function pinFeedAndClock(page) {
+  await page.clock.setFixedTime(FIXED_TIME);
+  await page.route(`${FEED_URL}**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify(FEED_FIXTURE),
+    }),
+  );
+}
+
 /** Pin the theme before any script runs, so there is no first-paint flash. */
 export async function primeTheme(page, theme) {
   await page.addInitScript((value) => {

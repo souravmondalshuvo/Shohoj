@@ -6,6 +6,7 @@ import {
   primeTheme,
   stabilize,
   pinForCapture,
+  pinFeedAndClock,
   assertNotGated,
   shellRouteContainer,
   baselineWidth,
@@ -129,6 +130,9 @@ for (const viewport of VIEWPORTS) {
       for (const target of PANEL_TARGETS) {
         authedTest(`${target.name} route matches legacy`, async ({ page }) => {
           await primeTheme(page, theme);
+          // Same fixture and same instant as the legacy capture — otherwise the
+          // two sides read different feeds minutes apart and the diff is data.
+          await pinFeedAndClock(page);
           await page.goto(target.route, { waitUntil: 'load' });
           await stabilize(page);
           await assertNotGated(page, expect, target.route);
