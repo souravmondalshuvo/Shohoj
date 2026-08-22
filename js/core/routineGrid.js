@@ -76,7 +76,9 @@ export function computeGridLayout(routine, options = {}) {
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
                 facultyInitials: s.facultyInitials,
-                roomName: s.roomName,
+                // The slot's own room (a lab meets elsewhere than its theory
+                // class); the section room is the fallback when it's blank.
+                roomName: slot.room || s.roomName,
                 day: slot.day,
                 dayCol,
                 gridRowStart: rowStart + 1,
