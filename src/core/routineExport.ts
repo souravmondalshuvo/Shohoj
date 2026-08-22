@@ -55,6 +55,13 @@ export type DrawOp =
       align: 'left' | 'center' | 'right';
       /** Condense the text to this width when painting (canvas `fillText` maxWidth). */
       maxWidth?: number;
+      /**
+       * Optional inline runs, drawn left to right from `x`, each in its own
+       * font. Only the last run is condensed to fit `maxWidth` — the painter
+       * measures, which a plan cannot. Renderers without run support fall back
+       * to `text`, which always holds the same string.
+       */
+      runs?: { text: string; font?: string }[];
     };
 
 export interface ExportPlan {
@@ -216,10 +223,17 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
       type: 'text',
       x: x + 7,
       y: y + 15,
-      // Code and room as one string, mirroring the on-screen "CSE260 • 10B-13C".
-      // One op rather than two positioned ops: a draw plan cannot measure text,
-      // so placing the room after the code would mean guessing the code's width.
+      // Code and room on one line, mirroring the on-screen "CSE260 • 10B-13C".
+      // Split into runs so the room can be lighter than the code and, more to
+      // the point, so a long room name is the only part condensed to fit — one
+      // string would have canvas squeeze the course code along with it.
       text: block.roomName ? `${block.courseCode} \u2022 ${block.roomName}` : block.courseCode,
+      runs: block.roomName
+        ? [
+            { text: block.courseCode },
+            { text: ` \u2022 ${block.roomName}`, font: '400 9px sans-serif' },
+          ]
+        : undefined,
       font: '700 12px sans-serif',
       fill: theme.blockText,
       align: 'left',
