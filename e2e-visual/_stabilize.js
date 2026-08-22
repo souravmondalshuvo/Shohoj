@@ -1,10 +1,19 @@
 // Shared determinism helpers for the visual parity harness.
 //
+// PANEL_ROUTES is the legacy-panel <-> shell-route correspondence; it lives in
+// its own module because scripts/parity_report.mjs consumes it too.
+//
 // The legacy page is deliberately animated: a pointer-reactive canvas, three
 // drifting orbs, a custom cursor, IntersectionObserver reveal cascades with
 // accumulating transition delays, and a 900ms rAF stat counter. None of that is
 // pixel-stable, so both the baseline run and the shell run put the page into the
 // same forced end state before capturing.
+
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { PANEL_ROUTES } from './panelRoutes.js';
 
 /** Decorative layers that are animated, pointer-driven, or scroll-driven. */
 export const DECORATIVE = [
@@ -118,6 +127,66 @@ export const TARGETS = [
 export const ADMIN_TARGETS = [{ name: 'admin-link', selector: '#adminNavBtn' }];
 
 /**
+ * Per-route capture targets — the ten legacy `.calc-tab-panel` divs and the
+ * shell routes they became.
+ *
+ * TARGETS above covers the landing page only, and docs/ROLLBACK.md names that
+ * as the reason the cutover was reverted twice: "e2e-visual asserts
+ * nav/hero/features on `/` only, which is how mismatched route interiors
+ * reached production last time." These are the interiors.
+ *
+ * `playground` is dropped rather than captured: js/ui/playground.js has no
+ * shell counterpart (only getCurrentTotals was ported out of it), so there is
+ * nothing to compare it against. It stays in PANEL_ROUTES with `route: null`
+ * so the map remains a complete record of legacy's features.
+ */
+export const PANEL_TARGETS = PANEL_ROUTES.filter((entry) => entry.route !== null);
+
+/**
+ * The shell box that corresponds to a legacy `.calc-tab-panel`.
+ *
+ * It is `<main>`, NOT `.shell-page`, and the difference is a whole padding box.
+ * RootLayout gives `<main>` legacy's `.calc-body` class on purpose — "`<main>`
+ * occupies the same slot — panel content — so taking the class gives the shell
+ * legacy's exact inset responsively" (RootLayout.tsx:292). So `<main>` INCLUDES
+ * the 1.5rem/2rem inset, exactly as legacy's panel does, while `.shell-page`
+ * sits INSIDE it.
+ *
+ * Comparing `.shell-page` against a legacy panel therefore measures two boxes
+ * one padding level apart and reports a flat -64px desktop / -24px mobile width
+ * gap on every single route — a convincing systematic "bug" that is entirely an
+ * artifact of the selector. scripts/parity_report.mjs had exactly that defect.
+ *
+ * ShellTabs is a SIBLING of <main> (GatedMain), not a child, so this box holds
+ * the route and nothing else — no tab bar to make it incomparable.
+ */
+const SHELL_ROUTE_SELECTOR = 'main#main-content';
+
+/** Resolve the shell's route container, or throw naming what was searched. */
+export async function shellRouteContainer(page) {
+  const locator = page.locator(SHELL_ROUTE_SELECTOR);
+  if ((await locator.count()) === 0) {
+    throw new Error(`No shell route container matched: ${SHELL_ROUTE_SELECTOR}`);
+  }
+  return locator;
+}
+
+/**
+ * Fail loudly when a route rendered the sign-in portal instead of itself.
+ *
+ * Without this the failure is silent and convincing: every route reports the
+ * same box, which reads as one systemic container bug rather than as nine
+ * measurements of the same portal. That is exactly what
+ * scripts/parity_report.mjs did before it was taught to sign in.
+ */
+export async function assertNotGated(page, expectFn, route) {
+  await expectFn(
+    page.locator('[data-testid="signin-portal"]'),
+    `${route} rendered the sign-in portal — the auth seam did not take`,
+  ).toHaveCount(0);
+}
+
+/**
  * Pin an element to the viewport origin so its element screenshot is a stable
  * size across both projects.
  *
@@ -152,3 +221,37 @@ export const THEMES = ['dark', 'light'];
 export function shotName(target, viewport, theme) {
   return `${target}-${viewport}-${theme}.png`;
 }
+
+/**
+ * Width of a checked-in baseline, in CSS pixels.
+ *
+ * The config sets `scale: 'css'`, so a baseline PNG's pixel width IS the
+ * element's CSS width — which makes the legacy baselines a usable width oracle
+ * without re-measuring the legacy page.
+ *
+ * Read from the PNG's IHDR: an 8-byte signature, then a 4-byte length and the
+ * 4-byte "IHDR" tag, putting the big-endian uint32 width at byte 16.
+ */
+export function baselineWidth(name) {
+  const dir = path.dirname(fileURLToPath(import.meta.url));
+  return readFileSync(path.join(dir, '__screenshots__', name)).readUInt32BE(16);
+}
+
+/**
+ * Whether to also assert route interiors PIXEL-for-pixel (`VISUAL_ROUTE_PIXELS=1`).
+ *
+ * Off by default, and that is a finding rather than a cop-out. The shell does
+ * not re-render legacy's panels one-for-one; it recomposes them. `/calculator`
+ * carries an `h1`, the setup block and `.simulator-box` — and legacy keeps the
+ * simulator on a DIFFERENT tab entirely. So the two boxes hold different
+ * content by design, every height differs, and Playwright rejects the pair on
+ * size before it compares a colour. Demanding pixel equality here would demand
+ * the shell give up a deliberate product decision.
+ *
+ * What IS comparable — and what this spec gates unconditionally — is the box
+ * itself: the route must render (not the sign-in portal) and must be legacy's
+ * width. That is the half that regressed unnoticed before, and it holds today.
+ *
+ * Turn the pixels on to work the interior punch list route by route.
+ */
+export const CAPTURE_ROUTE_PIXELS = !!process.env.VISUAL_ROUTE_PIXELS;
