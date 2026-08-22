@@ -932,22 +932,24 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     : '';
   const clashLabel = isClash ? ' — clashes with another class' : '';
   const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
-  // Non-color clash cue (⚠) so the state reads without relying on red alone.
+  // Non-color clash cue (⚠) so the state reads without relying on red alone. It
+  // rides the time line, not the code line: 12px of mark there would push a
+  // 7-character room onto the ellipsis at a 1280 window, and the time line has
+  // width to spare. The block's red tint and aria-label carry the state too.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
-  // Room leads the last line, ahead of the time. A 1h20m class — the common
-  // case — has a 40px slot, which fits exactly three single lines, so the room
-  // needs the full block width to itself rather than sharing line 1 with the
-  // course code (it truncated to "10B-1…" on a narrow column). Leading also
-  // means a column too narrow for both truncates the time, not the room: the
-  // grid position already says when a block meets, but nothing else says where.
+  // Room sits on the code line, right-aligned. Sharing the time line cost more
+  // width than a block has: room + time measures 116px against the 98-109px an
+  // ordinary block gets, so the time was truncating. The code line is the one
+  // with space going spare — "⚠CSE260" is 55px — and the two together (96px)
+  // fit where the pair on one line did not, leaving the time a line to itself.
   const roomLabel = block.roomName
-    ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span> · `
+    ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span>`
     : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
-      <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
+      <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${roomLabel}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${clashMark}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
 }
