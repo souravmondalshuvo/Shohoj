@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-oFNDl2onH0uu2CPL5px8pET/QtcOltNCxdmpNRmsBlk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-SnFouBhNRqNQjFs1izLlWaJRu/d6mNiuyU0gqZRgr0A='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6143,6 +6143,16 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
 .routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
 .routine-collapsed-sched { color: var(--text2); }
+/* Room of the picked section — a quiet pill so it reads apart from the
+   schedule text it follows. */
+.routine-collapsed-room {
+  color: var(--text2);
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  border: 1px solid var(--chip-border);
+}
 
 @media (max-width: 720px) {
   .routine-section-row { grid-template-columns: 1fr; gap: 4px; }
@@ -6254,7 +6264,10 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* `safe` keeps a block whose text outgrows its slot (a narrow split block, a
+     short 1h20m class) aligned to the top instead of centering it and clipping
+     the course code off both ends. */
+  justify-content: safe center;
   min-height: 28px;
   font-size: 10px;
   line-height: 1.2;
@@ -6303,6 +6316,13 @@ body[data-page="admin"] .orb { display: none !important; }
   font-size: 9px;
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
+}
+/* Room shares the time line (see _gridBlockHTML). Kept on one piece so a
+   narrow/split block wraps between the time and the room, never mid-room. */
+.routine-grid-block-room {
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: normal;
 }
 
 @media (max-width: 720px) {
@@ -20217,7 +20237,9 @@ function computeGridLayout(routine, options = {}) {
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
                 facultyInitials: s.facultyInitials,
-                roomName: s.roomName,
+                // The slot's own room (a lab meets elsewhere than its theory
+                // class); the section room is the fallback when it's blank.
+                roomName: slot.room || s.roomName,
                 day: slot.day,
                 dayCol,
                 gridRowStart: rowStart + 1,
@@ -20700,24 +20722,27 @@ function buildExportPlan(layout, options = {}) {
             fill: `hsl(${hue}, 60%, 24%)`,
             stroke: `hsl(${hue}, 70%, 50%)`,
         });
+        // Text starts 7px in and must not run past the block's right edge — a
+        // long room name would otherwise spill over the next day's column.
+        const textMaxWidth = Math.max(1, w - 14);
         ops.push({
             type: 'text', x: x + 7, y: y + 15,
             text: block.courseCode, font: '700 12px sans-serif',
-            fill: theme.blockText, align: 'left',
+            fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
         });
         if (h >= 32) {
             const fac = block.facultyInitials || 'TBA';
             ops.push({
                 type: 'text', x: x + 7, y: y + 29,
                 text: `${fac} · Section ${block.sectionName}`, font: '400 10px sans-serif',
-                fill: theme.blockText, align: 'left',
+                fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
             });
         }
         if (h >= 46) {
             ops.push({
                 type: 'text', x: x + 7, y: y + 42,
-                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}`, font: '400 9px sans-serif',
-                fill: theme.blockText, align: 'left',
+                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}${block.roomName ? ` · ${block.roomName}` : ''}`, font: '400 9px sans-serif',
+                fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
             });
         }
     }
@@ -20755,7 +20780,8 @@ function paintExportPlan(ctx, plan) {
             ctx.font = op.font;
             ctx.fillStyle = op.fill;
             ctx.textAlign = op.align;
-            ctx.fillText(op.text, op.x, op.y);
+            if (typeof op.maxWidth === 'number') { ctx.fillText(op.text, op.x, op.y, op.maxWidth); }
+            else { ctx.fillText(op.text, op.x, op.y); }
         }
     }
 }
@@ -24000,11 +24026,16 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
+  // Room rides the time line rather than a line of its own: blocks are only a
+  // few 14px rows tall and a fourth line would be clipped on a 1h20m class.
+  const roomLabel = block.roomName
+    ? ` <span class="routine-grid-block-room">· ${escHtml(block.roomName)}</span>`
+    : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Section ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}${roomLabel}</div>
     </div>
   `;
 }
@@ -24271,6 +24302,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
             <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
+            <span class="routine-collapsed-room" title="Room">${escHtml(_formatRooms(section))}</span>
             ${clashPill}
           </span>
         </div>
@@ -24395,6 +24427,21 @@ function _facultyBadgeHTML(section) {
     ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
     : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
   return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
+}
+
+// Rooms for a picked section, de-duplicated in slot order — a section with a
+// lab meets in two rooms, and the feed repeats the theory room per slot.
+function _formatRooms(section) {
+  const rooms = [];
+  for (const slot of (section.classSlots || [])) {
+    const room = (slot.room || '').trim();
+    if (room && !rooms.includes(room)) rooms.push(room);
+  }
+  if (rooms.length === 0) {
+    const fallback = (section.roomName || '').trim();
+    return fallback || 'Room TBA';
+  }
+  return rooms.join(' · ');
 }
 
 function _formatSchedule(section) {

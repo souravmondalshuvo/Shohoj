@@ -6125,6 +6125,16 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
 .routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
 .routine-collapsed-sched { color: var(--text2); }
+/* Room of the picked section — a quiet pill so it reads apart from the
+   schedule text it follows. */
+.routine-collapsed-room {
+  color: var(--text2);
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--badge-bg);
+  border: 1px solid var(--chip-border);
+}
 
 @media (max-width: 720px) {
   .routine-section-row { grid-template-columns: 1fr; gap: 4px; }
@@ -6236,7 +6246,10 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* `safe` keeps a block whose text outgrows its slot (a narrow split block, a
+     short 1h20m class) aligned to the top instead of centering it and clipping
+     the course code off both ends. */
+  justify-content: safe center;
   min-height: 28px;
   font-size: 10px;
   line-height: 1.2;
@@ -6285,6 +6298,13 @@ body[data-page="admin"] .orb { display: none !important; }
   font-size: 9px;
   opacity: 0.7;
   font-variant-numeric: tabular-nums;
+}
+/* Room shares the time line (see _gridBlockHTML). Kept on one piece so a
+   narrow/split block wraps between the time and the room, never mid-room. */
+.routine-grid-block-room {
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: normal;
 }
 
 @media (max-width: 720px) {
