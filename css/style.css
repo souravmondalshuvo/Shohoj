@@ -6199,7 +6199,10 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-grid-block {
   margin: 1px 2px;
   border-radius: 6px;
-  padding: 4px 6px;
+  /* 5px sides, not 6: at a 1280 window the code+room line lands within a few
+     px of the block width, and the extra 2px is what keeps a 7-character room
+     off the ellipsis. */
+  padding: 4px 5px;
   background: hsl(var(--routine-hue, 200), 65%, 22%);
   border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
   color: hsl(var(--routine-hue, 200), 90%, 92%);
@@ -6248,6 +6251,19 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.4px;
+  /* Course code left, room right. This line has width to spare (the code is
+     ~55px of a 98-126px block), which is what lets the time keep a line of its
+     own instead of sharing one and truncating. */
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px;
+}
+/* The code never shrinks; the room ellipsizes first if a window is narrow
+   enough that even this packing overflows. */
+.routine-grid-block-codetext {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .routine-grid-block-meta {
   font-size: 9px;
@@ -6270,12 +6286,16 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Room, leading the time line (see _gridBlockHTML) and weighted above it so
-   it reads as the answer to "where", not as part of the time range. */
+/* Room, right-aligned on the code line (see _gridBlockHTML). Set smaller and
+   lighter than the code so the two read as separate facts, not one string. */
 .routine-grid-block-room {
-  font-weight: 700;
-  font-variant-numeric: normal;
-  letter-spacing: 0.2px;
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.9;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 720px) {
