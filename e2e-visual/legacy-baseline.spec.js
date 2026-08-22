@@ -102,6 +102,7 @@ for (const viewport of VIEWPORTS) {
           expect,
           HEADER_TARGET.selector,
           shotName(HEADER_TARGET.name, viewport.name, theme),
+          { flattenGlass: true },
         );
       });
 
