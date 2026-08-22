@@ -1414,7 +1414,7 @@ async function firestoreRunQuery(env, token, structuredQuery) {
 // Text is dropped on the way through: the tool is aggregates-only, and the
 // cheapest way to guarantee student prose never reaches a model is to never
 // load it into the object in the first place.
-async function loadFacultyReviewsForCampus(env, token, initials, courseCode, campus) {
+export async function loadFacultyReviewsForCampus(env, token, initials, courseCode, campus) {
   const where = [
     {
       fieldFilter: {
