@@ -82,15 +82,18 @@ test('block rects carry hue-derived hsl fill + stroke', () => {
     eq(blockRects.length, 3);
     assert(blockRects[0].stroke.startsWith('hsl'), 'block rect should have hsl stroke');
 });
-test('each block emits its course code as a text op', () => {
+test('each block emits its course code, with the room, as one text op', () => {
     const plan = buildExportPlan(layout, {});
-    const codes = plan.ops.filter(o => o.type === 'text' && (o.text === 'CSE220' || o.text === 'MAT215'));
+    const codes = plan.ops.filter(o => o.type === 'text' && /^(CSE220|MAT215)\b/.test(o.text));
     // CSE220 appears twice (two slots), MAT215 once = 3
     eq(codes.length, 3);
+    // Code and room ride one op so the room needs no measured offset.
+    eq(codes.filter(o => o.text === 'CSE220 \u2022 R1').length, 2);
+    eq(codes.filter(o => o.text === 'MAT215 \u2022 R2').length, 1);
 });
 test('block text is bounded by the block so a long room cannot spill into the next day', () => {
     const plan = buildExportPlan(layout, { dayColWidth: 120 });
-    const blockText = plan.ops.filter(o => o.type === 'text' && o.text === 'CSE220');
+    const blockText = plan.ops.filter(o => o.type === 'text' && /^CSE220\b/.test(o.text));
     assert(blockText.length > 0, 'expected block text ops');
     // dayColWidth 120 → block w = 116, minus the 7px inset on each side.
     for (const op of blockText) eq(op.maxWidth, 102);
