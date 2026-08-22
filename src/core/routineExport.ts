@@ -222,6 +222,21 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
       align: 'left',
       maxWidth: textMaxWidth,
     });
+    if (block.roomName) {
+      // Right-aligned on the code line, mirroring the on-screen block. The
+      // reserve keeps it clear of the code: 12px bold renders a course code in
+      // well under 56px.
+      ops.push({
+        type: 'text',
+        x: x + w - 7,
+        y: y + 15,
+        text: block.roomName,
+        font: '400 9px sans-serif',
+        fill: theme.blockText,
+        align: 'right',
+        maxWidth: Math.max(1, w - 14 - 56),
+      });
+    }
     if (h >= 32) {
       const fac = block.facultyInitials || 'TBA';
       ops.push({
@@ -240,8 +255,7 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
         type: 'text',
         x: x + 7,
         y: y + 42,
-        // Room first, matching the on-screen block: it is the line's point.
-        text: `${block.roomName ? `${block.roomName} · ` : ''}${hhmm(block.startMin)}–${hhmm(block.endMin)}`,
+        text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}`,
         font: '400 9px sans-serif',
         fill: theme.blockText,
         align: 'left',
