@@ -11,6 +11,7 @@ import {
   assertNotGated,
   shellRouteContainer,
   baselineWidth,
+  baselineSize,
   CAPTURE_ROUTE_PIXELS,
   TARGETS,
   ADMIN_TARGETS,
@@ -136,13 +137,28 @@ for (const viewport of VIEWPORTS) {
         await stabilize(page);
         const el = page.locator(HEADER_TARGET.selector).first();
         await expect(el).toBeVisible();
-        await captureBox(
-          page,
-          expect,
-          HEADER_TARGET.selector,
-          shotName(HEADER_TARGET.name, viewport.name, theme),
-          { flattenGlass: true },
-        );
+
+        // Always-on: the header renders, at legacy's box. That is the
+        // regression this exists to catch — the shell had no header at all, so
+        // there was no box to measure.
+        //
+        // The pixels ride behind the same VISUAL_ROUTE_PIXELS flag as the route
+        // interiors. On a Linux runner the two headers differ by ~1.3% of
+        // pixels — text antialiasing, invisible at any zoom a person would use,
+        // reproducible on CI and not on macOS. Comparing the box catches a
+        // header that moved, resized or disappeared; demanding bit-equal
+        // glyphs across renderers would only teach people to re-run the job.
+        const shot = shotName(HEADER_TARGET.name, viewport.name, theme);
+        const box = await el.boundingBox();
+        const expected = baselineSize(shot);
+        expect(
+          { width: Math.round(box.width), height: Math.round(box.height) },
+          `${HEADER_TARGET.selector} box`,
+        ).toEqual(expected);
+
+        if (CAPTURE_ROUTE_PIXELS) {
+          await captureBox(page, expect, HEADER_TARGET.selector, shot, { flattenGlass: true });
+        }
       });
 
       for (const target of PANEL_TARGETS) {
