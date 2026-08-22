@@ -98,6 +98,18 @@ test('block text is bounded by the block so a long room cannot spill into the ne
     // dayColWidth 120 → block w = 116, minus the 7px inset on each side.
     for (const op of blockText) eq(op.maxWidth, 102);
 });
+test('the code op splits into runs so a long room condenses alone', () => {
+    const plan = buildExportPlan(layout, {});
+    const op = plan.ops.find(o => o.type === 'text' && /^CSE220\b/.test(o.text));
+    // Two runs: the code in the op's own font, the room in a lighter one. The
+    // painter caps only the last, so canvas cannot squeeze the course code to
+    // make space for a long room name.
+    eq(op.runs.map(r => r.text), ['CSE220', ' \u2022 R1']);
+    eq(op.runs[0].font, undefined);
+    eq(op.runs[1].font, '400 9px sans-serif');
+    // `text` stays the full string for any renderer that ignores runs.
+    eq(op.text, 'CSE220 \u2022 R1');
+});
 test('title text op present when title given', () => {
     const plan = buildExportPlan(layout, { title: 'Spring 2026 Routine' });
     const titles = plan.ops.filter(o => o.type === 'text' && o.text === 'Spring 2026 Routine');
