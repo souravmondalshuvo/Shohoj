@@ -8,6 +8,7 @@ import {
   pinForCapture,
   TARGETS,
   ADMIN_TARGETS,
+  PANEL_TARGETS,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -73,6 +74,30 @@ for (const viewport of VIEWPORTS) {
           await expect(el).toBeVisible();
           await pinForCapture(page, target.selector);
           await expect(el).toHaveScreenshot(shotName(target.name, viewport.name, theme));
+        });
+      }
+    });
+
+    // Route interiors. Legacy is ONE page whose features are `.calc-tab-panel`
+    // divs toggled by switchCalcTab, reachable by the deterministic hash
+    // restoreCalcTab understands — so the harness lands on a panel without
+    // clicking through dropdown menus or racing their animations.
+    test.describe(`legacy panels · ${viewport.name} · ${theme}`, () => {
+      test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      for (const target of PANEL_TARGETS) {
+        test(`${target.name} panel matches`, async ({ page }) => {
+          await primeTheme(page, theme);
+          // Per-test rather than in a beforeEach: each panel needs its own hash,
+          // and two consecutive gotos differing only by hash are a SAME-DOCUMENT
+          // navigation — no reload, so restoreCalcTab never re-runs and the page
+          // would keep showing the previous panel.
+          await page.goto(`/index.html${target.hash}`, { waitUntil: 'load' });
+          await stabilize(page);
+
+          const el = page.locator(`#${target.panel}`);
+          await expect(el).toBeVisible();
+          await expect(el).toHaveScreenshot(shotName(`route-${target.name}`, viewport.name, theme));
         });
       }
     });
