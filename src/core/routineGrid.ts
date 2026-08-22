@@ -27,6 +27,11 @@ export interface GridBlock {
   courseCode: string;
   sectionName: string;
   facultyInitials: string;
+  /**
+   * Room for *this meeting* — the slot's own room (labs meet elsewhere than
+   * their theory class), falling back to the section room when the feed leaves
+   * the slot's room blank.
+   */
   roomName: string;
   day: WeekdayName;
   /** Column index (0-based) into `days[]`. */
@@ -139,7 +144,7 @@ export function computeGridLayout(
         courseCode: s.courseCode,
         sectionName: s.sectionName,
         facultyInitials: s.facultyInitials,
-        roomName: s.roomName,
+        roomName: slot.room || s.roomName,
         day: slot.day,
         dayCol,
         // CSS grid is 1-based.
