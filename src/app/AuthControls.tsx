@@ -11,11 +11,25 @@ import { useAuth } from './providers/AuthProvider';
 import type { FirebaseAuthSource } from '../platform/auth/firebaseAuthSource';
 import { useNotifications } from '../state/NotificationProvider';
 
-// The person glyph legacy prefixes to its signed-out pill (index.html:167).
+// The person glyph legacy prefixes to its signed-out pill.
+//
+// Taken from what updateAuthUI RENDERS (js/auth/firebase.js:1425) rather than
+// from the static markup in index.html:167 — 15px at 0.75 opacity, not 16px at
+// 0.7. Legacy's button ships one set of attributes in the HTML and is repainted
+// with another the moment the auth state resolves, and it is the repainted one
+// a student actually sees.
+//
 // Decorative — the button's text label carries the accessible name.
 function PersonIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      style={{ flexShrink: 0, opacity: 0.75 }}
+      aria-hidden="true"
+    >
       <path
         d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"
         fill="currentColor"
@@ -58,11 +72,28 @@ export function AuthControls({ source }: { readonly source: FirebaseAuthSource |
       </span>
     );
   }
+  // Legacy's own classes, not a copy of its markup. `.auth-btn-signed-out` is
+  // what js/auth/firebase.js:1417 applies once the auth state settles, and
+  // css/style.css:2606 is where that pill is actually defined: 6px/14px padding,
+  // 6px gap, weight 600, no fixed height, plus the hover and :active states.
+  //
+  // The shell previously reproduced index.html's INLINE attributes instead —
+  // 5px/14px/5px/8px, gap 7, weight 500, height 36px — which is the markup
+  // legacy ships and then immediately overwrites. Measured against the live
+  // page that came out 4px narrower and 5px taller, and it is why the nav
+  // capture failed on a Linux runner where the text metrics stopped hiding it.
+  // Sharing the class means there is one definition of this pill, not two that
+  // have to be kept in step.
   return (
     <span className="shell-auth">
-      <button type="button" className="shell-auth-btn" onClick={() => void source.signIn()}>
+      <button
+        type="button"
+        className="auth-btn-signed-out magnetic"
+        title="Sign in with your BRACU G-Suite account"
+        onClick={() => void source.signIn()}
+      >
         <PersonIcon />
-        Sign in
+        <span className="auth-signin-label">Sign in</span>
       </button>
     </span>
   );
