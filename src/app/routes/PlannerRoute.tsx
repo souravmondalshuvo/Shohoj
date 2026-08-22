@@ -19,7 +19,7 @@
 // the "Browse Reviews" /reviews route (d3c-ii) and the nav plan-count badge
 // (shell chrome polish).
 
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { gpaCoreGetRetakenKeys } from '../../core/gpa.ts';
@@ -39,17 +39,12 @@ import {
   BRACU_COURSE_DB,
   BRACU_PREREQS,
 } from '../../features/calculator/catalog.ts';
-import {
-  calculatorReducer,
-  loadCalculatorState,
-  persistCalculatorState,
-} from '../../features/calculator/calculatorState.ts';
 import { deptSeasonsFor } from '../../features/calculator/departments.ts';
 import CourseReviewsModal from '../../features/calculator/CourseReviewsModal.tsx';
 import { getPlannerTotals } from '../../features/calculator/plannerTotals.ts';
 import { nextRunningSemesterName } from '../../features/calculator/semesterNaming.ts';
 import { useConfirm } from '../providers/ModalProvider';
-import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
+import { useCalculator } from '../providers/CalculatorProvider';
 import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
 
@@ -77,22 +72,10 @@ function TreeNode({ node, depth = 0 }: { readonly node: PrereqTreeNode; readonly
 
 export function Component() {
   const university = useUniversity();
-  const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
   const navigate = useNavigate();
 
-  const loaded = useMemo(() => loadCalculatorState(store), [store]);
-  const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
-
-  // Persist on mutation only (CalculatorRoute's seed-skip pattern).
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!seeded.current) {
-      seeded.current = true;
-      return;
-    }
-    persistCalculatorState(store, state, loaded.stored);
-  }, [store, state, loaded]);
+  const { state, dispatch } = useCalculator();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<PlannerFilterMode>('all');
