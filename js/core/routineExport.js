@@ -117,11 +117,15 @@ export function buildExportPlan(layout, options = {}) {
         const textMaxWidth = Math.max(1, w - 14);
         ops.push({
             type: 'text', x: x + 7, y: y + 15,
-            // Code and room as one string, mirroring the on-screen
-            // "CSE260 \u2022 10B-13C". One op rather than two positioned ops: a draw
-            // plan cannot measure text, so placing the room after the code would
-            // mean guessing the code's width.
+            // Code and room on one line, mirroring the on-screen
+            // "CSE260 \u2022 10B-13C". Split into runs so the room can be lighter than
+            // the code and, more to the point, so a long room name is the only
+            // part condensed to fit — one string would have canvas squeeze the
+            // course code along with it.
             text: block.roomName ? `${block.courseCode} \u2022 ${block.roomName}` : block.courseCode,
+            runs: block.roomName
+                ? [{ text: block.courseCode }, { text: ` \u2022 ${block.roomName}`, font: '400 9px sans-serif' }]
+                : undefined,
             font: '700 12px sans-serif',
             fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
         });
@@ -175,8 +179,28 @@ export function paintExportPlan(ctx, plan) {
             ctx.font = op.font;
             ctx.fillStyle = op.fill;
             ctx.textAlign = op.align;
-            if (typeof op.maxWidth === 'number') { ctx.fillText(op.text, op.x, op.y, op.maxWidth); }
-            else { ctx.fillText(op.text, op.x, op.y); }
+            if (op.runs && op.align === 'left') {
+                // Lay the runs out left to right, measuring as we go — the plan
+                // can't measure, so it hands the painter the pieces. Only the
+                // last run is capped, so a long room name condenses on its own
+                // instead of squeezing the course code beside it.
+                let cursor = op.x;
+                const limit = typeof op.maxWidth === 'number' ? op.x + op.maxWidth : Infinity;
+                op.runs.forEach((run, i) => {
+                    ctx.font = run.font || op.font;
+                    const width = ctx.measureText(run.text).width;
+                    const room = limit - cursor;
+                    if (room <= 0) return;
+                    const isLast = i === op.runs.length - 1;
+                    if (isLast && width > room) ctx.fillText(run.text, cursor, op.y, room);
+                    else ctx.fillText(run.text, cursor, op.y);
+                    cursor += Math.min(width, room);
+                });
+            } else if (typeof op.maxWidth === 'number') {
+                ctx.fillText(op.text, op.x, op.y, op.maxWidth);
+            } else {
+                ctx.fillText(op.text, op.x, op.y);
+            }
         }
     }
 }
