@@ -349,7 +349,27 @@ export async function pinForCapture(page, selector) {
  * wrapper that does. Clipping needs no such cooperation: both sides round the
  * same box to the same integers and the crops are directly comparable.
  */
-export async function captureBox(page, expect, selector, name) {
+export async function captureBox(page, expect, selector, name, { flattenGlass = false } = {}) {
+  // `.calc-header.lg-panel` is `background: transparent` with
+  // `backdrop-filter: blur(16px) saturate(160%)` (style.css:1062), so its fill
+  // IS the blurred page behind it. Legacy's header sits below a hero at y=294
+  // and the shell's at y=145, so the two blur different content and every pixel
+  // of the panel lands about one RGB unit apart — invisible, but spread over
+  // 854x140 it clears the gate's threshold, and it did so on three of the four
+  // header captures in CI.
+  //
+  // That difference is a property of what each page puts ABOVE the header, not
+  // of the header. The harness already declines to pixel-verify the backdrop
+  // for exactly this reason — DECORATIVE hides the dot matrix and the orbs
+  // rather than trying to reproduce them. Flattening the glass to an opaque
+  // token extends that: what stays under test is the panel's own gradient
+  // overlay, border, radius, typography and layout.
+  if (flattenGlass) {
+    await injectStyle(
+      page,
+      `${selector} { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background-color: var(--bg2) !important; }`,
+    );
+  }
   const locator = page.locator(selector).first();
   const raw = await locator.boundingBox();
   if (raw === null) throw new Error(`No box for ${selector} — is it visible?`);
