@@ -220,11 +220,34 @@ function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
       {/* `<main id="main-content">` stays mounted in every state — it is the
           skip link's target, and an anchor pointing at nothing is an a11y bug
           that only appears when signed out. */}
-      <main id="main-content" className="shell-main calc-body" tabIndex={-1}>
+      {/* `.calc-body` is legacy's panel inset, and on '/' legacy has no panel:
+          .hero and #features are full-bleed top-level elements. Carrying the
+          class here regardless made the hero render 1216px against a 1280px
+          baseline (366 against 390 on mobile) — every landing parity failure
+          traced to this one class. #features only showed it on mobile because
+          the global `section` rule caps it at 900px, which already sits inside
+          the inset on desktop.
+
+          The portal is the exception: `.shell-page` zeroes its own padding, so
+          on '/' it would meet the viewport edge. It takes the inset itself
+          there rather than inheriting it, which keeps one definition of the
+          padding — legacy's, with all its breakpoints — instead of a second
+          copy under a landing-only selector. */}
+      <main
+        id="main-content"
+        className={isLanding ? 'shell-main' : 'shell-main calc-body'}
+        tabIndex={-1}
+      >
         {status === 'loading' ? null : (
           <>
             {authed || isLanding ? <Outlet /> : null}
-            {authed ? null : <SignInPortal source={source} />}
+            {authed ? null : isLanding ? (
+              <div className="calc-body">
+                <SignInPortal source={source} />
+              </div>
+            ) : (
+              <SignInPortal source={source} />
+            )}
           </>
         )}
       </main>
