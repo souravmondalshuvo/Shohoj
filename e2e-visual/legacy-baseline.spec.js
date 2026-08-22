@@ -7,6 +7,7 @@ import {
   primeTheme,
   stabilize,
   pinForCapture,
+  pinFeedAndClock,
   TARGETS,
   ADMIN_TARGETS,
   PANEL_TARGETS,
@@ -96,6 +97,9 @@ for (const viewport of VIEWPORTS) {
           // — which is what these baselines are meant to depict. The gate itself
           // is exercised in e2e/campus-gate.spec.js.
           await unlockCalculator(page);
+          // Free Rooms reads the live CONNECT feed and the wall clock, so
+          // without this the panel is a different picture every hour.
+          await pinFeedAndClock(page);
           // Per-test rather than in a beforeEach: each panel needs its own hash,
           // and two consecutive gotos differing only by hash are a SAME-DOCUMENT
           // navigation — no reload, so restoreCalcTab never re-runs and the page
