@@ -1620,6 +1620,11 @@ async function makeServiceAccountJson() {
     );
     assert(!rows.some((r) => r.id === 'nsu'), 'no cross-campus leak');
     assertEq(sentBody.structuredQuery.where.compositeFilter.filters.length, 2, 'filtered server-side');
+    assertEq(
+      sentBody.structuredQuery.orderBy[0].direction,
+      'DESCENDING',
+      'newest first, so the row ceiling drops the oldest tail and not a random slice',
+    );
   });
 
   await test('assistant: prompt injection cannot surface another user\'s data', async () => {
