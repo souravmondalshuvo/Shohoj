@@ -7,10 +7,12 @@ import {
   primeTheme,
   stabilize,
   pinForCapture,
+  captureBox,
   pinFeedAndClock,
   TARGETS,
   ADMIN_TARGETS,
   PANEL_TARGETS,
+  HEADER_TARGET,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -86,6 +88,22 @@ for (const viewport of VIEWPORTS) {
     // clicking through dropdown menus or racing their animations.
     test.describe(`legacy panels · ${viewport.name} · ${theme}`, () => {
       test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      test(`${HEADER_TARGET.name} matches`, async ({ page }) => {
+        await primeTheme(page, theme);
+        await unlockCalculator(page);
+        await pinFeedAndClock(page);
+        await page.goto('/index.html#calculator', { waitUntil: 'load' });
+        await stabilize(page);
+        const el = page.locator(HEADER_TARGET.selector).first();
+        await expect(el).toBeVisible();
+        await captureBox(
+          page,
+          expect,
+          HEADER_TARGET.selector,
+          shotName(HEADER_TARGET.name, viewport.name, theme),
+        );
+      });
 
       for (const target of PANEL_TARGETS) {
         test(`${target.name} panel matches`, async ({ page }) => {

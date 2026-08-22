@@ -294,8 +294,22 @@ export async function assertNotGated(page, expectFn, route) {
 }
 
 /**
+ * The global calculator header — legacy's `.calc-header`, which sits above the
+ * tab bar and is therefore OUTSIDE every panel capture in PANEL_TARGETS.
+ *
+ * That is how it went missing entirely: both sides capture the panel box below
+ * it, so a 137px band legacy shows on every tab was out of frame on both, and
+ * the shell simply had no header at all (#586).
+ *
+ * Captured once per viewport/theme rather than per route — it is chrome, not
+ * route content, and renders identically whichever route is open.
+ */
+export const HEADER_TARGET = { name: 'calc-header', selector: '.calc-header' };
+
+/**
  * Pin an element to the viewport origin so its element screenshot is a stable
  * size across both projects.
+
  *
  * The admin pill is 93.4375px wide on BOTH pages — identical padding, gap, font
  * and border. But an element screenshot is snapped to whole device pixels, and
@@ -316,6 +330,36 @@ export async function pinForCapture(page, selector) {
     page,
     `${selector} { position: fixed !important; left: 0 !important; top: 0 !important; margin: 0 !important; }`,
   );
+}
+
+/**
+ * Screenshot an element by CLIPPING the page to its box, rounded to whole
+ * pixels, rather than by taking an element screenshot.
+ *
+ * An element screenshot is snapped to the device pixel grid wherever the
+ * element happens to sit, so a box measuring exactly 140.000px tall captures as
+ * 141 rows at y=294.188 and as 140 rows at y=145 — which is precisely the
+ * legacy/shell pair for `.calc-header`. Playwright then rejects them on size
+ * before comparing a single colour, and the "difference" is arithmetic rather
+ * than anything a student could see.
+ *
+ * pinForCapture solves that for the admin pill by moving the element to the
+ * origin, but `position: fixed` only reaches the viewport when no ancestor
+ * establishes a containing block — and legacy's calculator sits inside a glass
+ * wrapper that does. Clipping needs no such cooperation: both sides round the
+ * same box to the same integers and the crops are directly comparable.
+ */
+export async function captureBox(page, expect, selector, name) {
+  const box = await page.locator(selector).first().boundingBox();
+  if (box === null) throw new Error(`No box for ${selector} — is it visible?`);
+  await expect(page).toHaveScreenshot(name, {
+    clip: {
+      x: Math.round(box.x),
+      y: Math.round(box.y),
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    },
+  });
 }
 
 export const VIEWPORTS = [

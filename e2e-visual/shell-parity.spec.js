@@ -6,6 +6,7 @@ import {
   primeTheme,
   stabilize,
   pinForCapture,
+  captureBox,
   pinFeedAndClock,
   assertNotGated,
   shellRouteContainer,
@@ -14,6 +15,7 @@ import {
   TARGETS,
   ADMIN_TARGETS,
   PANEL_TARGETS,
+  HEADER_TARGET,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -126,6 +128,21 @@ for (const viewport of VIEWPORTS) {
     // instead of merely red.
     authedTest.describe(`shell routes · ${viewport.name} · ${theme}`, () => {
       authedTest.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+      authedTest(`${HEADER_TARGET.name} matches legacy`, async ({ page }) => {
+        await primeTheme(page, theme);
+        await pinFeedAndClock(page);
+        await page.goto('/calculator', { waitUntil: 'load' });
+        await stabilize(page);
+        const el = page.locator(HEADER_TARGET.selector).first();
+        await expect(el).toBeVisible();
+        await captureBox(
+          page,
+          expect,
+          HEADER_TARGET.selector,
+          shotName(HEADER_TARGET.name, viewport.name, theme),
+        );
+      });
 
       for (const target of PANEL_TARGETS) {
         authedTest(`${target.name} route matches legacy`, async ({ page }) => {
