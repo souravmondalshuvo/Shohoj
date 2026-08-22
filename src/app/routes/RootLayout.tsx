@@ -21,6 +21,7 @@ import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
 import { ShellBackdrop } from '../ShellBackdrop';
+import { CalculatorProvider } from '../providers/CalculatorProvider';
 import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
 import { SignInPortal } from '../SignInPortal';
@@ -317,9 +318,15 @@ function ShellChrome() {
           same slot — panel content — so taking the class gives the shell
           legacy's exact inset responsively, instead of re-deriving one number
           per route. See GatedMain for why the tabs and outlet are conditional. */}
-      <ShellSurface>
-        <GatedMain source={firebaseSource} />
-      </ShellSurface>
+      {/* One calculator state for the shell. It wraps ShellSurface rather than
+          sitting inside it because `.calc-header` — the setup wizard and the
+          live CGPA — renders above the tabs and reads the same state the routes
+          below mutate, exactly as legacy's single academic state does. */}
+      <CalculatorProvider>
+        <ShellSurface>
+          <GatedMain source={firebaseSource} />
+        </ShellSurface>
+      </CalculatorProvider>
       <NotificationViewport />
       {/* Shohoj Assistant (#435): renders only signed-in on a cloud shell. */}
       <AssistantLauncher workerUrl={config?.papersWorkerUrl} />
