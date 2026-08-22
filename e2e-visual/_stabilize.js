@@ -428,8 +428,20 @@ export function shotName(target, viewport, theme) {
  * 4-byte "IHDR" tag, putting the big-endian uint32 width at byte 16.
  */
 export function baselineWidth(name) {
+  return baselineSize(name).width;
+}
+
+/**
+ * Width AND height of a checked-in baseline, in CSS pixels.
+ *
+ * The PNG's IHDR carries both: an 8-byte signature, then a 4-byte length and
+ * the 4-byte "IHDR" tag, putting the big-endian uint32 width at byte 16 and the
+ * height at byte 20.
+ */
+export function baselineSize(name) {
   const dir = path.dirname(fileURLToPath(import.meta.url));
-  return readFileSync(path.join(dir, '__screenshots__', name)).readUInt32BE(16);
+  const png = readFileSync(path.join(dir, '__screenshots__', name));
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
 }
 
 /**
