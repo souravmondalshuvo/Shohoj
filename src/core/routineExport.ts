@@ -240,7 +240,8 @@ export function buildExportPlan(layout: GridLayout, options: ExportOptions = {})
         type: 'text',
         x: x + 7,
         y: y + 42,
-        text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}${block.roomName ? ` · ${block.roomName}` : ''}`,
+        // Room first, matching the on-screen block: it is the line's point.
+        text: `${block.roomName ? `${block.roomName} · ` : ''}${hhmm(block.startMin)}–${hhmm(block.endMin)}`,
         font: '400 9px sans-serif',
         fill: theme.blockText,
         align: 'left',
