@@ -6251,13 +6251,12 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.4px;
-  /* Course code left, room right. This line has width to spare (the code is
-     ~55px of a 98-126px block), which is what lets the time keep a line of its
-     own instead of sharing one and truncating. */
+  /* Code then room, read as one phrase: "CSE260 • 10B-13C". This line has the
+     width to spare (the code is ~43px of a 98-126px block), which is what lets
+     the time keep a line of its own instead of sharing one and truncating. */
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 3px;
+  min-width: 0;
 }
 /* The code never shrinks; the room ellipsizes first if a window is narrow
    enough that even this packing overflows. */
@@ -6286,8 +6285,8 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Room, right-aligned on the code line (see _gridBlockHTML). Set smaller and
-   lighter than the code so the two read as separate facts, not one string. */
+/* Room, sitting next to the code (see _gridBlockHTML). Smaller and lighter
+   than the code so the two read as separate facts, not one string. */
 .routine-grid-block-room {
   font-size: 9px;
   font-weight: 600;
@@ -6296,6 +6295,14 @@ body[data-page="admin"] .orb { display: none !important; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Separator as a pseudo-element, so the room's own text stays exactly the room
+   name for tests, copy/paste and assistive tech. */
+.routine-grid-block-room::before {
+  content: '\2022';
+  margin: 0 4px;
+  font-weight: 400;
+  opacity: 0.55;
 }
 
 @media (max-width: 720px) {
