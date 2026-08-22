@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-SKBgCiV+dKuRq8Wb/7FUgwkOciNDxA6kVtYb7Vn3gCw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-eX/6yLtn2l79zF1rUMkIjgqTZjWDVsbvWYUgCr91Vms='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6257,7 +6257,10 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-grid-block {
   margin: 1px 2px;
   border-radius: 6px;
-  padding: 4px 6px;
+  /* 5px sides, not 6: at a 1280 window the code+room line lands within a few
+     px of the block width, and the extra 2px is what keeps a 7-character room
+     off the ellipsis. */
+  padding: 4px 5px;
   background: hsl(var(--routine-hue, 200), 65%, 22%);
   border-left: 3px solid hsl(var(--routine-hue, 200), 75%, 55%);
   color: hsl(var(--routine-hue, 200), 90%, 92%);
@@ -6306,6 +6309,19 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.4px;
+  /* Course code left, room right. This line has width to spare (the code is
+     ~55px of a 98-126px block), which is what lets the time keep a line of its
+     own instead of sharing one and truncating. */
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px;
+}
+/* The code never shrinks; the room ellipsizes first if a window is narrow
+   enough that even this packing overflows. */
+.routine-grid-block-codetext {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .routine-grid-block-meta {
   font-size: 9px;
@@ -6328,12 +6344,16 @@ body[data-page="admin"] .orb { display: none !important; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Room, leading the time line (see _gridBlockHTML) and weighted above it so
-   it reads as the answer to "where", not as part of the time range. */
+/* Room, right-aligned on the code line (see _gridBlockHTML). Set smaller and
+   lighter than the code so the two read as separate facts, not one string. */
 .routine-grid-block-room {
-  font-weight: 700;
-  font-variant-numeric: normal;
-  letter-spacing: 0.2px;
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.9;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 @media (max-width: 720px) {
@@ -20741,6 +20761,16 @@ function buildExportPlan(layout, options = {}) {
             text: block.courseCode, font: '700 12px sans-serif',
             fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
         });
+        if (block.roomName) {
+            // Right-aligned on the code line, mirroring the on-screen block. The
+            // reserve keeps it clear of the code: 12px bold renders a course code
+            // in well under 56px.
+            ops.push({
+                type: 'text', x: x + w - 7, y: y + 15,
+                text: block.roomName, font: '400 9px sans-serif',
+                fill: theme.blockText, align: 'right', maxWidth: Math.max(1, w - 14 - 56),
+            });
+        }
         if (h >= 32) {
             const fac = block.facultyInitials || 'TBA';
             ops.push({
@@ -20752,8 +20782,7 @@ function buildExportPlan(layout, options = {}) {
         if (h >= 46) {
             ops.push({
                 type: 'text', x: x + 7, y: y + 42,
-                // Room first, matching the on-screen block: it is the line's point.
-                text: `${block.roomName ? `${block.roomName} · ` : ''}${hhmm(block.startMin)}–${hhmm(block.endMin)}`, font: '400 9px sans-serif',
+                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}`, font: '400 9px sans-serif',
                 fill: theme.blockText, align: 'left', maxWidth: textMaxWidth,
             });
         }
@@ -24036,22 +24065,24 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     : '';
   const clashLabel = isClash ? ' — clashes with another class' : '';
   const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
-  // Non-color clash cue (⚠) so the state reads without relying on red alone.
+  // Non-color clash cue (⚠) so the state reads without relying on red alone. It
+  // rides the time line, not the code line: 12px of mark there would push a
+  // 7-character room onto the ellipsis at a 1280 window, and the time line has
+  // width to spare. The block's red tint and aria-label carry the state too.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
-  // Room leads the last line, ahead of the time. A 1h20m class — the common
-  // case — has a 40px slot, which fits exactly three single lines, so the room
-  // needs the full block width to itself rather than sharing line 1 with the
-  // course code (it truncated to "10B-1…" on a narrow column). Leading also
-  // means a column too narrow for both truncates the time, not the room: the
-  // grid position already says when a block meets, but nothing else says where.
+  // Room sits on the code line, right-aligned. Sharing the time line cost more
+  // width than a block has: room + time measures 116px against the 98-109px an
+  // ordinary block gets, so the time was truncating. The code line is the one
+  // with space going spare — "⚠CSE260" is 55px — and the two together (96px)
+  // fit where the pair on one line did not, leaving the time a line to itself.
   const roomLabel = block.roomName
-    ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span> · `
+    ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span>`
     : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
-      <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
+      <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${roomLabel}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${clashMark}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
     </div>
   `;
 }
