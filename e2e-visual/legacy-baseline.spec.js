@@ -2,6 +2,7 @@
 // (HomeRoute swaps its CTA on uid), so these must not use the signed-in
 // default fixture.
 import { anonymousTest as test, expect } from '../e2e-support/authFixture.js';
+import { unlockCalculator } from '../e2e/helpers/gate.js';
 import {
   primeTheme,
   stabilize,
@@ -88,6 +89,13 @@ for (const viewport of VIEWPORTS) {
       for (const target of PANEL_TARGETS) {
         test(`${target.name} panel matches`, async ({ page }) => {
           await primeTheme(page, theme);
+          // The campus gate (#575) hides the calculator until sign-in resolves a
+          // student to a campus, so a signed-out capture would photograph the
+          // sign-in portal for all nine panels. This sets the same session flag
+          // the portal's own escape hatches set — a returning student's browser
+          // — which is what these baselines are meant to depict. The gate itself
+          // is exercised in e2e/campus-gate.spec.js.
+          await unlockCalculator(page);
           // Per-test rather than in a beforeEach: each panel needs its own hash,
           // and two consecutive gotos differing only by hash are a SAME-DOCUMENT
           // navigation — no reload, so restoreCalcTab never re-runs and the page
