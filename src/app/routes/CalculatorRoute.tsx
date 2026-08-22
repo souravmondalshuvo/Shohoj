@@ -40,7 +40,7 @@
 // demand, builds the pure report from state and draws it (exportPDF parity).
 // Failures surface as error toasts instead of the legacy alert().
 
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { normalizeInitials } from '../../core/faculty';
@@ -70,11 +70,7 @@ import TranscriptImport, {
 import { loadJsPdf } from '../../features/calculator/jspdfLoader.ts';
 import { buildPdfReport } from '../../features/calculator/pdfReport.ts';
 import { drawPdfReport } from '../../features/calculator/pdfReportDraw.ts';
-import {
-  calculatorReducer,
-  loadCalculatorState,
-  persistCalculatorState,
-} from '../../features/calculator/calculatorState';
+
 import { deptSeasonsFor } from '../../features/calculator/departments.ts';
 import { demoCalculatorState } from '../../features/calculator/demoData.ts';
 import {
@@ -82,8 +78,8 @@ import {
   nextRunningSemesterName,
 } from '../../features/calculator/semesterNaming.ts';
 import { useConfirm } from '../providers/ModalProvider';
-import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { useNotifications } from '../../state/NotificationProvider';
+import { useCalculator } from '../providers/CalculatorProvider';
 import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
 
@@ -99,10 +95,8 @@ export function Component() {
   // renders against. Null only reaches here for an admin with no campus of
   // their own, since RequireFeature turns every other case away.
   const university = useUniversity();
-  // One store instance for the route's lifetime (load seed + every persist).
   const location = useLocation();
   const navigate = useNavigate();
-  const store = useMemo(() => createBrowserStore(), []);
   const confirm = useConfirm();
   const { notify } = useNotifications();
   const invalidateChipScore = useInvalidateFacultyChipScore();
@@ -120,27 +114,13 @@ export function Component() {
     [auth.uid, fetchReviewById],
   );
 
-  const loaded = useMemo(() => loadCalculatorState(store), [store]);
-  const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
+  const { state, dispatch } = useCalculator();
 
   // The course the review modal is open for (null = closed).
   const [rateTarget, setRateTarget] = useState<{ semId: number; index: number } | null>(null);
 
   // The transcript-import flow (hidden picker + dialogs); triggers call open().
   const transcriptImportRef = useRef<TranscriptImportHandle>(null);
-
-  // Persist on mutation only — skip the seed write so a corrupt raw value (which
-  // the load path preserves for recovery) isn't immediately overwritten. The
-  // loaded snapshot rides along so stored fields this route does not own
-  // (planCourses, semesterCounter, forward-compat keys) survive each save.
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (!seeded.current) {
-      seeded.current = true;
-      return;
-    }
-    persistCalculatorState(store, state, loaded.stored);
-  }, [store, state, loaded]);
 
   // Reducer-backed bridge. CalculatorSemesters only ever commits a fully-formed
   // semester list (it computes via the immutable mutations), so `commit` maps to
