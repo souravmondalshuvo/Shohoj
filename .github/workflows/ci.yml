@@ -244,6 +244,59 @@ jobs:
           test -s dist-shell/index.html || test -s dist-shell/app/index.html
           npx playwright test --config=playwright.shell.config.js
 
+  visual-parity:
+    name: Visual parity (shell vs legacy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build shell
+        run: npm run build:shell
+
+      # The baselines are AUTHORED HERE rather than compared against the
+      # checked-in PNGs, and that is deliberate.
+      #
+      # Screenshots are not portable: the committed baselines were authored on
+      # macOS, and the same page on a Linux runner differs in text antialiasing
+      # alone by far more than maxDiffPixelRatio allows. Comparing them here
+      # would fail on the operating system rather than on the shell.
+      #
+      # Re-authoring from the legacy page in THIS environment makes both sides
+      # of the comparison share a renderer, so what is left is the only
+      # question this gate exists to ask: does the shell match legacy, as both
+      # stand at this commit. It is a stronger check than a frozen snapshot,
+      # not a weaker one — a legacy change that the shell has not tracked fails
+      # here, where against a stale baseline both sides would drift together.
+      #
+      # The checked-in PNGs remain the local-development reference (they are
+      # what `npm run test:visual` compares against on a developer machine).
+      - name: Author legacy baselines in this environment
+        run: npm run test:visual:baseline
+
+      - name: Gate the shell against them
+        run: npx playwright test --config=playwright.visual.config.js --project=shell
+
+      # The diffs are the punch list; without them a red run says only "some
+      # pixels moved" and the next step is to reproduce it locally by hand.
+      - name: Upload diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-parity-diffs
+          path: test-results/
+          retention-days: 14
+
   # ============== Change detection for path-sensitive deploys ================
 
   changes:
@@ -284,7 +337,7 @@ jobs:
 
   deploy-frontend:
     name: Deploy frontend (GitHub Pages)
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e]
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -414,7 +467,7 @@ jobs:
 
   deploy-worker:
     name: Deploy Cloudflare Worker
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, changes]
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
@@ -461,7 +514,7 @@ jobs:
 
   deploy-firestore:
     name: Deploy Firestore rules & indexes
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, changes]
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
