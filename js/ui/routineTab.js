@@ -934,11 +934,16 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone.
   const clashMark = isClash ? `<span class="routine-grid-block-clashmark" aria-hidden="true">⚠</span>` : '';
+  // Room rides the time line rather than a line of its own: blocks are only a
+  // few 14px rows tall and a fourth line would be clipped on a 1h20m class.
+  const roomLabel = block.roomName
+    ? ` <span class="routine-grid-block-room">· ${escHtml(block.roomName)}</span>`
+    : '';
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code">${clashMark}${escHtml(block.courseCode)}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Section ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}${roomLabel}</div>
     </div>
   `;
 }
@@ -1205,6 +1210,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
             <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
+            <span class="routine-collapsed-room" title="Room">${escHtml(_formatRooms(section))}</span>
             ${clashPill}
           </span>
         </div>
@@ -1329,6 +1335,21 @@ function _facultyBadgeHTML(section) {
     ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
     : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
   return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
+}
+
+// Rooms for a picked section, de-duplicated in slot order — a section with a
+// lab meets in two rooms, and the feed repeats the theory room per slot.
+function _formatRooms(section) {
+  const rooms = [];
+  for (const slot of (section.classSlots || [])) {
+    const room = (slot.room || '').trim();
+    if (room && !rooms.includes(room)) rooms.push(room);
+  }
+  if (rooms.length === 0) {
+    const fallback = (section.roomName || '').trim();
+    return fallback || 'Room TBA';
+  }
+  return rooms.join(' · ');
 }
 
 function _formatSchedule(section) {
