@@ -128,7 +128,7 @@ export function buildExportPlan(layout, options = {}) {
         if (h >= 46) {
             ops.push({
                 type: 'text', x: x + 7, y: y + 42,
-                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}`, font: '400 9px sans-serif',
+                text: `${hhmm(block.startMin)}–${hhmm(block.endMin)}${block.roomName ? ` · ${block.roomName}` : ''}`, font: '400 9px sans-serif',
                 fill: theme.blockText, align: 'left',
             });
         }
