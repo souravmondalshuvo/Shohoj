@@ -89,6 +89,31 @@ await ctx.addInitScript(() => {
     /* storage unavailable */
   }
 });
+
+// The shell gates every route behind sign-in (GatedMain in RootLayout), so an
+// unauthenticated run measures the SIGN-IN PORTAL on every route instead of the
+// route. That failure is silent and convincing: each route reports the same
+// 544x435 box with `max-width: 544px`, which reads as one systemic container
+// bug across nine routes rather than nine measurements of the same portal.
+//
+// Same seam and same student as e2e-support/authFixture.js. The snapshot
+// crosses into page scope once so `get()` returns a stable reference —
+// useSyncExternalStore compares by identity and a fresh object per call
+// re-renders forever.
+await ctx.addInitScript(() => {
+  const snapshot = {
+    status: 'authenticated',
+    uid: 'u_me',
+    email: 'me@g.bracu.ac.bd',
+    isAdmin: false,
+    university: 'bracu',
+  };
+  window.__shohojAuthSource = {
+    get: () => snapshot,
+    subscribe: () => () => {},
+    getIdToken: async () => 'test-token',
+  };
+});
 const page = await ctx.newPage();
 
 const rows = [];
@@ -100,13 +125,25 @@ for (const entry of PANEL_ROUTES) {
     continue;
   }
 
-  // The shell wraps each route in its own container; find whichever it used.
-  const shell = await measure(page, `${SHELL}${entry.route}`, [
-    'main .shell-page',
-    'main > section',
-    'main',
-  ]);
-  rows.push({ name: entry.name, status: shell ? 'present' : 'NO CONTENT', legacy, shell });
+  // `<main>`, not `.shell-page`. RootLayout gives <main> legacy's `.calc-body`
+  // class so it carries the same 1.5rem/2rem inset the legacy panel does
+  // (RootLayout.tsx:292); `.shell-page` sits INSIDE that inset. Measuring
+  // `.shell-page` against a legacy panel compares two boxes one padding level
+  // apart and reports a flat -64px desktop / -24px mobile gap on every route —
+  // a systematic "container bug" that is purely an artifact of the selector.
+  //
+  // The portal also carries `.shell-page`, which is the other half of the same
+  // trap: an unauthenticated run measured it and reported it as the route.
+  const shell = await measure(page, `${SHELL}${entry.route}`, ['main#main-content']);
+  const gated = await page.evaluate(
+    () => document.querySelector('[data-testid="signin-portal"]') !== null,
+  );
+  rows.push({
+    name: entry.name,
+    status: gated ? 'GATED' : shell ? 'present' : 'NO CONTENT',
+    legacy,
+    shell: gated ? null : shell,
+  });
 }
 
 await browser.close();
