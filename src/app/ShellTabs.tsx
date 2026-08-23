@@ -118,7 +118,9 @@ export function ShellTabs() {
     observer.observe(bar);
     bar.querySelectorAll<HTMLElement>('.calc-tab').forEach((pill) => observer.observe(pill));
     return () => observer.disconnect();
-  }, [pathname, positionSlider]);
+    // `entries` as well as the path: a campus switch rebuilds the pills, which
+    // both moves the active one and leaves the observer holding removed nodes.
+  }, [entries, pathname, positionSlider]);
 
   const activeGroup = groupOf(entries, pathname);
 
