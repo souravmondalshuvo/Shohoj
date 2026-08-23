@@ -508,19 +508,23 @@ function initTabGroups() {
 function _moveTabSlider(tabId) {
   const slider = document.getElementById('calcTabSlider');
   if (!slider) return;
+  // Nothing to sit under: hide it as well as collapsing it, because at width 0
+  // its own borders still paint a sliver in the bar's left cap.
+  const park = () => { slider.dataset.active = 'false'; slider.style.width = '0px'; };
   // The active tab may be a single top-level button (Calculator/Groups) or a
   // menu item inside a dropdown group; in the latter case the slider tracks the
   // group's trigger pill, not the (possibly hidden) menu item.
   const item = document.querySelector(`#calcTabs [data-tab="${tabId}"]`);
-  if (!item) { slider.style.width = '0px'; return; }
+  if (!item) { park(); return; }
   const group = item.closest('.calc-tab-group');
   const target = group ? group.querySelector('.calc-tab-trigger') : item;
-  if (!target) { slider.style.width = '0px'; return; }
+  if (!target) { park(); return; }
   // offsetLeft is measured against the offset parent: the bar for single tabs,
   // the (position:relative) group for a trigger — so add the group's own offset.
   const left = group ? group.offsetLeft + target.offsetLeft : target.offsetLeft;
   slider.style.left  = left + 'px';
   slider.style.width = target.offsetWidth + 'px';
+  slider.dataset.active = 'true';
 }
 
 function switchCalcTab(tabId) {
