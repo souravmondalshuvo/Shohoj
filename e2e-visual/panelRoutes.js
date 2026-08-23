@@ -10,17 +10,18 @@
 // them pairwise instead of only comparing the landing page.
 //
 // `hash` is what restoreCalcTab understands; `panel` is the id from TAB_MAP
-// (js/main.js:422); `route` is the shell path. A null route means legacy has a
-// feature the shell has not migrated yet.
+// (js/main.js:422); `route` is the shell path. Every legacy panel now has one:
+// the playground was the last null, closed by #592.
 
 export const PANEL_ROUTES = [
   { name: 'calculator', hash: '#calculator', panel: 'tabCalculator', route: '/calculator' },
   { name: 'planner', hash: '#calculator/planner', panel: 'tabPlanner', route: '/planner' },
-  // js/ui/playground.js (the grade changer + target solver) has no shell
-  // counterpart. Only getCurrentTotals was ported out of it, as
-  // src/features/calculator/plannerTotals.ts. The CGPA Goal Simulator that
-  // shares this legacy panel DID migrate, as CgpaSimulator.tsx.
-  { name: 'playground', hash: '#calculator/playground', panel: 'tabPlayground', route: null },
+  {
+    name: 'playground',
+    hash: '#calculator/playground',
+    panel: 'tabPlayground',
+    route: '/playground',
+  },
   { name: 'reviews', hash: '#calculator/reviews', panel: 'tabReviews', route: '/reviews' },
   {
     name: 'difficulty',
