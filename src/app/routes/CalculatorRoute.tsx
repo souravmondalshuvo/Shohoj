@@ -52,7 +52,6 @@ import {
   CalculatorBridgeProvider,
   type CalculatorBridge,
 } from '../../features/calculator/calculatorBridge';
-import CgpaSimulator from '../../features/calculator/CgpaSimulator.tsx';
 import RateFacultyModal from '../../features/calculator/RateFacultyModal.tsx';
 import { getReviewableCourseCode } from '../../features/calculator/reviewableCourse';
 import { submitReview } from '../../features/calculator/reviewSubmit';
@@ -235,7 +234,9 @@ export function Component() {
           <CalculatorSemesters />
         </div>
         <CalculatorResults />
-        <CgpaSimulator />
+        {/* The CGPA Goal Simulator moved to /playground (#592), where legacy
+            keeps it — on the Playground tab beside the grade changer and the
+            reverse solver, not on the calculator panel. */}
         {hasSemesters && (
           <div className="calc-footer lg-panel">
             <div className="footer-btn-group">

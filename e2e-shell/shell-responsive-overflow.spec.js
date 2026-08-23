@@ -30,14 +30,35 @@ function installReviewsRepo(page) {
     });
     window.__shohojReviewsRepo = {
       async fetchByFaculty() {
-        return { reviews: [review('ABC', 5, 'A fairly long review body to force wrapping.'), review('MRA', 4, 'ok')], nextCursor: null };
+        return {
+          reviews: [
+            review('ABC', 5, 'A fairly long review body to force wrapping.'),
+            review('MRA', 4, 'ok'),
+          ],
+          nextCursor: null,
+        };
       },
       async fetchByCourse() {
-        return { reviews: [review('ABC', 4, 'A long-ish review body to exercise wrapping inside the dialog at 360px without spilling sideways.')], nextCursor: null };
+        return {
+          reviews: [
+            review(
+              'ABC',
+              4,
+              'A long-ish review body to exercise wrapping inside the dialog at 360px without spilling sideways.',
+            ),
+          ],
+          nextCursor: null,
+        };
       },
-      async fetchById() { return null; },
-      async fetchRecent() { return [review('ABC', 5, 'ok'), review('MRA', 4, 'ok'), review('XYZ', 3, 'ok')]; },
-      async fetchFacultyProfiles() { return []; },
+      async fetchById() {
+        return null;
+      },
+      async fetchRecent() {
+        return [review('ABC', 5, 'ok'), review('MRA', 4, 'ok'), review('XYZ', 3, 'ok')];
+      },
+      async fetchFacultyProfiles() {
+        return [];
+      },
     };
   });
 }
@@ -58,15 +79,20 @@ for (const width of WIDTHS) {
   test.describe(`no horizontal overflow @ ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } });
 
-    test('calculator (results + goal simulator plan table)', async ({ page }) => {
+    test('calculator results, then the goal simulator plan table', async ({ page }) => {
       await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
       await page.evaluate(() => localStorage.clear());
       await navigate(page, 'Calculator');
-      await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
+      await page
+        .locator('#semestersContainer')
+        .getByRole('button', { name: 'Try Demo Mode' })
+        .click();
       await expect(page.locator('[data-testid="calculator-results"]')).toBeVisible();
       await assertNoOverflow(page, 'calculator results');
 
-      // Drive the simulator to render its widest content (the plan table).
+      // Drive the simulator to render its widest content (the plan table). It
+      // lives on /playground since #592, where legacy keeps it.
+      await navigate(page, 'Playground');
       const sim = page.getByTestId('cgpa-simulator');
       await sim.getByLabel('Target CGPA:').fill('3.8');
       await expect(sim.locator('.sim-plan-table tbody tr').first()).toBeVisible();
@@ -77,7 +103,10 @@ for (const width of WIDTHS) {
       await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
       await page.evaluate(() => localStorage.clear());
       await navigate(page, 'Calculator');
-      await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
+      await page
+        .locator('#semestersContainer')
+        .getByRole('button', { name: 'Try Demo Mode' })
+        .click();
       await navigate(page, 'Planner');
       await expect(page.getByRole('heading', { name: 'Semester Planner' })).toBeVisible();
       await assertNoOverflow(page, 'planner');
@@ -106,10 +135,17 @@ for (const width of WIDTHS) {
       await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
       await page.evaluate(() => localStorage.clear());
       await navigate(page, 'Calculator');
-      await page.locator('#semestersContainer').getByRole('button', { name: 'Try Demo Mode' }).click();
+      await page
+        .locator('#semestersContainer')
+        .getByRole('button', { name: 'Try Demo Mode' })
+        .click();
 
       // RateFacultyModal — opened from a faculty chip.
-      await page.locator('#semestersContainer').locator('.course-faculty-chip', { hasText: 'GHI' }).first().click();
+      await page
+        .locator('#semestersContainer')
+        .locator('.course-faculty-chip', { hasText: 'GHI' })
+        .first()
+        .click();
       await expect(page.getByTestId('rate-faculty-modal')).toBeVisible();
       await assertNoOverflow(page, 'rate faculty modal');
       await page.keyboard.press('Escape');
