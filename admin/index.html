@@ -2937,9 +2937,19 @@ input, select, textarea,
     0 2px 12px rgba(46,204,113,0.18),
     inset 0 1px 0 rgba(255,255,255,0.14);
   pointer-events: none;
+  /* Hidden until a tab is actually active. At width:0 the two 1px borders and
+     the glow still paint a 2px sliver inside the bar's left cap, which reads as
+     a stray text cursor on any route with no active tab (Home). Hidden by
+     default so it does not flash before the script positions it; the script
+     flips data-active once it has a pill to sit under. */
+  opacity: 0;
   transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-              width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+              width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 0;
+}
+.calc-tab-slider[data-active="true"] {
+  opacity: 1;
 }
 
 .calc-tab {
