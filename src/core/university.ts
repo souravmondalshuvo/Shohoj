@@ -133,6 +133,7 @@ export type FeatureId =
   | 'groups'
   | 'lostFound'
   | 'papers'
+  | 'playground'
   | 'planner'
   | 'profile'
   | 'reviews'
@@ -234,6 +235,7 @@ const BRACU: UniversityProfile = {
     'groups',
     'lostFound',
     'papers',
+    'playground',
     'planner',
     'profile',
     'reviews',
@@ -333,6 +335,7 @@ const NSU: UniversityProfile = {
     'degree',
     'feedback',
     'planner',
+    'playground',
     'profile',
     'transcript',
     // User-generated: functional from day one, simply empty until students post.

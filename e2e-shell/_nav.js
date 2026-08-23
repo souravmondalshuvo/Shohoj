@@ -14,6 +14,7 @@
  *  routes absent from this map are top-level tabs. */
 const GROUP_OF = {
   Planner: 'Plan',
+  Playground: 'Plan',
   Routine: 'Plan',
   Transcript: 'Plan',
   Degree: 'Plan',
