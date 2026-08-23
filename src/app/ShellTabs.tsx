@@ -79,11 +79,17 @@ export function ShellTabs() {
     if (!bar || !slider) return;
     const active = bar.querySelector<HTMLElement>('[data-active-pill="true"]');
     if (!active) {
+      // Collapsing to width 0 is not enough to hide it: the slider's own
+      // borders still paint a 2px sliver in the bar's left cap, which reads as
+      // a stray text cursor on Home. data-active drives the stylesheet's
+      // opacity, mirroring legacy's _moveTabSlider (js/main.js:508-529).
+      slider.dataset.active = 'false';
       slider.style.width = '0px';
       return;
     }
     slider.style.width = `${active.offsetWidth}px`;
     slider.style.transform = `translateX(${active.offsetLeft}px)`;
+    slider.dataset.active = 'true';
   }, [pathname]);
 
   const activeGroup = groupOf(entries, pathname);
