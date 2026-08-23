@@ -87,8 +87,18 @@ export function ShellTabs() {
       slider.style.width = '0px';
       return;
     }
+    // Position with `left`, exactly as legacy does, rather than a transform on
+    // top of the stylesheet's own `left: 4px`: that left the bar's 4px padding
+    // counted twice, and `transform` is not in the slider's transition list so
+    // the pill teleported between tabs instead of sliding.
+    //
+    // offsetLeft is measured from the offset parent, which is the bar for a
+    // top-level tab but the (position: relative) group for a trigger — so a
+    // trigger's own offsetLeft is ~0 and the group's has to be added back.
+    const group = active.closest<HTMLElement>('.calc-tab-group');
+    const left = group ? group.offsetLeft + active.offsetLeft : active.offsetLeft;
+    slider.style.left = `${left}px`;
     slider.style.width = `${active.offsetWidth}px`;
-    slider.style.transform = `translateX(${active.offsetLeft}px)`;
     slider.dataset.active = 'true';
   }, [pathname]);
 
