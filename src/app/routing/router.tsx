@@ -67,6 +67,10 @@ export const router = createBrowserRouter(
         },
         // Degree tracker (#450) — read-only view over the same shared state.
         {
+          path: 'playground',
+          lazy: campusRoute('playground', () => import('../routes/PlaygroundRoute')),
+        },
+        {
           path: 'degree-progress',
           lazy: campusRoute('degree', () => import('../routes/DegreeRoute')),
         },

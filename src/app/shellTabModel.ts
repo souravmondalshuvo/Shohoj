@@ -37,6 +37,7 @@ export const TABS: readonly TabEntry[] = [
     icon: '📅',
     items: [
       { to: '/planner', label: 'Planner', icon: '📅', feature: 'planner' },
+      { to: '/playground', label: 'Playground', icon: '🔮', feature: 'playground' },
       { to: '/routine', label: 'Routine', icon: '🗓️', feature: 'routine' },
       { to: '/transcript', label: 'Transcript', icon: '📄', feature: 'transcript' },
       { to: '/degree-progress', label: 'Degree', icon: '🎓', feature: 'degree' },
