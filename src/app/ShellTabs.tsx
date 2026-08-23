@@ -71,9 +71,8 @@ export function ShellTabs() {
 
   // The slider tracks the active pill. When the active route lives inside a
   // group it tracks that group's trigger, not the hidden menu item — same rule
-  // as _moveTabSlider (js/main.js:485-494). Layout effect so it lands before
-  // paint instead of visibly jumping on first render.
-  useLayoutEffect(() => {
+  // as _moveTabSlider (js/main.js:508-529).
+  const positionSlider = useCallback(() => {
     const bar = barRef.current;
     const slider = sliderRef.current;
     if (!bar || !slider) return;
@@ -82,7 +81,7 @@ export function ShellTabs() {
       // Collapsing to width 0 is not enough to hide it: the slider's own
       // borders still paint a 2px sliver in the bar's left cap, which reads as
       // a stray text cursor on Home. data-active drives the stylesheet's
-      // opacity, mirroring legacy's _moveTabSlider (js/main.js:508-529).
+      // opacity, mirroring legacy's _moveTabSlider.
       slider.dataset.active = 'false';
       slider.style.width = '0px';
       return;
@@ -100,7 +99,26 @@ export function ShellTabs() {
     slider.style.left = `${left}px`;
     slider.style.width = `${active.offsetWidth}px`;
     slider.dataset.active = 'true';
-  }, [pathname]);
+  }, []);
+
+  // Layout effect so it lands before paint instead of visibly jumping on first
+  // render — but one measurement is not enough. The bar keeps moving after the
+  // route commits: the emoji font arrives, the route's own content decides
+  // whether there is a scrollbar, and the pills are `flex: 1 0 auto` so any of
+  // that resizes them. Legacy re-runs _moveTabSlider on window resize
+  // (js/main.js:915); an observer covers that plus the post-commit reflow that
+  // left the slider a stale 68px too wide on /calculator.
+  useLayoutEffect(() => {
+    positionSlider();
+    const bar = barRef.current;
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => positionSlider());
+    // The bar for viewport changes, and each pill because a sibling growing
+    // moves the active one without the bar's own box changing at all.
+    observer.observe(bar);
+    bar.querySelectorAll<HTMLElement>('.calc-tab').forEach((pill) => observer.observe(pill));
+    return () => observer.disconnect();
+  }, [pathname, positionSlider]);
 
   const activeGroup = groupOf(entries, pathname);
 
