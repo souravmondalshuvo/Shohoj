@@ -9,6 +9,8 @@
 
 import { expect, test } from '../e2e-support/authFixture.js';
 
+import { navigateTo } from './_nav.js';
+
 // One positioned item per transcript line; y falls 20 per row so the
 // flattener breaks rows exactly like a real grade sheet.
 const TRANSCRIPT_LINES = [
@@ -61,7 +63,9 @@ async function chooseTranscript(page, trigger) {
   });
 }
 
-test('a transcript imports end to end: confirm dialog, state, setup, persistence', async ({ page }) => {
+test('a transcript imports end to end: confirm dialog, state, setup, persistence', async ({
+  page,
+}) => {
   await stubPdfJs(page, TRANSCRIPT_LINES);
   await openCalculator(page);
   const container = page.locator('#semestersContainer');
@@ -85,7 +89,9 @@ test('a transcript imports end to end: confirm dialog, state, setup, persistence
   // Semesters render with the catalogue-canonical course names.
   await expect(container.locator('.semester-label').nth(0)).toHaveText('Fall 2022');
   await expect(container.locator('.semester-label').nth(1)).toHaveText('Spring 2023');
-  await expect(container.getByRole('combobox').first()).toHaveValue('Programming Language I (CSE110)');
+  await expect(container.getByRole('combobox').first()).toHaveValue(
+    'Programming Language I (CSE110)',
+  );
 
   // Detected department + start semester land in the setup controls.
   const setup = page.getByTestId('calculator-setup');
@@ -95,8 +101,12 @@ test('a transcript imports end to end: confirm dialog, state, setup, persistence
 
   // And it persists like any other edit.
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#semestersContainer').locator('.semester-label').nth(1)).toHaveText('Spring 2023');
-  await expect(page.getByTestId('calculator-setup').getByLabel('Select your department')).toHaveValue('CSE');
+  await expect(page.locator('#semestersContainer').locator('.semester-label').nth(1)).toHaveText(
+    'Spring 2023',
+  );
+  await expect(
+    page.getByTestId('calculator-setup').getByLabel('Select your department'),
+  ).toHaveValue('CSE');
 });
 
 test('Cancel keeps the calculator untouched', async ({ page }) => {
@@ -151,6 +161,9 @@ test('the simulator nudge and the footer both open the shared picker', async ({ 
   await container.getByPlaceholder('e.g. 42').fill('60');
   await container.getByRole('button', { name: 'Confirm →' }).click();
 
+  // The simulator, and so its nudge, lives on /playground since #592. The
+  // footer trigger below stays on the calculator.
+  await navigateTo(page, 'Playground');
   const sim = page.getByTestId('cgpa-simulator');
   await sim.getByLabel('Target CGPA:').fill('3.2');
   await sim.getByLabel('Credits remaining:').fill('30');
@@ -161,9 +174,14 @@ test('the simulator nudge and the footer both open the shared picker', async ({ 
   await nudge.getByRole('button', { name: '📄 Import Transcript' }).click();
   await chooserPromise; // resolves ⇒ the nudge opened the picker
 
-  // The footer trigger appears once a non-summary semester exists.
+  // The footer trigger appears once a non-summary semester exists — back on the
+  // calculator, which is where the footer is.
+  await navigateTo(page, 'Calculator');
   await container.getByRole('button', { name: '+ Add Semester' }).click();
   const footerChooser = page.waitForEvent('filechooser');
-  await page.locator('.footer-btn-group').getByRole('button', { name: '📄 Import Transcript' }).click();
+  await page
+    .locator('.footer-btn-group')
+    .getByRole('button', { name: '📄 Import Transcript' })
+    .click();
   await footerChooser;
 });

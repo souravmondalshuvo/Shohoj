@@ -11,6 +11,8 @@
 
 import { expect, test } from '../e2e-support/authFixture.js';
 
+import { navigateTo } from './_nav.js';
+
 const SEED = {
   currentDept: 'CSE',
   semesterCounter: 1,
@@ -57,6 +59,8 @@ test('a withdrawn course renders as a W badge, not an empty grade box', async ({
 test('the withdrawal is offered as a candidate, priced honestly', async ({ page }) => {
   await openSeeded(page);
 
+  // The simulator reads this state from /playground (#592).
+  await navigateTo(page, 'Playground');
   const sim = page.getByTestId('cgpa-simulator');
   // The candidate table only builds once a goal is named — until then the
   // simulator is still prompting for one.
@@ -70,10 +74,7 @@ test('the withdrawal is offered as a candidate, priced honestly', async ({ page 
   // gives (12 + 9) / 6 = 3.50 — a loss, and the cell says so in red rather
   // than the green every other candidate gets.
   await expect(row).toContainText('3.50');
-  await expect(row.locator('td', { hasText: /^3\.50$/ })).toHaveCSS(
-    'color',
-    'rgb(231, 76, 60)',
-  );
+  await expect(row.locator('td', { hasText: /^3\.50$/ })).toHaveCSS('color', 'rgb(231, 76, 60)');
 
   // The legend explains the badge only because a withdrawal is on the table.
   await expect(sim.locator('.sim-legend .sim-strategy-badge.withdrawn')).toBeVisible();
