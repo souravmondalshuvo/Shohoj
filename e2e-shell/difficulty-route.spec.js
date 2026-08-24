@@ -59,7 +59,7 @@ test('aggregates the recent feed into per-course difficulty cards', async ({ pag
   ]);
   const view = await openDifficulty(page);
 
-  await expect(view.getByText('Based on 4 reviews across 2 courses.')).toBeVisible();
+  await expect(view.getByText('Based on 4 reviews across 2 courses ·')).toBeVisible();
   await expect(view.getByTestId('difficulty-card')).toHaveCount(2);
 
   const cse = view.locator('[data-code="CSE110"]');
@@ -96,8 +96,17 @@ test('sorting by difficulty orders hardest first', async ({ page }) => {
   await expect(cards.nth(2)).toHaveAttribute('data-code', 'AAA110'); // easiest (1)
 });
 
-test('an empty feed shows the empty state', async ({ page }) => {
+test('an empty feed keeps the chrome and says so inside it', async ({ page }) => {
   await installRecent(page, []);
   const view = await openDifficulty(page);
-  await expect(view.getByTestId('difficulty-empty')).toContainText('No reviewed courses yet');
+
+  // Legacy opens the map with its subtitle, department pills and sort controls
+  // in place whatever the review count is, and puts the message inside them
+  // (js/ui/difficultyMap.js:148). The shell used to collapse all three to a
+  // bare empty state.
+  await expect(view.getByText('Based on 0 reviews across 0 courses ·')).toBeVisible();
+  await expect(view.locator('.dm-controls')).toBeVisible();
+  await expect(view.getByTestId('difficulty-dept-empty')).toContainText(
+    'No reviewed courses in this department yet.',
+  );
 });
