@@ -573,3 +573,68 @@ jobs:
             --only firestore:rules,firestore:indexes \
             --project "$PROJECT" \
             --non-interactive
+
+  # A red X on `main` that nothing announces is only marginally better than the
+  # green check it replaced. The fail-closed guard above worked exactly as
+  # designed and still cost six days of undeployed SECURITY RULES, because the
+  # failure sat in the Actions tab where nobody was looking (#574).
+  #
+  # So a failed rules deploy files an issue — the one channel this repo already
+  # reads, and the only one that needs no secret to reach. Repeats comment on
+  # the open issue rather than filing another, so a run of failures is one
+  # thread rather than a pile.
+  announce-firestore-deploy-failure:
+    name: Announce a failed Firestore deploy
+    needs: [deploy-firestore]
+    if: >-
+      always() &&
+      needs.deploy-firestore.result == 'failure' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const title = 'Firestore rules did not deploy on main';
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `The \`Deploy Firestore rules & indexes\` job failed on \`main\` (${context.sha.slice(0, 8)}).`,
+              '',
+              '**Production is running the previous rules.** `firestore.rules` on `main` and the',
+              'rules Firestore is enforcing have diverged until this is resolved.',
+              '',
+              `Failing run: ${run}`,
+              '',
+              'Usual causes: `FIREBASE_SERVICE_ACCOUNT` missing or expired, or the rules failing',
+              'to compile. See `docs/GITHUB_SECURITY_SETTINGS.md`.',
+            ].join('\n');
+
+            // One thread per outage: reuse the open issue if there is one.
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const existing = open.data.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.notice(`Commented on #${existing.number}`);
+              return;
+            }
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
+            core.notice(`Filed #${created.data.number}`);
