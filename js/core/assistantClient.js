@@ -80,7 +80,7 @@ export async function fetchAssistantAvailability(options) {
 
 /** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
 export async function sendAssistantTurn(transcript, options) {
-  const { workerUrl, getToken, fetchImpl = fetch } = options || {};
+  const { workerUrl, getToken, fetchImpl = fetch, routine } = options || {};
   if (!workerUrl) {
     return {
       ok: false,
@@ -112,7 +112,11 @@ export async function sendAssistantTurn(transcript, options) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ messages }),
+      // The routine tool answers from the student's own picks, and those live
+      // only in this browser — the cloud snapshot the Worker reads carries
+      // semesters, never the Routine Builder's selections. So they travel with
+      // the turn (#543). Omitted entirely when nothing is picked.
+      body: JSON.stringify(routine ? { messages, routine } : { messages }),
     });
   } catch (_e) {
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
@@ -149,8 +153,8 @@ export async function sendAssistantTurn(transcript, options) {
 
 const ASSISTANT_DEFAULT_PROMPTS = Object.freeze([
   'What GPA do I need to reach a 3.5 CGPA?',
+  'How many credits until I graduate?',
   'Can I take CSE370 next semester?',
-  'Are there open seats in MAT216?',
 ]);
 
 const ASSISTANT_TAB_PROMPTS = Object.freeze({
@@ -163,10 +167,12 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
     'Which sections of CSE370 still have room?',
     'Who teaches CSE221, and how are they rated?',
   ]),
+  // The routine tool reads the student's own picks, so this tab is where
+  // schedule questions are worth offering (#543).
   routine: Object.freeze([
-    'Are there open seats in MAT216?',
+    'When is my first class on Sunday?',
+    'Do any of my picked courses clash?',
     'Who teaches CSE221, and how are they rated?',
-    'What GPA do I need to reach a 3.5 CGPA?',
   ]),
   planner: Object.freeze([
     'Can I take CSE370 next semester?',
@@ -175,8 +181,8 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
   ]),
   tracker: Object.freeze([
     'What GPA do I need to reach a 3.5 CGPA?',
+    'How many credits until I graduate?',
     'What happens to my CGPA if I get a 3.7 next semester?',
-    'Can I take CSE370 next semester?',
   ]),
 });
 
@@ -184,61 +190,4 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
 export function examplePromptsForTab(tabId) {
   const key = typeof tabId === 'string' ? tabId : '';
   return ASSISTANT_TAB_PROMPTS[key] || ASSISTANT_DEFAULT_PROMPTS;
-}
-
-// ── Transcript persistence ────────────────────────────────────────────────────
-// sessionStorage only, and only so the chat survives a tab switch or an
-// accidental close within the same browser tab. Nothing reaches localStorage or
-// any server, so the drawer's "chats aren't saved" note still holds: the
-// transcript dies with the tab.
-//
-// Every record is stamped with the uid that wrote it and only reads back for
-// that same uid. Campus machines are shared: without the stamp, a student who
-// chats and signs out leaves their questions — and the model's answers about
-// their grades — sitting in the tab for whoever signs in next, and those turns
-// would be replayed to the Worker as the next student's context.
-
-export const ASSISTANT_TRANSCRIPT_KEY = 'shohoj_assistant_transcript';
-
-/**
- * Read the stored transcript for `owner`, clamped to the Worker contract.
- * Returns [] when nothing is stored, when it belongs to a different uid, or
- * when storage is unreadable. Never throws.
- */
-export function readStoredTranscript(storage, owner) {
-  try {
-    const raw = storage?.getItem(ASSISTANT_TRANSCRIPT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    // An unstamped record predates uid scoping (or was hand-written); it has no
-    // provable owner, so nobody may read it.
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
-    if (!parsed.owner || parsed.owner !== owner) return [];
-    return clampTranscript(parsed.messages);
-  } catch (_e) {
-    return [];
-  }
-}
-
-/** Persist a transcript for `owner` in this browser tab. Never throws. */
-export function writeStoredTranscript(storage, transcript, owner) {
-  try {
-    const clamped = clampTranscript(transcript);
-    if (!owner || clamped.length === 0) {
-      storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
-      return;
-    }
-    storage?.setItem(ASSISTANT_TRANSCRIPT_KEY, JSON.stringify({ owner, messages: clamped }));
-  } catch (_e) {
-    /* storage unavailable (private mode, quota) — the chat just won't persist */
-  }
-}
-
-/** Drop any stored transcript, whoever owns it. Never throws. */
-export function clearStoredTranscript(storage) {
-  try {
-    storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
-  } catch (_e) {
-    /* storage unavailable — nothing was persisted anyway */
-  }
 }
