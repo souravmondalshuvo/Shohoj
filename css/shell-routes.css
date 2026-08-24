@@ -675,8 +675,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   border: 1px solid rgba(46,204,113,0.28); background: var(--c-surface);
 }
 .seats-search-input:focus { outline: none; border-color: rgba(46,204,113,0.55); }
-.seats-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
-.seats-sort { display: flex; gap: 4px; }
 .seats-toggle {
   font: inherit; font-size: 12px; font-weight: 600; padding: 8px 16px; min-height: 40px;
   border-radius: 999px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-faint);
@@ -684,7 +682,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .seats-toggle--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
 .seats-toggle:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 .seats-available { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--c-text-muted); }
-.seats-empty { margin: 14px 0; }
 .seats-groups { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .seats-group { border: 1px solid var(--c-border); border-radius: 12px; padding: 12px; }
 .seats-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 8px; }
@@ -695,7 +692,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .seats-section { border-top: 1px solid var(--c-surface); padding-top: 6px; }
 .seats-section:first-child { border-top: none; padding-top: 0; }
 .seats-section-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.seats-section-name { font-weight: 700; font-size: 13px; }
 .seats-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid; }
 .seats-badge--open { color: var(--c-green-ink); background: rgba(46,204,113,0.10); border-color: rgba(46,204,113,0.30); }
 .seats-badge--tight { color: var(--c-warn-ink); background: rgba(240,165,0,0.12); border-color: rgba(240,165,0,0.35); }
@@ -1301,3 +1297,8 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
    <h1> there so the route keeps a heading for the a11y gate, and needs the same
    declarations. An addition, not a restatement — legacy has no h1 rule. */
 .routine-header h1 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
+
+/* .seats-header styles its title as h3 (style.css); /seats uses a real <h1>
+   there so the route keeps a heading for the a11y gate. An addition, not a
+   restatement — legacy has no h1 rule. */
+.seats-header h1 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
