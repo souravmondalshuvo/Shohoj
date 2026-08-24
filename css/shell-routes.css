@@ -1085,6 +1085,15 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   padding: 12px 14px 6px;
 }
 .assistant-drawer-title { margin: 0; font-size: 16px; }
+/* Twin of .assistant-drawer-clear in css/style.css — see the note there. */
+.assistant-drawer-clear {
+  font: inherit; font-size: 11px; line-height: 1; min-height: 32px; padding: 0 12px;
+  margin-left: auto; margin-right: 6px;
+  border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--c-border); background: transparent; color: var(--c-faint);
+}
+.assistant-drawer-clear:hover { color: var(--c-text); background: var(--c-surface); }
+.assistant-drawer-clear:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
 .assistant-drawer-close {
   font: inherit; font-size: 13px; line-height: 1; min-height: 32px; min-width: 32px;
   border-radius: 999px; cursor: pointer;
