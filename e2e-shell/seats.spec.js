@@ -42,8 +42,9 @@ async function gotoSeats(page) {
   await seedFeed(page);
   await page.goto('/seats', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('seats-page')).toBeVisible();
-  // Legacy's header badge: "<n> sections · live|cached" (#600).
-  await expect(page.getByTestId('seats-feed-source')).toContainText('sections ·');
+  // Legacy's header badge is source AND freshness — "Cached · just now" — so a
+  // student can tell whether the seat counts are minutes or days old (#600).
+  await expect(page.getByTestId('seats-feed-source')).toContainText('·');
 }
 
 test('empty query prompts; searching a code lists its sections with seat badges', async ({ page }) => {
