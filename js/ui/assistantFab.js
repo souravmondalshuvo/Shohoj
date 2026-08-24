@@ -23,13 +23,18 @@
 // inline on* attributes anyway (script-src-attr).
 
 import {
-  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
-  readStoredTranscript,
   sendAssistantTurn,
-  writeStoredTranscript,
 } from '../core/assistantClient.js';
+// The transcript moved from sessionStorage (dies with the tab) to a device-local
+// IndexedDB record that survives a new tab and a new day (#543). Still local,
+// still uid-stamped, still deletable from the drawer.
+import {
+  clearStoredHistory,
+  loadStoredHistory,
+  saveStoredHistory,
+} from '../core/assistantHistory.js';
 import { ASSISTANT_MORPH_CLOSE_MS, morphPanel } from '../core/assistantMorph.js';
 
 // Kept honest as the tools grow: since #579 the Assistant also reads the
@@ -37,7 +42,7 @@ import { ASSISTANT_MORPH_CLOSE_MS, morphPanel } from '../core/assistantMorph.js'
 // own saved data" would no longer be true. Twin of the note in
 // src/features/assistant/AssistantDrawer.tsx — change both.
 const DRAWER_NOTE =
-  'Answers use your own saved data and Shohoj’s faculty ratings. Chats aren’t saved — they reset when you close this tab.';
+  'Answers use your own saved data and Shohoj’s faculty ratings. Chats stay on this device — nothing is uploaded, and “Clear chat” deletes them.';
 
 let _fab = null;
 let _drawer = null;
@@ -84,6 +89,24 @@ function getToken() {
     : Promise.resolve(null);
 }
 
+// The Routine Builder's picks, for the routine tool. They live only in this
+// browser — the cloud snapshot the Worker reads carries semesters, never these
+// — so they travel with the turn (#543). Same key routineTab.js persists to.
+const ROUTINE_PICKS_KEY = 'shohoj_routine_v1';
+
+function readRoutinePicks() {
+  try {
+    const raw = localStorage.getItem(ROUTINE_PICKS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && parsed.picks ? { picks: parsed.picks } : null;
+  } catch {
+    // Unreadable storage, or junk left by an older build: the routine tool
+    // reports "nothing picked" rather than the turn failing.
+    return null;
+  }
+}
+
 /** Which calculator tab the student is on, for the starter prompts. */
 function activeTab() {
   const el = document.querySelector('#calcTabs [data-tab].active');
@@ -95,18 +118,12 @@ function activeTab() {
   }
 }
 
-function storage() {
-  try {
-    return sessionStorage;
-  } catch (_e) {
-    // Storage can be unreachable (private mode, blocked cookies). The helpers
-    // are null-safe, so the chat simply won't survive a tab switch.
-    return null;
-  }
-}
-
+// Fire and forget: the student's next keystroke must not wait on a write, and
+// the store never throws — a browser with no IndexedDB (private mode) simply
+// does not persist.
 function persist() {
-  writeStoredTranscript(storage(), _transcript, _owner);
+  const owner = _owner;
+  saveStoredHistory(owner, _transcript);
 }
 
 // ── Drawer rendering ──────────────────────────────────────────────────────────
@@ -125,7 +142,7 @@ function renderEmptyState() {
   const wrap = document.createElement('div');
   wrap.className = 'assistant-empty';
   const p = document.createElement('p');
-  p.textContent = 'Ask about your CGPA goals, prerequisites, seats, or faculty ratings. Try one:';
+  p.textContent = 'Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or faculty ratings. Try one:';
   wrap.appendChild(p);
   examplePromptsForTab(activeTab()).forEach(prompt => {
     const btn = document.createElement('button');
@@ -203,7 +220,11 @@ async function ask(question) {
     if (typeof window._shohoj_flushCloudSave === 'function') {
       await window._shohoj_flushCloudSave();
     }
-    const result = await sendAssistantTurn(_transcript, { workerUrl: workerUrl(), getToken });
+    const result = await sendAssistantTurn(_transcript, {
+      workerUrl: workerUrl(),
+      getToken,
+      routine: readRoutinePicks(),
+    });
     if (result.ok) {
       _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
       persist();
@@ -230,13 +251,28 @@ function buildDrawer() {
   const title = document.createElement('h2');
   title.className = 'assistant-drawer-title';
   title.textContent = 'Shohoj Assistant';
+  // Chats now outlive the tab, so deleting them has to be reachable from the
+  // drawer itself — a device-local record with no visible delete is a record
+  // the student cannot get rid of (#543).
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'assistant-drawer-clear';
+  clear.setAttribute('aria-label', 'Clear chat history');
+  clear.textContent = 'Clear chat';
+  clear.addEventListener('click', () => {
+    _transcript = [];
+    _error = null;
+    clearStoredHistory();
+    renderLog();
+    _inputEl?.focus();
+  });
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'assistant-drawer-close';
   close.setAttribute('aria-label', 'Close assistant');
   close.textContent = '✕';
   close.addEventListener('click', () => closeDrawer());
-  header.append(title, close);
+  header.append(title, clear, close);
 
   const note = document.createElement('p');
   note.className = 'assistant-drawer-note';
@@ -298,7 +334,17 @@ function openDrawer() {
   if (_drawer) return;
   // Reopening mid-exit would stack two panels in the same corner.
   dropExiting();
-  _transcript = readStoredTranscript(storage(), _owner);
+  // IndexedDB is async, so the drawer opens empty and fills in. Guarded on the
+  // way back: a student who signs out, or types before the read lands, must not
+  // have the stored record dropped on top of what is on screen.
+  _transcript = [];
+  const hydratingFor = _owner;
+  loadStoredHistory(hydratingFor).then((stored) => {
+    if (!_drawer || _owner !== hydratingFor || _transcript.length > 0) return;
+    if (stored.length === 0) return;
+    _transcript = stored;
+    renderLog();
+  });
   _error = null;
   // Measured while the pill is still on screen — a display:none launcher has an
   // empty rect, and this rect is the whole starting shape of the morph.
@@ -431,7 +477,7 @@ export function refreshLauncher() {
     // record as well, so nothing of theirs is left in the tab. Going from "not
     // known yet" to a uid is just auth resolving after boot — the stored record
     // is uid-stamped and only reads back for its owner, so it can be adopted.
-    if (previous !== null || uid === null) clearStoredTranscript(storage());
+    if (previous !== null || uid === null) clearStoredHistory();
   }
   if (!workerUrl() || !authReady() || !signedIn()) {
     unmountFab();
