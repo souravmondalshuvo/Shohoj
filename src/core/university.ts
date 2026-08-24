@@ -19,6 +19,15 @@
 //      ./grades.ts — GradeLetter is the union across ALL campuses, and each
 //      profile's `points` covers only its own subset.
 //   3. Add the profile below and list it in UNIVERSITIES.
+//   4. Run `npm run generate:campus-map`, and commit what it writes.
+//
+// Step 4 is not optional and not cosmetic. The domain → campus mapping is
+// enforced in two other languages — worker/campus.generated.js and the
+// campusOfEmail()/validCampus() regions of firestore.rules — and both are
+// generated from the profiles below. A campus that exists here and nowhere else
+// signs in fine and is then denied every read and write, because the rules
+// resolve its students to no campus at all. `npm run check:campus-map` fails CI
+// on that drift, so this list really is the only place the map is edited (#571).
 //
 // Grade points must come from the registrar or the official student handbook.
 // They drive CGPA, which drives probation, scholarship and graduation
