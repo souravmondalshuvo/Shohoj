@@ -40,6 +40,7 @@ import {
   ASSISTANT_SYSTEM,
   ASSISTANT_TOOLS,
   executeAssistantTool,
+  validateRoutinePicks,
   validateAssistantMessages,
 } from '../assistant.js';
 import {
@@ -1469,6 +1470,150 @@ async function makeServiceAccountJson() {
     assertEq(missing.error, 'section_not_found');
   });
 
+  // ── Routine (#543) ─────────────────────────────────────────────────────────
+  // The picks are the one piece of student data the Worker cannot look up: they
+  // live in localStorage and ride along with the turn. So they are validated
+  // like any other untrusted input, and the tool joins them against the same
+  // feed index the seat tool uses.
+
+  const ROUTINE_FEED = () => new Map([
+    ['CSE110', [{
+      sectionId: 11, courseCode: 'CSE110', sectionName: '01', facultyInitials: 'ABC',
+      roomName: '09A-10C', capacity: 30, consumedSeat: 5, isFull: false,
+      classSlots: [
+        { day: 'SUNDAY', startMin: 480, endMin: 560, kind: 'theory', room: '09A-10C' },
+        { day: 'TUESDAY', startMin: 480, endMin: 560, kind: 'theory', room: '09A-10C' },
+      ],
+      midExam: null, finalExam: null,
+    }]],
+    ['MAT120', [{
+      sectionId: 21, courseCode: 'MAT120', sectionName: '02', facultyInitials: 'XYZ',
+      roomName: '08B-02C', capacity: 30, consumedSeat: 5, isFull: false,
+      classSlots: [{ day: 'SUNDAY', startMin: 660, endMin: 740, kind: 'theory', room: '08B-02C' }],
+      midExam: null, finalExam: null,
+    }]],
+    ['PHY111', [{
+      sectionId: 31, courseCode: 'PHY111', sectionName: '01', facultyInitials: 'PQR',
+      roomName: '10B-13C', capacity: 30, consumedSeat: 5, isFull: false,
+      classSlots: [{ day: 'SUNDAY', startMin: 480, endMin: 560, kind: 'lab', room: '10B-13C' }],
+      midExam: null, finalExam: null,
+    }]],
+  ]);
+
+  await test('assistant: validateRoutinePicks drops anything malformed', async () => {
+    assertEq(validateRoutinePicks(null), null);
+    assertEq(validateRoutinePicks('CSE110'), null);
+    assertEq(validateRoutinePicks({ picks: {} }), null);
+    // Both shapes the front-ends store: { picks } and a bare map.
+    assertEq(validateRoutinePicks({ picks: { cse110: 11 } }).picks.CSE110, 11);
+    assertEq(validateRoutinePicks({ CSE110: 11 }).picks.CSE110, 11);
+    // A picked course with no section yet is kept — it is reported unresolved.
+    assertEq(validateRoutinePicks({ picks: { CSE110: null } }).picks.CSE110, null);
+    // Junk codes and non-integer ids are dropped, not fatal.
+    const mixed = validateRoutinePicks({ picks: { 'DROP TABLE': 1, CSE110: 11, MAT120: '21' } });
+    assertEq(Object.keys(mixed.picks).length, 1);
+    assertEq(mixed.picks.CSE110, 11);
+    // Capped, so a hostile payload cannot grow without bound.
+    const many = {};
+    for (let i = 0; i < 40; i++) many[`CSE${100 + i}`] = i;
+    assertEq(Object.keys(validateRoutinePicks({ picks: many }).picks).length, 15);
+  });
+
+  await test('assistant: get_routine answers from the student\'s own picks', async () => {
+    const ctx = {
+      loadUserSnapshot: async () => { throw new Error('not needed'); },
+      loadSeatIndex: async () => ROUTINE_FEED(),
+      routinePicks: validateRoutinePicks({ picks: { CSE110: 11, MAT120: 21, PHY111: 31 } }),
+    };
+    const week = await executeAssistantTool('get_routine', {}, ctx);
+    const sunday = week.days.find((d) => d.day === 'SUNDAY');
+    assertEq(sunday.first_class, '8:00 AM');
+    assertEq(sunday.last_class, '12:20 PM');
+    assertEq(sunday.classes.length, 3);
+    // The gap between the 9:20 finish and the 11:00 start, in minutes.
+    assertEq(sunday.gaps.length, 1);
+    assertEq(sunday.gaps[0].minutes, 100);
+    // CSE110 and PHY111 sit on the same hour: that is a clash, and it is
+    // reported as one rather than quietly rendered side by side.
+    assertEq(week.clashes.class_clash_pairs, 1);
+    assert(sunday.classes.some((c) => c.room === '10B-13C'), 'the lab keeps its own room');
+    assert(week.days.some((d) => d.day === 'TUESDAY'), 'a second meeting day is kept');
+  });
+
+  await test('assistant: get_routine narrows to one day, and says when it is empty', async () => {
+    const ctx = {
+      loadSeatIndex: async () => ROUTINE_FEED(),
+      routinePicks: validateRoutinePicks({ picks: { MAT120: 21 } }),
+    };
+    const sunday = await executeAssistantTool('get_routine', { day: 'sunday' }, ctx);
+    assertEq(sunday.days.length, 1);
+    assertEq(sunday.days[0].day, 'SUNDAY');
+    const monday = await executeAssistantTool('get_routine', { day: 'MONDAY' }, ctx);
+    assertEq(monday.classes.length, 0);
+    assert(monday.message.includes('MONDAY'), 'says which day is empty');
+  });
+
+  await test('assistant: get_routine reports having nothing to answer from', async () => {
+    const feed = { loadSeatIndex: async () => ROUTINE_FEED() };
+    const none = await executeAssistantTool('get_routine', {}, { ...feed, routinePicks: null });
+    assertEq(none.error, 'no_routine');
+    // Picked, but the section is not in this semester's feed.
+    const stale = await executeAssistantTool('get_routine', {}, {
+      ...feed,
+      routinePicks: validateRoutinePicks({ picks: { CSE110: 999 } }),
+    });
+    assertEq(stale.error, 'no_resolved_sections');
+    assertEq(stale.unresolved_courses[0], 'CSE110');
+  });
+
+  await test('assistant: get_routine ignores model-supplied identifiers', async () => {
+    // The picks come from the ctx the route handler built, never from the
+    // model's arguments — an injected uid or a substituted routine is inert.
+    const ctx = {
+      loadSeatIndex: async () => ROUTINE_FEED(),
+      routinePicks: validateRoutinePicks({ picks: { MAT120: 21 } }),
+    };
+    const r = await executeAssistantTool(
+      'get_routine',
+      { uid: 'uid_bob', user_id: 'uid_bob', picks: { CSE110: 11 }, routine: { picks: { CSE110: 11 } } },
+      ctx,
+    );
+    assertEq(r.days.length, 1);
+    assertEq(r.days[0].classes.length, 1);
+    assertEq(r.days[0].classes[0].course_code, 'MAT120');
+  });
+
+  // ── Degree progress (#543) ─────────────────────────────────────────────────
+
+  await test('assistant: get_degree_progress measures earned credits against the department', async () => {
+    const ctx = {
+      loadUserSnapshot: async () => ({ ...JSON.parse(ALICE_SNAPSHOT), currentDept: 'CSE' }),
+      loadSeatIndex: async () => { throw new Error('not needed'); },
+    };
+    const r = await executeAssistantTool('get_degree_progress', {}, ctx);
+    assertEq(r.department, 'CSE');
+    assertEq(r.earned_credits, 6, 'A(3cr) + B(3cr)');
+    assertEq(r.required_credits, 136);
+    assertEq(r.remaining_credits, 130);
+    assertEq(r.estimated_semesters_remaining, 11, '130 remaining at 12/semester');
+    // The assumption is stated, because division is not an academic plan.
+    assertEq(r.estimate_assumes_credits_per_semester, 12);
+    const slower = await executeAssistantTool('get_degree_progress', { credits_per_semester: 9 }, ctx);
+    assertEq(slower.estimated_semesters_remaining, 15);
+  });
+
+  await test('assistant: get_degree_progress says what is missing rather than guessing', async () => {
+    const noDept = await executeAssistantTool('get_degree_progress', {}, {
+      loadUserSnapshot: async () => JSON.parse(ALICE_SNAPSHOT),
+    });
+    assertEq(noDept.error, 'no_department');
+    assertEq(noDept.earned_credits, 6, 'the credits it does know are still reported');
+    const noData = await executeAssistantTool('get_degree_progress', {}, {
+      loadUserSnapshot: async () => null,
+    });
+    assertEq(noData.error, 'no_data');
+  });
+
   await test('assistant: get_faculty_rating quotes the same number as the Routine Builder star', async () => {
     // MUNR is the faculty in the seeded corpus the grid renders as 4.9. If this
     // drifts, the Assistant and the UI are disagreeing about the same person —
@@ -1717,6 +1862,80 @@ async function makeServiceAccountJson() {
     // And the request surface itself never mentions Bob outside the user's own
     // injected text (which round-trips as chat history, never as a lookup).
     assert(!firestoreUserGets.includes('uid_bob'), 'Bob\'s doc is never requested');
+  });
+
+  await test('assistant: a turn carrying routine picks answers from them end to end', async () => {
+    // The wiring the unit tests above cannot see: body.routine -> validation ->
+    // ctx.routinePicks -> the tool, with the live feed behind it.
+    __resetSeatIndexCacheForTests();
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    const anthropicBodies = [];
+    let anthropicCalls = 0;
+    const feedBody = [{
+      sectionId: 11, courseCode: 'CSE220', courseName: 'Data Structures', sectionName: '01',
+      capacity: 30, consumedSeat: 10, faculties: 'ABC', roomName: '09A-10C',
+      sectionType: 'THEORY', courseCredit: 3,
+      sectionSchedule: {
+        classSchedules: [{ day: 'SUNDAY', startTime: '08:00:00', endTime: '09:20:00' }],
+      },
+    }];
+
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (/\/documents\/users\//.test(call.url)) {
+          return json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } });
+        }
+        if (call.url.startsWith(SEAT_FEED_URL)) return json(feedBody);
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          anthropicCalls++;
+          anthropicBodies.push(call.body);
+          if (anthropicCalls === 1) {
+            return json(assistantMessage({
+              stop_reason: 'tool_use',
+              content: [{ type: 'tool_use', id: 'toolu_1', name: 'get_routine', input: { day: 'SUNDAY' } }],
+            }));
+          }
+          return json(assistantMessage({
+            content: [{ type: 'text', text: 'Your first class on Sunday is CSE220 at 8:00 AM in 09A-10C.' }],
+          }));
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, async () => {
+        const res = await worker.fetch(req('POST', '/api/assistant', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: 'When is my first class on Sunday?' }],
+            routine: { picks: { CSE220: 11 } },
+          }),
+        }), {
+          ...ENV,
+          ANTHROPIC_API_KEY: 'sk-test',
+          SERVICE_ACCOUNT_JSON: await makeServiceAccountJson(),
+        }, {});
+        assertEq(res.status, 200);
+        const body = await res.json();
+        assert(body.reply.includes('8:00 AM'), 'the answer carries the real time');
+      });
+    } finally {
+      __setTestJwksForTests(null);
+      __resetSeatIndexCacheForTests();
+    }
+
+    assertEq(anthropicCalls, 2, 'one tool round plus the final answer');
+    const toolResultTurn = JSON.parse(anthropicBodies[1]).messages.at(-1);
+    const payload = JSON.parse(toolResultTurn.content.find((b) => b.type === 'tool_result').content);
+    assertEq(payload.days[0].day, 'SUNDAY');
+    assertEq(payload.days[0].first_class, '8:00 AM');
+    assertEq(payload.days[0].classes[0].course_code, 'CSE220');
   });
 
   console.log('\nAssistant providers (#544 — Claude, OpenAI fallback):');
