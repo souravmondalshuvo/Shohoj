@@ -25,12 +25,18 @@ service cloud.firestore {
     // layered on top of campusOfEmail without touching any collection below.
     //
     // Anchored ^...$ on purpose: an unanchored match would let
-    // `x@g.bracu.ac.bd.attacker.com` read BRACU data.
+    // `x@g.bracu.ac.bd.attacker.com` read BRACU data. The generator escapes the
+    // dots and anchors both ends; tests/campusMap.test.js asserts a
+    // subdomain-suffix address is rejected.
+    // BEGIN GENERATED campusOfEmail — npm run generate:campus-map
     function campusOfEmail(addr) {
       return addr.matches('^[^@]+@g[.]bracu[.]ac[.]bd$')
         ? 'bracu'
-        : (addr.matches('^[^@]+@northsouth[.]edu$') ? 'nsu' : '');
+        : (addr.matches('^[^@]+@northsouth[.]edu$')
+          ? 'nsu'
+          : '');
     }
+    // END GENERATED campusOfEmail
 
     function userCampus() {
       return (request.auth != null && request.auth.token.email is string)
@@ -65,9 +71,11 @@ service cloud.firestore {
       return isAdmin() || res == null || docCampus(res.data) == userCampus();
     }
 
+    // BEGIN GENERATED validCampus — npm run generate:campus-map
     function validCampus(value) {
       return value is string && (value == 'bracu' || value == 'nsu');
     }
+    // END GENERATED validCampus
 
     // The caller's own campus, and only their own — a client cannot label a
     // document as belonging somewhere it is not.
