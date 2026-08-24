@@ -174,7 +174,7 @@ function RoomWeekDialog({
         <h2 id="rooms-week-title" className="shell-modal-title">
           {room} · weekly availability
         </h2>
-        <div className="rooms-week">
+        <div className="freerooms-week">
           {DAY_ORDER.map((day) => {
             const segs = dayTimeline(index, room, day);
             const hasClasses = busyOnDay(index, room, day).length > 0;
@@ -188,23 +188,23 @@ function RoomWeekDialog({
                 <div className="rooms-week-day">{DAY_SHORT[day]}</div>
                 <ul className="rooms-week-segs">
                   {!hasClasses ? (
-                    <li className="rooms-seg rooms-seg--none">No class data</li>
+                    <li className="freerooms-seg freerooms-seg--none">No class data</li>
                   ) : (
                     segs.map((s, i) => {
                       const cls = !s.busy
-                        ? 'rooms-seg rooms-seg--free'
+                        ? 'freerooms-seg freerooms-seg--free'
                         : s.lab
-                          ? 'rooms-seg rooms-seg--lab'
-                          : 'rooms-seg rooms-seg--busy';
+                          ? 'freerooms-seg freerooms-seg--lab'
+                          : 'freerooms-seg freerooms-seg--busy';
                       const label = !s.busy
                         ? 'free'
                         : `${s.sectionName ? `${s.courseCode} Section ${s.sectionName}` : s.courseCode}${s.lab ? ' · lab' : ''}`;
                       return (
                         <li key={i} className={cls}>
-                          <span className="rooms-seg-time">
+                          <span className="freerooms-seg-time">
                             {fmt12(s.startMin)} – {fmt12(s.endMin)}
                           </span>
-                          <span className="rooms-seg-label">{label}</span>
+                          <span className="freerooms-seg-label">{label}</span>
                         </li>
                       );
                     })
@@ -263,30 +263,33 @@ export function Component() {
 
   const when = `${DAY_SHORT[day]} ${fmt12(minute)}`;
 
+  // `.freerooms-tab` is legacy's own column: flex, 14px gap, 4px/0 padding
+  // (style.css:6517). It is what spaces the header, the two control rows, the
+  // summary and the grid apart — without it the shell stacks them flush and
+  // comes out ~35px short of legacy once the individual sizes match.
   return (
-    <section className="shell-page rooms-page" data-testid="rooms-page">
-      <h1>Free Rooms</h1>
-      <p className="shell-muted">
-        Which rooms are empty right now? Pick a day and time — availability comes live from the
-        class schedule feed.
-      </p>
-
-      {feedError !== null ? (
-        <div className="rooms-error" data-testid="rooms-error">
-          <p>{feedError}</p>
-          <button type="button" className="shell-btn" onClick={() => load(true)}>
-            Retry
-          </button>
-        </div>
-      ) : !feed ? (
-        <p role="status">Loading the schedule feed…</p>
-      ) : (
-        <>
-          <div className="rooms-meta">
-            <span className="rooms-meta-item" data-testid="rooms-feed-source">
+    <section className="shell-page rooms-page freerooms-tab" data-testid="rooms-page">
+      {/* Legacy's one-row header (js/ui/freeRoomsTab.js:201): title, feed badge
+          and Refresh on a single 31px line, sharing .routine-header with the
+          routine tab. The shell used to spread the same three things over an
+          <h1>, a description legacy does not have, and a separate .rooms-meta
+          row — 120px against legacy's 31, which was most of this route's +112
+          against legacy's panel (#582). */}
+      <div className="routine-header">
+        <div className="routine-header-left">
+          <h1>🚪 Free Rooms</h1>
+          {feed && (
+            <span
+              className={`routine-source-badge routine-source--${feed.source}`}
+              data-testid="rooms-feed-source"
+            >
               {SOURCE_LABEL[feed.source]} feed
             </span>
-            <button type="button" className="shell-btn rooms-meta-btn" onClick={() => load(true)}>
+          )}
+        </div>
+        <div className="routine-header-right">
+          {feed && (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => load(true)}>
               <svg
                 width="13"
                 height="13"
@@ -304,15 +307,28 @@ export function Component() {
               </svg>
               Refresh
             </button>
-          </div>
+          )}
+        </div>
+      </div>
 
-          <div className="rooms-controls">
-            <div className="rooms-days" role="group" aria-label="Day">
+      {feedError !== null ? (
+        <div className="rooms-error" data-testid="rooms-error">
+          <p>{feedError}</p>
+          <button type="button" className="shell-btn" onClick={() => load(true)}>
+            Retry
+          </button>
+        </div>
+      ) : !feed ? (
+        <p role="status">Loading the schedule feed…</p>
+      ) : (
+        <>
+          <div className="freerooms-controls">
+            <div className="freerooms-days" role="group" aria-label="Day">
               {DAY_ORDER.map((d) => (
                 <button
                   key={d}
                   type="button"
-                  className={d === day ? 'rooms-chip rooms-chip--active' : 'rooms-chip'}
+                  className={d === day ? 'freerooms-day is-active' : 'freerooms-day'}
                   aria-pressed={d === day}
                   onClick={() => setDay(d)}
                   data-testid={`rooms-day-${DAY_SHORT[d]}`}
@@ -321,13 +337,13 @@ export function Component() {
                 </button>
               ))}
             </div>
-            <div className="rooms-time-wrap">
-              <label className="rooms-time-label" htmlFor="rooms-time-input">
+            <div className="freerooms-time-wrap">
+              <label className="freerooms-time-label" htmlFor="rooms-time-input">
                 at
               </label>
               <input
                 id="rooms-time-input"
-                className="rooms-time"
+                className="freerooms-time"
                 type="time"
                 value={hhmm24(minute)}
                 min={hhmm24(CAMPUS_START_MIN)}
@@ -338,9 +354,12 @@ export function Component() {
                   if (m !== null) setMinute(clampMinute(m));
                 }}
               />
+              {/* legacy's compact pill (js/ui/freeRoomsTab.js:236), not the
+                  44px .shell-btn — that one button made the whole time row
+                  44px against legacy's 33. */}
               <button
                 type="button"
-                className="shell-btn"
+                className="btn-secondary btn-sm"
                 title="Jump to right now"
                 onClick={() => {
                   setDay(WEEKDAY_BY_INDEX[new Date().getDay()]);
@@ -352,11 +371,11 @@ export function Component() {
             </div>
           </div>
 
-          <div className="rooms-controls rooms-controls--view">
-            <div className="rooms-view" role="group" aria-label="View">
+          <div className="freerooms-controls freerooms-controls--view">
+            <div className="freerooms-view" role="group" aria-label="View">
               <button
                 type="button"
-                className={!showAll ? 'rooms-chip rooms-chip--active' : 'rooms-chip'}
+                className={!showAll ? 'freerooms-view-btn is-active' : 'freerooms-view-btn'}
                 aria-pressed={!showAll}
                 onClick={() => setShowAll(false)}
                 data-testid="rooms-view-free"
@@ -365,7 +384,7 @@ export function Component() {
               </button>
               <button
                 type="button"
-                className={showAll ? 'rooms-chip rooms-chip--active' : 'rooms-chip'}
+                className={showAll ? 'freerooms-view-btn is-active' : 'freerooms-view-btn'}
                 aria-pressed={showAll}
                 onClick={() => setShowAll(true)}
                 data-testid="rooms-view-all"
@@ -374,12 +393,12 @@ export function Component() {
               </button>
             </div>
             {showAll && (
-              <div className="rooms-types" role="group" aria-label="Room type">
+              <div className="freerooms-types" role="group" aria-label="Room type">
                 {TYPE_FILTERS.map((t) => (
                   <button
                     key={t.key}
                     type="button"
-                    className={roomType === t.key ? 'rooms-chip rooms-chip--active' : 'rooms-chip'}
+                    className={roomType === t.key ? 'freerooms-type is-active' : 'freerooms-type'}
                     aria-pressed={roomType === t.key}
                     onClick={() => setRoomType(t.key)}
                     data-testid={`rooms-type-${t.key}`}
@@ -392,24 +411,24 @@ export function Component() {
           </div>
 
           {rooms.length === 0 ? (
-            <p className="rooms-empty shell-muted" data-testid="rooms-empty">
+            <p className="freerooms-empty shell-muted" data-testid="rooms-empty">
               {showAll ? 'No rooms match this filter.' : `No rooms are free at ${when}.`}
             </p>
           ) : (
             <>
-              <p className="rooms-summary shell-muted" data-testid="rooms-summary">
+              <p className="freerooms-summary shell-muted" data-testid="rooms-summary">
                 {showAll
                   ? `${rooms.length} room${rooms.length === 1 ? '' : 's'} · ${freeCount} free · ${when}`
                   : `${rooms.length} room${rooms.length === 1 ? '' : 's'} free · ${when}`}
               </p>
-              <ul className="rooms-grid" data-testid="rooms-grid">
+              <ul className="freerooms-grid" data-testid="rooms-grid">
                 {rooms.map((room) => {
                   const status = roomStatus(feed.index, room, day, minute);
                   const stateClass = status.free
-                    ? 'rooms-card rooms-card--free'
+                    ? 'freerooms-card is-free'
                     : status.lab
-                      ? 'rooms-card rooms-card--lab'
-                      : 'rooms-card rooms-card--busy';
+                      ? 'freerooms-card is-lab'
+                      : 'freerooms-card is-class';
                   return (
                     <li key={room}>
                       <button
@@ -420,13 +439,13 @@ export function Component() {
                         onClick={() => setOpenRoom(room)}
                         data-testid={`rooms-card-${room}`}
                       >
-                        <span className="rooms-card-room">
+                        <span className="freerooms-card-room">
                           {room}
-                          <span className="rooms-card-type">
+                          <span className="freerooms-card-type">
                             {ROOM_TYPE_LABELS[roomTypeKey(room)]}
                           </span>
                         </span>
-                        <span className="rooms-card-status">{status.label}</span>
+                        <span className="freerooms-card-until">{status.label}</span>
                       </button>
                     </li>
                   );
