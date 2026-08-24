@@ -2,8 +2,9 @@
 //
 // Covers the pure Shohoj Assistant client: transcript clamping to the Worker's
 // contract, the guard order + HTTP→typed-error mapping of sendAssistantTurn,
-// the tab-aware starter prompts, and sessionStorage transcript persistence. All
-// offline — fetch, the token getter, and storage are injected.
+// and the tab-aware starter prompts. All offline — fetch and the token getter
+// are injected. Transcript persistence moved to js/core/assistantHistory.js and
+// is covered by tests/assistantHistory.test.js (#543).
 //
 // Imports go through the shell's typed boundary (src/features/assistant/
 // assistantClient.ts) on purpose: it is a re-export of the vanilla-JS
@@ -15,14 +16,10 @@ import assert from 'node:assert/strict';
 
 import {
   ASSISTANT_MAX_MESSAGES,
-  ASSISTANT_TRANSCRIPT_KEY,
   clampTranscript,
-  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
-  readStoredTranscript,
   sendAssistantTurn,
-  writeStoredTranscript,
 } from '../src/features/assistant/assistantClient.ts';
 
 const user = (content) => ({ role: 'user', content });
@@ -218,87 +215,4 @@ test('examplePromptsForTab offers three prompts for any tab, seat-first on Seats
   // Unknown/absent tabs fall back to the general set rather than throwing.
   assert.deepEqual(examplePromptsForTab(undefined), fallback);
   assert.deepEqual(examplePromptsForTab('not-a-tab'), fallback);
-});
-
-// ── Transcript persistence (#533) ─────────────────────────────────────────────
-
-function fakeStorage(initial = {}) {
-  const map = new Map(Object.entries(initial));
-  return {
-    getItem: k => (map.has(k) ? map.get(k) : null),
-    setItem: (k, v) => map.set(k, String(v)),
-    removeItem: k => map.delete(k),
-    has: k => map.has(k),
-  };
-}
-
-test('a written transcript reads back identically for its owner', () => {
-  const storage = fakeStorage();
-  const transcript = [user('what is my cgpa?'), reply('3.42'), user('and next term?')];
-  writeStoredTranscript(storage, transcript, 'uid-a');
-  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), transcript);
-});
-
-// Campus machines are shared. A transcript is one student's questions and the
-// model's answers about their grades, so the next person to sign in must never
-// see it — and it must never be replayed to the Worker as their context.
-test('a transcript never reads back for a different uid', () => {
-  const storage = fakeStorage();
-  writeStoredTranscript(storage, [user('my cgpa?'), reply('3.42')], 'uid-a');
-  assert.deepEqual(readStoredTranscript(storage, 'uid-b'), []);
-  assert.deepEqual(readStoredTranscript(storage, null), []);
-  assert.deepEqual(readStoredTranscript(storage, undefined), []);
-});
-
-test('an unstamped legacy record is unreadable rather than assumed yours', () => {
-  const legacy = JSON.stringify([{ role: 'user', content: 'someone else' }]);
-  const storage = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: legacy });
-  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), []);
-});
-
-test('writing without an owner, or with nothing to say, clears the key', () => {
-  const stored = { [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify({ owner: 'uid-a', messages: [user('x')] }) };
-
-  const empty = fakeStorage({ ...stored });
-  writeStoredTranscript(empty, [], 'uid-a');
-  assert.equal(empty.has(ASSISTANT_TRANSCRIPT_KEY), false);
-
-  const anonymous = fakeStorage({ ...stored });
-  writeStoredTranscript(anonymous, [user('x')], null);
-  assert.equal(anonymous.has(ASSISTANT_TRANSCRIPT_KEY), false);
-});
-
-test('clearStoredTranscript drops the record whoever owns it', () => {
-  const storage = fakeStorage();
-  writeStoredTranscript(storage, [user('x')], 'uid-a');
-  clearStoredTranscript(storage);
-  assert.equal(storage.has(ASSISTANT_TRANSCRIPT_KEY), false);
-  assert.deepEqual(readStoredTranscript(storage, 'uid-a'), []);
-});
-
-test('a stored transcript is clamped to the Worker contract on read', () => {
-  const oversize = [];
-  for (let i = 0; i < 15; i++) oversize.push(user(`q${i}`), reply(`a${i}`));
-  const storage = fakeStorage({
-    [ASSISTANT_TRANSCRIPT_KEY]: JSON.stringify({ owner: 'uid-a', messages: oversize }),
-  });
-  const restored = readStoredTranscript(storage, 'uid-a');
-  assert.ok(restored.length <= ASSISTANT_MAX_MESSAGES);
-  assert.equal(restored[0].role, 'user');
-});
-
-test('corrupt, missing, or unavailable storage yields an empty transcript', () => {
-  const corrupt = fakeStorage({ [ASSISTANT_TRANSCRIPT_KEY]: '{oops' });
-  assert.deepEqual(readStoredTranscript(corrupt, 'uid-a'), []);
-  assert.deepEqual(readStoredTranscript(fakeStorage(), 'uid-a'), []);
-  assert.deepEqual(readStoredTranscript(null, 'uid-a'), []);
-  const throwing = {
-    getItem() { throw new Error('denied'); },
-    setItem() { throw new Error('denied'); },
-    removeItem() { throw new Error('denied'); },
-  };
-  assert.deepEqual(readStoredTranscript(throwing, 'uid-a'), []);
-  // Writing or clearing through a hostile storage must not break the chat.
-  writeStoredTranscript(throwing, [user('hi')], 'uid-a');
-  clearStoredTranscript(throwing);
 });
