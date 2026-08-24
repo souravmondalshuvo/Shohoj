@@ -93,8 +93,8 @@ test('a signed-in student gets the launcher; opening it shows the chat drawer', 
   await fab(page).click();
   await expect(drawer(page)).toBeVisible();
   await expect(drawer(page)).toContainText('Shohoj Assistant');
-  // The v1 limitation is stated in the panel, not just in the code.
-  await expect(drawer(page)).toContainText("Chats aren’t saved");
+  // Where chats live is stated in the panel, not just in the code (#543).
+  await expect(drawer(page)).toContainText('Chats stay on this device');
   // The launcher steps aside while the drawer is open.
   await expect(fab(page)).toBeHidden();
 });
@@ -248,6 +248,60 @@ test('starter prompts follow the tab the student is on', async ({ page }) => {
   await selectCalcTab(page, 'seats');
   await fab(page).click();
   await expect(page.locator('.assistant-example').first()).toContainText(/seats/i);
+});
+
+// ── Device-local history (#543) ──────────────────────────────────────────────
+// The transcript moved out of sessionStorage, which died with the tab, into an
+// IndexedDB record on this device. These two tests are the only coverage that
+// touches real IndexedDB — the unit tests inject a fake — so they are the ones
+// that prove the store actually works in a browser.
+
+test('the transcript survives a reload, not just a tab switch', async ({ page }) => {
+  await boot(page);
+  await fab(page).click();
+  await page.locator('.assistant-input').fill('what is my cgpa?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--reply')).toHaveText('Your CGPA is 3.42.');
+
+  // A new day, or a new tab: everything in memory and in sessionStorage is gone.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await fab(page).click();
+  await expect(page.locator('.assistant-bubble--user')).toHaveText('what is my cgpa?');
+  await expect(page.locator('.assistant-bubble--reply')).toHaveText('Your CGPA is 3.42.');
+});
+
+test('"Clear chat" deletes the history, and it stays deleted', async ({ page }) => {
+  await boot(page);
+  await fab(page).click();
+  await page.locator('.assistant-input').fill('what is my cgpa?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--reply')).toHaveText('Your CGPA is 3.42.');
+
+  await page.locator('.assistant-drawer-clear').click();
+  await expect(page.locator('.assistant-bubble--user')).toHaveCount(0);
+  // The starter prompts come back, which is what an empty drawer looks like.
+  await expect(drawer(page)).toContainText('Try one:');
+
+  // A record that outlives the tab has to be deletable for real, not just
+  // cleared from the screen.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await fab(page).click();
+  await expect(page.locator('.assistant-bubble--user')).toHaveCount(0);
+});
+
+test('a turn carries the routine picks the Worker cannot look up', async ({ page }) => {
+  const { turns } = await boot(page);
+  // What the Routine Builder persists for this student, in this browser.
+  await page.evaluate(() => {
+    localStorage.setItem('shohoj_routine_v1', JSON.stringify({ picks: { CSE220: 11 } }));
+  });
+
+  await fab(page).click();
+  await page.locator('.assistant-input').fill('when is my first class on Sunday?');
+  await page.locator('.assistant-send').click();
+  await expect(page.locator('.assistant-bubble--reply')).toHaveCount(1);
+
+  expect(turns[0].body.routine).toEqual({ picks: { CSE220: 11 } });
 });
 
 test('the transcript survives closing the drawer and switching tabs', async ({ page }) => {
