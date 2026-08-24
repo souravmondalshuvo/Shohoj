@@ -211,7 +211,11 @@ test('the weekly grid and the folded course row both name the room', async ({ pa
     const bad = [];
     for (const el of els) {
       const code = el.querySelector('.routine-grid-block-code')?.textContent?.trim();
-      if (el.scrollHeight > el.getBoundingClientRect().height + 0.5) bad.push(`${code}: vertical`);
+      // clientHeight, not getBoundingClientRect(): the rect reports the
+      // TRANSFORMED box, and the grid reveals with a scale animation, so a
+      // block measured mid-reveal reads as ~1px shorter than the content it
+      // comfortably fits — a clip that is not there. Layout against layout.
+      if (el.scrollHeight > el.clientHeight + 0.5) bad.push(`${code}: vertical`);
       for (const line of el.querySelectorAll('div, span')) {
         if (line.clientWidth > 0 && line.scrollWidth > line.clientWidth + 0.5) {
           bad.push(`${code}: "${line.textContent.trim()}" needs ${line.scrollWidth}px, has ${line.clientWidth}px`);
