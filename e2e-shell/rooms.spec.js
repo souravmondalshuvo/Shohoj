@@ -42,7 +42,8 @@ async function gotoRooms(page) {
   await seedFeed(page);
   await page.goto('/rooms', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('rooms-page')).toBeVisible();
-  await expect(page.getByTestId('rooms-feed-source')).toContainText('feed');
+  // Legacy's header badge is source AND freshness — "Cached · just now" (#600).
+  await expect(page.getByTestId('rooms-feed-source')).toContainText('·');
   // Pin the moment under test: Sunday 09:00.
   await page.getByTestId('rooms-day-Sun').click();
   await page.getByTestId('rooms-time-input').fill('09:00');
