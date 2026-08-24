@@ -33,6 +33,8 @@
     "generate:worker-catalog": "node scripts/generate_worker_catalog.mjs",
     "check:worker-catalog": "node scripts/generate_worker_catalog.mjs --check",
     "generate:worker-reviews": "node scripts/generate_worker_reviews.mjs",
+    "generate:campus-map": "node scripts/generate_campus_map.mjs",
+    "check:campus-map": "node scripts/generate_campus_map.mjs --check",
     "check:worker-reviews": "node scripts/generate_worker_reviews.mjs --check",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"scripts/**/*.mjs\" \"worker/index.js\" \"worker/assistant.js\" \"worker/assistantProviders.js\"",
