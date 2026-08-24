@@ -30,6 +30,7 @@ import {
   buildRulesValidCampus,
   buildWorkerModule,
   campusDomains,
+  jsPattern,
   loadUniversities,
   rulesPattern,
   spliceRules,
@@ -90,6 +91,21 @@ for (const campus of registry) {
     assert.ok(!re.test(`a@${domain.replace('.', 'X')}`), `rules pattern leaves a dot unescaped`);
   }
 }
+
+// ── Escaping is an allow-list, not a list of characters to remember ──────────
+//
+// DOMAIN_RE already rejects anything but [a-z0-9.-], so in practice only dots
+// are ever escaped. The escapers still escape everything non-alphanumeric,
+// because an escaper that is correct only because of a check somewhere else is
+// one refactor away from being wrong — and this one produces the regex that
+// decides who reads whose data.
+
+assert.equal(jsPattern('a-b.edu'), '^[^@]+@a\\-b\\.edu$');
+assert.equal(rulesPattern('a-b.edu'), '^[^@]+@a[-]b[.]edu$');
+// A backslash is escaped rather than passed through as the start of an escape
+// sequence, which is the hole the allow-list closes.
+assert.equal(jsPattern('a\\db'), '^[^@]+@a\\\\db$');
+assert.ok(!new RegExp(jsPattern('a\\db')).test('axdb'), 'the input is data, never a pattern');
 
 // ── A third campus needs no hand edits ───────────────────────────────────────
 
