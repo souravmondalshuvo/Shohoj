@@ -115,14 +115,21 @@ export function campusDomains(profiles) {
 // unescaped pattern would let x@g.bracu.ac.bd.attacker.com through as a BRACU
 // student, which is the whole boundary these three copies exist to enforce.
 
+// Both escapers work off an ALLOW-list: every character that is not a letter or
+// a digit is escaped, rather than naming the metacharacters to escape and
+// hoping the list is complete. DOMAIN_RE already rejects anything but
+// [a-z0-9.-], so today the two agree — but an escaper that is only correct
+// because of a check somewhere else is one refactor away from being wrong, and
+// this one produces the regex that decides who reads whose data.
+
 /** JavaScript regex literal source, e.g. ^[^@]+@g\.bracu\.ac\.bd$ */
 export function jsPattern(domain) {
-  return `^[^@]+@${domain.replace(/\./g, '\\.')}$`;
+  return `^[^@]+@${domain.replace(/[^a-zA-Z0-9]/g, (c) => `\\${c}`)}$`;
 }
 
 /** Firestore-rules pattern. `[.]` rather than `\.`, matching the file's style. */
 export function rulesPattern(domain) {
-  return `^[^@]+@${domain.replace(/\./g, '[.]')}$`;
+  return `^[^@]+@${domain.replace(/[^a-zA-Z0-9]/g, (c) => `[${c}]`)}$`;
 }
 
 export function buildWorkerModule(campuses) {
