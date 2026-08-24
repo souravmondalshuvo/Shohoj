@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Y1SwE9/UdWpMji2sv8MLMCTKetgSVQXiuZeOfmgTN6Q='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-pT0o01/n9uZESSLA8fznawMk2m9YMXlior4p/mfphfg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6265,6 +6265,10 @@ body[data-page="admin"] .orb { display: none !important; }
 /* Light theme fades the other days toward the page instead of shading them. */
 [data-theme="light"] .routine-grid-dim-col { background: rgba(255,255,255,0.50); }
 .routine-grid-block {
+  /* Query container for the narrow-block rules at the end of this section
+     (#585): what varies is the block's own width — a day column divided by
+     however many classes overlap in it — not the viewport. */
+  container-type: inline-size;
   margin: 1px 2px;
   border-radius: 6px;
   /* 5px sides, not 6: at a 1280 window the code+room line lands within a few
@@ -6371,6 +6375,39 @@ body[data-page="admin"] .orb { display: none !important; }
   margin: 0 4px;
   font-weight: 400;
   opacity: 0.55;
+}
+
+/* ── Narrow blocks: degrade the content by width (#585) ────────────────────
+   Overlapping classes tile a day column at 1/N. Three of them on a 97px column
+   leaves 34px a block — under the 37px a room label needs, and under the course
+   code itself, so every line ellipsed and the block truncated to "⚠ C…": it no
+   longer said which course it was, which is the one thing it has to say.
+
+   Below the threshold everything but the code and the clash mark is dropped,
+   and the code scales with the block instead of ellipsing. The code line pulls
+   itself out into the block's own padding (negative margin) to buy back the
+   10px that padding costs at this width; `overflow: hidden` clips at the
+   padding box, so the text may use it. */
+@container (max-width: 74px) {
+  .routine-grid-block-room,
+  .routine-grid-block-meta,
+  .routine-grid-block-timetext { display: none; }
+  /* The clash mark keeps its line. It is the block's only non-colour clash
+     cue, and a block this narrow is by definition inside a clash. */
+  .routine-grid-block-clashmark { margin-right: 0; }
+  .routine-grid-block-code {
+    /* cqw is 1% of the block's content box, which is 10px narrower than the
+       line itself once the negative margins above claim the padding back — so
+       0.42 of it is a deliberately conservative fit for a six-character code.
+       Capped at the normal 11px, and floored: 6px is small, but a code you
+       have to lean in for still tells you which class this is, and an ellipsis
+       does not. */
+    font-size: clamp(6px, 42cqw, 11px);
+    letter-spacing: 0;
+    margin-left: -5px;
+    margin-right: -5px;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 720px) {
@@ -24114,11 +24151,15 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const roomLabel = block.roomName
     ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span>`
     : '';
+  // The times sit in their own span so a block too narrow to read (a three-way
+  // clash on a narrow window: ~34px, less than the course code itself) can drop
+  // them and keep the clash mark, which is the only non-colour cue the block
+  // has. The width threshold lives in css/style.css (#585).
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${clashMark}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${clashMark}<span class="routine-grid-block-timetext">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</span></div>
     </div>
   `;
 }
