@@ -42,7 +42,8 @@ async function gotoSeats(page) {
   await seedFeed(page);
   await page.goto('/seats', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('seats-page')).toBeVisible();
-  await expect(page.getByTestId('seats-feed-source')).toContainText('sections loaded');
+  // Legacy's header badge: "<n> sections · live|cached" (#600).
+  await expect(page.getByTestId('seats-feed-source')).toContainText('sections ·');
 }
 
 test('empty query prompts; searching a code lists its sections with seat badges', async ({ page }) => {
@@ -73,7 +74,8 @@ test('"open seats only" hides the full section', async ({ page }) => {
   const group = page.getByTestId('seats-group-CSE110');
   await expect(group.locator('.seats-section')).toHaveCount(3);
 
-  await page.getByTestId('seats-available-only').check();
+  // Legacy's "Open seats only" is a chip button, not a checkbox (#600).
+  await page.getByTestId('seats-available-only').click();
   await expect(group.locator('.seats-section')).toHaveCount(2);
   await expect(group.locator('.seats-badge--full')).toHaveCount(0);
 });
