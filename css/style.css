@@ -7940,6 +7940,27 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 800;
   color: var(--text1);
 }
+/* Deleting a chat that now outlives the tab has to be reachable (#543). A pill
+   like the rest of the app's controls, quieter than the send button — it sits
+   next to the close ✕ and must not read as the primary action. */
+.assistant-drawer-clear {
+  margin-left: auto;
+  margin-right: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text3);
+  background: transparent;
+  border: 1px solid var(--chip-border);
+}
+.assistant-drawer-clear:hover {
+  color: var(--text1);
+  background: var(--chip-hover);
+}
 .assistant-drawer-close {
   min-height: 32px;
   min-width: 32px;
@@ -8127,6 +8148,7 @@ body[data-page="admin"] .orb { display: none !important; }
   opacity: 0.55;
   cursor: default;
 }
+.assistant-drawer-clear:focus-visible,
 .assistant-drawer-close:focus-visible,
 .assistant-example:focus-visible,
 .assistant-input:focus-visible,
