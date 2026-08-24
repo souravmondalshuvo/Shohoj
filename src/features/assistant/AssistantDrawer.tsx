@@ -30,17 +30,18 @@ import {
 } from '../../../js/core/assistantHistory.js';
 import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
 import {
+  examplePromptsForTab,
   fetchAssistantAvailability,
   sendAssistantTurn,
   type AssistantAvailability,
   type AssistantMessage,
 } from './assistantClient.ts';
 
-const EXAMPLE_PROMPTS: readonly string[] = [
-  'When is my first class on Sunday?',
-  'How many credits until I graduate?',
-  'Are there open seats in MAT216?',
-];
+// One list, shared with the legacy drawer. It used to be a second hardcoded
+// copy here, which drifted the moment the prompts changed for #543 — and a
+// starter chip that offers something the other front-end doesn't is a small lie
+// about what the assistant can do.
+const EXAMPLE_PROMPTS: readonly string[] = examplePromptsForTab(null);
 
 // The Routine Builder's picks, which the routine tool answers from. They live
 // only in this browser — the snapshot the Worker reads carries semesters, never
