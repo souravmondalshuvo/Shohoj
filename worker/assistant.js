@@ -30,6 +30,8 @@ import { COURSE_DB, PREREQS } from '../js/core/catalog.js';
 import { parseFeed, indexByCourse } from '../js/core/connectFeed.js';
 import { courseSeatSummary, seatInfo, sortSections } from '../js/core/seatStatus.js';
 import { aggregateByFaculty, buildReviewOverview } from '../js/core/reviews.js';
+import { buildClashMap, selectedSections, summarizeRoutine } from '../js/core/routineState.js';
+import { DEPARTMENTS } from '../js/core/departments.js';
 import { LOW_SAMPLE_THRESHOLD, ratingTier } from '../js/core/routineFaculty.js';
 import { computeSimulation } from '../src/features/calculator/simulator.ts';
 import { seededFacultyName, seededReviewsForFaculty } from './reviews.generated.js';
@@ -40,6 +42,18 @@ const MAX_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 4000;
 
 const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
+// Same ceiling the share link uses (routineState.MAX_SHARE_COURSES): a routine
+// larger than this is not a routine, it is someone probing the payload limit.
+const MAX_ROUTINE_PICKS = 15;
+const WEEK_DAYS = [
+  'SATURDAY',
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+];
 const FACULTY_INITIALS_RE = /^[A-Z]{2,6}$/;
 
 // The scope rules are load-bearing, not decoration. This assistant runs on the
@@ -142,6 +156,38 @@ export const ASSISTANT_TOOLS = [
     },
   },
   {
+    name: 'get_routine',
+    description:
+      "Read the student's own class routine — the sections they have picked, joined against the live section feed. Call this when the student asks about their schedule: when their first or last class is on a day, what they have on a given day, where the gaps are, or whether anything clashes. Returns a day-by-day timetable with rooms, faculty and idle gaps. Omit day to get the whole week.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        day: {
+          type: 'string',
+          enum: WEEK_DAYS,
+          description: 'Optional single day to narrow to, e.g. SUNDAY.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_degree_progress',
+    description:
+      "Report how far through their degree the student is: credits earned from their own saved semesters, against the total their department requires, and what remains. Call this when the student asks how many credits they need to graduate, how far along they are, or how many semesters are left.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        credits_per_semester: {
+          type: 'number',
+          description:
+            'Optional credits-per-semester assumption for estimating semesters remaining. Defaults to 12.',
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'get_faculty_rating',
     description:
       "Get what students have said about a faculty member, aggregated from Shohoj's reviews. Call this when the student asks whether a teacher is good, which section or faculty to pick, or follows up on a faculty member named in a seat or routine answer. Faculty are identified by the initials the section feed uses, e.g. MUNR. Returns average ratings and a review count, never individual review text.",
@@ -197,6 +243,45 @@ export function validateAssistantMessages(raw) {
   }
   if (out[0].role !== 'user' || out[out.length - 1].role !== 'user') return null;
   return out;
+}
+
+// Validate the client-supplied routine picks that ride along with a turn.
+//
+// The picks are the one piece of student data the Worker cannot look up for
+// itself: they live in localStorage on the device and have never been synced to
+// users/{uid}. They are the student's own picks about their own schedule, sent
+// by their own browser under their own token — so accepting them costs nothing
+// the transcript does not already cost — but they are still untrusted input and
+// are treated as such: course codes must match the catalogue's shape, section
+// ids must be real integers, and the map is capped. Anything malformed is
+// dropped rather than rejecting the turn, so a corrupt localStorage entry
+// degrades the routine tool instead of breaking the whole assistant.
+//
+// Returns a routineState-shaped { picks } object, or null when there is nothing
+// usable to answer from.
+export function validateRoutinePicks(raw) {
+  const source = raw && typeof raw === 'object' && raw.picks && typeof raw.picks === 'object'
+    ? raw.picks
+    : raw;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+  const picks = {};
+  let count = 0;
+  for (const [rawCode, rawId] of Object.entries(source)) {
+    if (count >= MAX_ROUTINE_PICKS) break;
+    const code = String(rawCode || '').toUpperCase().replace(/\s+/g, '');
+    if (!COURSE_CODE_RE.test(code)) continue;
+    if (rawId === null) {
+      // A picked course with no section chosen yet: worth reporting as
+      // unresolved rather than silently dropping.
+      picks[code] = null;
+      count++;
+      continue;
+    }
+    if (!Number.isInteger(rawId)) continue;
+    picks[code] = rawId;
+    count++;
+  }
+  return count > 0 ? { picks } : null;
 }
 
 // Fetch + normalize the live CONNECT feed into a Map<courseCode, sections[]>.
@@ -320,6 +405,168 @@ async function runSeatStatus(input, ctx) {
   return { course_code: code, summary: courseSeatSummary(matched), sections: detail };
 }
 
+// 12-hour clock, matching how the Routine Builder labels a block. The model
+// gets clock times rather than minute counts because that is what it has to
+// say back to the student.
+function minutesToClock(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+// The student's own routine, joined against the live feed. Reuses the shipped
+// routine modules — selectedSections, buildClashMap, summarizeRoutine — so the
+// assistant can never describe a different timetable than the grid does.
+async function runRoutine(input, ctx) {
+  const state = ctx.routinePicks;
+  if (!state) {
+    return {
+      error: 'no_routine',
+      message: 'The student has not picked any sections in the Routine Builder yet.',
+    };
+  }
+  const index = await ctx.loadSeatIndex();
+  const sections = selectedSections(state, index);
+  const summary = summarizeRoutine(state, index);
+  if (sections.length === 0) {
+    return {
+      error: 'no_resolved_sections',
+      picked_courses: summary.pickedCount,
+      unresolved_courses: summary.unresolvedCourses,
+      message:
+        'The student has picked courses, but none of those sections are in the current feed — they may be from a past semester.',
+    };
+  }
+
+  const wantedDay = typeof input?.day === 'string' ? input.day.trim().toUpperCase() : '';
+  const onlyDay = WEEK_DAYS.includes(wantedDay) ? wantedDay : null;
+  const clashes = buildClashMap(sections);
+
+  const byDay = new Map();
+  for (const section of sections) {
+    for (const slot of section.classSlots) {
+      if (onlyDay && slot.day !== onlyDay) continue;
+      const list = byDay.get(slot.day) || [];
+      list.push({
+        course_code: section.courseCode,
+        section: section.sectionName,
+        kind: slot.kind,
+        starts: minutesToClock(slot.startMin),
+        ends: minutesToClock(slot.endMin),
+        startMin: slot.startMin,
+        endMin: slot.endMin,
+        room: slot.room || section.roomName || undefined,
+        faculty: section.facultyInitials || undefined,
+        clashes: clashes.get(section.sectionId)?.classClash || undefined,
+      });
+      byDay.set(slot.day, list);
+    }
+  }
+
+  const days = [];
+  for (const day of WEEK_DAYS) {
+    const list = byDay.get(day);
+    if (!list || list.length === 0) continue;
+    list.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+    // Idle time BETWEEN classes, which is what "where are my gaps" means. Back
+    // to back reads as no gap; an overlap is a clash and is reported as one.
+    const gaps = [];
+    for (let i = 1; i < list.length; i++) {
+      const idle = list[i].startMin - list[i - 1].endMin;
+      if (idle > 0) {
+        gaps.push({
+          after: list[i - 1].course_code,
+          before: list[i].course_code,
+          minutes: idle,
+        });
+      }
+    }
+    days.push({
+      day,
+      // startMin/endMin are the sort and gap keys; the model gets clock times.
+      classes: list.map((c) => ({
+        course_code: c.course_code,
+        section: c.section,
+        kind: c.kind,
+        starts: c.starts,
+        ends: c.ends,
+        room: c.room,
+        faculty: c.faculty,
+        clashes: c.clashes,
+      })),
+      first_class: list[0].starts,
+      last_class: list[list.length - 1].ends,
+      gaps: gaps.length > 0 ? gaps : undefined,
+    });
+  }
+
+  if (onlyDay && days.length === 0) {
+    return { day: onlyDay, classes: [], message: `Nothing scheduled on ${onlyDay}.` };
+  }
+
+  return {
+    days,
+    picked_courses: summary.pickedCount,
+    unresolved_courses:
+      summary.unresolvedCourses.length > 0 ? summary.unresolvedCourses : undefined,
+    clashes: {
+      class_clash_pairs: summary.classClashPairs,
+      exam_clash_pairs: summary.examClashPairs,
+    },
+  };
+}
+
+// Credits earned against the department requirement. Both numbers come from
+// what the student has already saved: earnedCredits is the shipped totals
+// model, and the requirement is the department table the Calculator's own
+// credit badge reads.
+async function runDegreeProgress(input, ctx) {
+  const data = await loadSemesters(ctx);
+  if (!data) return { error: 'no_data', message: 'The student has no saved semesters yet.' };
+  const totals = calculateCgpaTotals(data.semesters, {
+    startSeason: data.snapshot.startSeason,
+    startYear: data.snapshot.startYear,
+    includeRunning: true,
+    includeSummary: true,
+  });
+  const deptId = typeof data.snapshot.currentDept === 'string' ? data.snapshot.currentDept : '';
+  const dept = DEPARTMENTS[deptId] || null;
+  const earned = totals.earnedCredits;
+
+  if (!dept) {
+    return {
+      earned_credits: earned,
+      cgpa: totals.cgpa,
+      error: 'no_department',
+      message:
+        'The student has not chosen a department, so there is no credit requirement to measure against. Tell them to pick one in the calculator.',
+    };
+  }
+
+  const required = dept.totalCredits;
+  const remaining = Math.max(0, required - earned);
+  const perSemester =
+    Number.isFinite(input?.credits_per_semester) && input.credits_per_semester > 0
+      ? input.credits_per_semester
+      : 12;
+
+  return {
+    department: deptId,
+    degree: dept.label,
+    earned_credits: earned,
+    required_credits: required,
+    remaining_credits: remaining,
+    percent_complete: required > 0 ? Math.round((earned / required) * 100) : null,
+    cgpa: totals.cgpa,
+    // An estimate, and labelled as one: course availability and prerequisites
+    // decide this in practice, not division.
+    estimated_semesters_remaining:
+      remaining > 0 ? Math.ceil(remaining / perSemester) : 0,
+    estimate_assumes_credits_per_semester: perSemester,
+  };
+}
+
 // Dedupe seeded and live reviews by id, the way js/core/reviews.js merges the
 // two corpora for the browser. The id spaces do not currently overlap — seeds
 // hash their own text, Firestore rows hash (uid|initials|course) — but merging
@@ -428,6 +675,10 @@ export async function executeAssistantTool(name, input, ctx) {
       return runPrereqCheck(input, ctx);
     case 'check_seat_status':
       return runSeatStatus(input, ctx);
+    case 'get_routine':
+      return runRoutine(input, ctx);
+    case 'get_degree_progress':
+      return runDegreeProgress(input, ctx);
     case 'get_faculty_rating':
       return runFacultyRating(input, ctx);
     default:
