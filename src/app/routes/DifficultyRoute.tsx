@@ -121,74 +121,83 @@ export function Component() {
 
   return (
     <section className="shell-page" data-testid="difficulty-page">
-      <h1>Course Difficulty Map</h1>
-
-      {entries === undefined ? (
-        <p className="dm-loading" role="status">
-          Loading course ratings…
-        </p>
-      ) : failed ? (
-        <div className="dm-empty" data-testid="difficulty-failed">
-          Couldn’t load review data. Try again in a bit.
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="dm-empty" data-testid="difficulty-empty">
-          <div className="dm-empty-title">No reviewed courses yet</div>
-          <div className="shell-muted">
-            Rate a course from the Calculator or Planner to start the map.
-          </div>
-        </div>
-      ) : (
-        <>
-          <p className="dm-subtitle shell-muted">
-            Based on {totalReviewCount(entries)} review{totalReviewCount(entries) !== 1 ? 's' : ''}{' '}
-            across {entries.length} course{entries.length !== 1 ? 's' : ''}. Low-sample courses are
-            marked limited.
-          </p>
-
-          <div className="dm-controls">
-            <div className="dm-pills" role="group" aria-label="Filter by department">
-              {depts.map((dept) => (
-                <button
-                  key={dept}
-                  type="button"
-                  className={`dm-pill${dept === activeDept ? ' dm-pill--active' : ''}`}
-                  aria-pressed={dept === activeDept}
-                  onClick={() => setActiveDept(dept)}
-                >
-                  {dept === 'ALL' ? 'All' : dept}
-                </button>
-              ))}
-            </div>
-            <div className="dm-sort" role="group" aria-label="Sort courses">
-              <span className="dm-sort-label">Sort</span>
-              {SORTS.map((sort) => (
-                <button
-                  key={sort.key}
-                  type="button"
-                  className={`dm-sort-btn${sortBy === sort.key ? ' dm-sort-btn--active' : ''}`}
-                  aria-pressed={sortBy === sort.key}
-                  onClick={() => setSortBy(sort.key)}
-                >
-                  {sort.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {visible.length === 0 ? (
-            <div className="dm-empty" data-testid="difficulty-dept-empty">
-              No reviewed courses in this department yet.
-            </div>
-          ) : (
-            <div className="dm-grid" data-testid="difficulty-grid">
-              {visible.map((entry) => (
-                <DifficultyCard key={entry.code} entry={entry} />
-              ))}
-            </div>
+      {/* Legacy's own box: .dm-root supplies the 16/32 padding and .dm-header
+          the 14px gap under the title (css/style.css:4591). The title is an
+          <h1> carrying legacy's .dm-title rather than legacy's bare <div> —
+          the pixels come from the class, and the route keeps a real heading
+          for the a11y gate. */}
+      <div className="dm-root">
+        <div className="dm-header">
+          <h1 className="dm-title">Course Difficulty Map</h1>
+          {/* Legacy prints this line, the department pills and the sort
+              controls whatever the review count is: the map opens with its
+              chrome in place and "No reviewed courses in this department yet"
+              inside it (js/ui/difficultyMap.js:148). The shell used to
+              short-circuit all three to a bare empty state, which was the whole
+              of its -89px against legacy's panel (#582). */}
+          {entries !== undefined && !failed && (
+            <p className="dm-subtitle">
+              Based on {totalReviewCount(entries)} review
+              {totalReviewCount(entries) !== 1 ? 's' : ''} across {entries.length} course
+              {entries.length !== 1 ? 's' : ''} · Low-sample courses are marked limited
+            </p>
           )}
-        </>
-      )}
+        </div>
+
+        {entries === undefined ? (
+          <p className="dm-loading" role="status">
+            Loading course ratings…
+          </p>
+        ) : failed ? (
+          <div className="dm-empty" data-testid="difficulty-failed">
+            Couldn’t load review data. Try again in a bit.
+          </div>
+        ) : (
+          <>
+            <div className="dm-controls">
+              <div className="dm-pills" role="group" aria-label="Filter by department">
+                {depts.map((dept) => (
+                  <button
+                    key={dept}
+                    type="button"
+                    className={`dm-pill${dept === activeDept ? ' dm-pill--active' : ''}`}
+                    aria-pressed={dept === activeDept}
+                    onClick={() => setActiveDept(dept)}
+                  >
+                    {dept === 'ALL' ? 'All' : dept}
+                  </button>
+                ))}
+              </div>
+              <div className="dm-sort" role="group" aria-label="Sort courses">
+                <span className="dm-sort-label">Sort</span>
+                {SORTS.map((sort) => (
+                  <button
+                    key={sort.key}
+                    type="button"
+                    className={`dm-sort-btn${sortBy === sort.key ? ' dm-sort-btn--active' : ''}`}
+                    aria-pressed={sortBy === sort.key}
+                    onClick={() => setSortBy(sort.key)}
+                  >
+                    {sort.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {visible.length === 0 ? (
+              <div className="dm-empty" data-testid="difficulty-dept-empty">
+                No reviewed courses in this department yet.
+              </div>
+            ) : (
+              <div className="dm-grid" data-testid="difficulty-grid">
+                {visible.map((entry) => (
+                  <DifficultyCard key={entry.code} entry={entry} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
