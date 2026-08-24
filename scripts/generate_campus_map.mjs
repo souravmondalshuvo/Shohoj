@@ -96,7 +96,9 @@ export function campusDomains(profiles) {
     }
     for (const domain of profile.emailDomains) {
       if (!DOMAIN_RE.test(domain)) {
-        throw new Error(`campus '${profile.id}': '${domain}' is not a hostname this generator will escape`);
+        throw new Error(
+          `campus '${profile.id}': '${domain}' is not a hostname this generator will escape`,
+        );
       }
       const owner = seen.get(domain);
       if (owner && owner !== profile.id) {
