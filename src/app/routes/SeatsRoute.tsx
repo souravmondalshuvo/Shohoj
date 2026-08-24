@@ -146,39 +146,66 @@ export function Component() {
     return searchCourseSections(feed.index, trimmedQuery, { sort: sortMode, availableOnly });
   }, [feed, trimmedQuery, sortMode, availableOnly]);
 
+  // Legacy's quick picks: the six courses carrying the most sections, straight
+  // off the feed index (js/ui/seatsTab.js:305). They are the whole reason its
+  // empty state is 226px where the shell's was 95 — and they are the difference
+  // between "type something" and one tap into the busiest course on campus.
+  const quickPicks = useMemo(() => {
+    if (!feed) return [];
+    return [...feed.index.keys()]
+      .sort((a, b) => (feed.index.get(b)?.length ?? 0) - (feed.index.get(a)?.length ?? 0))
+      .slice(0, 6);
+  }, [feed]);
+
   return (
-    <section className="shell-page seats-page" data-testid="seats-page">
-      <h1>Seat Status</h1>
-      <p className="shell-muted">
-        Search a course to see live seat availability per section. Seats change as registration
-        moves — refresh for the latest; this reflects the last feed pull.
-      </p>
+    <section className="shell-page seats-page seats-tab" data-testid="seats-page">
+      {/* Legacy's one-row header (js/ui/seatsTab.js:359): title on the left with
+          the feed badge beside it. The shell spread the same information over an
+          <h1>, a description legacy does not have, and a third status line —
+          100px against legacy's 31.
+
+          `seats-header-right` holds a Refresh button on legacy. This route has
+          no re-fetch to wire it to, so the slot is left out rather than filled
+          with a button that would do nothing. */}
+      <div className="seats-header">
+        <div className="seats-header-left">
+          <h1>🪑 Seat Status</h1>
+          {feed && (
+            <span
+              className={`seats-source-badge seats-source--${feed.source === 'live' ? 'live' : 'cache'}`}
+              data-testid="seats-feed-source"
+            >
+              {feed.count} sections · {feed.source === 'live' ? 'live' : 'cached'}
+            </span>
+          )}
+        </div>
+      </div>
 
       {loading && (
-        <p className="seats-feed-status" data-testid="seats-loading">
+        <p className="seats-loading-note" data-testid="seats-loading">
           Loading the seat feed…
         </p>
       )}
       {feedError && (
-        <p className="seats-feed-status seats-feed-error" role="alert">
+        <p className="seats-error" role="alert">
           {feedError}
         </p>
       )}
-      {feed && (
-        <p className="seats-feed-status shell-muted" data-testid="seats-feed-source">
-          {feed.count} sections loaded{feed.source === 'live' ? ' (live)' : ' (cached)'}.
-        </p>
-      )}
 
-      <div className="seats-search">
-        <label className="seats-search-label" htmlFor="seats-course-input">
-          Search a course
-        </label>
+      {/* Legacy's search row: the icon is positioned over the input rather than
+          labelled above it (style.css:6719), which is 25px shorter. The input
+          keeps an accessible name through aria-label, since there is no visible
+          <label> to point at. */}
+      <div className="seats-searchbar">
+        <span className="seats-search-icon" aria-hidden="true">
+          🔍
+        </span>
         <input
           id="seats-course-input"
           className="seats-search-input"
-          type="search"
-          placeholder="e.g. CSE110 or Programming"
+          type="text"
+          aria-label="Search a course"
+          placeholder="Search a course code, e.g. CSE220"
           autoComplete="off"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -186,42 +213,72 @@ export function Component() {
         />
       </div>
 
-      <div className="seats-controls" role="group" aria-label="Sort and filter">
-        <div className="seats-sort" role="group" aria-label="Sort by">
+      {/* Legacy's controls are chips throughout, with `.is-active` marking the
+          selection (js/ui/seatsTab.js:386) — including "Open seats only", which
+          the shell had built as a checkbox in a <label>. Same state, same
+          aria-pressed, legacy's affordance. */}
+      <div className="seats-controls">
+        <div className="seats-sort" role="group" aria-label="Sort sections">
+          <span className="seats-sort-label">Sort</span>
           <button
             type="button"
-            className={
-              sortMode === 'section' ? 'seats-toggle seats-toggle--active' : 'seats-toggle'
-            }
+            className={sortMode === 'section' ? 'seats-chip is-active' : 'seats-chip'}
             aria-pressed={sortMode === 'section'}
             onClick={() => setSortMode('section')}
           >
-            Section
+            Section #
           </button>
           <button
             type="button"
-            className={sortMode === 'seats' ? 'seats-toggle seats-toggle--active' : 'seats-toggle'}
+            className={sortMode === 'seats' ? 'seats-chip is-active' : 'seats-chip'}
             aria-pressed={sortMode === 'seats'}
             onClick={() => setSortMode('seats')}
           >
             Seats left
           </button>
         </div>
-        <label className="seats-available">
-          <input
-            type="checkbox"
-            checked={availableOnly}
-            onChange={(e) => setAvailableOnly(e.target.checked)}
-            data-testid="seats-available-only"
-          />
+        <button
+          type="button"
+          className={
+            availableOnly
+              ? 'seats-chip seats-chip--filter is-active'
+              : 'seats-chip seats-chip--filter'
+          }
+          aria-pressed={availableOnly}
+          title="Hide sections with no seats left"
+          onClick={() => setAvailableOnly(!availableOnly)}
+          data-testid="seats-available-only"
+        >
           Open seats only
-        </label>
+        </button>
       </div>
 
       {trimmedQuery === '' ? (
-        <p className="seats-empty shell-muted" data-testid="seats-prompt">
-          Type a course code or name above to check seats.
-        </p>
+        <div className="seats-empty" data-testid="seats-prompt">
+          <div className="seats-empty-icon" aria-hidden="true">
+            🪑
+          </div>
+          <div className="seats-empty-title">Check a seat in seconds</div>
+          <div className="seats-empty-sub">
+            Type a course code to see live seats, faculty &amp; rooms
+            {quickPicks.length > 0 ? ' — or start with one of these:' : '.'}
+          </div>
+          {quickPicks.length > 0 && (
+            <div className="seats-quickpicks">
+              {quickPicks.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className="seats-chip seats-quickpick"
+                  onClick={() => setQuery(code)}
+                  data-testid={`seats-quickpick-${code}`}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       ) : groups.length === 0 ? (
         <p className="seats-empty shell-muted" data-testid="seats-no-results">
           No {availableOnly ? 'open ' : ''}sections match “{trimmedQuery}”.
