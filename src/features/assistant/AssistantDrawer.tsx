@@ -5,10 +5,12 @@
 // questions about their own data; the Worker (POST /api/assistant) runs the
 // uid-scoped Claude tool loop and returns one reply per turn.
 //
-// Deliberate v1 limits (documented, not bugs): the transcript lives only in
-// drawer state — closing the drawer or reloading clears it, nothing is
-// persisted anywhere. No streaming: one request, one reply, with loading /
-// error / empty states per the design brief.
+// The transcript persists on this DEVICE and nowhere else (#543): an IndexedDB
+// record, uid-stamped, deleted by the drawer's own "Clear chat" control. That
+// was a deliberate privacy choice over storing it under users/{uid}, which
+// would sync across devices at the cost of v1's promise that chats never leave
+// the browser. No streaming: one request, one reply, with loading / error /
+// empty states per the design brief.
 //
 // The launcher renders only when the shell is cloud-capable (papersWorkerUrl
 // configured) AND the student is signed in — the endpoint requires a BRACU
@@ -21,6 +23,11 @@ import {
   morphPanel,
   type AssistantMorphRect,
 } from '../../../js/core/assistantMorph.js';
+import {
+  clearStoredHistory,
+  loadStoredHistory,
+  saveStoredHistory,
+} from '../../../js/core/assistantHistory.js';
 import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
 import {
   fetchAssistantAvailability,
@@ -30,10 +37,30 @@ import {
 } from './assistantClient.ts';
 
 const EXAMPLE_PROMPTS: readonly string[] = [
-  'What GPA do I need to reach a 3.5 CGPA?',
-  'Can I take CSE370 next semester?',
+  'When is my first class on Sunday?',
+  'How many credits until I graduate?',
   'Are there open seats in MAT216?',
 ];
+
+// The Routine Builder's picks, which the routine tool answers from. They live
+// only in this browser — the snapshot the Worker reads carries semesters, never
+// these — so they travel with the turn. Same key RoutineRoute persists to.
+const ROUTINE_PICKS_KEY = 'shohoj_routine_picks_v1';
+
+function readRoutinePicks(): { picks: Record<string, number | null> } | null {
+  try {
+    const raw = localStorage.getItem(ROUTINE_PICKS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { picks?: unknown };
+    return parsed && typeof parsed.picks === 'object' && parsed.picks !== null
+      ? { picks: parsed.picks as Record<string, number | null> }
+      : null;
+  } catch {
+    // Unreadable storage or junk from an older build: the routine tool reports
+    // "nothing picked" rather than the turn failing.
+    return null;
+  }
+}
 
 /** Safety net for the closing morph — see the effect below. */
 const EXIT_FALLBACK_MS = ASSISTANT_MORPH_CLOSE_MS + 400;
@@ -66,6 +93,7 @@ function AssistantDrawer({
   onClosed,
 }: AssistantDrawerProps) {
   const getIdToken = useIdToken();
+  const { uid } = useAuth();
   const [transcript, setTranscript] = useState<readonly AssistantMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
@@ -77,6 +105,29 @@ function AssistantDrawer({
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Hydrate the device-local history on open. IndexedDB is async, so the panel
+  // opens empty and fills in; the guard stops a late read landing on top of a
+  // question the student has already started asking, or on another student's
+  // session after a sign-out.
+  useEffect(() => {
+    if (!uid) return;
+    let live = true;
+    void loadStoredHistory(uid).then((stored: readonly AssistantMessage[]) => {
+      if (!live || stored.length === 0) return;
+      setTranscript((current) => (current.length === 0 ? stored : current));
+    });
+    return () => {
+      live = false;
+    };
+  }, [uid]);
+
+  // Persist as turns land. Fire and forget: the store never throws, and a
+  // browser without IndexedDB (private mode) simply does not persist.
+  useEffect(() => {
+    if (!uid || transcript.length === 0) return;
+    void saveStoredHistory(uid, transcript);
+  }, [uid, transcript]);
 
   // Keep the newest message in view as turns land.
   useEffect(() => {
@@ -140,7 +191,11 @@ function AssistantDrawer({
     setError(null);
     setPending(true);
     try {
-      const result = await sendAssistantTurn(next, { workerUrl, getToken: getIdToken });
+      const result = await sendAssistantTurn(next, {
+        workerUrl,
+        getToken: getIdToken,
+        routine: readRoutinePicks(),
+      });
       if (result.ok) {
         setTranscript([...next, { role: 'assistant', content: result.reply }]);
       } else {
@@ -174,6 +229,19 @@ function AssistantDrawer({
         <h2 className="assistant-drawer-title">Shohoj Assistant</h2>
         <button
           type="button"
+          className="assistant-drawer-clear"
+          onClick={() => {
+            setTranscript([]);
+            setError(null);
+            void clearStoredHistory();
+            inputRef.current?.focus();
+          }}
+          aria-label="Clear chat history"
+        >
+          Clear chat
+        </button>
+        <button
+          type="button"
           className="assistant-drawer-close"
           onClick={onClose}
           aria-label="Close assistant"
@@ -183,14 +251,14 @@ function AssistantDrawer({
       </header>
       {/* Twin of DRAWER_NOTE in js/ui/assistantFab.js — change both. */}
       <p className="assistant-drawer-note">
-        Answers use your own saved data and Shohoj’s faculty ratings. Chats aren’t saved — they
-        reset when you close this panel.
+        Answers use your own saved data and Shohoj’s faculty ratings. Chats stay on this device —
+        nothing is uploaded, and “Clear chat” deletes them.
       </p>
 
       <div className="assistant-log" ref={logRef} aria-live="polite">
         {transcript.length === 0 && (
           <div className="assistant-empty">
-            <p>Ask about your CGPA goals, prerequisites, seats, or faculty ratings. Try one:</p>
+            <p>Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or faculty ratings. Try one:</p>
             {EXAMPLE_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
