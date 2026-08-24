@@ -45,15 +45,7 @@ const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 // Same ceiling the share link uses (routineState.MAX_SHARE_COURSES): a routine
 // larger than this is not a routine, it is someone probing the payload limit.
 const MAX_ROUTINE_PICKS = 15;
-const WEEK_DAYS = [
-  'SATURDAY',
-  'SUNDAY',
-  'MONDAY',
-  'TUESDAY',
-  'WEDNESDAY',
-  'THURSDAY',
-  'FRIDAY',
-];
+const WEEK_DAYS = ['SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const FACULTY_INITIALS_RE = /^[A-Z]{2,6}$/;
 
 // The scope rules are load-bearing, not decoration. This assistant runs on the
@@ -174,7 +166,7 @@ export const ASSISTANT_TOOLS = [
   {
     name: 'get_degree_progress',
     description:
-      "Report how far through their degree the student is: credits earned from their own saved semesters, against the total their department requires, and what remains. Call this when the student asks how many credits they need to graduate, how far along they are, or how many semesters are left.",
+      'Report how far through their degree the student is: credits earned from their own saved semesters, against the total their department requires, and what remains. Call this when the student asks how many credits they need to graduate, how far along they are, or how many semesters are left.',
     input_schema: {
       type: 'object',
       properties: {
@@ -260,15 +252,16 @@ export function validateAssistantMessages(raw) {
 // Returns a routineState-shaped { picks } object, or null when there is nothing
 // usable to answer from.
 export function validateRoutinePicks(raw) {
-  const source = raw && typeof raw === 'object' && raw.picks && typeof raw.picks === 'object'
-    ? raw.picks
-    : raw;
+  const source =
+    raw && typeof raw === 'object' && raw.picks && typeof raw.picks === 'object' ? raw.picks : raw;
   if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
   const picks = {};
   let count = 0;
   for (const [rawCode, rawId] of Object.entries(source)) {
     if (count >= MAX_ROUTINE_PICKS) break;
-    const code = String(rawCode || '').toUpperCase().replace(/\s+/g, '');
+    const code = String(rawCode || '')
+      .toUpperCase()
+      .replace(/\s+/g, '');
     if (!COURSE_CODE_RE.test(code)) continue;
     if (rawId === null) {
       // A picked course with no section chosen yet: worth reporting as
@@ -561,8 +554,7 @@ async function runDegreeProgress(input, ctx) {
     cgpa: totals.cgpa,
     // An estimate, and labelled as one: course availability and prerequisites
     // decide this in practice, not division.
-    estimated_semesters_remaining:
-      remaining > 0 ? Math.ceil(remaining / perSemester) : 0,
+    estimated_semesters_remaining: remaining > 0 ? Math.ceil(remaining / perSemester) : 0,
     estimate_assumes_credits_per_semester: perSemester,
   };
 }
