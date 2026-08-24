@@ -258,7 +258,10 @@ function AssistantDrawer({
       <div className="assistant-log" ref={logRef} aria-live="polite">
         {transcript.length === 0 && (
           <div className="assistant-empty">
-            <p>Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or faculty ratings. Try one:</p>
+            <p>
+              Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or
+              faculty ratings. Try one:
+            </p>
             {EXAMPLE_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
