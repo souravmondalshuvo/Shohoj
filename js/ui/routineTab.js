@@ -945,11 +945,15 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   const roomLabel = block.roomName
     ? `<span class="routine-grid-block-room">${escHtml(block.roomName)}</span>`
     : '';
+  // The times sit in their own span so a block too narrow to read (a three-way
+  // clash on a narrow window: ~34px, less than the course code itself) can drop
+  // them and keep the clash mark, which is the only non-colour cue the block
+  // has. The width threshold lives in css/style.css (#585).
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
       <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
-      <div class="routine-grid-block-time">${clashMark}${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</div>
+      <div class="routine-grid-block-time">${clashMark}<span class="routine-grid-block-timetext">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</span></div>
     </div>
   `;
 }
