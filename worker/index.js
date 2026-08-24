@@ -56,27 +56,13 @@ import {
   monthlyBudgetUsd,
 } from './assistantBudget.js';
 import { isKnownCourse } from './catalog.generated.js';
+// The domain -> campus map, generated from src/core/university.ts so the
+// Worker, the Firestore rules and the registry cannot disagree about who
+// belongs where. Was a hand-maintained third copy (#571).
+import { campusOfEmail } from './campus.generated.js';
 
-// Campus registry, mirroring src/core/university.ts and the campusOfEmail
-// helper in firestore.rules. The Worker is plain JS on Cloudflare and cannot
-// import the typed core, so this is a hand-maintained third copy — keep all
-// three in step when adding a university.
-//
-// Anchored ^...$ on purpose: an unanchored match would let
-// `x@g.bracu.ac.bd.attacker.com` through as a BRACU student.
-const CAMPUS_EMAIL_RES = [
-  ['bracu', /^[^@]+@g\.bracu\.ac\.bd$/],
-  ['nsu', /^[^@]+@northsouth\.edu$/],
-];
+export { campusOfEmail };
 
-/** The campus an address belongs to, or '' when no registered campus claims it. */
-export function campusOfEmail(email) {
-  if (typeof email !== 'string') return '';
-  for (const [id, re] of CAMPUS_EMAIL_RES) {
-    if (re.test(email)) return id;
-  }
-  return '';
-}
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
 const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
