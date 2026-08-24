@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import type { WeekdayName } from '../../core/connectFeed';
+import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
 import {
   buildRoomBusyIndex,
   busyOnDay,
@@ -68,12 +69,6 @@ const TYPE_FILTERS: readonly { key: RoomTypeKey | 'ALL'; label: string }[] = [
   { key: 'T', label: 'Theater' },
 ];
 
-const SOURCE_LABEL: Record<FeedSource, string> = {
-  live: 'Live',
-  cache: 'Cached',
-  fallback: 'Offline copy',
-};
-
 function clampMinute(m: number): number {
   return Math.max(CAMPUS_START_MIN, Math.min(CAMPUS_END_MIN - 1, m));
 }
@@ -104,6 +99,8 @@ type BusyIndex = Map<string, BusyInterval[]>;
 interface FeedState {
   index: BusyIndex;
   source: FeedSource;
+  /** When the feed was pulled — the badge reports how stale it is. */
+  fetchedAt: number;
 }
 
 // Card status text: "free until 11:00 AM" / "in class · CSE110 Section 01 · …".
@@ -237,7 +234,11 @@ export function Component() {
     fetchConnectFeed({ forceRefresh })
       .then((result) => {
         if (!live) return;
-        setFeed({ index: buildRoomBusyIndex(result.sections), source: result.source });
+        setFeed({
+          index: buildRoomBusyIndex(result.sections),
+          source: result.source,
+          fetchedAt: result.fetchedAt,
+        });
       })
       .catch(() => {
         if (live) setFeedError('Could not load the class schedule feed.');
@@ -281,9 +282,10 @@ export function Component() {
           {feed && (
             <span
               className={`routine-source-badge routine-source--${feed.source}`}
+              title={`Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`}
               data-testid="rooms-feed-source"
             >
-              {SOURCE_LABEL[feed.source]} feed
+              {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
             </span>
           )}
         </div>

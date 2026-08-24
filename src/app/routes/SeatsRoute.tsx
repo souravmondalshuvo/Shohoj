@@ -11,7 +11,7 @@
 // (auth + Firestore + background polling, shared with the Profile tab) are a
 // deferred follow-up slice under #397.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
@@ -20,6 +20,7 @@ import {
   type SectionIndex,
   type WeekdayName,
 } from '../../core/connectFeed';
+import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
 import { searchCourseSections, seatInfo, type SeatSortMode } from '../../core/seatStatus';
 import {
   addWatch,
@@ -78,6 +79,8 @@ interface FeedState {
   index: SectionIndex;
   source: FeedSource;
   count: number;
+  /** When the feed was pulled — the badge reports how stale it is. */
+  fetchedAt: number;
 }
 
 export function Component() {
@@ -117,16 +120,23 @@ export function Component() {
     });
   };
 
-  // Load the CONNECT feed once (cache-first, same client as RoutineRoute).
-  useEffect(() => {
+  // Load the CONNECT feed (cache-first, same client as RoutineRoute).
+  //
+  // `forceRefresh` is what the header's Refresh button needs. Seat counts move
+  // through registration, and legacy has always let a student re-pull them
+  // without reloading the page (js/ui/seatsTab.js:367) — the shell only ever
+  // fetched once per mount, so a stale count could sit there indefinitely.
+  const load = useCallback((forceRefresh: boolean) => {
     let alive = true;
-    fetchConnectFeed()
+    setFeedError(null);
+    fetchConnectFeed({ forceRefresh })
       .then((result) => {
         if (!alive) return;
         setFeed({
           index: indexByCourse(result.sections),
           source: result.source,
           count: result.sections.length,
+          fetchedAt: result.fetchedAt,
         });
       })
       .catch(() => {
@@ -139,6 +149,8 @@ export function Component() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => load(false), [load]);
 
   const trimmedQuery = query.trim();
   const groups = useMemo(() => {
@@ -163,21 +175,39 @@ export function Component() {
           the feed badge beside it. The shell spread the same information over an
           <h1>, a description legacy does not have, and a third status line —
           100px against legacy's 31.
-
-          `seats-header-right` holds a Refresh button on legacy. This route has
-          no re-fetch to wire it to, so the slot is left out rather than filled
-          with a button that would do nothing. */}
+ */}
       <div className="seats-header">
         <div className="seats-header-left">
           <h1>🪑 Seat Status</h1>
           {feed && (
             <span
-              className={`seats-source-badge seats-source--${feed.source === 'live' ? 'live' : 'cache'}`}
+              className={`seats-source-badge seats-source--${feed.source}`}
+              title={`Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`}
               data-testid="seats-feed-source"
             >
-              {feed.count} sections · {feed.source === 'live' ? 'live' : 'cached'}
+              {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
             </span>
           )}
+        </div>
+        <div className="seats-header-right">
+          <button type="button" className="btn-secondary btn-sm" onClick={() => load(true)}>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ marginRight: 6 }}
+            >
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+            Refresh
+          </button>
         </div>
       </div>
 
