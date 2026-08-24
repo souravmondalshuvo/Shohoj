@@ -47,7 +47,11 @@
 //                           here, never shipped to the client
 
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
-import { loadSeatIndexFromFeed, validateAssistantMessages } from './assistant.js';
+import {
+  loadSeatIndexFromFeed,
+  validateAssistantMessages,
+  validateRoutinePicks,
+} from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import {
   estimateCostUsd,
@@ -1190,6 +1194,12 @@ async function handleAssistant(request, env, origin, execCtx) {
     return jsonResponse({ error: 'Invalid messages payload' }, { status: 400 }, env, origin);
   }
 
+  // The routine picks ride along with the turn because they live only in the
+  // student's browser — the cloud snapshot carries semesters, never the
+  // Routine Builder's selections (#543). Malformed picks degrade the routine
+  // tool to "nothing picked" rather than failing the turn.
+  const routinePicks = validateRoutinePicks(body?.routine);
+
   // Spend ceiling — checked last of the guards, immediately before any money is
   // spent. It costs a Firestore read, so it deliberately sits behind the rate
   // limiter and the payload validation: a flood of junk requests should be
@@ -1237,6 +1247,9 @@ async function handleAssistant(request, env, origin, execCtx) {
       }
     },
     loadSeatIndex: () => loadSeatIndexCached(),
+    // Client-supplied, validated above, and about the caller's own schedule
+    // only — the tool schema still carries no identifier of any kind.
+    routinePicks,
     // Campus comes from the verified token's email, never from the request or
     // the model — the same derivation /reviews uses when it stamps a new row,
     // so a student reads back exactly the corpus they can write to.
