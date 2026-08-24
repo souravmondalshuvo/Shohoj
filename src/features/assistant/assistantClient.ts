@@ -21,19 +21,14 @@ export type {
   AssistantClientOptions,
   AssistantErrorCode,
   AssistantMessage,
-  AssistantTranscriptStorage,
   AssistantTurnResult,
 } from '../../../js/core/assistantClient.js';
 
 export {
   ASSISTANT_MAX_MESSAGES,
   ASSISTANT_MAX_MESSAGE_CHARS,
-  ASSISTANT_TRANSCRIPT_KEY,
   clampTranscript,
-  clearStoredTranscript,
   examplePromptsForTab,
   fetchAssistantAvailability,
-  readStoredTranscript,
   sendAssistantTurn,
-  writeStoredTranscript,
 } from '../../../js/core/assistantClient.js';

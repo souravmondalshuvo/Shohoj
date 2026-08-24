@@ -32,6 +32,12 @@ export interface AssistantClientOptions {
   readonly getToken: () => Promise<string | null>;
   /** Injectable fetch (tests); defaults to the global. */
   readonly fetchImpl?: typeof fetch;
+  /**
+   * The student's own Routine Builder picks, sent so the Worker's routine tool
+   * has something to answer from — they live in this browser only, never in the
+   * cloud snapshot the Worker reads (#543). Omit when nothing is picked.
+   */
+  readonly routine?: { readonly picks: Record<string, number | null> } | null;
 }
 
 /**
@@ -50,16 +56,8 @@ export interface AssistantCapabilityOptions {
   readonly signal?: AbortSignal;
 }
 
-/** Minimal Storage surface the transcript helpers need (sessionStorage in the app). */
-export interface AssistantTranscriptStorage {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string): void;
-}
-
 export const ASSISTANT_MAX_MESSAGES: number;
 export const ASSISTANT_MAX_MESSAGE_CHARS: number;
-export const ASSISTANT_TRANSCRIPT_KEY: string;
 
 export function clampTranscript(messages: readonly AssistantMessage[]): AssistantMessage[];
 
@@ -73,18 +71,3 @@ export function sendAssistantTurn(
 ): Promise<AssistantTurnResult>;
 
 export function examplePromptsForTab(tabId: string | null | undefined): readonly string[];
-
-export function readStoredTranscript(
-  storage: AssistantTranscriptStorage | null | undefined,
-  owner: string | null | undefined,
-): AssistantMessage[];
-
-export function writeStoredTranscript(
-  storage: AssistantTranscriptStorage | null | undefined,
-  transcript: readonly AssistantMessage[],
-  owner: string | null | undefined,
-): void;
-
-export function clearStoredTranscript(
-  storage: AssistantTranscriptStorage | null | undefined,
-): void;
