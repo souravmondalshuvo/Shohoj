@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-pT0o01/n9uZESSLA8fznawMk2m9YMXlior4p/mfphfg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-SDdLW4QURu+0Nh8qFUoo9glQbCGepdVjy+UAW8kM5/8=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Ns4Ir0CwMcqOMU6dSSadcKIRnR9eqX9ewtN0VmuWfJo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7998,6 +7998,27 @@ body[data-page="admin"] .orb { display: none !important; }
   font-weight: 800;
   color: var(--text1);
 }
+/* Deleting a chat that now outlives the tab has to be reachable (#543). A pill
+   like the rest of the app's controls, quieter than the send button — it sits
+   next to the close ✕ and must not read as the primary action. */
+.assistant-drawer-clear {
+  margin-left: auto;
+  margin-right: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text3);
+  background: transparent;
+  border: 1px solid var(--chip-border);
+}
+.assistant-drawer-clear:hover {
+  color: var(--text1);
+  background: var(--chip-hover);
+}
 .assistant-drawer-close {
   min-height: 32px;
   min-width: 32px;
@@ -8185,6 +8206,7 @@ body[data-page="admin"] .orb { display: none !important; }
   opacity: 0.55;
   cursor: default;
 }
+.assistant-drawer-clear:focus-visible,
 .assistant-drawer-close:focus-visible,
 .assistant-example:focus-visible,
 .assistant-input:focus-visible,
@@ -30540,7 +30562,7 @@ async function fetchAssistantAvailability(options) {
 
 /** POST one chat turn to the Worker; maps transport/HTTP failures to typed codes. */
 async function sendAssistantTurn(transcript, options) {
-  const { workerUrl, getToken, fetchImpl = fetch } = options || {};
+  const { workerUrl, getToken, fetchImpl = fetch, routine } = options || {};
   if (!workerUrl) {
     return {
       ok: false,
@@ -30572,7 +30594,11 @@ async function sendAssistantTurn(transcript, options) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ messages }),
+      // The routine tool answers from the student's own picks, and those live
+      // only in this browser — the cloud snapshot the Worker reads carries
+      // semesters, never the Routine Builder's selections. So they travel with
+      // the turn (#543). Omitted entirely when nothing is picked.
+      body: JSON.stringify(routine ? { messages, routine } : { messages }),
     });
   } catch (_e) {
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
@@ -30609,8 +30635,8 @@ async function sendAssistantTurn(transcript, options) {
 
 const ASSISTANT_DEFAULT_PROMPTS = Object.freeze([
   'What GPA do I need to reach a 3.5 CGPA?',
+  'How many credits until I graduate?',
   'Can I take CSE370 next semester?',
-  'Are there open seats in MAT216?',
 ]);
 
 const ASSISTANT_TAB_PROMPTS = Object.freeze({
@@ -30623,10 +30649,12 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
     'Which sections of CSE370 still have room?',
     'Who teaches CSE221, and how are they rated?',
   ]),
+  // The routine tool reads the student's own picks, so this tab is where
+  // schedule questions are worth offering (#543).
   routine: Object.freeze([
-    'Are there open seats in MAT216?',
+    'When is my first class on Sunday?',
+    'Do any of my picked courses clash?',
     'Who teaches CSE221, and how are they rated?',
-    'What GPA do I need to reach a 3.5 CGPA?',
   ]),
   planner: Object.freeze([
     'Can I take CSE370 next semester?',
@@ -30635,8 +30663,8 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
   ]),
   tracker: Object.freeze([
     'What GPA do I need to reach a 3.5 CGPA?',
+    'How many credits until I graduate?',
     'What happens to my CGPA if I get a 3.7 next semester?',
-    'Can I take CSE370 next semester?',
   ]),
 });
 
@@ -30646,61 +30674,153 @@ function examplePromptsForTab(tabId) {
   return ASSISTANT_TAB_PROMPTS[key] || ASSISTANT_DEFAULT_PROMPTS;
 }
 
-// ── Transcript persistence ────────────────────────────────────────────────────
-// sessionStorage only, and only so the chat survives a tab switch or an
-// accidental close within the same browser tab. Nothing reaches localStorage or
-// any server, so the drawer's "chats aren't saved" note still holds: the
-// transcript dies with the tab.
+// ── js/core/assistantHistory.js ─────────────────────────────────
+// js/core/assistantHistory.js
 //
-// Every record is stamped with the uid that wrote it and only reads back for
-// that same uid. Campus machines are shared: without the stamp, a student who
-// chats and signs out leaves their questions — and the model's answers about
-// their grades — sitting in the tab for whoever signs in next, and those turns
-// would be replayed to the Worker as the next student's context.
+// Local, device-bound persistence for the Assistant transcript (#543).
+//
+// v1 kept the chat in sessionStorage, so it survived a tab switch and died with
+// the tab: a student who closed the drawer and came back the next day
+// re-explained context they had already given.
+//
+// THE PRIVACY DECISION, recorded because it constrains everything below.
+// v1's promise is that chats never leave the browser. Storing them under
+// users/{uid} would sync them across devices and make them recoverable — and it
+// would break that promise, turning a local convenience into a server-side
+// record of what a student asked about their own grades. So the transcript
+// stays LOCAL: IndexedDB on this device, no network, no server copy, and a
+// visible control that deletes it. A student on two devices gets two separate
+// histories, which is the cost of the promise being kept.
+//
+// The uid stamp is not decoration either. Campus machines are shared: without
+// it, a student who chats and signs out leaves their questions — and the
+// model's answers about their grades — for whoever signs in next, and those
+// turns would be replayed to the Worker as the next student's context. A record
+// only ever reads back for the uid that wrote it.
+//
+// Every function here is null-safe and never throws: IndexedDB is unavailable
+// in private mode and in some embedded browsers, and a chat that does not
+// persist is a far better outcome than a drawer that will not open.
 
-const ASSISTANT_TRANSCRIPT_KEY = 'shohoj_assistant_transcript';
+const ASSISTANT_HISTORY_DB = 'shohoj_assistant';
+const ASSISTANT_HISTORY_STORE = 'transcripts';
+const ASSISTANT_HISTORY_RECORD = 'current';
 
-/**
- * Read the stored transcript for `owner`, clamped to the Worker contract.
- * Returns [] when nothing is stored, when it belongs to a different uid, or
- * when storage is unreadable. Never throws.
- */
-function readStoredTranscript(storage, owner) {
+/** The environment's IndexedDB, or null when there isn't one. */
+function defaultFactory() {
   try {
-    const raw = storage?.getItem(ASSISTANT_TRANSCRIPT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    // An unstamped record predates uid scoping (or was hand-written); it has no
-    // provable owner, so nobody may read it.
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
-    if (!parsed.owner || parsed.owner !== owner) return [];
-    return clampTranscript(parsed.messages);
-  } catch (_e) {
-    return [];
+    return typeof indexedDB !== 'undefined' ? indexedDB : null;
+  } catch {
+    return null;
   }
 }
 
-/** Persist a transcript for `owner` in this browser tab. Never throws. */
-function writeStoredTranscript(storage, transcript, owner) {
-  try {
-    const clamped = clampTranscript(transcript);
-    if (!owner || clamped.length === 0) {
-      storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
+function openDb(factory) {
+  const idb = factory || defaultFactory();
+  if (!idb) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let request;
+    try {
+      request = idb.open(ASSISTANT_HISTORY_DB, 1);
+    } catch {
+      resolve(null);
       return;
     }
-    storage?.setItem(ASSISTANT_TRANSCRIPT_KEY, JSON.stringify({ owner, messages: clamped }));
-  } catch (_e) {
-    /* storage unavailable (private mode, quota) — the chat just won't persist */
-  }
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(ASSISTANT_HISTORY_STORE)) {
+        db.createObjectStore(ASSISTANT_HISTORY_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
 }
 
-/** Drop any stored transcript, whoever owns it. Never throws. */
-function clearStoredTranscript(storage) {
+function runTransaction(db, mode, work) {
+  return new Promise((resolve) => {
+    let store;
+    try {
+      store = db.transaction(ASSISTANT_HISTORY_STORE, mode).objectStore(ASSISTANT_HISTORY_STORE);
+    } catch {
+      resolve(null);
+      return;
+    }
+    let request;
+    try {
+      request = work(store);
+    } catch {
+      resolve(null);
+      return;
+    }
+    if (!request) {
+      resolve(null);
+      return;
+    }
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => resolve(null);
+  });
+}
+
+/**
+ * The transcript stored for `owner`, clamped to the Worker's contract.
+ *
+ * Returns [] when nothing is stored, when the record belongs to a different
+ * uid, or when IndexedDB is unreachable. An unstamped record predates uid
+ * scoping and has no provable owner, so nobody may read it.
+ *
+ * @param {string|null|undefined} owner
+ * @param {IDBFactory|null} [factory]  Injectable for tests.
+ */
+async function loadStoredHistory(owner, factory) {
+  if (!owner) return [];
+  const db = await openDb(factory);
+  if (!db) return [];
+  const record = await runTransaction(db, 'readonly', (store) =>
+    store.get(ASSISTANT_HISTORY_RECORD),
+  );
   try {
-    storage?.removeItem(ASSISTANT_TRANSCRIPT_KEY);
-  } catch (_e) {
-    /* storage unavailable — nothing was persisted anyway */
+    db.close();
+  } catch {
+    /* already closing */
   }
+  if (!record || typeof record !== 'object') return [];
+  if (!record.owner || record.owner !== owner) return [];
+  return clampTranscript(record.messages);
+}
+
+/**
+ * Persist `transcript` for `owner` on this device. An empty transcript, or no
+ * owner, deletes the record rather than storing an empty one.
+ */
+async function saveStoredHistory(owner, transcript, factory) {
+  const clamped = clampTranscript(transcript);
+  if (!owner || clamped.length === 0) return clearStoredHistory(factory);
+  const db = await openDb(factory);
+  if (!db) return false;
+  const ok = await runTransaction(db, 'readwrite', (store) =>
+    store.put({ owner, messages: clamped, updatedAt: Date.now() }, ASSISTANT_HISTORY_RECORD),
+  );
+  try {
+    db.close();
+  } catch {
+    /* already closing */
+  }
+  return ok !== null;
+}
+
+/** Delete the stored transcript, whoever owns it. Backs the drawer's control. */
+async function clearStoredHistory(factory) {
+  const db = await openDb(factory);
+  if (!db) return false;
+  await runTransaction(db, 'readwrite', (store) => store.delete(ASSISTANT_HISTORY_RECORD));
+  try {
+    db.close();
+  } catch {
+    /* already closing */
+  }
+  return true;
 }
 
 // ── js/core/assistantMorph.js ───────────────────────────────────
@@ -30843,12 +30963,15 @@ function morphPanel(panel, pillRect, direction) {
 // addEventListener: model output is never parsed as HTML, and prod CSP drops
 // inline on* attributes anyway (script-src-attr).
 
+// The transcript moved from sessionStorage (dies with the tab) to a device-local
+// IndexedDB record that survives a new tab and a new day (#543). Still local,
+// still uid-stamped, still deletable from the drawer.
 // Kept honest as the tools grow: since #579 the Assistant also reads the
 // faculty ratings your campus already sees in the Reviews tab, so "only your
 // own saved data" would no longer be true. Twin of the note in
 // src/features/assistant/AssistantDrawer.tsx — change both.
 const DRAWER_NOTE =
-  'Answers use your own saved data and Shohoj’s faculty ratings. Chats aren’t saved — they reset when you close this tab.';
+  'Answers use your own saved data and Shohoj’s faculty ratings. Chats stay on this device — nothing is uploaded, and “Clear chat” deletes them.';
 
 let _fab = null;
 let _drawer = null;
@@ -30895,6 +31018,24 @@ function getToken() {
     : Promise.resolve(null);
 }
 
+// The Routine Builder's picks, for the routine tool. They live only in this
+// browser — the cloud snapshot the Worker reads carries semesters, never these
+// — so they travel with the turn (#543). Same key routineTab.js persists to.
+const ROUTINE_PICKS_KEY = 'shohoj_routine_v1';
+
+function readRoutinePicks() {
+  try {
+    const raw = localStorage.getItem(ROUTINE_PICKS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && parsed.picks ? { picks: parsed.picks } : null;
+  } catch {
+    // Unreadable storage, or junk left by an older build: the routine tool
+    // reports "nothing picked" rather than the turn failing.
+    return null;
+  }
+}
+
 /** Which calculator tab the student is on, for the starter prompts. */
 function activeTab() {
   const el = document.querySelector('#calcTabs [data-tab].active');
@@ -30906,18 +31047,12 @@ function activeTab() {
   }
 }
 
-function storage() {
-  try {
-    return sessionStorage;
-  } catch (_e) {
-    // Storage can be unreachable (private mode, blocked cookies). The helpers
-    // are null-safe, so the chat simply won't survive a tab switch.
-    return null;
-  }
-}
-
+// Fire and forget: the student's next keystroke must not wait on a write, and
+// the store never throws — a browser with no IndexedDB (private mode) simply
+// does not persist.
 function persist() {
-  writeStoredTranscript(storage(), _transcript, _owner);
+  const owner = _owner;
+  saveStoredHistory(owner, _transcript);
 }
 
 // ── Drawer rendering ──────────────────────────────────────────────────────────
@@ -30936,7 +31071,7 @@ function renderEmptyState() {
   const wrap = document.createElement('div');
   wrap.className = 'assistant-empty';
   const p = document.createElement('p');
-  p.textContent = 'Ask about your CGPA goals, prerequisites, seats, or faculty ratings. Try one:';
+  p.textContent = 'Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or faculty ratings. Try one:';
   wrap.appendChild(p);
   examplePromptsForTab(activeTab()).forEach(prompt => {
     const btn = document.createElement('button');
@@ -31014,7 +31149,11 @@ async function ask(question) {
     if (typeof window._shohoj_flushCloudSave === 'function') {
       await window._shohoj_flushCloudSave();
     }
-    const result = await sendAssistantTurn(_transcript, { workerUrl: workerUrl(), getToken });
+    const result = await sendAssistantTurn(_transcript, {
+      workerUrl: workerUrl(),
+      getToken,
+      routine: readRoutinePicks(),
+    });
     if (result.ok) {
       _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
       persist();
@@ -31041,13 +31180,28 @@ function buildDrawer() {
   const title = document.createElement('h2');
   title.className = 'assistant-drawer-title';
   title.textContent = 'Shohoj Assistant';
+  // Chats now outlive the tab, so deleting them has to be reachable from the
+  // drawer itself — a device-local record with no visible delete is a record
+  // the student cannot get rid of (#543).
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'assistant-drawer-clear';
+  clear.setAttribute('aria-label', 'Clear chat history');
+  clear.textContent = 'Clear chat';
+  clear.addEventListener('click', () => {
+    _transcript = [];
+    _error = null;
+    clearStoredHistory();
+    renderLog();
+    _inputEl?.focus();
+  });
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'assistant-drawer-close';
   close.setAttribute('aria-label', 'Close assistant');
   close.textContent = '✕';
   close.addEventListener('click', () => closeDrawer());
-  header.append(title, close);
+  header.append(title, clear, close);
 
   const note = document.createElement('p');
   note.className = 'assistant-drawer-note';
@@ -31109,7 +31263,17 @@ function openDrawer() {
   if (_drawer) return;
   // Reopening mid-exit would stack two panels in the same corner.
   dropExiting();
-  _transcript = readStoredTranscript(storage(), _owner);
+  // IndexedDB is async, so the drawer opens empty and fills in. Guarded on the
+  // way back: a student who signs out, or types before the read lands, must not
+  // have the stored record dropped on top of what is on screen.
+  _transcript = [];
+  const hydratingFor = _owner;
+  loadStoredHistory(hydratingFor).then((stored) => {
+    if (!_drawer || _owner !== hydratingFor || _transcript.length > 0) return;
+    if (stored.length === 0) return;
+    _transcript = stored;
+    renderLog();
+  });
   _error = null;
   // Measured while the pill is still on screen — a display:none launcher has an
   // empty rect, and this rect is the whole starting shape of the morph.
@@ -31242,7 +31406,7 @@ function refreshLauncher() {
     // record as well, so nothing of theirs is left in the tab. Going from "not
     // known yet" to a uid is just auth resolving after boot — the stored record
     // is uid-stamped and only reads back for its owner, so it can be adopted.
-    if (previous !== null || uid === null) clearStoredTranscript(storage());
+    if (previous !== null || uid === null) clearStoredHistory();
   }
   if (!workerUrl() || !authReady() || !signedIn()) {
     unmountFab();
