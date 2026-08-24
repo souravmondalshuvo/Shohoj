@@ -710,55 +710,13 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .seats-watch--on { border-color: rgba(240,165,0,0.45); background: rgba(240,165,0,0.10); color: var(--c-warn-ink); }
 .seats-watch:disabled { opacity: 0.5; cursor: not-allowed; }
 .seats-watch:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.rooms-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--c-text-muted); }
-.rooms-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
 .rooms-error { padding: 16px 0; }
-.rooms-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 10px; }
-.rooms-days, .rooms-view, .rooms-types { display: flex; flex-wrap: wrap; gap: 4px; }
-.rooms-chip {
-  font: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; min-height: 40px;
-  border-radius: 999px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-faint);
-}
-.rooms-chip--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.10); color: var(--c-green-ink); }
-.rooms-chip:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.rooms-time-wrap { display: flex; align-items: center; gap: 6px; }
-.rooms-time-label { font-size: 12px; color: var(--c-text-muted); }
-.rooms-time {
-  font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 10px;
-  border: 1px solid var(--c-border3); background: var(--c-card); color: var(--c-text);
-}
-.rooms-time:focus { border-color: rgba(46,204,113,0.55); outline: none; }
-.rooms-empty { margin: 14px 0; }
-.rooms-summary { font-size: 12px; margin: 10px 0 8px; }
-.rooms-grid {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px;
-}
-.rooms-card {
-  font: inherit; width: 100%; box-sizing: border-box; text-align: left; cursor: pointer;
-  display: flex; flex-direction: column; gap: 4px; padding: 10px 12px;
-  border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text);
-}
-.rooms-card--free { border-color: rgba(46,204,113,0.35); background: rgba(46,204,113,0.06); }
-.rooms-card--busy { border-color: rgba(231,76,60,0.30); background: rgba(231,76,60,0.05); }
-.rooms-card--lab { border-color: rgba(240,165,0,0.35); background: rgba(240,165,0,0.07); }
-.rooms-card:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.rooms-card-room { font-weight: 800; font-size: 14px; display: flex; align-items: baseline; gap: 6px; }
-.rooms-card-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--c-faint); }
-.rooms-card-status { font-size: 12px; color: var(--c-text-muted); }
 .rooms-week-modal { max-width: 560px; }
 .rooms-week { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 14px; max-height: 60vh; overflow-y: auto; }
 .rooms-week-row { display: flex; gap: 10px; border: 1px solid var(--c-border); border-radius: 10px; padding: 8px 10px; }
 .rooms-week-row--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.05); }
 .rooms-week-day { font-weight: 800; font-size: 12px; min-width: 34px; padding-top: 2px; }
 .rooms-week-segs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; flex: 1; }
-.rooms-seg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; border-radius: 6px; padding: 3px 8px; }
-.rooms-seg--free { color: var(--c-green-ink); background: rgba(46,204,113,0.08); }
-.rooms-seg--busy { color: var(--c-danger-ink); background: rgba(231,76,60,0.07); }
-.rooms-seg--lab { color: var(--c-warn-ink); background: rgba(240,165,0,0.09); }
-.rooms-seg--none { color: var(--c-faint); }
-.rooms-seg-time { font-variant-numeric: tabular-nums; font-weight: 600; }
-.rooms-seg-label { color: var(--c-text-muted); }
 .rooms-week-close { align-self: flex-end; }
 .feedback-signin { margin: 24px 0; }
 .feedback-form {
@@ -1338,3 +1296,8 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   color: var(--c-faint);
   max-width: 30rem;
 }
+
+/* .routine-header styles its title as h3 (style.css:5829); /rooms uses a real
+   <h1> there so the route keeps a heading for the a11y gate, and needs the same
+   declarations. An addition, not a restatement — legacy has no h1 rule. */
+.routine-header h1 { margin: 0 8px 0 0; display: inline-block; font-size: 18px; }
