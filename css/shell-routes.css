@@ -644,10 +644,27 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .routine-block {
   background: rgba(46,204,113,0.16); border-radius: 6px; padding: 2px 4px; overflow: hidden;
   display: flex; flex-direction: column; line-height: 1.15; box-sizing: border-box; align-self: stretch;
+  /* Query container for the narrow-block rule below (#585). */
+  container-type: inline-size;
 }
 .routine-block--clash { background: rgba(231,76,60,0.18); }
-.routine-block-code { font-weight: 700; color: var(--c-text); }
+.routine-block-code { font-weight: 700; color: var(--c-text); white-space: nowrap; }
 .routine-block-room { color: var(--c-faint); font-size: 10px; }
+/* Overlapping classes tile a day column at 1/N, and three of them on a narrow
+   window leave ~34px a block — too little for the room, and too little for the
+   course code at its normal size. Drop to the code alone and let it scale with
+   the block rather than truncating to "CS…". Mirrors the legacy grid's rule in
+   css/style.css (#585). */
+@container (max-width: 74px) {
+  .routine-block-room { display: none; }
+  .routine-block-code {
+    font-size: clamp(6px, 42cqw, 11px);
+    letter-spacing: 0;
+    margin-left: -4px;
+    margin-right: -4px;
+    text-align: center;
+  }
+}
 /* Seat status browser (#397) */
 .seats-feed-status { font-size: 12px; margin: 4px 0; }
 .seats-feed-error { color: #e74c3c; }
