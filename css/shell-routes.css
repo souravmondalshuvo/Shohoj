@@ -1194,19 +1194,15 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 @media (max-width: 480px) {
   .assistant-drawer { right: 8px; left: 8px; bottom: 8px; width: auto; height: min(70dvh, 560px); }
 }
-/* Course Difficulty Map (/difficulty) — parity port of the legacy tab. */
-.dm-subtitle { margin: 4px 0 16px; font-size: 13px; }
+/* Course Difficulty Map (/difficulty).
+   Only what legacy does NOT define. This block used to restate .dm-subtitle,
+   .dm-controls, .dm-pills, .dm-pill/.dm-sort-btn, .dm-sort, .dm-sort-label and
+   .dm-empty, all of which exist in style.css — and since this sheet is imported
+   second, those copies won, at 13px where legacy sets 12 and 28px/16px padding
+   where legacy sets 32px/0. That was the route's whole delta against legacy's
+   panel. The focus ring stays: it is an addition, not a restatement. */
 .dm-loading { color: var(--c-faint); }
-.dm-controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.dm-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-.dm-pill, .dm-sort-btn {
-  font: inherit; font-size: 13px; min-height: 32px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-muted);
-}
-.dm-pill--active, .dm-sort-btn--active { border-color: var(--green); color: var(--c-green-ink); background: rgba(46,204,113,0.12); font-weight: 600; }
 .dm-pill:focus-visible, .dm-sort-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-.dm-sort { display: flex; align-items: center; gap: 6px; }
-.dm-sort-label { font-size: 12px; color: var(--c-faint); }
 .dm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .dm-card {
   display: flex; flex-direction: column; gap: 8px; padding: 14px;
@@ -1235,7 +1231,6 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 :root[data-theme="dark"] .dm-card-tag--great { color: #5fe0a0; } :root[data-theme="dark"] .dm-card-tag--good { color: #c3e86a; }
 :root[data-theme="dark"] .dm-card-tag--mid { color: #f6c765; } :root[data-theme="dark"] .dm-card-tag--warn { color: #f0a06a; }
 :root[data-theme="dark"] .dm-card-tag--bad { color: #ff8b7d; }
-.dm-empty { padding: 28px 16px; text-align: center; border: 1px dashed var(--c-border); border-radius: 14px; color: var(--c-text-muted); }
 .dm-empty-title { font-weight: 700; color: var(--c-text); margin-bottom: 4px; }
 /* Unavailable states: a failed read is rendered distinctly from an empty
    one, so it needs its own affordance — a pill retry, matching the app's
