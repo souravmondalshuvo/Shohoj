@@ -12,7 +12,7 @@
 // faculty ratings, planner import, avoid-day/sort filters) are deferred to
 // follow-up slices under #397.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
@@ -33,6 +33,7 @@ import {
   unpickCourse,
   type RoutineState,
 } from '../../core/routineState';
+import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
 import { computeGridLayout } from '../../core/routineGrid';
 
 const STORAGE_KEY = 'shohoj_routine_picks_v1';
@@ -97,6 +98,7 @@ interface FeedState {
   index: SectionIndex;
   source: FeedSource;
   count: number;
+  fetchedAt: number;
 }
 
 export function Component() {
@@ -107,16 +109,22 @@ export function Component() {
   const [courseInput, setCourseInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
 
-  // Load the CONNECT feed once (cache-first, same client as CampusRoute).
-  useEffect(() => {
+  // Load the CONNECT feed (cache-first, same client as RoomsRoute). Refresh
+  // re-fetches past the cache, which legacy has always offered from the header
+  // and the shell had dropped along with the badge that says how old the data
+  // is (#582).
+  const load = useCallback((forceRefresh: boolean) => {
     let alive = true;
-    fetchConnectFeed()
+    setFeedError(null);
+    setLoading(true);
+    fetchConnectFeed({ forceRefresh })
       .then((result) => {
         if (!alive) return;
         setFeed({
           index: indexByCourse(result.sections),
           source: result.source,
           count: result.sections.length,
+          fetchedAt: result.fetchedAt,
         });
       })
       .catch(() => {
@@ -129,6 +137,8 @@ export function Component() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => load(false), [load]);
 
   // Persist picks whenever they change.
   useEffect(() => {
@@ -145,6 +155,7 @@ export function Component() {
   const clashMap = useMemo(() => buildClashMap(resolved), [resolved]);
   const layout = useMemo(() => computeGridLayout(resolved), [resolved]);
   const summary = useMemo(() => summarizeRoutine(routine, index), [routine, index]);
+  const clashCount = summary.classClashPairs + summary.examClashPairs;
 
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
@@ -164,61 +175,105 @@ export function Component() {
   };
 
   return (
-    <section className="shell-page routine-page" data-testid="routine-page">
-      <h1>Weekly Routine</h1>
-      <p className="shell-muted">
-        Build a clash-free weekly schedule: add a course, pick a section, and the grid below fills
-        in. Class-time and exam clashes are flagged as you go.
-      </p>
-
-      {loading && (
-        <p className="routine-feed-status" data-testid="routine-loading">
-          Loading the course feed…
-        </p>
-      )}
-      {feedError && (
-        <p className="routine-feed-status routine-feed-error" role="alert">
-          {feedError}
-        </p>
-      )}
-      {feed && (
-        <p className="routine-feed-status shell-muted" data-testid="routine-feed-source">
-          {feed.count} sections loaded{feed.source === 'live' ? ' (live)' : ' (cached)'}.
-        </p>
-      )}
-
-      <form className="routine-add" onSubmit={addCourse}>
-        <label className="routine-add-label" htmlFor="routine-course-input">
-          Add a course
-        </label>
-        <div className="routine-add-row">
-          <input
-            id="routine-course-input"
-            className="routine-add-input"
-            type="text"
-            placeholder="e.g. CSE110"
-            autoComplete="off"
-            value={courseInput}
-            onChange={(e) => {
-              setCourseInput(e.target.value);
-              if (addError) setAddError(null);
-            }}
-            data-testid="routine-course-input"
-          />
+    <section className="shell-page routine-page routine-tab" data-testid="routine-page">
+      {/* Legacy's one-row header (js/ui/routineTab.js:_headerHTML): title, feed
+          badge and Refresh on a single 31px line. The shell spread the same
+          information over an <h1>, a description legacy does not have, and a
+          separate feed-status paragraph — 100px against legacy's 31, which was
+          most of this route's +90 against legacy's panel (#582). Same shape as
+          the /rooms pass, which shares this header. */}
+      <div className="routine-header">
+        <div className="routine-header-left">
+          <h1>🗓️ Routine Builder</h1>
+          {feed && (
+            <span
+              className={`routine-source-badge routine-source--${feed.source}`}
+              title={`Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`}
+              data-testid="routine-feed-source"
+            >
+              {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
+            </span>
+          )}
+          {clashCount > 0 && (
+            <span
+              className="routine-clash-warn"
+              title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
+            >
+              ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
+            </span>
+          )}
+        </div>
+        {/* Legacy also carries Share, Add to Calendar, QR and Clear here once
+            courses are picked (_headerHTML). The shell has none of those yet
+            and keeps its own Clear in the summary row below, so this stays at
+            Refresh — matching legacy exactly in the empty state the parity
+            baseline captures, and short of it once picks exist. */}
+        <div className="routine-header-right">
           <button
-            type="submit"
-            className="shell-btn shell-btn--primary"
-            data-testid="routine-add-btn"
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => load(true)}
+            title="Re-fetch from CONNECT now"
           >
-            Add
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              style={{ marginRight: 6 }}
+            >
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+            Refresh
           </button>
         </div>
-        {addError && (
-          <p className="routine-add-error" role="alert" data-testid="routine-add-error">
-            {addError}
-          </p>
-        )}
+      </div>
+
+      {loading && !feed && (
+        <div className="routine-loading" data-testid="routine-loading">
+          Loading the course feed…
+        </div>
+      )}
+      {feedError && (
+        <div className="routine-error" role="alert">
+          {feedError}
+        </div>
+      )}
+
+      {/* Legacy's picker (_pickerHTML): one row, no visible label — the input
+          carries an aria-label instead, which is what legacy does and what
+          keeps this a 38px row rather than a 66px stack. */}
+      <form className="routine-picker" onSubmit={addCourse}>
+        <input
+          id="routine-course-input"
+          className="routine-input"
+          type="text"
+          placeholder="Add course (e.g. CSE220) — start typing for matches"
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Add a course by code"
+          value={courseInput}
+          onChange={(e) => {
+            setCourseInput(e.target.value);
+            if (addError) setAddError(null);
+          }}
+          data-testid="routine-course-input"
+        />
+        <button type="submit" className="btn-primary btn-sm" data-testid="routine-add-btn">
+          Add
+        </button>
       </form>
+      {addError && (
+        <div className="routine-add-error" role="alert" data-testid="routine-add-error">
+          {addError}
+        </div>
+      )}
 
       {codes.length > 0 ? (
         <>
@@ -326,9 +381,12 @@ export function Component() {
           </div>
         </>
       ) : (
-        <p className="routine-empty shell-muted" data-testid="routine-empty">
-          No courses yet. Add one above to start building your routine.
-        </p>
+        <div className="routine-empty" data-testid="routine-empty">
+          <p>
+            Add courses to start planning. Try <code>CSE220</code>, <code>MAT215</code>,{' '}
+            <code>BUS102</code>.
+          </p>
+        </div>
       )}
 
       {layout && (
