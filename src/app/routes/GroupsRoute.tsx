@@ -256,9 +256,17 @@ export function Component() {
         roster.
       </p>
 
+      {/* Two different situations wore the same sentence. A signed-OUT student
+          never reaches this route at all — GatedMain renders the sign-in portal
+          instead of the outlet (RootLayout.tsx:254) — so "sign in" was the one
+          message this branch could never correctly show. What actually lands
+          here is a signed-in student on a build with no backend configured, who
+          was being told to do something they had already done. */}
       {!canUse ? (
         <p className="groups-signin shell-muted" data-testid="groups-signin">
-          Sign in with your BRACU Google account to post, browse, and join study groups.
+          {identity === null
+            ? 'Sign in with your BRACU Google account to post, browse, and join study groups.'
+            : 'Study groups are unavailable right now — the connection to the server could not be made. Try again shortly.'}
         </p>
       ) : (
         <>
