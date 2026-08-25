@@ -473,14 +473,31 @@ function initTabGroups() {
   // layout shift (e.g. the Planner badge widening the Plan pill) can move the
   // trigger out from under a stationary cursor. A grace period lets the pointer
   // re-enter the group before the menu snaps shut.
+  //
+  // The grace period only helps when the pointer comes back, though, and when
+  // the PAGE moved rather than the pointer it never does — the menu then shuts
+  // a fifth of a second after a click that asked for it (#608). So a menu that
+  // was clicked open is sticky: dismissed by a click elsewhere, Escape, or
+  // picking an item, but not by the pointer leaving. Hovered menus still
+  // follow the pointer out.
   let closeTimer;
+  let clickedOpen = false;
   const setOpen = (group, open) => {
     group.classList.toggle('open', open);
     group.querySelector('.calc-tab-trigger')?.setAttribute('aria-expanded', String(open));
   };
-  const open = (group) => { clearTimeout(closeTimer); closeAll(group); setOpen(group, true); };
+  const open = (group, byClick) => {
+    clearTimeout(closeTimer);
+    // Hovering a different group is an explicit move: it takes over, and the
+    // menu it opens is hovered rather than clicked.
+    clickedOpen = byClick === true;
+    closeAll(group);
+    setOpen(group, true);
+  };
   const closeAll = (except) => groups.forEach(g => { if (g !== except) setOpen(g, false); });
+  const closeNow = (group) => { clearTimeout(closeTimer); clickedOpen = false; setOpen(group, false); };
   const scheduleClose = (group) => {
+    if (clickedOpen) return;
     clearTimeout(closeTimer);
     closeTimer = setTimeout(() => setOpen(group, false), 180);
   };
@@ -492,8 +509,8 @@ function initTabGroups() {
       e.stopPropagation();
       // Hover devices: hover already opens it, so a click just guarantees open.
       // Coarse pointers have no hover, so the click toggles.
-      if (canHover || !group.classList.contains('open')) open(group);
-      else setOpen(group, false);
+      if (canHover || !group.classList.contains('open')) open(group, true);
+      else closeNow(group);
     });
     if (canHover) {
       group.addEventListener('mouseenter', () => open(group));
@@ -501,8 +518,12 @@ function initTabGroups() {
     }
   });
 
-  document.addEventListener('click', e => { if (!tabs.contains(e.target)) closeAll(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
+  // Both of these are explicit dismissals, so they clear the sticky flag as
+  // well as the class — otherwise a clicked-then-dismissed menu would leave a
+  // stale flag behind for the next hover.
+  const dismissAll = () => { clearTimeout(closeTimer); clickedOpen = false; closeAll(); };
+  document.addEventListener('click', e => { if (!tabs.contains(e.target)) dismissAll(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') dismissAll(); });
 }
 
 function _moveTabSlider(tabId) {
