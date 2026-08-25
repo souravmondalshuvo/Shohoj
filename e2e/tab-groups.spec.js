@@ -53,6 +53,40 @@ test('opening a group routes to a child tab and lights its pill', async ({ page 
   await expect(campus.locator('.calc-tab-trigger')).toHaveClass(/active/);
 });
 
+// #608: the twin of the shell's rule in shell-mobile-nav.spec.js. The 180ms
+// hover-close grace period was written for the pointer crossing dead space, but
+// it also fires when the BAR moves out from under a stationary pointer — a
+// reflow, a badge widening the Plan pill — and then the pointer never comes
+// back, so a menu the student clicked open shuts itself a fifth of a second
+// later. Clicked menus wait to be dismissed.
+test('a clicked group stays open when the pointer leaves', async ({ page }) => {
+  await boot(page);
+
+  const group = page.locator('.calc-tab-group', { has: page.locator('.calc-tab-trigger', { hasText: 'Plan' }) });
+  await group.locator('.calc-tab-trigger').click();
+  await expect(group).toHaveClass(/open/);
+
+  // Well past the grace period, with the pointer nowhere near the bar.
+  await page.mouse.move(5, 500);
+  await page.waitForTimeout(600);
+  await expect(group).toHaveClass(/open/);
+
+  // Escape and an outside click are still the ways out.
+  await page.keyboard.press('Escape');
+  await expect(group).not.toHaveClass(/open/);
+});
+
+test('a hovered group still closes when the pointer leaves', async ({ page }) => {
+  await boot(page);
+
+  const group = page.locator('.calc-tab-group', { has: page.locator('.calc-tab-trigger', { hasText: 'Plan' }) });
+  await group.locator('.calc-tab-trigger').hover();
+  await expect(group).toHaveClass(/open/);
+
+  await page.mouse.move(5, 500);
+  await expect(group).not.toHaveClass(/open/);
+});
+
 test('the helper drives grouped and single tabs the same way', async ({ page }) => {
   await boot(page);
 
