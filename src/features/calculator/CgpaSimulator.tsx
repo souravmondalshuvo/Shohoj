@@ -578,32 +578,38 @@ export default function CgpaSimulator() {
     <div className="simulator-box lg-panel" data-testid="cgpa-simulator">
       <div className="lg-shine"></div>
       <h4>🎯 CGPA Goal Simulator</h4>
+      {/* Flat siblings, as legacy has them (index.html:521). `.simulator-row` is
+          a flex row and styles `label` and `input` as its own children
+          (style.css:717-719); nesting each input inside its label made every
+          pair a block-stacked flex item and the row 52px instead of 35.
+
+          The association is explicit here — legacy's labels carry no `for`, so
+          its inputs have no accessible name at all. Same layout, one less
+          defect. */}
       <div className="simulator-row">
-        <label>
-          Target CGPA:
-          <input
-            type="number"
-            min={0}
-            max={4}
-            step={0.01}
-            placeholder="e.g. 3.50"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-          />
-        </label>
-        <label>
-          Credits remaining:
-          <input
-            type="number"
-            min={0}
-            max={250}
-            placeholder="e.g. 97"
-            value={remaining}
-            onChange={(e) => setRemaining(e.target.value)}
-            onFocus={() => setRemainingFocused(true)}
-            onBlur={() => setRemainingFocused(false)}
-          />
-        </label>
+        <label htmlFor="targetCgpa">Target CGPA:</label>
+        <input
+          id="targetCgpa"
+          type="number"
+          min={0}
+          max={4}
+          step={0.01}
+          placeholder="e.g. 3.50"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        />
+        <label htmlFor="creditsRemaining">Credits remaining:</label>
+        <input
+          id="creditsRemaining"
+          type="number"
+          min={0}
+          max={250}
+          placeholder="e.g. 97"
+          value={remaining}
+          onChange={(e) => setRemaining(e.target.value)}
+          onFocus={() => setRemainingFocused(true)}
+          onBlur={() => setRemainingFocused(false)}
+        />
       </div>
       <div className="simulator-result">
         <OutcomeCard outcome={outcome} />
