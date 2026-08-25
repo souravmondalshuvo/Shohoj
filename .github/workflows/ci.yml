@@ -255,6 +255,21 @@ jobs:
           test -s dist-shell/index.html || test -s dist-shell/app/index.html
           npx playwright test --config=playwright.shell.config.js
 
+      # Both suites set `trace: 'on-first-retry'` and write an HTML report, and
+      # neither was ever uploaded — so a failure that only happens on a runner
+      # left nothing behind but a call log, and #608 had to be diagnosed by
+      # reproducing it blind. Keep the evidence.
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
   visual-parity:
     name: Visual parity (shell vs legacy)
     runs-on: ubuntu-latest
