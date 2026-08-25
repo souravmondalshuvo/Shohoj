@@ -13,6 +13,26 @@
 // (js/main.js:422); `route` is the shell path. Every legacy panel now has one:
 // the playground was the last null, closed by #592.
 
+// A CAVEAT on comparing these pairwise, learned the hard way (#600).
+//
+// Two of these routes cannot be in the same STATE on both sides of the harness,
+// so their height difference is not a defect and chasing it wastes a day:
+//
+//   groups, papers  The shell captures signed IN (the auth seam) against a
+//                   preview build with no Firebase configured, so both render
+//                   their "backend unavailable" branch. Legacy captures signed
+//                   OUT, so both render a sign-in prompt. Different states,
+//                   superficially similar, ~-97 and ~-42 apart.
+//
+//   playground      Legacy's #tabPlayground is the ONE panel with no .calc-body
+//                   inside it — its boxes sit directly in the panel — while the
+//                   shell's <main> always carries that padding. The route books
+//                   ~84px of container inset as divergence. Its comparable box
+//                   is .simulator-box, not main.
+//
+// Width parity still holds for all three, which is what the always-on gate
+// asserts. It is only the heights that are reading unlike things.
+
 export const PANEL_ROUTES = [
   { name: 'calculator', hash: '#calculator', panel: 'tabCalculator', route: '/calculator' },
   { name: 'planner', hash: '#calculator/planner', panel: 'tabPlanner', route: '/planner' },
