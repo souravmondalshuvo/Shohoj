@@ -41,7 +41,11 @@ async function gotoRoutine(page) {
   await seedFeed(page);
   await page.goto('/routine', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('routine-page')).toBeVisible();
-  await expect(page.getByTestId('routine-feed-source')).toContainText('sections loaded');
+  // The feed badge is legacy's now — source and age, e.g. "Cached · just now",
+  // rather than a sentence counting sections (#582). The fixture seeds the
+  // cache, so which of the two words appears depends on the fixture, not on
+  // what this test is about.
+  await expect(page.getByTestId('routine-feed-source')).toHaveText(/(Live|Cached) · /);
 }
 
 test('add a course, pick a section, and the weekly grid fills in', async ({ page }) => {
