@@ -17,6 +17,15 @@
 //     pointer crosses dead space between the trigger and the menu
 //   - coarse pointers have no hover, so a click toggles
 //   - only one group is open at a time; outside-click and Escape close all
+//
+// With one deliberate departure, for #608: a menu the student CLICKED open is
+// sticky, and hovering away does not close it. The 180ms grace period exists
+// because the trigger can move out from under a stationary cursor when the bar
+// reflows — legacy's own comment says so — but a grace period only helps if the
+// pointer comes back, and when the page moved rather than the pointer, it never
+// does. The menu then closed itself a fifth of a second after a click that
+// asked for it. Clicked menus wait to be dismissed; hovered ones still follow
+// the pointer out.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
@@ -32,6 +41,9 @@ export function ShellTabs() {
   const barRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Whether the open menu was committed by a click rather than a hover (#608).
+  // A ref, not state: it changes what a later event does, never what renders.
+  const clicked = useRef(false);
 
   // Hover is a device capability, not a viewport width — read it once.
   const canHover = useRef(false);
@@ -40,11 +52,25 @@ export function ShellTabs() {
   }, []);
 
   const clearCloseTimer = () => clearTimeout(closeTimer.current);
-  const open = useCallback((group: string) => {
+  const open = useCallback((group: string, byClick = false) => {
     clearCloseTimer();
-    setOpenGroup(group);
+    setOpenGroup((current) => {
+      // Hovering a DIFFERENT group is an explicit move; it takes over, and the
+      // new menu is hovered rather than clicked.
+      if (current !== group) clicked.current = byClick;
+      else if (byClick) clicked.current = true;
+      return group;
+    });
+  }, []);
+  const closeNow = useCallback(() => {
+    clearCloseTimer();
+    clicked.current = false;
+    setOpenGroup(null);
   }, []);
   const scheduleClose = useCallback(() => {
+    // A clicked menu is dismissed by a click elsewhere, Escape, or picking an
+    // item — never by the pointer leaving (#608).
+    if (clicked.current) return;
     clearCloseTimer();
     closeTimer.current = setTimeout(() => setOpenGroup(null), 180);
   }, []);
@@ -52,10 +78,10 @@ export function ShellTabs() {
   // Outside-click and Escape close every group, as in legacy.
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
-      if (!barRef.current?.contains(event.target as Node)) setOpenGroup(null);
+      if (!barRef.current?.contains(event.target as Node)) closeNow();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenGroup(null);
+      if (event.key === 'Escape') closeNow();
     };
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKey);
@@ -64,10 +90,13 @@ export function ShellTabs() {
       document.removeEventListener('keydown', onKey);
       clearCloseTimer();
     };
-  }, []);
+  }, [closeNow]);
 
   // A route change came from picking a menu item; the menu should not linger.
-  useEffect(() => setOpenGroup(null), [pathname]);
+  useEffect(() => {
+    clicked.current = false;
+    setOpenGroup(null);
+  }, [pathname]);
 
   // The slider tracks the active pill. When the active route lives inside a
   // group it tracks that group's trigger, not the hidden menu item — same rule
@@ -168,8 +197,8 @@ export function ShellTabs() {
                 event.stopPropagation();
                 // Hover already opened it, so a click just guarantees open.
                 // Coarse pointers have no hover, so the click toggles.
-                if (canHover.current || !isOpen) open(entry.group);
-                else setOpenGroup(null);
+                if (canHover.current || !isOpen) open(entry.group, true);
+                else closeNow();
               }}
             >
               <span className="calc-tab-icon" aria-hidden="true">
