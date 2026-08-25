@@ -80,4 +80,45 @@ test.describe('desktop viewport', () => {
     await navigateTo(page, 'Reviews');
     await expect(page).toHaveURL(/\/reviews$/);
   });
+
+  // #608: a menu the student CLICKED open must not close itself because the
+  // pointer is no longer over the trigger. On a slow machine the bar is still
+  // reflowing when the menu opens, and a reflow slides the trigger out from
+  // under a stationary cursor — the browser fires mouseleave nobody performed,
+  // the 180ms grace period expires with the pointer somewhere else entirely,
+  // and the menu vanishes a fifth of a second after the click that asked for
+  // it. On CI that read as "element is not visible" for 46 straight retries.
+  //
+  // Moving the mouse away is the deterministic stand-in for the page moving
+  // under it: both end with the pointer off the trigger and no way back.
+  test('a clicked group stays open when the pointer leaves', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    const planner = page.getByRole('link', { name: 'Planner', exact: true });
+    await expect(planner).toBeVisible();
+
+    // Well past the 180ms hover-close grace period.
+    await page.mouse.move(5, 400);
+    await page.waitForTimeout(600);
+    await expect(planner).toBeVisible();
+
+    // Still dismissable the ways a student would expect.
+    await page.keyboard.press('Escape');
+    await expect(planner).toBeHidden();
+  });
+
+  // The other half of the rule: a menu the pointer merely hovered open still
+  // follows the pointer out, so the bar does not fill up with menus a student
+  // never asked to keep.
+  test('a hovered group still closes when the pointer leaves', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    await page.getByRole('button', { name: 'Plan', exact: true }).hover();
+    const planner = page.getByRole('link', { name: 'Planner', exact: true });
+    await expect(planner).toBeVisible();
+
+    await page.mouse.move(5, 400);
+    await expect(planner).toBeHidden();
+  });
 });
