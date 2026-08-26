@@ -27,6 +27,7 @@
     "test:a11y": "npm run build:shell && playwright test --config=playwright.shell.config.js --grep @a11y",
     "test:visual:baseline": "VISUAL_LEGACY_ONLY=1 playwright test --config=playwright.visual.config.js --project=legacy --update-snapshots",
     "test:visual": "npm run build:shell && playwright test --config=playwright.visual.config.js",
+    "parity:report": "node scripts/parity_report.mjs",
     "test:bundle": "node tests/productionBundleSmoke.test.js",
     "test:csp": "node tests/cspInlineHandlers.test.js",
     "check:collisions": "python3 scripts/check_bundle_collisions.py",
