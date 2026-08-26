@@ -55,7 +55,18 @@ export const PANEL_ROUTES = [
     legacySelector: '.simulator-box',
     shellSelector: '.simulator-box',
   },
-  { name: 'reviews', hash: '#calculator/reviews', panel: 'tabReviews', route: '/reviews' },
+  {
+    name: 'reviews',
+    hash: '#calculator/reviews',
+    panel: 'tabReviews',
+    route: '/reviews',
+    // Recorded in the header note above (653a9e03) and machine-readable here so
+    // the report drops it out of the queue too: both sides render .rv-tab-empty
+    // and look alike, but the shell has no repo and says there is nothing to
+    // show while legacy is signed out and says to sign in — and the two
+    // subtitles wrap to different heights.
+    unlikeState: 'shell has no repo; legacy is signed out',
+  },
   {
     name: 'difficulty',
     hash: '#calculator/difficulty',
