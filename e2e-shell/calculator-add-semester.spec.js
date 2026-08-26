@@ -21,15 +21,16 @@ async function openCalculator(page) {
 test('footer controls appear once a semester exists and add named semesters', async ({ page }) => {
   const container = await openCalculator(page);
 
-  // Empty state: no footer controls, only the empty-state add button.
-  await expect(page.locator('.footer-btn-group')).toHaveCount(0);
+  // The footer is global now, as it is in legacy — below the tab bar, on every
+  // route, from the empty state onward (#616). It used to appear only once a
+  // semester existed, and only on this route.
+  await expect(page.locator('.footer-btn-group')).toBeVisible();
   await container.getByRole('button', { name: '+ Add semester' }).click();
   await expect(container.locator('.semester-block')).toHaveCount(1);
   await expect(container.locator('.semester-label').first()).toHaveText('Semester 1');
 
-  // Footer is now visible; it adds a second, sequentially named semester.
+  // It adds a second, sequentially named semester.
   const footer = page.locator('.footer-btn-group');
-  await expect(footer).toBeVisible();
   await footer.getByRole('button', { name: '+ Add Semester' }).click();
   await expect(container.locator('.semester-block')).toHaveCount(2);
   await expect(container.locator('.semester-label').nth(1)).toHaveText('Semester 2');

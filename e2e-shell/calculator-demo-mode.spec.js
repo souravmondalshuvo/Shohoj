@@ -28,7 +28,9 @@ test('Try Demo Mode fills the demo semesters and lights up the results', async (
   const results = page.getByTestId('calculator-results');
   await expect(page.locator('.calc-header .cgpa-val')).toHaveText('3.50');
   await expect(results.locator('.standing-title')).toHaveText('Distinction');
-  await expect(results.locator('.footer-stat').first()).toContainText('Credits Attempted: 18');
+  // The credit totals live in the global footer now (#616), not in the
+  // results panel.
+  await expect(page.locator('.footer-stat').first()).toContainText('Credits Attempted: 18');
 
   // Demo start semester drives calendar naming for the next added semester.
   await page.locator('.footer-btn-group').getByRole('button', { name: '+ Add Semester' }).click();
