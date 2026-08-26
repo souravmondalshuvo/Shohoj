@@ -307,6 +307,20 @@ export async function assertNotGated(page, expectFn, route) {
 export const HEADER_TARGET = { name: 'calc-header', selector: '.calc-header' };
 
 /**
+ * Legacy's global footer — the running credit totals, below the tab bar
+ * (index.html:593). Outside every panel capture for exactly the same reason the
+ * header is, and it went the same way: the shell had the totals inside
+ * /calculator only, so every other route lost them and nothing measured it
+ * (#616).
+ *
+ * The STATS are the gated box, not the whole `.calc-footer`: legacy's button
+ * group carries a fifth action (🗑 Clear Data) that the shell does not
+ * implement — a whole-app reset rather than a calculator action — so the row
+ * widths legitimately differ until that is ported.
+ */
+export const FOOTER_TARGET = { name: 'calc-footer-stats', selector: '.calc-footer-stats' };
+
+/**
  * Pin an element to the viewport origin so its element screenshot is a stable
  * size across both projects.
 
