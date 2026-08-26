@@ -25,6 +25,7 @@
 
 import { chromium } from '@playwright/test';
 import { PANEL_ROUTES } from '../e2e-visual/panelRoutes.js';
+import { pinFeedAndClock } from '../e2e-visual/_stabilize.js';
 
 const LEGACY = process.env.PARITY_LEGACY_URL || 'http://127.0.0.1:4186';
 const SHELL = process.env.PARITY_SHELL_URL || 'http://127.0.0.1:4187';
@@ -85,6 +86,14 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
 await ctx.addInitScript(() => {
   try {
     localStorage.setItem('shohoj_theme', 'dark');
+    // Clear legacy's campus gate (#575). Without this every legacy panel is
+    // display:none and measures 0x0 — and the report does not error, it prints
+    // a full table of confident nonsense: legacy 0x0 against a real shell box,
+    // so every row reads as a huge positive delta and the shell looks like it
+    // invented content from nothing. This script predates the gate and had been
+    // silently reporting exactly that. Same flag the portal's own escape
+    // hatches set, and the same one e2e/helpers/gate.js uses.
+    sessionStorage.setItem('shohoj_calc_unlocked', '1');
   } catch {
     /* storage unavailable */
   }
@@ -116,9 +125,21 @@ await ctx.addInitScript(() => {
 });
 const page = await ctx.newPage();
 
+// Free Rooms, Seats and Routine all read the live CONNECT feed, and Free Rooms
+// asks "which rooms are free NOW". Without pinning both, three of these ten rows
+// move with the wall clock and with whatever the feed happens to be serving —
+// the report would disagree with itself between runs and with the visual
+// harness, which has pinned them since #609.
+await pinFeedAndClock(page);
+
 const rows = [];
 for (const entry of PANEL_ROUTES) {
-  const legacy = await measure(page, `${LEGACY}/index.html${entry.hash}`, [`#${entry.panel}`]);
+  // A route may name the box it actually shares with legacy; #tabPlayground has
+  // no `.calc-body`, so its default pairing measures two different containers.
+  const legacySelectors = entry.legacySelector
+    ? [`#${entry.panel} ${entry.legacySelector}`, entry.legacySelector]
+    : [`#${entry.panel}`];
+  const legacy = await measure(page, `${LEGACY}/index.html${entry.hash}`, legacySelectors);
 
   if (!entry.route) {
     rows.push({ name: entry.name, status: 'MISSING', legacy, shell: null });
@@ -134,7 +155,10 @@ for (const entry of PANEL_ROUTES) {
   //
   // The portal also carries `.shell-page`, which is the other half of the same
   // trap: an unauthenticated run measured it and reported it as the route.
-  const shell = await measure(page, `${SHELL}${entry.route}`, ['main#main-content']);
+  const shell = await measure(page, `${SHELL}${entry.route}`, [
+    ...(entry.shellSelector ? [entry.shellSelector] : []),
+    'main#main-content',
+  ]);
   const gated = await page.evaluate(
     () => document.querySelector('[data-testid="signin-portal"]') !== null,
   );
@@ -143,21 +167,39 @@ for (const entry of PANEL_ROUTES) {
     status: gated ? 'GATED' : shell ? 'present' : 'NO CONTENT',
     legacy,
     shell: gated ? null : shell,
+    unlikeState: entry.unlikeState ?? null,
   });
 }
 
 await browser.close();
 
 const fmt = (m) => (m ? `${m.width}x${m.height}` : '—');
+const delta = (r) => (r.legacy && r.shell ? r.shell.height - r.legacy.height : null);
+const signed = (n) => (n === null ? '—' : `${n >= 0 ? '+' : ''}${n}`);
+
+// Worst first — this is a work queue, and an unsorted one makes the reader do
+// the ranking every time. Rows whose two sides are in different states sort to
+// the bottom whatever their number, because that number is not a defect.
+const ranked = [...rows].sort((a, b) => {
+  if (!!a.unlikeState !== !!b.unlikeState) return a.unlikeState ? 1 : -1;
+  return Math.abs(delta(b) ?? 0) - Math.abs(delta(a) ?? 0);
+});
+
 console.log('\n## Per-route container parity\n');
-console.log('| feature | status | legacy panel | shell container | legacy max-w | shell max-w |');
+console.log('| feature | status | legacy panel | shell container | Δheight | comparable |');
 console.log('|---|---|---|---|---|---|');
-for (const r of rows) {
+for (const r of ranked) {
   console.log(
     `| ${r.name} | ${r.status} | ${fmt(r.legacy)} | ${fmt(r.shell)} | ` +
-      `${r.legacy?.maxWidth ?? '—'} | ${r.shell?.maxWidth ?? '—'} |`,
+      `${signed(delta(r))} | ${r.unlikeState ? 'no — ' + r.unlikeState : 'yes'} |`,
   );
 }
+
+const chase = ranked.filter((r) => !r.unlikeState && delta(r) !== null);
+console.log(
+  `\nComparable rows, worst first: ` +
+    (chase.map((r) => `${r.name} ${signed(delta(r))}`).join(' · ') || 'none'),
+);
 
 console.log('\n## Container styling\n');
 for (const r of rows) {
