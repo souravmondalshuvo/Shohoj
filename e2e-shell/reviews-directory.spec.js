@@ -43,13 +43,19 @@ async function openReviews(page) {
   await page.goto('/app/index.html', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.clear());
   await navigateTo(page, 'Reviews');
-  await expect(page.getByRole('heading', { name: 'Faculty Reviews' })).toBeVisible();
+  // Not the heading: legacy's empty and sign-in states replace the whole panel
+  // and carry no title (#582), so the shell's do too — the heading is asserted
+  // by the directory test, which is the state that has one.
+  await expect(page.getByTestId('reviews-page')).toBeVisible();
   return page.getByTestId('reviews-page');
 }
 
 test('builds a faculty directory from the recent feed, sorted by review count', async ({ page }) => {
   await installRecent(page, [r('ABC', 4), r('ABC', 4), r('ABC', 4), r('MNR', 5), r('MNR', 5), r('XYZ', 3)]);
   const reviews = await openReviews(page);
+
+  // The loaded view carries legacy's tab header.
+  await expect(page.getByRole('heading', { name: '⭐ Faculty Reviews' })).toBeVisible();
 
   const cards = reviews.getByTestId('reviews-faculty-card');
   await expect(cards).toHaveCount(3);
