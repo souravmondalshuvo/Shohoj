@@ -119,14 +119,18 @@ export function Component() {
   if (!state.currentDept && !state.semesters.length) {
     return (
       <section className="shell-page" data-testid="planner-page">
-        <h1>Semester Planner</h1>
-        <div className="pl-empty">
-          <div className="pl-empty-icon">📅</div>
-          <div className="pl-empty-title">Set up your department first</div>
-          <p className="pl-empty-desc">
+        {/* Legacy's setup prompt replaces the panel and carries no heading
+            (js/ui/planner.js:270-276) — the shell restated the same icon, title
+            and copy under .pl-empty* names and added an <h1> on top, which is
+            the rename #600 lists for this route. The heading stays on the
+            loaded view below, where the shell's routing needs one. */}
+        <div className="planner-coming-soon">
+          <div className="planner-coming-soon-icon">📅</div>
+          <div className="planner-coming-soon-title">Set up your department first</div>
+          <div className="planner-coming-soon-desc">
             Select your department and add your completed courses in the Calculator tab to start
             planning your next semester.
-          </p>
+          </div>
         </div>
       </section>
     );
@@ -139,17 +143,16 @@ export function Component() {
     const hasSummary = state.semesters.some((s) => s.summary);
     return (
       <section className="shell-page" data-testid="planner-page">
-        <h1>Semester Planner</h1>
-        <div className="pl-empty">
-          <div className="pl-empty-icon">📅</div>
-          <div className="pl-empty-title">
+        <div className="planner-coming-soon">
+          <div className="planner-coming-soon-icon">📅</div>
+          <div className="planner-coming-soon-title">
             {hasSummary ? 'Add completed courses first' : 'Add your courses first'}
           </div>
-          <p className="pl-empty-desc">
+          <div className="planner-coming-soon-desc">
             {hasSummary
               ? 'Your CGPA summary helps with totals, but the planner needs actual completed courses to check prerequisites. Import your transcript or add past courses in the Calculator tab first.'
               : 'Import your transcript or add courses in the Calculator tab so the planner can check prerequisites and suggest what you can take next.'}
-          </p>
+          </div>
         </div>
       </section>
     );
