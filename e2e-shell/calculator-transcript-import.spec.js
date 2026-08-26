@@ -119,7 +119,9 @@ test('Cancel keeps the calculator untouched', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(container.getByText('Ready to go!')).toBeVisible(); // still the empty state
+  // Still the empty state. An untouched calculator is at legacy's FIRST
+  // onboarding stage now — "Let's get you set up" — not the third one (#600).
+  await expect(container.getByText("Let's get you set up")).toBeVisible();
 });
 
 test('an unparseable PDF shows the could-not-parse dialog', async ({ page }) => {
