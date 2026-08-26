@@ -30,7 +30,14 @@
 //                   ~84px of container inset as divergence. Its comparable box
 //                   is .simulator-box, not main.
 //
-// Width parity still holds for all three, which is what the always-on gate
+// `reviews` is a fourth of the same kind, found while porting it (#582): the
+// shell is signed in with no repo, so it renders "No reviews yet"; legacy is
+// signed out, so it renders _signInPrompt(). Both are .rv-tab-empty blocks and
+// look alike, but one says sign in and the other says there is nothing to show,
+// and their subtitles wrap to different heights. The class rename that WAS real
+// there is fixed; the height is not a target.
+//
+// Width parity still holds for all four, which is what the always-on gate
 // asserts. It is only the heights that are reading unlike things.
 
 export const PANEL_ROUTES = [
