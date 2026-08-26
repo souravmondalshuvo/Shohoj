@@ -374,6 +374,12 @@ jobs:
       # Into the job summary rather than a PR comment: the report is markdown
       # already, it renders natively there, and it needs no write permission on
       # pull-requests — which this workflow does not otherwise grant.
+      #
+      # `tee`, not `>>`: a summary is not readable from `gh run view --log`, so
+      # redirecting alone leaves the one thing this job exists to print
+      # invisible to anyone diagnosing it from the CLI — including the case that
+      # matters most, the instrument itself breaking and reporting 0x0 for every
+      # panel. The log gets the same table.
       - name: Report
         run: |
           {
@@ -382,7 +388,7 @@ jobs:
             echo "Advisory. The blocking width gate is \`Visual parity (shell vs legacy)\`."
             echo
             npm run --silent parity:report
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   # ============== Change detection for path-sensitive deploys ================
 
