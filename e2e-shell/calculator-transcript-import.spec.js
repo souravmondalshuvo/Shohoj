@@ -119,7 +119,10 @@ test('Cancel keeps the calculator untouched', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(container.getByText('Ready to go!')).toBeVisible(); // still the empty state
+  // Still the empty state. Which of legacy's three onboarding titles it shows
+  // depends on how much setup exists (#582), and this test does none — so
+  // assert the state, not the wording of one variant of it.
+  await expect(container.locator('.empty-state')).toBeVisible();
 });
 
 test('an unparseable PDF shows the could-not-parse dialog', async ({ page }) => {
