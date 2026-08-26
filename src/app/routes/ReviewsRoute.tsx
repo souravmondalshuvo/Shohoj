@@ -93,16 +93,23 @@ export function Component() {
 
   return (
     <section className="shell-page" data-testid="reviews-page">
-      <h1>Faculty Reviews</h1>
-
+      {/* Legacy's tab header and its empty states are separate views, not a
+          heading with a body underneath: _signInPrompt and friends replace the
+          whole panel with a .rv-tab-empty block and no title
+          (js/ui/reviewsTab.js:100-116). The shell kept an <h1> above every
+          state and restated legacy's empty block under .rv-dir-empty* names,
+          which is the rename #600 lists for this route and why the empty state
+          measured 104px against legacy's 183. */}
       {status === 'loading' ? (
-        <p className="rv-dir-loading" role="status">
-          Loading reviews…
-        </p>
+        <div className="rv-tab-empty" role="status">
+          <div className="rv-tab-empty-icon">⏳</div>
+          <div className="rv-tab-empty-title">Loading reviews…</div>
+        </div>
       ) : status === 'unavailable' ? (
-        <div className="rv-dir-empty" data-testid="reviews-unavailable" role="alert">
-          <div className="rv-dir-empty-title">Reviews are unavailable right now</div>
-          <div className="rv-dir-empty-note">
+        <div className="rv-tab-empty" data-testid="reviews-unavailable" role="alert">
+          <div className="rv-tab-empty-icon">⚠️</div>
+          <div className="rv-tab-empty-title">Reviews are unavailable right now</div>
+          <div className="rv-tab-empty-sub">
             We couldn’t load the faculty directory. This is a problem on our side, not with your
             account — your other tools still work.
           </div>
@@ -111,14 +118,21 @@ export function Component() {
           </button>
         </div>
       ) : directory.length === 0 ? (
-        <div className="rv-dir-empty" data-testid="reviews-empty">
-          <div className="rv-dir-empty-title">No reviews yet</div>
-          <div className="rv-dir-empty-note">
+        <div className="rv-tab-empty" data-testid="reviews-empty">
+          <div className="rv-tab-empty-icon">⭐</div>
+          <div className="rv-tab-empty-title">No reviews yet</div>
+          <div className="rv-tab-empty-sub">
             Rate a faculty from the Calculator or Planner to get the directory started.
           </div>
         </div>
       ) : (
         <>
+          <div className="rv-tab-header">
+            <h1 className="rv-tab-title">⭐ Faculty Reviews</h1>
+            <div className="rv-tab-sub">
+              Browse by department, or search directly by faculty initials or course code.
+            </div>
+          </div>
           <input
             type="search"
             className="rv-dir-search"
