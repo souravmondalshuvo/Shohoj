@@ -19,12 +19,7 @@ import type { ReactNode } from 'react';
 import { useCalculatorBridge } from './calculatorBridge.ts';
 import DegreeTracker from './DegreeTracker.tsx';
 import GpaTrendChart from './GpaTrendChart.tsx';
-import {
-  computeCalculatorResults,
-  formatCredits,
-  type MeterStatus,
-  type StandingTier,
-} from './results.ts';
+import { computeCalculatorResults, type MeterStatus, type StandingTier } from './results.ts';
 
 /** The recalc() meter copy for each model status kind. */
 export function meterStatusMessage(status: MeterStatus): ReactNode {
@@ -185,14 +180,9 @@ export default function CalculatorResults() {
 
       <GpaTrendChart />
 
-      <div className="calc-footer-stats">
-        <div className="footer-stat">
-          Credits Attempted: <strong>{formatCredits(results.attemptedCredits)}</strong>
-        </div>
-        <div className="footer-stat">
-          Credits Earned: <strong>{formatCredits(results.earnedCredits)}</strong>
-        </div>
-      </div>
+      {/* The credit totals moved to the shell's global footer (#616), where
+          legacy keeps them — below the tab bar, on screen on every route,
+          rather than only on this one. */}
     </div>
   );
 }
