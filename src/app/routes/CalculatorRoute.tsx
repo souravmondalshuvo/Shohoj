@@ -62,12 +62,6 @@ import {
   useSubmitReview,
 } from '../../features/calculator/FacultyReviewsProvider';
 import { useAuth } from '../providers/AuthProvider';
-import TranscriptImport, {
-  type TranscriptImportHandle,
-} from '../../features/calculator/TranscriptImport.tsx';
-import { loadJsPdf } from '../../features/calculator/jspdfLoader.ts';
-import { buildPdfReport } from '../../features/calculator/pdfReport.ts';
-import { drawPdfReport } from '../../features/calculator/pdfReportDraw.ts';
 
 import { deptSeasonsFor } from '../../features/calculator/departments.ts';
 import { demoCalculatorState } from '../../features/calculator/demoData.ts';
@@ -78,15 +72,9 @@ import {
 import { useConfirm } from '../providers/ModalProvider';
 import { useNotifications } from '../../state/NotificationProvider';
 import { useCalculator } from '../providers/CalculatorProvider';
+import { useTranscriptImport } from '../providers/TranscriptImportProvider';
 import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
-
-// Catalogue lookup for the transcript import's post-parse cleanup (the legacy
-// COURSE_DB[code] access). Built once at module scope from the typed catalogue.
-const COURSE_BY_CODE = new Map(
-  BRACU_COURSE_CATALOG.map((c) => [c.code, { full: c.full, credits: c.credits }]),
-);
-const lookupCourse = (code: string) => COURSE_BY_CODE.get(code) ?? null;
 
 export function Component() {
   // The signed-in student's campus decides the grading scale this whole route
@@ -118,7 +106,7 @@ export function Component() {
   const [rateTarget, setRateTarget] = useState<{ semId: number; index: number } | null>(null);
 
   // The transcript-import flow (hidden picker + dialogs); triggers call open().
-  const transcriptImportRef = useRef<TranscriptImportHandle>(null);
+  const openTranscriptImport = useTranscriptImport();
 
   // Reducer-backed bridge. CalculatorSemesters only ever commits a fully-formed
   // semester list (it computes via the immutable mutations), so `commit` maps to
@@ -186,9 +174,9 @@ export function Component() {
               }
               setRateTarget({ semId, index });
             },
-            importTranscript: () => transcriptImportRef.current?.open(),
+            importTranscript: openTranscriptImport,
           } satisfies CalculatorBridge),
-    [state, confirm, notify, university],
+    [state, confirm, notify, university, openTranscriptImport],
   );
 
   // The hero's "Try Demo Mode" lives on Home, but loadDemo is bridge-scoped to
@@ -214,8 +202,6 @@ export function Component() {
     ? getReviewableCourseCode(rateCourse.name, isKnownCourseCode)
     : '';
 
-  const hasSemesters = state.semesters.some((s) => !s.summary);
-
   // Every hook above has run, so this early return is safe. It is placed here
   // rather than at the top of the component precisely because of that: the
   // alternative is defaulting the scale to BRACU so the hooks have something
@@ -237,70 +223,7 @@ export function Component() {
         {/* The CGPA Goal Simulator moved to /playground (#592), where legacy
             keeps it — on the Playground tab beside the grade changer and the
             reverse solver, not on the calculator panel. */}
-        {hasSemesters && (
-          <div className="calc-footer lg-panel">
-            <div className="footer-btn-group">
-              <button
-                type="button"
-                className="btn-add-semester"
-                onClick={() => bridge.addSemester()}
-              >
-                + Add Semester
-              </button>
-              <button
-                type="button"
-                className="btn-running-sem"
-                onClick={() => bridge.addRunningSemester()}
-              >
-                🎯 Running Semester
-              </button>
-              <button
-                type="button"
-                className="btn-import-pdf"
-                onClick={() => bridge.importTranscript()}
-              >
-                📄 Import Transcript
-              </button>
-              <button
-                type="button"
-                className="btn-export-pdf"
-                onClick={() => {
-                  void (async () => {
-                    try {
-                      // The legacy 'No data to export' alert is unreachable here —
-                      // the footer only renders with semesters — but keep the guard.
-                      if (!state.semesters.length) return;
-                      const { jsPDF } = await loadJsPdf();
-                      drawPdfReport(
-                        new jsPDF({ unit: 'mm', format: 'a4' }),
-                        buildPdfReport(state, new Date(), bridge.university.grades),
-                      );
-                    } catch (err) {
-                      notify({
-                        kind: 'error',
-                        message: (err instanceof Error && err.message) || 'PDF export failed',
-                      });
-                    }
-                  })();
-                }}
-              >
-                ⬇ Export PDF
-              </button>
-            </div>
-          </div>
-        )}
       </CalculatorBridgeProvider>
-      <TranscriptImport
-        ref={transcriptImportRef}
-        lookupCourse={lookupCourse}
-        onImport={(imported) => {
-          dispatch({ type: 'replace', state: imported });
-          notify({
-            kind: 'success',
-            message: `Imported ${imported.semesters.length} semester${imported.semesters.length !== 1 ? 's' : ''} from your transcript.`,
-          });
-        }}
-      />
       {rateTarget && rateCourse && rateCourseCode && (
         <RateFacultyModal
           courseCode={rateCourseCode}
