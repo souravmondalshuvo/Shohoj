@@ -40,7 +40,10 @@ test.describe('mobile viewport', () => {
     await expect(planner).toBeVisible();
 
     await planner.click();
-    await expect(page.getByRole('heading', { name: 'Semester Planner' })).toBeVisible();
+    // The page, not its heading: legacy's planner setup prompt carries no
+    // title and the shell's now matches it (#582), and what this test is about
+    // is that the link navigated at all.
+    await expect(page.getByTestId('planner-page')).toBeVisible();
     // Picking an item dismisses the dropdown rather than leaving it open.
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
