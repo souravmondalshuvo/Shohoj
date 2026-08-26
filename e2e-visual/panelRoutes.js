@@ -48,6 +48,12 @@ export const PANEL_ROUTES = [
     hash: '#calculator/playground',
     panel: 'tabPlayground',
     route: '/playground',
+    // #tabPlayground is the one panel with no `.calc-body` inside it — its boxes
+    // sit directly in the panel — so measuring the shell's padded <main> against
+    // it books ~84px of container inset as divergence. Compare the box both
+    // sides actually share.
+    legacySelector: '.simulator-box',
+    shellSelector: '.simulator-box',
   },
   { name: 'reviews', hash: '#calculator/reviews', panel: 'tabReviews', route: '/reviews' },
   {
@@ -56,9 +62,31 @@ export const PANEL_ROUTES = [
     panel: 'tabDifficulty',
     route: '/difficulty',
   },
-  { name: 'papers', hash: '#calculator/papers', panel: 'tabPapers', route: '/papers' },
+  {
+    name: 'papers',
+    hash: '#calculator/papers',
+    panel: 'tabPapers',
+    route: '/papers',
+    // The two sides cannot be in the same state here: the shell captures signed
+    // IN against a preview build with no Firebase, so it renders its
+    // backend-unavailable branch, while legacy captures signed OUT and renders a
+    // sign-in prompt. The heights are not comparable, and no change to the route
+    // closes the gap.
+    unlikeState: 'shell has no backend; legacy is signed out',
+  },
   { name: 'routine', hash: '#calculator/routine', panel: 'tabRoutine', route: '/routine' },
   { name: 'seats', hash: '#calculator/seats', panel: 'tabSeats', route: '/seats' },
   { name: 'freerooms', hash: '#calculator/freerooms', panel: 'tabFreeRooms', route: '/rooms' },
-  { name: 'groups', hash: '#calculator/groups', panel: 'tabGroups', route: '/groups' },
+  {
+    name: 'groups',
+    hash: '#calculator/groups',
+    panel: 'tabGroups',
+    route: '/groups',
+    // The two sides cannot be in the same state here: the shell captures signed
+    // IN against a preview build with no Firebase, so it renders its
+    // backend-unavailable branch, while legacy captures signed OUT and renders a
+    // sign-in prompt. The heights are not comparable, and no change to the route
+    // closes the gap.
+    unlikeState: 'shell has no backend; legacy is signed out',
+  },
 ];
