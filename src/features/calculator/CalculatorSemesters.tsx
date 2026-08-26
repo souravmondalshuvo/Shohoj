@@ -49,7 +49,7 @@ export default function CalculatorSemesters() {
   // The campus the bridge was built for — BRACU on the legacy island, the
   // signed-in student's profile on the shell route.
   const scale = bridge.university.grades;
-  const { semesters } = bridge.useInputs();
+  const { semesters, startSeason, startYear, currentDept } = bridge.useInputs();
   const [summaryFormVisible, setSummaryFormVisible] = useState(false);
   const [summaryEditId, setSummaryEditId] = useState<number | null>(null);
   const [dragSrcId, setDragSrcId] = useState<number | null>(null);
@@ -63,6 +63,79 @@ export default function CalculatorSemesters() {
   const now = useMemo(() => new Date(), []);
 
   const hasSummary = semesters.some((s) => s.summary);
+
+  // Legacy's empty state is a three-step onboarding, not one "Ready to go!"
+  // (js/ui/render.js:761-786). The shell rendered only the last of the three
+  // states, so a student who had not picked a department yet was told they were
+  // ready and given no idea what to do first — and the 82px steps block that
+  // says it was missing entirely, which was most of this route's -66 against
+  // legacy's panel (#582).
+  //
+  // Note the opt-in legacy island cannot see a department through the window
+  // bridge (currentDept is '' there by construction — see CalculatorInputs), so
+  // it renders step 1. The shell route, which is what this parity work targets,
+  // supplies the real value.
+  const deptDone = !!currentDept;
+  const semDone = deptDone && !!startSeason && !!startYear;
+
+  const emptyStateSteps = !deptDone ? (
+    <div className="empty-state-steps">
+      <div className="empty-state-step">
+        <span className="empty-state-step-num">1</span>
+        <span>
+          Pick your <strong>department</strong> in the header above
+        </span>
+      </div>
+      <div className="empty-state-step">
+        <span className="empty-state-step-num">2</span>
+        <span>
+          Set your <strong>starting semester</strong> (e.g. Fall 2022)
+        </span>
+      </div>
+      <div className="empty-state-step">
+        <span className="empty-state-step-num">3</span>
+        <span>Add your first semester and enter grades</span>
+      </div>
+    </div>
+  ) : !semDone ? (
+    <div className="empty-state-steps">
+      <div className="empty-state-step" style={{ opacity: 0.45 }}>
+        <span className="empty-state-step-num done">✓</span>
+        <span>Department selected</span>
+      </div>
+      <div className="empty-state-step">
+        <span
+          className="empty-state-step-num active"
+          style={{ background: 'var(--green)', color: '#0b0f0d' }}
+        >
+          2
+        </span>
+        <span>
+          Set your <strong>starting semester</strong> above and click{' '}
+          <strong>Let&rsquo;s go →</strong>
+        </span>
+      </div>
+    </div>
+  ) : (
+    <div className="empty-state-steps">
+      <div className="empty-state-step" style={{ opacity: 0.45 }}>
+        <span className="empty-state-step-num done">✓</span>
+        <span>Department &amp; semester set</span>
+      </div>
+      <div className="empty-state-step">
+        <span
+          className="empty-state-step-num active"
+          style={{ background: 'var(--green)', color: '#0b0f0d' }}
+        >
+          3
+        </span>
+        <span>
+          Click <strong>+ Add Semester</strong> below, or <strong>Import Transcript</strong> to
+          auto-fill
+        </span>
+      </div>
+    </div>
+  );
   const nonSummary = semesters.filter((s) => !s.summary);
 
   // The real-world "current" semester id, only meaningful in summary view.
@@ -249,11 +322,25 @@ export default function CalculatorSemesters() {
 
       {nonSummary.length === 0 && !summaryFormVisible && (
         <div className="empty-state">
-          <div className="empty-state-icon">🎓</div>
-          <div className="empty-state-title">Ready to go!</div>
-          <div className="empty-state-sub">
-            Add your first semester, import your transcript, or start from your current CGPA.
+          <div className="empty-state-icon">{!deptDone ? '👋' : !semDone ? '📅' : '🎓'}</div>
+          <div className="empty-state-title">
+            {!deptDone ? "Let's get you set up" : !semDone ? 'Almost ready...' : 'Ready to go!'}
           </div>
+          <div className="empty-state-sub">
+            {!deptDone
+              ? 'Complete the 3 quick steps below to start tracking your CGPA.'
+              : !semDone
+                ? 'One more step before you can add semesters.'
+                : 'Add your first semester, import your transcript, or start from your current CGPA.'}
+          </div>
+          {emptyStateSteps}
+          {/* Legacy also GATES these on setup — "+ Add semester" and "Start
+              from CGPA" appear only once a department and start term exist
+              (render.js:773-777), and it shows an .empty-arrow alongside them.
+              Deliberately not mirrored here: that is an onboarding-behaviour
+              change, not a styling one, it removes affordances a student can
+              use today, and roughly 200 shell specs bootstrap through these
+              buttons from exactly this state. Tracked separately. */}
           <div className="empty-state-actions">
             <button type="button" className="btn-sample" onClick={() => bridge.loadDemo()}>
               Try Demo Mode
