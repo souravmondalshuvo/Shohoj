@@ -56,7 +56,8 @@ test('empty calculator shows the invite state: no figure, empty meter, no standi
   await expect(results.locator('.meter-status')).toHaveText('Add your courses to get started.');
   await expect(results.locator('.standing-box')).toHaveCount(0);
   await expect(results.locator('.incomplete-warning')).toHaveCount(0);
-  await expect(results.locator('.footer-stat').first()).toContainText('Credits Attempted: 0');
+  // Totals moved to the global footer (#616).
+  await expect(page.locator('.footer-stat').first()).toContainText('Credits Attempted: 0');
 });
 
 test('grading a course updates headline, meter, standing and credit totals live', async ({ page }) => {
@@ -72,8 +73,8 @@ test('grading a course updates headline, meter, standing and credit totals live'
   await expect(standing).toBeVisible();
   await expect(standing.locator('.standing-title')).toHaveText('Perfect Standing');
 
-  await expect(results.locator('.footer-stat').nth(0)).toContainText('Credits Attempted: 3');
-  await expect(results.locator('.footer-stat').nth(1)).toContainText('Credits Earned: 3');
+  await expect(page.locator('.footer-stat').nth(0)).toContainText('Credits Attempted: 3');
+  await expect(page.locator('.footer-stat').nth(1)).toContainText('Credits Earned: 3');
 
   // Results recompute from persisted state alone after a reload.
   await page.reload({ waitUntil: 'domcontentloaded' });
