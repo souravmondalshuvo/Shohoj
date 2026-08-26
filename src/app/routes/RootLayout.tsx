@@ -21,8 +21,10 @@ import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
 import { ShellBackdrop } from '../ShellBackdrop';
+import { CalcFooter } from '../CalcFooter';
 import { CalcHeader } from '../CalcHeader';
 import { CalculatorProvider } from '../providers/CalculatorProvider';
+import { TranscriptImportProvider } from '../providers/TranscriptImportProvider';
 import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
 import { SignInPortal } from '../SignInPortal';
@@ -262,6 +264,11 @@ function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
           </>
         )}
       </main>
+      {/* Legacy's footer is global and sits BELOW the tab bar (index.html:593),
+          so the credit totals and the calculator's actions stay on screen
+          whatever route is open. Signed out it goes with the header and the
+          tabs — there is no calculator state to total yet. */}
+      {authed ? <CalcFooter /> : null}
     </>
   );
 }
@@ -333,9 +340,13 @@ function ShellChrome() {
           live CGPA — renders above the tabs and reads the same state the routes
           below mutate, exactly as legacy's single academic state does. */}
       <CalculatorProvider>
-        <ShellSurface>
-          <GatedMain source={firebaseSource} />
-        </ShellSurface>
+        {/* One transcript-import flow, opened by the global footer as well as
+            by the calculator's own buttons (#616). */}
+        <TranscriptImportProvider>
+          <ShellSurface>
+            <GatedMain source={firebaseSource} />
+          </ShellSurface>
+        </TranscriptImportProvider>
       </CalculatorProvider>
       <NotificationViewport />
       {/* Shohoj Assistant (#435): renders only signed-in on a cloud shell. */}
