@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-Cltr0gcK.js";var t=e();function n({variant:e=`secondary`,className:n,type:r,ref:i,...a}){let o=`shell-btn shell-btn--${e}${n?` ${n}`:``}`;return(0,t.jsx)(`button`,{ref:i,type:r??`button`,className:o,...a})}export{n as t};
