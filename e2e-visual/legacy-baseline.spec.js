@@ -13,6 +13,7 @@ import {
   ADMIN_TARGETS,
   PANEL_TARGETS,
   HEADER_TARGET,
+  FOOTER_TARGET,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -102,6 +103,27 @@ for (const viewport of VIEWPORTS) {
           expect,
           HEADER_TARGET.selector,
           shotName(HEADER_TARGET.name, viewport.name, theme),
+          { flattenGlass: true },
+        );
+      });
+
+      test(`${FOOTER_TARGET.name} matches`, async ({ page }) => {
+        await primeTheme(page, theme);
+        await unlockCalculator(page);
+        await pinFeedAndClock(page);
+        await page.goto('/index.html#calculator', { waitUntil: 'load' });
+        await stabilize(page);
+        const el = page.locator(FOOTER_TARGET.selector).first();
+        await expect(el).toBeVisible();
+        // Below the fold on both sides — the footer sits under the whole panel.
+        // captureBox clips out of a VIEWPORT screenshot, so without this the
+        // clip lands outside the image and Playwright reports an empty area.
+        await el.scrollIntoViewIfNeeded();
+        await captureBox(
+          page,
+          expect,
+          FOOTER_TARGET.selector,
+          shotName(FOOTER_TARGET.name, viewport.name, theme),
           { flattenGlass: true },
         );
       });

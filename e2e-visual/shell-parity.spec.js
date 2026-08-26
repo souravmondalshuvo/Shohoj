@@ -17,6 +17,7 @@ import {
   ADMIN_TARGETS,
   PANEL_TARGETS,
   HEADER_TARGET,
+  FOOTER_TARGET,
   VIEWPORTS,
   THEMES,
   shotName,
@@ -158,6 +159,33 @@ for (const viewport of VIEWPORTS) {
 
         if (CAPTURE_ROUTE_PIXELS) {
           await captureBox(page, expect, HEADER_TARGET.selector, shot, { flattenGlass: true });
+        }
+      });
+
+      // The footer is chrome too, and it is captured from a NON-calculator
+      // route on purpose: the bug it guards against is the footer existing only
+      // on /calculator, which a capture taken there could never see (#616).
+      authedTest(`${FOOTER_TARGET.name} matches legacy`, async ({ page }) => {
+        await primeTheme(page, theme);
+        await pinFeedAndClock(page);
+        await page.goto('/routine', { waitUntil: 'load' });
+        await stabilize(page);
+        const el = page.locator(FOOTER_TARGET.selector).first();
+        await expect(el).toBeVisible();
+        // Below the fold on both sides — the footer sits under the whole panel.
+        // captureBox clips out of a VIEWPORT screenshot, so without this the
+        // clip lands outside the image and Playwright reports an empty area.
+        await el.scrollIntoViewIfNeeded();
+
+        const shot = shotName(FOOTER_TARGET.name, viewport.name, theme);
+        const box = await el.boundingBox();
+        expect(
+          { width: Math.round(box.width), height: Math.round(box.height) },
+          `${FOOTER_TARGET.selector} box`,
+        ).toEqual(baselineSize(shot));
+
+        if (CAPTURE_ROUTE_PIXELS) {
+          await captureBox(page, expect, FOOTER_TARGET.selector, shot, { flattenGlass: true });
         }
       });
 
