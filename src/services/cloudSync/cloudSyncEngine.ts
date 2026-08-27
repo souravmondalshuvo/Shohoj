@@ -67,6 +67,8 @@ export interface CloudSyncEngine {
   queueSave(snapshotJson: string): void;
   /** Immediate upload (sign-in flows); resolves false when skipped/offline. */
   saveNow(snapshotJson: string): Promise<boolean>;
+  /** Does the account hold what this device holds? Gates the sign-out wipe (#627). */
+  isCloudCurrent(): Promise<boolean>;
 }
 
 interface SemesterishSnapshot {
@@ -249,6 +251,35 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
       if (action === 'noop-signed-out') return false;
       clearQueued();
       return persistSerial(snapshotJson);
+    },
+    // Sign-out erases the device, so it first has to know the account is not
+    // about to become the only copy of something older than what is on screen.
+    //
+    // The debounced save is pushed through first — the last seconds of typing
+    // deserve their chance — and the answer then comes from a fingerprint
+    // compare, the same content compare the realtime listener uses, because
+    // shohoj_last_sync only records that a write was attempted. Every
+    // uncertainty (offline, an unreadable doc, a save that never landed)
+    // answers false, which the caller turns into a warning, never a quiet erase.
+    async isCloudCurrent() {
+      if (uid === null) return false;
+      const localRaw = ports.local.getItem(STORAGE_KEY);
+      if (parseStoredState(localRaw) === null) return true; // nothing here to lose
+
+      const pending = queuedSnapshot;
+      if (pending !== null) {
+        clearQueued();
+        await persistSerial(pending);
+      }
+      // Let an in-flight write settle, but do not read its result: a failed
+      // save whose content the account already holds is not a reason to warn.
+      // The fingerprint below is the only authority on what is actually there.
+      await activeSave.catch(() => false);
+      if (!ports.isOnline()) return false;
+
+      const cloudRaw = await ports.repo.load(uid);
+      if (cloudRaw === null) return false;
+      return getDataFingerprint(localRaw ?? '') === getDataFingerprint(cloudRaw);
     },
   };
 }
