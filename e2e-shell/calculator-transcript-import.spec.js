@@ -52,6 +52,13 @@ async function openCalculator(page) {
   await expect(page.getByRole('heading', { name: 'CGPA Calculator' })).toBeVisible();
 }
 
+// Import Transcript lives in the global footer now (#616) — legacy's empty
+// state never carried its own copy, and the shell was offering it twice on this
+// screen. One opener, reachable from every route.
+function importButton(page) {
+  return page.locator('.footer-btn-group').getByRole('button', { name: '📄 Import Transcript' });
+}
+
 async function chooseTranscript(page, trigger) {
   const chooserPromise = page.waitForEvent('filechooser');
   await trigger.click();
@@ -70,7 +77,7 @@ test('a transcript imports end to end: confirm dialog, state, setup, persistence
   await openCalculator(page);
   const container = page.locator('#semestersContainer');
 
-  await chooseTranscript(page, container.getByRole('button', { name: '📄 Import Transcript' }));
+  await chooseTranscript(page, importButton(page));
 
   const dialog = page.getByTestId('transcript-import-dialog');
   await expect(dialog.getByRole('heading', { name: /Transcript Parsed/ })).toBeVisible();
@@ -114,7 +121,7 @@ test('Cancel keeps the calculator untouched', async ({ page }) => {
   await openCalculator(page);
   const container = page.locator('#semestersContainer');
 
-  await chooseTranscript(page, container.getByRole('button', { name: '📄 Import Transcript' }));
+  await chooseTranscript(page, importButton(page));
   const dialog = page.getByTestId('transcript-import-dialog');
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 
@@ -130,7 +137,7 @@ test('an unparseable PDF shows the could-not-parse dialog', async ({ page }) => 
   await openCalculator(page);
   const container = page.locator('#semestersContainer');
 
-  await chooseTranscript(page, container.getByRole('button', { name: '📄 Import Transcript' }));
+  await chooseTranscript(page, importButton(page));
 
   const dialog = page.getByTestId('transcript-import-dialog');
   await expect(dialog.getByRole('heading', { name: /Could not parse transcript/ })).toBeVisible();
@@ -145,7 +152,7 @@ test('pdf.js unavailable surfaces the legacy connection error', async ({ page })
   await openCalculator(page);
   const container = page.locator('#semestersContainer');
 
-  await chooseTranscript(page, container.getByRole('button', { name: '📄 Import Transcript' }));
+  await chooseTranscript(page, importButton(page));
 
   const dialog = page.getByTestId('transcript-import-dialog');
   await expect(dialog.getByRole('heading', { name: /Import failed/ })).toBeVisible();
