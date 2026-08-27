@@ -2,7 +2,7 @@
 import { GRADES, detectGrade } from './core/grades.js';
 import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
-import { clearAllShohojData } from './core/personalData.js';
+import { clearAllShohojData, clearStaleSignedOutData } from './core/personalData.js';
 import './core/dispatch.js'; // installs delegated event listeners + registerAction
 import {
   calcSemGPA, autoDetectGrade,
@@ -336,6 +336,18 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 
 // ── STATE LOAD ────────────────────────────────────────────────────────────────
+// Before anything is read back, clear a device the pre-#627 sign-out abandoned.
+//
+// This runs here, at boot, rather than off the auth callback, for two reasons.
+// It has to happen BEFORE the app loads state into memory, or the wipe races a
+// re-render that writes the whole snapshot straight back — which is exactly what
+// it did from the auth callback. And it does not need auth at all: a signed-in
+// device always carries `shohoj_session_start`, so the predicate is already
+// false for them without waiting on Firebase. See js/core/personalData.js for
+// the full matrix, and tests/staleSignedOutData.test.js for the argument that it
+// cannot touch a student who never signed in.
+clearStaleSignedOutData();
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
