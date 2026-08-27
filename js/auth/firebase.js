@@ -35,7 +35,7 @@ import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
 import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
 import { installReviewIdentityHooks } from './review-service.js';
 import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
-import { clearPersonalData } from '../core/personalData.js';
+import { applyPersonalSlices, clearPersonalData } from '../core/personalData.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
@@ -243,6 +243,10 @@ function startRealtimeSync(uid) {
       console.log('[Shohoj] Real update from another device — reloading');
       sessionStorage.setItem('shohoj_cloud_applied', '1');
       localStorage.setItem(STORAGE_KEY, raw);
+      // The routine, watchlist, review receipt and profile travel in the same
+      // doc; fan them back out to their own keys before the reload, or the
+      // modules that read those keys would boot on the old device's copy.
+      applyPersonalSlices(parseStoredState(raw), currentUser?.uid);
       showToast('📡 Data updated from another device — reloading…');
       setTimeout(() => window.location.reload(), 1500);
     } catch(e) {
@@ -649,21 +653,18 @@ async function runSignOut() {
   await flushPendingCloudSave();
   const backedUp = await cloudCopyIsCurrent();
 
-  // The routine and the "your reviews" record have no cloud copy to come back
-  // from — the routine was never synced, and review authorship is deliberately
-  // non-reversible (see _recordMyReview), so this list is the only trace. Say so
-  // rather than let a student discover it after the fact.
+  // Everything named here rides in the cloud snapshot now (#627), so this is a
+  // promise the restore path has to keep — see applyPersonalSlices.
   const confirmed = await showConfirmModal({
     icon:  backedUp ? '🚪' : '⚠️',
     title: 'Sign out and clear this device?',
     body:
-      'Your semesters and grades are saved to your account — signing in brings them back. '
-      + 'Everything else Shohoj keeps here, including your routine and the record of reviews '
-      + 'you have written, only exists on this device and will be gone.'
+      'Shohoj will remove your semesters, routine, watchlist and profile from this '
+      + 'device. They stay in your account — sign in on any device and they come back.'
       + (backedUp
         ? ''
         : '<br><br><strong>Your account does not have your latest changes yet.</strong> '
-          + 'Shohoj could not save them just now, so those would be lost too.'),
+          + 'Shohoj could not save them just now, so those changes would be lost.'),
     confirmLabel:  'Sign out and clear',
     confirmDanger: true,
   });
@@ -947,6 +948,9 @@ function applyCloudData(cloudData) {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+    // Same fan-out as the realtime path: the calculator is applied in memory
+    // below, but the routine/seats/reviews/profile modules read their own keys.
+    applyPersonalSlices(cloudData, currentUser?.uid);
   } catch(e) {}
 
   // Apply directly into the running app — no page reload needed.
@@ -1104,6 +1108,9 @@ function _recordMyReview(uid, entry) {
     next.push(entry);
     all[uid] = next;
     localStorage.setItem(MY_REVIEWS_KEY, JSON.stringify(all));
+    // The receipt rides in the cloud snapshot (#627), but nothing about writing
+    // a review touches calculator state, so nothing would otherwise push it.
+    if (typeof window._shohoj_saveState === 'function') window._shohoj_saveState();
   } catch { /* storage unavailable — non-fatal */ }
 }
 
