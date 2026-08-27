@@ -10,6 +10,7 @@
 // asserts the two lists agree, key for key, in order.
 
 import { STORAGE_KEY } from '../cloudSync/cloudSyncEngine.ts';
+import { LEGACY_BACKUP_KEY } from '../../core/types/storage.ts';
 import { MY_REVIEWS_KEY } from '../../features/calculator/myReviewsReceipt.ts';
 import type { KeyValueStore } from './keyValueStore.ts';
 
@@ -23,12 +24,20 @@ const SEAT_WATCH_KEY = 'shohoj_seat_watch_v1';
 /** localStorage keys holding data that belongs to the person using the browser. */
 export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   STORAGE_KEY, // semesters, courses, grades, the plan
-  'shohoj_routine_v1', // class routine — device-only, no cloud copy
+  LEGACY_BACKUP_KEY, // the pre-migration copy of all of it
+  'shohoj_routine_v1', // class routine (legacy)
+  'shohoj_routine_picks_v1', // class routine (shell — a different key)
   MY_REVIEWS_KEY, // the record of reviews this student wrote
   SEAT_WATCH_KEY, // seat watchlist
   'shohoj_seat_alerts_enabled', // seat-alert opt-in
   'shohoj_connect_profile_v1', // their CONNECT profile snapshot
 ];
+
+// The two routine keys are not a typo. RoutineRoute writes
+// shohoj_routine_picks_v1 and legacy's routineTab.js writes shohoj_routine_v1;
+// both builds share an origin, so a student who has used either leaves that key
+// behind. LEGACY_BACKUP_KEY is backupLegacyStateOnce's verbatim copy of the
+// whole snapshot, which made the wipe cosmetic while it stayed (#627).
 
 // Deliberately absent: shohoj_connect_feed_v1 and shohoj_routine_ratings_v1
 // cache the public CONNECT feed and the aggregate faculty-rating map — the same
