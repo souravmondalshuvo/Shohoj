@@ -10,7 +10,15 @@
 // page (the legacy pre-boot fallback; the shell rebuilds state from storage on
 // boot) — the in-place apply is deferred, documented.
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { Button } from '../../shared/ui/Button';
 import type { RuntimeConfig } from '../../platform/configuration/runtimeConfig';
@@ -27,6 +35,17 @@ import { onLocalSave } from '../../services/cloudSync/saveAnnouncer';
 import type { MigrationChoice } from '../../services/storage/syncDecision';
 import { useAuth } from './AuthProvider';
 import { useNotifications } from '../../state/NotificationProvider';
+
+// The running engine, so the header's sign-out can ask whether the account
+// already holds this device's data before offering to erase it (#627). Null
+// outside the provider — an offline or unconfigured shell has no engine, and
+// "cannot confirm" is the honest answer there.
+const CloudSyncContext = createContext<CloudSyncEngine | null>(null);
+
+/** The mounted cloud-sync engine, or null when this shell has no cloud. */
+export function useCloudSync(): CloudSyncEngine | null {
+  return useContext(CloudSyncContext);
+}
 
 interface PendingMigration {
   readonly localSemesters: number;
@@ -91,7 +110,7 @@ export function CloudSyncProvider({ config, children }: CloudSyncProviderProps) 
 
   return (
     <>
-      {children}
+      <CloudSyncContext value={engine}>{children}</CloudSyncContext>
       {pending !== null && (
         <div className="shell-modal-backdrop" data-testid="cloud-migration-modal">
           {/* No backdrop/Escape dismiss — a choice is required (legacy parity). */}
