@@ -90,6 +90,48 @@ export function clearPersonalData() {
   removeSessionKeys(PERSONAL_SESSION_KEYS);
 }
 
+// ── Devices the old sign-out already left dirty ──────────────────────────────
+// Before #627, signing out ended the Firebase session and left everything in
+// localStorage. Those devices are still out there, and the wipe above cannot
+// help them: it runs at sign-out, and nobody signs out twice.
+//
+// They are identifiable, though. The old sign-out removed `shohoj_session_start`
+// but left `shohoj_last_sync` behind, so a device carrying last-sync WITHOUT a
+// session start was signed in once and signed out under the old code. A visitor
+// who never signed in has neither, which is what keeps this off the local-first
+// path that has always been Shohoj's default — their data is not ours to delete.
+//
+// A live session has BOTH (session start is written at sign-in and survives
+// reloads), so a signed-in student reloading the page never matches. The 30-day
+// expiry path does match, having cleared session start on its way out; wiping
+// there is the same bargain as a sign-out, and the account still holds the data.
+//
+// This holds on the legacy build, which is the only one that writes session
+// start. The shell does not, so it must not run this at boot — see the note on
+// the same predicate in src/services/storage/personalData.ts.
+export function hasStaleSignedOutData() {
+  try {
+    return (
+      localStorage.getItem('shohoj_last_sync') !== null
+      && localStorage.getItem('shohoj_session_start') === null
+    );
+  } catch (e) {
+    return false; // storage unreachable — nothing to read, nothing to clear
+  }
+}
+
+/** Clear a pre-#627 leftover. True only once the residue is provably gone.
+ *
+ * The return value gates the caller's reload, and it is checked rather than
+ * assumed: a storage that refuses removeItem would otherwise leave the residue
+ * in place, keep this predicate true, and reload the page forever.
+ */
+export function clearStaleSignedOutData() {
+  if (!hasStaleSignedOutData()) return false;
+  clearPersonalData();
+  return !hasStaleSignedOutData();
+}
+
 /** Clear Data's wipe: the above, plus the preferences it promises to reset. */
 export function clearAllShohojData() {
   clearPersonalData();
