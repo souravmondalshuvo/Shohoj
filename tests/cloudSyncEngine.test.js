@@ -376,3 +376,79 @@ test('isCloudCurrent: false when the local snapshot is present but unreadable', 
   h.localStore.setItem(STORAGE_KEY, '{"semesters":[{"id"');
   assert.equal(await h.engine.isCloudCurrent(), false);
 });
+
+// ── Cross-device restore (#627) ───────────────────────────────────────────────
+// The point of putting the routine, watchlist, review receipt and profile in
+// the snapshot: a student signs in on a second device and finds their whole
+// Shohoj there, not just the calculator. These drive that through the real
+// sign-in flow rather than the slice helpers alone.
+
+const FULL_SNAPSHOT = JSON.stringify({
+  semesters: [{ id: 1, name: 'Fall 2024' }],
+  currentDept: 'CSE',
+  routine: { picks: { CSE110: 12 } },
+  seatWatches: [{ sectionId: 12, courseCode: 'CSE110' }],
+  seatAlertsEnabled: false,
+  myReviews: [{ facultyInitials: 'ABC', courseCode: 'CSE110' }],
+  profileSnapshot: { studentId: '20101234' },
+});
+
+test('a fresh device signing in gets the routine, watchlist and profile too', async () => {
+  // Nothing local: the sign-in flow adopts the cloud copy wholesale.
+  const h = harness({ cloud: FULL_SNAPSHOT });
+  await h.engine.start('u_me');
+
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_routine_v1')), {
+    picks: { CSE110: 12 },
+  });
+  // Legacy and the shell name the routine key differently; one student has one
+  // routine, so both are written.
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_routine_picks_v1')), {
+    picks: { CSE110: 12 },
+  });
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_seat_watch_v1')), [
+    { sectionId: 12, courseCode: 'CSE110' },
+  ]);
+  assert.equal(h.localStore.getItem('shohoj_seat_alerts_enabled'), '0');
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_connect_profile_v1')), {
+    studentId: '20101234',
+  });
+  // The receipt is keyed by uid — a browser can be shared.
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_my_reviews_v1')), {
+    u_me: [{ facultyInitials: 'ABC', courseCode: 'CSE110' }],
+  });
+  assert.equal(h.events.applyRemote, 1); // adopted, then reloads
+});
+
+test('an edit on another device brings the routine across in realtime', async () => {
+  const before = JSON.stringify({ semesters: [{ id: 1 }], routine: { picks: {} } });
+  const h = harness({ local: { [STORAGE_KEY]: before }, cloud: before });
+  await h.engine.start('u_me');
+  await flush();
+
+  h.fire(before); // the listener's first snapshot is always the current state
+  h.advance(6000); // past the own-write grace window
+  h.fire(JSON.stringify({ semesters: [{ id: 1 }], routine: { picks: { MAT110: 4 } } }));
+  await flush(); // applyRemote fires on the remote-apply timer
+
+  assert.equal(h.events.applyRemote, 1);
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_routine_v1')), {
+    picks: { MAT110: 4 },
+  });
+});
+
+test('a doc written before these fields existed leaves the device alone', async () => {
+  // The upgrade path: an old client's doc must not read as "no routine" and
+  // wipe one this device already has.
+  const h = harness({
+    local: {
+      [STORAGE_KEY]: JSON.stringify({ semesters: [{ id: 1 }] }),
+      shohoj_routine_v1: JSON.stringify({ picks: { CSE110: 1 } }),
+    },
+    cloud: JSON.stringify({ semesters: [{ id: 1 }] }),
+  });
+  await h.engine.start('u_me');
+  assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_routine_v1')), {
+    picks: { CSE110: 1 },
+  });
+});
