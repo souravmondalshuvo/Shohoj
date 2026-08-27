@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { portFor } from './e2e-support/port.js';
 
 // Visual parity harness for the shell migration.
 //
@@ -20,8 +21,8 @@ import { defineConfig, devices } from '@playwright/test';
 //
 // Authoring baselines:   npm run test:visual:baseline
 // Checking the shell:    npm run test:visual
-const LEGACY_PORT = process.env.PLAYWRIGHT_VISUAL_LEGACY_PORT || 4176;
-const SHELL_PORT = process.env.PLAYWRIGHT_VISUAL_SHELL_PORT || 4177;
+const LEGACY_PORT = portFor(4176, 'PLAYWRIGHT_VISUAL_LEGACY_PORT');
+const SHELL_PORT = portFor(4177, 'PLAYWRIGHT_VISUAL_SHELL_PORT');
 
 // Playwright starts every configured webServer regardless of --project, so
 // authoring baselines would otherwise require a shell build that the baseline
@@ -31,14 +32,17 @@ const LEGACY_ONLY = !!process.env.VISUAL_LEGACY_ONLY;
 const legacyServer = {
   command: `python3 -m http.server ${LEGACY_PORT} --bind 127.0.0.1`,
   url: `http://127.0.0.1:${LEGACY_PORT}/index.html`,
-  reuseExistingServer: !process.env.CI,
+  // Never reuse a server this run did not start — see the note in
+  // playwright.shell.config.js. Adopting a stray preview from another worktree
+  // makes the whole suite compare against the wrong build, silently.
+  reuseExistingServer: false,
   timeout: 15_000,
 };
 
 const shellServer = {
   command: `npm run preview:shell -- --host 127.0.0.1 --port ${SHELL_PORT} --strictPort`,
   url: `http://127.0.0.1:${SHELL_PORT}/`,
-  reuseExistingServer: !process.env.CI,
+  reuseExistingServer: false,
   timeout: 30_000,
 };
 
