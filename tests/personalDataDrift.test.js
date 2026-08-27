@@ -41,6 +41,18 @@ for (const list of LISTS) {
   });
 }
 
+test('the cloud snapshot fields agree between the two builds', () => {
+  // A mismatch here breaks nothing loudly: one build would write `seatWatches`
+  // and the other read something else, and the slice would simply stop crossing
+  // devices — the failure the sync was added to prevent.
+  assert.deepEqual(
+    [...legacy.PERSONAL_SLICE_FIELDS],
+    [...shell.PERSONAL_SLICE_FIELDS],
+    'PERSONAL_SLICE_FIELDS drifted — the two builds no longer agree on what the '
+      + 'cloud snapshot carries beyond the calculator.',
+  );
+});
+
 test('no key is claimed by two lists at once', () => {
   const all = LISTS.flatMap((list) => [...legacy[list]]);
   assert.equal(new Set(all).size, all.length, `a key appears on more than one list: ${all}`);
