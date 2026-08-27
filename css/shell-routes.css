@@ -86,6 +86,30 @@
 
    `.shell-page` is kept as the marker class only because 21 route files use it;
    it no longer paints anything. The surrounding surface lives in RootLayout. */
+/* Legacy keeps .cgpa-meter, .simulator-box, .degree-tracker and .playground-box
+   OUTSIDE .calc-body (index.html:586 — they are siblings of it, not children)
+   and insets them with their OWN 32px horizontal margins, which is why they
+   line up with the body's 32px padding. The two track each other at every
+   breakpoint: style.css:385 pairs 2rem with 2rem, :962 pairs 0.8rem with
+   0.8rem.
+
+   The shell has one padded container for the whole route — main carries
+   .calc-body — so those margins land INSIDE the padding and inset the panel
+   twice. Measured on /calculator: the meter came out 726px wide at x=277
+   against legacy's 790px at x=245 (#625).
+
+   Zeroing the horizontal margin rather than adding a negative one is what
+   keeps this honest: it reproduces legacy's inset at every breakpoint without
+   copying a single padding value, and RootLayout's comment is explicit that a
+   second copy of that scale is the thing to avoid. */
+.shell-main.calc-body .cgpa-meter,
+.shell-main.calc-body .simulator-box,
+.shell-main.calc-body .degree-tracker,
+.shell-main.calc-body .playground-box {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .shell-page {
   /* Routes are authored as <section>, so without this they inherit the global
      `section` rule (style.css:366) — 5rem/2rem — and sit 80px inset inside a
