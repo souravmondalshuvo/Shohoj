@@ -334,7 +334,12 @@ export default function CalculatorSemesters() {
                 : 'Add your first semester, import your transcript, or start from your current CGPA.'}
           </div>
           {emptyStateSteps}
-          {/* Legacy also GATES these on setup — "+ Add semester" and "Start
+          {/* 📄 Import Transcript is NOT here: legacy's empty state does not
+              carry it (render.js:778-782) and the global footer does, on every
+              route, since #616 — so the shell was offering it twice on this one
+              screen and paying 8px of row wrap for the duplicate.
+
+              Legacy also GATES these on setup — "+ Add semester" and "Start
               from CGPA" appear only once a department and start term exist
               (render.js:773-777), and it shows an .empty-arrow alongside them.
               Deliberately not mirrored here: that is an onboarding-behaviour
@@ -347,13 +352,6 @@ export default function CalculatorSemesters() {
             </button>
             <button type="button" className="btn-sample-ghost" onClick={() => bridge.addSemester()}>
               + Add semester
-            </button>
-            <button
-              type="button"
-              className="btn-sample-ghost"
-              onClick={() => bridge.importTranscript()}
-            >
-              📄 Import Transcript
             </button>
             {!hasSummary && (
               <button
