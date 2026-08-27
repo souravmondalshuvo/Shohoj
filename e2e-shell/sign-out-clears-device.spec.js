@@ -89,8 +89,8 @@ test('sign-out asks before erasing, and says what goes', async ({ page }) => {
   await bootSignedInCloud(page);
   const dialog = await openSignOutDialog(page);
   await expect(dialog).toContainText('Sign out and clear this device?');
-  // The routine and the review record have no cloud copy to come back from.
-  await expect(dialog).toContainText('only exists on this device');
+  // What it promises: the data is in the account, not lost.
+  await expect(dialog).toContainText('sign in on any device and they come back');
   // Firebase is unreachable here, so the backup cannot be confirmed.
   await expect(dialog).toContainText('does not have your latest changes yet');
 
@@ -113,13 +113,15 @@ test('cancelling leaves the session and the data alone', async ({ page }) => {
 test('confirming clears every personal key and keeps the theme', async ({ page }) => {
   await bootSignedInCloud(page);
   await openSignOutDialog(page);
+  // The handler reloads once the wipe is done. Waiting for that load rather than
+  // polling: a read racing the navigation dies on a destroyed execution context,
+  // and it also proves the wipe outlived the reload rather than the seed simply
+  // not having been put back yet.
+  const reloaded = page.waitForEvent('load');
   await page.getByRole('button', { name: 'Sign out and clear' }).click();
+  await reloaded;
 
-  // The handler reloads once the wipe is done.
-  await page.waitForLoadState('domcontentloaded');
-  await expect
-    .poll(async () => readLocal(page, 'shohoj_cgpa_v1'), { timeout: 5000 })
-    .toBe(null);
+  expect(await readLocal(page, 'shohoj_cgpa_v1')).toBe(null);
 
   for (const key of [
     'shohoj_cgpa_backup_v1',
