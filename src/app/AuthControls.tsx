@@ -13,6 +13,7 @@ import { useConfirm } from './providers/ModalProvider';
 import type { FirebaseAuthSource } from '../platform/auth/firebaseAuthSource';
 import { createBrowserStore, createSessionStore } from '../services/storage/browserKeyValueStore';
 import { clearPersonalData } from '../services/storage/personalData';
+import { clearStoredHistory } from '../../js/core/assistantHistory.js';
 import { useNotifications } from '../state/NotificationProvider';
 
 // Signing out used to end the Firebase session and leave every semester, the
@@ -91,6 +92,12 @@ export function AuthControls({ source }: { readonly source: FirebaseAuthSource |
 
       await activeSource.signOut();
       clearPersonalData(createBrowserStore(), createSessionStore());
+      // The Assistant transcript lives in IndexedDB, which removeItem cannot
+      // reach. Legacy drops it from its own uid-change effect
+      // (js/ui/assistantFab.js:480); the shell's drawer only clears it from its
+      // "Clear chat" button, so without this the conversation — questions about
+      // their own grades — outlives the sign-out.
+      await clearStoredHistory().catch(() => false);
       // Reload rather than hand-resetting each route: the calculator, routine,
       // seats and profile views each hold their own copy in memory, and one
       // missed is the leak this fixes.
