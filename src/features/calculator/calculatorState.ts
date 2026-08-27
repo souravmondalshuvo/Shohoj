@@ -18,6 +18,7 @@ import {
   saveAcademicState,
   type LoadStatus,
 } from '../../services/storage/academicStateStore.ts';
+import { collectPersonalSlices } from '../../services/storage/personalData.ts';
 import {
   addCourse,
   blankCourse,
@@ -198,6 +199,7 @@ export function persistCalculatorState(
   store: KeyValueStore,
   state: CalculatorState,
   base?: StoredShohojStateV1 | null,
+  uid?: string | null,
 ): Result<void, StorageError> {
   const result = saveAcademicState(store, {
     ...(base ?? {}),
@@ -206,6 +208,12 @@ export function persistCalculatorState(
     startYear: state.startYear,
     currentDept: state.currentDept,
     planCourses: [...state.planCourses],
+    // The routine, seat watchlist, review receipt and profile snapshot ride in
+    // the same snapshot so the cloud copy is the whole picture, not just the
+    // calculator (#627). Each route still owns its own key locally; these are
+    // fanned back out by applyPersonalSlices when a cloud doc is adopted, and
+    // written locally too so the echo-skip fingerprint compares like with like.
+    ...collectPersonalSlices(store, uid ?? null),
   });
   // Announce the exact bytes now in the store, so the cloud copy matches local
   // (the echo-skip fingerprint compare depends on byte parity).
