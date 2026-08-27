@@ -36,6 +36,7 @@ import type {
 } from '../../features/calculator/calculatorState';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import type { KeyValueStore } from '../../services/storage/keyValueStore';
+import { useAuth } from './AuthProvider';
 
 export interface CalculatorContextValue {
   readonly state: CalculatorState;
@@ -51,6 +52,9 @@ const CalculatorContext = createContext<CalculatorContextValue | null>(null);
 export function CalculatorProvider({ children }: { readonly children: ReactNode }) {
   // One store instance for the provider's lifetime (load seed + every persist).
   const store = useMemo(() => createBrowserStore(), []);
+  // The persisted snapshot carries the signed-in student's review receipt, and
+  // that map is keyed by uid because a browser can be shared (#627).
+  const { uid } = useAuth();
   const loaded = useMemo(() => loadCalculatorState(store), [store]);
   const [state, dispatch] = useReducer(calculatorReducer, loaded.state);
 
@@ -60,8 +64,8 @@ export function CalculatorProvider({ children }: { readonly children: ReactNode 
       seeded.current = true;
       return;
     }
-    persistCalculatorState(store, state, loaded.stored);
-  }, [store, state, loaded]);
+    persistCalculatorState(store, state, loaded.stored, uid);
+  }, [store, state, loaded, uid]);
 
   const value = useMemo<CalculatorContextValue>(
     () => ({ state, dispatch, loaded, store }),
