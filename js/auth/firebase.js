@@ -35,6 +35,7 @@ import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
 import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
 import { installReviewIdentityHooks } from './review-service.js';
 import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
+import { clearPersonalData } from '../core/personalData.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 export let currentUser    = null;
@@ -586,18 +587,105 @@ export async function signInWithGoogle() {
 }
 
 // ── Sign out ──────────────────────────────────────────────────────────────────
+// Signing out used to end the Firebase session and stop there, leaving every
+// semester, the routine and the review record sitting in localStorage for
+// whoever opened the browser next — and js/main.js reads them back at boot with
+// no auth check, so a reload did not help either (#627). Sign-out now clears the
+// device, which is what a student on a lab machine already believes it does.
+//
+// The cost of getting this wrong is somebody's transcript, so the erase is
+// gated on two things: the account demonstrably holding the same data, and the
+// student saying yes to a dialog that spells out what goes.
+
+const SIGN_OUT_RELOAD_MS = 900;
+
+/** Push the debounced save through, so the last seconds of typing get a chance
+ *  to reach the account before we ask whether erasing is safe. */
+async function flushPendingCloudSave() {
+  const queued = _queuedCloudSnap;
+  if (queued) await saveToCloud(queued, { immediate: true }).catch(() => false);
+  await _activeCloudSave.catch(() => false);
+}
+
+/** Does the account hold everything this device holds?
+ *
+ * Compared by fingerprint — the same content compare startRealtimeSync uses —
+ * because shohoj_last_sync only records that a write was attempted, not that it
+ * carried what is on screen now. Every uncertainty (offline, an unreadable doc,
+ * a queued save that never landed) answers false, which turns into a warning
+ * rather than a silent erase. */
+async function cloudCopyIsCurrent() {
+  if (!currentUser) return false;
+  let local;
+  try { local = parseStoredState(localStorage.getItem(STORAGE_KEY)); } catch (e) { return false; }
+  if (!local) return true;                 // nothing on this device to lose
+  if (!navigator.onLine) return false;
+  const cloud = await loadFromCloud();
+  if (!cloud) return false;
+  return getDataFingerprint(local) === getDataFingerprint(cloud);
+}
+
 export async function signOutUser() {
   if (!auth) return;
+
+  await flushPendingCloudSave();
+  const backedUp = await cloudCopyIsCurrent();
+
+  // The routine and the "your reviews" record have no cloud copy to come back
+  // from — the routine was never synced, and review authorship is deliberately
+  // non-reversible (see _recordMyReview), so this list is the only trace. Say so
+  // rather than let a student discover it after the fact.
+  const confirmed = await showConfirmModal({
+    icon:  backedUp ? '🚪' : '⚠️',
+    title: 'Sign out and clear this device?',
+    body:
+      'Your semesters and grades are saved to your account — signing in brings them back. '
+      + 'Everything else Shohoj keeps here, including your routine and the record of reviews '
+      + 'you have written, only exists on this device and will be gone.'
+      + (backedUp
+        ? ''
+        : '<br><br><strong>Your account does not have your latest changes yet.</strong> '
+          + 'Shohoj could not save them just now, so those would be lost too.'),
+    confirmLabel:  'Sign out and clear',
+    confirmDanger: true,
+  });
+  if (!confirmed) return;
+
+  const savedHook = window._shohoj_onSave;
+  clearCloudAppliedFlag();
+  clearQueuedCloudSave(false);
+  stopRealtimeSync();
+  // Detach the cloud-save hook before anything touches state: resetting the app
+  // fires saveState(), and an empty snapshot reaching users/{uid} would destroy
+  // the backup this flow just verified (handleClearData guards the same way).
+  window._shohoj_onSave = null;
+
   try {
-    try { localStorage.removeItem(SESSION_START_KEY); } catch(e) {}
-    clearCloudAppliedFlag();
-    clearQueuedCloudSave(false);
-    stopRealtimeSync();
     await signOut(auth);
-    showToast('Signed out successfully', false, true);
   } catch (e) {
+    // The session is still live and the page stays put, so put the save hook
+    // back and leave the device alone.
     console.error('[Shohoj] Sign-out failed:', e);
+    window._shohoj_onSave = savedHook;
+    showToast('⚠ Sign-out failed — please try again', true, true);
+    return;
   }
+
+  // Past here the session is gone, so the wipe has to happen whatever else
+  // does: emptying the in-memory copy first is only there to stop a render on
+  // the way out from writing the snapshot back.
+  try {
+    if (typeof window._shohoj_resetAppState === 'function') window._shohoj_resetAppState();
+  } catch (e) {
+    console.error('[Shohoj] State reset failed on sign-out:', e);
+  }
+  clearPersonalData();
+
+  showToast('Signed out — this device is clear', false, true);
+  // Then reload rather than hand-resetting each module: the routine, seats,
+  // reviews, profile and planner tabs each hold their own copy in memory, and
+  // one missed is the leak this fixes.
+  setTimeout(() => window.location.reload(), SIGN_OUT_RELOAD_MS);
 }
 
 // ── Google One Tap ────────────────────────────────────────────────────────────
