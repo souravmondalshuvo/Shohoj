@@ -9,8 +9,11 @@
 // on one side keeps leaking on the other. tests/personalDataDrift.test.js
 // asserts the two lists agree, key for key, in order.
 
-import { STORAGE_KEY } from '../cloudSync/cloudSyncEngine.ts';
-import { LEGACY_BACKUP_KEY } from '../../core/types/storage.ts';
+// Both from the schema module rather than cloudSync/cloudSyncEngine.ts, which
+// re-exports STORAGE_KEY: the engine imports this file to fan an adopted
+// snapshot out, and taking the constant from there would close a cycle that
+// dies in the temporal dead zone at module init.
+import { LEGACY_BACKUP_KEY, STORAGE_KEY } from '../../core/types/storage.ts';
 import { MY_REVIEWS_KEY } from '../../features/calculator/myReviewsReceipt.ts';
 import type { KeyValueStore } from './keyValueStore.ts';
 
@@ -77,4 +80,164 @@ export function clearPersonalData(local: KeyValueStore, session: KeyValueStore):
   removeAll(local, PERSONAL_LOCAL_KEYS);
   removeAll(local, SYNC_LOCAL_KEYS);
   removeAll(session, PERSONAL_SESSION_KEYS);
+}
+
+// ── Cross-device slices ──────────────────────────────────────────────────────
+// The shell's half of the same contract as js/core/personalData.js: what rides
+// along in the cloud snapshot beyond the calculator, so signing in on another
+// device restores the whole picture rather than just semesters and grades
+// (#627). Field names are drift-guarded against the legacy copy — a mismatch
+// here would not fail anything, it would just quietly stop syncing.
+
+/** The snapshot fields these functions own. Compared across both copies. */
+export const PERSONAL_SLICE_FIELDS: readonly string[] = [
+  'routine',
+  'myReviews',
+  'seatWatches',
+  'seatAlertsEnabled',
+  'profileSnapshot',
+];
+
+const ROUTINE_KEYS = ['shohoj_routine_v1', 'shohoj_routine_picks_v1'] as const;
+const SEAT_ALERTS_KEY = 'shohoj_seat_alerts_enabled';
+const PROFILE_KEY = 'shohoj_connect_profile_v1';
+
+// Caps mirror the legacy copy: MAX_WATCHES is 50 in src/core/seatWatch.ts.
+const MAX_PICKS = 40;
+const MAX_WATCHES = 50;
+const MAX_REVIEWS = 200;
+
+export interface PersonalSlices {
+  routine?: { picks: Record<string, number | null> };
+  myReviews?: readonly unknown[];
+  seatWatches?: readonly unknown[];
+  seatAlertsEnabled?: boolean;
+  profileSnapshot?: Record<string, unknown>;
+}
+
+function readJson(store: KeyValueStore, key: string): unknown {
+  try {
+    const raw = store.getItem(key);
+    return raw ? (JSON.parse(raw) as unknown) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(store: KeyValueStore, key: string, value: unknown): void {
+  try {
+    store.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage off */
+  }
+}
+
+/** `{ picks: { COURSECODE: sectionId|null } }` — both builds, both keys. */
+function cleanRoutine(value: unknown): PersonalSlices['routine'] | null {
+  if (value === null || typeof value !== 'object') return null;
+  const source = (value as { picks?: unknown }).picks;
+  if (source === null || typeof source !== 'object') return null;
+  const picks: Record<string, number | null> = {};
+  let count = 0;
+  for (const [code, sectionId] of Object.entries(source as Record<string, unknown>)) {
+    if (count >= MAX_PICKS) break;
+    if (sectionId !== null && !(typeof sectionId === 'number' && Number.isFinite(sectionId))) {
+      continue;
+    }
+    picks[code.toUpperCase()] = sectionId as number | null;
+    count += 1;
+  }
+  return { picks };
+}
+
+function readRoutine(store: KeyValueStore): PersonalSlices['routine'] | null {
+  for (const key of ROUTINE_KEYS) {
+    const routine = cleanRoutine(readJson(store, key));
+    if (routine) return routine;
+  }
+  return null;
+}
+
+/**
+ * What this device holds beyond the calculator. An absent slice stays absent
+ * rather than becoming an empty one: a doc written before these fields existed
+ * must not read as "this student has no routine" and wipe a newer device's.
+ */
+export function collectPersonalSlices(store: KeyValueStore, uid: string | null): PersonalSlices {
+  const slices: PersonalSlices = {};
+
+  const routine = readRoutine(store);
+  if (routine) slices.routine = routine;
+
+  // The receipt is a uid-keyed map on a browser several students may share.
+  if (uid !== null) {
+    const all = readJson(store, MY_REVIEWS_KEY);
+    const mine =
+      all !== null && typeof all === 'object' ? (all as Record<string, unknown>)[uid] : null;
+    if (Array.isArray(mine)) slices.myReviews = mine.slice(0, MAX_REVIEWS);
+  }
+
+  const watches = readJson(store, SEAT_WATCH_KEY);
+  if (Array.isArray(watches)) slices.seatWatches = watches.slice(0, MAX_WATCHES);
+
+  const pref = store.getItem(SEAT_ALERTS_KEY);
+  // seatsTab treats anything but '0' as on; keep that reading.
+  if (pref !== null) slices.seatAlertsEnabled = pref !== '0';
+
+  const profile = readJson(store, PROFILE_KEY);
+  if (profile !== null && typeof profile === 'object') {
+    slices.profileSnapshot = profile as Record<string, unknown>;
+  }
+
+  return slices;
+}
+
+/**
+ * Fan an adopted cloud snapshot back out to the keys each route reads. A slice
+ * the snapshot does not carry is left alone (see collectPersonalSlices).
+ */
+export function applyPersonalSlices(
+  store: KeyValueStore,
+  snapshot: unknown,
+  uid: string | null,
+): void {
+  if (snapshot === null || typeof snapshot !== 'object') return;
+  const snap = snapshot as Record<string, unknown>;
+
+  const routine = cleanRoutine(snap.routine);
+  // Both keys on purpose: a student who uses the shell on one device and legacy
+  // on another has one routine, not two.
+  if (routine) for (const key of ROUTINE_KEYS) writeJson(store, key, routine);
+
+  if (uid !== null && Array.isArray(snap.myReviews)) {
+    const all = readJson(store, MY_REVIEWS_KEY);
+    const merged: Record<string, unknown> =
+      all !== null && typeof all === 'object' ? { ...(all as Record<string, unknown>) } : {};
+    merged[uid] = snap.myReviews
+      .filter((entry) => entry !== null && typeof entry === 'object')
+      .slice(0, MAX_REVIEWS);
+    writeJson(store, MY_REVIEWS_KEY, merged);
+  }
+
+  if (Array.isArray(snap.seatWatches)) {
+    writeJson(
+      store,
+      SEAT_WATCH_KEY,
+      snap.seatWatches
+        .filter((watch) => watch !== null && typeof watch === 'object')
+        .slice(0, MAX_WATCHES),
+    );
+  }
+
+  if (typeof snap.seatAlertsEnabled === 'boolean') {
+    try {
+      store.setItem(SEAT_ALERTS_KEY, snap.seatAlertsEnabled ? '1' : '0');
+    } catch {
+      /* storage off */
+    }
+  }
+
+  if (snap.profileSnapshot !== null && typeof snap.profileSnapshot === 'object') {
+    writeJson(store, PROFILE_KEY, snap.profileSnapshot);
+  }
 }
