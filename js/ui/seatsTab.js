@@ -23,6 +23,7 @@ import {
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, FEED_LIVE_POLL_MS } from './feedLive.js';
+import { saveState } from '../core/state.js';
 
 // Cap on rendered course groups so a 1-letter query doesn't paint the whole
 // catalog; a note tells the student when results were trimmed.
@@ -109,6 +110,9 @@ if (_seats.watches.length > 0) _seatsGoLive();
 // ── SEAT-DROP WATCH ───────────────────────────────────────────────────────────
 function _seatsSaveWatches() {
   try { localStorage.setItem(SEAT_WATCH_STORAGE_KEY, serializeWatches(_seats.watches)); } catch { /* storage off */ }
+  // Also into the cloud snapshot, so the watchlist follows the student to
+  // another device instead of only reaching the alert Worker (#627).
+  saveState();
 }
 
 // Mirror the watched-section *set* to Firestore (when signed in) so the cron
@@ -127,6 +131,7 @@ function _seatsSyncCloud() {
 // ── Seat-alert preference (driven by the Profile account hub) ──────────────────
 function _seatsSaveAlertPref() {
   try { localStorage.setItem(SEAT_ALERT_PREF_KEY, _seats.alertsEnabled ? '1' : '0'); } catch { /* storage off */ }
+  saveState();
 }
 
 // Cross-module reads for the Profile tab, exposed as globals to avoid a circular
