@@ -42,6 +42,9 @@ function persistAcademicProfile(data) {
       savedAt: Date.now(),
     };
     localStorage.setItem(PROFILE_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    // Into the cloud snapshot too, so the Profile card is not blank on the next
+    // device the student signs in on (#627).
+    saveState();
   } catch { /* storage unavailable — the Profile card just shows its empty state */ }
 }
 
