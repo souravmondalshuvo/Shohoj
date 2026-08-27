@@ -35,6 +35,7 @@ import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routin
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
+import { saveState } from '../core/state.js';
 
 // Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
 // js/core/state.js's STORAGE_KEY once build3.py concatenates every module
@@ -124,6 +125,10 @@ function _restoreRoutine() {
 function _persistRoutine() {
   try { localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(_store.routine)); }
   catch {}
+  // The routine travels in the cloud snapshot now (#627). Picking a section
+  // touches no calculator state, so without this nothing would ever push it and
+  // the routine would still be stranded on one device.
+  saveState();
 }
 
 // Read a `?routine=…` shared-link payload once at startup and strip it from the
