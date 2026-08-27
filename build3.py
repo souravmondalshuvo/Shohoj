@@ -39,6 +39,10 @@ MAIN_JS_FILES = [
     'js/core/helpers.js',
     'js/core/dispatch.js',
     'js/core/state.js',
+    # What Shohoj stores on the device + the wipes over it. Also listed in
+    # FIREBASE_JS_FILES below — that bundle is a separate type="module" script
+    # and cannot see this scope, so both carry a copy of the one source file.
+    'js/core/personalData.js',
     'js/core/departments.js',
     # Campus directory for the sign-in portal (display data only; drift-guarded
     # against src/core/university.ts by tests/universityDirectory.test.js)
@@ -165,6 +169,8 @@ PROFILE_JS_FILES = [
 # before firebase.js so the deploy output stays self-contained.
 FIREBASE_JS_FILES = [
     'js/auth/firebase-init.js',
+    # Sign-out clears the device (#627) from the same key list js/main.js uses.
+    'js/core/personalData.js',
     'js/auth/admin-service.js',
     'js/auth/assistant-service.js',
     'js/auth/auth-service.js',
