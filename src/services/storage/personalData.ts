@@ -75,6 +75,52 @@ function removeAll(store: KeyValueStore, keys: readonly string[]): void {
   }
 }
 
+// ── Devices the old sign-out already left dirty ──────────────────────────────
+// Before #627, signing out ended the Firebase session and left everything in
+// localStorage. Those devices are still out there, and the wipe below cannot
+// help them: it runs at sign-out, and nobody signs out twice.
+//
+// They are identifiable, though. The old sign-out removed `shohoj_session_start`
+// but left `shohoj_last_sync` behind, so a device carrying last-sync WITHOUT a
+// session start was signed in once and signed out under the old code. A visitor
+// who never signed in has neither, which keeps this off the local-first path
+// that has always been Shohoj's default — their data is not ours to delete.
+//
+// A live session has BOTH — on the LEGACY build, which writes session start at
+// sign-in (js/auth/firebase.js) and keeps it across reloads.
+//
+// !! The shell does NOT write `shohoj_session_start` at all. Nothing in src/
+// sets it, so a signed-in shell student has last-sync with no session start and
+// matches this predicate exactly like an abandoned device does. That is why the
+// shell calls this only from a path where auth has ALREADY resolved to signed
+// out — never at boot, where it would wipe live sessions on every load. An
+// e2e caught precisely that (e2e-shell/sign-out-clears-device.spec.js).
+//
+// Wiring this into the shell's boot means first making the shell write
+// `shohoj_session_start` on sign-in, and reckoning with every student who is
+// already signed in without one.
+export function hasStaleSignedOutData(local: KeyValueStore): boolean {
+  try {
+    return (
+      local.getItem('shohoj_last_sync') !== null && local.getItem('shohoj_session_start') === null
+    );
+  } catch {
+    return false; // storage unreachable — nothing to read, nothing to clear
+  }
+}
+
+/** Clear a pre-#627 leftover. True only once the residue is provably gone.
+ *
+ * The return value gates the caller's reload, and it is checked rather than
+ * assumed: a store that refuses removeItem would otherwise leave the residue in
+ * place, keep this predicate true, and reload the page forever.
+ */
+export function clearStaleSignedOutData(local: KeyValueStore, session: KeyValueStore): boolean {
+  if (!hasStaleSignedOutData(local)) return false;
+  clearPersonalData(local, session);
+  return !hasStaleSignedOutData(local);
+}
+
 /** Sign-out's wipe: the student's data goes, their theme stays. */
 export function clearPersonalData(local: KeyValueStore, session: KeyValueStore): void {
   removeAll(local, PERSONAL_LOCAL_KEYS);
