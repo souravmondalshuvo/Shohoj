@@ -264,7 +264,11 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
     async isCloudCurrent() {
       if (uid === null) return false;
       const localRaw = ports.local.getItem(STORAGE_KEY);
-      if (parseStoredState(localRaw) === null) return true; // nothing here to lose
+      if (localRaw === null) return true; // nothing here to lose
+      // Present but unreadable is not the same as absent: a snapshot truncated
+      // by a quota error is still the only copy of something, and calling it
+      // backed up would erase it under the reassuring half of the dialog.
+      if (parseStoredState(localRaw) === null) return false;
 
       const pending = queuedSnapshot;
       if (pending !== null) {
