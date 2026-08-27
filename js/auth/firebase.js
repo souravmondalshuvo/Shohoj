@@ -616,18 +616,36 @@ async function flushPendingCloudSave() {
  * rather than a silent erase. */
 async function cloudCopyIsCurrent() {
   if (!currentUser) return false;
-  let local;
-  try { local = parseStoredState(localStorage.getItem(STORAGE_KEY)); } catch (e) { return false; }
-  if (!local) return true;                 // nothing on this device to lose
+  let raw;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { return false; }
+  if (!raw) return true;                   // nothing on this device to lose
+  // Present but unreadable is not the same as absent: a snapshot truncated by a
+  // quota error is still the only copy of something, and claiming it is backed
+  // up would erase it under the reassuring half of the dialog.
+  const local = parseStoredState(raw);
+  if (!local) return false;
   if (!navigator.onLine) return false;
   const cloud = await loadFromCloud();
   if (!cloud) return false;
   return getDataFingerprint(local) === getDataFingerprint(cloud);
 }
 
-export async function signOutUser() {
-  if (!auth) return;
+// The backup check can sit on a Firebase call for several seconds, during which
+// the button looks dead and invites a second click — which would stack a second
+// dialog over the first.
+let _signOutInFlight = false;
 
+export async function signOutUser() {
+  if (!auth || _signOutInFlight) return;
+  _signOutInFlight = true;
+  try {
+    await runSignOut();
+  } finally {
+    _signOutInFlight = false;
+  }
+}
+
+async function runSignOut() {
   await flushPendingCloudSave();
   const backedUp = await cloudCopyIsCurrent();
 
