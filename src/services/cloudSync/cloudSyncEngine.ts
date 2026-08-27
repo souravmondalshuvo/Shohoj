@@ -23,6 +23,7 @@ import {
   type MigrationChoice,
 } from '../storage/syncDecision.ts';
 import { getDataFingerprint, parseStoredState } from '../storage/userSync.ts';
+import { applyPersonalSlices } from '../storage/personalData.ts';
 import type { UserDocRepo } from '../../platform/firebase/userDocRepo.ts';
 
 export const STORAGE_KEY = 'shohoj_cgpa_v1';
@@ -143,6 +144,10 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
 
       ports.session.setItem(CLOUD_APPLIED_FLAG, '1');
       ports.local.setItem(STORAGE_KEY, data);
+      // The routine, watchlist, review receipt and profile travel in the same
+      // doc; fan them out to their own keys before applyRemote reloads, or the
+      // routes that read those keys boot on the other device's copy (#627).
+      applyPersonalSlices(ports.local, parseStoredState(data), uid);
       ports.notify('info', REMOTE_UPDATE_MESSAGE);
       setTimeout(() => ports.applyRemote(), remoteApplyDelayMs);
     });
@@ -154,6 +159,9 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
     ports.session.setItem(CLOUD_APPLIED_FLAG, '1');
     ports.session.setItem(SKIP_FIRST_SAVE_FLAG, '1');
     ports.local.setItem(STORAGE_KEY, JSON.stringify(cloudParsed));
+    // Same fan-out as the realtime path — this is the sign-in branch where the
+    // cloud copy wins, so it is the one that has to restore a new device.
+    applyPersonalSlices(ports.local, cloudParsed, uid);
     ports.applyRemote();
   };
 
