@@ -8,8 +8,30 @@
 import { useEffect } from 'react';
 
 import { useAuth } from './providers/AuthProvider';
+import { useCloudSync } from './providers/CloudSyncProvider';
+import { useConfirm } from './providers/ModalProvider';
 import type { FirebaseAuthSource } from '../platform/auth/firebaseAuthSource';
+import { createBrowserStore, createSessionStore } from '../services/storage/browserKeyValueStore';
+import { clearPersonalData } from '../services/storage/personalData';
 import { useNotifications } from '../state/NotificationProvider';
+
+// Signing out used to end the Firebase session and leave every semester, the
+// routine and the review record in localStorage for whoever opened the browser
+// next (#627). It now clears the device — which is what a student on a lab
+// machine already believes it does — behind a dialog that says so first.
+//
+// The routine and the "your reviews" record have no cloud copy to come back
+// from: the routine was never synced, and review authorship is deliberately
+// non-reversible, so that list is the only trace. The copy says as much rather
+// than let a student find out afterwards.
+const SIGN_OUT_MESSAGE =
+  'Your semesters and grades are saved to your account — signing in brings them back. ' +
+  'Everything else Shohoj keeps here, including your routine and the record of reviews ' +
+  'you have written, only exists on this device and will be gone.';
+
+const SIGN_OUT_UNSYNCED =
+  'Your account does not have your latest changes yet — Shohoj could not save them just now, ' +
+  'so those would be lost too.';
 
 // The person glyph legacy prefixes to its signed-out pill.
 //
@@ -42,6 +64,29 @@ function PersonIcon() {
 export function AuthControls({ source }: { readonly source: FirebaseAuthSource | null }) {
   const auth = useAuth();
   const { notify } = useNotifications();
+  const confirm = useConfirm();
+  const cloudSync = useCloudSync();
+
+  const signOutAndClear = async (activeSource: FirebaseAuthSource) => {
+    // No engine means no way to check, which reads as "not confirmed" — the
+    // warning is the safe side of that guess.
+    const backedUp = cloudSync !== null && (await cloudSync.isCloudCurrent());
+    const confirmed = await confirm({
+      title: 'Sign out and clear this device?',
+      message: backedUp ? SIGN_OUT_MESSAGE : `${SIGN_OUT_MESSAGE} ${SIGN_OUT_UNSYNCED}`,
+      confirmLabel: 'Sign out and clear',
+      cancelLabel: 'Cancel',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    await activeSource.signOut();
+    clearPersonalData(createBrowserStore(), createSessionStore());
+    // Reload rather than hand-resetting each route: the calculator, routine,
+    // seats and profile views each hold their own copy in memory, and one
+    // missed is the leak this fixes.
+    if (typeof window !== 'undefined') window.location.reload();
+  };
 
   // Rejection / sign-in-failure events → the legacy toast copy (sticky error).
   useEffect(() => {
@@ -66,7 +111,11 @@ export function AuthControls({ source }: { readonly source: FirebaseAuthSource |
         <span className="shell-auth-email" title={auth.email ?? undefined}>
           {auth.email ?? 'Signed in'}
         </span>
-        <button type="button" className="shell-auth-btn" onClick={() => void source.signOut()}>
+        <button
+          type="button"
+          className="shell-auth-btn"
+          onClick={() => void signOutAndClear(source)}
+        >
           Sign out
         </button>
       </span>
