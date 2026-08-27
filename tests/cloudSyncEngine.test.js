@@ -284,3 +284,84 @@ test('stop() detaches the listener, clears queued saves and the applied flag', a
   await new Promise((r) => setTimeout(r, 60));
   assert.deepEqual(h.state.saved, []); // the queued save was cancelled
 });
+
+// ── isCloudCurrent: the gate on sign-out's device wipe (#627) ─────────────────
+// Sign-out erases the device, so a wrong "yes" here costs somebody's transcript.
+// Every branch that cannot prove the account holds this device's data must
+// answer false, and a pending debounced save must get its chance first.
+
+test('isCloudCurrent: true when the account holds the same data', async () => {
+  const same = snap([{ id: 1 }], { currentDept: 'CSE' });
+  const h = harness({ local: { [STORAGE_KEY]: same }, cloud: same });
+  await h.engine.start('u1');
+  assert.equal(await h.engine.isCloudCurrent(), true);
+});
+
+test('isCloudCurrent: true when the device holds nothing to lose', async () => {
+  const h = harness({ cloud: snap([{ id: 1 }]) });
+  await h.engine.start('u1');
+  assert.equal(await h.engine.isCloudCurrent(), true);
+});
+
+test('isCloudCurrent: false when the cloud copy is stale', async () => {
+  const same = snap([{ id: 1 }]);
+  const h = harness({ local: { [STORAGE_KEY]: same }, cloud: same });
+  await h.engine.start('u1');
+  await flush();
+
+  // A local write whose cloud save never happened — the debounce was cancelled,
+  // the tab was offline at the time, whatever. Nothing is queued to flush, so
+  // only the content compare can tell that the account is behind.
+  h.localStore.setItem(STORAGE_KEY, snap([{ id: 1 }, { id: 2 }]));
+  assert.equal(await h.engine.isCloudCurrent(), false);
+});
+
+test('isCloudCurrent: false when the account has no doc at all', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([{ id: 1 }]) } });
+  await h.engine.start('u1');
+  await flush();
+  h.state.cloud = null; // doc deleted from another device
+  assert.equal(await h.engine.isCloudCurrent(), false);
+});
+
+test('isCloudCurrent: false when offline', async () => {
+  const same = snap([{ id: 1 }]);
+  const h = harness({ local: { [STORAGE_KEY]: same }, cloud: same, online: false });
+  await h.engine.start('u1');
+  assert.equal(await h.engine.isCloudCurrent(), false);
+});
+
+test('isCloudCurrent: false while signed out', async () => {
+  const h = harness({ local: { [STORAGE_KEY]: snap([{ id: 1 }]) } });
+  assert.equal(await h.engine.isCloudCurrent(), false);
+});
+
+test('isCloudCurrent: pushes the debounced save through before answering', async () => {
+  const first = snap([{ id: 1 }]);
+  const h = harness({ local: { [STORAGE_KEY]: first }, cloud: first });
+  await h.engine.start('u1');
+  await flush();
+
+  // Typed seconds ago — still sitting in the debounce window, not in the cloud.
+  const typed = snap([{ id: 1 }, { id: 2 }]);
+  h.localStore.setItem(STORAGE_KEY, typed);
+  h.engine.queueSave(typed);
+
+  assert.equal(await h.engine.isCloudCurrent(), true);
+  assert.equal(h.state.cloud, typed); // flushed rather than dropped
+});
+
+test('isCloudCurrent: false when the flushed save cannot land', async () => {
+  const first = snap([{ id: 1 }]);
+  const h = harness({ local: { [STORAGE_KEY]: first }, cloud: first });
+  await h.engine.start('u1');
+  await flush();
+
+  const typed = snap([{ id: 1 }, { id: 2 }]);
+  h.localStore.setItem(STORAGE_KEY, typed);
+  h.engine.queueSave(typed);
+  h.state.failSave = true;
+
+  assert.equal(await h.engine.isCloudCurrent(), false);
+  assert.equal(h.state.cloud, first); // the account still has the older copy
+});
