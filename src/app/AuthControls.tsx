@@ -21,18 +21,15 @@ import { useNotifications } from '../state/NotificationProvider';
 // next (#627). It now clears the device — which is what a student on a lab
 // machine already believes it does — behind a dialog that says so first.
 //
-// The routine and the "your reviews" record have no cloud copy to come back
-// from: the routine was never synced, and review authorship is deliberately
-// non-reversible, so that list is the only trace. The copy says as much rather
-// than let a student find out afterwards.
+// Everything named here rides in the cloud snapshot now (#627), so this is a
+// promise the restore path has to keep — see applyPersonalSlices.
 const SIGN_OUT_MESSAGE =
-  'Your semesters and grades are saved to your account — signing in brings them back. ' +
-  'Everything else Shohoj keeps here, including your routine and the record of reviews ' +
-  'you have written, only exists on this device and will be gone.';
+  'Shohoj will remove your semesters, routine, watchlist and profile from this device. ' +
+  'They stay in your account — sign in on any device and they come back.';
 
 const SIGN_OUT_UNSYNCED =
   'Your account does not have your latest changes yet — Shohoj could not save them just now, ' +
-  'so those would be lost too.';
+  'so those changes would be lost.';
 
 // The person glyph legacy prefixes to its signed-out pill.
 //
