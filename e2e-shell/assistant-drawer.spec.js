@@ -136,10 +136,31 @@ test('signed in: example prompt round-trips through the endpoint with the bearer
     messages: [{ role: 'user', content: 'What GPA do I need to reach a 3.5 CGPA?' }],
   });
 
-  // Closing resets the stateless transcript (documented v1 limitation).
+  // Reopening restores the conversation from the device.
+  //
+  // This block used to assert the opposite — that closing reset the transcript —
+  // which was true when the drawer held it in component state. #543 moved it to
+  // IndexedDB and this assertion was never updated, so it has been passing on a
+  // race ever since: toHaveCount(0) succeeds the instant it observes an empty
+  // log, which is before the async hydrate lands. A fast runner sees the
+  // restored bubbles first and fails, three times on 2026-08-27, once blocking a
+  // deploy. Waiting for content to APPEAR cannot race — Playwright retries until
+  // it does — where waiting for absence passes spuriously on anything async.
   await drawer.getByRole('button', { name: 'Close assistant' }).click();
   await expect(drawer).toHaveCount(0);
   await fab.click();
+  await expect(page.locator('.assistant-bubble--user')).toHaveText(
+    'What GPA do I need to reach a 3.5 CGPA?',
+  );
+  await expect(page.locator('.assistant-bubble--reply')).toHaveText(
+    'You need a 3.8 average on your next 12 credits.',
+  );
+  // Restored from IndexedDB, not re-fetched: the endpoint was never called again.
+  expect(requests).toHaveLength(1);
+
+  // Clear chat is the reset, and the only one — a device-local record with no
+  // visible delete is a record the student cannot get rid of (#543).
+  await page.getByRole('button', { name: 'Clear chat history' }).click();
   await expect(page.locator('.assistant-bubble')).toHaveCount(0);
 });
 
