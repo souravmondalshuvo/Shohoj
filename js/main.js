@@ -119,6 +119,10 @@ window._shohoj_setSemesters = function(semesters) {
   recalc();
   saveState();
 };
+// js/auth/firebase.js is a separate module bundle and cannot import this;
+// it calls through here when it writes something that belongs in the
+// cloud snapshot (a review receipt) without touching calculator state.
+window._shohoj_saveState = saveState;
 window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
 // The catalog list (code/name/full/credits) for the island's autocomplete. The
 // data stays in JS; the island reads it through this bridge and matches with the
