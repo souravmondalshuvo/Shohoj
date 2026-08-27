@@ -5,7 +5,7 @@
 // and sign-in-failure events surface as the legacy toast copy, and offline
 // builds (null source) render no auth UI at all.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAuth } from './providers/AuthProvider';
 import { useCloudSync } from './providers/CloudSyncProvider';
@@ -67,25 +67,37 @@ export function AuthControls({ source }: { readonly source: FirebaseAuthSource |
   const confirm = useConfirm();
   const cloudSync = useCloudSync();
 
-  const signOutAndClear = async (activeSource: FirebaseAuthSource) => {
-    // No engine means no way to check, which reads as "not confirmed" — the
-    // warning is the safe side of that guess.
-    const backedUp = cloudSync !== null && (await cloudSync.isCloudCurrent());
-    const confirmed = await confirm({
-      title: 'Sign out and clear this device?',
-      message: backedUp ? SIGN_OUT_MESSAGE : `${SIGN_OUT_MESSAGE} ${SIGN_OUT_UNSYNCED}`,
-      confirmLabel: 'Sign out and clear',
-      cancelLabel: 'Cancel',
-      danger: true,
-    });
-    if (!confirmed) return;
+  // The backup check can sit on a Firebase call for several seconds, during
+  // which the button would otherwise look dead and invite a second click. A
+  // second confirm() replaces the first in ModalProvider, dropping its resolve
+  // and leaving that flow suspended for the life of the page.
+  const [signingOut, setSigningOut] = useState(false);
 
-    await activeSource.signOut();
-    clearPersonalData(createBrowserStore(), createSessionStore());
-    // Reload rather than hand-resetting each route: the calculator, routine,
-    // seats and profile views each hold their own copy in memory, and one
-    // missed is the leak this fixes.
-    if (typeof window !== 'undefined') window.location.reload();
+  const signOutAndClear = async (activeSource: FirebaseAuthSource) => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      // No engine means no way to check, which reads as "not confirmed" — the
+      // warning is the safe side of that guess.
+      const backedUp = cloudSync !== null && (await cloudSync.isCloudCurrent());
+      const confirmed = await confirm({
+        title: 'Sign out and clear this device?',
+        message: backedUp ? SIGN_OUT_MESSAGE : `${SIGN_OUT_MESSAGE} ${SIGN_OUT_UNSYNCED}`,
+        confirmLabel: 'Sign out and clear',
+        cancelLabel: 'Cancel',
+        danger: true,
+      });
+      if (!confirmed) return;
+
+      await activeSource.signOut();
+      clearPersonalData(createBrowserStore(), createSessionStore());
+      // Reload rather than hand-resetting each route: the calculator, routine,
+      // seats and profile views each hold their own copy in memory, and one
+      // missed is the leak this fixes.
+      if (typeof window !== 'undefined') window.location.reload();
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   // Rejection / sign-in-failure events → the legacy toast copy (sticky error).
@@ -111,10 +123,14 @@ export function AuthControls({ source }: { readonly source: FirebaseAuthSource |
         <span className="shell-auth-email" title={auth.email ?? undefined}>
           {auth.email ?? 'Signed in'}
         </span>
+        {/* Label unchanged while busy: aria-busy carries the state without
+            renaming the control mid-flow. */}
         <button
           type="button"
           className="shell-auth-btn"
           onClick={() => void signOutAndClear(source)}
+          disabled={signingOut}
+          aria-busy={signingOut}
         >
           Sign out
         </button>
