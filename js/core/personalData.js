@@ -95,3 +95,151 @@ export function clearAllShohojData() {
   clearPersonalData();
   removeLocalKeys(PREFERENCE_LOCAL_KEYS);
 }
+
+// ── Cross-device slices ───────────────────────────────────────────────────────
+// The cloud doc (users/{uid}.data) used to carry the calculator and nothing
+// else: semesters, grades, the plan. Everything else a student built up — their
+// routine, the seat watchlist, the reviews they wrote, the transcript-derived
+// profile — lived on one device and died with it. That is what made clearing
+// the device on sign-out a real loss, and what made "sign in on your phone" a
+// half-truth (#627).
+//
+// These slices ride along in the same snapshot, so the sync machinery carries
+// them for free: one doc, one fingerprint, one conflict prompt. Nothing here
+// invents a second sync path.
+//
+// Every name in this file is prefixed because build3.py flattens both bundles
+// into one scope each, and MY_REVIEWS_KEY / PROFILE_SNAPSHOT_KEY are already
+// taken in the same scopes by js/auth/firebase.js and js/ui/modals.js.
+/** The snapshot fields these functions own. Drift-guarded against the shell's
+ *  copy — a mismatch here fails nothing, it just quietly stops syncing. */
+export const PERSONAL_SLICE_FIELDS = [
+  'routine',
+  'myReviews',
+  'seatWatches',
+  'seatAlertsEnabled',
+  'profileSnapshot',
+];
+
+const PD_ROUTINE_KEYS   = ['shohoj_routine_v1', 'shohoj_routine_picks_v1'];
+const PD_MY_REVIEWS_KEY = 'shohoj_my_reviews_v1';
+const PD_SEAT_WATCH_KEY = 'shohoj_seat_watch_v1';
+const PD_SEAT_ALERTS_KEY = 'shohoj_seat_alerts_enabled';
+const PD_PROFILE_KEY    = 'shohoj_connect_profile_v1';
+
+// Caps, so a doc that has been tampered with cannot make the app chew through
+// an unbounded list on restore. MAX_WATCHES in js/core/seatWatch.js is 50.
+const PD_MAX_PICKS   = 40;
+const PD_MAX_WATCHES = 50;
+const PD_MAX_REVIEWS = 200;
+
+function pdReadJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function pdWriteJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+
+/** `{ picks: { COURSECODE: sectionId|null } }` or null. Both builds store the
+ *  same shape under different keys (see the note on PERSONAL_LOCAL_KEYS). */
+function pdCleanRoutine(value) {
+  if (!value || typeof value !== 'object') return null;
+  const source = value.picks;
+  if (!source || typeof source !== 'object') return null;
+  const picks = {};
+  let count = 0;
+  for (const [code, sectionId] of Object.entries(source)) {
+    if (count >= PD_MAX_PICKS) break;
+    if (typeof code !== 'string') continue;
+    if (sectionId !== null && !(typeof sectionId === 'number' && isFinite(sectionId))) continue;
+    picks[code.toUpperCase()] = sectionId;
+    count += 1;
+  }
+  return { picks };
+}
+
+/** Read the routine from whichever key this build writes. */
+function pdReadRoutine() {
+  for (const key of PD_ROUTINE_KEYS) {
+    const routine = pdCleanRoutine(pdReadJson(key));
+    if (routine) return routine;
+  }
+  return null;
+}
+
+/** What this device holds beyond the calculator, ready to ride along in the
+ *  cloud snapshot. A slice that is absent stays absent rather than becoming an
+ *  empty one: an older client's doc must not read as "this student has no
+ *  routine" and wipe a newer client's. */
+export function collectPersonalSlices(uid) {
+  const slices = {};
+
+  const routine = pdReadRoutine();
+  if (routine) slices.routine = routine;
+
+  // The local receipt is keyed by uid (one browser, several students). Only the
+  // signed-in student's own slice belongs in their own doc.
+  if (uid) {
+    const all = pdReadJson(PD_MY_REVIEWS_KEY);
+    const mine = all && typeof all === 'object' ? all[uid] : null;
+    if (Array.isArray(mine)) slices.myReviews = mine.slice(0, PD_MAX_REVIEWS);
+  }
+
+  const watches = pdReadJson(PD_SEAT_WATCH_KEY);
+  if (Array.isArray(watches)) slices.seatWatches = watches.slice(0, PD_MAX_WATCHES);
+
+  try {
+    const pref = localStorage.getItem(PD_SEAT_ALERTS_KEY);
+    // seatsTab treats anything but '0' as on; keep that reading.
+    if (pref !== null) slices.seatAlertsEnabled = pref !== '0';
+  } catch (e) { /* storage off */ }
+
+  const profile = pdReadJson(PD_PROFILE_KEY);
+  if (profile && typeof profile === 'object') slices.profileSnapshot = profile;
+
+  return slices;
+}
+
+/** Fan an adopted cloud snapshot back out to the keys each module reads.
+ *
+ * Called wherever a cloud doc becomes this device's copy. A slice the snapshot
+ * does not carry is left alone — that is a doc written before these fields
+ * existed, not a student with nothing. */
+export function applyPersonalSlices(snapshot, uid) {
+  if (!snapshot || typeof snapshot !== 'object') return;
+
+  const routine = pdCleanRoutine(snapshot.routine);
+  // Written to both routine keys on purpose: a student who uses the shell on
+  // one device and legacy on another has one routine, not two.
+  if (routine) PD_ROUTINE_KEYS.forEach(key => pdWriteJson(key, routine));
+
+  if (uid && Array.isArray(snapshot.myReviews)) {
+    const all = pdReadJson(PD_MY_REVIEWS_KEY);
+    const merged = (all && typeof all === 'object') ? all : {};
+    merged[uid] = snapshot.myReviews
+      .filter(entry => entry && typeof entry === 'object')
+      .slice(0, PD_MAX_REVIEWS);
+    pdWriteJson(PD_MY_REVIEWS_KEY, merged);
+  }
+
+  if (Array.isArray(snapshot.seatWatches)) {
+    pdWriteJson(
+      PD_SEAT_WATCH_KEY,
+      snapshot.seatWatches.filter(w => w && typeof w === 'object').slice(0, PD_MAX_WATCHES),
+    );
+  }
+
+  if (typeof snapshot.seatAlertsEnabled === 'boolean') {
+    try {
+      localStorage.setItem(PD_SEAT_ALERTS_KEY, snapshot.seatAlertsEnabled ? '1' : '0');
+    } catch (e) { /* storage off */ }
+  }
+
+  if (snapshot.profileSnapshot && typeof snapshot.profileSnapshot === 'object') {
+    pdWriteJson(PD_PROFILE_KEY, snapshot.profileSnapshot);
+  }
+}
