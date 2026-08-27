@@ -89,3 +89,35 @@ test('the spelled-out seat-watch key still matches src/core/seatWatch.ts', () =>
     `seatWatch.ts stores under '${declared[1]}', which sign-out does not clear`,
   );
 });
+
+test('the stale-device predicate agrees between the legacy bundle and the shell', () => {
+  // Same matrix, both copies: a predicate that drifts would either keep leaking
+  // on one build or start deleting data it has no business touching.
+  const cases = [
+    { name: 'abandoned by the old sign-out', local: { shohoj_last_sync: '1' }, expected: true },
+    { name: 'never signed in', local: { shohoj_cgpa_v1: '{}' }, expected: false },
+    {
+      name: 'live session',
+      local: { shohoj_last_sync: '1', shohoj_session_start: '2' },
+      expected: false,
+    },
+    { name: 'already cleaned', local: {}, expected: false },
+  ];
+
+  for (const { name, local, expected } of cases) {
+    const map = new Map(Object.entries(local));
+    const store = {
+      getItem: (k) => map.get(k) ?? null,
+      setItem: (k, v) => map.set(k, v),
+      removeItem: (k) => map.delete(k),
+    };
+    assert.equal(shell.hasStaleSignedOutData(store), expected, `shell: ${name}`);
+
+    globalThis.localStorage = store;
+    try {
+      assert.equal(legacy.hasStaleSignedOutData(), expected, `legacy: ${name}`);
+    } finally {
+      delete globalThis.localStorage;
+    }
+  }
+});
