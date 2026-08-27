@@ -2,6 +2,7 @@
 import { GRADES, detectGrade } from './core/grades.js';
 import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
+import { clearAllShohojData } from './core/personalData.js';
 import './core/dispatch.js'; // installs delegated event listeners + registerAction
 import {
   calcSemGPA, autoDetectGrade,
@@ -124,28 +125,6 @@ window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
 // typed searchCourses helper.
 window._shohoj_courseCatalog = ALL_COURSES;
 
-const LOCAL_CLEAR_KEYS = [
-  STORAGE_KEY,
-  'shohoj_theme',
-  'shohoj_last_sync',
-  'shohoj_session_start',
-];
-
-const SESSION_CLEAR_KEYS = [
-  'shohoj_active_tab',
-  'shohoj_cloud_applied',
-  'shohoj_skip_first_save',
-];
-
-function clearShohojBrowserState() {
-  LOCAL_CLEAR_KEYS.forEach(key => {
-    try { localStorage.removeItem(key); } catch (e) {}
-  });
-  SESSION_CLEAR_KEYS.forEach(key => {
-    try { sessionStorage.removeItem(key); } catch (e) {}
-  });
-}
-
 // ── window.* HANDLERS (called from inline HTML onclick/onchange) ──────────────
 window.addSemester       = addSemester;
 window.addRunningSemester= addRunningSemester;
@@ -227,11 +206,15 @@ window.handleClearData = async function() {
       cloudDeleted = await window._shohoj_deleteCloudData();
     }
 
-    clearShohojBrowserState();
+    // Reset the app FIRST, then wipe. Resetting re-renders, which fires
+    // saveState(), and switchCalcTab records the tab — both write storage, so
+    // wiping first left an empty snapshot and a fresh shohoj_active_tab behind
+    // on a button that promises to delete everything (#627).
     window._shohoj_resetAppState();
     switchCalcTab('calculator');
     html.dataset.theme = 'dark';
     if (pill) pill.textContent = '🌙';
+    clearAllShohojData();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } finally {
     window._shohoj_onSave = savedHook;
