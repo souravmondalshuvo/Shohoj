@@ -365,3 +365,14 @@ test('isCloudCurrent: false when the flushed save cannot land', async () => {
   assert.equal(await h.engine.isCloudCurrent(), false);
   assert.equal(h.state.cloud, first); // the account still has the older copy
 });
+
+test('isCloudCurrent: false when the local snapshot is present but unreadable', async () => {
+  // Truncated by a quota error, say. Unreadable is not the same as absent: it
+  // is still the only copy of something, so the erase must not be waved through.
+  const same = snap([{ id: 1 }]);
+  const h = harness({ local: { [STORAGE_KEY]: same }, cloud: same });
+  await h.engine.start('u1');
+  await flush();
+  h.localStore.setItem(STORAGE_KEY, '{"semesters":[{"id"');
+  assert.equal(await h.engine.isCloudCurrent(), false);
+});
