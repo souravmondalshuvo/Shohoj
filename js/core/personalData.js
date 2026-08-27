@@ -24,12 +24,21 @@ const CGPA_STORAGE_KEY = 'shohoj_cgpa_v1';
 /** localStorage keys holding data that belongs to the person using the browser. */
 export const PERSONAL_LOCAL_KEYS = [
   CGPA_STORAGE_KEY,              // semesters, courses, grades, the plan
-  'shohoj_routine_v1',           // class routine — device-only, no cloud copy
+  'shohoj_cgpa_backup_v1',       // the shell's pre-migration copy of all of it
+  'shohoj_routine_v1',           // class routine (legacy)
+  'shohoj_routine_picks_v1',     // class routine (shell — a different key)
   'shohoj_my_reviews_v1',        // the record of reviews this student wrote
   'shohoj_seat_watch_v1',        // seat watchlist
   'shohoj_seat_alerts_enabled',  // seat-alert opt-in
   'shohoj_connect_profile_v1',   // their CONNECT profile snapshot
 ];
+
+// The two routine keys are not a typo. The shell writes shohoj_routine_picks_v1
+// (src/app/routes/RoutineRoute.tsx) and legacy writes shohoj_routine_v1; both
+// builds share an origin, so a student who has used either leaves that key
+// behind and both have to go. shohoj_cgpa_backup_v1 is the shell's one-time
+// pre-migration backup — a verbatim copy of the whole snapshot, which made the
+// wipe cosmetic while it stayed (#627).
 
 // Deliberately absent: shohoj_connect_feed_v1 and shohoj_routine_ratings_v1
 // cache the public CONNECT feed and the aggregate faculty-rating map — the same
