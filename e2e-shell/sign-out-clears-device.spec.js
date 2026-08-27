@@ -35,6 +35,11 @@ const CLOUD_GLOBALS = {
 // survive: the theme they picked and the shared public feed cache.
 const SEEDED = {
   shohoj_cgpa_v1: JSON.stringify({ semesters: [{ id: 1, name: 'Fall 2024' }] }),
+  // The shell's own pre-migration copy of that snapshot, and the routine under
+  // the key the shell actually writes (legacy uses shohoj_routine_v1). Both
+  // survived the first cut of this wipe.
+  shohoj_cgpa_backup_v1: JSON.stringify({ semesters: [{ id: 1, name: 'Fall 2024' }] }),
+  shohoj_routine_picks_v1: JSON.stringify({ picks: { CSE110: 1 } }),
   shohoj_routine_v1: JSON.stringify({ picks: { CSE110: 1 } }),
   shohoj_my_reviews_v1: JSON.stringify({ u_me: [{ facultyInitials: 'ABC' }] }),
   shohoj_seat_watch_v1: JSON.stringify([{ sectionId: 1, courseCode: 'CSE110' }]),
@@ -117,6 +122,8 @@ test('confirming clears every personal key and keeps the theme', async ({ page }
     .toBe(null);
 
   for (const key of [
+    'shohoj_cgpa_backup_v1',
+    'shohoj_routine_picks_v1',
     'shohoj_routine_v1',
     'shohoj_my_reviews_v1',
     'shohoj_seat_watch_v1',
