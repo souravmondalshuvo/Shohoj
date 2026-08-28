@@ -176,3 +176,81 @@ test('round-trips: what one device collects, another applies', () => {
     uninstall();
   }
 });
+
+// ── The return value that gates the restore reload ───────────────────────────
+// The routine, seats, reviews and profile modules each read their key ONCE at
+// module load. Writing those keys on an already-booted page changes storage and
+// nothing else, which is how a student signing in on a second device got their
+// semesters back and an empty Routine Builder. applyCloudData reloads when a
+// slice lands, and this boolean is what it reloads on — so it has to mean
+// "something is genuinely on disk now", never merely "I tried".
+
+test('reports true when a slice is actually written', () => {
+  const map = install();
+  try {
+    assert.equal(applyPersonalSlices({ routine: { picks: { CSE110: 1 } } }, 'u1'), true);
+    assert.ok(map.get('shohoj_routine_v1'));
+  } finally {
+    uninstall();
+  }
+});
+
+test('reports false when the snapshot carries no slices at all', () => {
+  // An old client's doc: semesters only. Nothing to fan out, so nothing to
+  // reload for — the calculator applies in memory as it always did.
+  install();
+  try {
+    assert.equal(applyPersonalSlices({ semesters: [{ id: 1 }] }, 'u1'), false);
+  } finally {
+    uninstall();
+  }
+});
+
+test('reports false for a null or non-object snapshot', () => {
+  install();
+  try {
+    assert.equal(applyPersonalSlices(null, 'u1'), false);
+    assert.equal(applyPersonalSlices('nonsense', 'u1'), false);
+  } finally {
+    uninstall();
+  }
+});
+
+test('a storage that refuses every write reports false, so nothing reloads forever', () => {
+  // The loop that would otherwise exist: nothing written means no local
+  // snapshot, which sends the next sign-in straight back down the adopt-cloud
+  // path, which reloads again.
+  globalThis.localStorage = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error('storage disabled');
+    },
+    removeItem: () => {},
+  };
+  try {
+    assert.equal(
+      applyPersonalSlices({ routine: { picks: { CSE110: 1 } }, seatWatches: [{ id: 1 }] }, 'u1'),
+      false,
+    );
+  } finally {
+    uninstall();
+  }
+});
+
+test('every slice kind on its own is enough to warrant the reload', () => {
+  const cases = [
+    ['routine', { routine: { picks: { CSE110: 1 } } }],
+    ['seatWatches', { seatWatches: [{ sectionId: 1 }] }],
+    ['seatAlertsEnabled', { seatAlertsEnabled: true }],
+    ['myReviews', { myReviews: [{ facultyInitials: 'ABC' }] }],
+    ['profileSnapshot', { profileSnapshot: { studentId: '20101234' } }],
+  ];
+  for (const [name, snapshot] of cases) {
+    install();
+    try {
+      assert.equal(applyPersonalSlices(snapshot, 'u1'), true, `${name} should warrant a reload`);
+    } finally {
+      uninstall();
+    }
+  }
+});
