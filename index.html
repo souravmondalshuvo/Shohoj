@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-c877X+AS/LyWAai8vdpwSoBBMbyvwlf+7rzubnESYz4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-0T2cdsCu8hAbapLPfcckkqFbLbJ2vs+XFTddt4yvGE4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-2yPaSOBHEE8zGaqr5VZgxOTGFjciLmQYzpR63oeYmQE=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-d1lLduje9EI9DUcOT++W0B8JmgKBAVrat9H59xwslNg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9206,6 +9206,63 @@ function clearPersonalData() {
   removeSessionKeys(PERSONAL_SESSION_KEYS);
 }
 
+// ── What is actually on this device ──────────────────────────────────────────
+// A student cannot act on storage they cannot see, and until now nothing told
+// them it existed: the only removal was a Clear Data button at the foot of the
+// calculator, which someone using Routine Builder or Seat Status never scrolls
+// to. This turns the contents into a sentence the notice can show them (#627).
+//
+// Counts come from the stored shape, so a key that is present but empty says
+// nothing rather than claiming a category the student would not recognise.
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null; // unreadable is the same as absent for a summary
+  }
+}
+
+function plural(count, one, many) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Human labels for the personal data on this device, most substantial first.
+ *  Empty when there is nothing to tell them about. */
+function describeStoredPersonalData() {
+  const parts = [];
+
+  const semesters = readJson(CGPA_STORAGE_KEY)?.semesters;
+  if (Array.isArray(semesters) && semesters.length > 0) {
+    parts.push(plural(semesters.length, 'semester', 'semesters'));
+  }
+
+  // Either build's routine counts once — a student who has used both should not
+  // be told they have two routines.
+  const picks = PD_ROUTINE_KEYS
+    .map(key => readJson(key)?.picks)
+    .find(value => value && typeof value === 'object' && Object.keys(value).length > 0);
+  if (picks) parts.push('your routine');
+
+  const watches = readJson('shohoj_seat_watch_v1');
+  if (Array.isArray(watches) && watches.length > 0) {
+    parts.push(plural(watches.length, 'watched section', 'watched sections'));
+  }
+
+  const reviews = readJson('shohoj_my_reviews_v1');
+  if (reviews && typeof reviews === 'object') {
+    const written = Object.values(reviews).reduce(
+      (total, list) => total + (Array.isArray(list) ? list.length : 0),
+      0,
+    );
+    if (written > 0) parts.push(plural(written, 'review you wrote', 'reviews you wrote'));
+  }
+
+  if (readJson('shohoj_connect_profile_v1')) parts.push('your transcript profile');
+
+  return parts;
+}
+
 // ── Devices the old sign-out already left dirty ──────────────────────────────
 // Before #627, signing out ended the Firebase session and left everything in
 // localStorage. Those devices are still out there, and the wipe above cannot
@@ -10337,7 +10394,6 @@ function initAuth() {
     notifyAuthStateReady();
     setAuthBtnLoading(false);
     updateAuthUI(null);
-    showNudgeBanner(false);
     return;
   }
 
@@ -10393,7 +10449,7 @@ function initAuth() {
       }
 
       updateAuthUI(user);
-      showNudgeBanner(false);
+
       _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
@@ -10404,7 +10460,7 @@ function initAuth() {
 
       if (!hasLocal && !hasCloud) {
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
@@ -10416,14 +10472,14 @@ function initAuth() {
         // would silently drop the user's first edit after sign-in.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
-        startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        startRealtimeSync(user.uid); return;
       }
 
       // ── Both local and cloud data exist ───────────────────────────────
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.setItem('shohoj_skip_first_save', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const localSems   = localParsed?.semesters?.length || 0;
@@ -10442,7 +10498,7 @@ function initAuth() {
         // flag would silently swallow the user's first real save after sign-in
         // (e.g. a transcript import), leaving the cloud stuck on the old data.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const choice = await showMigrationModal(localSems, cloudSems);
@@ -10456,7 +10512,7 @@ function initAuth() {
       } else {
         applyCloudData(cloudData); return;
       }
-      startRealtimeSync(user.uid); showNudgeBanner(false);
+      startRealtimeSync(user.uid);
 
     } else {
       currentUser = null;
@@ -10470,7 +10526,6 @@ function initAuth() {
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
       const parsed = parseStoredState(raw, 'local');
-      showNudgeBanner(parsed?.semesters?.length > 0);
       maybePromptOneTap();  // auto-surface One Tap for signed-out visitors
     }
   });
@@ -10504,50 +10559,6 @@ function applyCloudData(cloudData) {
 }
 
 // ── Nudge banner ──────────────────────────────────────────────────────────────
-function showNudgeBanner(show) {
-  let banner = document.getElementById('authNudgeBanner');
-  if (!show) { if (banner) banner.style.display = 'none'; return; }
-  if (banner) { banner.style.display = ''; return; }
-  banner = document.createElement('div');
-  banner.id = 'authNudgeBanner';
-  banner.style.cssText = `
-    margin: 1.2rem 2rem 1.2rem;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: rgba(86,180,233,0.07);
-    border: 1px solid rgba(86,180,233,0.25);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--text2);
-  `;
-  banner.innerHTML = `
-    <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button data-action="auth:signin" class="gauth-reauth-btn" style="
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 16px;border-radius:8px;
-      background:rgba(255,255,255,0.07);
-      border:1px solid rgba(255,255,255,0.14);
-      color:#e8f0ea;font-family:'DM Sans',sans-serif;
-      font-size:13px;font-weight:600;cursor:pointer;
-      white-space:nowrap;flex-shrink:0;
-      transition:background 0.2s,border-color 0.2s;
-    ">
-      <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      Sign in with Google
-    </button>
-  `;
-  const calcFooter = document.querySelector('.calc-footer');
-  if (calcFooter?.parentNode) calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
-}
 
 window._shohoj_signIn = signInWithGoogle;
 
@@ -10557,6 +10568,7 @@ window._shohoj_signIn = signInWithGoogle;
 document.addEventListener('DOMContentLoaded', () => {
   window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
 });
+
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
@@ -12654,6 +12666,63 @@ function clearPersonalData() {
   removeLocalKeys(PERSONAL_LOCAL_KEYS);
   removeLocalKeys(SYNC_LOCAL_KEYS);
   removeSessionKeys(PERSONAL_SESSION_KEYS);
+}
+
+// ── What is actually on this device ──────────────────────────────────────────
+// A student cannot act on storage they cannot see, and until now nothing told
+// them it existed: the only removal was a Clear Data button at the foot of the
+// calculator, which someone using Routine Builder or Seat Status never scrolls
+// to. This turns the contents into a sentence the notice can show them (#627).
+//
+// Counts come from the stored shape, so a key that is present but empty says
+// nothing rather than claiming a category the student would not recognise.
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null; // unreadable is the same as absent for a summary
+  }
+}
+
+function plural(count, one, many) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Human labels for the personal data on this device, most substantial first.
+ *  Empty when there is nothing to tell them about. */
+function describeStoredPersonalData() {
+  const parts = [];
+
+  const semesters = readJson(CGPA_STORAGE_KEY)?.semesters;
+  if (Array.isArray(semesters) && semesters.length > 0) {
+    parts.push(plural(semesters.length, 'semester', 'semesters'));
+  }
+
+  // Either build's routine counts once — a student who has used both should not
+  // be told they have two routines.
+  const picks = PD_ROUTINE_KEYS
+    .map(key => readJson(key)?.picks)
+    .find(value => value && typeof value === 'object' && Object.keys(value).length > 0);
+  if (picks) parts.push('your routine');
+
+  const watches = readJson('shohoj_seat_watch_v1');
+  if (Array.isArray(watches) && watches.length > 0) {
+    parts.push(plural(watches.length, 'watched section', 'watched sections'));
+  }
+
+  const reviews = readJson('shohoj_my_reviews_v1');
+  if (reviews && typeof reviews === 'object') {
+    const written = Object.values(reviews).reduce(
+      (total, list) => total + (Array.isArray(list) ? list.length : 0),
+      0,
+    );
+    if (written > 0) parts.push(plural(written, 'review you wrote', 'reviews you wrote'));
+  }
+
+  if (readJson('shohoj_connect_profile_v1')) parts.push('your transcript profile');
+
+  return parts;
 }
 
 // ── Devices the old sign-out already left dirty ──────────────────────────────
@@ -32428,7 +32497,7 @@ function initReveal() {
 
 // ── js/main.js ──────────────────────────────────────────────────
 // ── IMPORTS ──────────────────────────────────────────────────────────────────
-// installs delegated event listeners + registerAction
+// also installs the delegated listeners
 // Thresholds and labels come from js/core/milestones.js so the standing box and
 // the simulator's goal ladder cannot drift apart (#502). Only the presentation
 // — emoji, colour class, copy — lives here. Static config, so module scope.
@@ -32485,6 +32554,142 @@ window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
 // data stays in JS; the island reads it through this bridge and matches with the
 // typed searchCourses helper.
 window._shohoj_courseCatalog = ALL_COURSES;
+
+// ── "Saved on this device" notice ────────────────────────────────────────────
+// Sign-out clears the device, but that never helped the student who NEVER
+// signed in — and on a shared lab machine their semesters, routine and
+// watchlist are just as present. They had no way to know anything was stored
+// (nothing said so) and no practical way to remove it: Clear Data sits at the
+// foot of the calculator, which someone on Routine Builder or Seat Status never
+// scrolls to. Invisible storage is the defect; a student cannot act on what
+// they cannot see (#627).
+//
+// So this names the contents and puts the wipe beside the sign-in, under the
+// tab bar where it is present on whichever tab they are on. It lives here
+// rather than in js/auth/firebase.js because it is about the device, not the
+// session — and because firebase.js is a separate module that never loads at
+// all on a build without Firebase, where the disclosure still applies.
+const DEVICE_NOTICE_RELOAD_MS = 900;
+
+function deviceNoticeEl() {
+  return document.getElementById('authNudgeBanner');
+}
+
+function renderDeviceNotice(signedIn) {
+  const existing = deviceNoticeEl();
+  const stored = signedIn ? [] : describeStoredPersonalData();
+
+  if (stored.length === 0) {
+    if (existing) existing.style.display = 'none';
+    return;
+  }
+  if (existing) {
+    existing.style.display = '';
+    existing.querySelector('#deviceNoticeSummary').textContent = stored.join(' · ');
+    return;
+  }
+
+  const canSignIn = typeof window._shohoj_signIn === 'function';
+  const notice = document.createElement('div');
+  notice.id = 'authNudgeBanner';
+  notice.dataset.testid = 'device-notice';
+  notice.style.cssText = `
+    margin: 1.2rem 2rem 1.2rem;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(86,180,233,0.07);
+    border: 1px solid rgba(86,180,233,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text2);
+  `;
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  notice.innerHTML = `
+    <span>📱 Saved on this device: <strong id="deviceNoticeSummary"></strong><br>
+      ${canSignIn
+        ? 'Sign in with your BRACU G-Suite account to back it up and reach it from any device.'
+        : 'It stays in this browser until you remove it.'}</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+      <button data-action="device:forget" data-testid="device-notice-forget" style="
+        padding:8px 16px;border-radius:8px;
+        background:rgba(231,76,60,0.10);
+        border:1px solid rgba(231,76,60,0.30);
+        color:#e74c3c;font-family:'DM Sans',sans-serif;
+        font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+      ">Remove from this device</button>
+      ${canSignIn ? `<button data-action="auth:signin" class="gauth-reauth-btn" style="
+        display:inline-flex;align-items:center;gap:8px;
+        padding:8px 16px;border-radius:8px;
+        background:rgba(255,255,255,0.07);
+        border:1px solid rgba(255,255,255,0.14);
+        color:#e8f0ea;font-family:'DM Sans',sans-serif;
+        font-size:13px;font-weight:600;cursor:pointer;
+        white-space:nowrap;flex-shrink:0;
+      ">Sign in with Google</button>` : ''}
+    </span>
+  `;
+  // Set as text, never interpolated: the summary is built from our own labels
+  // and integers, and keeping it out of the innerHTML string keeps it that way.
+  notice.querySelector('#deviceNoticeSummary').textContent = stored.join(' · ');
+
+  const tabs = document.getElementById('calcTabs');
+  if (tabs?.parentNode) tabs.parentNode.insertBefore(notice, tabs.nextSibling);
+}
+
+// The signed-out counterpart of the sign-out wipe: same key list, same ordering.
+// The difference is that this student has no account holding a copy, so the
+// dialog says so rather than promising anything comes back.
+async function forgetThisDevice() {
+  const stored = describeStoredPersonalData();
+  if (stored.length === 0) return;
+
+  const confirmFn = typeof window._shohoj_confirmModal === 'function'
+    ? window._shohoj_confirmModal
+    : ({ body }) => Promise.resolve(window.confirm(body));
+
+  const confirmed = await confirmFn({
+    icon:  '🗑️',
+    title: 'Remove your data from this device?',
+    body:
+      `This removes ${stored.join(', ')} from this browser. You are not signed in, `
+      + 'so there is no backup to restore it from — this cannot be undone.',
+    confirmLabel:  'Remove everything',
+    confirmDanger: true,
+  });
+  if (!confirmed) return;
+
+  // Empty the in-memory copy before the wipe, or a render on the way out writes
+  // the snapshot straight back — the ordering the sign-out path needs too.
+  window._shohoj_onSave = null;
+  window._shohoj_resetAppState();
+  clearPersonalData();
+
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast('Removed from this device');
+  }
+  // Reload for the reason sign-out does: routine, seats, reviews and the profile
+  // each hold their own copy in memory, and one missed is the leak.
+  setTimeout(() => window.location.reload(), DEVICE_NOTICE_RELOAD_MS);
+}
+
+registerAction('device:forget', () => { void forgetThisDevice(); });
+
+// firebase.js announces both states through this event. Before it resolves —
+// or on a build where it never loads — a session marker stands in, so a signed
+// -in student does not get a flash of the notice on every page load.
+window.addEventListener('shohoj:auth-changed', (event) => {
+  renderDeviceNotice(!!event.detail?.signedIn);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  let looksSignedIn = false;
+  try { looksSignedIn = localStorage.getItem('shohoj_session_start') !== null; } catch (e) {}
+  renderDeviceNotice(looksSignedIn);
+});
 
 // ── window.* HANDLERS (called from inline HTML onclick/onchange) ──────────────
 window.addSemester       = addSemester;

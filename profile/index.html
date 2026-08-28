@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-c877X+AS/LyWAai8vdpwSoBBMbyvwlf+7rzubnESYz4=' 'sha256-EtV3ZCeXFP9kCyVohpD99QMYbPQ+tMlXUg9tjK2XliQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-2yPaSOBHEE8zGaqr5VZgxOTGFjciLmQYzpR63oeYmQE=' 'sha256-EtV3ZCeXFP9kCyVohpD99QMYbPQ+tMlXUg9tjK2XliQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -8616,6 +8616,63 @@ function clearPersonalData() {
   removeSessionKeys(PERSONAL_SESSION_KEYS);
 }
 
+// ── What is actually on this device ──────────────────────────────────────────
+// A student cannot act on storage they cannot see, and until now nothing told
+// them it existed: the only removal was a Clear Data button at the foot of the
+// calculator, which someone using Routine Builder or Seat Status never scrolls
+// to. This turns the contents into a sentence the notice can show them (#627).
+//
+// Counts come from the stored shape, so a key that is present but empty says
+// nothing rather than claiming a category the student would not recognise.
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null; // unreadable is the same as absent for a summary
+  }
+}
+
+function plural(count, one, many) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Human labels for the personal data on this device, most substantial first.
+ *  Empty when there is nothing to tell them about. */
+function describeStoredPersonalData() {
+  const parts = [];
+
+  const semesters = readJson(CGPA_STORAGE_KEY)?.semesters;
+  if (Array.isArray(semesters) && semesters.length > 0) {
+    parts.push(plural(semesters.length, 'semester', 'semesters'));
+  }
+
+  // Either build's routine counts once — a student who has used both should not
+  // be told they have two routines.
+  const picks = PD_ROUTINE_KEYS
+    .map(key => readJson(key)?.picks)
+    .find(value => value && typeof value === 'object' && Object.keys(value).length > 0);
+  if (picks) parts.push('your routine');
+
+  const watches = readJson('shohoj_seat_watch_v1');
+  if (Array.isArray(watches) && watches.length > 0) {
+    parts.push(plural(watches.length, 'watched section', 'watched sections'));
+  }
+
+  const reviews = readJson('shohoj_my_reviews_v1');
+  if (reviews && typeof reviews === 'object') {
+    const written = Object.values(reviews).reduce(
+      (total, list) => total + (Array.isArray(list) ? list.length : 0),
+      0,
+    );
+    if (written > 0) parts.push(plural(written, 'review you wrote', 'reviews you wrote'));
+  }
+
+  if (readJson('shohoj_connect_profile_v1')) parts.push('your transcript profile');
+
+  return parts;
+}
+
 // ── Devices the old sign-out already left dirty ──────────────────────────────
 // Before #627, signing out ended the Firebase session and left everything in
 // localStorage. Those devices are still out there, and the wipe above cannot
@@ -9747,7 +9804,6 @@ function initAuth() {
     notifyAuthStateReady();
     setAuthBtnLoading(false);
     updateAuthUI(null);
-    showNudgeBanner(false);
     return;
   }
 
@@ -9803,7 +9859,7 @@ function initAuth() {
       }
 
       updateAuthUI(user);
-      showNudgeBanner(false);
+
       _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
@@ -9814,7 +9870,7 @@ function initAuth() {
 
       if (!hasLocal && !hasCloud) {
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
@@ -9826,14 +9882,14 @@ function initAuth() {
         // would silently drop the user's first edit after sign-in.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
-        startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        startRealtimeSync(user.uid); return;
       }
 
       // ── Both local and cloud data exist ───────────────────────────────
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.setItem('shohoj_skip_first_save', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const localSems   = localParsed?.semesters?.length || 0;
@@ -9852,7 +9908,7 @@ function initAuth() {
         // flag would silently swallow the user's first real save after sign-in
         // (e.g. a transcript import), leaving the cloud stuck on the old data.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const choice = await showMigrationModal(localSems, cloudSems);
@@ -9866,7 +9922,7 @@ function initAuth() {
       } else {
         applyCloudData(cloudData); return;
       }
-      startRealtimeSync(user.uid); showNudgeBanner(false);
+      startRealtimeSync(user.uid);
 
     } else {
       currentUser = null;
@@ -9880,7 +9936,6 @@ function initAuth() {
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
       const parsed = parseStoredState(raw, 'local');
-      showNudgeBanner(parsed?.semesters?.length > 0);
       maybePromptOneTap();  // auto-surface One Tap for signed-out visitors
     }
   });
@@ -9914,50 +9969,6 @@ function applyCloudData(cloudData) {
 }
 
 // ── Nudge banner ──────────────────────────────────────────────────────────────
-function showNudgeBanner(show) {
-  let banner = document.getElementById('authNudgeBanner');
-  if (!show) { if (banner) banner.style.display = 'none'; return; }
-  if (banner) { banner.style.display = ''; return; }
-  banner = document.createElement('div');
-  banner.id = 'authNudgeBanner';
-  banner.style.cssText = `
-    margin: 1.2rem 2rem 1.2rem;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: rgba(86,180,233,0.07);
-    border: 1px solid rgba(86,180,233,0.25);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--text2);
-  `;
-  banner.innerHTML = `
-    <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button data-action="auth:signin" class="gauth-reauth-btn" style="
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 16px;border-radius:8px;
-      background:rgba(255,255,255,0.07);
-      border:1px solid rgba(255,255,255,0.14);
-      color:#e8f0ea;font-family:'DM Sans',sans-serif;
-      font-size:13px;font-weight:600;cursor:pointer;
-      white-space:nowrap;flex-shrink:0;
-      transition:background 0.2s,border-color 0.2s;
-    ">
-      <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      Sign in with Google
-    </button>
-  `;
-  const calcFooter = document.querySelector('.calc-footer');
-  if (calcFooter?.parentNode) calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
-}
 
 window._shohoj_signIn = signInWithGoogle;
 
@@ -9967,6 +9978,7 @@ window._shohoj_signIn = signInWithGoogle;
 document.addEventListener('DOMContentLoaded', () => {
   window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
 });
+
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
