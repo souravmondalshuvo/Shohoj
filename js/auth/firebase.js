@@ -942,14 +942,28 @@ export function initAuth() {
 function applyCloudData(cloudData) {
   // The other terminal branch of the reconciliation (cloud wins).
   _cloudReconciled = true;
+  let appliedSlices = false;
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
     // Same fan-out as the realtime path: the calculator is applied in memory
     // below, but the routine/seats/reviews/profile modules read their own keys.
-    applyPersonalSlices(cloudData, currentUser?.uid);
+    appliedSlices = applyPersonalSlices(cloudData, currentUser?.uid);
   } catch(e) {}
+
+  // A slice landed, so reload rather than applying in memory.
+  //
+  // _shohoj_applyState restores the CALCULATOR only. The routine, seats,
+  // reviews and profile modules each read their key once at module load, so on
+  // an already-booted page the fan-out above changes storage and nothing else:
+  // a student signing in on a second device got their semesters back and an
+  // empty Routine Builder, with the routine sitting in localStorage unread.
+  // Reloading is how every other module re-reads (#627).
+  if (appliedSlices) {
+    window.location.reload();
+    return;
+  }
 
   // Apply directly into the running app — no page reload needed.
   // window._shohoj_applyState is set by main.js and handles full state restoration.
