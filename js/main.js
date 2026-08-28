@@ -2,8 +2,13 @@
 import { GRADES, detectGrade } from './core/grades.js';
 import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
-import { clearAllShohojData, clearStaleSignedOutData } from './core/personalData.js';
-import './core/dispatch.js'; // installs delegated event listeners + registerAction
+import {
+  clearAllShohojData,
+  clearPersonalData,
+  clearStaleSignedOutData,
+  describeStoredPersonalData,
+} from './core/personalData.js';
+import { registerAction } from './core/dispatch.js'; // also installs the delegated listeners
 import {
   calcSemGPA, autoDetectGrade,
   onPFChange, getSemCreditWarning, onGradePointBlur
@@ -128,6 +133,142 @@ window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
 // data stays in JS; the island reads it through this bridge and matches with the
 // typed searchCourses helper.
 window._shohoj_courseCatalog = ALL_COURSES;
+
+// ── "Saved on this device" notice ────────────────────────────────────────────
+// Sign-out clears the device, but that never helped the student who NEVER
+// signed in — and on a shared lab machine their semesters, routine and
+// watchlist are just as present. They had no way to know anything was stored
+// (nothing said so) and no practical way to remove it: Clear Data sits at the
+// foot of the calculator, which someone on Routine Builder or Seat Status never
+// scrolls to. Invisible storage is the defect; a student cannot act on what
+// they cannot see (#627).
+//
+// So this names the contents and puts the wipe beside the sign-in, under the
+// tab bar where it is present on whichever tab they are on. It lives here
+// rather than in js/auth/firebase.js because it is about the device, not the
+// session — and because firebase.js is a separate module that never loads at
+// all on a build without Firebase, where the disclosure still applies.
+const DEVICE_NOTICE_RELOAD_MS = 900;
+
+function deviceNoticeEl() {
+  return document.getElementById('authNudgeBanner');
+}
+
+function renderDeviceNotice(signedIn) {
+  const existing = deviceNoticeEl();
+  const stored = signedIn ? [] : describeStoredPersonalData();
+
+  if (stored.length === 0) {
+    if (existing) existing.style.display = 'none';
+    return;
+  }
+  if (existing) {
+    existing.style.display = '';
+    existing.querySelector('#deviceNoticeSummary').textContent = stored.join(' · ');
+    return;
+  }
+
+  const canSignIn = typeof window._shohoj_signIn === 'function';
+  const notice = document.createElement('div');
+  notice.id = 'authNudgeBanner';
+  notice.dataset.testid = 'device-notice';
+  notice.style.cssText = `
+    margin: 1.2rem 2rem 1.2rem;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(86,180,233,0.07);
+    border: 1px solid rgba(86,180,233,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text2);
+  `;
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  notice.innerHTML = `
+    <span>📱 Saved on this device: <strong id="deviceNoticeSummary"></strong><br>
+      ${canSignIn
+        ? 'Sign in with your BRACU G-Suite account to back it up and reach it from any device.'
+        : 'It stays in this browser until you remove it.'}</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+      <button data-action="device:forget" data-testid="device-notice-forget" style="
+        padding:8px 16px;border-radius:8px;
+        background:rgba(231,76,60,0.10);
+        border:1px solid rgba(231,76,60,0.30);
+        color:#e74c3c;font-family:'DM Sans',sans-serif;
+        font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+      ">Remove from this device</button>
+      ${canSignIn ? `<button data-action="auth:signin" class="gauth-reauth-btn" style="
+        display:inline-flex;align-items:center;gap:8px;
+        padding:8px 16px;border-radius:8px;
+        background:rgba(255,255,255,0.07);
+        border:1px solid rgba(255,255,255,0.14);
+        color:#e8f0ea;font-family:'DM Sans',sans-serif;
+        font-size:13px;font-weight:600;cursor:pointer;
+        white-space:nowrap;flex-shrink:0;
+      ">Sign in with Google</button>` : ''}
+    </span>
+  `;
+  // Set as text, never interpolated: the summary is built from our own labels
+  // and integers, and keeping it out of the innerHTML string keeps it that way.
+  notice.querySelector('#deviceNoticeSummary').textContent = stored.join(' · ');
+
+  const tabs = document.getElementById('calcTabs');
+  if (tabs?.parentNode) tabs.parentNode.insertBefore(notice, tabs.nextSibling);
+}
+
+// The signed-out counterpart of the sign-out wipe: same key list, same ordering.
+// The difference is that this student has no account holding a copy, so the
+// dialog says so rather than promising anything comes back.
+async function forgetThisDevice() {
+  const stored = describeStoredPersonalData();
+  if (stored.length === 0) return;
+
+  const confirmFn = typeof window._shohoj_confirmModal === 'function'
+    ? window._shohoj_confirmModal
+    : ({ body }) => Promise.resolve(window.confirm(body));
+
+  const confirmed = await confirmFn({
+    icon:  '🗑️',
+    title: 'Remove your data from this device?',
+    body:
+      `This removes ${stored.join(', ')} from this browser. You are not signed in, `
+      + 'so there is no backup to restore it from — this cannot be undone.',
+    confirmLabel:  'Remove everything',
+    confirmDanger: true,
+  });
+  if (!confirmed) return;
+
+  // Empty the in-memory copy before the wipe, or a render on the way out writes
+  // the snapshot straight back — the ordering the sign-out path needs too.
+  window._shohoj_onSave = null;
+  window._shohoj_resetAppState();
+  clearPersonalData();
+
+  if (typeof window._shohoj_showToast === 'function') {
+    window._shohoj_showToast('Removed from this device');
+  }
+  // Reload for the reason sign-out does: routine, seats, reviews and the profile
+  // each hold their own copy in memory, and one missed is the leak.
+  setTimeout(() => window.location.reload(), DEVICE_NOTICE_RELOAD_MS);
+}
+
+registerAction('device:forget', () => { void forgetThisDevice(); });
+
+// firebase.js announces both states through this event. Before it resolves —
+// or on a build where it never loads — a session marker stands in, so a signed
+// -in student does not get a flash of the notice on every page load.
+window.addEventListener('shohoj:auth-changed', (event) => {
+  renderDeviceNotice(!!event.detail?.signedIn);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  let looksSignedIn = false;
+  try { looksSignedIn = localStorage.getItem('shohoj_session_start') !== null; } catch (e) {}
+  renderDeviceNotice(looksSignedIn);
+});
 
 // ── window.* HANDLERS (called from inline HTML onclick/onchange) ──────────────
 window.addSemester       = addSemester;
