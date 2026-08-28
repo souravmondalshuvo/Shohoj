@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-2yPaSOBHEE8zGaqr5VZgxOTGFjciLmQYzpR63oeYmQE=' 'sha256-EtV3ZCeXFP9kCyVohpD99QMYbPQ+tMlXUg9tjK2XliQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-EtV3ZCeXFP9kCyVohpD99QMYbPQ+tMlXUg9tjK2XliQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -8765,8 +8765,17 @@ function pdReadJson(key) {
   } catch (e) { return null; }
 }
 
+// Reports whether the write actually landed. applyPersonalSlices's return value
+// gates a page reload, and a storage that silently refuses every write would
+// otherwise reload forever: nothing written means no local snapshot, which sends
+// the sign-in flow straight back down the adopt-cloud path (#627).
 function pdWriteJson(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /** `{ picks: { COURSECODE: sectionId|null } }` or null. Both builds store the
@@ -8834,13 +8843,25 @@ function collectPersonalSlices(uid) {
  * Called wherever a cloud doc becomes this device's copy. A slice the snapshot
  * does not carry is left alone — that is a doc written before these fields
  * existed, not a student with nothing. */
+/** Fan a cloud snapshot's slices back out to the keys each module reads.
+ *
+ * Returns true when something was actually written. The caller needs that: the
+ * routine, seats, reviews and profile modules each read their key ONCE at module
+ * load, so writing the key on an already-booted page changes storage and nothing
+ * else. A restore that lands the calculator and silently drops the rest is the
+ * new-device bug this return value exists to prevent (#627).
+ */
 function applyPersonalSlices(snapshot, uid) {
-  if (!snapshot || typeof snapshot !== 'object') return;
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  let wrote = false;
 
   const routine = pdCleanRoutine(snapshot.routine);
   // Written to both routine keys on purpose: a student who uses the shell on
   // one device and legacy on another has one routine, not two.
-  if (routine) PD_ROUTINE_KEYS.forEach(key => pdWriteJson(key, routine));
+  if (routine) {
+    // Reduce, not forEach: a refused write must not be reported as a restore.
+    wrote = PD_ROUTINE_KEYS.reduce((ok, key) => pdWriteJson(key, routine) || ok, wrote);
+  }
 
   if (uid && Array.isArray(snapshot.myReviews)) {
     const all = pdReadJson(PD_MY_REVIEWS_KEY);
@@ -8848,25 +8869,28 @@ function applyPersonalSlices(snapshot, uid) {
     merged[uid] = snapshot.myReviews
       .filter(entry => entry && typeof entry === 'object')
       .slice(0, PD_MAX_REVIEWS);
-    pdWriteJson(PD_MY_REVIEWS_KEY, merged);
+    if (pdWriteJson(PD_MY_REVIEWS_KEY, merged)) wrote = true;
   }
 
   if (Array.isArray(snapshot.seatWatches)) {
-    pdWriteJson(
-      PD_SEAT_WATCH_KEY,
-      snapshot.seatWatches.filter(w => w && typeof w === 'object').slice(0, PD_MAX_WATCHES),
-    );
+    const watches = snapshot.seatWatches
+      .filter(w => w && typeof w === 'object')
+      .slice(0, PD_MAX_WATCHES);
+    if (pdWriteJson(PD_SEAT_WATCH_KEY, watches)) wrote = true;
   }
 
   if (typeof snapshot.seatAlertsEnabled === 'boolean') {
     try {
       localStorage.setItem(PD_SEAT_ALERTS_KEY, snapshot.seatAlertsEnabled ? '1' : '0');
+      wrote = true;
     } catch (e) { /* storage off */ }
   }
 
   if (snapshot.profileSnapshot && typeof snapshot.profileSnapshot === 'object') {
-    pdWriteJson(PD_PROFILE_KEY, snapshot.profileSnapshot);
+    if (pdWriteJson(PD_PROFILE_KEY, snapshot.profileSnapshot)) wrote = true;
   }
+
+  return wrote;
 }
 
 // ── js/auth/admin-service.js ────────────────────────────────────
@@ -9948,14 +9972,28 @@ function initAuth() {
 function applyCloudData(cloudData) {
   // The other terminal branch of the reconciliation (cloud wins).
   _cloudReconciled = true;
+  let appliedSlices = false;
   try {
     sessionStorage.setItem('shohoj_cloud_applied', '1');
     sessionStorage.setItem('shohoj_skip_first_save', '1');
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
     // Same fan-out as the realtime path: the calculator is applied in memory
     // below, but the routine/seats/reviews/profile modules read their own keys.
-    applyPersonalSlices(cloudData, currentUser?.uid);
+    appliedSlices = applyPersonalSlices(cloudData, currentUser?.uid);
   } catch(e) {}
+
+  // A slice landed, so reload rather than applying in memory.
+  //
+  // _shohoj_applyState restores the CALCULATOR only. The routine, seats,
+  // reviews and profile modules each read their key once at module load, so on
+  // an already-booted page the fan-out above changes storage and nothing else:
+  // a student signing in on a second device got their semesters back and an
+  // empty Routine Builder, with the routine sitting in localStorage unread.
+  // Reloading is how every other module re-reads (#627).
+  if (appliedSlices) {
+    window.location.reload();
+    return;
+  }
 
   // Apply directly into the running app — no page reload needed.
   // window._shohoj_applyState is set by main.js and handles full state restoration.
