@@ -239,8 +239,17 @@ function pdReadJson(key) {
   } catch (e) { return null; }
 }
 
+// Reports whether the write actually landed. applyPersonalSlices's return value
+// gates a page reload, and a storage that silently refuses every write would
+// otherwise reload forever: nothing written means no local snapshot, which sends
+// the sign-in flow straight back down the adopt-cloud path (#627).
 function pdWriteJson(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /** `{ picks: { COURSECODE: sectionId|null } }` or null. Both builds store the
@@ -308,13 +317,25 @@ export function collectPersonalSlices(uid) {
  * Called wherever a cloud doc becomes this device's copy. A slice the snapshot
  * does not carry is left alone — that is a doc written before these fields
  * existed, not a student with nothing. */
+/** Fan a cloud snapshot's slices back out to the keys each module reads.
+ *
+ * Returns true when something was actually written. The caller needs that: the
+ * routine, seats, reviews and profile modules each read their key ONCE at module
+ * load, so writing the key on an already-booted page changes storage and nothing
+ * else. A restore that lands the calculator and silently drops the rest is the
+ * new-device bug this return value exists to prevent (#627).
+ */
 export function applyPersonalSlices(snapshot, uid) {
-  if (!snapshot || typeof snapshot !== 'object') return;
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  let wrote = false;
 
   const routine = pdCleanRoutine(snapshot.routine);
   // Written to both routine keys on purpose: a student who uses the shell on
   // one device and legacy on another has one routine, not two.
-  if (routine) PD_ROUTINE_KEYS.forEach(key => pdWriteJson(key, routine));
+  if (routine) {
+    // Reduce, not forEach: a refused write must not be reported as a restore.
+    wrote = PD_ROUTINE_KEYS.reduce((ok, key) => pdWriteJson(key, routine) || ok, wrote);
+  }
 
   if (uid && Array.isArray(snapshot.myReviews)) {
     const all = pdReadJson(PD_MY_REVIEWS_KEY);
@@ -322,23 +343,26 @@ export function applyPersonalSlices(snapshot, uid) {
     merged[uid] = snapshot.myReviews
       .filter(entry => entry && typeof entry === 'object')
       .slice(0, PD_MAX_REVIEWS);
-    pdWriteJson(PD_MY_REVIEWS_KEY, merged);
+    if (pdWriteJson(PD_MY_REVIEWS_KEY, merged)) wrote = true;
   }
 
   if (Array.isArray(snapshot.seatWatches)) {
-    pdWriteJson(
-      PD_SEAT_WATCH_KEY,
-      snapshot.seatWatches.filter(w => w && typeof w === 'object').slice(0, PD_MAX_WATCHES),
-    );
+    const watches = snapshot.seatWatches
+      .filter(w => w && typeof w === 'object')
+      .slice(0, PD_MAX_WATCHES);
+    if (pdWriteJson(PD_SEAT_WATCH_KEY, watches)) wrote = true;
   }
 
   if (typeof snapshot.seatAlertsEnabled === 'boolean') {
     try {
       localStorage.setItem(PD_SEAT_ALERTS_KEY, snapshot.seatAlertsEnabled ? '1' : '0');
+      wrote = true;
     } catch (e) { /* storage off */ }
   }
 
   if (snapshot.profileSnapshot && typeof snapshot.profileSnapshot === 'object') {
-    pdWriteJson(PD_PROFILE_KEY, snapshot.profileSnapshot);
+    if (pdWriteJson(PD_PROFILE_KEY, snapshot.profileSnapshot)) wrote = true;
   }
+
+  return wrote;
 }
