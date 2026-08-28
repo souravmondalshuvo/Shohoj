@@ -90,6 +90,63 @@ export function clearPersonalData() {
   removeSessionKeys(PERSONAL_SESSION_KEYS);
 }
 
+// ── What is actually on this device ──────────────────────────────────────────
+// A student cannot act on storage they cannot see, and until now nothing told
+// them it existed: the only removal was a Clear Data button at the foot of the
+// calculator, which someone using Routine Builder or Seat Status never scrolls
+// to. This turns the contents into a sentence the notice can show them (#627).
+//
+// Counts come from the stored shape, so a key that is present but empty says
+// nothing rather than claiming a category the student would not recognise.
+function readJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null; // unreadable is the same as absent for a summary
+  }
+}
+
+function plural(count, one, many) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Human labels for the personal data on this device, most substantial first.
+ *  Empty when there is nothing to tell them about. */
+export function describeStoredPersonalData() {
+  const parts = [];
+
+  const semesters = readJson(CGPA_STORAGE_KEY)?.semesters;
+  if (Array.isArray(semesters) && semesters.length > 0) {
+    parts.push(plural(semesters.length, 'semester', 'semesters'));
+  }
+
+  // Either build's routine counts once — a student who has used both should not
+  // be told they have two routines.
+  const picks = PD_ROUTINE_KEYS
+    .map(key => readJson(key)?.picks)
+    .find(value => value && typeof value === 'object' && Object.keys(value).length > 0);
+  if (picks) parts.push('your routine');
+
+  const watches = readJson('shohoj_seat_watch_v1');
+  if (Array.isArray(watches) && watches.length > 0) {
+    parts.push(plural(watches.length, 'watched section', 'watched sections'));
+  }
+
+  const reviews = readJson('shohoj_my_reviews_v1');
+  if (reviews && typeof reviews === 'object') {
+    const written = Object.values(reviews).reduce(
+      (total, list) => total + (Array.isArray(list) ? list.length : 0),
+      0,
+    );
+    if (written > 0) parts.push(plural(written, 'review you wrote', 'reviews you wrote'));
+  }
+
+  if (readJson('shohoj_connect_profile_v1')) parts.push('your transcript profile');
+
+  return parts;
+}
+
 // ── Devices the old sign-out already left dirty ──────────────────────────────
 // Before #627, signing out ended the Firebase session and left everything in
 // localStorage. Those devices are still out there, and the wipe above cannot
