@@ -798,7 +798,6 @@ export function initAuth() {
     notifyAuthStateReady();
     setAuthBtnLoading(false);
     updateAuthUI(null);
-    showNudgeBanner(false);
     return;
   }
 
@@ -854,7 +853,7 @@ export function initAuth() {
       }
 
       updateAuthUI(user);
-      showNudgeBanner(false);
+
       _cloudReconciled = false;
       const cloudData = await loadFromCloud();
       let localRaw = null;
@@ -865,7 +864,7 @@ export function initAuth() {
 
       if (!hasLocal && !hasCloud) {
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
       if (!hasLocal && hasCloud) { applyCloudData(cloudData); return; }
       if (hasLocal && !hasCloud) {
@@ -877,14 +876,14 @@ export function initAuth() {
         // would silently drop the user's first edit after sign-in.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
         showToast('Data uploaded to your cloud account ✓', false, true);
-        startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        startRealtimeSync(user.uid); return;
       }
 
       // ── Both local and cloud data exist ───────────────────────────────
       const justApplied = sessionStorage.getItem('shohoj_cloud_applied');
       if (justApplied) {
         sessionStorage.setItem('shohoj_skip_first_save', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const localSems   = localParsed?.semesters?.length || 0;
@@ -903,7 +902,7 @@ export function initAuth() {
         // flag would silently swallow the user's first real save after sign-in
         // (e.g. a transcript import), leaving the cloud stuck on the old data.
         sessionStorage.setItem('shohoj_cloud_applied', '1');
-        setSyncIndicator('synced'); startRealtimeSync(user.uid); showNudgeBanner(false); return;
+        setSyncIndicator('synced'); startRealtimeSync(user.uid); return;
       }
 
       const choice = await showMigrationModal(localSems, cloudSems);
@@ -917,7 +916,7 @@ export function initAuth() {
       } else {
         applyCloudData(cloudData); return;
       }
-      startRealtimeSync(user.uid); showNudgeBanner(false);
+      startRealtimeSync(user.uid);
 
     } else {
       currentUser = null;
@@ -931,7 +930,6 @@ export function initAuth() {
       let raw = null;
       try { raw = localStorage.getItem(STORAGE_KEY); } catch(e) {}
       const parsed = parseStoredState(raw, 'local');
-      showNudgeBanner(parsed?.semesters?.length > 0);
       maybePromptOneTap();  // auto-surface One Tap for signed-out visitors
     }
   });
@@ -965,50 +963,6 @@ function applyCloudData(cloudData) {
 }
 
 // ── Nudge banner ──────────────────────────────────────────────────────────────
-function showNudgeBanner(show) {
-  let banner = document.getElementById('authNudgeBanner');
-  if (!show) { if (banner) banner.style.display = 'none'; return; }
-  if (banner) { banner.style.display = ''; return; }
-  banner = document.createElement('div');
-  banner.id = 'authNudgeBanner';
-  banner.style.cssText = `
-    margin: 1.2rem 2rem 1.2rem;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: rgba(86,180,233,0.07);
-    border: 1px solid rgba(86,180,233,0.25);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--text2);
-  `;
-  banner.innerHTML = `
-    <span>☁ Sign in with your BRACU G-Suite account to back up your data and access it from any device.</span>
-    <button data-action="auth:signin" class="gauth-reauth-btn" style="
-      display:inline-flex;align-items:center;gap:8px;
-      padding:8px 16px;border-radius:8px;
-      background:rgba(255,255,255,0.07);
-      border:1px solid rgba(255,255,255,0.14);
-      color:#e8f0ea;font-family:'DM Sans',sans-serif;
-      font-size:13px;font-weight:600;cursor:pointer;
-      white-space:nowrap;flex-shrink:0;
-      transition:background 0.2s,border-color 0.2s;
-    ">
-      <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      Sign in with Google
-    </button>
-  `;
-  const calcFooter = document.querySelector('.calc-footer');
-  if (calcFooter?.parentNode) calcFooter.parentNode.insertBefore(banner, calcFooter.nextSibling);
-}
 
 window._shohoj_signIn = signInWithGoogle;
 
@@ -1018,6 +972,7 @@ window._shohoj_signIn = signInWithGoogle;
 document.addEventListener('DOMContentLoaded', () => {
   window._shohoj_registerAction?.('auth:signin', () => signInWithGoogle());
 });
+
 window._shohoj_signOut = signOutUser;
 window._shohoj_deleteCloudData = deleteCloudDataSilent;
 window._shohoj_confirmModal = showConfirmModal;
