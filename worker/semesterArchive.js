@@ -107,13 +107,22 @@ export function normalizeArchiveIndex(raw) {
   const semesters = [];
   for (const entry of list) {
     if (!entry || typeof entry.sessionId !== 'number') continue;
-    semesters.push({
+    const row = {
       sessionId: entry.sessionId,
       classStartDate: dateOrNull(entry.classStartDate),
       classEndDate: dateOrNull(entry.classEndDate),
       sections: Number.isFinite(entry.sections) ? Number(entry.sections) : 0,
       archivedAt: Number.isFinite(entry.archivedAt) ? Number(entry.archivedAt) : 0,
-    });
+    };
+    // Carried through untouched. A hand-imported snapshot records what it could
+    // not capture — frozen seat counts, unassigned faculty — and the client
+    // shows that to the student. The cron never writes it, but it must never
+    // erase it either: a re-archive that dropped provenance would turn a
+    // labelled capture back into one pretending to be live.
+    if (entry.provenance && typeof entry.provenance === 'object') {
+      row.provenance = entry.provenance;
+    }
+    semesters.push(row);
   }
   return { semesters };
 }
@@ -127,7 +136,13 @@ export function normalizeArchiveIndex(raw) {
  */
 export function mergeArchiveIndex(index, summary, archivedAt) {
   const { semesters } = normalizeArchiveIndex(index);
+  const previous = semesters.find((s) => s.sessionId === summary.sessionId);
   const entry = { ...summary, archivedAt };
+  // A snapshot's provenance outlives the snapshot. If the live feed ever serves
+  // this session again the cron overwrites the payload, but the entry keeps
+  // saying where it came from until someone decides otherwise — silently
+  // upgrading a capture to "live" is the one claim we must not make by accident.
+  if (previous && previous.provenance) entry.provenance = previous.provenance;
   const next = semesters.filter((s) => s.sessionId !== summary.sessionId);
   next.push(entry);
   next.sort((a, b) => b.sessionId - a.sessionId);
