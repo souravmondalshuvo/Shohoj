@@ -156,6 +156,26 @@ export function semesterIsRunning(identity: SemesterIdentity | null | undefined)
   return identity?.status === 'running';
 }
 
+/**
+ * Why the semester on screen may not be the one the student is sitting in.
+ *
+ * Lives here rather than in each tab's markup because Routine, Seats and Free
+ * Rooms all read the same feed and all owe the same explanation, and a caveat
+ * that drifts between three copies is a caveat nobody trusts.
+ */
+export function semesterCaveat(identity: SemesterIdentity | null | undefined): string {
+  switch (identity?.status) {
+    case 'upcoming':
+      return 'CONNECT publishes the semester open for advising, so this timetable has not started yet.';
+    case 'ended':
+      return 'This semester is over. CONNECT has not published the next one yet.';
+    case 'running':
+      return 'This is the semester currently in progress.';
+    default:
+      return 'CONNECT did not say which semester this timetable belongs to.';
+  }
+}
+
 /** One line naming the semester and saying where it sits relative to today. */
 export function semesterHeadline(identity: SemesterIdentity | null | undefined): string {
   if (!identity) return 'Semester unknown';
