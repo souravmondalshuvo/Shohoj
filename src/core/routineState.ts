@@ -197,3 +197,96 @@ export function summarizeRoutine(state: RoutineState, index: SectionIndex): Rout
     examClashPairs: report.examClashes.length,
   };
 }
+
+// ── Per-semester scoping (#633) ─────────────────────────────────────────────
+//
+// A routine is picks against ONE semester's sections. Once the tab could switch
+// semesters, a single flat `{picks}` became wrong in a way that looks right:
+// the codes carry across (CSE221 exists in both Summer and Fall) but the section
+// ids do not, so switching showed four courses the student is not taking above
+// an empty grid.
+//
+// The stored shape stays backwards-compatible on purpose. `picks` remains the
+// live semester's routine at the top level, because six other modules read it
+// there — the Assistant, the Profile hub on both shells, and the cloud snapshot
+// — and "my routine" means the live one in every one of them. Archived
+// semesters live beside it under `bySession`.
+
+export interface RoutineBook {
+  /** The live feed's routine — what every other reader means by "my routine". */
+  live: RoutineState;
+  /** Archived semesters, keyed by session id as a string. */
+  bySession: Record<string, RoutineState>;
+}
+
+export function emptyRoutineBook(): RoutineBook {
+  return { live: emptyRoutineState(), bySession: {} };
+}
+
+/** Normalize one persisted `{picks}` object. Junk keys and values are dropped. */
+function readPicks(raw: unknown): RoutineState {
+  const source = raw as { picks?: unknown } | null;
+  if (!source || typeof source !== 'object') return emptyRoutineState();
+  const picks = source.picks;
+  if (!picks || typeof picks !== 'object') return emptyRoutineState();
+  const out: Record<string, number | null> = {};
+  for (const [code, sectionId] of Object.entries(picks as Record<string, unknown>)) {
+    if (typeof code !== 'string') continue;
+    if (sectionId === null || typeof sectionId === 'number') {
+      out[code.toUpperCase()] = sectionId as number | null;
+    }
+  }
+  return { picks: out };
+}
+
+/**
+ * Read the stored object, whatever version wrote it.
+ *
+ * A pre-#633 value is a bare `{picks}` and becomes the live routine, which is
+ * what it always was — nobody's saved routine is lost or reassigned.
+ */
+export function readRoutineBook(raw: unknown): RoutineBook {
+  const book = emptyRoutineBook();
+  if (!raw || typeof raw !== 'object') return book;
+  book.live = readPicks(raw);
+  const bySession = (raw as { bySession?: unknown }).bySession;
+  if (bySession && typeof bySession === 'object') {
+    for (const [key, value] of Object.entries(bySession as Record<string, unknown>)) {
+      if (!/^\d{4,6}$/.test(key)) continue;
+      book.bySession[key] = readPicks(value);
+    }
+  }
+  return book;
+}
+
+/** The routine for a semester. `null` means the live feed. */
+export function routineForSession(book: RoutineBook, sessionId: number | null): RoutineState {
+  if (sessionId === null) return book.live;
+  return book.bySession[String(sessionId)] ?? emptyRoutineState();
+}
+
+/** Replace one semester's routine, leaving every other semester untouched. */
+export function withRoutineForSession(
+  book: RoutineBook,
+  sessionId: number | null,
+  state: RoutineState,
+): RoutineBook {
+  if (sessionId === null) return { live: state, bySession: { ...book.bySession } };
+  return {
+    live: book.live,
+    bySession: { ...book.bySession, [String(sessionId)]: state },
+  };
+}
+
+/**
+ * The object to persist.
+ *
+ * The live routine is written as a top-level `picks` so every existing reader
+ * keeps working against the same shape it always read.
+ */
+export function serializeRoutineBook(book: RoutineBook): {
+  picks: Record<string, number | null>;
+  bySession: Record<string, RoutineState>;
+} {
+  return { picks: book.live.picks, bySession: book.bySession };
+}
