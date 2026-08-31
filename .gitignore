@@ -28,6 +28,14 @@ dist-pages/
 # Scraped CONNECT section data — input artifact, re-fetched as needed.
 bracu-section.json
 
+# Output of scripts/import_semester_snapshot.mjs (#633): a converted semester
+# payload and the merged manifest, staged for upload to R2. Regenerated from
+# the snapshot above on demand, and the payload alone is ~1.9MB — it belongs in
+# the bucket, not in git.
+semester-*.json
+semesters-index-*.json
+current-index.json
+
 # Python bytecode cache (build3.py is imported by the build/test scripts).
 __pycache__/
 *.pyc
