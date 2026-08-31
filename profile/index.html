@@ -5907,6 +5907,21 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
 .routine-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
 
+/* Which semester the timetable on screen belongs to (#633). Sits beside the
+   freshness badge because the two answer different questions: that one says how
+   recent the data is, this one says whether it is the semester you are in.
+   Amber for a semester that has not started — the common case during advising,
+   when CONNECT has already swapped the running semester out. */
+.routine-semester-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--badge-bg); color: var(--text2);
+  border: 1px solid var(--chip-border);
+  white-space: nowrap;
+}
+.routine-semester--running  { background: rgba(46,204,113,0.12); color: var(--ink-green); border-color: rgba(46,204,113,0.28); }
+.routine-semester--upcoming { background: rgba(241,196,15,0.12); color: var(--ink-amber); border-color: rgba(241,196,15,0.28); }
+.routine-semester--ended    { background: rgba(231,76,60,0.10);  color: #e74c3c;          border-color: rgba(231,76,60,0.24); }
+
 .routine-clash-warn {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: rgba(231,76,60,0.10); color: #e74c3c; border: 1px solid rgba(231,76,60,0.24);
@@ -6636,6 +6651,22 @@ body[data-page="admin"] .orb { display: none !important; }
 
 .freerooms-summary { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: 0.3px; }
 .freerooms-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+
+/* Shown when the loaded timetable is not the semester in effect (#633). Free
+   Rooms is the one place that answers a question about *now* — "is this room
+   free at 2:30" — so an out-of-term timetable makes it confidently wrong rather
+   than merely empty. Amber, not red: the data is fine, it is about a different
+   semester. */
+.freerooms-outofterm {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+  background: rgba(241,196,15,0.10);
+  border: 1px solid rgba(241,196,15,0.28);
+}
 .freerooms-grid {
   display: grid; gap: 8px;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

@@ -1,1 +1,0 @@
-var e={live:`Live`,cache:`Cached`,fallback:`Offline cache`};function t(t){return t&&e[t]||`—`}function n(e,t=Date.now()){if(!e)return`just now`;let n=t-e;return n<6e4?`just now`:n<36e5?`${Math.floor(n/6e4)} min ago`:n<864e5?`${Math.floor(n/36e5)} hr ago`:new Date(e).toLocaleString()}export{t as n,n as t};

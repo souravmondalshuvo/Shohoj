@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-L403ssIew8Owv2DXzIyeoYqIzLxXH8ADmizTbJAcTcE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-KOOvsA9guRO5WBcnWpbLOtrdgVY4nau10MMZa/xXKGI='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5925,6 +5925,21 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
 .routine-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
 
+/* Which semester the timetable on screen belongs to (#633). Sits beside the
+   freshness badge because the two answer different questions: that one says how
+   recent the data is, this one says whether it is the semester you are in.
+   Amber for a semester that has not started — the common case during advising,
+   when CONNECT has already swapped the running semester out. */
+.routine-semester-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--badge-bg); color: var(--text2);
+  border: 1px solid var(--chip-border);
+  white-space: nowrap;
+}
+.routine-semester--running  { background: rgba(46,204,113,0.12); color: var(--ink-green); border-color: rgba(46,204,113,0.28); }
+.routine-semester--upcoming { background: rgba(241,196,15,0.12); color: var(--ink-amber); border-color: rgba(241,196,15,0.28); }
+.routine-semester--ended    { background: rgba(231,76,60,0.10);  color: #e74c3c;          border-color: rgba(231,76,60,0.24); }
+
 .routine-clash-warn {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: rgba(231,76,60,0.10); color: #e74c3c; border: 1px solid rgba(231,76,60,0.24);
@@ -6654,6 +6669,22 @@ body[data-page="admin"] .orb { display: none !important; }
 
 .freerooms-summary { font-size: 13px; font-weight: 600; color: var(--text2); letter-spacing: 0.3px; }
 .freerooms-empty { padding: 18px 0; color: var(--text3); font-size: 13px; }
+
+/* Shown when the loaded timetable is not the semester in effect (#633). Free
+   Rooms is the one place that answers a question about *now* — "is this room
+   free at 2:30" — so an out-of-term timetable makes it confidently wrong rather
+   than merely empty. Amber, not red: the data is fine, it is about a different
+   semester. */
+.freerooms-outofterm {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+  background: rgba(241,196,15,0.10);
+  border: 1px solid rgba(241,196,15,0.28);
+}
 .freerooms-grid {
   display: grid; gap: 8px;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -20427,6 +20458,184 @@ function peekConnectFeedCache(
     return entry === null ? null : { fetchedAt: entry.fetchedAt, etag: entry.etag };
 }
 
+// ── js/core/semesterIdentity.js ─────────────────────────────────
+// Twin of src/core/semesterIdentity.ts — hand-maintained, not generated.
+// src/core/semesterIdentity.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
+//
+// Which semester is on screen, and is it the one actually running?
+//
+// The CONNECT feed carries exactly one semester and never says which. It is an
+// *advising* feed: it publishes whatever is open for registration and drops the
+// outgoing semester the moment the next one opens. On 2026-08-31 it held only
+// session 20263 (Fall 2026, classes from 2026-10-03) while Summer 2026 was
+// still in progress — so the Routine grid was drawing a "now" line over a
+// timetable that would not begin for another month, with nothing on screen
+// naming the semester (#633).
+//
+// Everything here is pure and clock-free. `todayISO` is passed in rather than
+// read, because a function that reads the clock cannot be pinned by a test and
+// would drift between this file and its src/ twin.
+
+/**
+ * BRACU session ids are `YYYY` followed by a term digit: 20261 = Spring 2026,
+ * 20262 = Summer, 20263 = Fall. Three terms a year, so 4+ is not a term we know
+ * how to name and we say so rather than guessing.
+ */
+const SEMESTER_TERM_NAMES = Object.freeze({
+    1: 'Spring',
+    2: 'Summer',
+    3: 'Fall',
+});
+
+const MONTH_ABBR = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Today as `YYYY-MM-DD` in the viewer's own timezone.
+ *
+ * The only clock-reading function in the module, kept separate so the rest
+ * stays pure. Local parts on purpose: a student in Dhaka asking whether their
+ * semester has started means their calendar day, not UTC's.
+ */
+function todayISODate(date = new Date()) {
+    const y = String(date.getFullYear()).padStart(4, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/** `'2026-10-03'` → `'3 Oct 2026'`. Returns null for anything else. */
+function formatSemesterDate(iso) {
+    const match = ISO_DATE.exec(typeof iso === 'string' ? iso.trim() : '');
+    if (!match) return null;
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${day} ${MONTH_ABBR[month - 1]} ${match[1]}`;
+}
+
+/** `20263` → `'Fall 2026'`. Null when the id is not a term we can name. */
+function semesterNameFromSessionId(sessionId) {
+    if (typeof sessionId !== 'number' || !Number.isInteger(sessionId)) return null;
+    if (sessionId < 20000 || sessionId > 99999) return null;
+    const term = SEMESTER_TERM_NAMES[sessionId % 10];
+    if (!term) return null;
+    return `${term} ${Math.floor(sessionId / 10)}`;
+}
+
+/**
+ * The most common value, ties broken by sort order so the result is stable.
+ *
+ * Term dates get the modal treatment rather than min/max because the feed has
+ * genuine outliers — 43 of 2086 Fall sections start a fortnight before the rest
+ * — and one late-added section must not redefine when the semester begins.
+ */
+function modalValue(values) {
+    const counts = new Map();
+    for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+    let best = null;
+    let bestCount = 0;
+    for (const [value, count] of counts) {
+        if (count > bestCount || (count === bestCount && best !== null && value < best)) {
+            best = value;
+            bestCount = count;
+        }
+    }
+    return best;
+}
+
+/** Place `todayISO` against the term dates. Both ISO, so string order is date order. */
+function classify(todayISO, startDate, endDate) {
+    if (!ISO_DATE.test(todayISO)) return 'unknown';
+    if (startDate === null || endDate === null) return 'unknown';
+    if (todayISO < startDate) return 'upcoming';
+    if (todayISO > endDate) return 'ended';
+    return 'running';
+}
+
+/**
+ * Identify the semester a parsed feed describes.
+ *
+ * Takes normalized sections (the output of `parseFeed`), not the raw payload.
+ */
+function describeSemester(sections, todayISO) {
+    const list = Array.isArray(sections) ? sections : [];
+    const sessionId = modalValue(
+        list.map((s) => s.semesterSessionId).filter((v) => typeof v === 'number'),
+    );
+    const classStartDate = modalValue(
+        list.map((s) => s.classStartDate).filter((v) => typeof v === 'string'),
+    );
+    const classEndDate = modalValue(
+        list.map((s) => s.classEndDate).filter((v) => typeof v === 'string'),
+    );
+
+    return {
+        sessionId,
+        name: semesterNameFromSessionId(sessionId),
+        classStartDate,
+        classEndDate,
+        status: classify(todayISO, classStartDate, classEndDate),
+    };
+}
+
+/**
+ * True only when today falls inside the displayed semester's term.
+ *
+ * The gate for anything that asserts something about *now*: the routine grid's
+ * "now" line, today-highlighting, and Free Rooms occupancy. `unknown` is false
+ * — an unplaceable semester is not a licence to claim the timetable is live.
+ */
+function semesterIsRunning(identity) {
+    return identity?.status === 'running';
+}
+
+/**
+ * Why the semester on screen may not be the one the student is sitting in.
+ *
+ * Lives here rather than in each tab's markup because Routine, Seats and Free
+ * Rooms all read the same feed and all owe the same explanation, and a caveat
+ * that drifts between three copies is a caveat nobody trusts.
+ */
+function semesterCaveat(identity) {
+  switch (identity?.status) {
+    case 'upcoming':
+      return 'CONNECT publishes the semester open for advising, so this timetable has not started yet.';
+    case 'ended':
+      return 'This semester is over. CONNECT has not published the next one yet.';
+    case 'running':
+      return 'This is the semester currently in progress.';
+    default:
+      return 'CONNECT did not say which semester this timetable belongs to.';
+  }
+}
+
+/** One line naming the semester and saying where it sits relative to today. */
+function semesterHeadline(identity) {
+    if (!identity) return 'Semester unknown';
+    const name =
+        identity.name ??
+        (identity.sessionId !== null ? `Session ${identity.sessionId}` : 'Semester unknown');
+    const start = formatSemesterDate(identity.classStartDate);
+    const end = formatSemesterDate(identity.classEndDate);
+
+    switch (identity.status) {
+        case 'upcoming':
+            return start ? `${name} · classes start ${start}` : `${name} · not started yet`;
+        case 'running':
+            return end ? `${name} · classes to ${end}` : `${name} · in progress`;
+        case 'ended':
+            return end ? `${name} · classes ended ${end}` : `${name} · ended`;
+        default:
+            return name;
+    }
+}
+
 // ── js/core/freeRooms.js ────────────────────────────────────────
 // Twin of src/core/freeRooms.ts — hand-maintained, not generated.
 // src/core/freeRooms.ts is the source of truth: change it there first, then mirror the
@@ -24115,6 +24324,8 @@ const _store = {
   error: null,
   source: null,        // 'live' | 'cache' | 'fallback'
   fetchedAt: 0,
+  semester: null,      // SemesterIdentity for the loaded feed, or null before first load
+
   index: null,         // Map<courseCode, NormalizedSection[]>
   courseCodes: [],
   routine: _restoreRoutine(),
@@ -24599,6 +24810,7 @@ async function _refresh(force = false) {
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
+    _store.semester = describeSemester(result.sections, todayISODate());
     // A shared link's picks are applied here — once we have the feed to
     // validate them against — and only on the first load that carries one.
     if (_store.pendingShare) {
@@ -24679,6 +24891,7 @@ function _applyLiveFeed(result) {
   _store.courseCodes = Array.from(_store.index.keys()).sort();
   _store.source = result.source;
   _store.fetchedAt = result.fetchedAt;
+  _store.semester = describeSemester(result.sections, todayISODate());
   // Don't tear the DOM down mid-search: the course input and its dropdown
   // only survive a full rebuild via the focus dance _rerender doesn't do.
   // The store is fresh either way; the next interaction repaints from it.
@@ -24856,7 +25069,7 @@ function _gridHTML(routine, clashMap) {
   // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
   const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, ${ROW_PX}px);`;
 
-  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const today = _liveToday();
   const dayHeaders = layout.days.map((d, i) => {
     const isToday = d === today;
     return `
@@ -24921,7 +25134,7 @@ function _agendaHTML(layout, clashMap, hueMap) {
     if (list) list.push(b);
     else byDay.set(b.day, [b]);
   }
-  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const today = _liveToday();
   const days = layout.days.filter(d => byDay.has(d));
   const sections = days.map(d => {
     const items = byDay.get(d)
@@ -24957,7 +25170,13 @@ function _agendaItemHTML(block, clashMap, hueMap) {
 // Thin line across the day columns at the current local time. Returns '' when
 // "now" falls outside the grid's displayed hours. The line sits on the right
 // grid row and is nudged within that row by the sub-row fraction.
+//
+// Also '' when the displayed semester is not the one running (#633). A now line
+// over next semester's timetable is not a small inaccuracy — it is the whole
+// claim the grid makes about being live, asserted against classes that do not
+// meet for another month.
 function _nowLineHTML(layout) {
+  if (!semesterIsRunning(_store.semester)) return '';
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   if (nowMin < layout.startMin || nowMin >= layout.endMin) return '';
@@ -25039,6 +25258,14 @@ function _buildHueMap(blocks) {
   return map;
 }
 
+// The weekday to mark as "today", or null when marking one would be a lie.
+// A grid showing a semester that has not started has no today in it; null takes
+// the existing "today is not among the displayed days" path, which washes every
+// column rather than lighting one at random.
+function _liveToday() {
+  return semesterIsRunning(_store.semester) ? WEEKDAY_BY_INDEX[new Date().getDay()] : null;
+}
+
 function _hourLabel(min) {
   const h = Math.floor(min / 60);
   const hh = ((h + 11) % 12) + 1;
@@ -25050,6 +25277,12 @@ function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
   const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
+  // Which semester this timetable belongs to, and whether it is the one running.
+  // The freshness badge above answers "how recent is this data", which the feed
+  // flip showed is a different question from "is this the semester I am in".
+  const semesterBadge = _store.semester
+    ? `<span class="routine-semester-badge routine-semester--${escAttr(_store.semester.status)}" title="${escAttr(semesterCaveat(_store.semester))}">${escHtml(semesterHeadline(_store.semester))}</span>`
+    : '';
   const clashWarn = (summary.classClashPairs + summary.examClashPairs) > 0
     ? `<span class="routine-clash-warn" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${summary.classClashPairs + summary.examClashPairs} clash${(summary.classClashPairs + summary.examClashPairs) === 1 ? '' : 'es'}</span>`
     : '';
@@ -25060,6 +25293,7 @@ function _headerHTML(summary) {
         <span class="routine-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
           ${escHtml(sourceLabel)} · ${escHtml(age)}
         </span>
+        ${semesterBadge}
         ${clashWarn}
       </div>
       <div class="routine-header-right">
@@ -25087,7 +25321,7 @@ function _headerHTML(summary) {
 function _pickerHTML() {
   const planCount = _planCourses().length;
   const importBtn = planCount > 0
-    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that are offered this semester">↧ Import from Planner (${planCount})</button>`
+    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above">↧ Import from Planner (${planCount})</button>`
     : '';
   const note = _store.planImportNote
     ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
