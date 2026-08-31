@@ -569,6 +569,7 @@ export const FIXTURES = {
     ],
     semesterIsRunning: [...IDENTITIES.map((i) => [i]), [null], [undefined]],
     semesterHeadline: [...IDENTITIES.map((i) => [i]), [null]],
+    semesterCaveat: [...IDENTITIES.map((i) => [i]), [null], [undefined]],
   },
   'transcript-core': {
     normalizeTranscriptLine: [['  CSE110   Programming  '], [''], ['A+ (RT)']],
