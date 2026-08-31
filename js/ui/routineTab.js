@@ -9,6 +9,7 @@ import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClie
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
 import {
   describeSemester,
+  semesterCaveat,
   semesterHeadline,
   semesterIsRunning,
   todayISODate,
@@ -1010,20 +1011,6 @@ function _hourLabel(min) {
   return `${hh} ${ampm}`;
 }
 
-// Why the semester on screen may not be the one the student is sitting in.
-function _semesterTitle(identity) {
-  switch (identity.status) {
-    case 'upcoming':
-      return 'CONNECT publishes the semester open for advising, so this timetable has not started yet.';
-    case 'ended':
-      return 'This semester is over. CONNECT has not published the next one yet.';
-    case 'running':
-      return 'This is the semester currently in progress.';
-    default:
-      return 'CONNECT did not say which semester this timetable belongs to.';
-  }
-}
-
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
   const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_store.source] || '—';
@@ -1032,7 +1019,7 @@ function _headerHTML(summary) {
   // The freshness badge above answers "how recent is this data", which the feed
   // flip showed is a different question from "is this the semester I am in".
   const semesterBadge = _store.semester
-    ? `<span class="routine-semester-badge routine-semester--${escAttr(_store.semester.status)}" title="${escAttr(_semesterTitle(_store.semester))}">${escHtml(semesterHeadline(_store.semester))}</span>`
+    ? `<span class="routine-semester-badge routine-semester--${escAttr(_store.semester.status)}" title="${escAttr(semesterCaveat(_store.semester))}">${escHtml(semesterHeadline(_store.semester))}</span>`
     : '';
   const clashWarn = (summary.classClashPairs + summary.examClashPairs) > 0
     ? `<span class="routine-clash-warn" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${summary.classClashPairs + summary.examClashPairs} clash${(summary.classClashPairs + summary.examClashPairs) === 1 ? '' : 'es'}</span>`
