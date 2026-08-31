@@ -7,6 +7,12 @@
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
+import {
+  describeSemester,
+  semesterHeadline,
+  semesterIsRunning,
+  todayISODate,
+} from '../core/semesterIdentity.js';
 import { buildRoutineICS } from '../core/calendarExport.js';
 import qrcode from 'qrcode-generator';
 import {
@@ -55,6 +61,8 @@ const _store = {
   error: null,
   source: null,        // 'live' | 'cache' | 'fallback'
   fetchedAt: 0,
+  semester: null,      // SemesterIdentity for the loaded feed, or null before first load
+
   index: null,         // Map<courseCode, NormalizedSection[]>
   courseCodes: [],
   routine: _restoreRoutine(),
@@ -539,6 +547,7 @@ async function _refresh(force = false) {
     _store.courseCodes = Array.from(_store.index.keys()).sort();
     _store.source = result.source;
     _store.fetchedAt = result.fetchedAt;
+    _store.semester = describeSemester(result.sections, todayISODate());
     // A shared link's picks are applied here — once we have the feed to
     // validate them against — and only on the first load that carries one.
     if (_store.pendingShare) {
@@ -619,6 +628,7 @@ function _applyLiveFeed(result) {
   _store.courseCodes = Array.from(_store.index.keys()).sort();
   _store.source = result.source;
   _store.fetchedAt = result.fetchedAt;
+  _store.semester = describeSemester(result.sections, todayISODate());
   // Don't tear the DOM down mid-search: the course input and its dropdown
   // only survive a full rebuild via the focus dance _rerender doesn't do.
   // The store is fresh either way; the next interaction repaints from it.
@@ -796,7 +806,7 @@ function _gridHTML(routine, clashMap) {
   // CSS grid: 1 time-label column + N day columns; 1 header row + totalRows rows.
   const gridStyle = `grid-template-columns: 56px repeat(${layout.days.length}, minmax(0, 1fr)); grid-template-rows: 28px repeat(${layout.totalRows}, ${ROW_PX}px);`;
 
-  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const today = _liveToday();
   const dayHeaders = layout.days.map((d, i) => {
     const isToday = d === today;
     return `
@@ -861,7 +871,7 @@ function _agendaHTML(layout, clashMap, hueMap) {
     if (list) list.push(b);
     else byDay.set(b.day, [b]);
   }
-  const today = WEEKDAY_BY_INDEX[new Date().getDay()];
+  const today = _liveToday();
   const days = layout.days.filter(d => byDay.has(d));
   const sections = days.map(d => {
     const items = byDay.get(d)
@@ -897,7 +907,13 @@ function _agendaItemHTML(block, clashMap, hueMap) {
 // Thin line across the day columns at the current local time. Returns '' when
 // "now" falls outside the grid's displayed hours. The line sits on the right
 // grid row and is nudged within that row by the sub-row fraction.
+//
+// Also '' when the displayed semester is not the one running (#633). A now line
+// over next semester's timetable is not a small inaccuracy — it is the whole
+// claim the grid makes about being live, asserted against classes that do not
+// meet for another month.
 function _nowLineHTML(layout) {
+  if (!semesterIsRunning(_store.semester)) return '';
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes();
   if (nowMin < layout.startMin || nowMin >= layout.endMin) return '';
@@ -979,6 +995,14 @@ function _buildHueMap(blocks) {
   return map;
 }
 
+// The weekday to mark as "today", or null when marking one would be a lie.
+// A grid showing a semester that has not started has no today in it; null takes
+// the existing "today is not among the displayed days" path, which washes every
+// column rather than lighting one at random.
+function _liveToday() {
+  return semesterIsRunning(_store.semester) ? WEEKDAY_BY_INDEX[new Date().getDay()] : null;
+}
+
 function _hourLabel(min) {
   const h = Math.floor(min / 60);
   const hh = ((h + 11) % 12) + 1;
@@ -986,10 +1010,30 @@ function _hourLabel(min) {
   return `${hh} ${ampm}`;
 }
 
+// Why the semester on screen may not be the one the student is sitting in.
+function _semesterTitle(identity) {
+  switch (identity.status) {
+    case 'upcoming':
+      return 'CONNECT publishes the semester open for advising, so this timetable has not started yet.';
+    case 'ended':
+      return 'This semester is over. CONNECT has not published the next one yet.';
+    case 'running':
+      return 'This is the semester currently in progress.';
+    default:
+      return 'CONNECT did not say which semester this timetable belongs to.';
+  }
+}
+
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
   const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
+  // Which semester this timetable belongs to, and whether it is the one running.
+  // The freshness badge above answers "how recent is this data", which the feed
+  // flip showed is a different question from "is this the semester I am in".
+  const semesterBadge = _store.semester
+    ? `<span class="routine-semester-badge routine-semester--${escAttr(_store.semester.status)}" title="${escAttr(_semesterTitle(_store.semester))}">${escHtml(semesterHeadline(_store.semester))}</span>`
+    : '';
   const clashWarn = (summary.classClashPairs + summary.examClashPairs) > 0
     ? `<span class="routine-clash-warn" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${summary.classClashPairs + summary.examClashPairs} clash${(summary.classClashPairs + summary.examClashPairs) === 1 ? '' : 'es'}</span>`
     : '';
@@ -1000,6 +1044,7 @@ function _headerHTML(summary) {
         <span class="routine-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
           ${escHtml(sourceLabel)} · ${escHtml(age)}
         </span>
+        ${semesterBadge}
         ${clashWarn}
       </div>
       <div class="routine-header-right">
@@ -1027,7 +1072,7 @@ function _headerHTML(summary) {
 function _pickerHTML() {
   const planCount = _planCourses().length;
   const importBtn = planCount > 0
-    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that are offered this semester">↧ Import from Planner (${planCount})</button>`
+    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above">↧ Import from Planner (${planCount})</button>`
     : '';
   const note = _store.planImportNote
     ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
