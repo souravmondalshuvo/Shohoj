@@ -5867,6 +5867,21 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
 .routine-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
 
+/* Which semester the timetable on screen belongs to (#633). Sits beside the
+   freshness badge because the two answer different questions: that one says how
+   recent the data is, this one says whether it is the semester you are in.
+   Amber for a semester that has not started — the common case during advising,
+   when CONNECT has already swapped the running semester out. */
+.routine-semester-badge {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  background: var(--badge-bg); color: var(--text2);
+  border: 1px solid var(--chip-border);
+  white-space: nowrap;
+}
+.routine-semester--running  { background: rgba(46,204,113,0.12); color: var(--ink-green); border-color: rgba(46,204,113,0.28); }
+.routine-semester--upcoming { background: rgba(241,196,15,0.12); color: var(--ink-amber); border-color: rgba(241,196,15,0.28); }
+.routine-semester--ended    { background: rgba(231,76,60,0.10);  color: #e74c3c;          border-color: rgba(231,76,60,0.24); }
+
 .routine-clash-warn {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: rgba(231,76,60,0.10); color: #e74c3c; border: 1px solid rgba(231,76,60,0.24);
