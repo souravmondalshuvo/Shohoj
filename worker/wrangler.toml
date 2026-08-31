@@ -7,6 +7,12 @@ compatibility_date = "2025-09-01"
 # and emails via Resend. Every 2 minutes balances responsiveness during
 # registration week against CDN politeness (one fetch serves all users). Reuses
 # the existing RESEND_API_KEY + SERVICE_ACCOUNT_JSON secrets — none new.
+#
+# The same handler also archives the CONNECT feed into PAPERS_BUCKET (#633).
+# That feed carries one semester and drops it when the next opens for advising,
+# so without a snapshot the running semester simply disappears mid-term. It
+# gates itself on the manifest and writes about four times a day, so it does not
+# inherit this 2-minute cadence — see worker/semesterArchive.js. No new binding.
 [triggers]
 crons = ["*/2 * * * *"]
 
