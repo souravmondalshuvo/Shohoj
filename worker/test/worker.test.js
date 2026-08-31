@@ -465,6 +465,71 @@ async function makeServiceAccountJson() {
     assertEq(body.error, 'Not found');
   });
 
+  // ── Semester archive endpoints (#633) ─────────────────────────────────────
+  // The CONNECT feed drops a semester when the next opens for advising, so the
+  // cron keeps snapshots in R2 and these serve them back. Public on purpose:
+  // the same timetable the CDN publishes to anyone, for a semester it forgot.
+
+  /** An env whose bucket answers reads, unlike ENV's deliberately hostile one. */
+  function archiveEnv(objects) {
+    return {
+      ...ENV,
+      PAPERS_BUCKET: {
+        async get(key) {
+          if (!(key in objects)) return null;
+          return { body: objects[key] };
+        },
+      },
+    };
+  }
+
+  await test('GET /api/semesters lists what the archive holds', async () => {
+    const manifest = JSON.stringify({
+      semesters: [{ sessionId: 20263, classStartDate: '2026-10-03', archivedAt: 5 }],
+    });
+    const res = await worker.fetch(
+      req('GET', '/api/semesters'),
+      archiveEnv({ 'semesters/index.json': manifest }),
+    );
+    assertEq(res.status, 200);
+    assertEq(res.headers.get('Access-Control-Allow-Origin'), ALLOWED_ORIGIN);
+    const body = await res.json();
+    assertEq(body.semesters[0].sessionId, 20263);
+  });
+
+  await test('GET /api/semesters is an empty list, not an error, before anything is archived', async () => {
+    // The client asks this on load. A 404 or a 500 would make "we have not
+    // archived anything yet" indistinguishable from "the worker is broken".
+    const res = await worker.fetch(req('GET', '/api/semesters'), archiveEnv({}));
+    assertEq(res.status, 200);
+    assertEq((await res.json()).semesters.length, 0);
+  });
+
+  await test('GET /api/semesters/:id returns that semester verbatim', async () => {
+    const payload = JSON.stringify([{ sectionId: 1, courseCode: 'CSE110' }]);
+    const res = await worker.fetch(
+      req('GET', '/api/semesters/20262'),
+      archiveEnv({ 'semesters/20262.json': payload }),
+    );
+    assertEq(res.status, 200);
+    assertEq(res.headers.get('Content-Type'), 'application/json');
+    assertEq((await res.json())[0].courseCode, 'CSE110');
+  });
+
+  await test('GET /api/semesters/:id 404s for a semester we do not hold', async () => {
+    const res = await worker.fetch(req('GET', '/api/semesters/19991'), archiveEnv({}));
+    assertEq(res.status, 404);
+  });
+
+  await test('a non-numeric semester id is not a route', async () => {
+    // The id goes straight into an R2 key, so the pattern is the guard against
+    // a crafted path reaching for another object.
+    for (const bad of ['/api/semesters/abc', '/api/semesters/../papers', '/api/semesters/1']) {
+      const res = await worker.fetch(req('GET', bad), archiveEnv({}));
+      assertEq(res.status, 404, `${bad} should not route`);
+    }
+  });
+
   await test('GET /upload (wrong method) returns 404', async () => {
     const res = await worker.fetch(req('GET', '/upload'), ENV);
     assertEq(res.status, 404);
