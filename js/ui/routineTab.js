@@ -8,8 +8,15 @@
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
 import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
 import {
+  archiveCacheKey,
+  archiveGapNotice,
+  archivePayloadUrl,
+  fetchArchiveListing,
+} from '../core/semesterArchive.js';
+import {
   describeSemester,
   semesterCaveat,
+  semesterNameFromSessionId,
   semesterHeadline,
   semesterIsRunning,
   todayISODate,
@@ -57,12 +64,42 @@ const WEEKDAY_BY_INDEX = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FR
 // grid template and the current-time line agree.
 const ROW_PX = 14;
 
+// Where the Worker lives, or null on a build with no cloud config. Read at call
+// time rather than captured: the runtime config script sets it before the app
+// boots, but a stub build leaves it unset and the switcher must simply not appear.
+function _workerUrl() {
+  const u = typeof window !== 'undefined' ? window._shohoj_papers_worker_url : null;
+  return typeof u === 'string' && u.startsWith('http') ? u : null;
+}
+
+/** Remembered choice of semester. Absent or unparseable means the live feed. */
+const SEMESTER_CHOICE_KEY = 'shohoj_routine_semester';
+
+function _restoreSemesterChoice() {
+  try {
+    const raw = localStorage.getItem(SEMESTER_CHOICE_KEY);
+    const n = raw === null ? NaN : Number.parseInt(raw, 10);
+    return Number.isInteger(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function _rememberSemesterChoice(sessionId) {
+  try {
+    if (sessionId === null) localStorage.removeItem(SEMESTER_CHOICE_KEY);
+    else localStorage.setItem(SEMESTER_CHOICE_KEY, String(sessionId));
+  } catch { /* storage disabled — the choice just won't survive a reload */ }
+}
+
 const _store = {
   loading: false,
   error: null,
   source: null,        // 'live' | 'cache' | 'fallback'
   fetchedAt: 0,
   semester: null,      // SemesterIdentity for the loaded feed, or null before first load
+  archived: [],        // Semesters the Worker kept (#633); empty ⇒ no switcher
+  chosenSession: _restoreSemesterChoice(), // null ⇒ live feed; a session id ⇒ one from the archive
 
   index: null,         // Map<courseCode, NormalizedSection[]>
   courseCodes: [],
@@ -480,6 +517,12 @@ function _onSearchInput(ev) {
 }
 
 function _attachInputHandlers() {
+  // Wired here rather than as an inline onchange: the production CSP drops
+  // unsafe-inline and only hashes <script> blocks, so an on* attribute is
+  // silently dead in the built page while working fine un-bundled in dev.
+  const picker = document.getElementById('routineSemesterPicker');
+  if (picker) picker.addEventListener('change', _onSemesterChange);
+
   const input = document.getElementById('routineCourseInput');
   if (!input) return;
   input.addEventListener('input', _onSearchInput);
@@ -511,6 +554,29 @@ function _attachInputHandlers() {
   });
 }
 
+function _onSemesterChange(ev) {
+  const raw = ev.target.value;
+  const next = raw === '' ? null : Number.parseInt(raw, 10);
+  const chosen = Number.isInteger(next) ? next : null;
+  if (chosen === _store.chosenSession) return;
+  _store.chosenSession = chosen;
+  _rememberSemesterChoice(chosen);
+  _refresh(false);
+}
+
+// The listing decides whether the switcher is offered at all, so it never
+// blocks the tab and never raises an error of its own: no Worker, nothing
+// archived and a failed request all mean the same thing here — live feed only.
+let _archiveListingLoaded = false;
+async function _loadArchiveListing() {
+  if (_archiveListingLoaded) return;
+  _archiveListingLoaded = true;
+  const list = await fetchArchiveListing({ workerUrl: _workerUrl() });
+  if (list.length === 0) return;
+  _store.archived = list;
+  _rerender();
+}
+
 function _scrollActiveIntoView() {
   const el = document.getElementById(`routine-sugg-${_store.suggestActive}`);
   if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
@@ -538,7 +604,15 @@ async function _refresh(force = false) {
   // Fetch the Connect feed and the review aggregation in parallel.
   // Reviews are best-effort: if they fail, the UI degrades to "no ratings"
   // rather than refusing to render the routine.
-  const feedPromise = fetchConnectFeed(force ? { forceRefresh: true } : {});
+  // Same JSON, same parser, a different host — and its own cache slot, so the
+  // live feed and an archived semester never evict each other.
+  const archiveUrl = _store.chosenSession === null
+    ? null
+    : archivePayloadUrl(_workerUrl(), _store.chosenSession);
+  const feedOptions = archiveUrl === null
+    ? (force ? { forceRefresh: true } : {})
+    : { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(_store.chosenSession) };
+  const feedPromise = fetchConnectFeed(feedOptions);
   const reviewsPromise = _loadFacultyRatings(force);
 
   try {
@@ -557,7 +631,12 @@ async function _refresh(force = false) {
     }
     // One fetch serves every tab: let seats/free-rooms repaint from this
     // result instead of going stale until their own next poll.
-    broadcastFeedResult(result, _applyLiveFeed);
+    //
+    // Only when this IS the live feed. Broadcasting an archived semester would
+    // silently move Seats and Free Rooms onto it too — a student reading last
+    // semester's timetable here would find last semester's free rooms there,
+    // with nothing on either tab saying why (#633).
+    if (_store.chosenSession === null) broadcastFeedResult(result, _applyLiveFeed);
     if (force) _flashNote('✓ Refreshed from CONNECT');
   } catch {
     // Never surface raw exception text in the DOM (CodeQL js/xss-through-exception):
@@ -624,6 +703,10 @@ function _writeRatingCache(map) {
 // counts in the section rows, fresh clash data, fresh source/age badge.
 function _applyLiveFeed(result) {
   if (_store.loading) return; // our own refresh is mid-flight; it will win
+  // Another tab's poll is always the live feed. If this tab is showing an
+  // archived semester, that poll is about a different semester entirely and
+  // must not repaint over it.
+  if (_store.chosenSession !== null) return;
   _store.index = indexByCourse(result.sections);
   _dataVersion++; // new section index ⇒ invalidate the clash memo
   _store.courseCodes = Array.from(_store.index.keys()).sort();
@@ -650,6 +733,9 @@ export async function renderRoutineTab() {
   const root = document.getElementById('routineContent');
   if (!root) return;
   _routineGoLive();
+  // Fire-and-forget: the switcher appears when the answer arrives, and its
+  // absence is the correct rendering until then.
+  _loadArchiveListing();
   if (!_store.index && !_store.loading && !_store.error) {
     _refresh(false);
     return;
@@ -1021,6 +1107,14 @@ function _headerHTML(summary) {
   const semesterBadge = _store.semester
     ? `<span class="routine-semester-badge routine-semester--${escAttr(_store.semester.status)}" title="${escAttr(semesterCaveat(_store.semester))}">${escHtml(semesterHeadline(_store.semester))}</span>`
     : '';
+  // Offered only when the Worker has something to switch to. A control with
+  // nothing behind it is worse than no control.
+  const semesterPicker = _store.archived.length > 0
+    ? `<select class="routine-semester-picker" id="routineSemesterPicker" aria-label="Semester to show">
+         <option value=""${_store.chosenSession === null ? ' selected' : ''}>Live feed</option>
+         ${_store.archived.map(a => `<option value="${escAttr(String(a.sessionId))}"${a.sessionId === _store.chosenSession ? ' selected' : ''}>${escHtml(semesterNameFromSessionId(a.sessionId) || `Session ${a.sessionId}`)}</option>`).join('')}
+       </select>`
+    : '';
   const clashWarn = (summary.classClashPairs + summary.examClashPairs) > 0
     ? `<span class="routine-clash-warn" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${summary.classClashPairs + summary.examClashPairs} clash${(summary.classClashPairs + summary.examClashPairs) === 1 ? '' : 'es'}</span>`
     : '';
@@ -1032,6 +1126,7 @@ function _headerHTML(summary) {
           ${escHtml(sourceLabel)} · ${escHtml(age)}
         </span>
         ${semesterBadge}
+        ${semesterPicker}
         ${clashWarn}
       </div>
       <div class="routine-header-right">
@@ -1064,6 +1159,14 @@ function _pickerHTML() {
   const note = _store.planImportNote
     ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
     : '';
+  // What an imported capture cannot tell you. Null for the live feed and for
+  // anything the cron pulled itself.
+  const gap = archiveGapNotice(
+    _store.archived.find(a => a.sessionId === _store.chosenSession) || null,
+  );
+  const archiveNote = gap
+    ? `<div class="routine-archive-note" role="status">${escHtml(gap)}</div>`
+    : '';
   return `
     <div class="routine-picker">
       <input type="text" id="routineCourseInput" class="routine-input"
@@ -1075,6 +1178,7 @@ function _pickerHTML() {
       ${importBtn}
     </div>
     ${note}
+    ${archiveNote}
   `;
 }
 
