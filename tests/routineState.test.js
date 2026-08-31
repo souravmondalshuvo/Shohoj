@@ -6,6 +6,11 @@
  */
 
 import {
+    emptyRoutineBook,
+    readRoutineBook,
+    routineForSession,
+    serializeRoutineBook,
+    withRoutineForSession,
     emptyRoutineState,
     pickCourse,
     pickSection,
@@ -244,6 +249,86 @@ test('decode caps at MAX_SHARE_COURSES entries', () => {
 test('decode of empty / non-string is an empty routine', () => {
     eq(decodeRoutinePicks('').picks, {});
     eq(decodeRoutinePicks(null).picks, {});
+});
+
+
+// ---------------------------------------------------------------------------
+// Per-semester scoping (#633).
+//
+// The bug: a routine is picks against ONE semester's sections, but the picks
+// were stored flat. Course codes carry across semesters (CSE221 is offered in
+// both Summer and Fall) while section ids do not — so switching semesters left
+// four courses listed that the student was not taking, above an empty grid.
+//
+// The compatibility constraint is as load-bearing as the fix. Six other modules
+// read `parsed.picks` — the Assistant, the Profile hub on both shells, and the
+// cloud snapshot — and every one of them means the live semester. So `picks`
+// has to keep meaning exactly what it always meant.
+
+test('a routine saved before scoping is read as the live one', () => {
+    const book = readRoutineBook({ picks: { CSE110: 1001, MAT110: null } });
+    eq(book.live.picks, { CSE110: 1001, MAT110: null });
+    eq(book.bySession, {});
+});
+
+test('the live routine still serializes to a top-level picks', () => {
+    // If this breaks, the Assistant and both Profile hubs silently see an empty
+    // routine — they read parsed.picks and nothing tells them the shape moved.
+    const book = withRoutineForSession(emptyRoutineBook(), null, { picks: { CSE221: 9001 } });
+    const stored = serializeRoutineBook(book);
+    eq(stored.picks, { CSE221: 9001 });
+    eq(readRoutineBook(stored).live.picks, { CSE221: 9001 });
+});
+
+test('each semester keeps its own picks', () => {
+    let book = withRoutineForSession(emptyRoutineBook(), null, { picks: { CSE221: 9001 } });
+    book = withRoutineForSession(book, 20262, { picks: { CSE220: 5001 } });
+
+    eq(routineForSession(book, null).picks, { CSE221: 9001 });
+    eq(routineForSession(book, 20262).picks, { CSE220: 5001 });
+    // The case from the report: switching to a semester never touched gives an
+    // empty routine, not the other semester's courses.
+    eq(routineForSession(book, 20263).picks, {});
+});
+
+test('writing one semester leaves the others alone', () => {
+    let book = readRoutineBook({
+        picks: { CSE221: 9001 },
+        bySession: { 20262: { picks: { CSE220: 5001 } } },
+    });
+    book = withRoutineForSession(book, 20263, { picks: { HUM101: 3001 } });
+
+    eq(routineForSession(book, null).picks, { CSE221: 9001 });
+    eq(routineForSession(book, 20262).picks, { CSE220: 5001 });
+    eq(routineForSession(book, 20263).picks, { HUM101: 3001 });
+});
+
+test('a round trip through storage preserves every semester', () => {
+    let book = withRoutineForSession(emptyRoutineBook(), null, { picks: { CSE221: 9001 } });
+    book = withRoutineForSession(book, 20262, { picks: { CSE220: 5001, CSE251: 5002 } });
+    const reread = readRoutineBook(JSON.parse(JSON.stringify(serializeRoutineBook(book))));
+    eq(reread.live.picks, { CSE221: 9001 });
+    eq(reread.bySession['20262'].picks, { CSE220: 5001, CSE251: 5002 });
+});
+
+test('a corrupt store degrades to empty rather than throwing', () => {
+    for (const bad of [null, undefined, 'text', 42, [], {}, { picks: null }, { picks: 'x' }]) {
+        const book = readRoutineBook(bad);
+        eq(book.live.picks, {}, `expected empty live for ${JSON.stringify(bad)}`);
+        eq(book.bySession, {});
+    }
+});
+
+test('unusable session keys and picks are dropped, not half-read', () => {
+    const book = readRoutineBook({
+        picks: { cse110: 7, BAD: 'nope', OK: null },
+        bySession: { 'not-a-session': { picks: { X: 1 } }, 20262: null, 20263: { picks: { Y: 2 } } },
+    });
+    // Codes are upper-cased on the way in, and a non-numeric pick is not a pick.
+    eq(book.live.picks, { CSE110: 7, OK: null });
+    eq(Object.keys(book.bySession).sort(), ['20262', '20263']);
+    eq(book.bySession['20262'].picks, {});
+    eq(book.bySession['20263'].picks, { Y: 2 });
 });
 
 // ---------------------------------------------------------------------------
