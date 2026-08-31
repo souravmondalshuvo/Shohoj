@@ -1,0 +1,1 @@
+import{d as e}from"./AuthProvider-BjRiyzr_.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
