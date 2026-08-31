@@ -198,6 +198,27 @@ const TRANSCRIPT = [
  * network-dependent exports (exportFileName, fetchConnectFeed) are deliberately
  * absent — see UNCOVERED in twinParity.test.js.
  */
+/**
+ * One semester's worth of term dates, plus the late-starting outlier that the
+ * modal derivation exists to ignore (#633). Min/max would let section 303
+ * redefine when the semester begins.
+ */
+const TERM_SECTIONS = [
+  examSection({ sectionId: 301, semesterSessionId: 20263, classStartDate: '2026-10-03', classEndDate: '2027-01-04' }),
+  examSection({ sectionId: 302, semesterSessionId: 20263, classStartDate: '2026-10-03', classEndDate: '2027-01-04' }),
+  examSection({ sectionId: 303, semesterSessionId: 20263, classStartDate: '2026-09-12', classEndDate: '2026-12-27' }),
+];
+
+/** Identities written out directly, so the pure reporters are covered without
+ *  routing every case through describeSemester. */
+const IDENTITIES = [
+  { sessionId: 20263, name: 'Fall 2026', classStartDate: '2026-10-03', classEndDate: '2027-01-04', status: 'upcoming' },
+  { sessionId: 20262, name: 'Summer 2026', classStartDate: '2026-06-09', classEndDate: '2026-09-08', status: 'running' },
+  { sessionId: 20261, name: 'Spring 2026', classStartDate: '2026-01-19', classEndDate: '2026-04-30', status: 'ended' },
+  { sessionId: 20264, name: null, classStartDate: null, classEndDate: null, status: 'unknown' },
+  { sessionId: null, name: null, classStartDate: null, classEndDate: null, status: 'unknown' },
+];
+
 export const FIXTURES = {
   courseMarks: {
     letterForMark: [[100], [97], [96.99], [85], [84.99], [50], [49.99], [0], [-5]],
@@ -531,6 +552,24 @@ export const FIXTURES = {
     ],
   },
 
+  semesterIdentity: {
+    todayISODate: [[new Date(FIXED_NOW)], [new Date(Date.UTC(2026, 7, 31, 12))]],
+    formatSemesterDate: [['2026-10-03'], ['2027-01-04'], ['2026-13-01'], ['not-a-date'], [null]],
+    semesterNameFromSessionId: [[20261], [20262], [20263], [20264], [1999], ['20263'], [null]],
+    // The clock is pinned on every case: a twin that read Date.now() on one
+    // side only would still agree here, and agreeing by accident is the drift
+    // this contract exists to catch.
+    describeSemester: [
+      [TERM_SECTIONS, '2026-08-31'],
+      [TERM_SECTIONS, '2026-10-03'],
+      [TERM_SECTIONS, '2027-01-05'],
+      [TERM_SECTIONS, 'garbage'],
+      [[], '2026-08-31'],
+      [null, '2026-08-31'],
+    ],
+    semesterIsRunning: [...IDENTITIES.map((i) => [i]), [null], [undefined]],
+    semesterHeadline: [...IDENTITIES.map((i) => [i]), [null]],
+  },
   'transcript-core': {
     normalizeTranscriptLine: [['  CSE110   Programming  '], [''], ['A+ (RT)']],
     normalizeTranscriptText: [[TRANSCRIPT], ['']],
