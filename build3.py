@@ -71,6 +71,8 @@ MAIN_JS_FILES = [
     # Routine Builder (Connect-feed-backed)
     'js/core/connectFeed.js',
     'js/core/connectFeedClient.js',
+    # Which semester the feed is describing, and whether it is the one running
+    'js/core/semesterIdentity.js',
     'js/core/freeRooms.js',
     'js/core/seatStatus.js',
     'js/core/seatWatch.js',
