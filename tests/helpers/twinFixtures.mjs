@@ -219,6 +219,33 @@ const IDENTITIES = [
   { sessionId: null, name: null, classStartDate: null, classEndDate: null, status: 'unknown' },
 ];
 
+/** Archive listings as the Worker serves them, plus the malformed rows the
+ *  normalizer is supposed to survive (#633). */
+const ARCHIVE_LISTINGS = [
+  {
+    semesters: [
+      { sessionId: 20262, classStartDate: '2026-06-09', classEndDate: '2026-09-08', sections: 2010, archivedAt: 5,
+        provenance: { source: 'snapshot', sections: 2010, tbaFaculty: 1184, noSchedule: 27, unnamed: 0, seatsFrozen: true } },
+      { sessionId: 20263, classStartDate: '2026-10-03', classEndDate: '2027-01-04', sections: 2086, archivedAt: 9 },
+    ],
+  },
+  { semesters: [null, 42, { sessionId: 'x' }, { sessionId: 20261, classStartDate: 'nope', provenance: { source: 7 } }] },
+  { semesters: [] },
+  { semesters: 'not an array' },
+  null,
+];
+
+/** Normalized entries, for the reporters that take one. */
+const ARCHIVE_ENTRIES = [
+  { sessionId: 20262, classStartDate: '2026-06-09', classEndDate: '2026-09-08', sections: 2010, archivedAt: 5,
+    provenance: { source: 'snapshot', sections: 2010, tbaFaculty: 1184, noSchedule: 27, unnamed: 0, seatsFrozen: true } },
+  { sessionId: 20262, classStartDate: null, classEndDate: null, sections: 10, archivedAt: 5,
+    provenance: { source: 'snapshot', sections: 10, tbaFaculty: 0, noSchedule: 0, unnamed: 0, seatsFrozen: false } },
+  { sessionId: 20263, classStartDate: null, classEndDate: null, sections: 2086, archivedAt: 9, provenance: null },
+  { sessionId: 20263, classStartDate: null, classEndDate: null, sections: 1, archivedAt: 0,
+    provenance: { source: 'feed', sections: 1, tbaFaculty: 0, noSchedule: 0, unnamed: 0, seatsFrozen: false } },
+];
+
 export const FIXTURES = {
   courseMarks: {
     letterForMark: [[100], [97], [96.99], [85], [84.99], [50], [49.99], [0], [-5]],
@@ -526,6 +553,29 @@ export const FIXTURES = {
       [[{ sectionId: 101, consumedSeat: 30, capacity: 30 }], FEED],
       [[], FEED],
     ],
+  },
+
+  semesterArchive: {
+    normalizeArchiveListing: ARCHIVE_LISTINGS.map((l) => [l]),
+    archiveListUrl: [
+      ['https://w.example.dev'],
+      ['https://w.example.dev/'],
+      ['https://w.example.dev///'],
+      ['not-a-url'],
+      [''],
+      [null],
+      [undefined],
+    ],
+    archivePayloadUrl: [
+      ['https://w.example.dev', 20262],
+      ['https://w.example.dev/', 20263],
+      ['https://w.example.dev', 12],
+      ['https://w.example.dev', 20262.5],
+      ['https://w.example.dev', NaN],
+      [null, 20262],
+    ],
+    archiveCacheKey: [[20262], [20263], [0]],
+    archiveGapNotice: [...ARCHIVE_ENTRIES.map((e) => [e]), [null], [undefined], [{}]],
   },
 
   semesterBriefing: {
