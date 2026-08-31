@@ -146,6 +146,26 @@ function fakeFetcher(payload) {
     assertEq(index.semesters[0].archivedAt, 5000);
   });
 
+  await test('a hand-imported snapshot keeps saying it is a snapshot', async () => {
+    // The Summer 2026 backfill is a capture, not a live pull: frozen seat
+    // counts, 1184 sections with no instructor. That label has to survive both
+    // a manifest re-read and a later re-archive, because the alternative is a
+    // capture quietly presenting itself as the live feed.
+    const provenance = { source: 'snapshot', sections: 2010, tbaFaculty: 1184, seatsFrozen: true };
+    const seeded = { semesters: [{ sessionId: 20262, sections: 2010, archivedAt: 1, provenance }] };
+
+    assertEq(normalizeArchiveIndex(seeded).semesters[0].provenance.source, 'snapshot');
+
+    const merged = mergeArchiveIndex(seeded, summarizeArchivePayload(SUMMER), 9000);
+    assertEq(merged.semesters[0].archivedAt, 9000, 're-archiving refreshes the timestamp');
+    assertEq(merged.semesters[0].provenance.tbaFaculty, 1184, 'and keeps the label');
+  });
+
+  await test('the cron does not invent provenance for what it pulls itself', () => {
+    const index = mergeArchiveIndex({ semesters: [] }, summarizeArchivePayload(FALL), 1000);
+    assertEq(index.semesters[0].provenance, undefined);
+  });
+
   await test('a corrupt manifest loses entries, not the ones that are still readable', () => {
     const { semesters } = normalizeArchiveIndex({
       semesters: [null, { sessionId: 'nope' }, { sessionId: 20262, archivedAt: 7 }, 42],
