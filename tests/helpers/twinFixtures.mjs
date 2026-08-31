@@ -246,6 +246,21 @@ const ARCHIVE_ENTRIES = [
     provenance: { source: 'feed', sections: 1, tbaFaculty: 0, noSchedule: 0, unnamed: 0, seatsFrozen: false } },
 ];
 
+/** Stored routine objects across the versions that have written them (#633). */
+const ROUTINE_BOOKS = [
+  // Pre-scoping: a bare {picks}. Must come back as the LIVE routine.
+  { picks: { CSE110: 1001, MAT110: null } },
+  // Post-scoping.
+  { picks: { CSE221: 9001 }, bySession: { 20262: { picks: { CSE220: 5001, CSE251: 5002 } } } },
+  // Junk in every position the reader has to survive.
+  { picks: { cse110: 7, BAD: 'nope', OK: null }, bySession: { 'not-a-session': { picks: {} }, 20262: null } },
+  { bySession: { 20262: { picks: { MAT111: 4 } } } },
+  { picks: null },
+  {},
+  null,
+  'text',
+];
+
 export const FIXTURES = {
   courseMarks: {
     letterForMark: [[100], [97], [96.99], [85], [84.99], [50], [49.99], [0], [-5]],
@@ -491,6 +506,22 @@ export const FIXTURES = {
   },
 
   routineState: {
+    readRoutineBook: ROUTINE_BOOKS.map((b) => [b]),
+    emptyRoutineBook: [[]],
+    routineForSession: [
+      [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, null],
+      [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, 20262],
+      [{ live: { picks: { A: 1 } }, bySession: {} }, 20263],
+    ],
+    withRoutineForSession: [
+      [{ live: { picks: { A: 1 } }, bySession: {} }, null, { picks: { C: 3 } }],
+      [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, 20263, { picks: { C: 3 } }],
+      [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, 20262, { picks: {} }],
+    ],
+    serializeRoutineBook: [
+      [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }],
+      [{ live: { picks: {} }, bySession: {} }],
+    ],
     emptyRoutineState: [[]],
     encodeRoutinePicks: [[{}], [{ CSE220: 101 }]],
     decodeRoutinePicks: [[''], ['CSE220:101'], [null]],
