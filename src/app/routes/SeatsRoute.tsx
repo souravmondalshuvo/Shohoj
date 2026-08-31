@@ -21,6 +21,13 @@ import {
   type WeekdayName,
 } from '../../core/connectFeed';
 import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
+import {
+  describeSemester,
+  semesterCaveat,
+  semesterHeadline,
+  todayISODate,
+  type SemesterIdentity,
+} from '../../core/semesterIdentity';
 import { searchCourseSections, seatInfo, type SeatSortMode } from '../../core/seatStatus';
 import {
   addWatch,
@@ -81,6 +88,10 @@ interface FeedState {
   count: number;
   /** When the feed was pulled — the badge reports how stale it is. */
   fetchedAt: number;
+  /** Which semester these seat counts are for. Freshness and semester are
+      different questions: the numbers can be seconds old and still describe a
+      semester the student is not registering for yet (#633). */
+  semester: SemesterIdentity;
 }
 
 export function Component() {
@@ -137,6 +148,7 @@ export function Component() {
           source: result.source,
           count: result.sections.length,
           fetchedAt: result.fetchedAt,
+          semester: describeSemester(result.sections, todayISODate()),
         });
       })
       .catch(() => {
@@ -186,6 +198,15 @@ export function Component() {
               data-testid="seats-feed-source"
             >
               {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
+            </span>
+          )}
+          {feed && (
+            <span
+              className={`routine-semester-badge routine-semester--${feed.semester.status}`}
+              title={semesterCaveat(feed.semester)}
+              data-testid="seats-semester"
+            >
+              {semesterHeadline(feed.semester)}
             </span>
           )}
         </div>
