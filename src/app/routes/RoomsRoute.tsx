@@ -436,9 +436,9 @@ export function Component() {
 
           {!semesterIsRunning(feed.semester) && (
             <p className="freerooms-outofterm" role="status" data-testid="rooms-out-of-term">
-              These rooms are read off {semesterHeadline(feed.semester)}, which is not the
-              semester running right now — a room shown free may well have a class in it
-              today. {semesterCaveat(feed.semester)}
+              These rooms are read off {semesterHeadline(feed.semester)}, which is not the semester
+              running right now — a room shown free may well have a class in it today.{' '}
+              {semesterCaveat(feed.semester)}
             </p>
           )}
 
