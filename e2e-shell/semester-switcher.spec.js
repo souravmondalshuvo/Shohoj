@@ -98,11 +98,6 @@ async function boot(page, { listing = LISTING } = {}) {
   await expect(page.getByTestId('routine-page')).toBeVisible();
 }
 
-async function courseOptions(page) {
-  await page.getByTestId('routine-course-input').fill('');
-  return page.getByTestId('routine-course-input');
-}
-
 test('the live feed is what loads by default', async ({ page }) => {
   await boot(page);
   await expect(page.getByTestId('routine-semester')).toContainText('Fall 2026');
