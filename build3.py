@@ -73,6 +73,8 @@ MAIN_JS_FILES = [
     'js/core/connectFeedClient.js',
     # Which semester the feed is describing, and whether it is the one running
     'js/core/semesterIdentity.js',
+    # Reading the semesters the Worker kept after the feed dropped them
+    'js/core/semesterArchive.js',
     'js/core/freeRooms.js',
     'js/core/seatStatus.js',
     'js/core/seatWatch.js',
