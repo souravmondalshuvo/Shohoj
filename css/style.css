@@ -5882,6 +5882,31 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-semester--upcoming { background: rgba(241,196,15,0.12); color: var(--ink-amber); border-color: rgba(241,196,15,0.28); }
 .routine-semester--ended    { background: rgba(231,76,60,0.10);  color: #e74c3c;          border-color: rgba(231,76,60,0.24); }
 
+/* Switcher between the live feed and the semesters the Worker kept (#633).
+   Sits beside the badge that names the current one, so "which semester is this"
+   and "show me a different one" read as one control. */
+.routine-semester-picker {
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  background: var(--badge-bg); color: var(--text2);
+  border: 1px solid var(--chip-border);
+  cursor: pointer;
+}
+.routine-semester-picker:hover { background: var(--chip-hover); color: var(--text1); }
+
+/* What an imported capture cannot tell you. Amber, like the out-of-term notice:
+   the data is real, it is just not live, and the failure that matters is the
+   one that looks fine — a seat count frozen months ago reads like a live one. */
+.routine-archive-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text2);
+  background: rgba(241,196,15,0.10);
+  border: 1px solid rgba(241,196,15,0.28);
+}
+
 .routine-clash-warn {
   font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: rgba(231,76,60,0.10); color: #e74c3c; border: 1px solid rgba(231,76,60,0.24);
