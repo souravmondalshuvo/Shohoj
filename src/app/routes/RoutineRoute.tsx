@@ -33,10 +33,19 @@ import {
   unpickCourse,
   type RoutineState,
 } from '../../core/routineState';
+import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
+import {
+  archiveCacheKey,
+  archiveGapNotice,
+  archivePayloadUrl,
+  fetchArchiveListing,
+  type ArchivedSemester,
+} from '../../core/semesterArchive';
 import {
   describeSemester,
   semesterCaveat,
+  semesterNameFromSessionId,
   semesterHeadline,
   todayISODate,
   type SemesterIdentity,
@@ -110,45 +119,103 @@ interface FeedState {
   semester: SemesterIdentity;
 }
 
+/** Remembered choice of semester. Null (or absent) means the live feed. */
+const SEMESTER_CHOICE_KEY = 'shohoj_routine_semester';
+
+function restoreSemesterChoice(): number | null {
+  try {
+    const raw = localStorage.getItem(SEMESTER_CHOICE_KEY);
+    const n = raw === null ? NaN : Number.parseInt(raw, 10);
+    return Number.isInteger(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Component() {
+  const config = useRuntimeConfig();
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [routine, setRoutine] = useState<RoutineState>(restoreRoutine);
   const [courseInput, setCourseInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
+  // Semesters the Worker has kept (#633). Empty when there is no Worker, when
+  // it has archived nothing yet, or when the listing fails — in all three cases
+  // the route falls back to the live feed with no switcher, rather than showing
+  // a control that cannot work.
+  const [archived, setArchived] = useState<ArchivedSemester[]>([]);
+  const [chosenSession, setChosenSession] = useState<number | null>(restoreSemesterChoice);
 
   // Load the CONNECT feed (cache-first, same client as RoomsRoute). Refresh
   // re-fetches past the cache, which legacy has always offered from the header
   // and the shell had dropped along with the badge that says how old the data
   // is (#582).
-  const load = useCallback((forceRefresh: boolean) => {
-    let alive = true;
-    setFeedError(null);
-    setLoading(true);
-    fetchConnectFeed({ forceRefresh })
-      .then((result) => {
-        if (!alive) return;
-        setFeed({
-          index: indexByCourse(result.sections),
-          source: result.source,
-          count: result.sections.length,
-          fetchedAt: result.fetchedAt,
-          semester: describeSemester(result.sections, todayISODate()),
+  //
+  // With a semester chosen from the archive it reads the Worker instead of the
+  // CDN — same JSON, same parser, its own cache slot so the two never evict
+  // each other.
+  const load = useCallback(
+    (forceRefresh: boolean) => {
+      let alive = true;
+      setFeedError(null);
+      setLoading(true);
+      const archiveUrl =
+        chosenSession === null
+          ? null
+          : archivePayloadUrl(config?.papersWorkerUrl ?? null, chosenSession);
+      const fetchOptions =
+        archiveUrl === null
+          ? { forceRefresh }
+          : { forceRefresh, url: archiveUrl, cacheKey: archiveCacheKey(chosenSession as number) };
+      fetchConnectFeed(fetchOptions)
+        .then((result) => {
+          if (!alive) return;
+          setFeed({
+            index: indexByCourse(result.sections),
+            source: result.source,
+            count: result.sections.length,
+            fetchedAt: result.fetchedAt,
+            semester: describeSemester(result.sections, todayISODate()),
+          });
+        })
+        .catch(() => {
+          if (alive) setFeedError('Could not load the course feed. Try again shortly.');
+        })
+        .finally(() => {
+          if (alive) setLoading(false);
         });
-      })
-      .catch(() => {
-        if (alive) setFeedError('Could not load the course feed. Try again shortly.');
-      })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
+      return () => {
+        alive = false;
+      };
+    },
+    [chosenSession, config?.papersWorkerUrl ?? null],
+  );
+
+  useEffect(() => load(false), [load]);
+
+  // The listing is advisory: it only decides whether a switcher is offered, so
+  // it never blocks the route and never surfaces an error of its own.
+  useEffect(() => {
+    let alive = true;
+    fetchArchiveListing({ workerUrl: config?.papersWorkerUrl ?? null }).then((list) => {
+      if (alive) setArchived(list);
+    });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [config?.papersWorkerUrl ?? null]);
 
-  useEffect(() => load(false), [load]);
+  // Remember the choice, so a student who lives in the current semester is not
+  // put back on next semester's timetable every time they open the tab.
+  useEffect(() => {
+    try {
+      if (chosenSession === null) localStorage.removeItem(SEMESTER_CHOICE_KEY);
+      else localStorage.setItem(SEMESTER_CHOICE_KEY, String(chosenSession));
+    } catch {
+      // Storage disabled — the choice simply won't survive a reload.
+    }
+  }, [chosenSession]);
 
   // Persist picks whenever they change.
   useEffect(() => {
@@ -158,6 +225,13 @@ export function Component() {
       // Storage full / disabled — picks simply won't survive a refresh.
     }
   }, [routine]);
+
+  // What the chosen semester cannot tell you, when it is a capture rather than
+  // a live pull. Null for the live feed and for anything the cron took itself.
+  const archiveNote = useMemo(
+    () => archiveGapNotice(archived.find((a) => a.sessionId === chosenSession) ?? null),
+    [archived, chosenSession],
+  );
 
   const index = feed?.index ?? EMPTY_INDEX;
   const codes = pickedCourseCodes(routine);
@@ -212,6 +286,24 @@ export function Component() {
             >
               {semesterHeadline(feed.semester)}
             </span>
+          )}
+          {archived.length > 0 && (
+            <select
+              className="routine-semester-picker"
+              aria-label="Semester to show"
+              value={chosenSession ?? ''}
+              data-testid="routine-semester-picker"
+              onChange={(e) =>
+                setChosenSession(e.target.value === '' ? null : Number(e.target.value))
+              }
+            >
+              <option value="">Live feed</option>
+              {archived.map((a) => (
+                <option key={a.sessionId} value={a.sessionId}>
+                  {semesterNameFromSessionId(a.sessionId) ?? `Session ${a.sessionId}`}
+                </option>
+              ))}
+            </select>
           )}
           {clashCount > 0 && (
             <span
@@ -406,6 +498,12 @@ export function Component() {
             <code>BUS102</code>.
           </p>
         </div>
+      )}
+
+      {archiveNote !== null && (
+        <p className="routine-archive-note" role="status" data-testid="routine-archive-note">
+          {archiveNote}
+        </p>
       )}
 
       {layout && (
