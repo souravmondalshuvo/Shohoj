@@ -43,8 +43,18 @@ export interface SemesterIdentity {
 }
 
 const MONTH_ABBR = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
