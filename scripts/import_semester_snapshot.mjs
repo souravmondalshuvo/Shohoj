@@ -18,10 +18,17 @@
  *
  * Usage:
  *   node scripts/import_semester_snapshot.mjs bracu-section.json --session 20262
- *   node scripts/import_semester_snapshot.mjs <file> --session <id> --out <path>
+ *   node scripts/import_semester_snapshot.mjs <file> --session <id> \
+ *     --merge-index current-index.json --out semester-20262.json
  *
- * Writes the payload and prints the `wrangler r2 object put` commands to upload
- * it. It does NOT upload: that is a write to production storage and belongs to
+ * Writes two files and prints the wrangler commands to upload them. The payload
+ * alone is not enough: a semester absent from semesters/index.json is invisible
+ * to the client even when its object exists, so pass --merge-index with the
+ * live manifest (`wrangler r2 object get shohoj-papers/semesters/index.json`)
+ * and upload the merged one too. Without the flag it merges into an empty
+ * manifest, which is correct only for a bucket that holds nothing yet.
+ *
+ * It does NOT upload. That is a write to production storage and belongs to
  * whoever holds the credentials.
  */
 
@@ -30,7 +37,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { COURSE_DB } from '../js/core/catalog.js';
-import { summarizeArchivePayload, archiveKeyFor } from '../worker/semesterArchive.js';
+import {
+  ARCHIVE_INDEX_KEY,
+  archiveKeyFor,
+  mergeArchiveIndex,
+  summarizeArchivePayload,
+} from '../worker/semesterArchive.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -163,7 +175,23 @@ function main() {
   const outPath = path.resolve(ROOT, flags.out ?? `semester-${sessionId}.json`);
   fs.writeFileSync(outPath, JSON.stringify(payload));
 
-  const manifestEntry = { ...summary, provenance: gaps };
+  // Merge into the manifest rather than replacing it: overwriting index.json
+  // with a single entry would un-list every other semester the cron has kept.
+  let currentIndex = { semesters: [] };
+  if (flags['merge-index']) {
+    const indexPath = path.resolve(ROOT, flags['merge-index']);
+    if (!fs.existsSync(indexPath)) die(`no such manifest: ${indexPath}`);
+    try {
+      currentIndex = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    } catch (e) {
+      die(`could not parse ${indexPath}: ${e.message}`);
+    }
+  }
+  const mergedIndex = mergeArchiveIndex(currentIndex, summary, Date.now());
+  const entry = mergedIndex.semesters.find((x) => x.sessionId === sessionId);
+  entry.provenance = gaps;
+  const indexOut = path.resolve(ROOT, flags['index-out'] ?? `semesters-index-${sessionId}.json`);
+  fs.writeFileSync(indexOut, JSON.stringify(mergedIndex));
 
   console.log(`read      ${raw.length} rows from ${path.relative(ROOT, inputPath)}`);
   console.log(`converted ${payload.length}${dropped ? `, dropped ${dropped} unusable` : ''}`);
@@ -173,13 +201,24 @@ function main() {
     `gaps      ${gaps.tbaFaculty} TBA faculty · ${gaps.noSchedule} without a timetable · ${gaps.unnamed} unnamed`,
   );
   console.log(`wrote     ${path.relative(ROOT, outPath)}`);
+  console.log(
+    `          ${path.relative(ROOT, indexOut)} (${mergedIndex.semesters.length} semesters)`,
+  );
+  if (!flags['merge-index']) {
+    console.log('');
+    console.log('NOTE: no --merge-index given, so the manifest above lists only this');
+    console.log('      semester. Uploading it would un-list anything else the bucket');
+    console.log('      holds. Pull the live one first:');
+    console.log(
+      `        npx wrangler r2 object get shohoj-papers/${ARCHIVE_INDEX_KEY} --file current-index.json`,
+    );
+  }
   console.log('');
-  console.log('Manifest entry to merge into semesters/index.json:');
-  console.log(JSON.stringify(manifestEntry, null, 2));
-  console.log('');
-  console.log('Upload (writes to production R2 — run this yourself):');
+  console.log('Upload (writes to production R2 — run these yourself):');
   console.log(`  npx wrangler r2 object put shohoj-papers/${archiveKeyFor(sessionId)} \\`);
   console.log(`    --file ${path.relative(ROOT, outPath)} --content-type application/json`);
+  console.log(`  npx wrangler r2 object put shohoj-papers/${ARCHIVE_INDEX_KEY} \\`);
+  console.log(`    --file ${path.relative(ROOT, indexOut)} --content-type application/json`);
 }
 
 main();
