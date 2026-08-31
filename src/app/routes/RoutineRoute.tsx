@@ -22,9 +22,13 @@ import {
   type WeekdayName,
 } from '../../core/connectFeed';
 import {
+  emptyRoutineBook,
+  readRoutineBook,
+  routineForSession,
+  serializeRoutineBook,
+  withRoutineForSession,
   buildClashMap,
   clearRoutine,
-  emptyRoutineState,
   pickCourse,
   pickSection,
   pickedCourseCodes,
@@ -83,30 +87,14 @@ function slotSummary(section: NormalizedSection): string {
 // Lenient restore: only accept the { picks: Record<string, number|null> } shape.
 // The legacy tab persists a different schema under a different key, so a bad or
 // foreign value just resets to empty rather than throwing.
-function restoreRoutine(): RoutineState {
+// Every semester's picks. A routine is picks against ONE semester's sections,
+// and course codes carry across semesters while section ids do not (#633).
+function restoreRoutineBook() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyRoutineState();
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      !parsed ||
-      typeof parsed !== 'object' ||
-      typeof (parsed as { picks?: unknown }).picks !== 'object' ||
-      (parsed as { picks?: unknown }).picks === null
-    ) {
-      return emptyRoutineState();
-    }
-    const picks: Record<string, number | null> = {};
-    for (const [code, sid] of Object.entries(
-      (parsed as { picks: Record<string, unknown> }).picks,
-    )) {
-      if (sid === null || (typeof sid === 'number' && Number.isFinite(sid))) {
-        picks[code.toUpperCase()] = sid as number | null;
-      }
-    }
-    return { picks };
+    return raw ? readRoutineBook(JSON.parse(raw)) : emptyRoutineBook();
   } catch {
-    return emptyRoutineState();
+    return emptyRoutineBook();
   }
 }
 
@@ -137,7 +125,9 @@ export function Component() {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [routine, setRoutine] = useState<RoutineState>(restoreRoutine);
+  const [routine, setRoutine] = useState<RoutineState>(() =>
+    routineForSession(restoreRoutineBook(), restoreSemesterChoice()),
+  );
   const [courseInput, setCourseInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   // Semesters the Worker has kept (#633). Empty when there is no Worker, when
@@ -217,14 +207,25 @@ export function Component() {
     }
   }, [chosenSession]);
 
-  // Persist picks whenever they change.
+  const chooseSemester = useCallback((next: number | null) => {
+    setChosenSession(next);
+    // Load that semester's own picks in the same update. Setting the session by
+    // itself would let the persist effect below write the outgoing semester's
+    // routine under the incoming semester's key.
+    setRoutine(routineForSession(restoreRoutineBook(), next));
+  }, []);
+
+  // Persist picks whenever they change, under the semester they belong to.
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(routine));
+      // Re-read rather than holding the book in state: another tab may have
+      // written a different semester since, and this must not clobber it.
+      const book = withRoutineForSession(restoreRoutineBook(), chosenSession, routine);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeRoutineBook(book)));
     } catch {
       // Storage full / disabled — picks simply won't survive a refresh.
     }
-  }, [routine]);
+  }, [routine, chosenSession]);
 
   // What the chosen semester cannot tell you, when it is a capture rather than
   // a live pull. Null for the live feed and for anything the cron took itself.
@@ -294,7 +295,7 @@ export function Component() {
               value={chosenSession ?? ''}
               data-testid="routine-semester-picker"
               onChange={(e) =>
-                setChosenSession(e.target.value === '' ? null : Number(e.target.value))
+                chooseSemester(e.target.value === '' ? null : Number(e.target.value))
               }
             >
               <option value="">Live feed</option>
