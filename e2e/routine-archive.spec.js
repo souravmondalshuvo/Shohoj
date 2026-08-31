@@ -29,8 +29,16 @@ function section(sectionId, courseCode, courseName, sessionId, start, end) {
     };
 }
 
-const LIVE = [section(1, 'CSE110', 'PROGRAMMING LANGUAGE I', 20263, '2026-10-03', '2027-01-04')];
-const SUMMER = [section(2, 'MAT110', 'DIFFERENTIAL CALCULUS', 20262, '2026-06-09', '2026-09-08')];
+const LIVE = [
+    section(1, 'CSE110', 'PROGRAMMING LANGUAGE I', 20263, '2026-10-03', '2027-01-04'),
+    // Offered in both semesters, under different section ids — the shape that
+    // made carried-over picks look plausible and be wrong.
+    section(3, 'CSE221', 'ALGORITHMS', 20263, '2026-10-03', '2027-01-04'),
+];
+const SUMMER = [
+    section(2, 'MAT110', 'DIFFERENTIAL CALCULUS', 20262, '2026-06-09', '2026-09-08'),
+    section(4, 'CSE221', 'ALGORITHMS', 20262, '2026-06-09', '2026-09-08'),
+];
 
 const LISTING = {
     semesters: [
@@ -145,4 +153,51 @@ test('no switcher when the archive is empty', async ({ page }) => {
     await boot(page, { listing: { semesters: [] } });
     await expect(badge(page)).toContainText('Fall 2026');
     await expect(picker(page)).toHaveCount(0);
+});
+
+test('each semester keeps its own picks', async ({ page }) => {
+    // The report's case: plan next semester, then look at the one you are in.
+    // CSE221 is offered in both, under different section ids — so carrying the
+    // picks across left the course listed with nothing resolvable under it.
+    await boot(page);
+    await page.locator('#routineCourseInput').fill('CSE221');
+    await page.locator('[data-action="routine:addCourse"]').click();
+    await page.locator('.routine-section-row[data-sid="3"]').click();
+    await expect(page.locator('.routine-grid-block')).toHaveCount(1);
+
+    await picker(page).selectOption('20262');
+    await expect(badge(page)).toContainText('Summer 2026');
+    // Summer was never planned, so it is empty — not four courses and a blank grid.
+    await expect(page.locator('.routine-course-block')).toHaveCount(0);
+
+    // Build a different routine here.
+    await page.locator('#routineCourseInput').fill('MAT110');
+    await page.locator('[data-action="routine:addCourse"]').click();
+    await page.locator('.routine-section-row[data-sid="2"]').click();
+    await expect(page.locator('.routine-course-block')).toHaveCount(1);
+
+    // And the Fall plan is still intact on the way back.
+    await picker(page).selectOption('');
+    await expect(badge(page)).toContainText('Fall 2026');
+    await expect(page.locator('.routine-course-block').filter({ hasText: 'CSE221' })).toBeVisible();
+    await expect(page.locator('.routine-grid-block')).toHaveCount(1);
+});
+
+test('the live routine is still stored where every other tab reads it', async ({ page }) => {
+    // The Assistant and both Profile hubs read parsed.picks. If scoping had
+    // moved the live routine somewhere else they would silently see nothing.
+    await boot(page);
+    await page.locator('#routineCourseInput').fill('CSE221');
+    await page.locator('[data-action="routine:addCourse"]').click();
+    await page.locator('.routine-section-row[data-sid="3"]').click();
+
+    await picker(page).selectOption('20262');
+    await expect(badge(page)).toContainText('Summer 2026');
+    await page.locator('#routineCourseInput').fill('MAT110');
+    await page.locator('[data-action="routine:addCourse"]').click();
+    await page.locator('.routine-section-row[data-sid="2"]').click();
+
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('shohoj_routine_v1')));
+    expect(stored.picks).toEqual({ CSE221: 3 });
+    expect(stored.bySession['20262'].picks).toEqual({ MAT110: 2 });
 });
