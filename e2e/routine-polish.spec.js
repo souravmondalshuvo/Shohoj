@@ -10,6 +10,11 @@ import { selectCalcTab } from './helpers/tabs.js';
 // else, so faculty ratings (Firestore) stay unloaded — section/seat ordering
 // and the rest don't depend on them.
 
+// Term dates on every section: the mock previously carried exam dates only,
+// which left the semester unplaceable on a calendar. The today marker and the
+// now line are gated on the displayed semester actually running (#633), and
+// "we cannot tell" does not count as running. 2026-06-09 to 2026-09-08 is the
+// real Summer 2026 term, which contains both clocks these tests pin.
 const FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
 
 function slot(day, start, end) {
@@ -20,7 +25,7 @@ function section(over) {
     courseId: 1, sectionType: 'THEORY', semesterSessionId: 20262,
     courseCredit: 3,
     sectionSchedule: {
-      midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00',
+      classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00',
       finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00',
       classSchedules: [],
     },
@@ -35,32 +40,32 @@ const MOCK_FEED = [
   section({
     sectionId: 9002, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
     sectionName: '02', capacity: 30, consumedSeat: 30, faculties: 'XYZ', roomName: '09B-11C',
-    sectionSchedule: { midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('MONDAY', '11:00:00', '12:20:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('MONDAY', '11:00:00', '12:20:00')] },
   }),
   section({
     sectionId: 9004, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
     sectionName: '04', capacity: 30, consumedSeat: 28, faculties: 'LMN', roomName: '09C-12C',
-    sectionSchedule: { midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('TUESDAY', '16:00:00', '17:20:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('TUESDAY', '16:00:00', '17:20:00')] },
   }),
   section({
     sectionId: 9001, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
     sectionName: '01', capacity: 30, consumedSeat: 10, faculties: 'ABC', roomName: '09A-10C',
-    sectionSchedule: { midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '08:00:00', '09:20:00'), slot('TUESDAY', '08:00:00', '09:20:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '08:00:00', '09:20:00'), slot('TUESDAY', '08:00:00', '09:20:00')] },
   }),
   section({
     sectionId: 9003, courseCode: 'CSE110', courseName: 'PROGRAMMING LANGUAGE I',
     sectionName: '03', capacity: 30, consumedSeat: 5, faculties: 'DEF', roomName: '09D-13C',
-    sectionSchedule: { midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '14:00:00', '15:20:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-26', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-13', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '14:00:00', '15:20:00')] },
   }),
   section({
     sectionId: 9101, courseCode: 'MAT110', courseName: 'DIFFERENTIAL CALCULUS',
     sectionName: '01', capacity: 40, consumedSeat: 5, faculties: 'PQR', roomName: '08A-01C',
-    sectionSchedule: { midExamDate: '2026-07-28', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-15', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '08:30:00', '09:50:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-28', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-15', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('SUNDAY', '08:30:00', '09:50:00')] },
   }),
   section({
     sectionId: 9102, courseCode: 'MAT110', courseName: 'DIFFERENTIAL CALCULUS',
     sectionName: '02', capacity: 40, consumedSeat: 5, faculties: 'STU', roomName: '08B-02C',
-    sectionSchedule: { midExamDate: '2026-07-28', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-15', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('THURSDAY', '10:00:00', '11:20:00')] },
+    sectionSchedule: { classStartDate: '2026-06-09', classEndDate: '2026-09-08', midExamDate: '2026-07-28', midExamStartTime: '11:00:00', midExamEndTime: '13:00:00', finalExamDate: '2026-09-15', finalExamStartTime: '11:00:00', finalExamEndTime: '13:00:00', classSchedules: [slot('THURSDAY', '10:00:00', '11:20:00')] },
   }),
 ];
 
