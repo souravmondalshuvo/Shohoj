@@ -64,6 +64,7 @@ import { isKnownCourse } from './catalog.generated.js';
 // Worker, the Firestore rules and the registry cannot disagree about who
 // belongs where. Was a hand-maintained third copy (#571).
 import { campusOfEmail } from './campus.generated.js';
+import { ARCHIVE_INDEX_KEY, archiveKeyFor, runSemesterArchiveCron } from './semesterArchive.js';
 
 export { campusOfEmail };
 
@@ -1738,6 +1739,31 @@ export default {
         }
       })(),
     );
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const r = await runSemesterArchiveCron(env);
+          if (!r.configured) {
+            console.error(`semester archive: ${r.reason}; nothing kept`);
+            return;
+          }
+          // Silent on the common path. This runs every two minutes and archives
+          // roughly four times a day, so logging skips would drown the log in
+          // "did nothing" while saying nothing about whether it works.
+          if (r.archived) {
+            console.log(
+              `semester archive: kept session=${r.archived} sections=${r.sections} held=${r.held}`,
+            );
+          } else if (r.rejected) {
+            console.error(
+              `semester archive: refused a snapshot (${r.rejected}); kept the ${r.held} we had`,
+            );
+          }
+        } catch (e) {
+          console.error('semester archive failed:', e?.message || e);
+        }
+      })(),
+    );
   },
 
   async fetch(request, env, ctx) {
@@ -1763,6 +1789,48 @@ export default {
           origin,
         );
       }
+      // ── Semester archive (#633) ───────────────────────────────────────
+      // The CONNECT feed keeps one semester and drops the rest, so the cron
+      // above keeps snapshots. These serve them back. Public and
+      // unauthenticated: it is the same class timetable the CDN publishes to
+      // anyone, only the semester it has already forgotten.
+      if (request.method === 'GET' && url.pathname === '/api/semesters') {
+        if (!env.PAPERS_BUCKET) {
+          return jsonResponse({ semesters: [] }, { status: 200 }, env, origin);
+        }
+        const obj = await env.PAPERS_BUCKET.get(ARCHIVE_INDEX_KEY);
+        if (!obj) return jsonResponse({ semesters: [] }, { status: 200 }, env, origin);
+        return new Response(obj.body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            // Small and slow-moving; the archive changes a few times a day.
+            'Cache-Control': 'public, max-age=900',
+            'X-Request-Id': requestId,
+            ...corsHeaders(env, origin),
+          },
+        });
+      }
+      const semesterMatch = /^\/api\/semesters\/(\d{4,6})$/.exec(url.pathname);
+      if (request.method === 'GET' && semesterMatch) {
+        if (!env.PAPERS_BUCKET) {
+          return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
+        }
+        const obj = await env.PAPERS_BUCKET.get(archiveKeyFor(Number(semesterMatch[1])));
+        if (!obj) return jsonResponse({ error: 'Not found' }, { status: 404 }, env, origin);
+        return new Response(obj.body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            // A finished semester's timetable never changes again, and even the
+            // current one is only re-snapshotted every few hours.
+            'Cache-Control': 'public, max-age=3600',
+            'X-Request-Id': requestId,
+            ...corsHeaders(env, origin),
+          },
+        });
+      }
+
       // Unauthenticated readiness probe. Reports, as booleans only, whether
       // each feature's backing dependency is configured — never any key
       // material. The shell calls this to avoid offering a feature that would
