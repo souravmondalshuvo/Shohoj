@@ -24,7 +24,12 @@ import {
 import { buildRoutineICS } from '../core/calendarExport.js';
 import qrcode from 'qrcode-generator';
 import {
+  emptyRoutineBook,
   emptyRoutineState,
+  readRoutineBook,
+  routineForSession,
+  serializeRoutineBook,
+  withRoutineForSession,
   pickCourse,
   pickSection,
   unpickCourse,
@@ -153,23 +158,30 @@ const REVIEWS_FETCH_LIMIT = 1000;
 const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
 const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
-function _restoreRoutine() {
+// Every semester's picks, read once. A routine is picks against ONE semester's
+// sections, and the codes carry across while the section ids do not (#633).
+function _restoreRoutineBook() {
   try {
     const raw = localStorage.getItem(ROUTINE_STORAGE_KEY);
-    if (!raw) return emptyRoutineState();
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.picks !== 'object' || parsed.picks === null) return emptyRoutineState();
-    const picks = {};
-    for (const [k, v] of Object.entries(parsed.picks)) {
-      if (typeof k !== 'string') continue;
-      if (v === null || typeof v === 'number') picks[k.toUpperCase()] = v;
-    }
-    return { picks };
-  } catch { return emptyRoutineState(); }
+    return raw ? readRoutineBook(JSON.parse(raw)) : emptyRoutineBook();
+  } catch { return emptyRoutineBook(); }
+}
+
+function _restoreRoutine() {
+  return routineForSession(_restoreRoutineBook(), _restoreSemesterChoice());
 }
 
 function _persistRoutine() {
-  try { localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(_store.routine)); }
+  try {
+    // Re-read rather than holding the book in the store: another tab may have
+    // written a different semester since, and this must not clobber it.
+    const book = withRoutineForSession(
+      _restoreRoutineBook(),
+      _store.chosenSession,
+      _store.routine,
+    );
+    localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(serializeRoutineBook(book)));
+  }
   catch {}
   // The routine travels in the cloud snapshot now (#627). Picking a section
   // touches no calculator state, so without this nothing would ever push it and
@@ -561,6 +573,9 @@ function _onSemesterChange(ev) {
   if (chosen === _store.chosenSession) return;
   _store.chosenSession = chosen;
   _rememberSemesterChoice(chosen);
+  // Load that semester's own picks. Carrying them across is what made the
+  // switcher show four courses the student was not taking above an empty grid.
+  _store.routine = routineForSession(_restoreRoutineBook(), chosen);
   _refresh(false);
 }
 
