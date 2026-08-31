@@ -34,6 +34,13 @@ import {
   type RoutineState,
 } from '../../core/routineState';
 import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
+import {
+  describeSemester,
+  semesterCaveat,
+  semesterHeadline,
+  todayISODate,
+  type SemesterIdentity,
+} from '../../core/semesterIdentity';
 import { computeGridLayout } from '../../core/routineGrid';
 
 const STORAGE_KEY = 'shohoj_routine_picks_v1';
@@ -99,6 +106,8 @@ interface FeedState {
   source: FeedSource;
   count: number;
   fetchedAt: number;
+  /** Which semester these sections belong to, and whether it is the one running. */
+  semester: SemesterIdentity;
 }
 
 export function Component() {
@@ -125,6 +134,7 @@ export function Component() {
           source: result.source,
           count: result.sections.length,
           fetchedAt: result.fetchedAt,
+          semester: describeSemester(result.sections, todayISODate()),
         });
       })
       .catch(() => {
@@ -192,6 +202,15 @@ export function Component() {
               data-testid="routine-feed-source"
             >
               {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
+            </span>
+          )}
+          {feed && (
+            <span
+              className={`routine-semester-badge routine-semester--${feed.semester.status}`}
+              title={semesterCaveat(feed.semester)}
+              data-testid="routine-semester"
+            >
+              {semesterHeadline(feed.semester)}
             </span>
           )}
           {clashCount > 0 && (
