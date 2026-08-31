@@ -39,6 +39,13 @@ const NOT_PERSONAL = {
   shohoj_routine_ratings_v1:
     'cache of the aggregate faculty-rating map — public, same for everyone',
   shohoj_campus_floor_v1: 'which campus-map floor was last viewed — a view preference',
+  shohoj_routine_semester:
+    'which semester the Routine tab is showing — a view preference, like the '
+    + 'campus-map floor. The semesters themselves are public timetables, and '
+    + 'the picks it applies to live in shohoj_routine_v1, which IS wiped.',
+  'shohoj_semester_archive_v1':
+    'cache of an archived public semester feed, keyed by session id — the same '
+    + 'bytes for every student, exactly like shohoj_connect_feed_v1',
   shohoj_pdfjs_preview: 'developer flag for the pdf.js preview path',
   shohoj_assistant:
     'IndexedDB database, not a storage key — the transcript is cleared through '
