@@ -16,6 +16,14 @@ import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient'
 import type { WeekdayName } from '../../core/connectFeed';
 import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
 import {
+  describeSemester,
+  semesterCaveat,
+  semesterHeadline,
+  semesterIsRunning,
+  todayISODate,
+  type SemesterIdentity,
+} from '../../core/semesterIdentity';
+import {
   buildRoomBusyIndex,
   busyOnDay,
   dayTimeline,
@@ -101,6 +109,10 @@ interface FeedState {
   source: FeedSource;
   /** When the feed was pulled — the badge reports how stale it is. */
   fetchedAt: number;
+  /** The semester this timetable is for. Occupancy is the one answer on this
+      route that asserts something about *now*, so it is only true while this
+      semester is the one running (#633). */
+  semester: SemesterIdentity;
 }
 
 // Card status text: "free until 11:00 AM" / "in class · CSE110 Section 01 · …".
@@ -238,6 +250,7 @@ export function Component() {
           index: buildRoomBusyIndex(result.sections),
           source: result.source,
           fetchedAt: result.fetchedAt,
+          semester: describeSemester(result.sections, todayISODate()),
         });
       })
       .catch(() => {
@@ -286,6 +299,15 @@ export function Component() {
               data-testid="rooms-feed-source"
             >
               {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
+            </span>
+          )}
+          {feed && (
+            <span
+              className={`routine-semester-badge routine-semester--${feed.semester.status}`}
+              title={semesterCaveat(feed.semester)}
+              data-testid="rooms-semester"
+            >
+              {semesterHeadline(feed.semester)}
             </span>
           )}
         </div>
@@ -411,6 +433,14 @@ export function Component() {
               </div>
             )}
           </div>
+
+          {!semesterIsRunning(feed.semester) && (
+            <p className="freerooms-outofterm" role="status" data-testid="rooms-out-of-term">
+              These rooms are read off {semesterHeadline(feed.semester)}, which is not the
+              semester running right now — a room shown free may well have a class in it
+              today. {semesterCaveat(feed.semester)}
+            </p>
+          )}
 
           {rooms.length === 0 ? (
             <p className="freerooms-empty shell-muted" data-testid="rooms-empty">
