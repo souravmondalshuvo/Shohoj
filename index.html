@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-0Bof8lFNdt7v+KuTKEtMB+ul7xLhJcpg7bS5VwxwHFM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-lWQ/leSGCQ08dwDAAesCm/ZKzY3rC7YblJQyv8BFACE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5954,6 +5954,30 @@ body[data-page="admin"] .orb { display: none !important; }
 /* What an imported capture cannot tell you. Amber, like the out-of-term notice:
    the data is real, it is just not live, and the failure that matters is the
    one that looks fine — a seat count frozen months ago reads like a live one. */
+/* The CONNECT paste box (#633). The only way to show the semester a student is
+   actually in: the feed is a catalog with no student in it, so their enrolment
+   exists nowhere we can reach except the page in front of them. */
+.routine-import-panel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; margin: 6px 0 2px;
+  border: 1px solid var(--card-border); border-radius: 12px;
+  background: var(--card-bg);
+}
+.routine-import-label { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.routine-import-box {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--chip-border);
+  background: var(--badge-bg); color: var(--text1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+}
+.routine-import-actions { display: flex; gap: 8px; }
+.routine-import-note {
+  margin: 0 0 2px; padding: 10px 12px; border-radius: 10px;
+  font-size: 13px; line-height: 1.5; color: var(--text2);
+  background: rgba(91,157,255,0.10); border: 1px solid rgba(91,157,255,0.28);
+}
+
 .routine-archive-note {
   margin: 0;
   padding: 10px 12px;
@@ -9199,6 +9223,7 @@ const PERSONAL_LOCAL_KEYS = [
   'shohoj_cgpa_backup_v1',       // the shell's pre-migration copy of all of it
   'shohoj_routine_v1',           // class routine (legacy)
   'shohoj_routine_picks_v1',     // class routine (shell — a different key)
+  'shohoj_routine_import_v1', // a CONNECT schedule the student pasted in — their own timetable
   'shohoj_my_reviews_v1',        // the record of reviews this student wrote
   'shohoj_seat_watch_v1',        // seat watchlist
   'shohoj_seat_alerts_enabled',  // seat-alert opt-in
@@ -12699,6 +12724,7 @@ const PERSONAL_LOCAL_KEYS = [
   'shohoj_cgpa_backup_v1',       // the shell's pre-migration copy of all of it
   'shohoj_routine_v1',           // class routine (legacy)
   'shohoj_routine_picks_v1',     // class routine (shell — a different key)
+  'shohoj_routine_import_v1', // a CONNECT schedule the student pasted in — their own timetable
   'shohoj_my_reviews_v1',        // the record of reviews this student wrote
   'shohoj_seat_watch_v1',        // seat watchlist
   'shohoj_seat_alerts_enabled',  // seat-alert opt-in
@@ -20812,6 +20838,253 @@ async function fetchArchiveListing(options = {}) {
     }
 }
 
+// ── js/core/connectScheduleImport.js ────────────────────────────
+// Twin of src/core/connectScheduleImport.ts — hand-maintained, not generated.
+// src/core/connectScheduleImport.ts is the source of truth: change it there first, then mirror
+// the change here. tests/twinParity.test.js fails if the two drift.
+//
+// Turn a pasted CONNECT "Class and Exam Schedule" into a routine.
+//
+// The public feed is a catalog of every section on offer; it carries no student
+// identity, so no amount of archiving tells us which sections are *yours*
+// (#633). Your enrolment lives behind your CONNECT login, and a credential
+// field is something this project has ruled out. What is left is the page
+// itself: you can already see it, so you can already copy it.
+//
+// The output is deliberately the *raw feed shape*, not our normalized one. That
+// way `parseFeed` consumes it exactly as it consumes the CDN, and the grid,
+// clash detection, calendar export and exam briefing all work on an imported
+// routine without knowing it was imported.
+//
+// Pasted text is untrusted and shapeless: browsers serialize an HTML table
+// differently, cells go missing, whitespace collapses. Everything here is
+// tolerant by construction and reports what it could not place rather than
+// guessing — an invented class time is worse than an absent one.
+
+const DAY_NAMES = [
+    'SATURDAY',
+    'SUNDAY',
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+];
+
+/**
+  * `CSE251L -09B -TBA-FT10-02L` → code, section, faculty, room.
+  *
+  * The room is last and greedy because it contains hyphens of its own
+  * (`12A-08C`, `FT10-02L`); the faculty slot being letters-only is what keeps
+  * the two apart.
+  */
+const CELL_RE = /^([A-Z]{2,5}\d{3}[A-Z]?)\s*-\s*([A-Za-z0-9]+)\s*-\s*([A-Za-z]+)\s*-\s*(\S.*)$/;
+
+const CODE_RE = /^[A-Z]{2,5}\d{3}[A-Z]?$/;
+
+/** `8:00 AM - 9:20 AM`, and the `4:30 PM -6:30 PM` spacing the exam table uses. */
+const RANGE_RE =
+    /(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]\.?\s*[-–—]\s*(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]\.?/;
+
+/** `SATURDAY (2026-07-25)` */
+const EXAM_DATE_RE = /\((\d{4}-\d{2}-\d{2})\)/;
+
+function to24h(hour, minute, meridiem) {
+    let h = hour % 12;
+    if (meridiem.toUpperCase() === 'P') h += 12;
+    return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+}
+
+function parseRange(text) {
+    const m = RANGE_RE.exec(text);
+    if (!m) return null;
+    const start = to24h(Number(m[1]), Number(m[2]), m[3]);
+    const end = to24h(Number(m[4]), Number(m[5]), m[6]);
+    return end > start ? { start, end } : null;
+}
+
+/**
+  * A stable, negative id for an imported section.
+  *
+  * Negative on purpose: feed ids are positive, so an imported pick can never
+  * collide with a real one and a stray id in storage is recognisable on sight.
+  * Stable so re-importing the same schedule updates the picks rather than
+  * duplicating them.
+  */
+function importedSectionId(courseCode, sectionName) {
+    const key = `${courseCode}|${sectionName}`;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        hash = (hash * 31 + key.charCodeAt(i)) % 2_000_000_000;
+    }
+    return -(hash + 1);
+}
+
+/** Split a pasted row into cells. Tabs first; runs of spaces or pipes after. */
+function splitCells(line) {
+    if (line.includes('\t')) return line.split('\t').map((c) => c.trim());
+    return line.split(/ {2,}|\s*\|\s*/).map((c) => c.trim());
+}
+
+/** Which day each column holds, from a header row. Null when it is not one. */
+function readDayHeader(cells) {
+    const days = cells.map((cell) => {
+        const upper = cell.trim().toUpperCase();
+        return DAY_NAMES.includes(upper) ? upper : null;
+    });
+    return days.filter((d) => d !== null).length >= 2 ? days : null;
+}
+
+function applyExam(section, kind, date, range) {
+    if (kind === 'final') {
+        section.sectionSchedule.finalExamDate = date;
+        section.sectionSchedule.finalExamStartTime = range.start;
+        section.sectionSchedule.finalExamEndTime = range.end;
+    } else {
+        section.sectionSchedule.midExamDate = date;
+        section.sectionSchedule.midExamStartTime = range.start;
+        section.sectionSchedule.midExamEndTime = range.end;
+    }
+}
+
+/**
+  * Read a pasted Class and Exam Schedule.
+  *
+  * Class rows are read positionally: a header row fixes which column is which
+  * day, and every later row whose first cell is a time range contributes one
+  * slot per populated cell. Exam rows are matched by course code, because the
+  * exam table names the course without its section.
+  */
+function parseConnectSchedule(text) {
+    const warnings = [];
+    if (typeof text !== 'string' || text.trim() === '') {
+        return { sections: [], warnings: ['Nothing was pasted.'] };
+    }
+
+    let dayColumns = null;
+    const sections = new Map();
+    const unplaced = [];
+
+    const upsert = (courseCode, sectionName, faculties, roomName) => {
+        const key = `${courseCode}|${sectionName}`;
+        let section = sections.get(key);
+        if (!section) {
+            section = {
+                sectionId: importedSectionId(courseCode, sectionName),
+                courseCode,
+                courseName: '',
+                sectionName,
+                faculties,
+                roomName,
+                semesterSessionId: null,
+                sectionSchedule: { classSchedules: [], classStartDate: null, classEndDate: null },
+            };
+            sections.set(key, section);
+        }
+        if (!section.faculties && faculties) section.faculties = faculties;
+        if (!section.roomName && roomName) section.roomName = roomName;
+        return section;
+    };
+
+    for (const line of text.split(/\r?\n/)) {
+        if (line.trim() === '') continue;
+        const cells = splitCells(line);
+
+        const header = readDayHeader(cells);
+        if (header !== null) {
+            dayColumns = header;
+            continue;
+        }
+
+        // ── Exam row: carries a bracketed date, so it can never be a class row.
+        const examDate = EXAM_DATE_RE.exec(line);
+        if (examDate !== null) {
+            const range = parseRange(line);
+            const kind = /\bFINAL\b/i.test(line)
+                ? 'final'
+                : /\bMID\b/i.test(line)
+                    ? 'mid'
+                    : null;
+            const code = cells
+                .map((c) => c.trim().toUpperCase())
+                .find((c) => CODE_RE.test(c));
+            if (range !== null && kind !== null && code !== undefined) {
+                // The exam table names the course, not the section, so it lands on
+                // whichever section of that course the class table already gave us.
+                const target = [...sections.values()].find((s) => s.courseCode === code);
+                if (target) applyExam(target, kind, examDate[1], range);
+                else {
+                    warnings.push(
+                        `${kind === 'final' ? 'Final' : 'Mid'} exam for ${code} has no matching class row — skipped.`,
+                    );
+                }
+            }
+            continue;
+        }
+
+        // ── Class row.
+        const range = parseRange(cells[0] ?? '');
+        for (let i = 0; i < cells.length; i++) {
+            const cell = cells[i].trim();
+            if (cell === '') continue;
+            const match = CELL_RE.exec(cell.toUpperCase());
+            if (match === null) continue;
+
+            const section = upsert(match[1], match[2], match[3], match[4].trim());
+            const day = dayColumns !== null ? (dayColumns[i] ?? null) : null;
+            if (day === null || range === null) {
+                // We know the section but not when it meets. Recorded, never invented:
+                // a guessed slot puts a class on the grid at a time that is wrong.
+                unplaced.push(`${match[1]} ${match[2]}`);
+                continue;
+            }
+            const seen = section.sectionSchedule.classSchedules.some(
+                (s) => s.day === day && s.startTime === range.start,
+            );
+            if (!seen) {
+                section.sectionSchedule.classSchedules.push({
+                    day,
+                    startTime: range.start,
+                    endTime: range.end,
+                });
+            }
+        }
+    }
+
+    const out = [...sections.values()];
+    if (out.length === 0) {
+        warnings.push(
+            'No class rows were recognised. Copy the whole Class Schedule table, including the row of day names.',
+        );
+        return { sections: out, warnings };
+    }
+
+    const timeless = out.filter((s) => s.sectionSchedule.classSchedules.length === 0);
+    if (timeless.length > 0) {
+        warnings.push(
+            `Found ${timeless.length} course${timeless.length === 1 ? '' : 's'} but not when they meet (${timeless
+                .map((s) => s.courseCode)
+                .join(', ')}) — the row of day names may be missing from the paste.`,
+        );
+    } else if (unplaced.length > 0) {
+        warnings.push(`Some entries could not be placed on a day: ${[...new Set(unplaced)].join(', ')}.`);
+    }
+
+    return { sections: out, warnings };
+}
+
+/**
+  * Picks for an imported schedule: `{ courseCode: sectionId }`.
+  *
+  * The same shape the builder stores, so an imported routine is an ordinary
+  * routine from that point on — editable, shareable, exportable.
+  */
+function picksFromImport(schedule) {
+    const picks = {};
+    for (const section of schedule.sections) picks[section.courseCode] = section.sectionId;
+    return picks;
+}
+
 // ── js/core/freeRooms.js ────────────────────────────────────────
 // Twin of src/core/freeRooms.ts — hand-maintained, not generated.
 // src/core/freeRooms.ts is the source of truth: change it there first, then mirror the
@@ -21530,7 +21803,10 @@ function readRoutineBook(raw) {
     const bySession = raw.bySession;
     if (bySession && typeof bySession === 'object') {
         for (const [key, value] of Object.entries(bySession)) {
-            if (!/^\d{4,6}$/.test(key)) continue;
+            // `imported` alongside the session ids: a pasted CONNECT schedule is a
+      // routine like any other, but it belongs to no semester the feed knows
+      // about — it may well be one we never archived (#633).
+      if (!/^(\d{4,6}|imported)$/.test(key)) continue;
             book.bySession[key] = readPicks(value);
         }
     }
@@ -24583,11 +24859,35 @@ function _workerUrl() {
 }
 
 /** Remembered choice of semester. Absent or unparseable means the live feed. */
+// The one semester that is not a semester: a pasted CONNECT schedule. It may
+// describe a term the feed never carried and we never archived, so it is a
+// sibling of the session ids rather than one of them (#633).
+const IMPORTED_SESSION = 'imported';
+
+// The student's own timetable, as pasted. Not a cache of anything public, so it
+// is personal data and listed as such in personalData.js.
+const ROUTINE_IMPORT_KEY = 'shohoj_routine_import_v1';
+
+function _restoreImportedSections() {
+  try {
+    const raw = localStorage.getItem(ROUTINE_IMPORT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.sections) ? parsed.sections : [];
+  } catch { return []; }
+}
+
+function _persistImportedSections(sections) {
+  try { localStorage.setItem(ROUTINE_IMPORT_KEY, JSON.stringify({ sections })); }
+  catch { /* storage disabled — the paste won't survive a reload */ }
+}
+
 const SEMESTER_CHOICE_KEY = 'shohoj_routine_semester';
 
 function _restoreSemesterChoice() {
   try {
     const raw = localStorage.getItem(SEMESTER_CHOICE_KEY);
+    if (raw === IMPORTED_SESSION) return IMPORTED_SESSION;
     const n = raw === null ? NaN : Number.parseInt(raw, 10);
     return Number.isInteger(n) ? n : null;
   } catch {
@@ -24609,6 +24909,9 @@ const _store = {
   fetchedAt: 0,
   semester: null,      // SemesterIdentity for the loaded feed, or null before first load
   archived: [],        // Semesters the Worker kept (#633); empty ⇒ no switcher
+  imported: _restoreImportedSections(), // raw sections from a pasted CONNECT schedule
+  importOpen: false,   // the paste box
+  importNote: '',      // what the last paste could and could not read
   chosenSession: _restoreSemesterChoice(), // null ⇒ live feed; a session id ⇒ one from the archive
 
   index: null,         // Map<courseCode, NormalizedSection[]>
@@ -24720,6 +25023,13 @@ registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code)
 registerAction('routine:clearAll',    () => { _onClearAll(); _flashNote('✓ Routine cleared'); });
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
+registerAction('routine:toggleConnectImport', () => {
+  _store.importOpen = !_store.importOpen;
+  _store.importNote = '';
+  _rerender();
+});
+registerAction('routine:cancelConnectImport', () => { _store.importOpen = false; _rerender(); });
+registerAction('routine:applyConnectImport', () => _onConnectImport());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
 registerAction('routine:calendar',     () => _onAddToCalendar());
@@ -24953,6 +25263,39 @@ function _planCourses() {
   } catch { return []; }
 }
 
+// Build a routine from a pasted CONNECT "Class and Exam Schedule".
+//
+// This is the only path that can show the semester a student is actually IN.
+// The feed is a catalog of every section on offer with no student in it, so
+// their enrolment exists nowhere we can reach — except on the page in front of
+// them (#633).
+function _onConnectImport() {
+  const box = document.getElementById('routineConnectPaste');
+  const result = parseConnectSchedule(box ? box.value : '');
+
+  if (result.sections.length === 0) {
+    // Keep the box open and say why. Closing it would look like it worked.
+    _store.importNote = result.warnings.join(' ') || 'Nothing recognisable in that paste.';
+    _rerender();
+    return;
+  }
+
+  _store.imported = result.sections;
+  _persistImportedSections(result.sections);
+  _store.chosenSession = IMPORTED_SESSION;
+  _rememberSemesterChoice(IMPORTED_SESSION);
+  _store.routine = { picks: picksFromImport(result) };
+  _persistRoutine();
+  _store.importOpen = false;
+
+  const n = result.sections.length;
+  _store.importNote = [
+    `Imported ${n} course${n === 1 ? '' : 's'} from CONNECT.`,
+    ...result.warnings,
+  ].join(' ');
+  _loadImported();
+}
+
 function _onImportPlan() {
   if (!_store.index) return;
   const result = resolvePlanImport(
@@ -25073,8 +25416,12 @@ function _attachInputHandlers() {
 
 function _onSemesterChange(ev) {
   const raw = ev.target.value;
-  const next = raw === '' ? null : Number.parseInt(raw, 10);
-  const chosen = Number.isInteger(next) ? next : null;
+  let chosen = null;
+  if (raw === IMPORTED_SESSION) chosen = IMPORTED_SESSION;
+  else if (raw !== '') {
+    const next = Number.parseInt(raw, 10);
+    if (Number.isInteger(next)) chosen = next;
+  }
   if (chosen === _store.chosenSession) return;
   _store.chosenSession = chosen;
   _rememberSemesterChoice(chosen);
@@ -25116,6 +25463,23 @@ function _syncComboState() {
 }
 
 // ── DATA LOADING ────────────────────────────────────────────────────────────
+
+// Build the index straight from a pasted schedule. `parseFeed` is the same
+// function the CDN response goes through, because the parser emits the raw feed
+// shape on purpose — everything downstream is unaware the routine was imported.
+function _loadImported() {
+  const { sections } = parseFeed(_store.imported);
+  _store.index = indexByCourse(sections);
+  _dataVersion++;
+  _store.courseCodes = Array.from(_store.index.keys()).sort();
+  _store.source = 'imported';
+  _store.fetchedAt = 0;
+  _store.semester = describeSemester(sections, todayISODate());
+  _store.loading = false;
+  _store.error = null;
+  _rerender();
+}
+
 async function _refresh(force = false) {
   _store.loading = true;
   _store.error = null;
@@ -25126,6 +25490,15 @@ async function _refresh(force = false) {
   // rather than refusing to render the routine.
   // Same JSON, same parser, a different host — and its own cache slot, so the
   // live feed and an archived semester never evict each other.
+  //
+  // A pasted schedule needs no fetch at all: the paste IS the data, which is
+  // why the import works for a semester we never archived.
+  if (_store.chosenSession === IMPORTED_SESSION) {
+    _loadImported();
+    _loadFacultyRatings(force);
+    return;
+  }
+
   const archiveUrl = _store.chosenSession === null
     ? null
     : archivePayloadUrl(_workerUrl(), _store.chosenSession);
@@ -25619,7 +25992,7 @@ function _hourLabel(min) {
 
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_store.source] || '—';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
   // Which semester this timetable belongs to, and whether it is the one running.
   // The freshness badge above answers "how recent is this data", which the feed
@@ -25629,9 +26002,15 @@ function _headerHTML(summary) {
     : '';
   // Offered only when the Worker has something to switch to. A control with
   // nothing behind it is worse than no control.
-  const semesterPicker = _store.archived.length > 0
+  // Offered when there is anywhere to switch to: an archived semester, or a
+  // schedule the student pasted in.
+  const importedOption = _store.imported.length > 0
+    ? `<option value="${IMPORTED_SESSION}"${_store.chosenSession === IMPORTED_SESSION ? ' selected' : ''}>My CONNECT schedule</option>`
+    : '';
+  const semesterPicker = (_store.archived.length > 0 || _store.imported.length > 0)
     ? `<select class="routine-semester-picker" id="routineSemesterPicker" aria-label="Semester to show">
          <option value=""${_store.chosenSession === null ? ' selected' : ''}>Live feed</option>
+         ${importedOption}
          ${_store.archived.map(a => `<option value="${escAttr(String(a.sessionId))}"${a.sessionId === _store.chosenSession ? ' selected' : ''}>${escHtml(semesterNameFromSessionId(a.sessionId) || `Session ${a.sessionId}`)}</option>`).join('')}
        </select>`
     : '';
@@ -25676,6 +26055,23 @@ function _pickerHTML() {
   const importBtn = planCount > 0
     ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above">↧ Import from Planner (${planCount})</button>`
     : '';
+  // The other importer, and the one that answers "show me the semester I am
+  // actually in": the feed is a catalog with no student in it, so the only
+  // place your enrolment exists is the CONNECT page you can already see.
+  const connectBtn = `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Paste your Class and Exam Schedule from CONNECT">📋 Paste CONNECT schedule</button>`;
+  const connectPanel = _store.importOpen
+    ? `<div class="routine-import-panel">
+         <label class="routine-import-label" for="routineConnectPaste">Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.</label>
+         <textarea id="routineConnectPaste" class="routine-import-box" rows="6" spellcheck="false" placeholder="TIME/DAY&#9;SUNDAY&#9;MONDAY&#9;…"></textarea>
+         <div class="routine-import-actions">
+           <button class="btn-primary btn-sm" data-action="routine:applyConnectImport">Build my routine</button>
+           <button class="btn-secondary btn-sm" data-action="routine:cancelConnectImport">Cancel</button>
+         </div>
+       </div>`
+    : '';
+  const importNote = _store.importNote
+    ? `<div class="routine-import-note" role="status">${escHtml(_store.importNote)}</div>`
+    : '';
   const note = _store.planImportNote
     ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
     : '';
@@ -25696,7 +26092,10 @@ function _pickerHTML() {
              aria-controls="routineSuggestions" aria-label="Add a course by code" />
       <button class="btn-primary btn-sm" data-action="routine:addCourse">Add</button>
       ${importBtn}
+      ${connectBtn}
     </div>
+    ${connectPanel}
+    ${importNote}
     ${note}
     ${archiveNote}
   `;
