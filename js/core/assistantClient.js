@@ -179,6 +179,14 @@ const ASSISTANT_TAB_PROMPTS = Object.freeze({
     'What are the prerequisites for CSE470?',
     'What GPA do I need to reach a 3.5 CGPA?',
   ]),
+  // The Free Rooms tab is where the room tool has something to say, and the
+  // three chips ask it three different ways: a moment, a floor, a stretch
+  // (#645).
+  freerooms: Object.freeze([
+    'Which rooms are free right now?',
+    'Is there an empty room on the 9th floor?',
+    'Where can I sit for the next hour?',
+  ]),
   tracker: Object.freeze([
     'What GPA do I need to reach a 3.5 CGPA?',
     'How many credits until I graduate?',
