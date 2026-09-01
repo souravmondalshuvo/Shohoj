@@ -1791,6 +1791,143 @@ async function makeServiceAccountJson() {
     assert(seedsOnly.review_count > 0, 'the seeded corpus answers on its own');
   });
 
+  // ── Free rooms (#645) ──────────────────────────────────────────────────────
+  // The tool is a thin join over the Free Rooms tab's own availability model,
+  // so what is worth testing here is the joining: campus time, campus hours,
+  // and the feed shapes that contribute no booking.
+
+  const ROOMS_FEED = () => {
+    const feed = ROUTINE_FEED();
+    feed.set('ENG101', [
+      // No parsed slots at all — a shape the seat path already tolerates, and
+      // one that must not throw inside the room index (#553 was exactly this).
+      { sectionId: 41, courseCode: 'ENG101', sectionName: '01', roomName: 'TBA' },
+      // Timetabled into TBA, which is not a room anyone can walk to.
+      {
+        sectionId: 42, courseCode: 'ENG101', sectionName: '02', roomName: 'TBA',
+        classSlots: [{ day: 'SUNDAY', startMin: 480, endMin: 560, kind: 'theory', room: 'TBA' }],
+      },
+    ]);
+    return feed;
+  };
+  const ROOMS_CTX = () => ({
+    loadUserSnapshot: async () => { throw new Error('not needed'); },
+    loadSeatIndex: async () => ROOMS_FEED(),
+  });
+  const findRooms = (args, ctx) => executeAssistantTool('find_free_rooms', args, ctx || ROOMS_CTX());
+
+  await test('assistant: find_free_rooms answers for a moment and for a whole gap', async () => {
+    // 08:30 Sunday: CSE110 and PHY111 are mid-class, MAT120's room is not.
+    const now = await findRooms({ day: 'SUNDAY', start_time: '08:30' });
+    assertEq(now.free_count, 1);
+    assertEq(now.rooms[0].room, '08B-02C');
+    assertEq(now.rooms[0].floor, 8);
+    // Free until the 11:00 class walks in — the number the student acts on.
+    assertEq(now.rooms[0].free_until, '11:00 AM');
+    // TBA is not a room, and the slotless section contributes nothing: three
+    // real rooms in the feed, not five.
+    assertEq(now.total_rooms, 3);
+
+    const later = await findRooms({ day: 'SUNDAY', start_time: '10:00' });
+    assertEq(later.free_count, 3, 'between classes the whole feed is idle');
+
+    // A 09:30 gap that runs to 11:30 crosses MAT120's hour, so its room is out
+    // even though it is empty at 09:30 — the point of the duration.
+    const gap = await findRooms({ day: 'SUNDAY', start_time: '09:30', duration_minutes: 120 });
+    assertEq(gap.until, '11:30 AM');
+    assertEq(gap.free_count, 2);
+    assert(!gap.rooms.some((r) => r.room === '08B-02C'), 'a room that frees up mid-gap is not offered');
+  });
+
+  await test('assistant: find_free_rooms reports one room by code', async () => {
+    const busy = await findRooms({ room: '09a-10c', day: 'SUNDAY', start_time: '08:30' });
+    assertEq(busy.free, false);
+    assertEq(busy.busy_with.course_code, 'CSE110');
+    assertEq(busy.busy_with.until, '9:20 AM');
+    assertEq(busy.floor, 9);
+
+    const free = await findRooms({ room: '09A-10C', day: 'SUNDAY', start_time: '10:00' });
+    assertEq(free.free, true);
+    assertEq(free.free_until, '10:00 PM');
+    assertEq(free.classes_that_day, 1);
+    assertEq(free.free_windows.length, 1);
+    assertEq(free.free_windows[0].starts, '9:20 AM');
+
+    // Asked to hold the room across MAT120's hour it cannot, and says so.
+    const held = await findRooms({
+      room: '08B-02C', day: 'SUNDAY', start_time: '10:00', duration_minutes: 120,
+    });
+    assertEq(held.free, true, 'free at 10:00');
+    assertEq(held.free_for_whole_window, false, 'but not for the whole two hours');
+
+    // No class is timetabled there, so the feed cannot say whether it exists.
+    const unknown = await findRooms({ room: '12A-01C', day: 'SUNDAY', start_time: '10:00' });
+    assertEq(unknown.error, 'room_not_in_feed');
+    const junk = await findRooms({ room: '!!', day: 'SUNDAY', start_time: '10:00' });
+    assertEq(junk.error, 'invalid_room');
+  });
+
+  await test('assistant: find_free_rooms answers in campus time, not the Worker\'s UTC', async () => {
+    // 08:00 UTC on Sunday is 14:00 in Dhaka.
+    const afternoon = await findRooms({}, { ...ROOMS_CTX(), now: Date.UTC(2026, 8, 6, 8, 0) });
+    assertEq(afternoon.day, 'SUNDAY');
+    assertEq(afternoon.at, '2:00 PM');
+    assertEq(afternoon.answered_for_now, true);
+
+    // The guard that matters: 20:00 UTC on SATURDAY is 02:00 SUNDAY on campus.
+    // Read as UTC this is a Saturday evening and the tool would cheerfully list
+    // rooms; in campus time the building is shut and the day has already
+    // rolled over.
+    const overnight = await findRooms({}, { ...ROOMS_CTX(), now: Date.UTC(2026, 8, 5, 20, 0) });
+    assertEq(overnight.day, 'SUNDAY');
+    assertEq(overnight.error, 'outside_campus_hours');
+  });
+
+  await test('assistant: find_free_rooms refuses what it cannot read', async () => {
+    assertEq((await findRooms({ day: 'CATURDAY' })).error, 'invalid_day');
+    assertEq((await findRooms({ start_time: 'lunchtime' })).error, 'invalid_time');
+
+    // The schema asks for a 24-hour clock; the model writes what the student
+    // said. Both spellings have to mean the same afternoon.
+    const spoken = await findRooms({ day: 'SUNDAY', start_time: '2:30 PM' });
+    const written = await findRooms({ day: 'SUNDAY', start_time: '14:30' });
+    assertEq(spoken.at, '2:30 PM');
+    assertEq(spoken.free_count, written.free_count);
+
+    // Before the building opens, "everything is free" is true and useless.
+    const early = await findRooms({ day: 'SUNDAY', start_time: '07:00' });
+    assertEq(early.error, 'outside_campus_hours');
+    assert(/8:00 AM/.test(early.campus_hours), 'the answer names the hours');
+    // And a stretch that runs past closing is refused for the other reason.
+    const late = await findRooms({ day: 'SUNDAY', start_time: '9:00 PM', duration_minutes: 120 });
+    assertEq(late.error, 'outside_campus_hours');
+    assert(/past the end/.test(late.message), 'says the stretch, not the start, is the problem');
+  });
+
+  await test('assistant: find_free_rooms keeps the answer on one floor', async () => {
+    const ninth = await findRooms({ day: 'SUNDAY', start_time: '10:00', floor: 9 });
+    assertEq(ninth.free_count, 1);
+    assertEq(ninth.rooms[0].room, '09A-10C');
+
+    // Nothing free on that floor is not the same as nothing free on campus,
+    // and the student is told which of the two they are looking at.
+    const none = await findRooms({ day: 'SUNDAY', start_time: '08:30', floor: 9 });
+    assertEq(none.free_count, 0);
+    assert(/floor 9/.test(none.message), 'the message names the floor it searched');
+    assert(/Other floors/.test(none.message), 'and points off it');
+  });
+
+  await test('assistant: find_free_rooms ignores model-supplied identifiers', async () => {
+    // Same invariant as every other tool: the rooms answer needs no student
+    // record at all, so a snapshot loader that throws proves nothing reaches
+    // for one, and invented uid fields change nothing.
+    const r = await findRooms(
+      { user_id: 'uid_bob', uid: 'uid_bob', room: '09A-10C', day: 'SUNDAY', start_time: '10:00' },
+    );
+    assertEq(r.room, '09A-10C');
+    assertEq(r.free, true);
+  });
+
   await test('faculty reviews: a pre-tenancy review still belongs to BRACU', async () => {
     // Reviews written before #574 have no `university` field, and Firestore
     // equality does not match a missing field. The campus filter therefore runs
@@ -2148,6 +2285,10 @@ async function makeServiceAccountJson() {
     }
     assert(/Decline out-of-scope/.test(ASSISTANT_SYSTEM), 'it is told how to decline');
     assert(/assignment, exam or lab work/.test(ASSISTANT_SYSTEM), 'doing the coursework is refused');
+    // A free room is a room with no class in it, which is not the same as a
+    // room nobody is using. Dropping this line turns an honest suggestion into
+    // a booking the student cannot rely on (#645).
+    assert(/no room-booking feed/.test(ASSISTANT_SYSTEM), 'the room limit is stated');
   });
 
   await test('both providers are driven by the same system prompt', async () => {
