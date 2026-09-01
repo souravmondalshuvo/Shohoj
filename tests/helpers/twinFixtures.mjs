@@ -255,6 +255,7 @@ const ROUTINE_BOOKS = [
   // Junk in every position the reader has to survive.
   { picks: { cse110: 7, BAD: 'nope', OK: null }, bySession: { 'not-a-session': { picks: {} }, 20262: null } },
   { bySession: { 20262: { picks: { MAT111: 4 } } } },
+  { picks: {}, bySession: { imported: { picks: { CSE220L: -7 } } } },
   { picks: null },
   {},
   null,
@@ -547,6 +548,7 @@ export const FIXTURES = {
       [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, null],
       [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, 20262],
       [{ live: { picks: { A: 1 } }, bySession: {} }, 20263],
+      [{ live: { picks: { A: 1 } }, bySession: { imported: { picks: { B: -7 } } } }, 'imported'],
     ],
     withRoutineForSession: [
       [{ live: { picks: { A: 1 } }, bySession: {} }, null, { picks: { C: 3 } }],
