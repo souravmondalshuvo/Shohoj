@@ -27,6 +27,7 @@ export const PERSONAL_LOCAL_KEYS = [
   'shohoj_cgpa_backup_v1',       // the shell's pre-migration copy of all of it
   'shohoj_routine_v1',           // class routine (legacy)
   'shohoj_routine_picks_v1',     // class routine (shell — a different key)
+  'shohoj_routine_import_v1', // a CONNECT schedule the student pasted in — their own timetable
   'shohoj_my_reviews_v1',        // the record of reviews this student wrote
   'shohoj_seat_watch_v1',        // seat watchlist
   'shohoj_seat_alerts_enabled',  // seat-alert opt-in
