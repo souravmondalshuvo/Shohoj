@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-nWd8LXP/DKIv30z0QIUl64OOhRCdt66TkGMqltEiqY8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-AaWfGlg6kGqzDr1ir3O5mHqdEgJKKT7lm0tuIzNrbbg=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-0Bof8lFNdt7v+KuTKEtMB+ul7xLhJcpg7bS5VwxwHFM='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21483,6 +21483,85 @@ function summarizeRoutine(state, index) {
     };
 }
 
+// ── Per-semester scoping (#633) ─────────────────────────────────────────────
+//
+// A routine is picks against ONE semester's sections. Once the tab could switch
+// semesters, a single flat `{picks}` became wrong in a way that looks right:
+// the codes carry across (CSE221 exists in both Summer and Fall) but the section
+// ids do not, so switching showed four courses the student is not taking above
+// an empty grid.
+//
+// The stored shape stays backwards-compatible on purpose. `picks` remains the
+// live semester's routine at the top level, because six other modules read it
+// there — the Assistant, the Profile hub on both shells, and the cloud snapshot
+// — and "my routine" means the live one in every one of them. Archived
+// semesters live beside it under `bySession`.
+
+function emptyRoutineBook() {
+    return { live: emptyRoutineState(), bySession: {} };
+}
+
+/** Normalize one persisted `{picks}` object. Junk keys and values are dropped. */
+function readPicks(raw) {
+    const source = raw;
+    if (!source || typeof source !== 'object') return emptyRoutineState();
+    const picks = source.picks;
+    if (!picks || typeof picks !== 'object') return emptyRoutineState();
+    const out = {};
+    for (const [code, sectionId] of Object.entries(picks)) {
+        if (typeof code !== 'string') continue;
+        if (sectionId === null || typeof sectionId === 'number') {
+            out[code.toUpperCase()] = sectionId;
+        }
+    }
+    return { picks: out };
+}
+
+/**
+  * Read the stored object, whatever version wrote it.
+  *
+  * A pre-#633 value is a bare `{picks}` and becomes the live routine, which is
+  * what it always was — nobody's saved routine is lost or reassigned.
+  */
+function readRoutineBook(raw) {
+    const book = emptyRoutineBook();
+    if (!raw || typeof raw !== 'object') return book;
+    book.live = readPicks(raw);
+    const bySession = raw.bySession;
+    if (bySession && typeof bySession === 'object') {
+        for (const [key, value] of Object.entries(bySession)) {
+            if (!/^\d{4,6}$/.test(key)) continue;
+            book.bySession[key] = readPicks(value);
+        }
+    }
+    return book;
+}
+
+/** The routine for a semester. `null` means the live feed. */
+function routineForSession(book, sessionId) {
+    if (sessionId === null) return book.live;
+    return book.bySession[String(sessionId)] ?? emptyRoutineState();
+}
+
+/** Replace one semester's routine, leaving every other semester untouched. */
+function withRoutineForSession(book, sessionId, state) {
+    if (sessionId === null) return { live: state, bySession: { ...book.bySession } };
+    return {
+        live: book.live,
+        bySession: { ...book.bySession, [String(sessionId)]: state },
+    };
+}
+
+/**
+  * The object to persist.
+  *
+  * The live routine is written as a top-level `picks` so every existing reader
+  * keeps working against the same shape it always read.
+  */
+function serializeRoutineBook(book) {
+    return { picks: book.live.picks, bySession: book.bySession };
+}
+
 // ── js/core/routineGrid.js ──────────────────────────────────────
 // Twin of src/core/routineGrid.ts — hand-maintained, not generated.
 // src/core/routineGrid.ts is the source of truth: change it there first, then mirror the
@@ -24584,23 +24663,30 @@ const REVIEWS_FETCH_LIMIT = 1000;
 const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
 const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
-function _restoreRoutine() {
+// Every semester's picks, read once. A routine is picks against ONE semester's
+// sections, and the codes carry across while the section ids do not (#633).
+function _restoreRoutineBook() {
   try {
     const raw = localStorage.getItem(ROUTINE_STORAGE_KEY);
-    if (!raw) return emptyRoutineState();
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.picks !== 'object' || parsed.picks === null) return emptyRoutineState();
-    const picks = {};
-    for (const [k, v] of Object.entries(parsed.picks)) {
-      if (typeof k !== 'string') continue;
-      if (v === null || typeof v === 'number') picks[k.toUpperCase()] = v;
-    }
-    return { picks };
-  } catch { return emptyRoutineState(); }
+    return raw ? readRoutineBook(JSON.parse(raw)) : emptyRoutineBook();
+  } catch { return emptyRoutineBook(); }
+}
+
+function _restoreRoutine() {
+  return routineForSession(_restoreRoutineBook(), _restoreSemesterChoice());
 }
 
 function _persistRoutine() {
-  try { localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(_store.routine)); }
+  try {
+    // Re-read rather than holding the book in the store: another tab may have
+    // written a different semester since, and this must not clobber it.
+    const book = withRoutineForSession(
+      _restoreRoutineBook(),
+      _store.chosenSession,
+      _store.routine,
+    );
+    localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(serializeRoutineBook(book)));
+  }
   catch {}
   // The routine travels in the cloud snapshot now (#627). Picking a section
   // touches no calculator state, so without this nothing would ever push it and
@@ -24992,6 +25078,9 @@ function _onSemesterChange(ev) {
   if (chosen === _store.chosenSession) return;
   _store.chosenSession = chosen;
   _rememberSemesterChoice(chosen);
+  // Load that semester's own picks. Carrying them across is what made the
+  // switcher show four courses the student was not taking above an empty grid.
+  _store.routine = routineForSession(_restoreRoutineBook(), chosen);
   _refresh(false);
 }
 
