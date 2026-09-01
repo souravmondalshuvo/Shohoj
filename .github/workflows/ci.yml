@@ -407,7 +407,7 @@ jobs:
       # dorny/paths-filter reliably diffs against the push base (or PR base) and
       # falls back to "changed" on ambiguous history, so an unrelated frontend
       # change never redeploys the Worker or Firestore rules.
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
