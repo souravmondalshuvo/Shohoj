@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
   indexByCourse,
+  parseFeed,
   type NormalizedSection,
   type SectionIndex,
   type WeekdayName,
@@ -38,6 +39,7 @@ import {
   type RoutineState,
 } from '../../core/routineState';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
+import { parseConnectSchedule, picksFromImport } from '../../core/connectScheduleImport';
 import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
 import {
   archiveCacheKey,
@@ -108,11 +110,33 @@ interface FeedState {
 }
 
 /** Remembered choice of semester. Null (or absent) means the live feed. */
+// The one semester that is not a semester: a pasted CONNECT schedule. It may
+// describe a term the feed never carried and we never archived, which is the
+// whole reason the paste exists (#633).
+const IMPORTED_SESSION = 'imported';
+type SessionChoice = number | typeof IMPORTED_SESSION | null;
+
+// The student's own timetable, as pasted. Not a cache of anything public, so it
+// is personal data and listed as such in personalData.ts.
+const ROUTINE_IMPORT_KEY = 'shohoj_routine_import_v1';
+
+function restoreImportedSections(): unknown[] {
+  try {
+    const raw = localStorage.getItem(ROUTINE_IMPORT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { sections?: unknown };
+    return Array.isArray(parsed?.sections) ? parsed.sections : [];
+  } catch {
+    return [];
+  }
+}
+
 const SEMESTER_CHOICE_KEY = 'shohoj_routine_semester';
 
-function restoreSemesterChoice(): number | null {
+function restoreSemesterChoice(): SessionChoice {
   try {
     const raw = localStorage.getItem(SEMESTER_CHOICE_KEY);
+    if (raw === IMPORTED_SESSION) return IMPORTED_SESSION;
     const n = raw === null ? NaN : Number.parseInt(raw, 10);
     return Number.isInteger(n) ? n : null;
   } catch {
@@ -135,7 +159,11 @@ export function Component() {
   // the route falls back to the live feed with no switcher, rather than showing
   // a control that cannot work.
   const [archived, setArchived] = useState<ArchivedSemester[]>([]);
-  const [chosenSession, setChosenSession] = useState<number | null>(restoreSemesterChoice);
+  const [chosenSession, setChosenSession] = useState<SessionChoice>(restoreSemesterChoice);
+  const [imported, setImported] = useState<unknown[]>(restoreImportedSections);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importNote, setImportNote] = useState('');
 
   // Load the CONNECT feed (cache-first, same client as RoomsRoute). Refresh
   // re-fetches past the cache, which legacy has always offered from the header
@@ -150,6 +178,24 @@ export function Component() {
       let alive = true;
       setFeedError(null);
       setLoading(true);
+
+      // A pasted schedule needs no fetch at all: the paste IS the data, which
+      // is why the import works for a semester nobody ever archived.
+      if (chosenSession === IMPORTED_SESSION) {
+        const { sections } = parseFeed(imported);
+        setFeed({
+          index: indexByCourse(sections),
+          source: 'imported' as FeedSource,
+          count: sections.length,
+          fetchedAt: 0,
+          semester: describeSemester(sections, todayISODate()),
+        });
+        setLoading(false);
+        return () => {
+          alive = false;
+        };
+      }
+
       const archiveUrl =
         chosenSession === null
           ? null
@@ -179,7 +225,7 @@ export function Component() {
         alive = false;
       };
     },
-    [chosenSession, config?.papersWorkerUrl ?? null],
+    [chosenSession, imported, config?.papersWorkerUrl ?? null],
   );
 
   useEffect(() => load(false), [load]);
@@ -207,7 +253,34 @@ export function Component() {
     }
   }, [chosenSession]);
 
-  const chooseSemester = useCallback((next: number | null) => {
+  // Build a routine from a pasted CONNECT "Class and Exam Schedule".
+  //
+  // The only path to the semester a student is actually in: the feed is a
+  // catalog of every section on offer with no student in it, so their enrolment
+  // exists nowhere we can reach except the page in front of them (#633).
+  const applyConnectImport = useCallback(() => {
+    const result = parseConnectSchedule(importText);
+    if (result.sections.length === 0) {
+      // Leave the box open and say why — closing it would look like it worked.
+      setImportNote(result.warnings.join(' ') || 'Nothing recognisable in that paste.');
+      return;
+    }
+    try {
+      localStorage.setItem(ROUTINE_IMPORT_KEY, JSON.stringify({ sections: result.sections }));
+    } catch {
+      // Storage disabled — the paste won't survive a reload.
+    }
+    setImported(result.sections);
+    setChosenSession(IMPORTED_SESSION);
+    setRoutine({ picks: picksFromImport(result) });
+    setImportOpen(false);
+    const n = result.sections.length;
+    setImportNote(
+      [`Imported ${n} course${n === 1 ? '' : 's'} from CONNECT.`, ...result.warnings].join(' '),
+    );
+  }, [importText]);
+
+  const chooseSemester = useCallback((next: SessionChoice) => {
     setChosenSession(next);
     // Load that semester's own picks in the same update. Setting the session by
     // itself would let the persist effect below write the outgoing semester's
@@ -288,17 +361,21 @@ export function Component() {
               {semesterHeadline(feed.semester)}
             </span>
           )}
-          {archived.length > 0 && (
+          {(archived.length > 0 || imported.length > 0) && (
             <select
               className="routine-semester-picker"
               aria-label="Semester to show"
               value={chosenSession ?? ''}
               data-testid="routine-semester-picker"
-              onChange={(e) =>
-                chooseSemester(e.target.value === '' ? null : Number(e.target.value))
-              }
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') chooseSemester(null);
+                else if (raw === IMPORTED_SESSION) chooseSemester(IMPORTED_SESSION);
+                else chooseSemester(Number(raw));
+              }}
             >
               <option value="">Live feed</option>
+              {imported.length > 0 && <option value={IMPORTED_SESSION}>My CONNECT schedule</option>}
               {archived.map((a) => (
                 <option key={a.sessionId} value={a.sessionId}>
                   {semesterNameFromSessionId(a.sessionId) ?? `Session ${a.sessionId}`}
@@ -379,6 +456,21 @@ export function Component() {
         />
         <button type="submit" className="btn-primary btn-sm" data-testid="routine-add-btn">
           Add
+        </button>
+        {/* The other way in, and the one that answers "show me the semester I
+            am actually in" — picking courses by hand only works if you already
+            know which sections you are in. */}
+        <button
+          type="button"
+          className={`btn-secondary btn-sm ${importOpen ? 'is-active' : ''}`}
+          aria-expanded={importOpen}
+          data-testid="routine-import-toggle"
+          onClick={() => {
+            setImportOpen((open) => !open);
+            setImportNote('');
+          }}
+        >
+          📋 Paste CONNECT schedule
         </button>
       </form>
       {addError && (
@@ -499,6 +591,46 @@ export function Component() {
             <code>BUS102</code>.
           </p>
         </div>
+      )}
+
+      {importOpen && (
+        <div className="routine-import-panel" data-testid="routine-import-panel">
+          <label className="routine-import-label" htmlFor="routine-connect-paste">
+            Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.
+          </label>
+          <textarea
+            id="routine-connect-paste"
+            className="routine-import-box"
+            rows={6}
+            spellCheck={false}
+            value={importText}
+            data-testid="routine-import-box"
+            onChange={(e) => setImportText(e.target.value)}
+          />
+          <div className="routine-import-actions">
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              data-testid="routine-import-apply"
+              onClick={applyConnectImport}
+            >
+              Build my routine
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setImportOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {importNote !== '' && (
+        <p className="routine-import-note" role="status" data-testid="routine-import-note">
+          {importNote}
+        </p>
       )}
 
       {archiveNote !== null && (
