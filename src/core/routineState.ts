@@ -252,7 +252,10 @@ export function readRoutineBook(raw: unknown): RoutineBook {
   const bySession = (raw as { bySession?: unknown }).bySession;
   if (bySession && typeof bySession === 'object') {
     for (const [key, value] of Object.entries(bySession as Record<string, unknown>)) {
-      if (!/^\d{4,6}$/.test(key)) continue;
+      // `imported` alongside the session ids: a pasted CONNECT schedule is a
+      // routine like any other, but it belongs to no semester the feed knows
+      // about — it may well be one we never archived (#633).
+      if (!/^(\d{4,6}|imported)$/.test(key)) continue;
       book.bySession[key] = readPicks(value);
     }
   }
