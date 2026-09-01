@@ -5896,6 +5896,30 @@ body[data-page="admin"] .orb { display: none !important; }
 /* What an imported capture cannot tell you. Amber, like the out-of-term notice:
    the data is real, it is just not live, and the failure that matters is the
    one that looks fine — a seat count frozen months ago reads like a live one. */
+/* The CONNECT paste box (#633). The only way to show the semester a student is
+   actually in: the feed is a catalog with no student in it, so their enrolment
+   exists nowhere we can reach except the page in front of them. */
+.routine-import-panel {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; margin: 6px 0 2px;
+  border: 1px solid var(--card-border); border-radius: 12px;
+  background: var(--card-bg);
+}
+.routine-import-label { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.routine-import-box {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--chip-border);
+  background: var(--badge-bg); color: var(--text1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+}
+.routine-import-actions { display: flex; gap: 8px; }
+.routine-import-note {
+  margin: 0 0 2px; padding: 10px 12px; border-radius: 10px;
+  font-size: 13px; line-height: 1.5; color: var(--text2);
+  background: rgba(91,157,255,0.10); border: 1px solid rgba(91,157,255,0.28);
+}
+
 .routine-archive-note {
   margin: 0;
   padding: 10px 12px;
