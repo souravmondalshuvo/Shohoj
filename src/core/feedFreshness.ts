@@ -19,6 +19,10 @@ export const FEED_SOURCE_LABEL: Readonly<Record<string, string>> = {
   live: 'Live',
   cache: 'Cached',
   fallback: 'Offline cache',
+  // Not a feed origin at all: a schedule the student pasted from CONNECT
+  // (#633). The badge's job is to be honest about where the data came from, and
+  // an imported routine is neither live nor cached.
+  imported: 'Pasted from CONNECT',
 };
 
 /** Legacy's source name for a feed origin, falling back to its em dash. */
