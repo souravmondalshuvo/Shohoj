@@ -21,6 +21,8 @@
 // faculty ratings from js/core/reviews + js/core/routineFaculty — the same
 // aggregation and the same low-sample threshold the Routine Builder's ★ uses,
 // so the Assistant can never quote a different number than the grid behind it.
+// Room availability comes from js/core/freeRooms + roomsFreeThroughout, which
+// is the Free Rooms tab's own model of who is sitting where (#645).
 // Wrangler bundles these at deploy; Node ≥23.6 strips the .ts types natively
 // for the un-bundled test run.
 
@@ -30,6 +32,20 @@ import { COURSE_DB, PREREQS } from '../js/core/catalog.js';
 import { parseFeed, indexByCourse } from '../js/core/connectFeed.js';
 import { courseSeatSummary, seatInfo, sortSections } from '../js/core/seatStatus.js';
 import { aggregateByFaculty, buildReviewOverview } from '../js/core/reviews.js';
+import {
+  buildRoomBusyIndex,
+  busyOnDay,
+  freeRoomsAt,
+  freeWindowsForRoom,
+  occupantAt,
+  CAMPUS_START_MIN,
+  CAMPUS_END_MIN,
+} from '../js/core/freeRooms.js';
+import {
+  parseRoomFloor,
+  roomsFreeThroughout,
+  CAMPUS_UTC_OFFSET_MIN,
+} from '../js/core/semesterBriefing.js';
 import { buildClashMap, selectedSections, summarizeRoutine } from '../js/core/routineState.js';
 import { DEPARTMENTS } from '../js/core/departments.js';
 import { LOW_SAMPLE_THRESHOLD, ratingTier } from '../js/core/routineFaculty.js';
@@ -67,6 +83,7 @@ export const ASSISTANT_SYSTEM = [
   '- their courses, grades, CGPA, retakes, and academic standing;',
   '- prerequisites, what they can register for next, and degree progress;',
   '- section seat availability, routines, and class scheduling;',
+  '- which rooms on campus are empty, for somewhere to sit, study or wait between classes;',
   "- what students have said about a faculty member in Shohoj's reviews, to help them pick a section;",
   '- how to use Shohoj itself.',
   '',
@@ -80,6 +97,10 @@ export const ASSISTANT_SYSTEM = [
   "- Grades use BRACU's 4.0 scale. Prerequisites come in two kinds: hard prerequisites must be completed before taking the course; soft prerequisites are recommended but not enforced.",
   "- Be concise and concrete: lead with the answer, using the student's actual numbers from tool results.",
   '- You are read-only. You cannot register courses, edit planner data, or change anything on behalf of the student.',
+  '',
+  'Free rooms:',
+  '- A room is reported free when no class is timetabled in it. There is no room-booking feed, so a free room can still have a club, an event or another group in it. Offer rooms as somewhere worth trying, never as reserved or guaranteed.',
+  '- Times are campus time. When the student does not say when, the tool answers for right now — say which day and time the answer is for, because a room that is free at 2:00 PM may not be at 2:30.',
   '',
   'Faculty ratings:',
   '- A rating is an aggregate of student reviews, not a fact about a person. Say what the reviews report and how many there are — "4.8 across 12 reviews" — never assert what a teacher is like. Do not speculate beyond the numbers the tool returns, do not repeat or invent personal allegations, and do not tell a student a named teacher is bad at their job.',
@@ -197,6 +218,41 @@ export const ASSISTANT_TOOLS = [
         },
       },
       required: ['faculty_initials'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'find_free_rooms',
+    description:
+      'Find rooms with no class timetabled in them. Call this when the student asks where they can sit, study, or wait out a gap between classes, which rooms are empty at some time, or whether one particular room is free. Answers for right now on campus unless a day or time is given. Pass duration_minutes for a room that stays free for a whole stretch, floor to keep the answer within walking distance, or room to ask about one room by its code.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        day: {
+          type: 'string',
+          enum: WEEK_DAYS,
+          description: 'Day to check. Defaults to today on campus.',
+        },
+        start_time: {
+          type: 'string',
+          description:
+            'Time to check, on a 24-hour clock, e.g. "14:30". Defaults to now on campus.',
+        },
+        duration_minutes: {
+          type: 'number',
+          description:
+            'Only report rooms that stay free for this many minutes from start_time — for a gap the student has to sit through. Omit to ask about one moment.',
+        },
+        floor: {
+          type: 'number',
+          description: 'Only report rooms on this floor of the tower, e.g. 9 for 09A-10C.',
+        },
+        room: {
+          type: 'string',
+          description:
+            'One room code to ask about instead of listing free rooms, e.g. 09A-10C. Reports what is in it, when it frees up, and its free windows that day.',
+        },
+      },
       additionalProperties: false,
     },
   },
@@ -656,6 +712,246 @@ async function runFacultyRating(input, ctx) {
   };
 }
 
+// ── Free rooms (#645) ────────────────────────────────────────────────────────
+//
+// The Free Rooms tab's model, reached through the feed the Worker already
+// loads for seats. Availability is NOT recomputed here: buildRoomBusyIndex
+// inverts the sections into per-room bookings, and freeRoomsAt /
+// roomsFreeThroughout / freeWindowsForRoom answer over that index, so the
+// Assistant and the tab can never disagree about who is sitting where.
+//
+// What "free" means is a real limit, not a caveat: the only occupancy signal
+// on campus is the class timetable. A club meeting, an event or a study group
+// that never touched CONNECT is invisible here, which is why the system prompt
+// makes the model offer a room to try rather than a room that is reserved.
+
+/** Rooms listed per answer. The student is going to walk to one of them. */
+const MAX_FREE_ROOMS = 25;
+/** Longest stretch worth asking about — beyond this the answer is "go home". */
+const MAX_FREE_ROOM_MINUTES = 12 * 60;
+// Feed room codes are the tower pattern (09A-10C) plus a few venues that are
+// not (AN1-01C, FT11-02L). Match the shape loosely and let the index decide
+// whether the room is real; a code that is not in the feed is reported as such.
+const ROOM_CODE_INPUT_RE = /^[A-Z0-9][A-Z0-9-]{1,11}$/;
+// Date#getUTCDay order, which is not the campus week order in WEEK_DAYS.
+const DAY_BY_JS_INDEX = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+];
+
+function normalizeRoomCode(raw) {
+  const code = String(raw || '')
+    .toUpperCase()
+    .replace(/\s+/g, '');
+  return ROOM_CODE_INPUT_RE.test(code) ? code : null;
+}
+
+// "14:30" → 870. The schema asks for a 24-hour clock, but the model writes
+// what the student said, so "2:30 PM", "2pm" and "1430" are all accepted.
+// Returns null rather than a guess: answering 2:00 AM for "2 PM" would send a
+// student to a room on the strength of a silent misreading.
+function parseClockMinutes(raw) {
+  const text = String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\./g, '');
+  const match = /^(\d{1,2}):?(\d{2})?\s*(AM|PM)?$/.exec(text);
+  if (!match) return null;
+  let hours = Number.parseInt(match[1], 10);
+  const minutes = match[2] ? Number.parseInt(match[2], 10) : 0;
+  const meridiem = match[3];
+  if (!Number.isFinite(hours) || minutes > 59) return null;
+  if (meridiem) {
+    if (hours < 1 || hours > 12) return null;
+    if (meridiem === 'PM' && hours !== 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+  }
+  if (hours > 23) return null;
+  return hours * 60 + minutes;
+}
+
+// The Worker's clock is UTC; campus runs on Asia/Dhaka (UTC+6, no DST). Read
+// the raw clock and every "is anything free now" answer is six hours out —
+// wrong day for a third of the evening, and wrong side of the last class for
+// all of it. `ctx.now` is a test seam; production passes nothing.
+function campusNow(ctx) {
+  const nowMs = typeof ctx?.now === 'number' ? ctx.now : Date.now();
+  const campus = new Date(nowMs + CAMPUS_UTC_OFFSET_MIN * 60000);
+  return {
+    day: DAY_BY_JS_INDEX[campus.getUTCDay()],
+    minute: campus.getUTCHours() * 60 + campus.getUTCMinutes(),
+  };
+}
+
+// Room index built from the seat index the route handler already caches, and
+// cached against that same object: within a turn the model may ask about the
+// gap and then about one room, and rebuilding the whole week's bookings per
+// tool call would be work done twice for an answer that cannot have changed.
+const ROOM_INDEX_CACHE = new WeakMap();
+
+async function loadRoomBusyIndex(ctx) {
+  const seatIndex = await ctx.loadSeatIndex();
+  const cached = ROOM_INDEX_CACHE.get(seatIndex);
+  if (cached) return cached;
+  const sections = [];
+  for (const list of seatIndex.values()) {
+    for (const section of list) {
+      // A section with no parsed slots contributes no bookings. Skipping it
+      // here rather than trusting the shape keeps a feed change from throwing
+      // inside the tool, which is how the seat tool stayed broken for weeks.
+      if (Array.isArray(section?.classSlots)) sections.push(section);
+    }
+  }
+  const index = buildRoomBusyIndex(sections);
+  ROOM_INDEX_CACHE.set(seatIndex, index);
+  return index;
+}
+
+/** End of the free window `minute` falls in, or null when the room is busy. */
+function roomFreeUntil(index, room, day, minute) {
+  for (const window of freeWindowsForRoom(index, room, day)) {
+    if (minute >= window.startMin && minute < window.endMin) return window.endMin;
+  }
+  return null;
+}
+
+async function runFreeRooms(input, ctx) {
+  const index = await loadRoomBusyIndex(ctx);
+  if (index.size === 0) {
+    return {
+      error: 'no_room_data',
+      message: 'The section feed carries no room information right now.',
+    };
+  }
+
+  const now = campusNow(ctx);
+  let day = now.day;
+  if (input?.day != null && String(input.day).trim() !== '') {
+    const wanted = String(input.day).trim().toUpperCase();
+    // A day we cannot read is refused rather than quietly answered for today:
+    // the student would act on a timetable for the wrong day.
+    if (!WEEK_DAYS.includes(wanted)) return { error: 'invalid_day', day: input.day };
+    day = wanted;
+  }
+
+  let startMin = now.minute;
+  if (input?.start_time != null && String(input.start_time).trim() !== '') {
+    startMin = parseClockMinutes(input.start_time);
+    if (startMin === null) return { error: 'invalid_time', start_time: input.start_time };
+  }
+
+  const duration =
+    Number.isFinite(input?.duration_minutes) && input.duration_minutes > 0
+      ? Math.min(Math.round(input.duration_minutes), MAX_FREE_ROOM_MINUTES)
+      : 0;
+  const endMin = startMin + duration;
+
+  const when = {
+    day,
+    at: minutesToClock(startMin),
+    until: duration > 0 ? minutesToClock(endMin) : undefined,
+    answered_for_now: input?.day == null && input?.start_time == null ? true : undefined,
+  };
+
+  // Outside campus hours every room is idle, so "everything is free" would be
+  // a true sentence and a useless one. Say the campus is shut instead.
+  if (startMin < CAMPUS_START_MIN || startMin >= CAMPUS_END_MIN || endMin > CAMPUS_END_MIN) {
+    return {
+      ...when,
+      error: 'outside_campus_hours',
+      campus_hours: `${minutesToClock(CAMPUS_START_MIN)} to ${minutesToClock(CAMPUS_END_MIN)}`,
+      message:
+        endMin > CAMPUS_END_MIN && startMin < CAMPUS_END_MIN
+          ? 'That stretch runs past the end of the campus day.'
+          : 'That is outside campus hours, so room bookings say nothing useful.',
+    };
+  }
+
+  const floor = Number.isFinite(input?.floor) && input.floor >= 0 ? Math.round(input.floor) : null;
+
+  // One named room: what is in it, and when it frees up.
+  if (input?.room != null && String(input.room).trim() !== '') {
+    const room = normalizeRoomCode(input.room);
+    if (!room) return { ...when, error: 'invalid_room', room: input.room };
+    if (!index.has(room)) {
+      return {
+        ...when,
+        room,
+        error: 'room_not_in_feed',
+        message: `No class is timetabled in ${room} this semester, so the feed says nothing about it. It may not exist, or it may simply never be used for classes.`,
+      };
+    }
+    const occupant = occupantAt(index, room, day, startMin);
+    const freeUntil = occupant ? null : roomFreeUntil(index, room, day, startMin);
+    return {
+      ...when,
+      room,
+      floor: parseRoomFloor(room) ?? undefined,
+      free: !occupant,
+      busy_with: occupant
+        ? {
+            course_code: occupant.courseCode,
+            section: occupant.sectionName,
+            kind: occupant.kind,
+            until: minutesToClock(occupant.endMin),
+          }
+        : undefined,
+      free_until: freeUntil === null ? undefined : minutesToClock(freeUntil),
+      free_for_whole_window:
+        duration > 0 ? roomsFreeThroughout(index, day, startMin, endMin).includes(room) : undefined,
+      free_windows: freeWindowsForRoom(index, room, day).map((w) => ({
+        starts: minutesToClock(w.startMin),
+        ends: minutesToClock(w.endMin),
+      })),
+      classes_that_day: busyOnDay(index, room, day).length,
+    };
+  }
+
+  // Everything free at that moment, or free for the whole stretch.
+  const free =
+    duration > 0
+      ? roomsFreeThroughout(index, day, startMin, endMin)
+      : freeRoomsAt(index, day, startMin);
+  const scoped = floor === null ? free : free.filter((room) => parseRoomFloor(room) === floor);
+
+  if (scoped.length === 0) {
+    return {
+      ...when,
+      floor: floor ?? undefined,
+      free_count: 0,
+      total_rooms: index.size,
+      message:
+        floor === null
+          ? 'Every room in the feed has a class in it then.'
+          : `No free room on floor ${floor} then. Other floors may still have one.`,
+    };
+  }
+
+  return {
+    ...when,
+    floor: floor ?? undefined,
+    free_count: scoped.length,
+    total_rooms: index.size,
+    // Codes sort by floor already (08B-… before 09A-…), so the head of the
+    // list is the low floors rather than an arbitrary slice.
+    rooms: scoped.slice(0, MAX_FREE_ROOMS).map((room) => {
+      const until = roomFreeUntil(index, room, day, startMin);
+      return {
+        room,
+        floor: parseRoomFloor(room) ?? undefined,
+        free_until: until === null ? undefined : minutesToClock(until),
+      };
+    }),
+    listed: Math.min(scoped.length, MAX_FREE_ROOMS),
+    truncated: scoped.length > MAX_FREE_ROOMS ? true : undefined,
+  };
+}
+
 // Execute one tool call. `ctx` carries the uid-scoped loaders built by the
 // route handler; the model-supplied `input` is treated as untrusted and can
 // never redirect a lookup to another user.
@@ -673,6 +969,8 @@ export async function executeAssistantTool(name, input, ctx) {
       return runDegreeProgress(input, ctx);
     case 'get_faculty_rating':
       return runFacultyRating(input, ctx);
+    case 'find_free_rooms':
+      return runFreeRooms(input, ctx);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
