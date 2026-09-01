@@ -75,6 +75,8 @@ MAIN_JS_FILES = [
     'js/core/semesterIdentity.js',
     # Reading the semesters the Worker kept after the feed dropped them
     'js/core/semesterArchive.js',
+    # Reading a CONNECT schedule the student pasted in
+    'js/core/connectScheduleImport.js',
     'js/core/freeRooms.js',
     'js/core/seatStatus.js',
     'js/core/seatWatch.js',
