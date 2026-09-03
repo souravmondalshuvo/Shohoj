@@ -171,7 +171,7 @@ Ask a question in plain language and get an answer computed from **your own save
 - **Bounded to what Shohoj is for** — courses, grades, CGPA, prerequisites, registration, seats, routines, free rooms, degree progress, and using the app. Anything else gets a one-line decline rather than an off-topic answer
 - **Free-tier by default, with fallbacks** — runs on Google's Gemini free tier so the feature costs nothing to keep on; if that quota runs out, a configured paid provider (OpenAI, then Anthropic) picks the question up. Same system prompt, same tools, same data rules on every provider
 - **A spending ceiling** — estimated spend accumulates per calendar month and the assistant declines once it hits the configured cap, rather than quietly running up a bill on one person's key. The estimate is deliberately pessimistic, and a ceiling of zero is a clean off switch
-- **Your chat never leaves your browser** — it survives switching tabs, but nothing is stored on any server and closing the tab clears it. Unsaved edits are synced before the first question so it answers on your current grades
+- **Your chat never leaves your browser** — the conversation is kept on this device, stamped with your account, so it is still there when you come back tomorrow and a shared campus machine never shows it to whoever signs in next. Nothing is stored on any server, so two devices means two separate histories, and **Clear chat** in the drawer deletes it for real. Unsaved edits are synced before the first question so it answers on your current grades
 - **Signed-out users see no launcher at all**, and neither does anyone when no provider is configured
 
 Available from the launcher on the main site and as a drawer on the React Router shell.
@@ -1008,7 +1008,7 @@ Additional notes on Repeat:
 - **Bounded scope.** It answers about your courses, grades, CGPA, prerequisites, registration, seats, routines, free rooms, degree progress, and using Shohoj. Other questions — including coursework it could technically do — get a one-line decline. This is a product decision, not a capability limit.
 - **It is an LLM.** The tools are deterministic and the numbers they return come from the same engines the calculator uses, but the prose around them is model-generated. Treat advising-critical answers as a starting point, not as your department's word.
 - **A monthly ceiling can stop it.** Once estimated spend reaches the configured cap, the Assistant declines until the month rolls over. The estimate is deliberately pessimistic, so it trips early rather than late.
-- **Chat history is browser-only** — never persisted server-side, cleared when you close the tab.
+- **Chat history is device-local.** The transcript is stored in this browser, on this device, stamped with your account so it only ever reads back for the person who wrote it. It is never persisted server-side, which also means it does not follow you — a second device keeps its own separate history, and there is nothing to recover if you clear your browser data. **Clear chat** in the drawer deletes it.
 
 ### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
 
@@ -1122,6 +1122,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `shohoj_theme`            | localStorage | `"dark"` or `"light"` (defaults to dark)                               |
 | `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
 | `shohoj_seat_alerts_enabled` | localStorage | Whether seat-drop email alerts are armed                            |
+| `shohoj_assistant`        | IndexedDB    | Assistant transcript, uid-stamped — device-only, deleted by "Clear chat"  |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
 | `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
 | `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
@@ -1141,7 +1142,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 
-Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in `sessionStorage` only, so a chat survives a tab switch and is gone when the tab closes — never localStorage, never Firestore, never the Worker. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
+Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in IndexedDB on your own device, stamped with your uid so a record only ever reads back for the account that wrote it — never Firestore, never the Worker, never any server. A chat therefore survives closing the tab, does not follow you to a second device, and is deleted by the drawer's **Clear chat**. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
 ### What's Production-Ready
 
