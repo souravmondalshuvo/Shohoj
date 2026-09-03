@@ -260,8 +260,8 @@ function AssistantDrawer({
         {transcript.length === 0 && (
           <div className="assistant-empty">
             <p>
-              Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or
-              faculty ratings. Try one:
+              Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, free
+              rooms, or faculty ratings. Try one:
             </p>
             {EXAMPLE_PROMPTS.map((prompt) => (
               <button

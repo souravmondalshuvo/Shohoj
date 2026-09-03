@@ -210,6 +210,10 @@ test('examplePromptsForTab offers three prompts for any tab, seat-first on Seats
   assert.equal(seats.length, 3);
   assert.match(seats[0], /seats/i);
 
+  const rooms = examplePromptsForTab('freerooms');
+  assert.equal(rooms.length, 3);
+  assert.match(rooms[0], /free/i);
+
   const fallback = examplePromptsForTab('calculator');
   assert.equal(fallback.length, 3);
   // Unknown/absent tabs fall back to the general set rather than throwing.

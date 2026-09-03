@@ -165,13 +165,13 @@ Nobody was building a solution. So I decided to build it myself.
 
 ### 🤖 Shohoj Assistant (New)
 
-Ask a question in plain language and get an answer computed from **your own saved data**, using the same grading rules and prerequisite logic the calculator already applies — "what GPA do I need for a 3.5?", "can I take CSE370 next semester?", "are there seats in MAT216?"
+Ask a question in plain language and get an answer computed from **your own saved data**, using the same grading rules and prerequisite logic the calculator already applies — "what GPA do I need for a 3.5?", "can I take CSE370 next semester?", "are there seats in MAT216?", "which rooms are free right now?"
 
-- **Three tools, nothing more** — the model can call `get_cgpa_scenario`, `check_prerequisite` and `check_seat_status`. It reads your data; it cannot write to it, and it cannot read anyone else's
-- **Bounded to what Shohoj is for** — courses, grades, CGPA, prerequisites, registration, seats, routines, degree progress, and using the app. Anything else gets a one-line decline rather than an off-topic answer
+- **Seven tools, nothing more** — the model can call `get_cgpa_scenario`, `check_prerequisite`, `check_seat_status`, `get_routine`, `get_degree_progress`, `get_faculty_rating` and `find_free_rooms`. It reads your data; it cannot write to it, and it cannot read anyone else's
+- **Bounded to what Shohoj is for** — courses, grades, CGPA, prerequisites, registration, seats, routines, free rooms, degree progress, and using the app. Anything else gets a one-line decline rather than an off-topic answer
 - **Free-tier by default, with fallbacks** — runs on Google's Gemini free tier so the feature costs nothing to keep on; if that quota runs out, a configured paid provider (OpenAI, then Anthropic) picks the question up. Same system prompt, same tools, same data rules on every provider
 - **A spending ceiling** — estimated spend accumulates per calendar month and the assistant declines once it hits the configured cap, rather than quietly running up a bill on one person's key. The estimate is deliberately pessimistic, and a ceiling of zero is a clean off switch
-- **Your chat never leaves your browser** — it survives switching tabs, but nothing is stored on any server and closing the tab clears it. Unsaved edits are synced before the first question so it answers on your current grades
+- **Your chat never leaves your browser** — the conversation is kept on this device, stamped with your account, so it is still there when you come back tomorrow and a shared campus machine never shows it to whoever signs in next. Nothing is stored on any server, so two devices means two separate histories, and **Clear chat** in the drawer deletes it for real. Unsaved edits are synced before the first question so it answers on your current grades
 - **Signed-out users see no launcher at all**, and neither does anyone when no provider is configured
 
 Available from the launcher on the main site and as a drawer on the React Router shell.
@@ -630,7 +630,7 @@ Shohoj has been through a self-directed security review (no external audit is cl
 - **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only with a verified Google account on a domain some registered campus claims (`isCampusUser()` — no longer a hardcoded BRACU regex). Faculty reviews (`facultyReviews/{reviewId}`) are readable only by accounts on the review's own campus, and client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable only by accounts on the group's own campus, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. Lost & found contact details live in a separate `lostFoundContacts` collection that no client can read. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Campus partitioning** — client-created `studyGroups`, `appFeedback` and `lostFoundPosts` documents must carry a `university` field pinned to the campus of the writer's own verified email, so one campus's writes cannot land in another's data. Reads are scoped the same way (`campusMatches`), so a student sees their own campus's boards and reviews, not another's. Documents written before tenancy existed have no field and read as `bracu`, which is what they are by definition; `scripts/backfill_campus.js` stamps them. The Worker mirrors the same registry (`campusOfEmail`) so client and server cannot disagree about who belongs where.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects accounts on no registered campus, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
-- **Assistant key isolation and blast-radius limits** — no model provider key ever reaches the browser; the client talks only to `POST /api/assistant`. The Assistant's three tools are read-only and scoped to the caller's own data, and a monthly spend ceiling stops the relay rather than running up an unbounded bill. `GET /ready` reports capability booleans only, never key material.
+- **Assistant key isolation and blast-radius limits** — no model provider key ever reaches the browser; the client talks only to `POST /api/assistant`. The Assistant's tools are read-only and scoped to the caller's own data, and a monthly spend ceiling stops the relay rather than running up an unbounded bill. `GET /ready` reports capability booleans only, never key material.
 - **Pseudonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic, **unsalted** SHA-256 of `uid | faculty | course` (there is no secret salt — the determinism is what enforces one review per user/faculty/course). This is pseudonymity to other users, **not** anonymity: a project admin can correlate writes, and anyone who already knows a UID can reproduce the hash. Full detail in [docs/SECURITY.md](docs/SECURITY.md).
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules (and App Check once console enforcement is verified — see [docs/SECURITY.md](docs/SECURITY.md)), not by hiding the web config.
 
@@ -838,7 +838,7 @@ Shohoj/
 │   └── set_admin_claim.js          Grant/revoke Firebase admin custom claim
 ├── worker/
 │   ├── index.js                  Cloudflare Worker — R2 files, review writes, cron
-│   ├── assistant.js              Assistant orchestration + the three read-only tools
+│   ├── assistant.js              Assistant orchestration + the read-only tools
 │   ├── assistantProviders.js     Gemini / OpenAI / Claude provider adapters
 │   ├── assistantBudget.js        Monthly spend ceiling
 │   ├── catalog.generated.js      Generated course catalog for the Worker
@@ -1005,10 +1005,10 @@ Additional notes on Repeat:
 
 - **Signed-in only.** Signed out there is no launcher — the Assistant has no data to reason about and won't guess.
 - **Requires a configured provider.** With no provider key set on the Worker, the launcher does not render at all.
-- **Bounded scope.** It answers about your courses, grades, CGPA, prerequisites, registration, seats, routines, degree progress, and using Shohoj. Other questions — including coursework it could technically do — get a one-line decline. This is a product decision, not a capability limit.
-- **It is an LLM.** The three tools are deterministic and the numbers they return come from the same engines the calculator uses, but the prose around them is model-generated. Treat advising-critical answers as a starting point, not as your department's word.
+- **Bounded scope.** It answers about your courses, grades, CGPA, prerequisites, registration, seats, routines, free rooms, degree progress, and using Shohoj. Other questions — including coursework it could technically do — get a one-line decline. This is a product decision, not a capability limit.
+- **It is an LLM.** The tools are deterministic and the numbers they return come from the same engines the calculator uses, but the prose around them is model-generated. Treat advising-critical answers as a starting point, not as your department's word.
 - **A monthly ceiling can stop it.** Once estimated spend reaches the configured cap, the Assistant declines until the month rolls over. The estimate is deliberately pessimistic, so it trips early rather than late.
-- **Chat history is browser-only** — never persisted server-side, cleared when you close the tab.
+- **Chat history is device-local.** The transcript is stored in this browser, on this device, stamped with your account so it only ever reads back for the person who wrote it. It is never persisted server-side, which also means it does not follow you — a second device keeps its own separate history, and there is nothing to recover if you clear your browser data. **Clear chat** in the drawer deletes it.
 
 ### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
 
@@ -1122,6 +1122,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `shohoj_theme`            | localStorage | `"dark"` or `"light"` (defaults to dark)                               |
 | `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
 | `shohoj_seat_alerts_enabled` | localStorage | Whether seat-drop email alerts are armed                            |
+| `shohoj_assistant`        | IndexedDB    | Assistant transcript, uid-stamped — device-only, deleted by "Clear chat"  |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
 | `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
 | `reviewReports/{uid_reviewId}` | Firestore | Admin-only moderation reports, deduplicated per user per review |
@@ -1141,7 +1142,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 
-Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in `sessionStorage` only, so a chat survives a tab switch and is gone when the tab closes — never localStorage, never Firestore, never the Worker. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
+Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in IndexedDB on your own device, stamped with your uid so a record only ever reads back for the account that wrote it — never Firestore, never the Worker, never any server. A chat therefore survives closing the tab, does not follow you to a second device, and is deleted by the drawer's **Clear chat**. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
 ### What's Production-Ready
 

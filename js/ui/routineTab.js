@@ -6,7 +6,8 @@
 // highlighting + a source/age badge that's honest about freshness.
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
-import { indexByCourse, hasClassClash, hasExamClash } from '../core/connectFeed.js';
+import { indexByCourse, hasClassClash, hasExamClash, parseFeed } from '../core/connectFeed.js';
+import { parseConnectSchedule, picksFromImport } from '../core/connectScheduleImport.js';
 import {
   archiveCacheKey,
   archiveGapNotice,
@@ -78,11 +79,35 @@ function _workerUrl() {
 }
 
 /** Remembered choice of semester. Absent or unparseable means the live feed. */
+// The one semester that is not a semester: a pasted CONNECT schedule. It may
+// describe a term the feed never carried and we never archived, so it is a
+// sibling of the session ids rather than one of them (#633).
+const IMPORTED_SESSION = 'imported';
+
+// The student's own timetable, as pasted. Not a cache of anything public, so it
+// is personal data and listed as such in personalData.js.
+const ROUTINE_IMPORT_KEY = 'shohoj_routine_import_v1';
+
+function _restoreImportedSections() {
+  try {
+    const raw = localStorage.getItem(ROUTINE_IMPORT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed?.sections) ? parsed.sections : [];
+  } catch { return []; }
+}
+
+function _persistImportedSections(sections) {
+  try { localStorage.setItem(ROUTINE_IMPORT_KEY, JSON.stringify({ sections })); }
+  catch { /* storage disabled — the paste won't survive a reload */ }
+}
+
 const SEMESTER_CHOICE_KEY = 'shohoj_routine_semester';
 
 function _restoreSemesterChoice() {
   try {
     const raw = localStorage.getItem(SEMESTER_CHOICE_KEY);
+    if (raw === IMPORTED_SESSION) return IMPORTED_SESSION;
     const n = raw === null ? NaN : Number.parseInt(raw, 10);
     return Number.isInteger(n) ? n : null;
   } catch {
@@ -104,6 +129,9 @@ const _store = {
   fetchedAt: 0,
   semester: null,      // SemesterIdentity for the loaded feed, or null before first load
   archived: [],        // Semesters the Worker kept (#633); empty ⇒ no switcher
+  imported: _restoreImportedSections(), // raw sections from a pasted CONNECT schedule
+  importOpen: false,   // the paste box
+  importNote: '',      // what the last paste could and could not read
   chosenSession: _restoreSemesterChoice(), // null ⇒ live feed; a session id ⇒ one from the archive
 
   index: null,         // Map<courseCode, NormalizedSection[]>
@@ -215,6 +243,13 @@ registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code)
 registerAction('routine:clearAll',    () => { _onClearAll(); _flashNote('✓ Routine cleared'); });
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
+registerAction('routine:toggleConnectImport', () => {
+  _store.importOpen = !_store.importOpen;
+  _store.importNote = '';
+  _rerender();
+});
+registerAction('routine:cancelConnectImport', () => { _store.importOpen = false; _rerender(); });
+registerAction('routine:applyConnectImport', () => _onConnectImport());
 registerAction('routine:exportPng',   () => _onExportPng());
 registerAction('routine:share',       () => _onShare());
 registerAction('routine:calendar',     () => _onAddToCalendar());
@@ -448,6 +483,39 @@ function _planCourses() {
   } catch { return []; }
 }
 
+// Build a routine from a pasted CONNECT "Class and Exam Schedule".
+//
+// This is the only path that can show the semester a student is actually IN.
+// The feed is a catalog of every section on offer with no student in it, so
+// their enrolment exists nowhere we can reach — except on the page in front of
+// them (#633).
+function _onConnectImport() {
+  const box = document.getElementById('routineConnectPaste');
+  const result = parseConnectSchedule(box ? box.value : '');
+
+  if (result.sections.length === 0) {
+    // Keep the box open and say why. Closing it would look like it worked.
+    _store.importNote = result.warnings.join(' ') || 'Nothing recognisable in that paste.';
+    _rerender();
+    return;
+  }
+
+  _store.imported = result.sections;
+  _persistImportedSections(result.sections);
+  _store.chosenSession = IMPORTED_SESSION;
+  _rememberSemesterChoice(IMPORTED_SESSION);
+  _store.routine = { picks: picksFromImport(result) };
+  _persistRoutine();
+  _store.importOpen = false;
+
+  const n = result.sections.length;
+  _store.importNote = [
+    `Imported ${n} course${n === 1 ? '' : 's'} from CONNECT.`,
+    ...result.warnings,
+  ].join(' ');
+  _loadImported();
+}
+
 function _onImportPlan() {
   if (!_store.index) return;
   const result = resolvePlanImport(
@@ -568,8 +636,12 @@ function _attachInputHandlers() {
 
 function _onSemesterChange(ev) {
   const raw = ev.target.value;
-  const next = raw === '' ? null : Number.parseInt(raw, 10);
-  const chosen = Number.isInteger(next) ? next : null;
+  let chosen = null;
+  if (raw === IMPORTED_SESSION) chosen = IMPORTED_SESSION;
+  else if (raw !== '') {
+    const next = Number.parseInt(raw, 10);
+    if (Number.isInteger(next)) chosen = next;
+  }
   if (chosen === _store.chosenSession) return;
   _store.chosenSession = chosen;
   _rememberSemesterChoice(chosen);
@@ -611,6 +683,23 @@ function _syncComboState() {
 }
 
 // ── DATA LOADING ────────────────────────────────────────────────────────────
+
+// Build the index straight from a pasted schedule. `parseFeed` is the same
+// function the CDN response goes through, because the parser emits the raw feed
+// shape on purpose — everything downstream is unaware the routine was imported.
+function _loadImported() {
+  const { sections } = parseFeed(_store.imported);
+  _store.index = indexByCourse(sections);
+  _dataVersion++;
+  _store.courseCodes = Array.from(_store.index.keys()).sort();
+  _store.source = 'imported';
+  _store.fetchedAt = 0;
+  _store.semester = describeSemester(sections, todayISODate());
+  _store.loading = false;
+  _store.error = null;
+  _rerender();
+}
+
 async function _refresh(force = false) {
   _store.loading = true;
   _store.error = null;
@@ -621,6 +710,15 @@ async function _refresh(force = false) {
   // rather than refusing to render the routine.
   // Same JSON, same parser, a different host — and its own cache slot, so the
   // live feed and an archived semester never evict each other.
+  //
+  // A pasted schedule needs no fetch at all: the paste IS the data, which is
+  // why the import works for a semester we never archived.
+  if (_store.chosenSession === IMPORTED_SESSION) {
+    _loadImported();
+    _loadFacultyRatings(force);
+    return;
+  }
+
   const archiveUrl = _store.chosenSession === null
     ? null
     : archivePayloadUrl(_workerUrl(), _store.chosenSession);
@@ -1114,7 +1212,7 @@ function _hourLabel(min) {
 
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_store.source] || '—';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
   // Which semester this timetable belongs to, and whether it is the one running.
   // The freshness badge above answers "how recent is this data", which the feed
@@ -1124,9 +1222,15 @@ function _headerHTML(summary) {
     : '';
   // Offered only when the Worker has something to switch to. A control with
   // nothing behind it is worse than no control.
-  const semesterPicker = _store.archived.length > 0
+  // Offered when there is anywhere to switch to: an archived semester, or a
+  // schedule the student pasted in.
+  const importedOption = _store.imported.length > 0
+    ? `<option value="${IMPORTED_SESSION}"${_store.chosenSession === IMPORTED_SESSION ? ' selected' : ''}>My CONNECT schedule</option>`
+    : '';
+  const semesterPicker = (_store.archived.length > 0 || _store.imported.length > 0)
     ? `<select class="routine-semester-picker" id="routineSemesterPicker" aria-label="Semester to show">
          <option value=""${_store.chosenSession === null ? ' selected' : ''}>Live feed</option>
+         ${importedOption}
          ${_store.archived.map(a => `<option value="${escAttr(String(a.sessionId))}"${a.sessionId === _store.chosenSession ? ' selected' : ''}>${escHtml(semesterNameFromSessionId(a.sessionId) || `Session ${a.sessionId}`)}</option>`).join('')}
        </select>`
     : '';
@@ -1171,6 +1275,23 @@ function _pickerHTML() {
   const importBtn = planCount > 0
     ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above">↧ Import from Planner (${planCount})</button>`
     : '';
+  // The other importer, and the one that answers "show me the semester I am
+  // actually in": the feed is a catalog with no student in it, so the only
+  // place your enrolment exists is the CONNECT page you can already see.
+  const connectBtn = `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Paste your Class and Exam Schedule from CONNECT">📋 Paste CONNECT schedule</button>`;
+  const connectPanel = _store.importOpen
+    ? `<div class="routine-import-panel">
+         <label class="routine-import-label" for="routineConnectPaste">Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.</label>
+         <textarea id="routineConnectPaste" class="routine-import-box" rows="6" spellcheck="false" placeholder="TIME/DAY&#9;SUNDAY&#9;MONDAY&#9;…"></textarea>
+         <div class="routine-import-actions">
+           <button class="btn-primary btn-sm" data-action="routine:applyConnectImport">Build my routine</button>
+           <button class="btn-secondary btn-sm" data-action="routine:cancelConnectImport">Cancel</button>
+         </div>
+       </div>`
+    : '';
+  const importNote = _store.importNote
+    ? `<div class="routine-import-note" role="status">${escHtml(_store.importNote)}</div>`
+    : '';
   const note = _store.planImportNote
     ? `<div class="routine-plan-note">${escHtml(_store.planImportNote)}</div>`
     : '';
@@ -1191,7 +1312,10 @@ function _pickerHTML() {
              aria-controls="routineSuggestions" aria-label="Add a course by code" />
       <button class="btn-primary btn-sm" data-action="routine:addCourse">Add</button>
       ${importBtn}
+      ${connectBtn}
     </div>
+    ${connectPanel}
+    ${importNote}
     ${note}
     ${archiveNote}
   `;

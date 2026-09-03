@@ -219,6 +219,12 @@ export interface RoutineBook {
   bySession: Record<string, RoutineState>;
 }
 
+/**
+ * Which routine to read or write: a session id, `'imported'` for a pasted
+ * CONNECT schedule, or null for the live feed.
+ */
+export type RoutineSlot = number | 'imported' | null;
+
 export function emptyRoutineBook(): RoutineBook {
   return { live: emptyRoutineState(), bySession: {} };
 }
@@ -252,7 +258,10 @@ export function readRoutineBook(raw: unknown): RoutineBook {
   const bySession = (raw as { bySession?: unknown }).bySession;
   if (bySession && typeof bySession === 'object') {
     for (const [key, value] of Object.entries(bySession as Record<string, unknown>)) {
-      if (!/^\d{4,6}$/.test(key)) continue;
+      // `imported` alongside the session ids: a pasted CONNECT schedule is a
+      // routine like any other, but it belongs to no semester the feed knows
+      // about — it may well be one we never archived (#633).
+      if (!/^(\d{4,6}|imported)$/.test(key)) continue;
       book.bySession[key] = readPicks(value);
     }
   }
@@ -260,7 +269,7 @@ export function readRoutineBook(raw: unknown): RoutineBook {
 }
 
 /** The routine for a semester. `null` means the live feed. */
-export function routineForSession(book: RoutineBook, sessionId: number | null): RoutineState {
+export function routineForSession(book: RoutineBook, sessionId: RoutineSlot): RoutineState {
   if (sessionId === null) return book.live;
   return book.bySession[String(sessionId)] ?? emptyRoutineState();
 }
@@ -268,7 +277,7 @@ export function routineForSession(book: RoutineBook, sessionId: number | null): 
 /** Replace one semester's routine, leaving every other semester untouched. */
 export function withRoutineForSession(
   book: RoutineBook,
-  sessionId: number | null,
+  sessionId: RoutineSlot,
   state: RoutineState,
 ): RoutineBook {
   if (sessionId === null) return { live: state, bySession: { ...book.bySession } };

@@ -142,7 +142,7 @@ function renderEmptyState() {
   const wrap = document.createElement('div');
   wrap.className = 'assistant-empty';
   const p = document.createElement('p');
-  p.textContent = 'Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, or faculty ratings. Try one:';
+  p.textContent = 'Ask about your CGPA goals, your routine, degree progress, prerequisites, seats, free rooms, or faculty ratings. Try one:';
   wrap.appendChild(p);
   examplePromptsForTab(activeTab()).forEach(prompt => {
     const btn = document.createElement('button');

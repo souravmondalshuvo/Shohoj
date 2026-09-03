@@ -30,6 +30,7 @@ export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   LEGACY_BACKUP_KEY, // the pre-migration copy of all of it
   'shohoj_routine_v1', // class routine (legacy)
   'shohoj_routine_picks_v1', // class routine (shell — a different key)
+  'shohoj_routine_import_v1', // a CONNECT schedule the student pasted in — their own timetable
   MY_REVIEWS_KEY, // the record of reviews this student wrote
   SEAT_WATCH_KEY, // seat watchlist
   'shohoj_seat_alerts_enabled', // seat-alert opt-in

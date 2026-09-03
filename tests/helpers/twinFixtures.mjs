@@ -255,10 +255,32 @@ const ROUTINE_BOOKS = [
   // Junk in every position the reader has to survive.
   { picks: { cse110: 7, BAD: 'nope', OK: null }, bySession: { 'not-a-session': { picks: {} }, 20262: null } },
   { bySession: { 20262: { picks: { MAT111: 4 } } } },
+  { picks: {}, bySession: { imported: { picks: { CSE220L: -7 } } } },
   { picks: null },
   {},
   null,
   'text',
+];
+
+/** A pasted CONNECT schedule, and the shapes a real clipboard produces (#633). */
+const CONNECT_PASTE = [
+  'TIME/DAY\tSUNDAY\tMONDAY\tTUESDAY\tWEDNESDAY\tTHURSDAY\tFRIDAY\tSATURDAY',
+  '8:00 AM - 9:20 AM\t\tMAT215 -13 -MZK-12A-08C\t\tMAT215 -13 -MZK-12A-08C\t\t\t',
+  '11:00 AM - 1:50 PM\t\tCSE220L -04 -TBA-09B-08L\tCSE251L -09B -TBA-FT10-02L\t\t\t\t',
+  'DAY\tTIME\tEXAM\tCOURSE',
+  'SATURDAY (2026-07-25)\t4:30 PM -6:30 PM\tMID\tMAT215',
+].join('\n');
+
+const CONNECT_PASTES = [
+  CONNECT_PASTE,
+  'TIME/DAY   SUNDAY   MONDAY\n8:00 AM - 9:20 AM      MAT215 -13 -MZK-12A-08C',
+  '8:00 AM - 9:20 AM\t\tMAT215 -13 -MZK-12A-08C',
+  'SATURDAY (2026-07-25)\t4:30 PM -6:30 PM\tMID\tCSE251',
+  'Dear student, please log in.',
+  '',
+  '   ',
+  null,
+  42,
 ];
 
 export const FIXTURES = {
@@ -304,6 +326,20 @@ export const FIXTURES = {
       [new Date('2026-01-01T00:00:00Z'), 'MONDAY'],
     ],
     buildRoutineICS: [[[]], [[SECTION]], [[SECTION, SECTION_B]]],
+  },
+
+  connectScheduleImport: {
+    parseConnectSchedule: CONNECT_PASTES.map((t) => [t]),
+    picksFromImport: [
+      [{ sections: [{ courseCode: 'CSE220', sectionId: -7 }] }],
+      [{ sections: [] }],
+    ],
+    importedSectionId: [
+      ['CSE220', '04'],
+      ['CSE220', '05'],
+      ['CSE220L', '04'],
+      ['', ''],
+    ],
   },
 
   connectFeed: {
@@ -512,6 +548,7 @@ export const FIXTURES = {
       [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, null],
       [{ live: { picks: { A: 1 } }, bySession: { 20262: { picks: { B: 2 } } } }, 20262],
       [{ live: { picks: { A: 1 } }, bySession: {} }, 20263],
+      [{ live: { picks: { A: 1 } }, bySession: { imported: { picks: { B: -7 } } } }, 'imported'],
     ],
     withRoutineForSession: [
       [{ live: { picks: { A: 1 } }, bySession: {} }, null, { picks: { C: 3 } }],
