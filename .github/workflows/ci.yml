@@ -261,7 +261,7 @@ jobs:
       # reproducing it blind. Keep the evidence.
       - name: Upload Playwright report and traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-e2e-${{ github.run_attempt }}
           path: |
@@ -317,7 +317,7 @@ jobs:
       # pixels moved" and the next step is to reproduce it locally by hand.
       - name: Upload diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-parity-diffs
           path: test-results/
