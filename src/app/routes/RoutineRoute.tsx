@@ -262,12 +262,17 @@ export function Component() {
   // The only path to the semester a student is actually in: the feed is a
   // catalog of every section on offer with no student in it, so their enrolment
   // exists nowhere we can reach except the page in front of them (#633).
-  const applyConnectImport = useCallback(() => {
-    const result = parseConnectSchedule(importText);
+  const applyConnectText = useCallback((text: string, origin: 'clipboard' | 'box'): boolean => {
+    const result = parseConnectSchedule(text);
     if (result.sections.length === 0) {
+      // Text typed into the box is a deliberate attempt and deserves an
+      // explanation. The clipboard was read on spec and may hold a URL, so its
+      // failure is not news — it just means the box opens, which is where the
+      // click was heading anyway.
+      if (origin === 'clipboard') return false;
       // Leave the box open and say why — closing it would look like it worked.
       setImportNote(result.warnings.join(' ') || 'Nothing recognisable in that paste.');
-      return;
+      return false;
     }
     try {
       localStorage.setItem(ROUTINE_IMPORT_KEY, JSON.stringify({ sections: result.sections }));
@@ -279,10 +284,43 @@ export function Component() {
     setRoutine({ picks: picksFromImport(result) });
     setImportOpen(false);
     const n = result.sections.length;
+    const from = origin === 'clipboard' ? 'your clipboard' : 'CONNECT';
     setImportNote(
-      [`Imported ${n} course${n === 1 ? '' : 's'} from CONNECT.`, ...result.warnings].join(' '),
+      [`Imported ${n} course${n === 1 ? '' : 's'} from ${from}.`, ...result.warnings].join(' '),
     );
-  }, [importText]);
+    return true;
+  }, []);
+
+  const applyConnectImport = useCallback(
+    () => void applyConnectText(importText, 'box'),
+    [applyConnectText, importText],
+  );
+
+  /**
+   * The button, which tries the clipboard before it offers a box.
+   *
+   * The schedule is almost always already on the clipboard — the student just
+   * copied the table in CONNECT — so a textarea to paste into is three steps
+   * where one will do. Every way the read can fail (no async clipboard API, an
+   * insecure context, a refused permission) means the same thing: open the box,
+   * and say nothing. An empty clipboard is not an error.
+   */
+  const onConnectImportClick = useCallback(async () => {
+    if (importOpen) {
+      setImportOpen(false);
+      setImportNote('');
+      return;
+    }
+    let text = '';
+    try {
+      if (navigator.clipboard?.readText) text = (await navigator.clipboard.readText()) || '';
+    } catch {
+      text = '';
+    }
+    if (text && applyConnectText(text, 'clipboard')) return;
+    setImportOpen(true);
+    setImportNote('');
+  }, [applyConnectText, importOpen]);
 
   const chooseSemester = useCallback((next: SessionChoice) => {
     setChosenSession(next);
@@ -469,10 +507,8 @@ export function Component() {
           className={`btn-secondary btn-sm ${importOpen ? 'is-active' : ''}`}
           aria-expanded={importOpen}
           data-testid="routine-import-toggle"
-          onClick={() => {
-            setImportOpen((open) => !open);
-            setImportNote('');
-          }}
+          title="Copy your Class and Exam Schedule in CONNECT, then click here"
+          onClick={() => void onConnectImportClick()}
         >
           📋 Paste CONNECT schedule
         </button>
