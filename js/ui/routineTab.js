@@ -1218,14 +1218,18 @@ function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
   const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT', archive: 'Archived' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
-  // An age belongs to the fetch. For an archived semester the fetch is minutes
-  // old and the timetable is months old, so printing one would answer the
-  // freshness question with a number about something else. Mirrors
-  // feedSourceHasAge in src/core/feedFreshness.ts.
-  const sourceText = _store.source === 'archive' ? sourceLabel : `${sourceLabel} · ${age}`;
-  const sourceTitle = _store.source === 'archive'
-    ? 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.'
-    : `Source: ${sourceLabel} • Updated ${age}`;
+  // An age belongs to the fetch, and only three of these are one. An archived
+  // semester's fetch is minutes old while its timetable is months old; a pasted
+  // schedule was never fetched, so its stamp is 0 and _ageLabel reads that as
+  // "just now". Either way the badge would answer the freshness question with a
+  // number about something else, so these two say where they came from instead.
+  // Mirrors FEED_SOURCE_TITLE / feedSourceHasAge in src/core/feedFreshness.ts.
+  const sourceTitles = {
+    archive: 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
+    imported: 'Source: a schedule you pasted from CONNECT, not the live feed.',
+  };
+  const sourceText = sourceTitles[_store.source] ? sourceLabel : `${sourceLabel} · ${age}`;
+  const sourceTitle = sourceTitles[_store.source] || `Source: ${sourceLabel} • Updated ${age}`;
   // Which semester this timetable belongs to, and whether it is the one running.
   // The freshness badge above answers "how recent is this data", which the feed
   // flip showed is a different question from "is this the semester I am in".
