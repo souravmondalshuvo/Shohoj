@@ -6,9 +6,12 @@ import assert from 'node:assert/strict';
 
 import {
   feedAgeLabel,
+  feedBadgeText,
+  feedBadgeTitle,
   feedSourceHasAge,
   feedSourceLabel,
   FEED_SOURCE_LABEL,
+  FEED_SOURCE_TITLE,
 } from '../src/core/feedFreshness.ts';
 
 const NOW = Date.parse('2026-08-25T12:00:00Z');
@@ -51,13 +54,41 @@ test('an archived semester is not a feed origin, and says so', () => {
   assert.equal(feedSourceLabel('archive'), 'Archived');
 });
 
-test('only the archive withholds an age, because only its age is meaningless', () => {
-  // The bug: an archive fetch is a live network hit, so the badge read
-  // "Live · just now" over a semester CONNECT had already dropped.
+test('only a feed origin carries an age', () => {
+  // The two bugs, from opposite directions: an archive fetch is a live network
+  // hit, so the badge read "Live · just now" over a semester CONNECT had
+  // dropped; a paste is never fetched at all, and fetchedAt 0 also reads as
+  // "just now".
   assert.equal(feedSourceHasAge('archive'), false);
-  for (const source of ['live', 'cache', 'fallback', 'imported']) {
+  assert.equal(feedSourceHasAge('imported'), false);
+  for (const source of ['live', 'cache', 'fallback']) {
     assert.equal(feedSourceHasAge(source), true, source);
   }
+});
+
+test('a source without an age has something to say instead', () => {
+  // The two sets are the same set. A source that withholds an age and offers no
+  // reason would render an empty tooltip.
+  assert.deepEqual(
+    Object.keys(FEED_SOURCE_TITLE).sort(),
+    Object.keys(FEED_SOURCE_LABEL).filter((s) => !feedSourceHasAge(s)).sort(),
+  );
+  for (const title of Object.values(FEED_SOURCE_TITLE)) {
+    assert.equal(/not the live feed/.test(title), true, title);
+  }
+});
+
+test('the badge prints an age only where one is owed', () => {
+  const fetched = ago(120_000);
+  assert.equal(feedBadgeText('live', fetched, NOW), 'Live · 2 min ago');
+  assert.equal(feedBadgeTitle('live', fetched, NOW), 'Source: Live • Updated 2 min ago');
+
+  // Note the timestamp is present and still ignored: it records the download,
+  // not the timetable.
+  assert.equal(feedBadgeText('archive', fetched, NOW), 'Archived');
+  assert.equal(feedBadgeText('imported', 0, NOW), 'Pasted from CONNECT');
+  assert.equal(feedBadgeTitle('archive', fetched, NOW), FEED_SOURCE_TITLE.archive);
+  assert.equal(feedBadgeTitle('imported', 0, NOW), FEED_SOURCE_TITLE.imported);
 });
 
 test('an unknown source falls back to legacy\'s em dash', () => {
