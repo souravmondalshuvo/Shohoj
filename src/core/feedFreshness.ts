@@ -38,7 +38,8 @@ export const FEED_SOURCE_LABEL: Readonly<Record<string, string>> = {
  * feed — rather than restate the label already on screen.
  */
 export const FEED_SOURCE_TITLE: Readonly<Record<string, string>> = {
-  archive: 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
+  archive:
+    'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
   imported: 'Source: a schedule you pasted from CONNECT, not the live feed.',
 };
 
