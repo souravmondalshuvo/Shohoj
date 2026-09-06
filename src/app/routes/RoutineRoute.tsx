@@ -40,7 +40,7 @@ import {
 } from '../../core/routineState';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { parseConnectSchedule, picksFromImport } from '../../core/connectScheduleImport';
-import { feedAgeLabel, feedSourceHasAge, feedSourceLabel } from '../../core/feedFreshness.ts';
+import { feedBadgeText, feedBadgeTitle } from '../../core/feedFreshness.ts';
 import {
   archiveCacheKey,
   archiveGapNotice,
@@ -350,16 +350,10 @@ export function Component() {
           {feed && (
             <span
               className={`routine-source-badge routine-source--${feed.source}`}
-              title={
-                feedSourceHasAge(feed.source)
-                  ? `Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`
-                  : 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.'
-              }
+              title={feedBadgeTitle(feed.source, feed.fetchedAt)}
               data-testid="routine-feed-source"
             >
-              {feedSourceHasAge(feed.source)
-                ? `${feedSourceLabel(feed.source)} · ${feedAgeLabel(feed.fetchedAt)}`
-                : feedSourceLabel(feed.source)}
+              {feedBadgeText(feed.source, feed.fetchedAt)}
             </span>
           )}
           {feed && (
