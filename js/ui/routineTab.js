@@ -243,11 +243,7 @@ registerAction('routine:unpickSection',(el) => _onUnpickSection(el.dataset.code)
 registerAction('routine:clearAll',    () => { _onClearAll(); _flashNote('✓ Routine cleared'); });
 registerAction('routine:addFromSuggest', (el) => _onAddCourseFromSuggest(el.dataset.code));
 registerAction('routine:importPlan',  () => _onImportPlan());
-registerAction('routine:toggleConnectImport', () => {
-  _store.importOpen = !_store.importOpen;
-  _store.importNote = '';
-  _rerender();
-});
+registerAction('routine:toggleConnectImport', () => { _onConnectImportClick(); });
 registerAction('routine:cancelConnectImport', () => { _store.importOpen = false; _rerender(); });
 registerAction('routine:applyConnectImport', () => _onConnectImport());
 registerAction('routine:exportPng',   () => _onExportPng());
@@ -489,15 +485,72 @@ function _planCourses() {
 // The feed is a catalog of every section on offer with no student in it, so
 // their enrolment exists nowhere we can reach — except on the page in front of
 // them (#633).
+/**
+ * Read the clipboard, or '' when we cannot.
+ *
+ * Every failure is the same failure here — no async clipboard API, an insecure
+ * context, a permission the student refused — and all of them mean the same
+ * thing to the caller: fall back to the box. None is worth a message, because
+ * an empty clipboard is not an error, it is someone who has not copied yet.
+ */
+async function _readClipboard() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return '';
+    return (await navigator.clipboard.readText()) || '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The button, which tries the clipboard before it offers a box.
+ *
+ * The schedule is almost always already on the clipboard — the student just
+ * selected the table in CONNECT and copied it — so opening a textarea for them
+ * to paste into is three steps where one will do.
+ *
+ * Anything short of a clean win opens the box exactly as before, in silence. We
+ * cannot fetch the routine ourselves (the feed carries every section in the
+ * semester and no student identity, so nothing in it says which sections are
+ * yours), which makes the manual path the one that always works. It must not
+ * degrade to make room for the shortcut.
+ */
+async function _onConnectImportClick() {
+  if (_store.importOpen) {
+    _store.importOpen = false;
+    _store.importNote = '';
+    _rerender();
+    return;
+  }
+  const text = await _readClipboard();
+  if (text && _applyConnectText(text, 'clipboard')) return;
+  _store.importOpen = true;
+  _store.importNote = '';
+  _rerender();
+}
+
 function _onConnectImport() {
   const box = document.getElementById('routineConnectPaste');
-  const result = parseConnectSchedule(box ? box.value : '');
+  _applyConnectText(box ? box.value : '', 'box');
+}
+
+/**
+ * Build the routine from pasted text. True when it took.
+ *
+ * `origin` decides what a failure costs. Text the student typed into the box is
+ * a deliberate attempt and deserves an explanation; the clipboard was read on
+ * spec and may hold a URL, so its failure is not news — it just means the box
+ * opens, which is where the click was heading anyway.
+ */
+function _applyConnectText(text, origin) {
+  const result = parseConnectSchedule(text);
 
   if (result.sections.length === 0) {
+    if (origin === 'clipboard') return false;
     // Keep the box open and say why. Closing it would look like it worked.
     _store.importNote = result.warnings.join(' ') || 'Nothing recognisable in that paste.';
     _rerender();
-    return;
+    return false;
   }
 
   _store.imported = result.sections;
@@ -510,10 +563,11 @@ function _onConnectImport() {
 
   const n = result.sections.length;
   _store.importNote = [
-    `Imported ${n} course${n === 1 ? '' : 's'} from CONNECT.`,
+    `Imported ${n} course${n === 1 ? '' : 's'} from ${origin === 'clipboard' ? 'your clipboard' : 'CONNECT'}.`,
     ...result.warnings,
   ].join(' ');
   _loadImported();
+  return true;
 }
 
 function _onImportPlan() {
@@ -1294,7 +1348,7 @@ function _pickerHTML() {
   // The other importer, and the one that answers "show me the semester I am
   // actually in": the feed is a catalog with no student in it, so the only
   // place your enrolment exists is the CONNECT page you can already see.
-  const connectBtn = `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Paste your Class and Exam Schedule from CONNECT">📋 Paste CONNECT schedule</button>`;
+  const connectBtn = `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Copy your Class and Exam Schedule in CONNECT, then click here">📋 Paste CONNECT schedule</button>`;
   const connectPanel = _store.importOpen
     ? `<div class="routine-import-panel">
          <label class="routine-import-label" for="routineConnectPaste">Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.</label>
