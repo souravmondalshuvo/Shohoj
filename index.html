@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-zYZleLZQzHgLOIWtD60UGk+pFBC2ZvoiU796HDP83rk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-epAPjJgkhB6cvBkR/Zt/fKne+fDwom4ppAxXNWiA2fk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5924,6 +5924,11 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-source--live     { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.28); }
 .routine-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
 .routine-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
+/* Not points on the ladder above. Those three grade how current the feed is;
+   these two are not the feed at all and decline the question rather than
+   scoring badly on it, so they share the informational blue (#633). */
+.routine-source--archive,
+.routine-source--imported { background: rgba(91,157,255,0.12); color: var(--ink-blue); border-color: rgba(91,157,255,0.28); }
 
 /* Which semester the timetable on screen belongs to (#633). Sits beside the
    freshness badge because the two answer different questions: that one says how
@@ -25513,7 +25518,11 @@ async function _refresh(force = false) {
     _store.index = indexByCourse(result.sections);
     _dataVersion++; // new section index ⇒ invalidate the clash memo
     _store.courseCodes = Array.from(_store.index.keys()).sort();
-    _store.source = result.source;
+    // `result.source` says how the bytes arrived — and an archived semester
+    // always arrives over the network, so it would report itself as "Live".
+    // What the badge is asked is where the data came from, and that answer is
+    // the archive (#633).
+    _store.source = archiveUrl === null ? result.source : 'archive';
     _store.fetchedAt = result.fetchedAt;
     _store.semester = describeSemester(result.sections, todayISODate());
     // A shared link's picks are applied here — once we have the feed to
@@ -25992,8 +26001,20 @@ function _hourLabel(min) {
 
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT' })[_store.source] || '—';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT', archive: 'Archived' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
+  // An age belongs to the fetch, and only three of these are one. An archived
+  // semester's fetch is minutes old while its timetable is months old; a pasted
+  // schedule was never fetched, so its stamp is 0 and _ageLabel reads that as
+  // "just now". Either way the badge would answer the freshness question with a
+  // number about something else, so these two say where they came from instead.
+  // Mirrors FEED_SOURCE_TITLE / feedSourceHasAge in src/core/feedFreshness.ts.
+  const sourceTitles = {
+    archive: 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
+    imported: 'Source: a schedule you pasted from CONNECT, not the live feed.',
+  };
+  const sourceText = sourceTitles[_store.source] ? sourceLabel : `${sourceLabel} · ${age}`;
+  const sourceTitle = sourceTitles[_store.source] || `Source: ${sourceLabel} • Updated ${age}`;
   // Which semester this timetable belongs to, and whether it is the one running.
   // The freshness badge above answers "how recent is this data", which the feed
   // flip showed is a different question from "is this the semester I am in".
@@ -26021,8 +26042,8 @@ function _headerHTML(summary) {
     <div class="routine-header">
       <div class="routine-header-left">
         <h3>🗓️ Routine Builder</h3>
-        <span class="routine-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
-          ${escHtml(sourceLabel)} · ${escHtml(age)}
+        <span class="routine-source-badge ${sourceClass}" title="${escAttr(sourceTitle)}">
+          ${escHtml(sourceText)}
         </span>
         ${semesterBadge}
         ${semesterPicker}
