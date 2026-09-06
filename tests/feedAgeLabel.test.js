@@ -4,7 +4,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { feedAgeLabel, feedSourceLabel, FEED_SOURCE_LABEL } from '../src/core/feedFreshness.ts';
+import {
+  feedAgeLabel,
+  feedSourceHasAge,
+  feedSourceLabel,
+  FEED_SOURCE_LABEL,
+} from '../src/core/feedFreshness.ts';
 
 const NOW = Date.parse('2026-08-25T12:00:00Z');
 const ago = (ms) => NOW - ms;
@@ -39,6 +44,20 @@ test('the source labels are legacy\'s', () => {
   assert.equal(FEED_SOURCE_LABEL.live, 'Live');
   assert.equal(FEED_SOURCE_LABEL.cache, 'Cached');
   assert.equal(FEED_SOURCE_LABEL.fallback, 'Offline cache');
+});
+
+test('an archived semester is not a feed origin, and says so', () => {
+  assert.equal(FEED_SOURCE_LABEL.archive, 'Archived');
+  assert.equal(feedSourceLabel('archive'), 'Archived');
+});
+
+test('only the archive withholds an age, because only its age is meaningless', () => {
+  // The bug: an archive fetch is a live network hit, so the badge read
+  // "Live · just now" over a semester CONNECT had already dropped.
+  assert.equal(feedSourceHasAge('archive'), false);
+  for (const source of ['live', 'cache', 'fallback', 'imported']) {
+    assert.equal(feedSourceHasAge(source), true, source);
+  }
 });
 
 test('an unknown source falls back to legacy\'s em dash', () => {
