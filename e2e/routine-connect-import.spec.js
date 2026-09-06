@@ -145,6 +145,51 @@ test('a paste it cannot read keeps the box open and says why', async ({ page }) 
     await expect(page.locator('#routineSemesterPicker')).toHaveCount(0);
 });
 
+// The clipboard shortcut (#633). Chromium needs the permission granted before
+// readText() will resolve; without it the button silently takes the box path,
+// which is the fallback these three are here to keep honest.
+async function grantClipboard(context) {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+}
+
+test('one click builds the routine straight off the clipboard', async ({ page, context }) => {
+    await grantClipboard(context);
+    await boot(page);
+    await page.evaluate((text) => navigator.clipboard.writeText(text), PASTE);
+
+    // No textarea, no second button: the schedule was already copied, so the
+    // click that used to open a box now finishes the job.
+    await page.locator('[data-action="routine:toggleConnectImport"]').click();
+    await expect(page.locator('.routine-grid-block')).toHaveCount(10);
+    await expect(page.locator('#routineConnectPaste')).toHaveCount(0);
+    await expect(page.locator('.routine-import-note')).toContainText('from your clipboard');
+    await expect(page.locator('#routineSemesterPicker')).toHaveValue('imported');
+});
+
+test('a clipboard holding something else just opens the box, quietly', async ({ page, context }) => {
+    await grantClipboard(context);
+    await boot(page);
+    await page.evaluate(() => navigator.clipboard.writeText('https://example.com/not-a-schedule'));
+
+    await page.locator('[data-action="routine:toggleConnectImport"]').click();
+    // The box, empty and unremarked. Someone who has not copied their schedule
+    // yet has done nothing wrong, so there is nothing to warn them about.
+    await expect(page.locator('#routineConnectPaste')).toBeVisible();
+    await expect(page.locator('#routineConnectPaste')).toHaveValue('');
+    await expect(page.locator('.routine-import-note')).toHaveCount(0);
+});
+
+test('the box still works when the clipboard is unreadable', async ({ page }) => {
+    await boot(page);
+    // No permission granted, so readText() rejects — the older-browser and
+    // refused-permission case. The manual path must be untouched by the shortcut.
+    await page.locator('[data-action="routine:toggleConnectImport"]').click();
+    await page.locator('#routineConnectPaste').fill(PASTE);
+    await page.locator('[data-action="routine:applyConnectImport"]').click();
+    await expect(page.locator('.routine-grid-block')).toHaveCount(10);
+    await expect(page.locator('.routine-import-note')).toContainText('from CONNECT');
+});
+
 test('no switcher entry until something has been pasted', async ({ page }) => {
     await boot(page);
     // Nothing archived and nothing pasted: there is nowhere to switch to.
