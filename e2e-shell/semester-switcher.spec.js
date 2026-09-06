@@ -119,6 +119,19 @@ test('choosing an archived semester loads that semester', async ({ page }) => {
   await expect(page.getByTestId('routine-semester')).toHaveClass(/routine-semester--running/);
 });
 
+test('the freshness badge stops claiming an archived semester is live', async ({ page }) => {
+  await boot(page);
+  const source = page.getByTestId('routine-feed-source');
+  await expect(source).toContainText('Live');
+
+  await page.getByTestId('routine-semester-picker').selectOption('20262');
+  // The archive fetch is a live network hit, which is how this badge came to
+  // sit beside "the semester in progress" saying "Live · just now".
+  await expect(source).toHaveText('Archived');
+  await expect(source).not.toContainText('ago');
+  await expect(source).not.toContainText('just now');
+});
+
 test('an imported capture says it is one, and what it is missing', async ({ page }) => {
   await boot(page);
   await page.getByTestId('routine-semester-picker').selectOption('20262');
