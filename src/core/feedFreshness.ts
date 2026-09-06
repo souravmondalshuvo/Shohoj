@@ -23,7 +23,24 @@ export const FEED_SOURCE_LABEL: Readonly<Record<string, string>> = {
   // (#633). The badge's job is to be honest about where the data came from, and
   // an imported routine is neither live nor cached.
   imported: 'Pasted from CONNECT',
+  // Also not a feed origin: a semester read back from the Worker's archive
+  // (#633). fetchConnectFeed reports how it got the bytes, and for an archived
+  // semester that is always a fresh network hit — so left to itself the badge
+  // said "Live · just now" over a timetable the feed dropped months ago.
+  archive: 'Archived',
 };
+
+/**
+ * Does an age reading mean anything for this source?
+ *
+ * "Live · 2 min ago" answers how current the data is. An archived semester has
+ * no answer to give: the timestamp would say when we downloaded the snapshot,
+ * not how recent the timetable inside it is. Printed next to a semester CONNECT
+ * no longer carries, that reads as a freshness guarantee we have not earned.
+ */
+export function feedSourceHasAge(source: string | null | undefined): boolean {
+  return source !== 'archive';
+}
 
 /** Legacy's source name for a feed origin, falling back to its em dash. */
 export function feedSourceLabel(source: string | null | undefined): string {
