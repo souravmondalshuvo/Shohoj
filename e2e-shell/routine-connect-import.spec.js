@@ -111,6 +111,28 @@ test('a paste it cannot read keeps the box open and says why', async ({ page }) 
   await expect(page.getByTestId('routine-semester-picker')).toHaveCount(0);
 });
 
+test('one click builds the routine straight off the clipboard', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await boot(page);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), PASTE);
+
+  await page.getByTestId('routine-import-toggle').click();
+  await expect(page.getByTestId('routine-grid').locator('.routine-block')).toHaveCount(10);
+  await expect(page.getByTestId('routine-import-box')).toHaveCount(0);
+  await expect(page.getByTestId('routine-import-note')).toContainText('from your clipboard');
+});
+
+test('a clipboard holding something else just opens the box, quietly', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await boot(page);
+  await page.evaluate(() => navigator.clipboard.writeText('https://example.com/not-a-schedule'));
+
+  await page.getByTestId('routine-import-toggle').click();
+  await expect(page.getByTestId('routine-import-box')).toBeVisible();
+  await expect(page.getByTestId('routine-import-box')).toHaveValue('');
+  await expect(page.getByTestId('routine-import-note')).toHaveCount(0);
+});
+
 test('no switcher until there is somewhere to switch to', async ({ page }) => {
   await boot(page);
   await expect(page.getByTestId('routine-semester-picker')).toHaveCount(0);
