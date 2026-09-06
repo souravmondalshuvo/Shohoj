@@ -105,7 +105,12 @@ test('the labs the catalog does not have come through', async ({ page }) => {
 test('the badge stops claiming this is the live feed', async ({ page }) => {
     await boot(page);
     await pasteSchedule(page);
-    await expect(page.locator('.routine-source-badge')).toContainText('Pasted from CONNECT');
+    const source = page.locator('.routine-source-badge');
+    await expect(source).toHaveText('Pasted from CONNECT');
+    // A paste is never fetched, so its stamp is 0 — which the age ladder used
+    // to read as "just now" and print beside a routine of unknown vintage.
+    await expect(source).not.toContainText('just now');
+    await expect(source).not.toContainText('ago');
     await expect(page.locator('#routineSemesterPicker')).toHaveValue('imported');
 });
 
