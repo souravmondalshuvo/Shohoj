@@ -110,6 +110,28 @@ test('choosing Summer 2026 loads it, and it reads as the semester in progress', 
     await expect(page.locator('.routine-course-block').filter({ hasText: 'MAT110' })).toBeVisible();
 });
 
+test('the freshness badge stops claiming an archived semester is live', async ({ page }) => {
+    await boot(page);
+    const source = page.locator('.routine-source-badge');
+    await expect(source).toContainText('Live');
+
+    await picker(page).selectOption('20262');
+    // The archive fetch is a live network hit, which is how this came to sit
+    // next to "the semester in progress" and "seat counts are frozen" saying
+    // "Live · just now".
+    await expect(source).toHaveText('Archived');
+    await expect(source).not.toContainText('Live');
+    await expect(source).not.toContainText('ago');
+    await expect(source).not.toContainText('just now');
+    await expect(source).toHaveClass(/routine-source--archive/);
+
+    // And the feed gets its age back on the way out — "Cached" by now, since
+    // the second trip to the live feed is served from the store.
+    await picker(page).selectOption('');
+    await expect(source).toContainText('just now');
+    await expect(source).not.toContainText('Archived');
+});
+
 test('an imported capture says what it cannot tell you', async ({ page }) => {
     await boot(page);
     await picker(page).selectOption('20262');
