@@ -733,7 +733,11 @@ async function _refresh(force = false) {
     _store.index = indexByCourse(result.sections);
     _dataVersion++; // new section index ⇒ invalidate the clash memo
     _store.courseCodes = Array.from(_store.index.keys()).sort();
-    _store.source = result.source;
+    // `result.source` says how the bytes arrived — and an archived semester
+    // always arrives over the network, so it would report itself as "Live".
+    // What the badge is asked is where the data came from, and that answer is
+    // the archive (#633).
+    _store.source = archiveUrl === null ? result.source : 'archive';
     _store.fetchedAt = result.fetchedAt;
     _store.semester = describeSemester(result.sections, todayISODate());
     // A shared link's picks are applied here — once we have the feed to
@@ -1212,8 +1216,16 @@ function _hourLabel(min) {
 
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT' })[_store.source] || '—';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT', archive: 'Archived' })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
+  // An age belongs to the fetch. For an archived semester the fetch is minutes
+  // old and the timetable is months old, so printing one would answer the
+  // freshness question with a number about something else. Mirrors
+  // feedSourceHasAge in src/core/feedFreshness.ts.
+  const sourceText = _store.source === 'archive' ? sourceLabel : `${sourceLabel} · ${age}`;
+  const sourceTitle = _store.source === 'archive'
+    ? 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.'
+    : `Source: ${sourceLabel} • Updated ${age}`;
   // Which semester this timetable belongs to, and whether it is the one running.
   // The freshness badge above answers "how recent is this data", which the feed
   // flip showed is a different question from "is this the semester I am in".
@@ -1241,8 +1253,8 @@ function _headerHTML(summary) {
     <div class="routine-header">
       <div class="routine-header-left">
         <h3>🗓️ Routine Builder</h3>
-        <span class="routine-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
-          ${escHtml(sourceLabel)} · ${escHtml(age)}
+        <span class="routine-source-badge ${sourceClass}" title="${escAttr(sourceTitle)}">
+          ${escHtml(sourceText)}
         </span>
         ${semesterBadge}
         ${semesterPicker}
