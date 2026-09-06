@@ -40,7 +40,7 @@ import {
 } from '../../core/routineState';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { parseConnectSchedule, picksFromImport } from '../../core/connectScheduleImport';
-import { feedAgeLabel, feedSourceLabel } from '../../core/feedFreshness.ts';
+import { feedAgeLabel, feedSourceHasAge, feedSourceLabel } from '../../core/feedFreshness.ts';
 import {
   archiveCacheKey,
   archiveGapNotice,
@@ -209,7 +209,11 @@ export function Component() {
           if (!alive) return;
           setFeed({
             index: indexByCourse(result.sections),
-            source: result.source,
+            // `result.source` says how the bytes arrived, and an archived
+            // semester always arrives over the network — so it would report
+            // itself as "Live". The badge is asked where the data came from,
+            // and that answer is the archive (#633).
+            source: archiveUrl === null ? result.source : ('archive' as FeedSource),
             count: result.sections.length,
             fetchedAt: result.fetchedAt,
             semester: describeSemester(result.sections, todayISODate()),
@@ -346,10 +350,16 @@ export function Component() {
           {feed && (
             <span
               className={`routine-source-badge routine-source--${feed.source}`}
-              title={`Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`}
+              title={
+                feedSourceHasAge(feed.source)
+                  ? `Source: ${feedSourceLabel(feed.source)} • Updated ${feedAgeLabel(feed.fetchedAt)}`
+                  : 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.'
+              }
               data-testid="routine-feed-source"
             >
-              {feedSourceLabel(feed.source)} · {feedAgeLabel(feed.fetchedAt)}
+              {feedSourceHasAge(feed.source)
+                ? `${feedSourceLabel(feed.source)} · ${feedAgeLabel(feed.fetchedAt)}`
+                : feedSourceLabel(feed.source)}
             </span>
           )}
           {feed && (
