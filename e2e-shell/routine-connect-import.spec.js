@@ -73,7 +73,12 @@ test('pasting the CONNECT page builds the routine it shows', async ({ page }) =>
 test('the badge stops claiming this is the live feed', async ({ page }) => {
   await boot(page);
   await pasteSchedule(page);
-  await expect(page.getByTestId('routine-feed-source')).toContainText('Pasted from CONNECT');
+  const source = page.getByTestId('routine-feed-source');
+  await expect(source).toHaveText('Pasted from CONNECT');
+  // A paste is never fetched, so its stamp is 0 — which the age ladder used to
+  // read as "just now" and print beside a routine of unknown vintage.
+  await expect(source).not.toContainText('just now');
+  await expect(source).not.toContainText('ago');
 });
 
 test('the paste survives a reload and the live plan is untouched', async ({ page }) => {
