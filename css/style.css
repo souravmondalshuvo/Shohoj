@@ -5866,10 +5866,11 @@ body[data-page="admin"] .orb { display: none !important; }
 .routine-source--live     { background: rgba(46,204,113,0.12); color: #2ecc71; border-color: rgba(46,204,113,0.28); }
 .routine-source--cache    { background: rgba(241,196,15,0.10); color: #f1c40f; border-color: rgba(241,196,15,0.24); }
 .routine-source--fallback { background: rgba(231,76,60,0.10);  color: #e74c3c; border-color: rgba(231,76,60,0.24); }
-/* Not a point on the ladder above. Those three grade how current the feed is;
-   an archived semester declines that question rather than scoring badly on it,
-   so it takes the informational blue instead of green, amber or red (#633). */
-.routine-source--archive  { background: rgba(91,157,255,0.12); color: var(--ink-blue); border-color: rgba(91,157,255,0.28); }
+/* Not points on the ladder above. Those three grade how current the feed is;
+   these two are not the feed at all and decline the question rather than
+   scoring badly on it, so they share the informational blue (#633). */
+.routine-source--archive,
+.routine-source--imported { background: rgba(91,157,255,0.12); color: var(--ink-blue); border-color: rgba(91,157,255,0.28); }
 
 /* Which semester the timetable on screen belongs to (#633). Sits beside the
    freshness badge because the two answer different questions: that one says how
