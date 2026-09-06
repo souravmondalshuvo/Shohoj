@@ -31,15 +31,31 @@ export const FEED_SOURCE_LABEL: Readonly<Record<string, string>> = {
 };
 
 /**
+ * What the badge says about itself when it has no age to give.
+ *
+ * These stand in for "Updated 2 min ago", so each has to answer the question
+ * that phrase was answering — where did this come from and why is it not the
+ * feed — rather than restate the label already on screen.
+ */
+export const FEED_SOURCE_TITLE: Readonly<Record<string, string>> = {
+  archive: 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
+  imported: 'Source: a schedule you pasted from CONNECT, not the live feed.',
+};
+
+/**
  * Does an age reading mean anything for this source?
  *
- * "Live · 2 min ago" answers how current the data is. An archived semester has
- * no answer to give: the timestamp would say when we downloaded the snapshot,
- * not how recent the timetable inside it is. Printed next to a semester CONNECT
- * no longer carries, that reads as a freshness guarantee we have not earned.
+ * Only for the three that are a feed origin. "Live · 2 min ago" answers how
+ * current the data is; the other two have no answer to give. An archived
+ * semester would be timestamped when we downloaded the snapshot, not by how
+ * recent the timetable inside it is, and a pasted schedule was never fetched at
+ * all — its `fetchedAt` is 0, which the ladder below reads as "just now".
+ *
+ * Both were printing a freshness we have not earned, next to data that is
+ * explicitly not the live feed.
  */
 export function feedSourceHasAge(source: string | null | undefined): boolean {
-  return source !== 'archive';
+  return !(source && source in FEED_SOURCE_TITLE);
 }
 
 /** Legacy's source name for a feed origin, falling back to its em dash. */
@@ -58,4 +74,29 @@ export function feedAgeLabel(
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
   return new Date(fetchedAt).toLocaleString();
+}
+
+/**
+ * The badge's own text: an origin, and an age only where one means something.
+ *
+ * Assembled here rather than at each call site so a source cannot be added to
+ * one twin's badge with an age it should not have.
+ */
+export function feedBadgeText(
+  source: string | null | undefined,
+  fetchedAt: number | null | undefined,
+  now: number = Date.now(),
+): string {
+  const label = feedSourceLabel(source);
+  return feedSourceHasAge(source) ? `${label} · ${feedAgeLabel(fetchedAt, now)}` : label;
+}
+
+/** The badge's tooltip, on the same rule. */
+export function feedBadgeTitle(
+  source: string | null | undefined,
+  fetchedAt: number | null | undefined,
+  now: number = Date.now(),
+): string {
+  if (!feedSourceHasAge(source)) return FEED_SOURCE_TITLE[source as string];
+  return `Source: ${feedSourceLabel(source)} • Updated ${feedAgeLabel(fetchedAt, now)}`;
 }
