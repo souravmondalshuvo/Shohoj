@@ -42,7 +42,10 @@ export interface StorageLike {
 
 type FetchLike = (
   input: string,
-  init?: { headers?: Record<string, string>; signal?: AbortSignal },
+  // `signal` is `| undefined` so this stays substitutable by the real `fetch`,
+  // which treats an undefined signal and an absent one alike. Under
+  // exactOptionalPropertyTypes the optional marker alone would not.
+  init?: { headers?: Record<string, string>; signal?: AbortSignal | undefined },
 ) => Promise<{
   ok: boolean;
   status: number;
