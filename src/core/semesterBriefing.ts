@@ -173,7 +173,7 @@ export function parseRoomFloor(room: string | null | undefined): number | null {
   if (typeof room !== 'string') return null;
   const match = /^(\d{2})[A-Z]/.exec(room.trim().toUpperCase());
   if (!match) return null;
-  const floor = Number.parseInt(match[1], 10);
+  const floor = Number.parseInt(match[1] ?? '', 10);
   return Number.isFinite(floor) ? floor : null;
 }
 
@@ -245,9 +245,11 @@ export function buildWeekSummary(
 
   for (const day of BRIEFING_WEEK_ORDER) {
     const list = byDay.get(day);
-    if (!list || list.length === 0) continue;
+    // The first slot is the emptiness check: having it is what "not empty" means.
+    const first = list?.[0];
+    if (list === undefined || first === undefined) continue;
 
-    const dayStart = list[0].startMin;
+    const dayStart = first.startMin;
     const dayEnd = list.reduce((max, s) => Math.max(max, s.endMin), 0);
     if (earliestStartMin === null || dayStart < earliestStartMin) earliestStartMin = dayStart;
     if (dayEnd - dayStart > longestDayMinutes) {
@@ -259,6 +261,7 @@ export function buildWeekSummary(
     for (let i = 1; i < list.length; i++) {
       const prev = list[i - 1];
       const next = list[i];
+      if (prev === undefined || next === undefined) continue;
       const idle = next.startMin - prev.endMin;
       if (idle >= minGap) {
         deadGapMinutes += idle;
@@ -322,9 +325,9 @@ export function campusMinutesAt(now: number): number {
 function sbAbsoluteMinutes(date: string, minuteOfDay: number): number | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!match) return null;
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  const day = Number.parseInt(match[3], 10);
+  const year = Number.parseInt(match[1] ?? '', 10);
+  const month = Number.parseInt(match[2] ?? '', 10);
+  const day = Number.parseInt(match[3] ?? '', 10);
   const ms = Date.UTC(year, month - 1, day);
   if (!Number.isFinite(ms)) return null;
   return Math.round(ms / 60000) + minuteOfDay;
@@ -342,16 +345,24 @@ function sbCrunchOver(
   let tightestGapHours: number | null = null;
   let sameDayCount = 0;
   for (let i = 1; i < run.length; i++) {
-    if (run[i].sameDayAsPrev) sameDayCount++;
-    const gapHours = run[i].gapHoursFromPrev;
+    const entry = run[i];
+    if (entry === undefined) continue;
+    if (entry.sameDayAsPrev) sameDayCount++;
+    const gapHours = entry.gapHoursFromPrev;
     if (gapHours !== null && (tightestGapHours === null || gapHours < tightestGapHours)) {
       tightestGapHours = gapHours;
     }
   }
-  const last = run.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), run[0]);
+  const first = run[0];
+  // An empty run has no span and no crunch. Callers slice from a filtered list
+  // so this does not happen, but reading run[0] to find out would have thrown.
+  if (first === undefined) {
+    return { count: 0, spanHours: 0, tightestGapHours: null, sameDayCount: 0 };
+  }
+  const last = run.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), first);
   return {
     count: run.length,
-    spanHours: (last.absEnd - run[0].absStart) / 60,
+    spanHours: (last.absEnd - first.absStart) / 60,
     tightestGapHours,
     sameDayCount,
   };
@@ -406,10 +417,11 @@ export function buildExamBriefing(
 
   const nowMin = campusMinutesAt(now);
   for (let i = 0; i < dated.length; i++) {
-    dated[i].isPast = dated[i].absEnd <= nowMin;
-    if (i === 0) continue;
-    const prev = dated[i - 1];
     const current = dated[i];
+    if (current === undefined) continue;
+    current.isPast = current.absEnd <= nowMin;
+    const prev = i === 0 ? undefined : dated[i - 1];
+    if (prev === undefined) continue;
     current.gapHoursFromPrev = (current.absStart - prev.absEnd) / 60;
     current.sameDayAsPrev = current.date === prev.date;
   }
@@ -417,6 +429,9 @@ export function buildExamBriefing(
   const whole = sbCrunchOver(dated);
   const firstAhead = dated.findIndex((entry) => !entry.isPast);
   const ahead = firstAhead === -1 ? [] : dated.slice(firstAhead);
+  // `findIndex` of -1 and an index that holds nothing are the same answer here:
+  // there is no next exam, so there are no hours until one.
+  const nextAbsStart = dated[firstAhead]?.absStart ?? null;
 
   // The absolute-minute fields are working state; the public entries drop them.
   const exams: ExamEntry[] = dated.map((entry) => ({
@@ -439,8 +454,8 @@ export function buildExamBriefing(
     sameDayCount: whole.sameDayCount,
     missing,
     upcoming: ahead.length > 0 ? sbCrunchOver(ahead) : null,
-    nextExam: firstAhead === -1 ? null : exams[firstAhead],
-    hoursUntilNext: firstAhead === -1 ? null : (dated[firstAhead].absStart - nowMin) / 60,
+    nextExam: exams[firstAhead] ?? null,
+    hoursUntilNext: nextAbsStart === null ? null : (nextAbsStart - nowMin) / 60,
     pastCount: dated.length - ahead.length,
   };
 }
