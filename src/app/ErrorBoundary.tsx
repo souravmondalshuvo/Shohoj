@@ -16,10 +16,17 @@ export interface ErrorBoundaryProps {
    * normalised error and a `reset` callback to retry mounting `children`.
    */
   readonly fallback?: ReactNode | ((error: ShohojError, reset: () => void) => ReactNode);
-  /** Optional hook for logging/telemetry. Receives the normalised error. */
-  readonly onError?: (error: ShohojError, info: ErrorInfo) => void;
+  /**
+   * Optional hook for logging/telemetry. Receives the normalised error.
+   *
+   * `| undefined` because a parent forwards its own optional prop straight
+   * through (AppProviders does), and in React a prop that is absent and a prop
+   * that is undefined are the same prop — which `exactOptionalPropertyTypes`
+   * does not assume on its own.
+   */
+  readonly onError?: ((error: ShohojError, info: ErrorInfo) => void) | undefined;
   /** Short label naming the area, used in the default fallback heading. */
-  readonly label?: string;
+  readonly label?: string | undefined;
 }
 
 interface ErrorBoundaryState {
