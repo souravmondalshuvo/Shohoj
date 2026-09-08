@@ -39,7 +39,8 @@ export interface PlaygroundInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: SemesterSeason | '';
   readonly startYear: string;
-  readonly scale?: GradeScale;
+  /** Campus grading scale. Defaults to BRACU's; may be forwarded as undefined. */
+  readonly scale?: GradeScale | undefined;
 }
 
 /** Letter grades the changer offers, weakest first. */
