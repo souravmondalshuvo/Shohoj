@@ -99,10 +99,12 @@ function lastCompletedSemesterAt(
   const offeredBeforeCurrent = seasons.filter(
     (season) => (GLOBAL_ORDER as readonly string[]).indexOf(season) < curGlobalIdx,
   );
-  if (offeredBeforeCurrent.length > 0) {
-    return { season: offeredBeforeCurrent[offeredBeforeCurrent.length - 1], year: curYear };
-  }
-  return { season: seasons[seasons.length - 1], year: curYear - 1 };
+  // Reading the last offered season is the not-empty check.
+  const lastOffered = offeredBeforeCurrent[offeredBeforeCurrent.length - 1];
+  if (lastOffered !== undefined) return { season: lastOffered, year: curYear };
+  // A dept with no seasons at all has no last completed semester to name; '' is
+  // what every caller here already treats as "unknown".
+  return { season: seasons[seasons.length - 1] ?? '', year: curYear - 1 };
 }
 
 /** How many summary-covered semesters elapsed from the start to the last
@@ -189,7 +191,12 @@ export function observedPace(
   if (loads.length < 2) return null;
 
   const trimmed = loads.length >= 4 ? loads.slice(1, -1) : loads;
-  return { fast: trimmed[trimmed.length - 1], slow: trimmed[0] };
+  const fast = trimmed[trimmed.length - 1];
+  const slow = trimmed[0];
+  // `loads.length < 2` above already returned, so trimming leaves at least one
+  // load — reading both ends is how that is stated rather than asserted.
+  if (fast === undefined || slow === undefined) return null;
+  return { fast, slow };
 }
 
 /** Earned credits within one semester, by the tracker's rules: running
@@ -301,17 +308,15 @@ export function computeDegreeProgress(
     const maxShow = Math.min(semsRemaining, 4);
     projectedMore = semsRemaining - maxShow;
 
-    const lastLabel =
-      semData.length > 0 ? semData[semData.length - 1].label : summaryBlock ? 'Past Semesters' : '';
+    const lastLabel = semData[semData.length - 1]?.label ?? (summaryBlock ? 'Past Semesters' : '');
     let nextSi = -1;
     let nextYr = 0;
     const seasonMatch = lastLabel.match(/(Spring|Summer|Fall)\s*'?(\d{2,4})/);
     if (seasonMatch) {
+      const matchedYear = seasonMatch[2] ?? '';
       nextYr =
-        seasonMatch[2].length === 2
-          ? 2000 + parseInt(seasonMatch[2], 10)
-          : parseInt(seasonMatch[2], 10);
-      const matchedIdx = deptSeasons.indexOf(seasonMatch[1]);
+        matchedYear.length === 2 ? 2000 + parseInt(matchedYear, 10) : parseInt(matchedYear, 10);
+      const matchedIdx = deptSeasons.indexOf(seasonMatch[1] ?? '');
       if (matchedIdx === -1) {
         nextSi = 0;
         nextYr++;
@@ -331,7 +336,7 @@ export function computeDegreeProgress(
         const curIdx = GLOBAL_ORDER.indexOf(season);
         for (let offset = 1; offset <= 3; offset++) {
           const candidate = GLOBAL_ORDER[(curIdx + offset) % 3];
-          if (deptSeasons.includes(candidate)) {
+          if (candidate !== undefined && deptSeasons.includes(candidate)) {
             season = candidate;
             break;
           }
