@@ -72,14 +72,18 @@ export function calculatorReducer(
   action: CalculatorAction,
 ): CalculatorState {
   switch (action.type) {
-    case 'addSemester':
-      return {
-        ...state,
-        semesters: [
-          ...state.semesters,
-          { id: nextSemesterId(state.semesters), name: action.name, courses: [blankCourse()] },
-        ],
+    case 'addSemester': {
+      // `name` is omitted when the action carries none, rather than written as
+      // undefined. SemesterEntry is a persisted shape, so "if name is there it
+      // is a string" is an invariant worth keeping — and a key set to undefined
+      // is one JSON.stringify would drop on the way to storage regardless.
+      const added: SemesterEntry = {
+        id: nextSemesterId(state.semesters),
+        courses: [blankCourse()],
+        ...(action.name === undefined ? {} : { name: action.name }),
       };
+      return { ...state, semesters: [...state.semesters, added] };
+    }
     case 'addRunningSemester':
       // Legacy parity (addRunningSemester in js/ui/render.js): at most one
       // running semester; a second request is a no-op.
