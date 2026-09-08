@@ -16,14 +16,20 @@ const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'] as const;
 // behaviour of this module must stay exactly what it was before tenancy.
 const DEFAULT = UNIVERSITIES.bracu;
 
+/**
+ * Every member is a defaultable override, and each is read with `??` below — so
+ * passing `undefined` and omitting the key mean the same thing here, and the
+ * types say `| undefined` to allow a caller to forward its own optional field
+ * straight through. (Under `exactOptionalPropertyTypes` that is not implied.)
+ */
 export interface RetakePolicyOptions {
-  bestGrade?: boolean;
-  startSeason?: SemesterSeason | '';
-  startYear?: number | string | '';
+  bestGrade?: boolean | undefined;
+  startSeason?: SemesterSeason | '' | undefined;
+  startYear?: number | string | '' | undefined;
   /** Campus grading scale. Defaults to BRACU's. */
-  scale?: GradeScale;
+  scale?: GradeScale | undefined;
   /** Campus retake rule. Defaults to BRACU's start-term-gated policy. */
-  retake?: RetakePolicy;
+  retake?: RetakePolicy | undefined;
 }
 
 export interface CgpaOptions extends RetakePolicyOptions {
