@@ -46,9 +46,14 @@ export function computeGpaTrend(semesters: readonly SemesterEntry[], scale: Grad
     points.push({ label: trendLabel(semester), gpa });
   }
 
-  if (points.length < 2) return { points, direction: null, visible: false };
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  // Two ends is what a direction needs; having both is the length test.
+  if (firstPoint === undefined || lastPoint === undefined || points.length < 2) {
+    return { points, direction: null, visible: false };
+  }
 
-  const diff = points[points.length - 1].gpa - points[0].gpa;
+  const diff = lastPoint.gpa - firstPoint.gpa;
   const direction: TrendDirection =
     Math.abs(diff) < 0.1 ? 'stable' : diff > 0 ? 'improving' : 'declining';
   return { points, direction, visible: true };
@@ -111,13 +116,18 @@ export function trendChartGeometry(
   const coords = points.map((p, i) => ({ x: xOf(i), y: yOf(p.gpa) }));
   const linePoints = coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
   const baselineY = height - PAD.bottom;
+  const firstCoord = coords[0];
+  const lastCoord = coords[coords.length - 1];
+  // `points.length < 2` returned above, so both ends exist; reading them is how
+  // the path says so, and there is no path to draw without them.
+  if (firstCoord === undefined || lastCoord === undefined) return null;
   const areaPath =
-    `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} ` +
+    `M ${firstCoord.x.toFixed(1)} ${firstCoord.y.toFixed(1)} ` +
     coords
       .slice(1)
       .map((c) => `L ${c.x.toFixed(1)} ${c.y.toFixed(1)}`)
       .join(' ') +
-    ` L ${coords[coords.length - 1].x.toFixed(1)} ${baselineY} L ${coords[0].x.toFixed(1)} ${baselineY} Z`;
+    ` L ${lastCoord.x.toFixed(1)} ${baselineY} L ${firstCoord.x.toFixed(1)} ${baselineY} Z`;
 
   return {
     width,
@@ -125,11 +135,13 @@ export function trendChartGeometry(
     gridlines,
     linePoints,
     areaPath,
-    dots: coords.map((c, i) => ({
-      x: c.x,
-      y: c.y,
-      gpaText: points[i].gpa.toFixed(2),
-      label: points[i].label,
+    // Built from the points rather than zipped against coords: the same x/y
+    // formulas, without indexing one list by the other's position.
+    dots: points.map((p, i) => ({
+      x: xOf(i),
+      y: yOf(p.gpa),
+      gpaText: p.gpa.toFixed(2),
+      label: p.label,
     })),
     rotateLabels: points.length > 5,
     baselineY,
