@@ -44,7 +44,13 @@ export function loadFirebaseClient(
 
     // Reuse an app if something already initialised one on this page.
     const existing = getApps()[0];
-    const app = existing ?? initializeApp(config);
+    // `measurementId` is optional in our validated config and non-optional-when-
+    // present in Firebase's own FirebaseOptions, which is not ours to widen — so
+    // the key is left out rather than handed over as undefined.
+    const { measurementId, ...required } = config;
+    const app =
+      existing ??
+      initializeApp(measurementId === undefined ? required : { ...required, measurementId });
 
     if (!existing && recaptchaV3SiteKey) {
       try {
