@@ -89,7 +89,12 @@ const stop = (
   secondTrip: string | null = null,
 ): BusStop => ({ name, firstTrip, secondTrip });
 
-export const BUS_ROUTES: readonly BusRouteVariant[] = [
+/**
+ * Every route BRACU runs. Typed as a non-empty list because it is a hand-kept
+ * table, not a fetch: the Bus route treats the first entry as the default, and
+ * "there might be no routes at all" is a state this data cannot be in.
+ */
+export const BUS_ROUTES: readonly [BusRouteVariant, ...BusRouteVariant[]] = [
   {
     id: 'abdullahpur-a',
     routeNo: 1,
@@ -363,8 +368,8 @@ export function busTimeToMinutes(time: string | null): number | null {
   if (!time) return null;
   const match = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(time.trim());
   if (!match) return null;
-  const hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
+  const hour = parseInt(match[1] ?? '', 10);
+  const minute = parseInt(match[2] ?? '', 10);
   if (hour < 1 || hour > 12 || minute > 59) return null;
   const h24 = match[3] === 'PM' ? (hour % 12) + 12 : hour % 12;
   return h24 * 60 + minute;
