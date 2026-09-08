@@ -79,18 +79,58 @@ export function importedSectionId(courseCode, sectionName) {
     return -(hash + 1);
 }
 
-/** Split a pasted row into cells. Tabs first; runs of spaces or pipes after. */
-function splitCells(line) {
-    if (line.includes('\t')) return line.split('\t').map((c) => c.trim());
-    return line.split(/ {2,}|\s*\|\s*/).map((c) => c.trim());
+/**
+  * Where a cell begins in a row that lost its separators: at a course code
+  * followed by the hyphen that starts `CODE -SECTION -FACULTY-ROOM`.
+  */
+const CELL_START_RE = /(?=\b[A-Z]{2,5}\d{3}[A-Z]?\s*-)/;
+
+/**
+  * Split a pasted row into `{ cells, positional }`. Tabs first; runs of spaces
+  * or pipes after.
+  *
+  * Failing both, the row has been collapsed to single spaces — which is what an
+  * HTML serializer does to a table it does not treat as tabular. Cells can still
+  * be recovered, because each one starts with a course code, but the empty cells
+  * are gone with the separators, so the result is explicitly non-positional:
+  * `positional` is what says whether cell *i* is really column *i*, and so
+  * whether a day header may be applied to it.
+  */
+function splitRow(line) {
+    if (line.includes('\t')) {
+        return { cells: line.split('\t').map((c) => c.trim()), positional: true };
+    }
+    if (/ {2,}|\|/.test(line)) {
+        return { cells: line.split(/ {2,}|\s*\|\s*/).map((c) => c.trim()), positional: true };
+    }
+    const parts = line
+        .split(CELL_START_RE)
+        .map((c) => c.trim())
+        .filter((c) => c !== '');
+    // A row that yielded a single cell needed no splitting, so it is positional in
+    // the same trivial sense it was before this fallback existed.
+    return { cells: parts, positional: parts.length <= 1 };
+}
+
+/**
+  * The day a header cell names, or null.
+  *
+  * Full names and any abbreviation of three letters or more: `SUN`, `TUES`,
+  * `THURS`. Three is where all seven day names become unambiguous — `S` and `T`
+  * never are, and while `SA`/`SU`/`TU`/`TH` happen to be unique, a two-letter
+  * column header is more likely to be something other than a day.
+  */
+function dayFromHeaderCell(cell) {
+    const upper = cell.trim().toUpperCase();
+    if (DAY_NAMES.includes(upper)) return upper;
+    if (upper.length < 3 || !/^[A-Z]+$/.test(upper)) return null;
+    const matches = DAY_NAMES.filter((day) => day.startsWith(upper));
+    return matches.length === 1 ? matches[0] : null;
 }
 
 /** Which day each column holds, from a header row. Null when it is not one. */
 function readDayHeader(cells) {
-    const days = cells.map((cell) => {
-        const upper = cell.trim().toUpperCase();
-        return DAY_NAMES.includes(upper) ? upper : null;
-    });
+    const days = cells.map(dayFromHeaderCell);
     return days.filter((d) => d !== null).length >= 2 ? days : null;
 }
 
@@ -147,7 +187,7 @@ export function parseConnectSchedule(text) {
 
     for (const line of text.split(/\r?\n/)) {
         if (line.trim() === '') continue;
-        const cells = splitCells(line);
+        const { cells, positional } = splitRow(line);
 
         const header = readDayHeader(cells);
         if (header !== null) {
@@ -164,9 +204,14 @@ export function parseConnectSchedule(text) {
                 : /\bMID\b/i.test(line)
                     ? 'mid'
                     : null;
-            const code = cells
-                .map((c) => c.trim().toUpperCase())
-                .find((c) => CODE_RE.test(c));
+            const code =
+                cells.map((c) => c.trim().toUpperCase()).find((c) => CODE_RE.test(c)) ??
+                // A collapsed row has no cell that *is* a code, so read the tokens.
+                // Silently dropping an exam is worse than either outcome below.
+                line
+                    .toUpperCase()
+                    .split(/[^A-Z0-9]+/)
+                    .find((t) => CODE_RE.test(t));
             if (range !== null && kind !== null && code !== undefined) {
                 // The exam table names the course, not the section, so it lands on
                 // whichever section of that course the class table already gave us.
@@ -190,7 +235,10 @@ export function parseConnectSchedule(text) {
             if (match === null) continue;
 
             const section = upsert(match[1], match[2], match[3], match[4].trim());
-            const day = dayColumns !== null ? (dayColumns[i] ?? null) : null;
+            // Only a positional row may take a day from the header: in a collapsed
+            // row column i is not day i, and guessing would put the class on the
+            // wrong day — the one thing this parser refuses to do.
+            const day = positional && dayColumns !== null ? (dayColumns[i] ?? null) : null;
             if (day === null || range === null) {
                 // We know the section but not when it meets. Recorded, never invented:
                 // a guessed slot puts a class on the grid at a time that is wrong.
