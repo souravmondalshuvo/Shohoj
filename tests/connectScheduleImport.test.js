@@ -156,6 +156,84 @@ test('an exam with no class row is reported rather than dropped', () => {
     assert(r.warnings.some(w => /Mid exam for CSE251/.test(w)), JSON.stringify(r.warnings));
 });
 
+// ---- Shapes the first cut did not survive (#659) ---------------------------
+test('an abbreviated day header is still a day header', () => {
+    // A page that labels its columns SUN MON TUE matched none of the seven full
+    // names, so every class lost its time and the warning blamed a missing
+    // header row the student had in fact pasted.
+    const r = parseConnectSchedule([
+        'TIME/DAY\tSUN\tMON\tTUE',
+        '8:00 AM - 9:20 AM\t\tMAT215 -13 -MZK-12A-08C\t',
+        '9:30 AM - 10:50 AM\tCSE220 -04 -MAHR-10B-15C\t\tCSE220 -04 -MAHR-10B-15C',
+    ].join('\n'));
+    eq(r.warnings, []);
+    const s = byCode(r);
+    eq(s.MAT215.sectionSchedule.classSchedules, [
+        { day: 'MONDAY', startTime: '08:00:00', endTime: '09:20:00' },
+    ]);
+    eq(s.CSE220.sectionSchedule.classSchedules.map(c => c.day), ['SUNDAY', 'TUESDAY']);
+});
+
+test('longer abbreviations come along for free', () => {
+    const r = parseConnectSchedule([
+        'TIME/DAY\tTUES\tTHURS\tSAT',
+        '8:00 AM - 9:20 AM\tMAT215 -13 -MZK-12A-08C\t\t',
+    ].join('\n'));
+    eq(r.sections[0].sectionSchedule.classSchedules[0].day, 'TUESDAY');
+});
+
+test('an ambiguous abbreviation is refused, not guessed', () => {
+    // S is Saturday or Sunday and T is Tuesday or Thursday. Guessing would put a
+    // class on the wrong day, so two-letter and one-letter headers are not days
+    // at all — the courses come back without times instead.
+    const r = parseConnectSchedule([
+        'TIME/DAY\tS\tM\tT',
+        '8:00 AM - 9:20 AM\tMAT215 -13 -MZK-12A-08C\t\t',
+    ].join('\n'));
+    eq(r.sections.length, 1);
+    eq(r.sections[0].sectionSchedule.classSchedules, []);
+    assert(/not when they meet/.test(r.warnings[0]), r.warnings[0]);
+});
+
+test('a paste collapsed to single spaces yields its courses', () => {
+    // Two-or-more spaces is an aligned copy. This is what a serializer does when
+    // it flattens a table's whitespace, and it used to parse to nothing at all
+    // under the advice "copy the whole table" — which is what had been done.
+    const r = parseConnectSchedule([
+        'TIME/DAY SUNDAY MONDAY TUESDAY',
+        '8:00 AM - 9:20 AM MAT215 -13 -MZK-12A-08C',
+        '9:30 AM - 10:50 AM CSE220 -04 -MAHR-10B-15C CSE220 -04 -MAHR-10B-15C',
+    ].join('\n'));
+    eq(r.sections.map(s => s.courseCode).sort(), ['CSE220', 'MAT215']);
+    eq(byCode(r).MAT215.roomName, '12A-08C');
+    assert(/not when they meet/.test(r.warnings[0]), r.warnings[0]);
+});
+
+test('a collapsed row takes no day from a header it cannot be aligned to', () => {
+    // The whole point of the fallback's non-positional flag. The header here is
+    // a real tab-separated one, so dayColumns is set — but the collapsed row
+    // below it has lost its empty cells, so column 1 is not Sunday any more.
+    // Inventing a day is worse than leaving the class off the grid.
+    const r = parseConnectSchedule([
+        'TIME/DAY\tSUNDAY\tMONDAY\tTUESDAY',
+        '8:00 AM - 9:20 AM CSE220 -04 -MAHR-10B-15C',
+    ].join('\n'));
+    eq(r.sections.length, 1);
+    eq(r.sections[0].sectionSchedule.classSchedules, []);
+});
+
+test('a collapsed exam row attaches instead of vanishing', () => {
+    // The exam branch looked for a cell that *is* a course code; a collapsed row
+    // has none, so the exam was dropped with no warning at all.
+    const r = parseConnectSchedule([
+        'TIME/DAY SUNDAY MONDAY',
+        '9:30 AM - 10:50 AM CSE220 -04 -MAHR-10B-15C',
+        'SATURDAY (2026-07-25) 4:30 PM -6:30 PM MID CSE220',
+    ].join('\n'));
+    eq(byCode(r).CSE220.sectionSchedule.midExamDate, '2026-07-25');
+    eq(byCode(r).CSE220.sectionSchedule.midExamStartTime, '16:30:00');
+});
+
 test('non-string input does not throw', () => {
     for (const bad of [null, undefined, 42, {}, []]) {
         eq(parseConnectSchedule(bad).sections, [], `expected [] for ${String(bad)}`);
