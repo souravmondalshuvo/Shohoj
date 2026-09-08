@@ -168,7 +168,10 @@ export async function fetchArchiveListing(
   try {
     const response = await fetcher(url, {
       headers: { Accept: 'application/json' },
-      signal: options.signal,
+      // Omitted rather than passed as undefined: this fetcher is the real
+      // `fetch`, and `RequestInit` is not ours to widen. Same request either
+      // way — the key simply is not set when there is no signal.
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
     });
     if (!response.ok) return [];
     return normalizeArchiveListing(await response.json());
