@@ -109,8 +109,10 @@ export function useDotMatrix(canvasRef: RefObject<HTMLCanvasElement | null>): vo
       const cSpeed = Math.sqrt(cvx * cvx + cvy * cvy);
       const boost = 1 + Math.min(cSpeed * 0.018, 0.85);
 
-      for (let i = 0; i < dots.length; i++) {
-        const d = dots[i];
+      // Values, not indices: the index was only ever used to fetch the dot, and
+      // this runs once per dot per frame — the flag's guard would be per-dot
+      // work to prove something the iteration already guarantees.
+      for (const d of dots) {
         const { ox, oy } = d;
 
         if (!isMobile) {
