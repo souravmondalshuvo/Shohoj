@@ -276,6 +276,14 @@ const CONNECT_PASTES = [
   'TIME/DAY   SUNDAY   MONDAY\n8:00 AM - 9:20 AM      MAT215 -13 -MZK-12A-08C',
   '8:00 AM - 9:20 AM\t\tMAT215 -13 -MZK-12A-08C',
   'SATURDAY (2026-07-25)\t4:30 PM -6:30 PM\tMID\tCSE251',
+  // #659: an abbreviated day header, and a paste collapsed to single spaces —
+  // the second is non-positional, so both twins must refuse to place a day.
+  'TIME/DAY\tSUN\tMON\tTUE\n8:00 AM - 9:20 AM\t\tMAT215 -13 -MZK-12A-08C\t',
+  'TIME/DAY\tTUES\tTHURS\n8:00 AM - 9:20 AM\tMAT215 -13 -MZK-12A-08C\t',
+  'TIME/DAY\tS\tT\n8:00 AM - 9:20 AM\tMAT215 -13 -MZK-12A-08C\t',
+  'TIME/DAY SUNDAY MONDAY\n9:30 AM - 10:50 AM CSE220 -04 -MAHR-10B-15C\n' +
+    'SATURDAY (2026-07-25) 4:30 PM -6:30 PM MID CSE220',
+  'TIME/DAY\tSUNDAY\tMONDAY\n8:00 AM - 9:20 AM CSE220 -04 -MAHR-10B-15C',
   'Dear student, please log in.',
   '',
   '   ',
