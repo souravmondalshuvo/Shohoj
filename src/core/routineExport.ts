@@ -60,8 +60,12 @@ export type DrawOp =
        * font. Only the last run is condensed to fit `maxWidth` — the painter
        * measures, which a plan cannot. Renderers without run support fall back
        * to `text`, which always holds the same string.
+       *
+       * `| undefined` because the builder writes it as a ternary — a block with
+       * no room name has nothing to split — and absent or undefined mean the
+       * same thing to every painter: paint `text`.
        */
-      runs?: { text: string; font?: string }[];
+      runs?: { text: string; font?: string }[] | undefined;
     };
 
 export interface ExportPlan {
