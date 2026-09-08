@@ -21,8 +21,8 @@ export interface PlannerTotalsInputs {
   readonly semesters: readonly SemesterEntry[];
   readonly startSeason: SemesterSeason | '';
   readonly startYear: string;
-  /** Campus grading scale. Defaults to BRACU's. */
-  readonly scale?: GradeScale;
+  /** Campus grading scale. Defaults to BRACU's; may be forwarded as undefined. */
+  readonly scale?: GradeScale | undefined;
 }
 
 /** Grade points + credits backing the impact projection (playground parity). */
