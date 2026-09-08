@@ -130,10 +130,16 @@ export const MAX_RECENT = 1000;
 
 /** The Firestore surface the repo needs (real SDK or a test fake). */
 export interface ReviewsBackend {
-  /** where(facultyInitials ==) [+ where(courseCode ==)] orderBy createdAt desc. */
+  /**
+   * where(facultyInitials ==) [+ where(courseCode ==)] orderBy createdAt desc.
+   *
+   * `courseCode` is `| undefined` because the repo narrows deliberately — it
+   * normalises the caller's code and passes `undefined` to mean "no course
+   * filter", which is what omitting the key means to the query builder too.
+   */
   queryByFaculty(args: {
     facultyInitials: string;
-    courseCode?: string;
+    courseCode?: string | undefined;
     limit: number;
     after: ReviewCursor | null;
   }): Promise<{ docs: ReviewDoc[]; last: ReviewCursor | null }>;
