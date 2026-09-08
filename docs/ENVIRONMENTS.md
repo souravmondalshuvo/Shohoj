@@ -41,6 +41,24 @@ python3 -m http.server 8000
 Add `localhost` (and `127.0.0.1`) as authorized domains in your dev Firebase
 project → Authentication → Settings.
 
+> **Delete `runtime-config.js` again before running the E2E suites.**
+>
+> ```bash
+> rm -f js/config/runtime-config.js
+> ```
+>
+> The suites are written against a raw dev tree: the specs inject their own
+> globals with `addInitScript`, and this file loads afterwards and overwrites
+> them. `e2e/campus-gate.spec.js` goes further and asserts the *unconfigured*
+> state, so no value of this file can satisfy the suite. CI does the same `rm -f`
+> before its E2E step.
+>
+> It is gitignored, so `git status` will not remind you it is there. A stale copy
+> scatters failures across `routine-archive`, `assistant-fab` and `campus-gate`
+> without naming the cause — an unfilled template is the worst case, because its
+> `__PLACEHOLDER__` strings clobber the specs' values rather than merely being
+> wrong. See [`CLAUDE.md`](../CLAUDE.md) for the measured breakdown.
+
 ## Staging (not yet provisioned)
 
 Staging is documented here so it can be added **safely** later. The rule that
