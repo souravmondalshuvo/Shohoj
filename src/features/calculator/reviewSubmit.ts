@@ -17,7 +17,12 @@ import type { ReviewPayload } from './reviewDraft.ts';
 export interface ReviewSubmitResult {
   readonly ok: boolean;
   readonly error?: string;
-  readonly code?: string;
+  /**
+   * Transport error code, forwarded from the relay's own result — which may not
+   * carry one. `| undefined` because callers read it rather than store it, so
+   * an absent code and an undefined one are the same answer.
+   */
+  readonly code?: string | undefined;
 }
 
 /** The injected write transport (legacy window._shohoj_submitReview's shape). */
