@@ -40,7 +40,13 @@ export interface CourseRowProps {
   readonly onNamePick: (course: CourseSuggestion) => void;
   readonly onNameResolve: (course: CourseSuggestion | null, text: string) => void;
   readonly onGradePointChange: (value: string) => void;
-  readonly onGradePointBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  /**
+   * `| undefined` because SemesterBlock supplies this conditionally — the
+   * deferred-blur commit only exists on routes that own one — and writes the
+   * ternary's else branch as undefined. React reads that as no handler,
+   * exactly as omitting the prop would.
+   */
+  readonly onGradePointBlur?: ((e: React.FocusEvent<HTMLInputElement>) => void) | undefined;
   readonly onPassFailChange: (value: string) => void;
   readonly onRate: () => void;
   readonly onRemove: () => void;
