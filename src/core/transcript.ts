@@ -125,7 +125,7 @@ export function detectDepartment(text: string): string | null {
   const programMatch = compact.match(
     /PROGRAM:\s*(.+?)(?=SEMESTER:|COURSE\s+NO|COURSE\s+TITLE|CREDITS\s+EARNED|GRADE\s+POINTS|GRADE\s+SHEET|STUDENT\s+ID|NAME\b|$)/i,
   );
-  const programText = programMatch ? programMatch[1].trim() : '';
+  const programText = group(programMatch, 1).trim();
 
   if (programText) {
     for (const [label, pattern] of PROGRAM_DETECTORS) {
@@ -156,13 +156,13 @@ export function detectStudentIdentity(text: string): StudentIdentity {
   if (compact) {
     const idMatch =
       compact.match(/STUDENT\s*ID\s*:?\s*(\d{7,8})\b/i) || compact.match(/\bID\s*:?\s*(\d{8})\b/i);
-    if (idMatch) studentId = idMatch[1];
+    if (idMatch) studentId = group(idMatch, 1) || null;
 
     const nameMatch = compact.match(
       /\bNAME\s*:?\s*([A-Za-z][A-Za-z.\s'-]{1,58}?)\s*(?=\b(?:PROGRAM|STUDENT\s*ID|SEMESTER|ID|DATE|GRADE\s+SHEET|COURSE|CREDITS|UNDERGRADUATE|UNDERGRAD|POSTGRADUATE|GRADUATE)\b|$)/i,
     );
     if (nameMatch) {
-      const cleaned = nameMatch[1].replace(/\s+/g, ' ').trim();
+      const cleaned = group(nameMatch, 1).replace(/\s+/g, ' ').trim();
       if (cleaned && !/^\d+$/.test(cleaned)) studentName = cleaned;
     }
   }
@@ -198,7 +198,20 @@ export function normalizeTranscriptText(text: string): string {
 export function parseSemesterName(name: string): { season: string; year: number } | null {
   const match = name.match(/(Spring|Summer|Fall)\s+(\d{4})/);
   if (!match) return null;
-  return { season: match[1], year: Number.parseInt(match[2], 10) };
+  return { season: group(match, 1), year: Number.parseInt(group(match, 2), 10) };
+}
+
+/**
+ * The text of a mandatory capture group.
+ *
+ * Every group read below is non-optional, so a match means the group
+ * participated — but the type system cannot know that, and this parser's
+ * standing contract is to yield nothing rather than guess. Empty string is
+ * already what every reader here treats as "not found": `parseFloat('')` is
+ * NaN, and the name builders test the value for truthiness.
+ */
+function group(match: RegExpMatchArray | RegExpExecArray | null, n: number): string {
+  return match?.[n] ?? '';
 }
 
 function normalizeGradeToken(raw: string): string {
@@ -216,10 +229,10 @@ export function parseBlobFallback(text: string): TranscriptParseResult {
   let semMatch: RegExpExecArray | null;
 
   while ((semMatch = semRe.exec(blob)) !== null) {
-    const season = semMatch[1].toUpperCase();
-    const year = semMatch[2];
+    const season = group(semMatch, 1).toUpperCase();
+    const year = group(semMatch, 2);
     semMatches.push({
-      name: `${SEASON_NAMES[season] || semMatch[1]} ${year}`,
+      name: `${SEASON_NAMES[season] || season} ${year}`,
       idx: semMatch.index,
     });
   }
@@ -230,17 +243,21 @@ export function parseBlobFallback(text: string): TranscriptParseResult {
     /\b([A-Z]{2,4}\d{3}[A-Z]?)\b(.{1,120}?)\b(\d+\.\d+)\s+((?:[A-Z][+-]?)(?:\((?:NT|RT)\))|[A-Z][+-]?)\s+(\d+\.\d+)/g;
   const semesters = semMatches
     .map((semester, index): TranscriptSemester => {
-      const sliceEnd = index + 1 < semMatches.length ? semMatches[index + 1].idx : blob.length;
+      const sliceEnd = semMatches[index + 1]?.idx ?? blob.length;
       const slice = blob.slice(semester.idx, sliceEnd);
       const courses: TranscriptSemester['courses'] = [];
       let courseMatch: RegExpExecArray | null;
 
       while ((courseMatch = courseRe.exec(slice)) !== null) {
-        const code = courseMatch[1];
-        const title = (courseMatch[2] || '').trim().replace(/\s{2,}/g, ' ');
-        const credits = Number.parseFloat(courseMatch[3]);
-        const grade = courseMatch[4].replace(/\(RT\)/, '').trim();
-        const gradePoint = Number.parseFloat(courseMatch[5]);
+        const code = group(courseMatch, 1);
+        const title = group(courseMatch, 2)
+          .trim()
+          .replace(/\s{2,}/g, ' ');
+        const credits = Number.parseFloat(group(courseMatch, 3));
+        const grade = group(courseMatch, 4)
+          .replace(/\(RT\)/, '')
+          .trim();
+        const gradePoint = Number.parseFloat(group(courseMatch, 5));
 
         if (!Number.isNaN(credits) && credits > 0) {
           courses.push({
@@ -289,9 +306,9 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
 
     const semesterMatch = line.match(semRe);
     if (semesterMatch) {
-      const season = semesterMatch[1].toUpperCase();
+      const season = group(semesterMatch, 1).toUpperCase();
       currentSemester = {
-        name: `${SEASON_NAMES[season] || semesterMatch[1]} ${semesterMatch[2]}`,
+        name: `${SEASON_NAMES[season] || season} ${group(semesterMatch, 2)}`,
         codes: [],
         titles: [],
       };
@@ -305,7 +322,7 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
 
     const codeMatch = line.match(codeRe);
     if (codeMatch) {
-      currentSemester.codes.push(codeMatch[1]);
+      currentSemester.codes.push(group(codeMatch, 1));
       lastExtText = null;
       lastExtIndex = -1;
       continue;
@@ -313,16 +330,12 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
 
     const compactCodeMatch = line.match(codeStartRe);
     if (compactCodeMatch) {
-      currentSemester.codes.push(compactCodeMatch[1]);
-      if (
-        lastExtText !== null &&
-        lastExtIndex >= 0 &&
-        lastExtIndex < currentSemester.titles.length
-      ) {
-        currentSemester.titles[lastExtIndex] = currentSemester.titles[lastExtIndex].substring(
-          0,
-          lastExtOrigLen,
-        );
+      currentSemester.codes.push(group(compactCodeMatch, 1));
+      // A title present at lastExtIndex is the bound check: reading it is how we
+      // learn the index is still in range, rather than asking twice.
+      const extended = lastExtIndex >= 0 ? currentSemester.titles[lastExtIndex] : undefined;
+      if (lastExtText !== null && extended !== undefined) {
+        currentSemester.titles[lastExtIndex] = extended.substring(0, lastExtOrigLen);
         currentSemester.titles.push(lastExtText);
       }
       lastExtText = null;
@@ -330,16 +343,20 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
       continue;
     }
 
-    if (!line[0].match(/\d/)) {
+    // `!line[0].match(/\d/)` said "does not start with a digit", and threw on an
+    // empty line. An anchored test says the same thing and cannot.
+    if (!/^\d/.test(line)) {
       if (currentSemester.titles.length < currentSemester.codes.length) {
         currentSemester.titles.push(line);
         lastExtText = null;
         lastExtIndex = -1;
       } else if (currentSemester.titles.length > 0) {
-        lastExtOrigLen = currentSemester.titles[currentSemester.titles.length - 1].length;
+        const lastIndex = currentSemester.titles.length - 1;
+        const lastTitle = currentSemester.titles[lastIndex] ?? '';
+        lastExtOrigLen = lastTitle.length;
         lastExtText = line;
-        lastExtIndex = currentSemester.titles.length - 1;
-        currentSemester.titles[currentSemester.titles.length - 1] += ` ${line}`;
+        lastExtIndex = lastIndex;
+        currentSemester.titles[lastIndex] = `${lastTitle} ${line}`;
       }
     }
   }
@@ -350,10 +367,10 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
 
   let creditsBlockStart = -1;
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (!/^Credits\s+Earned\b/i.test(lines[i])) continue;
+    if (!/^Credits\s+Earned\b/i.test(lines[i] ?? '')) continue;
 
     for (let j = i + 1; j <= i + 4 && j < lines.length; j++) {
-      if (numberRe.test(lines[j])) {
+      if (numberRe.test(lines[j] ?? '')) {
         creditsBlockStart = j;
         break;
       }
@@ -369,8 +386,8 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
   const gpRaw: number[] = [];
   let phase: 'credits' | 'grades' | 'gp' = 'credits';
 
-  for (let i = creditsBlockStart; i < lines.length; i++) {
-    const line = lines[i];
+  // Values, not indices: the loop never used `i` for anything but the read.
+  for (const line of lines.slice(creditsBlockStart)) {
     if (line === 'GPA' || line === 'CGPA') continue;
 
     if (phase === 'credits') {
@@ -409,8 +426,8 @@ export function parseTranscriptText(text: string): TranscriptParseResult {
     const courses: TranscriptSemester['courses'] = [];
 
     for (let index = 0; index < semester.codes.length; index++) {
-      const code = semester.codes[index];
-      const title = semester.titles[index] || '';
+      const code = semester.codes[index] ?? '';
+      const title = semester.titles[index] ?? '';
       const name = title ? `${title} (${code})` : code;
       const credits = allCredits[flatIndex] ?? 0;
       const grade = allGrades[flatIndex] ?? '';
@@ -440,7 +457,7 @@ function extractCourseValues(raw: readonly number[], counts: readonly number[]):
 
   for (const count of counts) {
     for (let index = 0; index < count; index++) {
-      out.push(raw[position] !== undefined ? raw[position] : null);
+      out.push(raw[position] ?? null);
       position++;
     }
     position += 2;
@@ -484,10 +501,10 @@ function legacyParseTranscript(
 
     const semesterMatch = line.match(semRe);
     if (semesterMatch) {
-      const season = semesterMatch[1].toUpperCase();
+      const season = group(semesterMatch, 1).toUpperCase();
       currentSemester = {
         id: Date.now() + semesters.length,
-        name: `${SEASON_NAMES[season] || semesterMatch[1]} ${semesterMatch[2]}`,
+        name: `${SEASON_NAMES[season] || season} ${group(semesterMatch, 2)}`,
         courses: [],
         running: false,
       };
@@ -511,12 +528,12 @@ function legacyParseTranscript(
     }
 
     if (fntRe.test(line)) {
-      const code = line.trim().split(/\s+/)[0];
+      const code = line.trim().split(/\s+/)[0] ?? '';
       if (/^[A-Z]{2,4}\d{3}[A-Z]?$/.test(code)) {
         const creditMatch = line.match(/\b(\d+\.\d+)\b/);
         currentSemester.courses.push({
           name: code,
-          credits: creditMatch ? Number.parseFloat(creditMatch[1]) : 0,
+          credits: creditMatch ? Number.parseFloat(group(creditMatch, 1)) : 0,
           grade: 'F(NT)',
           gradePoint: 'NT',
         });
@@ -528,17 +545,17 @@ function legacyParseTranscript(
     if (pendingTitle) {
       const creditsGradeGp = line.match(creditsGradeGpOnlyRe);
       if (creditsGradeGp) {
-        const code =
-          (pendingTitle.match(codeMarkerRe) ||
-            pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) ||
-            [])[1] || '';
+        const code = group(
+          pendingTitle.match(codeMarkerRe) ?? pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/),
+          1,
+        );
         const title = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim();
 
         currentSemester.courses.push({
           name: title ? `${title} (${code})` : code,
-          credits: Number.parseFloat(creditsGradeGp[1]),
-          grade: normalizeGradeToken(creditsGradeGp[2]),
-          gradePoint: Number.parseFloat(creditsGradeGp[3]),
+          credits: Number.parseFloat(group(creditsGradeGp, 1)),
+          grade: normalizeGradeToken(group(creditsGradeGp, 2)),
+          gradePoint: Number.parseFloat(group(creditsGradeGp, 3)),
         });
         pendingTitle = null;
         continue;
@@ -550,22 +567,22 @@ function legacyParseTranscript(
         const fullCourse = fullLine.match(courseRe);
         if (fullCourse) {
           currentSemester.courses.push({
-            name: `${fullCourse[1]} ${fullCourse[2].trim()}`,
-            credits: Number.parseFloat(fullCourse[3]),
-            grade: normalizeGradeToken(fullCourse[4]),
-            gradePoint: Number.parseFloat(fullCourse[5]),
+            name: `${group(fullCourse, 1)} ${group(fullCourse, 2).trim()}`,
+            credits: Number.parseFloat(group(fullCourse, 3)),
+            grade: normalizeGradeToken(group(fullCourse, 4)),
+            gradePoint: Number.parseFloat(group(fullCourse, 5)),
           });
           pendingTitle = null;
           continue;
         }
 
-        const code = (pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/) || [])[1] || pendingTitle;
+        const code = group(pendingTitle.match(/^([A-Z]{2,4}\d{3}[A-Z]?)/), 1) || pendingTitle;
         const titlePrefix = pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim();
         currentSemester.courses.push({
-          name: `${`${titlePrefix} ${continuation[1].trim()}`.trim()} (${code})`,
-          credits: Number.parseFloat(continuation[2]),
-          grade: normalizeGradeToken(continuation[3]),
-          gradePoint: Number.parseFloat(continuation[4]),
+          name: `${`${titlePrefix} ${group(continuation, 1).trim()}`.trim()} (${code})`,
+          credits: Number.parseFloat(group(continuation, 2)),
+          grade: normalizeGradeToken(group(continuation, 3)),
+          gradePoint: Number.parseFloat(group(continuation, 4)),
         });
         pendingTitle = null;
         continue;
@@ -578,10 +595,10 @@ function legacyParseTranscript(
         ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim()
         : '';
       currentSemester.courses.push({
-        name: title ? `${title} (${codeOnly[1]})` : codeOnly[1],
-        credits: Number.parseFloat(codeOnly[2]),
-        grade: normalizeGradeToken(codeOnly[3]),
-        gradePoint: Number.parseFloat(codeOnly[4]),
+        name: title ? `${title} (${group(codeOnly, 1)})` : group(codeOnly, 1),
+        credits: Number.parseFloat(group(codeOnly, 2)),
+        grade: normalizeGradeToken(group(codeOnly, 3)),
+        gradePoint: Number.parseFloat(group(codeOnly, 4)),
       });
       pendingTitle = null;
       skipNextFragment = true;
@@ -594,10 +611,10 @@ function legacyParseTranscript(
         ? pendingTitle.replace(/^[A-Z]{2,4}\d{3}[A-Z]?\s*/, '').trim()
         : '';
       currentSemester.courses.push({
-        name: title ? `${title} (${compactCodeOnly[1]})` : compactCodeOnly[1],
-        credits: Number.parseFloat(compactCodeOnly[2]),
-        grade: normalizeGradeToken(compactCodeOnly[3]),
-        gradePoint: Number.parseFloat(compactCodeOnly[4]),
+        name: title ? `${title} (${group(compactCodeOnly, 1)})` : group(compactCodeOnly, 1),
+        credits: Number.parseFloat(group(compactCodeOnly, 2)),
+        grade: normalizeGradeToken(group(compactCodeOnly, 3)),
+        gradePoint: Number.parseFloat(group(compactCodeOnly, 4)),
       });
       pendingTitle = null;
       skipNextFragment = true;
@@ -607,10 +624,10 @@ function legacyParseTranscript(
     const course = line.match(courseRe);
     if (course) {
       currentSemester.courses.push({
-        name: `${course[1]} ${course[2].trim()}`,
-        credits: Number.parseFloat(course[3]),
-        grade: normalizeGradeToken(course[4]),
-        gradePoint: Number.parseFloat(course[5]),
+        name: `${group(course, 1)} ${group(course, 2).trim()}`,
+        credits: Number.parseFloat(group(course, 3)),
+        grade: normalizeGradeToken(group(course, 4)),
+        gradePoint: Number.parseFloat(group(course, 5)),
       });
       pendingTitle = null;
       continue;
@@ -623,7 +640,7 @@ function legacyParseTranscript(
     }
 
     if (
-      !line[0].match(/\d/) &&
+      !/^\d/.test(line) &&
       line.length > 2 &&
       line.length < 100 &&
       !/^[A-Z]{2,4}\d{3}/.test(line)
