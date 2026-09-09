@@ -103,10 +103,13 @@ export function reorderSemesters(
   const srcIdx = semesters.findIndex((s) => s.id === srcId);
   const tgtIdx = semesters.findIndex((s) => s.id === tgtId);
   if (srcIdx < 0 || tgtIdx < 0) return [...semesters];
-  if (semesters[tgtIdx].summary) return [...semesters];
+  if (semesters[tgtIdx]?.summary) return [...semesters];
 
   const next = [...semesters];
   const [moved] = next.splice(srcIdx, 1);
+  // srcIdx came from findIndex, so the splice removed something; nothing to
+  // reinsert means nothing to reorder.
+  if (moved === undefined) return [...semesters];
   next.splice(tgtIdx, 0, moved);
   return next;
 }
