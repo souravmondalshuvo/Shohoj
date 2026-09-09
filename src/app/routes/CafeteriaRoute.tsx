@@ -48,7 +48,7 @@ function hoursSummary(
   todayIndex: number,
 ): { day: string; text: string; today: boolean }[] {
   return outlet.hours.map((intervals, dayIndex) => ({
-    day: DAY_NAMES[dayIndex],
+    day: DAY_NAMES[dayIndex] ?? '',
     today: dayIndex === todayIndex,
     text:
       intervals.length === 0 ? 'Closed' : intervals.map((i) => `${i.open} – ${i.close}`).join(', '),
