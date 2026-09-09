@@ -81,8 +81,8 @@ function to24h(hour: number, minute: number, meridiem: string): string {
 function parseRange(text: string): { start: string; end: string } | null {
   const m = RANGE_RE.exec(text);
   if (!m) return null;
-  const start = to24h(Number(m[1]), Number(m[2]), m[3]);
-  const end = to24h(Number(m[4]), Number(m[5]), m[6]);
+  const start = to24h(Number(m[1]), Number(m[2]), m[3] ?? '');
+  const end = to24h(Number(m[4]), Number(m[5]), m[6] ?? '');
   return end > start ? { start, end } : null;
 }
 
@@ -157,7 +157,7 @@ function dayFromHeaderCell(cell: string): string | null {
   if (DAY_NAMES.includes(upper)) return upper;
   if (upper.length < 3 || !/^[A-Z]+$/.test(upper)) return null;
   const matches = DAY_NAMES.filter((day) => day.startsWith(upper));
-  return matches.length === 1 ? matches[0] : null;
+  return matches.length === 1 ? (matches[0] ?? null) : null;
 }
 
 /** Which day each column holds, from a header row. Null when it is not one. */
@@ -254,11 +254,12 @@ export function parseConnectSchedule(text: string): ImportedSchedule {
           .toUpperCase()
           .split(/[^A-Z0-9]+/)
           .find((t) => CODE_RE.test(t));
-      if (range !== null && kind !== null && code !== undefined) {
+      const examDateText = examDate[1];
+      if (range !== null && kind !== null && code !== undefined && examDateText !== undefined) {
         // The exam table names the course, not the section, so it lands on
         // whichever section of that course the class table already gave us.
         const target = [...sections.values()].find((s) => s.courseCode === code);
-        if (target) applyExam(target, kind, examDate[1], range);
+        if (target) applyExam(target, kind, examDateText, range);
         else {
           warnings.push(
             `${kind === 'final' ? 'Final' : 'Mid'} exam for ${code} has no matching class row — skipped.`,
@@ -271,12 +272,25 @@ export function parseConnectSchedule(text: string): ImportedSchedule {
     // ── Class row.
     const range = parseRange(cells[0] ?? '');
     for (let i = 0; i < cells.length; i++) {
-      const cell = cells[i].trim();
+      // The index is load-bearing here — it is the day column — so the cell is
+      // read defensively rather than iterated. An absent cell is an empty one.
+      const cell = cells[i]?.trim() ?? '';
       if (cell === '') continue;
       const match = CELL_RE.exec(cell.toUpperCase());
       if (match === null) continue;
 
-      const section = upsert(match[1], match[2], match[3], match[4].trim());
+      const [, courseCode, sectionName, faculties, roomName] = match;
+      // All four groups are mandatory, so a match has them. Skipping rather than
+      // substituting keeps the rule this file is built on: report, never guess.
+      if (
+        courseCode === undefined ||
+        sectionName === undefined ||
+        faculties === undefined ||
+        roomName === undefined
+      ) {
+        continue;
+      }
+      const section = upsert(courseCode, sectionName, faculties, roomName.trim());
       // Only a positional row may take a day from the header: in a collapsed
       // row column i is not day i, and guessing would put the class on the
       // wrong day — the one thing this parser refuses to do.
