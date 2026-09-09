@@ -78,14 +78,14 @@ export function parseRoomCode(raw: string | null | undefined): ParsedRoom | null
   const code = raw.trim().toUpperCase();
   const match = ROOM_CODE_RE.exec(code);
   if (!match) return null;
-  const floor = parseInt(match[1], 10);
+  const floor = parseInt(match[1] ?? '', 10);
   if (floor === 0) return null;
   return {
     code,
     floor,
-    zone: match[2],
-    number: parseInt(match[3], 10),
-    kind: KIND_BY_LETTER[match[4]] ?? 'unknown',
+    zone: match[2] ?? '',
+    number: parseInt(match[3] ?? '', 10),
+    kind: KIND_BY_LETTER[match[4] ?? ''] ?? 'unknown',
   };
 }
 
