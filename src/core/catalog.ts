@@ -90,7 +90,7 @@ export const DEPT_META: Readonly<Record<DepartmentCode, DeptMeta>> = {
 // Returns the prefix portion of a course code (letters before the first digit).
 export function getCoursePrefix(code: unknown): string {
   const m = String(code).match(/^([A-Z]+)/);
-  return m ? m[1] : '';
+  return m?.[1] ?? '';
 }
 
 // Returns the owning department code for a course, or null if unknown.
