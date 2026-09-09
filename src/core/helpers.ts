@@ -206,11 +206,13 @@ export function getLastCompletedSemester(seasons?: readonly string[]): {
     (season) => (SEASON_ORDER as readonly string[]).indexOf(season) < curGlobalIdx,
   );
 
-  if (offeredBeforeCurrent.length > 0) {
-    return { season: offeredBeforeCurrent[offeredBeforeCurrent.length - 1], year: curYear };
-  }
+  // Reading the last offered season is the not-empty check. (The typed twin of
+  // this function in degreeProgress.ts took the same shape.)
+  const lastOffered = offeredBeforeCurrent[offeredBeforeCurrent.length - 1];
+  if (lastOffered !== undefined) return { season: lastOffered, year: curYear };
 
-  return { season: order[order.length - 1], year: curYear - 1 };
+  // A calendar with no seasons names no last completed semester.
+  return { season: order[order.length - 1] ?? '', year: curYear - 1 };
 }
 
 export function countSemesters(
