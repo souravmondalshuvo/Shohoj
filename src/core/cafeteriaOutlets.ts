@@ -164,8 +164,8 @@ function weekdayHours(
 export function outletTimeToMinutes(time: string): number | null {
   const match = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(time.trim());
   if (!match) return null;
-  const hour = parseInt(match[1], 10);
-  const minute = parseInt(match[2], 10);
+  const hour = parseInt(match[1] ?? '', 10);
+  const minute = parseInt(match[2] ?? '', 10);
   if (hour < 1 || hour > 12 || minute > 59) return null;
   const h24 = match[3] === 'PM' ? (hour % 12) + 12 : hour % 12;
   return h24 * 60 + minute;
@@ -212,7 +212,7 @@ export function outletStatusNow(outlet: CafeteriaOutlet, now: Date): OutletStatu
       return {
         state: 'closed',
         opensAt: interval.open,
-        opensDay: ahead === 0 ? 'today' : ahead === 1 ? 'tomorrow' : DAY_NAMES[day],
+        opensDay: ahead === 0 ? 'today' : ahead === 1 ? 'tomorrow' : (DAY_NAMES[day] ?? ''),
       };
     }
   }
