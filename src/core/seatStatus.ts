@@ -134,7 +134,7 @@ export function searchCourseSections(
   const ranked: Array<{ rank: number; group: CourseSeatGroup }> = [];
 
   for (const [courseCode, rawSections] of index) {
-    const courseName = rawSections.length > 0 ? rawSections[0].courseName : '';
+    const courseName = rawSections[0]?.courseName ?? '';
     const rank = matchRank(courseCode, courseName, q);
     if (rank < 0) continue;
 
