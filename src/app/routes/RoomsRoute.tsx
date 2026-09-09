@@ -70,6 +70,17 @@ const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
   'SATURDAY',
 ];
 
+/**
+ * The weekday name for a date.
+ *
+ * `getDay()` is 0–6 by specification, so the lookup always lands — but its type
+ * is plain `number`, which `noUncheckedIndexedAccess` cannot narrow. The
+ * fallback exists for the type, not for a case that happens.
+ */
+function weekdayOf(date: Date): WeekdayName {
+  return WEEKDAY_BY_INDEX[date.getDay()] ?? 'SUNDAY';
+}
+
 const TYPE_FILTERS: readonly { key: RoomTypeKey | 'ALL'; label: string }[] = [
   { key: 'ALL', label: 'All' },
   { key: 'C', label: 'Class' },
@@ -234,7 +245,7 @@ function RoomWeekDialog({
 export function Component() {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
-  const [day, setDay] = useState<WeekdayName>(() => WEEKDAY_BY_INDEX[new Date().getDay()]);
+  const [day, setDay] = useState<WeekdayName>(() => weekdayOf(new Date()));
   const [minute, setMinute] = useState<number>(nowMinute);
   const [showAll, setShowAll] = useState(false);
   const [roomType, setRoomType] = useState<RoomTypeKey | 'ALL'>('ALL');
@@ -386,7 +397,7 @@ export function Component() {
                 className="btn-secondary btn-sm"
                 title="Jump to right now"
                 onClick={() => {
-                  setDay(WEEKDAY_BY_INDEX[new Date().getDay()]);
+                  setDay(weekdayOf(new Date()));
                   setMinute(nowMinute());
                 }}
               >
