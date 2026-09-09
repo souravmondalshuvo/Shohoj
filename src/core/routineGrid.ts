@@ -190,7 +190,8 @@ function assignSubColumns(blocks: GridBlock[]): void {
       for (const b of cluster) {
         let placed = -1;
         for (let c = 0; c < colEnds.length; c++) {
-          if (colEnds[c] <= b.startMin) {
+          // An absent column end cannot be free, so it is never placed there.
+          if ((colEnds[c] ?? Infinity) <= b.startMin) {
             placed = c;
             break;
           }
