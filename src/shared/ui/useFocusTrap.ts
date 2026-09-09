@@ -41,6 +41,7 @@ export function trapTabKey(
   if (focusable.length === 0) return;
   const first = focusable[0];
   const last = focusable[focusable.length - 1];
+  if (first === undefined || last === undefined) return;
   const active = document.activeElement;
   if (event.shiftKey && (active === first || active === dialogRef.current)) {
     event.preventDefault();
