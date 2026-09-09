@@ -112,7 +112,7 @@ function gpaCoreUsesBestGradePolicyImpl(options: RetakePolicyOptions = {}): bool
 
 export function getCourseCode(courseName: string): string | null {
   const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 export function getCourseIdentity(courseName: string): string {
