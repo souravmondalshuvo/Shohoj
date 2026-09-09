@@ -155,7 +155,7 @@ function parseTokens(tokens: readonly Token[]): PrereqNode | null {
       if (!next) return null;
       children.push(next);
     }
-    return children.length === 1 ? children[0] : { kind: 'or', children };
+    return children.length === 1 ? (children[0] ?? null) : { kind: 'or', children };
   }
 
   function parseTerm(): PrereqNode | null {
@@ -168,7 +168,7 @@ function parseTokens(tokens: readonly Token[]): PrereqNode | null {
       if (!next) return null;
       children.push(next);
     }
-    return children.length === 1 ? children[0] : { kind: 'and', children };
+    return children.length === 1 ? (children[0] ?? null) : { kind: 'and', children };
   }
 
   function parseFactor(): PrereqNode | null {
@@ -358,7 +358,7 @@ export interface UnlockMap {
  */
 export function coursePrefix(code: string | null | undefined): string {
   const match = /^([A-Z]{2,4})\d/.exec(normalizePrereqCode(code));
-  return match ? match[1] : '';
+  return match?.[1] ?? '';
 }
 
 /**
@@ -530,7 +530,8 @@ export function buildUnlockMap(
   const oneAway = locked
     .filter((code) => {
       const missing = evaluated.get(code)?.missing ?? [];
-      return missing.length === 1 && unlockedNow.has(missing[0]);
+      const only = missing.length === 1 ? missing[0] : undefined;
+      return only !== undefined && unlockedNow.has(only);
     })
     .map((code) => toCandidate(code, 0));
 
@@ -539,7 +540,10 @@ export function buildUnlockMap(
   unlocked.sort((a, b) => b.unlockCount - a.unlockCount || a.code.localeCompare(b.code));
   oneAway.sort((a, b) => a.code.localeCompare(b.code));
 
-  const highestLeverage = unlocked.length > 0 && unlocked[0].unlockCount > 0 ? unlocked[0] : null;
+  // The leader only counts as leverage if it actually unlocks something; having
+  // a leader at all is the non-empty check.
+  const leader = unlocked[0];
+  const highestLeverage = leader !== undefined && leader.unlockCount > 0 ? leader : null;
 
   return { unlocked, oneAway, highestLeverage, failedOpenCount, hasPrereqData };
 }
