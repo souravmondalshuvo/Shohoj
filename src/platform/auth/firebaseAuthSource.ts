@@ -70,8 +70,9 @@ export interface FirebaseAuthSource extends AuthSource {
  */
 function supportedCampusList(): string {
   const names = Object.values(UNIVERSITIES).map((p) => p.shortName);
-  if (names.length === 1) return names[0];
-  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
+  const only = names.length === 1 ? names[0] : undefined;
+  if (only !== undefined) return only;
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1] ?? ''}`;
 }
 
 export const REJECTED_MESSAGE = `⚠ Sign in with a verified ${supportedCampusList()} Google account`;
