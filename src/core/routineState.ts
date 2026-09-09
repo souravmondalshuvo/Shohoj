@@ -145,6 +145,7 @@ export function buildClashMap(routine: readonly NormalizedSection[]): ClashMap {
     for (let j = i + 1; j < routine.length; j++) {
       const a = routine[i];
       const b = routine[j];
+      if (a === undefined || b === undefined) continue;
       const classClash = hasClassClash(a, b);
       const examClash = hasExamClash(a, b);
       if (!classClash && !examClash) continue;
