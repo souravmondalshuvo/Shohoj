@@ -114,7 +114,8 @@ export default function CourseNameInput({
       // Only act on an explicit active option; never submit a surrounding form.
       if (activeIndex >= 0) {
         e.preventDefault();
-        choose(suggestions[activeIndex]);
+        const picked = suggestions[activeIndex];
+        if (picked !== undefined) choose(picked);
       }
     }
     // Tab and everything else fall through to default browser handling.
