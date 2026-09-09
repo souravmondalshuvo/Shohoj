@@ -21,8 +21,9 @@ const GLOBAL_SEASON_ORDER: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fal
 /** Parse a "Spring 2024 (…)" style name into its season + year, or null. */
 export function parseSemesterSeasonYear(name: string | null | undefined): SeasonYear | null {
   const match = String(name ?? '').match(/(Spring|Summer|Fall)\s+(\d{4})/);
-  if (!match) return null;
-  return { season: match[1] as SemesterSeason, year: parseInt(match[2], 10) };
+  const [, season, year] = match ?? [];
+  if (season === undefined || year === undefined) return null;
+  return { season: season as SemesterSeason, year: parseInt(year, 10) };
 }
 
 /**
@@ -48,7 +49,7 @@ export function getCurrentSemesterForDeptSeasons(
     const curIdx = GLOBAL_SEASON_ORDER.indexOf(season);
     for (let offset = 1; offset <= 3; offset++) {
       const candidate = GLOBAL_SEASON_ORDER[(curIdx + offset) % 3];
-      if (deptSeasons.includes(candidate)) {
+      if (candidate !== undefined && deptSeasons.includes(candidate)) {
         season = candidate;
         if (GLOBAL_SEASON_ORDER.indexOf(candidate) <= curIdx) year = currentYear + 1;
         break;
@@ -65,11 +66,16 @@ export function nextSemester(
   year: number,
   deptSeasons: readonly SemesterSeason[],
 ): SeasonYear {
+  const first = deptSeasons[0];
+  // A department with no calendar has nothing to advance along, so nothing does.
+  if (first === undefined) return { season, year };
+
   const idx = deptSeasons.indexOf(season);
-  if (idx === -1 || idx === deptSeasons.length - 1) {
-    return { season: deptSeasons[0], year: year + 1 };
-  }
-  return { season: deptSeasons[idx + 1], year };
+  const next = deptSeasons[idx + 1];
+  // Not on the calendar, or at its end: wrap to its first season, next year.
+  // "There is no next season" is one question, asked once.
+  if (idx === -1 || next === undefined) return { season: first, year: year + 1 };
+  return { season: next, year };
 }
 
 /**
