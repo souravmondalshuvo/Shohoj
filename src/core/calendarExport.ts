@@ -88,7 +88,9 @@ function utcStamp(now: Date): string {
  * for tests.
  */
 export function firstOnOrAfter(startDate: string, weekday: WeekdayName): string {
-  const [y, m, d] = startDate.split('-').map(Number);
+  // Missing parts were already NaN through Number(undefined); the defaults just
+  // say so, and Date.UTC of a NaN is the invalid date this then rejects.
+  const [y = NaN, m = NaN, d = NaN] = startDate.split('-').map(Number);
   const base = new Date(Date.UTC(y, m - 1, d));
   const delta = (DOW_INDEX[weekday] - base.getUTCDay() + 7) % 7;
   const out = new Date(base.getTime() + delta * 86_400_000);
