@@ -98,6 +98,9 @@ export function feedBadgeTitle(
   fetchedAt: number | null | undefined,
   now: number = Date.now(),
 ): string {
-  if (!feedSourceHasAge(source)) return FEED_SOURCE_TITLE[source as string];
+  // A source with a fixed title is exactly a source that has no age, so the
+  // lookup answers both questions at once — no `as string` needed to re-ask.
+  const fixedTitle = typeof source === 'string' ? FEED_SOURCE_TITLE[source] : undefined;
+  if (fixedTitle !== undefined) return fixedTitle;
   return `Source: ${feedSourceLabel(source)} • Updated ${feedAgeLabel(fetchedAt, now)}`;
 }
