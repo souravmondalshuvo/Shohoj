@@ -398,7 +398,7 @@ export function universityForEmail(email: unknown): UniversityProfile | null {
   if (parts.length !== 2) return null;
   if (!parts[0]) return null;
 
-  const host = parts[1].trim().toLowerCase();
+  const host = (parts[1] ?? '').trim().toLowerCase();
   if (!host) return null;
 
   for (const profile of Object.values(UNIVERSITIES)) {
