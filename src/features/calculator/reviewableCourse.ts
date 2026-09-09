@@ -17,7 +17,7 @@ export function parseReviewableCode(courseName: string | null | undefined): stri
     raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/i) ||
     raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)$/i) ||
     raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/i);
-  return match ? match[1].toUpperCase() : '';
+  return match?.[1]?.toUpperCase() ?? '';
 }
 
 /**
