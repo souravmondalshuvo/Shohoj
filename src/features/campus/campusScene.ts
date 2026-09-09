@@ -273,9 +273,8 @@ export function createCampusScene(
     const reducedMotion =
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-    const maxDataFloor = model.floors.length
-        ? model.floors[model.floors.length - 1].floor
-        : PODIUM_FLOORS_MIN;
+    const topDataFloor = model.floors[model.floors.length - 1];
+    const maxDataFloor = topDataFloor ? topDataFloor.floor : PODIUM_FLOORS_MIN;
     const maxFloor = Math.max(PUBLISHED_TOP_FLOOR, maxDataFloor);
     const dataFloors = new Map(model.floors.map((f) => [f.floor, f]));
     const towerHeight = (maxFloor - PODIUM_FLOORS_MIN) * FLOOR_GAP;
