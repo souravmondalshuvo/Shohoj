@@ -51,6 +51,17 @@ const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
   'SATURDAY',
 ];
 
+/**
+ * The weekday name for a date.
+ *
+ * `getDay()` is 0–6 by specification, so the lookup always lands — but its type
+ * is plain `number`, which `noUncheckedIndexedAccess` cannot narrow. The
+ * fallback exists for the type, not for a case that happens.
+ */
+function weekdayOf(date: Date): WeekdayName {
+  return WEEKDAY_BY_INDEX[date.getDay()] ?? 'SUNDAY';
+}
+
 const FLOOR_STORAGE_KEY = 'shohoj_campus_floor_v1';
 
 // Scene palette — matches the shell's green/red semantics; the canvas keeps
@@ -72,7 +83,7 @@ interface NowStamp {
 
 function nowStamp(): NowStamp {
   const d = new Date();
-  return { day: WEEKDAY_BY_INDEX[d.getDay()], minute: d.getHours() * 60 + d.getMinutes() };
+  return { day: weekdayOf(d), minute: d.getHours() * 60 + d.getMinutes() };
 }
 
 function fmtTime(minute: number): string {
@@ -270,7 +281,8 @@ export function Component() {
       return;
     }
     const matches = [...model.roomsByCode.keys()].filter((code) => code.startsWith(query));
-    if (matches.length === 1) selectRoom(matches[0]);
+    const onlyMatch = matches.length === 1 ? matches[0] : undefined;
+    if (onlyMatch !== undefined) selectRoom(onlyMatch);
   }, [model, search, selectRoom]);
 
   // Mirror the selection into ?room= so it's shareable — but only after the
