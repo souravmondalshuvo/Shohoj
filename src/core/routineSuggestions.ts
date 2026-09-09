@@ -124,7 +124,10 @@ function totalGapMinutes(row: readonly NormalizedSection[]): number {
   for (const slots of byDay.values()) {
     slots.sort((a, b) => a.startMin - b.startMin);
     for (let i = 1; i < slots.length; i++) {
-      const gap = slots[i].startMin - slots[i - 1].endMin;
+      const prev = slots[i - 1];
+      const cur = slots[i];
+      if (prev === undefined || cur === undefined) continue;
+      const gap = cur.startMin - prev.endMin;
       if (gap > 0) total += gap;
     }
   }
@@ -153,7 +156,13 @@ function enumerate(
   const idx = new Array(perCourse.length).fill(0);
   let truncated = false;
   while (true) {
-    const row: NormalizedSection[] = perCourse.map((list, i) => list[idx[i]]);
+    const row = perCourse
+      .map((list, i) => list[idx[i] ?? 0])
+      .filter((section): section is NormalizedSection => section !== undefined);
+    // Every list is non-empty (checked above) and the cursor is kept in range by
+    // the odometer below, so a short row would mean the two had fallen out of
+    // step — emit no half-built combination if they ever do.
+    if (row.length !== perCourse.length) break;
     combos.push(row);
     if (combos.length >= cap) {
       truncated = true;
@@ -162,7 +171,7 @@ function enumerate(
     let i = perCourse.length - 1;
     while (i >= 0) {
       idx[i] += 1;
-      if (idx[i] < perCourse[i].length) break;
+      if (idx[i] < (perCourse[i]?.length ?? 0)) break;
       idx[i] = 0;
       i -= 1;
     }
@@ -174,7 +183,9 @@ function enumerate(
 function anyClassClash(row: NormalizedSection[]): boolean {
   for (let i = 0; i < row.length; i++) {
     for (let j = i + 1; j < row.length; j++) {
-      if (hasClassClash(row[i], row[j])) return true;
+      const a = row[i];
+      const b = row[j];
+      if (a !== undefined && b !== undefined && hasClassClash(a, b)) return true;
     }
   }
   return false;
@@ -184,7 +195,9 @@ function countExamClashPairs(row: NormalizedSection[]): number {
   let n = 0;
   for (let i = 0; i < row.length; i++) {
     for (let j = i + 1; j < row.length; j++) {
-      if (hasExamClash(row[i], row[j])) n += 1;
+      const a = row[i];
+      const b = row[j];
+      if (a !== undefined && b !== undefined && hasExamClash(a, b)) n += 1;
     }
   }
   return n;
