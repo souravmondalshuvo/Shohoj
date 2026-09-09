@@ -43,7 +43,8 @@ import type { SemesterSeason } from '../../core/types.ts';
 /** Legacy's course label: the code in trailing parens, else a clipped name. */
 function courseLabel(name: string): string {
   const match = name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
-  if (match) return match[1];
+  const code = match?.[1];
+  if (code !== undefined) return code;
   return name.length > 30 ? `${name.slice(0, 27)}...` : name;
 }
 
