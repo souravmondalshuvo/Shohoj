@@ -82,10 +82,10 @@ function safeRead(storage: StorageLike | null, key: string): CacheEntry | null {
   }
   if (!parsed || typeof parsed !== 'object') return null;
   const obj = parsed as Record<string, unknown>;
-  if (typeof obj.fetchedAt !== 'number' || !Array.isArray(obj.payload)) return null;
+  if (typeof obj['fetchedAt'] !== 'number' || !Array.isArray(obj['payload'])) return null;
 
-  const etag = typeof obj.etag === 'string' ? obj.etag : null;
-  return { fetchedAt: obj.fetchedAt, etag, payload: obj.payload };
+  const etag = typeof obj['etag'] === 'string' ? obj['etag'] : null;
+  return { fetchedAt: obj['fetchedAt'], etag, payload: obj['payload'] };
 }
 
 function safeWrite(storage: StorageLike | null, key: string, entry: CacheEntry): void {
