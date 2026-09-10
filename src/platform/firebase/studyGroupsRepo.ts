@@ -22,6 +22,7 @@ import {
   type GroupMember,
   type StudyGroup,
 } from '../../core/studyGroups.ts';
+import type { FieldValue } from 'firebase/firestore';
 
 export interface GroupMembership {
   groupId: string;
@@ -55,16 +56,34 @@ export interface StudyGroupsRepo {
 export const REPORT_REASON_MAX = 300;
 
 /**
- * The document creating a study group writes — pure, so it can be tested without
- * Firestore (#667). `university` and `createdAt` are the caller's to supply.
+ * The document creating a study group writes. Mirrors `validStudyGroupPayload`
+ * in firestore.rules: required = its `hasAll`, optional = `hasOnly` minus
+ * `hasAll`. `university` is optional to the rule but always written here.
+ */
+export type StudyGroupWrite = {
+  courseCode: string;
+  title: string;
+  mode: GroupDraft['mode'];
+  contactLink: string;
+  capacity: number;
+  creatorUid: string;
+  createdAt: FieldValue;
+  description?: string;
+  schedule?: string;
+  university?: string;
+};
+
+/**
+ * Build a new study group — pure, so it can be tested without Firestore (#667).
+ * `university` and `createdAt` are the caller's to supply.
  */
 export function studyGroupWrite(
   draft: GroupDraft,
   uid: string,
   university: string,
-  createdAt: unknown,
-): Record<string, unknown> {
-  const data: Record<string, unknown> = {
+  createdAt: FieldValue,
+): StudyGroupWrite {
+  return {
     courseCode: draft.courseCode,
     title: draft.title,
     mode: draft.mode,
@@ -74,10 +93,10 @@ export function studyGroupWrite(
     // Required by rules and pinned to this session's own campus.
     university,
     createdAt,
+    // Optional fields are left out when empty — absent, never undefined.
+    ...(draft.description === '' ? {} : { description: draft.description }),
+    ...(draft.schedule === '' ? {} : { schedule: draft.schedule }),
   };
-  if (draft.description !== '') data['description'] = draft.description;
-  if (draft.schedule !== '') data['schedule'] = draft.schedule;
-  return data;
 }
 
 async function defaultBackend(
