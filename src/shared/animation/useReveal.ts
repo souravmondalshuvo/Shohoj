@@ -77,8 +77,8 @@ export function useReveal(): void {
     // value is written explicitly so the last frame lands exactly on target.
     const animateCounter = (el: HTMLElement) => {
       const numEl = el.querySelector<HTMLElement>('.stat-num');
-      const count = Number.parseInt(el.dataset.count ?? '', 10);
-      const suffix = el.dataset.suffix || '';
+      const count = Number.parseInt(el.dataset['count'] ?? '', 10);
+      const suffix = el.dataset['suffix'] || '';
       if (!numEl || Number.isNaN(count) || count === 0) return;
       numEl.classList.add('counting');
       const t0 = performance.now();
