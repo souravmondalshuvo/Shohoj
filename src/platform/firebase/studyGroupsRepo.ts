@@ -110,7 +110,7 @@ async function defaultBackend(
       const snap = await getDocs(query(members, where('uid', '==', uid), qLimit(500)));
       return snap.docs.flatMap((d) => {
         const data = d.data();
-        return typeof data.groupId === 'string' ? [{ groupId: data.groupId }] : [];
+        return typeof data['groupId'] === 'string' ? [{ groupId: data['groupId'] }] : [];
       });
     },
     async listMembers(groupId) {
@@ -121,8 +121,8 @@ async function defaultBackend(
         return snap.docs.map((d) => {
           const data = d.data();
           return {
-            uid: typeof data.uid === 'string' ? data.uid : '',
-            email: typeof data.email === 'string' ? data.email : '',
+            uid: typeof data['uid'] === 'string' ? data['uid'] : '',
+            email: typeof data['email'] === 'string' ? data['email'] : '',
           };
         });
       } catch {
@@ -142,8 +142,8 @@ async function defaultBackend(
         university: campusStamp(auth),
         createdAt: serverTimestamp(),
       };
-      if (draft.description !== '') data.description = draft.description;
-      if (draft.schedule !== '') data.schedule = draft.schedule;
+      if (draft.description !== '') data['description'] = draft.description;
+      if (draft.schedule !== '') data['schedule'] = draft.schedule;
       const ref = await addDoc(groups, data);
       return ref.id;
     },
