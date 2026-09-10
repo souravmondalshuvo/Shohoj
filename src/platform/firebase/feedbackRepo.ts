@@ -104,16 +104,16 @@ async function defaultBackend(
       const snap = await getDocs(query(feedback, orderBy('createdAt', 'desc'), qLimit(limit)));
       return snap.docs.flatMap((d) => {
         const data = d.data();
-        if (!isFeedbackType(data.type)) return [];
+        if (!isFeedbackType(data['type'])) return [];
         const item: FeedbackItem = {
           id: d.id,
-          type: data.type,
-          text: typeof data.text === 'string' ? data.text : '',
-          anonymous: data.anonymous === true,
+          type: data['type'],
+          text: typeof data['text'] === 'string' ? data['text'] : '',
+          anonymous: data['anonymous'] === true,
           createdAtMs:
-            typeof data.createdAt?.toMillis === 'function' ? data.createdAt.toMillis() : 0,
+            typeof data['createdAt']?.toMillis === 'function' ? data['createdAt'].toMillis() : 0,
         };
-        if (typeof data.uid === 'string') item.uid = data.uid;
+        if (typeof data['uid'] === 'string') item.uid = data['uid'];
         return [item];
       });
     },
@@ -121,8 +121,8 @@ async function defaultBackend(
       const snap = await getDocs(query(upvotes, where('uid', '==', uid), qLimit(500)));
       return snap.docs.flatMap((d) => {
         const data = d.data();
-        return typeof data.feedbackId === 'string'
-          ? [{ feedbackId: data.feedbackId, uid: data.uid }]
+        return typeof data['feedbackId'] === 'string'
+          ? [{ feedbackId: data['feedbackId'], uid: data['uid'] }]
           : [];
       });
     },
@@ -138,7 +138,7 @@ async function defaultBackend(
         university: campusStamp(auth),
         createdAt: serverTimestamp(),
       };
-      if (!draft.anonymous) data.uid = uid;
+      if (!draft.anonymous) data['uid'] = uid;
       await addDoc(feedback, data);
     },
     async addUpvote(feedbackId, uid) {
