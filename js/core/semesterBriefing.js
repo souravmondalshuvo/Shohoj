@@ -198,16 +198,25 @@ function sbCrunchOver(run) {
     let tightestGapHours = null;
     let sameDayCount = 0;
     for (let i = 1; i < run.length; i++) {
-        if (run[i].sameDayAsPrev) sameDayCount++;
-        const gapHours = run[i].gapHoursFromPrev;
+        const entry = run[i];
+        if (entry === undefined) continue;
+        if (entry.sameDayAsPrev) sameDayCount++;
+        const gapHours = entry.gapHoursFromPrev;
         if (gapHours !== null && (tightestGapHours === null || gapHours < tightestGapHours)) {
             tightestGapHours = gapHours;
         }
     }
-    const last = run.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), run[0]);
+    const first = run[0];
+    // Both callers guard against an empty run, so this is not reached today. It
+    // matches the typed twin (#663): an empty run measures zero, where reading
+    // run[0].absStart would have thrown.
+    if (first === undefined) {
+        return { count: 0, spanHours: 0, tightestGapHours: null, sameDayCount: 0 };
+    }
+    const last = run.reduce((max, e) => (e.absEnd > max.absEnd ? e : max), first);
     return {
         count: run.length,
-        spanHours: (last.absEnd - run[0].absStart) / 60,
+        spanHours: (last.absEnd - first.absStart) / 60,
         tightestGapHours,
         sameDayCount,
     };
