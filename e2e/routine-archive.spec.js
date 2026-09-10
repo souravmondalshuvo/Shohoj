@@ -51,6 +51,14 @@ const LISTING = {
     ],
 };
 
+// Inside Summer 2026 (classes 2026-06-09 → 2026-09-08) and before Fall 2026
+// starts, so the archived semester reads running and the live one reads
+// upcoming — the exact relationship these tests are about. Pinned because it
+// is a relationship with today, and today keeps moving: on 2026-09-09 this
+// file went red on its own, having asserted a semester was in progress a day
+// after it ended (#665).
+const NOW = new Date('2026-07-19T10:00:00');
+
 async function boot(page, { listing = LISTING } = {}) {
     page.on('dialog', (d) => d.accept());
     // addInitScript runs on every navigation, so clearing unconditionally would
@@ -79,6 +87,8 @@ async function boot(page, { listing = LISTING } = {}) {
         if (url === `${WORKER}/api/semesters/20262`) return json(SUMMER);
         return route.abort();
     });
+    // Before the navigation: the semester is classified as the page loads.
+    await page.clock.setFixedTime(NOW);
     await unlockCalculator(page);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await selectCalcTab(page, 'routine');
@@ -100,7 +110,7 @@ test('choosing Summer 2026 loads it, and it reads as the semester in progress', 
     await picker(page).selectOption('20262');
 
     // The complaint that started this: the tab could only ever show next
-    // semester. Summer 2026 contains today, so it reads running.
+    // semester. NOW sits inside Summer 2026, so it reads running.
     await expect(badge(page)).toContainText('Summer 2026');
     await expect(badge(page)).toHaveClass(/routine-semester--running/);
 
