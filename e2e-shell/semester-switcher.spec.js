@@ -81,7 +81,15 @@ const LIVE = [section(1, 'CSE110', 'Programming Language I', 20263, '2026-10-03'
 const SUMMER = [section(2, 'MAT110', 'Differential Calculus', 20262, '2026-06-09', '2026-09-08')];
 
 /** Serve the CDN and the Worker archive; abort anything else. */
+// Inside Summer 2026 (classes to 2026-09-08) and before Fall 2026 begins, so
+// the archived semester reads running and the live one upcoming. The legacy
+// twin of this file went red on 2026-09-09 for want of this pin (#665); this
+// one would have too, had the legacy suite not failed first and stopped the
+// job before the shell E2E step ran.
+const NOW = new Date('2026-07-19T10:00:00');
+
 async function boot(page, { listing = LISTING } = {}) {
+  await page.clock.setFixedTime(NOW);
   await page.addInitScript((globals) => {
     Object.assign(window, globals);
   }, GLOBALS);
@@ -113,8 +121,8 @@ test('choosing an archived semester loads that semester', async ({ page }) => {
 
   await picker.selectOption('20262');
 
-  // The badge is the proof the data actually changed source: Summer 2026 is
-  // running today, which is the whole complaint that started this.
+  // The badge is the proof the data actually changed source: NOW sits inside
+  // Summer 2026, which is the whole complaint that started this.
   await expect(page.getByTestId('routine-semester')).toContainText('Summer 2026');
   await expect(page.getByTestId('routine-semester')).toHaveClass(/routine-semester--running/);
 });
