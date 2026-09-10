@@ -24,11 +24,12 @@ const logger = createLogger({ base: { module: 'calculator.catalog' } });
 function toSuggestion(raw: unknown): CourseSuggestion | null {
   if (raw === null || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  const code = typeof r.code === 'string' ? r.code.trim() : '';
-  const name = typeof r.name === 'string' ? r.name : '';
-  const credits = typeof r.credits === 'number' && Number.isFinite(r.credits) ? r.credits : NaN;
+  const code = typeof r['code'] === 'string' ? r['code'].trim() : '';
+  const name = typeof r['name'] === 'string' ? r['name'] : '';
+  const credits =
+    typeof r['credits'] === 'number' && Number.isFinite(r['credits']) ? r['credits'] : NaN;
   if (!code || !name || Number.isNaN(credits)) return null;
-  const full = typeof r.full === 'string' && r.full.trim() ? r.full : `${name} (${code})`;
+  const full = typeof r['full'] === 'string' && r['full'].trim() ? r['full'] : `${name} (${code})`;
   return { code, name, full, credits };
 }
 
