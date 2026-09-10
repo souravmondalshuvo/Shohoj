@@ -50,7 +50,7 @@ async function defaultBackend(
   return {
     async getDocData(uid) {
       const snap = await getDoc(ref(uid));
-      return { exists: snap.exists(), data: snap.exists() ? snap.data()?.data : undefined };
+      return { exists: snap.exists(), data: snap.exists() ? snap.data()?.['data'] : undefined };
     },
     async setDocData(uid, dataJson) {
       await setDoc(ref(uid), { data: dataJson, updatedAt: serverTimestamp() }, { merge: true });
@@ -59,7 +59,7 @@ async function defaultBackend(
       return onSnapshot(
         ref(uid),
         (snap) =>
-          next({ exists: snap.exists(), data: snap.exists() ? snap.data()?.data : undefined }),
+          next({ exists: snap.exists(), data: snap.exists() ? snap.data()?.['data'] : undefined }),
         (err) => onError?.(err),
       );
     },
