@@ -740,8 +740,8 @@ export function createCampusScene(
         mesh.position.set(0, baseY, 0);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        mesh.userData.floor = floor;
-        mesh.userData.interactive = interactive;
+        mesh.userData['floor'] = floor;
+        mesh.userData['interactive'] = interactive;
         floorGroup.add(mesh);
 
         // Number label billboarded at the slab's front-right edge — always
@@ -894,7 +894,7 @@ export function createCampusScene(
                     cz + (row - (zone.rooms.length / 2 - 0.5) / 2) * (ROOM_SIZE + 0.5),
                 );
                 mesh.castShadow = true;
-                mesh.userData.roomCode = room.code;
+                mesh.userData['roomCode'] = room.code;
                 if (!reducedMotion) mesh.scale.setScalar(0.001);
                 roomGroup.add(mesh);
                 roomEntries.push({
@@ -1059,7 +1059,7 @@ export function createCampusScene(
         shellMaterial.opacity += (shellTargetOpacity - shellMaterial.opacity) * k;
         shellEdgesMaterial.opacity +=
             (shellEdgesTargetOpacity - shellEdgesMaterial.opacity) * k;
-        const fresnelOpacity = fresnelMaterial.uniforms.uOpacity as { value: number };
+        const fresnelOpacity = fresnelMaterial.uniforms['uOpacity'] as { value: number };
         fresnelOpacity.value += (fresnelTargetOpacity - fresnelOpacity.value) * k;
 
         if (!reducedMotion) {
@@ -1094,7 +1094,7 @@ export function createCampusScene(
         );
         raycaster.setFromCamera(pointer, camera);
         const roomHit = raycaster.intersectObjects(roomGroup.children, false)[0];
-        const code = roomHit?.object.userData.roomCode;
+        const code = roomHit?.object.userData['roomCode'];
         return typeof code === 'string' ? code : null;
     }
 
@@ -1112,8 +1112,8 @@ export function createCampusScene(
         raycaster.setFromCamera(pointer, camera);
         const floorHit = raycaster
             .intersectObjects(floorGroup.children, false)
-            .find((hit) => hit.object.userData.interactive === true);
-        const floor = floorHit?.object.userData.floor;
+            .find((hit) => hit.object.userData['interactive'] === true);
+        const floor = floorHit?.object.userData['floor'];
         if (typeof floor === 'number') options.onFloorClick?.(floor);
     }
 
@@ -1141,7 +1141,7 @@ export function createCampusScene(
         }
         tooltipTitle.textContent = info.title;
         tooltipDetail.textContent = info.detail;
-        tooltip.dataset.status = info.status;
+        tooltip.dataset['status'] = info.status;
         const rect = renderer.domElement.getBoundingClientRect();
         tooltip.style.left = `${event.clientX - rect.left}px`;
         tooltip.style.top = `${event.clientY - rect.top}px`;
