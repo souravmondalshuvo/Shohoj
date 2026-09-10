@@ -62,7 +62,14 @@ function enumerate(perCourse, cap) {
     const idx = new Array(perCourse.length).fill(0);
     let truncated = false;
     while (true) {
-        const row = perCourse.map((list, i) => list[idx[i]]);
+        const row = perCourse
+            .map((list, i) => list[idx[i] ?? 0])
+            .filter((section) => section !== undefined);
+        // Unreachable: suggestCombinations only passes non-empty, dense lists, and
+        // the odometer keeps the cursor in range. Matches the typed twin (#663) so
+        // a future caller that breaks that gets no half-built combination from
+        // either half.
+        if (row.length !== perCourse.length) break;
         combos.push(row);
         if (combos.length >= cap) { truncated = true; break; }
         let i = perCourse.length - 1;
