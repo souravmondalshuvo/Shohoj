@@ -21,8 +21,8 @@ function mount() {
   const attemptedHost = document.getElementById('totalAttempted');
   const earnedHost = document.getElementById('totalEarned');
   if (attemptedHost && earnedHost) {
-    attemptedHost.dataset.reactCgpaCredit = 'attempted';
-    earnedHost.dataset.reactCgpaCredit = 'earned';
+    attemptedHost.dataset['reactCgpaCredit'] = 'attempted';
+    earnedHost.dataset['reactCgpaCredit'] = 'earned';
     window.__SHOHOJ_REACT_CREDIT_TOTALS__ = true;
     createRoot(attemptedHost).render(<CgpaCreditTotal metric="attempted" />);
     createRoot(earnedHost).render(<CgpaCreditTotal metric="earned" />);
