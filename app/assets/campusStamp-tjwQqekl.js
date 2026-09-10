@@ -1,0 +1,1 @@
+import{d as e}from"./AuthProvider-C1kdpjYn.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
