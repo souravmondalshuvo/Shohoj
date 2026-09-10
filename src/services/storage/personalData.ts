@@ -251,40 +251,40 @@ export function applyPersonalSlices(
   if (snapshot === null || typeof snapshot !== 'object') return;
   const snap = snapshot as Record<string, unknown>;
 
-  const routine = cleanRoutine(snap.routine);
+  const routine = cleanRoutine(snap['routine']);
   // Both keys on purpose: a student who uses the shell on one device and legacy
   // on another has one routine, not two.
   if (routine) for (const key of ROUTINE_KEYS) writeJson(store, key, routine);
 
-  if (uid !== null && Array.isArray(snap.myReviews)) {
+  if (uid !== null && Array.isArray(snap['myReviews'])) {
     const all = readJson(store, MY_REVIEWS_KEY);
     const merged: Record<string, unknown> =
       all !== null && typeof all === 'object' ? { ...(all as Record<string, unknown>) } : {};
-    merged[uid] = snap.myReviews
+    merged[uid] = snap['myReviews']
       .filter((entry) => entry !== null && typeof entry === 'object')
       .slice(0, MAX_REVIEWS);
     writeJson(store, MY_REVIEWS_KEY, merged);
   }
 
-  if (Array.isArray(snap.seatWatches)) {
+  if (Array.isArray(snap['seatWatches'])) {
     writeJson(
       store,
       SEAT_WATCH_KEY,
-      snap.seatWatches
+      snap['seatWatches']
         .filter((watch) => watch !== null && typeof watch === 'object')
         .slice(0, MAX_WATCHES),
     );
   }
 
-  if (typeof snap.seatAlertsEnabled === 'boolean') {
+  if (typeof snap['seatAlertsEnabled'] === 'boolean') {
     try {
-      store.setItem(SEAT_ALERTS_KEY, snap.seatAlertsEnabled ? '1' : '0');
+      store.setItem(SEAT_ALERTS_KEY, snap['seatAlertsEnabled'] ? '1' : '0');
     } catch {
       /* storage off */
     }
   }
 
-  if (snap.profileSnapshot !== null && typeof snap.profileSnapshot === 'object') {
-    writeJson(store, PROFILE_KEY, snap.profileSnapshot);
+  if (snap['profileSnapshot'] !== null && typeof snap['profileSnapshot'] === 'object') {
+    writeJson(store, PROFILE_KEY, snap['profileSnapshot']);
   }
 }
