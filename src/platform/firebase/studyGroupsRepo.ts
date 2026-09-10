@@ -54,6 +54,32 @@ export interface StudyGroupsRepo {
 
 export const REPORT_REASON_MAX = 300;
 
+/**
+ * The document creating a study group writes — pure, so it can be tested without
+ * Firestore (#667). `university` and `createdAt` are the caller's to supply.
+ */
+export function studyGroupWrite(
+  draft: GroupDraft,
+  uid: string,
+  university: string,
+  createdAt: unknown,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {
+    courseCode: draft.courseCode,
+    title: draft.title,
+    mode: draft.mode,
+    contactLink: draft.contactLink,
+    capacity: draft.capacity,
+    creatorUid: uid,
+    // Required by rules and pinned to this session's own campus.
+    university,
+    createdAt,
+  };
+  if (draft.description !== '') data['description'] = draft.description;
+  if (draft.schedule !== '') data['schedule'] = draft.schedule;
+  return data;
+}
+
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
@@ -131,20 +157,10 @@ async function defaultBackend(
       }
     },
     async create(draft, uid) {
-      const data: Record<string, unknown> = {
-        courseCode: draft.courseCode,
-        title: draft.title,
-        mode: draft.mode,
-        contactLink: draft.contactLink,
-        capacity: draft.capacity,
-        creatorUid: uid,
-        // Required by rules and pinned to this session's own campus.
-        university: campusStamp(auth),
-        createdAt: serverTimestamp(),
-      };
-      if (draft.description !== '') data['description'] = draft.description;
-      if (draft.schedule !== '') data['schedule'] = draft.schedule;
-      const ref = await addDoc(groups, data);
+      const ref = await addDoc(
+        groups,
+        studyGroupWrite(draft, uid, campusStamp(auth), serverTimestamp()),
+      );
       return ref.id;
     },
     async join(groupId, uid, email) {
