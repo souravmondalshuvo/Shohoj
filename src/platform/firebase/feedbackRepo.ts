@@ -22,6 +22,7 @@ import {
   type FeedbackDraft,
   type FeedbackItem,
 } from '../../core/feedback.ts';
+import type { FieldValue } from 'firebase/firestore';
 
 /**
  * Map a raw Firestore rejection to the typed hierarchy, so a failed board read
@@ -76,17 +77,31 @@ export interface FeedbackRepo {
 }
 
 /**
- * The document a feedback submission writes — pure, so it can be tested without
- * Firestore (#667). `university` and `createdAt` are passed in: the campus stamp
- * and the server-timestamp sentinel are both the caller's to supply.
+ * The document a feedback submission writes. Mirrors `validFeedbackPayload` in
+ * firestore.rules: required = its `hasAll`, optional = `hasOnly` minus `hasAll`.
+ * `context` and `university` are optional to the rule but always written here.
+ */
+export type FeedbackWrite = {
+  type: FeedbackDraft['type'];
+  text: string;
+  anonymous: boolean;
+  createdAt: FieldValue;
+  context?: Record<string, unknown>;
+  university?: string;
+  uid?: string;
+};
+
+/**
+ * Build a feedback submission — pure, so it can be tested without Firestore
+ * (#667). `university` and `createdAt` are the caller's to supply.
  */
 export function feedbackWrite(
   draft: FeedbackDraft,
   uid: string,
   university: string,
-  createdAt: unknown,
-): Record<string, unknown> {
-  const data: Record<string, unknown> = {
+  createdAt: FieldValue,
+): FeedbackWrite {
+  return {
     type: draft.type,
     text: draft.text,
     context: {},
@@ -96,9 +111,10 @@ export function feedbackWrite(
     // de-anonymise anonymous feedback the way a uid would.
     university,
     createdAt,
+    // Anonymous feedback stores no identity: the key is absent, not undefined —
+    // Firestore rejects undefined field values outright.
+    ...(draft.anonymous ? {} : { uid }),
   };
-  if (!draft.anonymous) data['uid'] = uid;
-  return data;
 }
 
 async function defaultBackend(
