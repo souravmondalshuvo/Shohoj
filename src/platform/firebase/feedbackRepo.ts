@@ -75,6 +75,32 @@ export interface FeedbackRepo {
   adminDelete(feedbackId: string): Promise<void>;
 }
 
+/**
+ * The document a feedback submission writes — pure, so it can be tested without
+ * Firestore (#667). `university` and `createdAt` are passed in: the campus stamp
+ * and the server-timestamp sentinel are both the caller's to supply.
+ */
+export function feedbackWrite(
+  draft: FeedbackDraft,
+  uid: string,
+  university: string,
+  createdAt: unknown,
+): Record<string, unknown> {
+  const data: Record<string, unknown> = {
+    type: draft.type,
+    text: draft.text,
+    context: {},
+    anonymous: draft.anonymous,
+    // Required by rules and pinned to this session's own campus. Note this
+    // is NOT identifying: it is the campus, not the person, so it does not
+    // de-anonymise anonymous feedback the way a uid would.
+    university,
+    createdAt,
+  };
+  if (!draft.anonymous) data['uid'] = uid;
+  return data;
+}
+
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
@@ -127,19 +153,7 @@ async function defaultBackend(
       });
     },
     async submit(draft, uid) {
-      const data: Record<string, unknown> = {
-        type: draft.type,
-        text: draft.text,
-        context: {},
-        anonymous: draft.anonymous,
-        // Required by rules and pinned to this session's own campus. Note this
-        // is NOT identifying: it is the campus, not the person, so it does not
-        // de-anonymise anonymous feedback the way a uid would.
-        university: campusStamp(auth),
-        createdAt: serverTimestamp(),
-      };
-      if (!draft.anonymous) data['uid'] = uid;
-      await addDoc(feedback, data);
+      await addDoc(feedback, feedbackWrite(draft, uid, campusStamp(auth), serverTimestamp()));
     },
     async addUpvote(feedbackId, uid) {
       await setDoc(doc(db, 'appFeedbackUpvotes', `${feedbackId}_${uid}`), {
