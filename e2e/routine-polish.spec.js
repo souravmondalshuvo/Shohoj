@@ -69,7 +69,13 @@ const MOCK_FEED = [
   }),
 ];
 
-async function boot(page) {
+// Inside the fixture's own semester (classes 2026-06-09 → 2026-09-08) and a
+// Sunday, which is a class day for CSE110 §01. Pinned rather than inherited:
+// this file asserts what "today" looks like, so the day it runs on must not be
+// part of the answer.
+const NOW = new Date('2026-07-19T10:00:00');
+
+async function boot(page, { now = NOW } = {}) {
   page.on('dialog', d => d.accept());
   await page.addInitScript(() => {
     try { localStorage.clear(); sessionStorage.clear(); } catch {}
@@ -86,6 +92,9 @@ async function boot(page) {
     }
     return route.abort();
   });
+  // Before the navigation, not after it: the semester is classified as the page
+  // loads, so a clock installed later governs only what happens next.
+  await page.clock.setFixedTime(now);
   await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await selectCalcTab(page, "routine");
@@ -238,8 +247,7 @@ test('the weekly grid and the folded course row both name the room', async ({ pa
 // The dim overlay marks "today" in the weekly grid. CSE110 Section 01 meets
 // Sun + Tue, so the grid shows exactly those two day columns.
 test('on a class day, only today\'s column stays bright', async ({ page }) => {
-  await boot(page);
-  await page.clock.setFixedTime(new Date('2026-07-19T10:00:00')); // a Sunday
+  await boot(page); // NOW is a Sunday, and CSE110 §01 meets Sun + Tue
   await addCourse(page, 'CSE110');
   await page.locator('.routine-section-row[data-sid="9001"]').click();
 
@@ -251,8 +259,7 @@ test('on a class day, only today\'s column stays bright', async ({ page }) => {
 });
 
 test('on an off-day, every column is dimmed so it doesn\'t read as "class today"', async ({ page }) => {
-  await boot(page);
-  await page.clock.setFixedTime(new Date('2026-07-18T10:00:00')); // a Saturday — no classes
+  await boot(page, { now: new Date('2026-07-18T10:00:00') }); // a Saturday — no classes
   await addCourse(page, 'CSE110');
   await page.locator('.routine-section-row[data-sid="9001"]').click();
 
