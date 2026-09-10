@@ -39,6 +39,27 @@ export interface LostFoundRepo {
 
 export const DEFAULT_LIST_LIMIT = 100;
 
+/**
+ * The document a lost-and-found claim writes — pure, so it can be tested without
+ * Firestore (#667). `createdAt` is the caller's server-timestamp sentinel.
+ */
+export function lostFoundClaimWrite(
+  postId: string,
+  uid: string,
+  email: string,
+  note: string,
+  createdAt: unknown,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    postId,
+    fromUid: uid,
+    fromEmail: email,
+    createdAt,
+  };
+  if (note !== '') payload['note'] = note;
+  return payload;
+}
+
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
@@ -109,14 +130,10 @@ async function defaultBackend(
       await deleteDoc(doc(db, 'lostFoundPosts', postId));
     },
     async createClaim(postId, uid, email, note) {
-      const payload: Record<string, unknown> = {
-        postId,
-        fromUid: uid,
-        fromEmail: email,
-        createdAt: serverTimestamp(),
-      };
-      if (note !== '') payload['note'] = note;
-      await setDoc(doc(db, 'lostFoundClaims', `${postId}_${uid}`), payload);
+      await setDoc(
+        doc(db, 'lostFoundClaims', `${postId}_${uid}`),
+        lostFoundClaimWrite(postId, uid, email, note, serverTimestamp()),
+      );
     },
   };
 }
