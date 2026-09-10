@@ -115,7 +115,7 @@ async function defaultBackend(
         fromEmail: email,
         createdAt: serverTimestamp(),
       };
-      if (note !== '') payload.note = note;
+      if (note !== '') payload['note'] = note;
       await setDoc(doc(db, 'lostFoundClaims', `${postId}_${uid}`), payload);
     },
   };
