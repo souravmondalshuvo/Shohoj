@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-IHU9f2WCP2fQPPjqqJ/yyvsUak8arSEjgXTE9+vfPmg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-R/Xr4xAXPCcovfYlpOP37KwlkDAwuIBCjHVqL3lFJrw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12534,11 +12534,13 @@ function getLastCompletedSemester(seasons) {
     SEASON_ORDER.indexOf(season) < curGlobalIdx
   );
 
-  if (offeredBeforeCurrent.length > 0) {
-    return { season: offeredBeforeCurrent[offeredBeforeCurrent.length - 1], year: curYear };
-  }
+  const lastOffered = offeredBeforeCurrent[offeredBeforeCurrent.length - 1];
+  if (lastOffered !== undefined) return { season: lastOffered, year: curYear };
 
-  return { season: order[order.length - 1], year: curYear - 1 };
+  // `[]` is truthy, so an empty calendar reaches here with order = [] and used to
+  // return season: undefined. No department's data has an empty calendar, but
+  // the typed twin answers '' (#663) and so does this now.
+  return { season: order[order.length - 1] ?? '', year: curYear - 1 };
 }
 
 function countSemesters(startSeason, startYear, endSeason, endYear, seasons) {
@@ -16366,7 +16368,10 @@ function parseTranscriptText(text) {
             lastExtIndex = -1;
             continue;
         }
-        if (!line[0].match(/\d/)) {
+        // "Does not start with a digit", without reading line[0]. Unreachable either
+        // way — lines are filtered non-empty at the top of parseTranscriptText — but
+        // the typed twin reads it this way (#663), and now both halves do.
+        if (!/^\d/.test(line)) {
             if (currentSemester.titles.length < currentSemester.codes.length) {
                 currentSemester.titles.push(line);
                 lastExtText = null;
@@ -16615,7 +16620,7 @@ function legacyParseTranscript(lines, detectedDept) {
             pendingTitle = line;
             continue;
         }
-        if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
+        if (!/^\d/.test(line) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
             pendingTitle = `${pendingTitle ? `${pendingTitle} ` : ''}${line}`;
         }
         else {
@@ -22153,7 +22158,14 @@ function enumerate(perCourse, cap) {
     const idx = new Array(perCourse.length).fill(0);
     let truncated = false;
     while (true) {
-        const row = perCourse.map((list, i) => list[idx[i]]);
+        const row = perCourse
+            .map((list, i) => list[idx[i] ?? 0])
+            .filter((section) => section !== undefined);
+        // Unreachable: suggestCombinations only passes non-empty, dense lists, and
+        // the odometer keeps the cursor in range. Matches the typed twin (#663) so
+        // a future caller that breaks that gets no half-built combination from
+        // either half.
+        if (row.length !== perCourse.length) break;
         combos.push(row);
         if (combos.length >= cap) { truncated = true; break; }
         let i = perCourse.length - 1;
