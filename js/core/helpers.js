@@ -189,11 +189,13 @@ export function getLastCompletedSemester(seasons) {
     SEASON_ORDER.indexOf(season) < curGlobalIdx
   );
 
-  if (offeredBeforeCurrent.length > 0) {
-    return { season: offeredBeforeCurrent[offeredBeforeCurrent.length - 1], year: curYear };
-  }
+  const lastOffered = offeredBeforeCurrent[offeredBeforeCurrent.length - 1];
+  if (lastOffered !== undefined) return { season: lastOffered, year: curYear };
 
-  return { season: order[order.length - 1], year: curYear - 1 };
+  // `[]` is truthy, so an empty calendar reaches here with order = [] and used to
+  // return season: undefined. No department's data has an empty calendar, but
+  // the typed twin answers '' (#663) and so does this now.
+  return { season: order[order.length - 1] ?? '', year: curYear - 1 };
 }
 
 export function countSemesters(startSeason, startYear, endSeason, endYear, seasons) {
