@@ -471,6 +471,13 @@ test('typed season-window helpers match current JS date logic', () => {
     typedHelpers.getLastCompletedSemester(['Spring', 'Fall']),
     getLastCompletedSemester(['Spring', 'Fall']),
   );
+  // #663: an empty calendar. `[]` is truthy, so it skips the SEASON_ORDER
+  // fallback, and the js half used to answer season: undefined where the typed
+  // half answers ''. No caller passes [] today; this pins the halves together.
+  assert.deepEqual(
+    typedHelpers.getLastCompletedSemester([]),
+    getLastCompletedSemester([]),
+  );
 });
 
 test('typed countSemesters matches current JS semester counting', () => {
