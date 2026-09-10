@@ -119,13 +119,13 @@ function AdminNavLink() {
  * saved value with no flash. Default dark, matching the production app. */
 function ThemeToggle() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() =>
-    typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light'
+    typeof document !== 'undefined' && document.documentElement.dataset['theme'] === 'light'
       ? 'light'
       : 'dark',
   );
   const toggle = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.dataset.theme = next;
+    document.documentElement.dataset['theme'] = next;
     try {
       localStorage.setItem('shohoj_theme', next);
     } catch {
