@@ -95,17 +95,20 @@ export function sanitizeMarkComponents(value: unknown): CourseMarkComponent[] | 
     if (!raw || typeof raw !== 'object') continue;
 
     const c = raw as Record<string, unknown>;
-    const weight = typeof c.weight === 'number' && Number.isFinite(c.weight) ? c.weight : NaN;
-    const outOf = typeof c.outOf === 'number' && Number.isFinite(c.outOf) ? c.outOf : NaN;
+    const weight =
+      typeof c['weight'] === 'number' && Number.isFinite(c['weight']) ? c['weight'] : NaN;
+    const outOf = typeof c['outOf'] === 'number' && Number.isFinite(c['outOf']) ? c['outOf'] : NaN;
     // A component with no weight or no denominator cannot contribute to any
     // answer, so it is dropped rather than stored as a broken row.
     if (!(weight > 0) || !(outOf > 0)) continue;
 
     const score =
-      typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, c.score) : null;
+      typeof c['score'] === 'number' && Number.isFinite(c['score'])
+        ? Math.max(0, c['score'])
+        : null;
 
     out.push({
-      name: typeof c.name === 'string' ? stripTags(c.name).slice(0, 40) : '',
+      name: typeof c['name'] === 'string' ? stripTags(c['name']).slice(0, 40) : '',
       weight: Math.min(100, weight),
       score,
       outOf,
