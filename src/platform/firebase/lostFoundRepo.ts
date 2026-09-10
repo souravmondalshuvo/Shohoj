@@ -15,6 +15,7 @@
 import { campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import type { LostFoundDraft, LostFoundPost } from '../../core/lostFound.ts';
+import type { FieldValue } from 'firebase/firestore';
 
 /** The Firestore surface the repo needs (real SDK or a test fake). */
 export interface LostFoundBackend {
@@ -40,24 +41,37 @@ export interface LostFoundRepo {
 export const DEFAULT_LIST_LIMIT = 100;
 
 /**
- * The document a lost-and-found claim writes — pure, so it can be tested without
- * Firestore (#667). `createdAt` is the caller's server-timestamp sentinel.
+ * The document a lost-and-found claim writes. Mirrors
+ * `validLostFoundClaimPayload` in firestore.rules: required = its `hasAll`,
+ * optional = `hasOnly` minus `hasAll`.
+ */
+export type LostFoundClaimWrite = {
+  postId: string;
+  fromUid: string;
+  fromEmail: string;
+  createdAt: FieldValue;
+  note?: string;
+};
+
+/**
+ * Build a lost-and-found claim — pure, so it can be tested without Firestore
+ * (#667). `createdAt` is the caller's server-timestamp sentinel.
  */
 export function lostFoundClaimWrite(
   postId: string,
   uid: string,
   email: string,
   note: string,
-  createdAt: unknown,
-): Record<string, unknown> {
-  const payload: Record<string, unknown> = {
+  createdAt: FieldValue,
+): LostFoundClaimWrite {
+  return {
     postId,
     fromUid: uid,
     fromEmail: email,
     createdAt,
+    // No note means no note key — absent, never undefined.
+    ...(note === '' ? {} : { note }),
   };
-  if (note !== '') payload['note'] = note;
-  return payload;
 }
 
 async function defaultBackend(
