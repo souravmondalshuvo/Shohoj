@@ -149,14 +149,14 @@ export function serializeWatches(list: readonly WatchEntry[]): string {
 function normalizeEntry(value: unknown): WatchEntry | null {
   if (!value || typeof value !== 'object') return null;
   const o = value as Record<string, unknown>;
-  if (typeof o.sectionId !== 'number' || !Number.isFinite(o.sectionId)) return null;
-  if (typeof o.courseCode !== 'string' || o.courseCode === '') return null;
+  if (typeof o['sectionId'] !== 'number' || !Number.isFinite(o['sectionId'])) return null;
+  if (typeof o['courseCode'] !== 'string' || o['courseCode'] === '') return null;
   return {
-    sectionId: o.sectionId,
-    courseCode: o.courseCode,
-    sectionName: typeof o.sectionName === 'string' ? o.sectionName : '',
-    addedAt: typeof o.addedAt === 'number' && Number.isFinite(o.addedAt) ? o.addedAt : 0,
-    hadSeat: o.hadSeat === true,
+    sectionId: o['sectionId'],
+    courseCode: o['courseCode'],
+    sectionName: typeof o['sectionName'] === 'string' ? o['sectionName'] : '',
+    addedAt: typeof o['addedAt'] === 'number' && Number.isFinite(o['addedAt']) ? o['addedAt'] : 0,
+    hadSeat: o['hadSeat'] === true,
   };
 }
 
