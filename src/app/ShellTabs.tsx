@@ -111,7 +111,7 @@ export function ShellTabs() {
       // borders still paint a 2px sliver in the bar's left cap, which reads as
       // a stray text cursor on Home. data-active drives the stylesheet's
       // opacity, mirroring legacy's _moveTabSlider.
-      slider.dataset.active = 'false';
+      slider.dataset['active'] = 'false';
       slider.style.width = '0px';
       return;
     }
@@ -127,7 +127,7 @@ export function ShellTabs() {
     const left = group ? group.offsetLeft + active.offsetLeft : active.offsetLeft;
     slider.style.left = `${left}px`;
     slider.style.width = `${active.offsetWidth}px`;
-    slider.dataset.active = 'true';
+    slider.dataset['active'] = 'true';
   }, []);
 
   // Layout effect so it lands before paint instead of visibly jumping on first
