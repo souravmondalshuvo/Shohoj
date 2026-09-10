@@ -224,7 +224,10 @@ export function parseTranscriptText(text) {
             lastExtIndex = -1;
             continue;
         }
-        if (!line[0].match(/\d/)) {
+        // "Does not start with a digit", without reading line[0]. Unreachable either
+        // way — lines are filtered non-empty at the top of parseTranscriptText — but
+        // the typed twin reads it this way (#663), and now both halves do.
+        if (!/^\d/.test(line)) {
             if (currentSemester.titles.length < currentSemester.codes.length) {
                 currentSemester.titles.push(line);
                 lastExtText = null;
@@ -473,7 +476,7 @@ function legacyParseTranscript(lines, detectedDept) {
             pendingTitle = line;
             continue;
         }
-        if (!line[0].match(/\d/) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
+        if (!/^\d/.test(line) && line.length > 2 && line.length < 100 && !/^[A-Z]{2,4}\d{3}/.test(line)) {
             pendingTitle = `${pendingTitle ? `${pendingTitle} ` : ''}${line}`;
         }
         else {
