@@ -35,7 +35,7 @@ function readStoredTheme(): Theme {
 /** Apply the theme to the DOM + storage, mirroring legacy js/main.js side effects. */
 function applyTheme(theme: Theme): void {
   if (typeof document !== 'undefined') {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset['theme'] = theme;
   }
   try {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
