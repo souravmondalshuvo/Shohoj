@@ -36,11 +36,13 @@ const VALID_SEASONS: ReadonlySet<string> = new Set(DEFAULT_DEPT_SEASONS);
 function toDepartment(code: string, raw: unknown): DepartmentInfo | null {
   if (raw === null || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  const label = typeof r.label === 'string' ? r.label.trim() : '';
+  const label = typeof r['label'] === 'string' ? r['label'].trim() : '';
   const totalCredits =
-    typeof r.totalCredits === 'number' && Number.isFinite(r.totalCredits) ? r.totalCredits : NaN;
-  const seasons = Array.isArray(r.seasons)
-    ? r.seasons.filter((s): s is SemesterSeason => typeof s === 'string' && VALID_SEASONS.has(s))
+    typeof r['totalCredits'] === 'number' && Number.isFinite(r['totalCredits'])
+      ? r['totalCredits']
+      : NaN;
+  const seasons = Array.isArray(r['seasons'])
+    ? r['seasons'].filter((s): s is SemesterSeason => typeof s === 'string' && VALID_SEASONS.has(s))
     : [];
   if (!code || !label || Number.isNaN(totalCredits) || seasons.length === 0) return null;
   return { code, label, totalCredits, seasons: Object.freeze(seasons) };
