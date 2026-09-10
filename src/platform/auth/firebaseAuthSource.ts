@@ -121,10 +121,10 @@ export function evaluateCampusAccess(
   user: Pick<FirebaseUserLike, 'email' | 'emailVerified'>,
   claims: Record<string, unknown> | null,
 ): TokenVerdict {
-  const isAdmin = claims?.admin === true;
+  const isAdmin = claims?.['admin'] === true;
   const profile = universityForEmail(user.email ?? '');
-  const isVerifiedEmail = user.emailVerified === true || claims?.email_verified === true;
-  const firebaseClaims = claims?.firebase as { sign_in_provider?: unknown } | undefined;
+  const isVerifiedEmail = user.emailVerified === true || claims?.['email_verified'] === true;
+  const firebaseClaims = claims?.['firebase'] as { sign_in_provider?: unknown } | undefined;
   const isGoogleProvider = firebaseClaims?.sign_in_provider === 'google.com';
   return {
     allowed: (profile !== null && isVerifiedEmail && isGoogleProvider) || isAdmin,
