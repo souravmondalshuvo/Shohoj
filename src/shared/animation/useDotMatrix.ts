@@ -105,7 +105,7 @@ export function useDotMatrix(canvasRef: RefObject<HTMLCanvasElement | null>): vo
     let frame = 0;
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
-      const light = document.documentElement.dataset.theme === 'light';
+      const light = document.documentElement.dataset['theme'] === 'light';
       const cSpeed = Math.sqrt(cvx * cvx + cvy * cvy);
       const boost = 1 + Math.min(cSpeed * 0.018, 0.85);
 
