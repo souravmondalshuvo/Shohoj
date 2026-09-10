@@ -51,14 +51,14 @@ function intOr(value: unknown, fallback: number): number {
 function normalizeProvenance(raw: unknown): ArchiveProvenance | null {
   if (!raw || typeof raw !== 'object') return null;
   const p = raw as Record<string, unknown>;
-  if (typeof p.source !== 'string' || p.source === '') return null;
+  if (typeof p['source'] !== 'string' || p['source'] === '') return null;
   return {
-    source: p.source,
-    sections: intOr(p.sections, 0),
-    tbaFaculty: intOr(p.tbaFaculty, 0),
-    noSchedule: intOr(p.noSchedule, 0),
-    unnamed: intOr(p.unnamed, 0),
-    seatsFrozen: p.seatsFrozen === true,
+    source: p['source'],
+    sections: intOr(p['sections'], 0),
+    tbaFaculty: intOr(p['tbaFaculty'], 0),
+    noSchedule: intOr(p['noSchedule'], 0),
+    unnamed: intOr(p['unnamed'], 0),
+    seatsFrozen: p['seatsFrozen'] === true,
   };
 }
 
@@ -75,14 +75,14 @@ export function normalizeArchiveListing(raw: unknown): ArchivedSemester[] {
   for (const item of list) {
     if (!item || typeof item !== 'object') continue;
     const entry = item as Record<string, unknown>;
-    if (typeof entry.sessionId !== 'number' || !Number.isInteger(entry.sessionId)) continue;
+    if (typeof entry['sessionId'] !== 'number' || !Number.isInteger(entry['sessionId'])) continue;
     out.push({
-      sessionId: entry.sessionId,
-      classStartDate: dateOrNull(entry.classStartDate),
-      classEndDate: dateOrNull(entry.classEndDate),
-      sections: intOr(entry.sections, 0),
-      archivedAt: intOr(entry.archivedAt, 0),
-      provenance: normalizeProvenance(entry.provenance),
+      sessionId: entry['sessionId'],
+      classStartDate: dateOrNull(entry['classStartDate']),
+      classEndDate: dateOrNull(entry['classEndDate']),
+      sections: intOr(entry['sections'], 0),
+      archivedAt: intOr(entry['archivedAt'], 0),
+      provenance: normalizeProvenance(entry['provenance']),
     });
   }
   out.sort((a, b) => b.sessionId - a.sessionId);
