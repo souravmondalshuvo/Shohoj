@@ -592,15 +592,17 @@ jobs:
 
       # Post-deployment verification for the Worker, mirroring the frontend's
       # smoke step. Unauthenticated GETs only — no user data is read and no
-      # Anthropic tokens are spent.
+      # model tokens are spent.
       #
-      # REQUIRE_ASSISTANT is intentionally NOT set yet: ANTHROPIC_API_KEY is
-      # still pending on the deployed Worker (#455), so a hard assertion would
-      # block every Worker deploy. The step warns loudly instead. Flip it to
-      # '1' once the secret is set, so the Assistant can never silently
-      # regress to unconfigured again.
+      # It enforces the capability manifest in scripts/lib/readiness.mjs: a
+      # required capability going off fails the job, unless it is a known gap
+      # tracked by an open issue (email → #674), which warns instead.
+      #
+      # Until #675 this step was gated on vars.WORKER_URL, which was never set,
+      # so it was skipped on every deploy. The script now defaults to
+      # production's URL — public, the app's CSP names it — and the variable
+      # only overrides it.
       - name: Post-deploy Worker smoke test
-        if: ${{ vars.WORKER_URL != '' }}
         env:
           WORKER_URL: ${{ vars.WORKER_URL }}
         run: node scripts/smoke-worker.mjs
