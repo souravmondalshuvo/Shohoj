@@ -541,7 +541,7 @@ Shohoj is built to feel like a real product, not a student project.
 
 CDN scripts in the shipping app are loaded with **SRI integrity hashes** (`sha384-...` / `sha512-...`) to prevent supply-chain tampering; the React shell and standalone pages bundle their dependencies through Vite instead.
 
-**Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, format check, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, so a red suite blocks production deployment. Firestore rules/index deploys **fail closed** — if the rules changed but the deploy credentials are missing, the job errors rather than reporting a green deploy over stale production rules. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test; the Worker deploy runs its own `/health` + `/ready` smoke check. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
+**Deployment pipeline:** a single workflow (`.github/workflows/ci.yml`) runs the full validation suite (lint, format check, typecheck, data validation, unit + Firestore rules tests, worker tests, build + E2E + bundle/CSP guards) on every pull request and push. The deploy jobs `needs:` all of it and run **only on push to `main`**, so a red suite blocks production deployment. Firestore rules/index deploys **fail closed** — if the rules changed but the deploy credentials are missing, the job errors rather than reporting a green deploy over stale production rules. The frontend deploys to the `gh-pages` branch (served by GitHub Pages), publishes a `version.json` build stamp, and runs a post-deploy smoke test; the Worker deploy runs its own `/health` + `/ready` smoke check, enforcing the capability manifest in `scripts/lib/readiness.mjs`. A separate daily workflow (`.github/workflows/production-check.yml`) runs both probes between deploys and keeps one "Production check failing" issue open while production is unhealthy. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/ROLLBACK.md](docs/ROLLBACK.md).
 
 > **Note on multi-service deploys.** The frontend, the Worker, and the Firestore
 > rules deploy as three independent, path-filtered jobs — this is **not** an
@@ -828,7 +828,8 @@ Shohoj/
 │   ├── validate_data.mjs           Data validation gate (CI)
 │   ├── check_bundle_collisions.py  Guard against duplicate top-level names in the bundle
 │   ├── smoke-production.mjs        Post-deploy production smoke test
-│   ├── smoke-worker.mjs            Worker /health + /ready smoke check
+│   ├── smoke-worker.mjs            Worker /health + /ready smoke check (post-deploy + daily)
+│   ├── lib/readiness.mjs           Production capability manifest, known gaps, alert rules
 │   ├── parity_report.mjs           js/ vs src/ parity reporting
 │   ├── run-tests.mjs               Unit test runner
 │   ├── backfill_campus.js          Stamp `university` on pre-tenancy documents
@@ -873,6 +874,7 @@ Shohoj/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml                One CI/CD pipeline: full validation, then gated deploy of frontend + Worker + Firestore on push to main
+│   │   ├── production-check.yml  Daily probe of Pages + the Worker's /health and /ready; files and closes its own alert issue
 │   │   └── dependency-review.yml Blocks PRs adding vulnerable dependencies
 │   └── dependabot.yml            Monthly grouped dependency-update policy
 │                                 (CodeQL runs via GitHub's default setup, configured in the UI)
