@@ -61,7 +61,6 @@ listing them is a roadmap, not a claim.
 - Email delivery failures (Resend non-2xx)
 - Authentication failures / App Check rejection rate
 - Frontend exception rate (from the global handler, once a sink ships them)
-- Production uptime (from `GET /health` + the smoke check)
 
 ## How to get there without a paid vendor
 
@@ -71,8 +70,14 @@ listing them is a roadmap, not a claim.
 2. **Frontend errors:** point the logger's sink at a lightweight collector
    endpoint (could be a Worker route) instead of only `console`. Keep the
    redaction rule.
-3. **Uptime:** a free external uptime monitor hitting `GET /health` and the
-   Pages URL; the post-deploy smoke test already provides deploy-time coverage.
+3. **Uptime:** partly in place. `.github/workflows/production-check.yml` (#675)
+   probes the Pages site and the Worker's `/health` and `/ready` daily and on
+   demand, judges `/ready` against the capability manifest in
+   `scripts/lib/readiness.mjs`, and keeps one "Production check failing" issue
+   that closes itself on recovery. The same Worker probe runs after every Worker
+   deploy. It is **daily, not continuous**: an outage that starts and ends
+   between two runs goes unseen. A free external monitor at minute resolution on
+   `GET /health` and the Pages URL would close that gap.
 
 Adopt an actual provider only via an ADR (see `docs/architecture/decisions/`),
 and never add a paid vendor without explicit approval.
