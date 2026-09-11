@@ -1,44 +1,48 @@
 #!/usr/bin/env node
-// Post-deployment Worker smoke test / readiness preflight.
+// Post-deployment Worker smoke test / readiness preflight — and the Worker half
+// of the daily production check (.github/workflows/production-check.yml).
 //
 // Verifies a LIVE Shohoj Worker deployment without touching user data or
 // spending money: it only issues unauthenticated GETs to /health and /ready,
-// neither of which reads user documents or calls Anthropic.
-//
-// Two jobs:
+// neither of which reads user documents or calls a model provider.
 //
 //   1. Liveness — /health answers, so the Worker is deployed and routing.
 //
-//   2. Readiness — /ready reports which feature dependencies are configured.
-//      This is the automated guard for #455: the Assistant UI shipped while
-//      ANTHROPIC_API_KEY was unset on the deployed Worker, so a visible feature
-//      failed on every turn and nothing in CI noticed. With REQUIRE_ASSISTANT=1
-//      a deploy fails loudly instead.
+//   2. Readiness — /ready reports which feature dependencies are configured,
+//      judged against the capability manifest in scripts/lib/readiness.mjs.
+//      This began as the guard for #455, when the Assistant UI shipped with its
+//      key unset and nothing noticed. It did not catch #674 — email off in
+//      production — because it only ever enforced `assistant`, and because the
+//      deploy step that runs it was gated on a variable that was never set. Now
+//      every required capability is enforced, and a gap that already has an
+//      issue (KNOWN_GAPS) warns instead of failing (#675).
 //
 // Usage:
-//   WORKER_URL=https://papers.example.workers.dev node scripts/smoke-worker.mjs
+//   node scripts/smoke-worker.mjs                  # production
+//   WORKER_URL=https://… node scripts/smoke-worker.mjs
 //
 // Env:
-//   WORKER_URL         Base Worker URL (required).
-//   REQUIRE_ASSISTANT  When '1'/'true', a Worker reporting the Assistant as
-//                      unconfigured fails this check. Leave unset while the
-//                      secret is still pending so the deploy is not blocked.
-//   SMOKE_MAX_ATTEMPTS Propagation poll attempts (default 10).
-//   SMOKE_DELAY_MS     Delay between attempts (default 3000).
+//   WORKER_URL          Base Worker URL. Defaults to production's, which is not a
+//                       secret: the app's CSP names it.
+//   SMOKE_RESULT_FILE   When set, write a booleans-only JSON verdict here for the
+//                       scheduled workflow to act on.
+//   REQUIRE_ASSISTANT   Accepted for compatibility and now redundant: `assistant`
+//                       is a required capability in the manifest.
+//   SMOKE_MAX_ATTEMPTS  Propagation poll attempts (default 10).
+//   SMOKE_DELAY_MS      Delay between attempts (default 3000).
 //
 // NOTE: this script never prints response bodies wholesale, because /ready is
-// the one endpoint whose job is to describe secrets' presence. It prints only
-// the booleans it asserts on.
+// the one endpoint whose job is to describe secrets' presence. It prints, and
+// writes, only the booleans it judges.
 
-const WORKER_URL = (process.env.WORKER_URL || '').replace(/\/+$/, '');
-const REQUIRE_ASSISTANT = /^(1|true|yes)$/i.test(process.env.REQUIRE_ASSISTANT || '');
+import { writeFileSync } from 'node:fs';
+import { containsKeyMaterial, evaluateReadiness } from './lib/readiness.mjs';
+
+const PRODUCTION_WORKER_URL = 'https://shohoj-papers.souravmondal033.workers.dev';
+const WORKER_URL = (process.env.WORKER_URL || PRODUCTION_WORKER_URL).replace(/\/+$/, '');
+const RESULT_FILE = process.env.SMOKE_RESULT_FILE || '';
 const MAX_ATTEMPTS = Number(process.env.SMOKE_MAX_ATTEMPTS || 10);
 const DELAY_MS = Number(process.env.SMOKE_DELAY_MS || 3000);
-
-if (!WORKER_URL) {
-  console.error('✗ WORKER_URL is not set — nothing to smoke test.');
-  process.exit(1);
-}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -50,12 +54,15 @@ function check(ok, label, detail = '') {
     console.error(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`);
     failures += 1;
   }
+  return ok;
 }
 
 async function getJson(path) {
   const res = await fetch(`${WORKER_URL}${path}`, {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    // Identify the probe. (Cloudflare's bot protection 403s some default agents,
+    // such as Python's; an explicit one keeps a probe from reading as an outage.)
+    headers: { Accept: 'application/json', 'User-Agent': 'shohoj-smoke-worker/1.0' },
   });
   const body = await res.json().catch(() => null);
   return { status: res.status, body, requestId: res.headers.get('X-Request-Id') };
@@ -80,43 +87,77 @@ console.log(`\nWorker smoke test → ${WORKER_URL}\n`);
 
 console.log('Liveness:');
 const health = await pollUntilLive('/health');
-check(health?.status === 200, 'GET /health returns 200', `got ${health?.status ?? 'no response'}`);
-check(health?.body?.status === 'ok', 'health reports status ok');
-check(!!health?.requestId, 'health carries an X-Request-Id correlation id');
+const healthOk = [
+  check(
+    health?.status === 200,
+    'GET /health returns 200',
+    `got ${health?.status ?? 'no response'}`,
+  ),
+  check(health?.body?.status === 'ok', 'health reports status ok'),
+  check(!!health?.requestId, 'health carries an X-Request-Id correlation id'),
+].every(Boolean);
 
 console.log('\nReadiness:');
-const ready = await getJson('/ready');
-check(ready.status === 200, 'GET /ready returns 200', `got ${ready.status}`);
-
+let ready;
+try {
+  ready = await getJson('/ready');
+} catch (e) {
+  ready = { status: 0, body: null, error: e?.message || String(e) };
+}
+const readyOk = check(ready.status === 200, 'GET /ready returns 200', `got ${ready.status}`);
 const caps = ready.body?.capabilities;
-check(caps && typeof caps === 'object', 'readiness reports a capabilities object');
+const shapeOk = check(caps && typeof caps === 'object', 'readiness reports a capabilities object');
 
-if (caps && typeof caps === 'object') {
-  // Print only the booleans — never the raw body.
-  console.log(
-    `    capabilities: assistant=${caps.assistant} papers=${caps.papers} email=${caps.email}`,
-  );
-  check(typeof caps.assistant === 'boolean', 'assistant capability is a boolean');
+// Guard against the endpoint ever regressing into leaking key material.
+const keyMaterial = containsKeyMaterial(JSON.stringify(ready.body));
+check(!keyMaterial, 'readiness response contains no key material');
 
-  // Guard against the endpoint ever regressing into leaking key material.
-  const serialized = JSON.stringify(ready.body);
-  check(
-    !/sk-|BEGIN [A-Z ]*PRIVATE KEY|re_[A-Za-z0-9]{8}/.test(serialized),
-    'readiness response contains no key material',
-  );
-
-  if (REQUIRE_ASSISTANT) {
-    check(
-      caps.assistant === true,
-      'Assistant dependency is configured (REQUIRE_ASSISTANT=1)',
-      'ANTHROPIC_API_KEY is not set on the deployed Worker — run: cd worker && npx wrangler secret put ANTHROPIC_API_KEY',
-    );
-  } else if (caps.assistant !== true) {
-    // Not a failure while the secret is still pending, but never silent.
+const verdict = shapeOk ? evaluateReadiness(caps) : null;
+if (verdict) {
+  console.log('\nCapabilities (booleans only):');
+  for (const r of verdict.results) {
+    if (r.status === 'ok') console.log(`  ✓ ${r.path}`);
+    if (r.status === 'restored') {
+      console.log(`  ✓ ${r.path} — back on`);
+      console.log(
+        `::notice::${r.path} is back on — #${r.issue} can be closed, and its KNOWN_GAPS entry removed.`,
+      );
+    }
+    if (r.status === 'known-gap') {
+      console.log(`  ! ${r.path} is off — known gap, tracked in #${r.issue}`);
+      console.log(`::warning::${r.path} is off in production — known gap, tracked in #${r.issue}.`);
+    }
+    if (r.status === 'missing')
+      check(false, `${r.path} is configured`, 'it is off, and no issue tracks it');
+    if (r.status === 'invalid')
+      check(false, `${r.path} is reported as a boolean`, 'absent or not a boolean');
+  }
+  for (const { path, value } of verdict.info) console.log(`  · ${path}=${value} (informational)`);
+  for (const path of verdict.unknown) {
     console.log(
-      '    ::warning:: Assistant is deployed but its API key is NOT configured, so the feature is hidden in the UI. See issue #455.',
+      `::warning::/ready reports ${path}, which scripts/lib/readiness.mjs does not list.`,
     );
   }
+}
+
+if (RESULT_FILE) {
+  const result = {
+    probeOk: healthOk && readyOk && shapeOk && !keyMaterial,
+    liveness: { status: health?.status ?? 0, ok: healthOk },
+    readiness: verdict && {
+      status: ready.status,
+      results: verdict.results.map(({ path, value, status, issue }) => ({
+        path,
+        value,
+        status,
+        issue,
+      })),
+      info: verdict.info,
+      unknown: verdict.unknown,
+    },
+    keyMaterial,
+  };
+  writeFileSync(RESULT_FILE, JSON.stringify(result, null, 2));
 }
 
 console.log('');
