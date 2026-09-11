@@ -1,0 +1,173 @@
+name: Production check
+
+# Probes production every day and on demand: the GitHub Pages site, and the
+# Worker's /health and /ready judged against the capability manifest in
+# scripts/lib/readiness.mjs.
+#
+# Why it exists (#675): production's Worker reported `email: false` — seat
+# alerts and lost-and-found claim emails not being sent (#674) — and nothing
+# noticed. The post-deploy smoke never ran, and nothing ran between deploys.
+#
+# How it alerts: one "Production check failing" issue, found by title — the
+# same pattern as announce-firestore-deploy-failure in ci.yml — commented on
+# while production keeps failing and closed when it recovers. A required
+# capability that is off but already tracked (KNOWN_GAPS) warns instead of
+# failing, unless its issue has been closed; a known gap that comes back gets
+# one comment on its issue saying it can be closed.
+#
+# On pull requests that change the check itself it runs the probes and reports,
+# but never touches issues: the change is exercised against real production
+# before it merges, without a PR ever filing an alert.
+
+on:
+  schedule:
+    # Daily at 03:17 UTC (09:17 in Dhaka) — off the hour, away from the
+    # top-of-hour scheduling queue.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/production-check.yml
+      - scripts/smoke-worker.mjs
+      - scripts/smoke-production.mjs
+      - scripts/lib/readiness.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-check
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Probe production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      # No npm ci: both smoke scripts and the readiness module use Node built-ins only.
+
+      - name: Pages smoke
+        id: pages
+        continue-on-error: true
+        env:
+          BASE_URL: https://souravmondalshuvo.github.io/Shohoj/
+          SMOKE_MAX_ATTEMPTS: "3"
+        run: node scripts/smoke-production.mjs
+
+      - name: Worker smoke
+        id: worker
+        continue-on-error: true
+        env:
+          # Empty unless the repository sets it; the script then uses production.
+          WORKER_URL: ${{ vars.WORKER_URL }}
+          SMOKE_RESULT_FILE: ${{ runner.temp }}/worker-result.json
+        run: node scripts/smoke-worker.mjs
+
+      - name: Decide and alert
+        uses: actions/github-script@v9
+        env:
+          PAGES_OUTCOME: ${{ steps.pages.outcome }}
+          RESULT_FILE: ${{ runner.temp }}/worker-result.json
+        with:
+          script: |
+            const fs = require('fs');
+            const { pathToFileURL } = require('url');
+            const { decideAlerts } = await import(
+              pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/lib/readiness.mjs`).href
+            );
+            const { owner, repo } = context.repo;
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const mayWrite = context.eventName !== 'pull_request';
+            const TITLE = 'Production check failing';
+
+            // The Worker smoke writes its verdict before it exits. No file means
+            // it did not get that far, which is itself a failed probe.
+            let result = null;
+            try { result = JSON.parse(fs.readFileSync(process.env.RESULT_FILE, 'utf8')); } catch {}
+            const readiness = result?.readiness ?? null;
+
+            const gapIssues = [...new Set((readiness?.results ?? [])
+              .filter((r) => r.status === 'known-gap' || r.status === 'restored')
+              .map((r) => r.issue))];
+            const gapIssueStates = {};
+            for (const n of gapIssues) {
+              const { data } = await github.rest.issues.get({ owner, repo, issue_number: n });
+              gapIssueStates[n] = data.state;
+            }
+
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', per_page: 100 });
+            const alert = open.data.find((i) => i.title === TITLE && !i.pull_request);
+
+            const d = decideAlerts({
+              pagesOk: process.env.PAGES_OUTCOME === 'success',
+              workerOk: result?.probeOk === true,
+              readiness,
+              gapIssueStates,
+              alertIssueOpen: Boolean(alert),
+            });
+
+            const rows = (readiness?.results ?? [])
+              .map((r) => `| \`${r.path}\` | ${r.value} | ${r.status}${r.issue ? ` (#${r.issue})` : ''} |`);
+            await core.summary
+              .addHeading('Production check')
+              .addRaw(`Pages smoke: **${process.env.PAGES_OUTCOME}** · Worker probe: **${result?.probeOk ? 'ok' : 'failed'}**\n\n`)
+              .addRaw(rows.length ? `| capability | value | status |\n|---|---|---|\n${rows.join('\n')}\n\n` : '')
+              .addRaw(d.failures.length ? `### Failures\n${d.failures.map((f) => `- ${f}`).join('\n')}\n\n` : '')
+              .addRaw(d.warnings.length ? `### Warnings\n${d.warnings.map((w) => `- ${w}`).join('\n')}\n\n` : '')
+              .addRaw(`Decision: \`${d.action}\`${mayWrite ? '' : ' — pull request run, so no issue is touched'}\n`)
+              .write();
+            for (const w of d.warnings) core.warning(w);
+
+            if (!mayWrite) {
+              if (d.failures.length) core.setFailed(d.failures.join(' '));
+              return;
+            }
+
+            // A known gap that came back: say so on its issue, once.
+            for (const { path, issue } of d.restored) {
+              const marker = `<!-- production-check:restored:${path} -->`;
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: issue, per_page: 100 });
+              if (comments.some((c) => c.body?.includes(marker))) continue;
+              await github.rest.issues.createComment({ owner, repo, issue_number: issue, body: [
+                marker,
+                `Production's \`/ready\` now reports \`${path}: true\` (${run}).`,
+                '',
+                `This gap looks fixed: close this issue, and remove \`${path}\` from \`KNOWN_GAPS\` in`,
+                '`scripts/lib/readiness.mjs` so the check enforces it again.',
+              ].join('\n') });
+              core.notice(`Commented on #${issue}: ${path} is back on`);
+            }
+
+            if (d.action === 'open-or-comment') {
+              const body = [
+                `The daily production check failed (${run}).`,
+                '',
+                ...d.failures.map((f) => `- ${f}`),
+                ...(d.warnings.length ? ['', 'Also noted:', ...d.warnings.map((w) => `- ${w}`)] : []),
+                '',
+                'Probes: GitHub Pages (`scripts/smoke-production.mjs`) and the Worker\'s `/health`',
+                'and `/ready` (`scripts/smoke-worker.mjs`, judged by `scripts/lib/readiness.mjs`).',
+                'This issue closes itself when a run passes.',
+              ].join('\n');
+              if (alert) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: alert.number, body });
+                core.notice(`Commented on #${alert.number}`);
+              } else {
+                const created = await github.rest.issues.create({ owner, repo, title: TITLE, body });
+                core.notice(`Filed #${created.data.number}`);
+              }
+              core.setFailed(d.failures.join(' '));
+            } else if (d.action === 'close') {
+              await github.rest.issues.createComment({ owner, repo, issue_number: alert.number,
+                body: `Recovered: the production check passes again (${run}).` });
+              await github.rest.issues.update({ owner, repo, issue_number: alert.number, state: 'closed' });
+              core.notice(`Closed #${alert.number}`);
+            }
