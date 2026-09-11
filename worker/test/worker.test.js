@@ -37,6 +37,12 @@ import worker, {
 } from '../index.js';
 import { SEEDED_REVIEWS } from '../reviews.generated.js';
 import {
+  REQUIRED as READINESS_REQUIRED,
+  INFORMATIONAL as READINESS_INFORMATIONAL,
+  KNOWN_GAPS as READINESS_KNOWN_GAPS,
+  flatten as flattenCapabilities,
+} from '../../scripts/lib/readiness.mjs';
+import {
   ASSISTANT_SYSTEM,
   ASSISTANT_TOOLS,
   executeAssistantTool,
@@ -2807,6 +2813,18 @@ async function makeServiceAccountJson() {
   });
 
   console.log('\nReadiness / capabilities (GET /ready):');
+
+  await test('the production-check manifest covers exactly what readinessReport returns (#675)', () => {
+    // scripts/lib/readiness.mjs decides which capabilities production must have.
+    // If the Worker adds, renames or drops one, the manifest has to change with it,
+    // or the capability goes silently unmonitored — the way email did (#674).
+    const reported = Object.keys(flattenCapabilities(readinessReport({ ...ENV }))).sort();
+    const listed = [...READINESS_REQUIRED, ...READINESS_INFORMATIONAL].sort();
+    assertEq(JSON.stringify(reported), JSON.stringify(listed), 'manifest and readinessReport disagree');
+    for (const path of Object.keys(READINESS_KNOWN_GAPS)) {
+      assert(READINESS_REQUIRED.includes(path), `known gap ${path} is not a required capability`);
+    }
+  });
 
   await test('readinessReport reports assistant unconfigured without the key', () => {
     const r = readinessReport({ ...ENV });
