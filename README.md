@@ -827,6 +827,7 @@ Shohoj/
 │   ├── generate_worker_catalog.mjs Generate the Worker's course catalog
 │   ├── validate_data.mjs           Data validation gate (CI)
 │   ├── check_bundle_collisions.py  Guard against duplicate top-level names in the bundle
+│   ├── check_bundle_budget.mjs     Bundle size budgets (gzip + raw) enforced in CI
 │   ├── smoke-production.mjs        Post-deploy production smoke test
 │   ├── smoke-worker.mjs            Worker /health + /ready smoke check (post-deploy + daily)
 │   ├── lib/readiness.mjs           Production capability manifest, known gaps, alert rules
