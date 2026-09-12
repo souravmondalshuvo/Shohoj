@@ -30,6 +30,7 @@
     "parity:report": "node scripts/parity_report.mjs",
     "test:bundle": "node tests/productionBundleSmoke.test.js",
     "test:csp": "node tests/cspInlineHandlers.test.js",
+    "check:bundle-size": "node scripts/check_bundle_budget.mjs",
     "check:collisions": "python3 scripts/check_bundle_collisions.py",
     "generate:worker-catalog": "node scripts/generate_worker_catalog.mjs",
     "check:worker-catalog": "node scripts/generate_worker_catalog.mjs --check",
