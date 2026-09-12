@@ -255,6 +255,14 @@ jobs:
           test -s dist-shell/index.html || test -s dist-shell/app/index.html
           npx playwright test --config=playwright.shell.config.js
 
+      # Every artifact the site can ship is built by now: shohoj.html and the
+      # standalone pages, the Vite islands build, and the shell. Vite's own
+      # 500 kB warning blocks nothing and the deployed page had no limit at all
+      # (#677), so this is the ratchet: growth past a budget fails here, and
+      # raising one is a reviewed commit.
+      - name: Check bundle size budgets
+        run: npm run check:bundle-size
+
       # Both suites set `trace: 'on-first-retry'` and write an HTML report, and
       # neither was ever uploaded — so a failure that only happens on a runner
       # left nothing behind but a call log, and #608 had to be diagnosed by
