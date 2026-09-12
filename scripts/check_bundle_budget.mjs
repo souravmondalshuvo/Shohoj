@@ -25,7 +25,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * Budgets in kB. `measured` records what the artifact was when the budget was
  * set, so the headroom is visible and drift is obvious in review.
  *
- * All figures measured on main @ a87b6690, 2026-09-11.
+ * Figures measured in CI (ubuntu-latest, Node 24) on main @ a87b6690 — CI is the
+ * environment that gates merges. A local build differs a few kB either way: JS
+ * minifies ~15 kB smaller there, gzip runs ~8 kB larger (different Node and zlib).
+ * Where the two disagree the budget takes the larger, so neither trips on the
+ * difference alone.
  */
 export const TARGETS = [
   // The page GitHub Pages serves. Biggest thing any student downloads.
@@ -34,7 +38,7 @@ export const TARGETS = [
     file: 'shohoj.html',
     build: 'python3 build3.py',
     measured: { raw: 3406, gzip: 1656 },
-    budget: { raw: 3550, gzip: 1725 },
+    budget: { raw: 3580, gzip: 1740 },
   },
   {
     label: 'admin.html',
@@ -56,8 +60,8 @@ export const TARGETS = [
     dir: 'dist/assets',
     match: /^main-.*\.js$/,
     build: 'npm run build:vite',
-    measured: { raw: 932, gzip: 270 },
-    budget: { raw: 975, gzip: 285 },
+    measured: { raw: 946, gzip: 274 },
+    budget: { raw: 995, gzip: 288 },
   },
   // The shell entry — what a student would download after the cutover.
   {
@@ -65,8 +69,8 @@ export const TARGETS = [
     dir: 'dist-shell/assets',
     match: /^index-.*\.js$/,
     build: 'npm run build:shell',
-    measured: { raw: 427, gzip: 133 },
-    budget: { raw: 450, gzip: 145 },
+    measured: { raw: 443, gzip: 138 },
+    budget: { raw: 465, gzip: 146 },
   },
   {
     label: 'shell stylesheet',
@@ -74,7 +78,7 @@ export const TARGETS = [
     match: /^index-.*\.css$/,
     build: 'npm run build:shell',
     measured: { gzip: 40 },
-    budget: { gzip: 46 },
+    budget: { gzip: 43 },
   },
   // Every shell chunk together: catches growth that merely moves between chunks.
   {
@@ -83,8 +87,8 @@ export const TARGETS = [
     match: /\.js$/,
     all: true,
     build: 'npm run build:shell',
-    measured: { raw: 1919 },
-    budget: { raw: 2010 },
+    measured: { raw: 1935 },
+    budget: { raw: 2035 },
   },
 ];
 
