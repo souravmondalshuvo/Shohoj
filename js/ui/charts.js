@@ -1,8 +1,33 @@
+// The chart is sized from its wrapper, which can be 0px wide when recalc() runs
+// (the campus gate hides the calculator until auth resolves). Keep the latest
+// series per canvas and redraw whenever the wrapper's size changes, so a chart
+// drawn while hidden fills in once shown and follows window resizes.
+const lastTrendData = new WeakMap();
+const observedTrendWraps = new WeakSet();
+
+function observeTrendWrap(canvas, wrap) {
+  if (observedTrendWraps.has(wrap) || typeof ResizeObserver === 'undefined') return;
+  observedTrendWraps.add(wrap);
+  let lastW = wrap.clientWidth;
+  let lastH = wrap.clientHeight;
+  new ResizeObserver(() => {
+    if (wrap.clientWidth === lastW && wrap.clientHeight === lastH) return;
+    lastW = wrap.clientWidth;
+    lastH = wrap.clientHeight;
+    const data = lastTrendData.get(canvas);
+    if (data) drawTrendChart(canvas, data);
+  }).observe(wrap);
+}
+
 export function drawTrendChart(canvas, data) {
   const dpr = window.devicePixelRatio || 1;
   const wrap = canvas.parentElement;
+  lastTrendData.set(canvas, data);
+  observeTrendWrap(canvas, wrap);
   const W = wrap.clientWidth;
   const H = wrap.clientHeight;
+  // Hidden: nothing to draw, and pinning a 0px inline size would outlive the reveal.
+  if (!W || !H) return;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width  = W + 'px';
