@@ -98,6 +98,22 @@ const CLASHING = {
 
 const FEED = [SECTION, SECTION_B, CLASHING];
 
+/** Normalized sections for the section-list helpers (#682). */
+const NORM_OPEN = {
+  sectionId: 201, courseCode: 'CSE220', sectionName: '02', facultyInitials: 'ABC',
+  capacity: 30, consumedSeat: 10, isFull: false,
+  classSlots: [{ day: 'SUNDAY', startMin: 8 * 60, endMin: 9 * 60 + 20 }],
+};
+const NORM_FULL = {
+  ...NORM_OPEN, sectionId: 202, sectionName: '01', capacity: 30, consumedSeat: 30, isFull: true,
+};
+const NORM_LATE = {
+  ...NORM_OPEN, sectionId: 203, sectionName: '03', facultyInitials: 'XYZ',
+  consumedSeat: 25,
+  classSlots: [{ day: 'MONDAY', startMin: 15 * 60 + 30, endMin: 18 * 60 }],
+};
+const NORM_NO_SLOTS = { ...NORM_OPEN, sectionId: 204, sectionName: '04', classSlots: [] };
+
 /** Two programs and a cross-department catalogue, for the relevance filter (#539). */
 const TWIN_PROGRAMS = {
   CSE: {
@@ -546,6 +562,29 @@ export const FIXTURES = {
     resolvePlanImport: [
       [['CSE220'], FEED],
       [[], FEED],
+    ],
+  },
+
+  // Normalized sections (parseFeed output), which is what the list helpers take:
+  // slot minutes rather than the feed's time strings, plus the isFull flag.
+  routineSectionList: {
+    sectionNumber: [['01'], ['12'], ['TBA'], [null]],
+    seatsLeft: [[NORM_OPEN], [NORM_FULL], [{ capacity: 0, consumedSeat: 0 }]],
+    earliestStart: [[NORM_OPEN], [NORM_NO_SLOTS]],
+    sectionPassesFilters: [
+      [NORM_OPEN, {}],
+      [NORM_OPEN, { noEarly: true }],
+      [NORM_OPEN, { noEvening: true }],
+      [NORM_LATE, { noEvening: true }],
+      [NORM_OPEN, { avoidDays: ['SUNDAY'] }],
+      [NORM_NO_SLOTS, { noEarly: true, avoidDays: ['SUNDAY'] }],
+    ],
+    sortSections: [
+      [[]],
+      [[NORM_OPEN, NORM_FULL, NORM_LATE], 'section'],
+      [[NORM_OPEN, NORM_FULL, NORM_LATE], 'seats'],
+      [[NORM_OPEN, NORM_FULL, NORM_LATE], 'time'],
+      [[NORM_LATE, NORM_OPEN], 'faculty'],
     ],
   },
 
