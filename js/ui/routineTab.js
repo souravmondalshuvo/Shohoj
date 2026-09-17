@@ -44,6 +44,12 @@ import {
 } from '../core/routineState.js';
 import { computeGridLayout } from '../core/routineGrid.js';
 import {
+  SECTION_SORT_MODES,
+  seatsLeft,
+  sectionPassesFilters,
+  sortSections,
+} from '../core/routineSectionList.js';
+import {
   buildFacultyRatingMap,
   getRatingForSection,
   formatRatingScore,
@@ -155,9 +161,6 @@ const _store = {
   filters: { noEarly: false, noEvening: false, avoidDays: [], compact: true },
 };
 
-// Time-filter thresholds (minutes since midnight).
-const FILTER_EARLY_MIN = 9 * 60;   // "no early" hides anything starting before 9:00 AM
-const FILTER_EVENING_MIN = 17 * 60; // "no evening" hides anything ending after 5:00 PM
 
 // Auto-suggest gap penalty per idle hour when "Compact" is on. Tuned to break
 // ties between similarly-rated combos without overpowering faculty quality.
@@ -169,12 +172,6 @@ const ROUTINE_GAP_WEIGHT = 1.5;
 const COURSE_HUES = [210, 160, 275, 40, 190, 320, 95, 250, 130, 300];
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const SORT_MODES = [
-  ['section', 'Section #'],
-  ['faculty', 'Faculty ★'],
-  ['seats',   'Seats'],
-  ['time',    'Earliest'],
-];
 
 // The Firestore hook caps at Math.min(n, 1000) (js/auth/firebase.js), so 1000
 // is the real ceiling — asking for more just gets clamped.
@@ -287,14 +284,7 @@ function _onToggleCompact() {
 // Does a section satisfy the active time-of-day filters? A section with no
 // scheduled slots passes (nothing to violate).
 function _sectionPassesFilters(section) {
-  const f = _store.filters;
-  if (!f.noEarly && !f.noEvening && f.avoidDays.length === 0) return true;
-  for (const slot of (section.classSlots || [])) {
-    if (f.noEarly && slot.startMin < FILTER_EARLY_MIN) return false;
-    if (f.noEvening && slot.endMin > FILTER_EVENING_MIN) return false;
-    if (f.avoidDays.includes(slot.day)) return false;
-  }
-  return true;
+  return sectionPassesFilters(section, _store.filters);
 }
 
 function _onToggleExpand(code) {
@@ -1433,7 +1423,7 @@ function _controlsInner(picked, summary, selected) {
   const clashChip = clashes > 0
     ? `<span class="routine-stat routine-stat--clash" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${clashes} clash${clashes === 1 ? '' : 'es'}</span>`
     : `<span class="routine-stat routine-stat--ok">✓ no clashes</span>`;
-  const sortBtns = SORT_MODES.map(([mode, label]) =>
+  const sortBtns = SECTION_SORT_MODES.map(([mode, label]) =>
     `<button class="routine-sort-btn ${_store.sortMode === mode ? 'is-active' : ''}" data-action="routine:setSort" data-sort="${mode}">${label}</button>`
   ).join('');
   // Hiding clashes only does anything once at least one section is resolved.
@@ -1596,36 +1586,13 @@ function _sectionHeadHTML() {
   `;
 }
 
-// Sort a course's sections by the active mode. Full sections always sink to the
-// bottom (they can't be taken), and section number is the universal tie-break.
+// Ordering lives in core/routineSectionList.js; the store supplies the mode and
+// the rating lookup, which is the only part the pure helper cannot know.
 function _sortSections(sections) {
-  const mode = _store.sortMode;
-  const decorated = sections.map(s => ({ s, full: !!s.isFull, num: _sectionNum(s.sectionName) }));
-  let primary;
-  if (mode === 'faculty')   primary = (a, b) => _ratingValue(b.s) - _ratingValue(a.s);
-  else if (mode === 'seats') primary = (a, b) => _seatsLeft(b.s) - _seatsLeft(a.s);
-  else if (mode === 'time')  primary = (a, b) => _earliestStart(a.s) - _earliestStart(b.s);
-  else                       primary = (a, b) => a.num - b.num;
-  decorated.sort((a, b) => {
-    if (a.full !== b.full) return a.full ? 1 : -1;
-    const p = primary(a, b);
-    if (p !== 0) return p;
-    return a.num - b.num;
-  });
-  return decorated.map(d => d.s);
+  return sortSections(sections, _store.sortMode, _ratingValue);
 }
 
-function _sectionNum(name) {
-  const n = parseInt(name, 10);
-  return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
-}
-function _seatsLeft(section) {
-  return Math.max(0, (section.capacity || 0) - (section.consumedSeat || 0));
-}
-function _earliestStart(section) {
-  if (!section.classSlots || section.classSlots.length === 0) return Number.MAX_SAFE_INTEGER;
-  return Math.min(...section.classSlots.map(s => s.startMin));
-}
+
 function _ratingValue(section) {
   if (!_store.ratingLoaded) return -1;
   const r = getRatingForSection(section, _store.ratingMap);
@@ -1668,7 +1635,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
   const seatTitle = section.isFull
     ? 'Section full'
-    : `${section.consumedSeat}/${section.capacity} seats taken · ${_seatsLeft(section)} left`;
+    : `${section.consumedSeat}/${section.capacity} seats taken · ${seatsLeft(section)} left`;
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
@@ -1736,7 +1703,7 @@ function _examDate(dateStr) {
 // how many are left, the rest show taken/capacity.
 function _seatText(section) {
   if (section.isFull) return 'FULL';
-  const left = _seatsLeft(section);
+  const left = seatsLeft(section);
   const pct = section.capacity > 0 ? section.consumedSeat / section.capacity : 0;
   if (pct > 0.85) return `${left} left`;
   return `${section.consumedSeat}/${section.capacity}`;
