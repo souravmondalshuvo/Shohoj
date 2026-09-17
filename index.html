@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-uvZL30tCf4OrB183zjvjgpoqkA75w+hji9mUjhh2ulY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-VLSmKMiBCSxdRAALm5iQAdD1Zzi/nwZ/d0VJ/3zOBxo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26794,6 +26794,7 @@ const _frStore = {
   source: null,
   fetchedAt: 0,
   index: null,                 // Map<room, BusyInterval[]>
+  semester: null,              // SemesterIdentity of the loaded feed (#633)
   day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
   minute: _frNowMinute(),
   showAll: false,              // false = free-only view, true = all-rooms board
@@ -26827,6 +26828,7 @@ async function _frRefresh(force = false) {
   try {
     const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
     _frStore.index = buildRoomBusyIndex(result.sections);
+    _frStore.semester = describeSemester(result.sections, todayISODate());
     _frStore.source = result.source;
     _frStore.fetchedAt = result.fetchedAt;
     // One fetch serves every tab: let routine/seats repaint from this result
@@ -26846,6 +26848,7 @@ async function _frRefresh(force = false) {
 function _frApplyLiveFeed(result) {
   if (_frStore.loading) return; // our own refresh is mid-flight; it will win
   _frStore.index = buildRoomBusyIndex(result.sections);
+  _frStore.semester = describeSemester(result.sections, todayISODate());
   _frStore.source = result.source;
   _frStore.fetchedAt = result.fetchedAt;
   const time = document.getElementById('freeRoomsTime');
@@ -26922,6 +26925,7 @@ function _frMainHTML() {
     <div class="freerooms-tab">
       ${_frHeaderHTML()}
       ${_frControlsHTML()}
+      ${_frOutOfTermHTML()}
       <div id="freeRoomsResults">${_frResultsHTML()}</div>
     </div>`;
 }
@@ -26936,11 +26940,26 @@ function _frHeaderHTML() {
         <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
           ${escHtml(sourceLabel)} · ${escHtml(age)}
         </span>
+        ${_frStore.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_frStore.semester.status)}" title="${escAttr(semesterCaveat(_frStore.semester))}" data-testid="freerooms-semester">${escHtml(semesterHeadline(_frStore.semester))}</span>` : ''}
       </div>
       <div class="routine-header-right">
         <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
       </div>
     </div>`;
+}
+
+// Occupancy is a claim about now, so it is the one answer on this tab that is
+// wrong rather than merely stale when the feed carries a semester that is not
+// running (#633). Same wording as the shell's RoomsRoute.
+function _frOutOfTermHTML() {
+  const sem = _frStore.semester;
+  if (!sem || semesterIsRunning(sem)) return '';
+  return `
+    <p class="freerooms-outofterm" role="status" data-testid="freerooms-out-of-term">
+      These rooms are read off ${escHtml(semesterHeadline(sem))}, which is not the semester
+      running right now — a room shown free may well have a class in it today.
+      ${escHtml(semesterCaveat(sem))}
+    </p>`;
 }
 
 function _frControlsHTML() {
@@ -27148,6 +27167,7 @@ const _seats = {
   fetchedAt: 0,
   index: null,         // Map<courseCode, NormalizedSection[]>
   sections: [],        // flat NormalizedSection[] (for sectionId lookups)
+  semester: null,      // SemesterIdentity of the loaded feed (#633)
   query: '',
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
@@ -27202,6 +27222,7 @@ function _seatsApplyFeed(result) {
   if (_seats.loading) return; // a manual refresh is mid-flight; it will win
   _seats.index = indexByCourse(result.sections);
   _seats.sections = result.sections;
+  _seats.semester = describeSemester(result.sections, todayISODate());
   _seats.source = result.source;
   _seats.fetchedAt = result.fetchedAt;
   _seatsEvaluateWatches();
@@ -27335,6 +27356,7 @@ async function _seatsRefresh(force = false) {
     const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
     _seats.index = indexByCourse(result.sections);
     _seats.sections = result.sections;
+    _seats.semester = describeSemester(result.sections, todayISODate());
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
     _seatsEvaluateWatches();
@@ -27471,6 +27493,7 @@ function _seatsMainHTML() {
           <span class="seats-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
             ${escHtml(sourceLabel)} · ${escHtml(age)}
           </span>
+          ${_seats.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_seats.semester.status)}" title="${escAttr(semesterCaveat(_seats.semester))}" data-testid="seats-semester">${escHtml(semesterHeadline(_seats.semester))}</span>` : ''}
         </div>
         <div class="seats-header-right">
           <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
