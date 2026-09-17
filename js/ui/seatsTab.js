@@ -22,6 +22,12 @@ import {
 } from '../core/seatWatch.js';
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
+import {
+  describeSemester,
+  semesterCaveat,
+  semesterHeadline,
+  todayISODate,
+} from '../core/semesterIdentity.js';
 import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, FEED_LIVE_POLL_MS } from './feedLive.js';
 import { saveState } from '../core/state.js';
 
@@ -44,6 +50,7 @@ const _seats = {
   fetchedAt: 0,
   index: null,         // Map<courseCode, NormalizedSection[]>
   sections: [],        // flat NormalizedSection[] (for sectionId lookups)
+  semester: null,      // SemesterIdentity of the loaded feed (#633)
   query: '',
   sortMode: 'section', // 'section' | 'seats'
   availableOnly: false,
@@ -98,6 +105,7 @@ function _seatsApplyFeed(result) {
   if (_seats.loading) return; // a manual refresh is mid-flight; it will win
   _seats.index = indexByCourse(result.sections);
   _seats.sections = result.sections;
+  _seats.semester = describeSemester(result.sections, todayISODate());
   _seats.source = result.source;
   _seats.fetchedAt = result.fetchedAt;
   _seatsEvaluateWatches();
@@ -231,6 +239,7 @@ async function _seatsRefresh(force = false) {
     const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
     _seats.index = indexByCourse(result.sections);
     _seats.sections = result.sections;
+    _seats.semester = describeSemester(result.sections, todayISODate());
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
     _seatsEvaluateWatches();
@@ -367,6 +376,7 @@ function _seatsMainHTML() {
           <span class="seats-source-badge ${sourceClass}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
             ${escHtml(sourceLabel)} · ${escHtml(age)}
           </span>
+          ${_seats.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_seats.semester.status)}" title="${escAttr(semesterCaveat(_seats.semester))}" data-testid="seats-semester">${escHtml(semesterHeadline(_seats.semester))}</span>` : ''}
         </div>
         <div class="seats-header-right">
           <button class="btn-secondary btn-sm" data-action="seats:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
