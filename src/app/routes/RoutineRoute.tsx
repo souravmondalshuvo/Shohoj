@@ -9,13 +9,16 @@
 // connectFeed) — this component is the thin React shell over it, matching how
 // CampusRoute consumes the same feed. Richer legacy features (section
 // suggestions/combos, PNG export, share link + QR, add-to-calendar, live
-// faculty ratings, planner import, avoid-day/sort filters) are deferred to
-// follow-up slices under #397.
+// faculty ratings, planner import) are deferred to follow-up slices under
+// #397. Sort, filters and clash-hiding landed in #682, off the same pure
+// helpers the legacy tab uses (src/core/routineSectionList.ts).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
+  hasClassClash,
+  hasExamClash,
   indexByCourse,
   parseFeed,
   type NormalizedSection,
@@ -57,8 +60,27 @@ import {
   type SemesterIdentity,
 } from '../../core/semesterIdentity';
 import { computeGridLayout } from '../../core/routineGrid';
+import {
+  SECTION_SORT_MODES,
+  type SectionFilters,
+  type SectionSortMode,
+  seatsLeft,
+  sectionPassesFilters,
+  sortSections,
+} from '../../core/routineSectionList';
 
 const STORAGE_KEY = 'shohoj_routine_picks_v1';
+
+/** Weekday order for the avoid-day chips, as legacy lists them. */
+const DAY_ORDER: readonly WeekdayName[] = [
+  'SATURDAY',
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+];
 
 const DAY_LABEL: Record<WeekdayName, string> = {
   SATURDAY: 'Sat',
@@ -161,6 +183,13 @@ export function Component() {
   const [archived, setArchived] = useState<ArchivedSemester[]>([]);
   const [chosenSession, setChosenSession] = useState<SessionChoice>(restoreSemesterChoice);
   const [imported, setImported] = useState<unknown[]>(restoreImportedSections);
+  const [sortMode, setSortMode] = useState<SectionSortMode>('section');
+  const [hideClashing, setHideClashing] = useState(false);
+  const [filters, setFilters] = useState<SectionFilters>({
+    noEarly: false,
+    noEvening: false,
+    avoidDays: [],
+  });
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importNote, setImportNote] = useState('');
@@ -357,6 +386,68 @@ export function Component() {
   const summary = useMemo(() => summarizeRoutine(routine, index), [routine, index]);
   const clashCount = summary.classClashPairs + summary.examClashPairs;
 
+  const toggleAvoidDay = (day: string) =>
+    setFilters((prev) => {
+      const days = prev.avoidDays ?? [];
+      return {
+        ...prev,
+        avoidDays: days.includes(day) ? days.filter((d) => d !== day) : [...days, day],
+      };
+    });
+
+  /** Credits the current picks add up to, falling back to a course's first
+      section for a course whose section is not chosen yet — the same estimate
+      legacy shows, so the number does not jump when a pick is made. */
+  const plannedCredits = useMemo(() => {
+    let total = 0;
+    for (const code of codes) {
+      const list = index.get(code) ?? [];
+      if (list.length === 0) continue;
+      const sid = routine.picks[code];
+      const section = (sid != null && list.find((s) => s.sectionId === sid)) || list[0];
+      if (section && Number.isFinite(section.credits)) total += section.credits;
+    }
+    return total;
+  }, [codes, index, routine]);
+
+  /** Does this section clash with any OTHER course's pick? The section's own
+      course is excluded: swapping within a course is not a clash with itself. */
+  const candidateClashes = useCallback(
+    (section: NormalizedSection, courseCode: string) =>
+      resolved.some(
+        (picked) =>
+          picked.courseCode !== courseCode &&
+          (hasClassClash(section, picked) || hasExamClash(section, picked)),
+      ),
+    [resolved],
+  );
+
+  /** Sections to show for a course, plus what was held back and why. A picked
+      section always shows, even once it fails a filter set after the fact. */
+  const visibleSections = useCallback(
+    (courseCode: string) => {
+      const all = index.get(courseCode) ?? [];
+      const pickedId = routine.picks[courseCode] ?? null;
+      let hiddenFilter = 0;
+      let hiddenClash = 0;
+      const rows: NormalizedSection[] = [];
+      for (const section of sortSections(all, sortMode)) {
+        const isPicked = section.sectionId === pickedId;
+        if (!isPicked && !sectionPassesFilters(section, filters)) {
+          hiddenFilter++;
+          continue;
+        }
+        if (hideClashing && !isPicked && candidateClashes(section, courseCode)) {
+          hiddenClash++;
+          continue;
+        }
+        rows.push(section);
+      }
+      return { rows, hiddenFilter, hiddenClash, total: all.length };
+    },
+    [index, routine, sortMode, filters, hideClashing, candidateClashes],
+  );
+
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
     const code = courseInput.trim().toUpperCase();
@@ -519,12 +610,119 @@ export function Component() {
         </div>
       )}
 
+      {codes.length > 0 && (
+        <>
+          {/* Legacy's _controlsInner + _filtersInner, on the same markup so the
+              shared stylesheet dresses them identically. */}
+          <div className="routine-controls" data-testid="routine-controls">
+            <div className="routine-stats">
+              <span className="routine-stat">
+                {codes.length} course{codes.length === 1 ? '' : 's'}
+              </span>
+              <span className="routine-stat" data-testid="routine-credits">
+                {plannedCredits} cr
+              </span>
+              <span className="routine-stat">
+                {summary.resolvedCount}/{codes.length} set
+              </span>
+              {clashCount > 0 ? (
+                <span
+                  className="routine-stat routine-stat--clash"
+                  title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
+                >
+                  ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
+                </span>
+              ) : (
+                <span className="routine-stat routine-stat--ok">✓ no clashes</span>
+              )}
+            </div>
+            <div className="routine-controls-right">
+              {/* Hiding clashes can only do anything once something is picked. */}
+              {resolved.length > 0 && (
+                <button
+                  type="button"
+                  className={`routine-chip-toggle ${hideClashing ? 'is-active' : ''}`}
+                  aria-pressed={hideClashing}
+                  title="Hide sections that clash with your current picks"
+                  data-testid="routine-hide-clash"
+                  onClick={() => setHideClashing((on) => !on)}
+                >
+                  {hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}
+                </button>
+              )}
+              <div className="routine-sort" role="group" aria-label="Sort sections">
+                <span className="routine-sort-label">Sort</span>
+                {SECTION_SORT_MODES.filter(([mode]) => mode !== 'faculty').map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`routine-sort-btn ${sortMode === mode ? 'is-active' : ''}`}
+                    aria-pressed={sortMode === mode}
+                    data-testid={`routine-sort-${mode}`}
+                    onClick={() => setSortMode(mode)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="routine-filters" data-testid="routine-filters">
+            <span className="routine-filter-label">Filters</span>
+            <button
+              type="button"
+              className={`routine-filter-toggle ${filters.noEarly ? 'is-active' : ''}`}
+              aria-pressed={!!filters.noEarly}
+              title="Hide sections starting before 9:00 AM"
+              data-testid="routine-filter-early"
+              onClick={() => setFilters((f) => ({ ...f, noEarly: !f.noEarly }))}
+            >
+              No early
+            </button>
+            <button
+              type="button"
+              className={`routine-filter-toggle ${filters.noEvening ? 'is-active' : ''}`}
+              aria-pressed={!!filters.noEvening}
+              title="Hide sections ending after 5:00 PM"
+              data-testid="routine-filter-evening"
+              onClick={() => setFilters((f) => ({ ...f, noEvening: !f.noEvening }))}
+            >
+              No evening
+            </button>
+            <span className="routine-filter-sep" aria-hidden="true" />
+            <span className="routine-filter-label">Avoid</span>
+            <div className="routine-filter-days" role="group" aria-label="Avoid days">
+              {DAY_ORDER.map((day) => {
+                const on = (filters.avoidDays ?? []).includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className={`routine-filter-day ${on ? 'is-active' : ''}`}
+                    aria-pressed={on}
+                    title={`Avoid classes on ${DAY_LABEL[day]}`}
+                    data-testid={`routine-avoid-${day}`}
+                    onClick={() => toggleAvoidDay(day)}
+                  >
+                    {DAY_LABEL[day]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
       {codes.length > 0 ? (
         <>
           <ul className="routine-courses" data-testid="routine-courses">
             {codes.map((code) => {
-              const sections = index.get(code) ?? [];
+              const { rows, hiddenFilter, hiddenClash, total } = visibleSections(code);
               const pickedId = routine.picks[code] ?? null;
+              const hiddenParts = [];
+              if (hiddenClash > 0) hiddenParts.push(`${hiddenClash} clashing`);
+              if (hiddenFilter > 0) hiddenParts.push(`${hiddenFilter} filtered`);
               return (
                 <li className="routine-course" key={code} data-testid={`routine-course-${code}`}>
                   <div className="routine-course-head">
@@ -538,9 +736,18 @@ export function Component() {
                       ✕
                     </button>
                   </div>
-                  {sections.length === 0 ? (
+                  {total === 0 ? (
                     <p className="routine-course-empty shell-muted">
                       No sections for {code} in the current feed.
+                    </p>
+                  ) : rows.length === 0 ? (
+                    // Everything was filtered away. Saying so beats an empty
+                    // box that reads as "this course has no sections".
+                    <p
+                      className="routine-section-empty"
+                      data-testid={`routine-sections-empty-${code}`}
+                    >
+                      No sections match your current picks and filters.
                     </p>
                   ) : (
                     <div
@@ -548,7 +755,7 @@ export function Component() {
                       role="group"
                       aria-label={`Sections for ${code}`}
                     >
-                      {sections.map((section) => {
+                      {rows.map((section) => {
                         const isPicked = section.sectionId === pickedId;
                         const clash = isPicked ? clashMap.get(section.sectionId) : undefined;
                         const hasClash = !!clash && (clash.classClash || clash.examClash);
@@ -577,6 +784,7 @@ export function Component() {
                               {section.facultyInitials || 'TBA'}
                               {section.roomName ? ` · ${section.roomName}` : ''}
                               {` · ${section.consumedSeat}/${section.capacity} seats`}
+                              {` · ${seatsLeft(section)} left`}
                             </span>
                             <span className="routine-section-slots">{slotSummary(section)}</span>
                             {hasClash && (
@@ -589,7 +797,13 @@ export function Component() {
                       })}
                     </div>
                   )}
-                  {pickedId === null && (
+                  {hiddenParts.length > 0 && (
+                    <div className="routine-section-hidden" data-testid={`routine-hidden-${code}`}>
+                      {hiddenParts.join(' · ')} section
+                      {hiddenClash + hiddenFilter === 1 ? '' : 's'} hidden
+                    </div>
+                  )}
+                  {pickedId === null && rows.length > 0 && (
                     <p className="routine-course-hint shell-muted">Pick a section above.</p>
                   )}
                 </li>
