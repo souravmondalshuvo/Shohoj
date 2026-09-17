@@ -15,6 +15,13 @@ import {
   CAMPUS_START_MIN,
   CAMPUS_END_MIN,
 } from '../core/freeRooms.js';
+import {
+  describeSemester,
+  semesterCaveat,
+  semesterHeadline,
+  semesterIsRunning,
+  todayISODate,
+} from '../core/semesterIdentity.js';
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
@@ -62,6 +69,7 @@ const _frStore = {
   source: null,
   fetchedAt: 0,
   index: null,                 // Map<room, BusyInterval[]>
+  semester: null,              // SemesterIdentity of the loaded feed (#633)
   day: FR_WEEKDAY_BY_INDEX[new Date().getDay()],
   minute: _frNowMinute(),
   showAll: false,              // false = free-only view, true = all-rooms board
@@ -95,6 +103,7 @@ async function _frRefresh(force = false) {
   try {
     const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
     _frStore.index = buildRoomBusyIndex(result.sections);
+    _frStore.semester = describeSemester(result.sections, todayISODate());
     _frStore.source = result.source;
     _frStore.fetchedAt = result.fetchedAt;
     // One fetch serves every tab: let routine/seats repaint from this result
@@ -114,6 +123,7 @@ async function _frRefresh(force = false) {
 function _frApplyLiveFeed(result) {
   if (_frStore.loading) return; // our own refresh is mid-flight; it will win
   _frStore.index = buildRoomBusyIndex(result.sections);
+  _frStore.semester = describeSemester(result.sections, todayISODate());
   _frStore.source = result.source;
   _frStore.fetchedAt = result.fetchedAt;
   const time = document.getElementById('freeRoomsTime');
@@ -190,6 +200,7 @@ function _frMainHTML() {
     <div class="freerooms-tab">
       ${_frHeaderHTML()}
       ${_frControlsHTML()}
+      ${_frOutOfTermHTML()}
       <div id="freeRoomsResults">${_frResultsHTML()}</div>
     </div>`;
 }
@@ -204,11 +215,26 @@ function _frHeaderHTML() {
         <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
           ${escHtml(sourceLabel)} · ${escHtml(age)}
         </span>
+        ${_frStore.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_frStore.semester.status)}" title="${escAttr(semesterCaveat(_frStore.semester))}" data-testid="freerooms-semester">${escHtml(semesterHeadline(_frStore.semester))}</span>` : ''}
       </div>
       <div class="routine-header-right">
         <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
       </div>
     </div>`;
+}
+
+// Occupancy is a claim about now, so it is the one answer on this tab that is
+// wrong rather than merely stale when the feed carries a semester that is not
+// running (#633). Same wording as the shell's RoomsRoute.
+function _frOutOfTermHTML() {
+  const sem = _frStore.semester;
+  if (!sem || semesterIsRunning(sem)) return '';
+  return `
+    <p class="freerooms-outofterm" role="status" data-testid="freerooms-out-of-term">
+      These rooms are read off ${escHtml(semesterHeadline(sem))}, which is not the semester
+      running right now — a room shown free may well have a class in it today.
+      ${escHtml(semesterCaveat(sem))}
+    </p>`;
 }
 
 function _frControlsHTML() {
