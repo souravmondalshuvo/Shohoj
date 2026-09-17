@@ -9,9 +9,9 @@
 // connectFeed) — this component is the thin React shell over it, matching how
 // CampusRoute consumes the same feed. Richer legacy features (section
 // suggestions/combos, PNG export, share link + QR, add-to-calendar, live
-// faculty ratings, planner import) are deferred to follow-up slices under
-// #397. Sort, filters and clash-hiding landed in #682, off the same pure
-// helpers the legacy tab uses (src/core/routineSectionList.ts).
+// faculty ratings) are deferred to follow-up slices under #397. Sort, filters
+// and clash-hiding landed in #682 and planner import in #684, off the same
+// pure helpers the legacy tab uses.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -41,7 +41,9 @@ import {
   unpickCourse,
   type RoutineState,
 } from '../../core/routineState';
+import { useCalculator } from '../providers/CalculatorProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
+import { resolvePlanImport, summarizePlanImport } from '../../core/routinePlannerImport';
 import { parseConnectSchedule, picksFromImport } from '../../core/connectScheduleImport';
 import { feedBadgeText, feedBadgeTitle } from '../../core/feedFreshness.ts';
 import {
@@ -168,6 +170,10 @@ function restoreSemesterChoice(): SessionChoice {
 
 export function Component() {
   const config = useRuntimeConfig();
+  // The Planner's courses. Legacy reaches them through a window bridge
+  // (_shohoj_getPlanCourses); on the shell they are calculator state, which
+  // RootLayout hoists above every route.
+  const { state: calcState } = useCalculator();
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -191,6 +197,7 @@ export function Component() {
     avoidDays: [],
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [planNote, setPlanNote] = useState('');
   const [importText, setImportText] = useState('');
   const [importNote, setImportNote] = useState('');
 
@@ -448,6 +455,18 @@ export function Component() {
     [index, routine, sortMode, filters, hideClashing, candidateClashes],
   );
 
+  const planCourses = calcState.planCourses;
+
+  /** Add the planned courses CONNECT is offering, and say what was skipped.
+      Existing picks are left alone: the resolver reports them as already
+      present rather than re-adding and clearing the section chosen for them. */
+  const importFromPlan = () => {
+    if (!feed) return;
+    const result = resolvePlanImport(planCourses, index, pickedCourseCodes(routine));
+    setRoutine((prev) => result.importable.reduce((next, code) => pickCourse(next, code), prev));
+    setPlanNote(summarizePlanImport(result));
+  };
+
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
     const code = courseInput.trim().toUpperCase();
@@ -593,6 +612,17 @@ export function Component() {
         {/* The other way in, and the one that answers "show me the semester I
             am actually in" — picking courses by hand only works if you already
             know which sections you are in. */}
+        {planCourses.length > 0 && (
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above"
+            data-testid="routine-plan-import"
+            onClick={importFromPlan}
+          >
+            ↧ Import from Planner ({planCourses.length})
+          </button>
+        )}
         <button
           type="button"
           className={`btn-secondary btn-sm ${importOpen ? 'is-active' : ''}`}
@@ -604,6 +634,11 @@ export function Component() {
           📋 Paste CONNECT schedule
         </button>
       </form>
+      {planNote && (
+        <div className="routine-plan-note" role="status" data-testid="routine-plan-note">
+          {planNote}
+        </div>
+      )}
       {addError && (
         <div className="routine-add-error" role="alert" data-testid="routine-add-error">
           {addError}
