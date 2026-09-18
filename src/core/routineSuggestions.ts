@@ -87,6 +87,28 @@ export interface SuggestionsResult {
   feasible: number;
 }
 
+/**
+ * Score penalty per idle hour when the student prefers compact days.
+ *
+ * Lives with the engine rather than in a tab, so the two front ends rank
+ * identically: a suggestion ordered one way on the legacy tab and another way
+ * on the shell is the same feature giving two answers. `DEFAULTS.gapWeight` is
+ * 0 — gaps are informational unless a caller asks for the preference. Tuned to
+ * break ties between similarly-rated combos without overpowering faculty
+ * quality (#686).
+ */
+export const ROUTINE_GAP_WEIGHT = 1.5;
+
+/** Idle minutes as a student would say them: "45m", "2h", "1h 30m". */
+export function formatGapMinutes(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 const DEFAULTS: Required<SuggestionOptions> = {
   maxCombinations: 5_000,
   topK: 5,
