@@ -618,6 +618,7 @@ export const FIXTURES = {
   },
 
   routineSuggestions: {
+    formatGapMinutes: [[0], [45], [60], [90], [125], [-5], [59.6]],
     scoreCombination: [
       [[SECTION], {}],
       [[SECTION, SECTION_B], {}],
