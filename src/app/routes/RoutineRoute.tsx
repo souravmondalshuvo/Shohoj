@@ -10,8 +10,8 @@
 // CampusRoute consumes the same feed. Richer legacy features (section
 // suggestions/combos, PNG export, share link + QR, add-to-calendar, live
 // faculty ratings) are deferred to follow-up slices under #397. Sort, filters
-// and clash-hiding landed in #682 and planner import in #684, off the same
-// pure helpers the legacy tab uses.
+// and clash-hiding landed in #682, planner import in #684 and auto-suggest in
+// #686, off the same pure helpers the legacy tab uses.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -44,6 +44,13 @@ import {
 import { useCalculator } from '../providers/CalculatorProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { resolvePlanImport, summarizePlanImport } from '../../core/routinePlannerImport';
+import {
+  ROUTINE_GAP_WEIGHT,
+  formatGapMinutes,
+  suggestCombinations,
+  type Suggestion,
+  type SuggestionsResult,
+} from '../../core/routineSuggestions';
 import { parseConnectSchedule, picksFromImport } from '../../core/connectScheduleImport';
 import { feedBadgeText, feedBadgeTitle } from '../../core/feedFreshness.ts';
 import {
@@ -198,6 +205,10 @@ export function Component() {
   });
   const [importOpen, setImportOpen] = useState(false);
   const [planNote, setPlanNote] = useState('');
+  // "Compact days" is a ranking preference, not a section filter, so it lives
+  // beside the filters rather than in them — exactly as legacy has it.
+  const [compactDays, setCompactDays] = useState(true);
+  const [suggestions, setSuggestions] = useState<SuggestionsResult | null>(null);
   const [importText, setImportText] = useState('');
   const [importNote, setImportNote] = useState('');
 
@@ -467,6 +478,35 @@ export function Component() {
     setPlanNote(summarizePlanImport(result));
   };
 
+  /** Rank the clash-free combinations of the picked courses.
+      The active filters constrain enumeration, so a suggestion can never
+      propose a section the list itself refuses to show. Ratings are not loaded
+      on the shell yet, so the engine ranks on seats, gaps and exam clashes. */
+  const runSuggest = useCallback(
+    (compact: boolean) => {
+      if (!feed || codes.length === 0) return;
+      setSuggestions(
+        suggestCombinations(codes, index, new Map(), {
+          sectionFilter: (section) => sectionPassesFilters(section, filters),
+          gapWeight: compact ? ROUTINE_GAP_WEIGHT : 0,
+        }),
+      );
+    },
+    [feed, codes, index, filters],
+  );
+
+  /** Set every section of a combination at once, and close the panel: leaving
+      it open over the routine it just changed invites a second, stale apply. */
+  const applyCombo = (combo: Suggestion) => {
+    setRoutine((prev) =>
+      combo.sections.reduce(
+        (next, section) => pickSection(next, section.courseCode, section.sectionId),
+        prev,
+      ),
+    );
+    setSuggestions(null);
+  };
+
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
     const code = courseInput.trim().toUpperCase();
@@ -726,6 +766,24 @@ export function Component() {
               No evening
             </button>
             <span className="routine-filter-sep" aria-hidden="true" />
+            <span className="routine-filter-label">Suggest</span>
+            <button
+              type="button"
+              className={`routine-filter-toggle ${compactDays ? 'is-active' : ''}`}
+              aria-pressed={compactDays}
+              title="Prefer compact days (fewer idle gaps between classes) when ranking suggestions"
+              data-testid="routine-compact-days"
+              onClick={() => {
+                const next = !compactDays;
+                setCompactDays(next);
+                // Re-rank live rather than leaving a panel that no longer
+                // reflects the preference beside the toggle that changed it.
+                if (suggestions) runSuggest(next);
+              }}
+            >
+              Compact days
+            </button>
+            <span className="routine-filter-sep" aria-hidden="true" />
             <span className="routine-filter-label">Avoid</span>
             <div className="routine-filter-days" role="group" aria-label="Avoid days">
               {DAY_ORDER.map((day) => {
@@ -747,6 +805,139 @@ export function Component() {
             </div>
           </div>
         </>
+      )}
+
+      {codes.length > 0 && (
+        <div className="routine-suggest-toolbar">
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            title="Find the best clash-free section combinations"
+            data-testid="routine-suggest"
+            onClick={() => runSuggest(compactDays)}
+          >
+            ✨ Auto-suggest combinations
+          </button>
+          <span className="routine-suggest-hint">
+            {codes.length} course{codes.length === 1 ? '' : 's'} picked
+          </span>
+        </div>
+      )}
+
+      {suggestions && (
+        <div className="routine-suggest-panel" data-testid="routine-suggest-panel">
+          <div className="routine-suggest-panel-head">
+            <h4>
+              {suggestions.suggestions.length === 0
+                ? 'No clash-free combinations found'
+                : `Top ${suggestions.suggestions.length} clash-free combination${
+                    suggestions.suggestions.length === 1 ? '' : 's'
+                  }`}
+            </h4>
+            {suggestions.suggestions.length > 0 && (
+              <div className="routine-suggest-meta" data-testid="routine-suggest-meta">
+                {suggestions.feasible} feasible of {suggestions.enumerated} enumerated
+              </div>
+            )}
+            <button
+              type="button"
+              className="routine-remove-x"
+              aria-label="Close"
+              data-testid="routine-suggest-close"
+              onClick={() => setSuggestions(null)}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* A course with nothing usable left, and a search that gave up, both
+              narrow the answer — saying so beats a shorter list with no reason. */}
+          {suggestions.skippedCourses.length > 0 && (
+            <div className="routine-suggest-warn" data-testid="routine-suggest-skipped">
+              Skipped (no open sections): {suggestions.skippedCourses.join(', ')}
+            </div>
+          )}
+          {suggestions.truncated && (
+            <div className="routine-suggest-warn" data-testid="routine-suggest-truncated">
+              ⚠ Search truncated at {suggestions.enumerated} combos — too many to enumerate.
+            </div>
+          )}
+
+          {suggestions.suggestions.length === 0 ? (
+            <div className="routine-suggest-empty" data-testid="routine-suggest-empty">
+              Try removing a course or relaxing your filters. Enumerated {suggestions.enumerated},
+              all had class clashes.
+            </div>
+          ) : (
+            <div className="routine-suggest-cards">
+              {suggestions.suggestions.map((combo, i) => {
+                const b = combo.breakdown;
+                const seatNotes = [];
+                if (b.fullCount > 0) seatNotes.push(`${b.fullCount} FULL`);
+                if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
+                return (
+                  <div
+                    className="routine-suggest-card"
+                    key={combo.sections.map((x) => x.sectionId).join('-')}
+                    data-testid={`routine-suggest-card-${i}`}
+                  >
+                    <div className="routine-suggest-card-head">
+                      <span className="routine-suggest-card-rank">#{i + 1}</span>
+                      <span className="routine-suggest-card-score" title="Score">
+                        score {combo.score.toFixed(1)}
+                      </span>
+                      {seatNotes.length > 0 && (
+                        <span className="routine-suggest-card-seats">{seatNotes.join(' · ')}</span>
+                      )}
+                      {b.gapMinutes === 0 ? (
+                        <span
+                          className="routine-suggest-card-gap is-compact"
+                          title="No idle gaps between classes"
+                        >
+                          compact
+                        </span>
+                      ) : (
+                        <span
+                          className="routine-suggest-card-gap"
+                          title="Total idle time between classes across the week"
+                        >
+                          {formatGapMinutes(b.gapMinutes)} gaps
+                        </span>
+                      )}
+                      {b.examClashPairs > 0 && (
+                        <span className="routine-suggest-card-warn">
+                          ⚠ {b.examClashPairs} exam clash{b.examClashPairs === 1 ? '' : 'es'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="routine-suggest-card-list">
+                      {combo.sections.map((section) => (
+                        <div className="routine-suggest-line" key={section.sectionId}>
+                          <span className="routine-suggest-line-code">{section.courseCode}</span>
+                          <span className="routine-suggest-line-sec">§{section.sectionName}</span>
+                          <span className="routine-suggest-line-fac">
+                            {section.facultyInitials || 'TBA'}
+                          </span>
+                          <span className="routine-suggest-line-sched">{slotSummary(section)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="routine-suggest-card-actions">
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        data-testid={`routine-suggest-apply-${i}`}
+                        onClick={() => applyCombo(combo)}
+                      >
+                        Apply this combination
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {codes.length > 0 ? (
