@@ -55,7 +55,11 @@ import {
   formatRatingScore,
 } from '../core/routineFaculty.js';
 import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
-import { suggestCombinations } from '../core/routineSuggestions.js';
+import {
+  ROUTINE_GAP_WEIGHT,
+  formatGapMinutes,
+  suggestCombinations,
+} from '../core/routineSuggestions.js';
 import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerImport.js';
 import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routineExport.js';
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
@@ -162,9 +166,6 @@ const _store = {
 };
 
 
-// Auto-suggest gap penalty per idle hour when "Compact" is on. Tuned to break
-// ties between similarly-rated combos without overpowering faculty quality.
-const ROUTINE_GAP_WEIGHT = 1.5;
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
 // courses land far apart on the wheel. Red (~0/360) is deliberately absent —
@@ -1717,13 +1718,6 @@ function _min2hhmm(m) {
 }
 
 // Idle-gap duration for the suggestion cards: "45m", "1h", "2h 30m".
-function _fmtGap(minutes) {
-  const h = Math.floor(minutes / 60), m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 function _ageLabel(fetchedAt) {
   if (!fetchedAt) return 'just now';
   const diff = Date.now() - fetchedAt;
@@ -1810,7 +1804,7 @@ function _comboCardHTML(combo, idx) {
     ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
   const gapNote = b.gapMinutes === 0
     ? `<span class="routine-suggest-card-gap is-compact" title="No idle gaps between classes">compact</span>`
-    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(_fmtGap(b.gapMinutes))} gaps</span>`;
+    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(formatGapMinutes(b.gapMinutes))} gaps</span>`;
   return `
     <div class="routine-suggest-card" data-idx="${idx}">
       <div class="routine-suggest-card-head">
