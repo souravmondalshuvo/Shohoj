@@ -237,7 +237,11 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   border: 1px solid var(--c-border3); background: var(--c-card); max-width: 320px;
 }
 .calc-setup-credits { font-size: 13px; font-weight: 600; color: var(--c-green-ink); padding-bottom: 8px; }
-.simulator-box { margin-top: 20px; padding: 14px 0; border-top: 1px solid var(--c-border); }
+/* .simulator-box is NOT restated here: style.css:715 already gives it the glass
+   surface, border, radius and breakpoint-tracked margins every sibling panel
+   gets, and a second definition here loaded later and won — turning the card
+   into a bare top-rule on the shell only (#694). The horizontal margins are
+   zeroed by the .shell-main.calc-body rule above, as for its siblings. */
 .simulator-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 12px; }
 .simulator-row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--c-text-muted); }
 .simulator-row input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--c-border3); width: 130px; }
