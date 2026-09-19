@@ -205,7 +205,7 @@ Find empty classrooms right now or across the week, computed from the live timet
 - **Weekly availability** — click a room to see its full-week free/busy grid in a modal
 - **Feed-aware** — derived purely from the scheduled timetable; no ad-hoc booking data is invented
 
-### 🗄️ Semester Archive (New)
+### 📦 Semester Archive (New)
 
 The public CONNECT feed is an *advising* feed: it carries exactly one semester
 and replaces it wholesale the moment the next opens for registration. On
@@ -883,6 +883,8 @@ Shohoj/
 │   ├── assistantBudget.js        Monthly spend ceiling
 │   ├── semesterArchive.js        Snapshot each CONNECT semester into R2, serve the listing
 │   ├── catalog.generated.js      Generated course catalog for the Worker
+│   ├── reviews.generated.js      Generated review corpus for the Worker
+│   ├── campus.generated.js       Generated campus registry for the Worker
 │   ├── test/worker.test.js       Worker validation tests
 │   └── wrangler.toml             Worker deploy config
 ├── firestore.rules               Firestore security rules
