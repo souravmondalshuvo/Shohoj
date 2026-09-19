@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-RNsxPqR75xQ7fIGoMFJMuxINg/GqbS6jMYqEh27ROeY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-SvGoLXUpw5B/DM6sEn8ZDysSjM+KANikWIvozZizb08='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22130,6 +22130,28 @@ function formatRatingScore(value, digits = 1) {
 // drop class-clashing combos, rank survivors by faculty rating + seat slack +
 // exam-clash penalty, return top K. Pure / I/O-free.
 
+/**
+ * Score penalty per idle hour when the student prefers compact days.
+ *
+ * Lives with the engine rather than in a tab, so the two front ends rank
+ * identically: a suggestion ordered one way on the legacy tab and another way
+ * on the shell is the same feature giving two answers. `DEFAULTS.gapWeight` is
+ * 0 — gaps are informational unless a caller asks for the preference. Tuned to
+ * break ties between similarly-rated combos without overpowering faculty
+ * quality (#686).
+ */
+const ROUTINE_GAP_WEIGHT = 1.5;
+
+/** Idle minutes as a student would say them: "45m", "2h", "1h 30m". */
+function formatGapMinutes(minutes) {
+    const total = Math.max(0, Math.round(minutes));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h === 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+}
+
 const DEFAULTS = {
     maxCombinations: 5_000,
     topK: 5,
@@ -25026,9 +25048,6 @@ const _store = {
 };
 
 
-// Auto-suggest gap penalty per idle hour when "Compact" is on. Tuned to break
-// ties between similarly-rated combos without overpowering faculty quality.
-const ROUTINE_GAP_WEIGHT = 1.5;
 
 // Curated, well-separated hues for course blocks, ordered so consecutive
 // courses land far apart on the wheel. Red (~0/360) is deliberately absent —
@@ -26581,13 +26600,6 @@ function _min2hhmm(m) {
 }
 
 // Idle-gap duration for the suggestion cards: "45m", "1h", "2h 30m".
-function _fmtGap(minutes) {
-  const h = Math.floor(minutes / 60), m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
-
 function _ageLabel(fetchedAt) {
   if (!fetchedAt) return 'just now';
   const diff = Date.now() - fetchedAt;
@@ -26674,7 +26686,7 @@ function _comboCardHTML(combo, idx) {
     ? `<span class="routine-suggest-card-warn">⚠ ${b.examClashPairs} exam clash${b.examClashPairs === 1 ? '' : 'es'}</span>` : '';
   const gapNote = b.gapMinutes === 0
     ? `<span class="routine-suggest-card-gap is-compact" title="No idle gaps between classes">compact</span>`
-    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(_fmtGap(b.gapMinutes))} gaps</span>`;
+    : `<span class="routine-suggest-card-gap" title="Total idle time between classes across the week">${escHtml(formatGapMinutes(b.gapMinutes))} gaps</span>`;
   return `
     <div class="routine-suggest-card" data-idx="${idx}">
       <div class="routine-suggest-card-head">
