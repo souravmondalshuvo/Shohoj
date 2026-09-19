@@ -73,7 +73,7 @@ test('the twin family is discovered from the headers, not a hardcoded list', () 
   assert.ok(twins.length >= 17, `expected the known family, found ${twins.length}`);
 });
 
-test('every "Generated from" header points at a file that exists', () => {
+test('every "Twin of" header points at a file that exists', () => {
   for (const twin of twins) {
     assert.ok(
       fs.existsSync(path.join(ROOT, twin.ts)),
