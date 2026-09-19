@@ -805,15 +805,19 @@ Shohoj/
 │   │   ├── semesterBriefing.js   Exam-crunch / semester briefing model
 │   │   ├── prereq.js             Prerequisite rule parsing and evaluation
 │   │   ├── connectFeed*.js       Live CONNECT section-feed fetch + parsing
+│   │   ├── connectScheduleImport.js Parse a pasted CONNECT "Class and Exam Schedule"
 │   │   ├── seatStatus.js         Live seat lookup
 │   │   ├── seatWatch.js          Seat watchlist persistence
 │   │   ├── freeRooms.js          Empty-room derivation from the timetable
-│   │   ├── routine*.js           Routine state, suggestions, grid, faculty, export
+│   │   ├── routine*.js           Routine state, suggestions, grid, faculty, export,
+│   │                             section list, planner import
 │   │   ├── semesterArchive.js    Archived-semester listing + provenance notices
 │   │   ├── semesterIdentity.js   Naming a semester from the feed
 │   │   ├── calendarExport.js     .ics generation
 │   │   ├── assistantClient.js    Assistant relay client + drawer morph
 │   │   ├── dispatch.js           Delegated UI action registry
+│   │   ├── personalData.js       The one list of per-student device keys, and the wipes
+│   │   ├── universityDirectory.js Campuses the sign-in portal offers, and which this build serves
 │   │   ├── faculty.js            Faculty directory cache, initials normalization
 │   │   ├── papers.js             Past-paper validation and storage hooks
 │   │   ├── reviews.js            Review submission & fetch layer, aggregation helpers
@@ -835,6 +839,7 @@ Shohoj/
 │   │   ├── calculator/           React calculator — semesters, course rows, summary,
 │   │   │                         simulator, degree progress, marks tracker
 │   │   ├── assistant/            Assistant drawer + relay client
+│   │   ├── routine/              Export-plan canvas painter + faculty rating hook
 │   │   └── campus/               Three.js campus scene
 │   ├── app/                      React Router shell — providers, layout, sign-in portal,
 │   │                             and every route (calculator, planner, reviews, routine,
@@ -848,12 +853,15 @@ Shohoj/
 │   │   └── observability/        Logger + global error handlers
 │   ├── services/storage/         Versioned typed persistence (keyValueStore, migrate, backup, syncDecision)
 │   ├── state/                    Theme + Notification providers
+│   ├── firebase/                 Lazy Firebase SDK entry chunk
 │   ├── react/                    Island entry points + CGPA summary/meter components
 │   └── shared/                   Shared UI and validation schema
 ├── scripts/
 │   ├── generate_runtime_config.js  Generate local runtime-config.js
 │   ├── generate-version-json.mjs   Build stamp published with each deploy
 │   ├── generate_worker_catalog.mjs Generate the Worker's course catalog
+│   ├── generate_worker_reviews.mjs Generate the Worker's copy of the seeded review corpus
+│   ├── generate_campus_map.mjs     Regenerate every derived copy of the campus registry
 │   ├── validate_data.mjs           Data validation gate (CI)
 │   ├── check_bundle_collisions.py  Guard against duplicate top-level names in the bundle
 │   ├── check_bundle_budget.mjs     Bundle size budgets (gzip + raw) enforced in CI
@@ -861,6 +869,7 @@ Shohoj/
 │   ├── smoke-worker.mjs            Worker /health + /ready smoke check (post-deploy + daily)
 │   ├── lib/readiness.mjs           Production capability manifest, known gaps, alert rules
 │   ├── parity_report.mjs           js/ vs src/ parity reporting
+│   ├── import_semester_snapshot.mjs Turn a hand-captured CONNECT snapshot into an archive payload
 │   ├── run-tests.mjs               Unit test runner
 │   ├── backfill_campus.js          Stamp `university` on pre-tenancy documents
 │   ├── rename_faculty_initials.py  Faculty seed-data maintenance helper
