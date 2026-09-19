@@ -739,10 +739,16 @@ code rather than a plan:
   RDS portal has no known public equivalent), plus bus and cafeteria
   (hand-collected Merul Badda data) and lost & found (keyed to BRACU's room
   codes).
-- **A sign-in portal** gates the shell: sign-in is what resolves a student to a
-  campus, and the campus decides the grading rules, so the shell asks who you
-  are before showing a calculator. A confidently wrong CGPA is worse than a
-  prompt.
+- **A sign-in portal** gates the calculator on **both** builds — the React shell
+  and the vanilla app at the site root. Sign-in is what resolves a student to a
+  campus, and the campus decides the grading rules, so neither build shows a
+  calculator before it knows whose rules to apply: a confidently wrong CGPA is
+  worse than a prompt. The landing page stays public — the hero and features are
+  the pitch, they depend on no campus, and meeting a stranger with a demand for
+  their university account reads like a phishing page — and **Try Demo Mode** is
+  exempt, so the product is still explorable without an account. This is a
+  correctness gate, not an authorization one; Firestore rules remain the security
+  boundary.
 - **Campus-partitioned data** — Firestore rules pin each client-created
   community document to the writer's own campus, and `scripts/backfill_campus.js`
   stamps pre-tenancy documents.
@@ -816,7 +822,8 @@ Shohoj/
 │   │                             simulator, playground, reviews, difficulty map,
 │   │                             papers, feedback, groups, routine, seats, free
 │   │                             rooms, profile, unlock map, assistant FAB,
-│   │                             admin dashboard, tracker, modals
+│   │                             admin dashboard, tracker, modals, and the
+│   │                             sign-in portal / campus gate
 │   ├── animations/               Custom cursor, dot-matrix canvas, scroll reveal
 │   └── import/parser.js          BRACU transcript PDF parser (dual-strategy)
 ├── src/                          TypeScript/React rewrite — deployed to /app/, not the default root
