@@ -285,6 +285,9 @@ export function Component() {
     routineForSession(restoreRoutineBook(), restoreSemesterChoice()),
   );
   const [courseInput, setCourseInput] = useState('');
+  // -1 is "nothing highlighted", where Enter submits what was typed rather
+  // than a match — same contract as legacy's _store.suggestActive.
+  const [activeMatch, setActiveMatch] = useState(-1);
   const [addError, setAddError] = useState<string | null>(null);
   // Semesters the Worker has kept (#633). Empty when there is no Worker, when
   // it has archived nothing yet, or when the listing fails — in all three cases
@@ -714,8 +717,51 @@ export function Component() {
     }
   }, [qrOpen, codes.length, shareUrl]);
 
+  /** Course codes the typed prefix could mean. Legacy's _currentMatches:
+      two characters before anything is offered — one letter matches hundreds
+      of sections and is not a search — and at most eight, so the list stays a
+      glance rather than a scroll. */
+  const matches = useMemo(() => {
+    const q = courseInput.trim().toUpperCase();
+    if (q.length < 2 || !feed) return [];
+    return [...index.keys()]
+      .filter((code) => code.startsWith(q))
+      .sort()
+      .slice(0, 8);
+  }, [courseInput, index, feed]);
+
+  const addByCode = (code: string) => {
+    setRoutine((prev) => pickCourse(prev, code));
+    setCourseInput('');
+    setActiveMatch(-1);
+    setAddError(null);
+  };
+
+  const onPickerKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' && matches.length > 0) {
+      event.preventDefault();
+      setActiveMatch((i) => (i + 1) % matches.length);
+    } else if (event.key === 'ArrowUp' && matches.length > 0) {
+      event.preventDefault();
+      setActiveMatch((i) => (i - 1 + matches.length) % matches.length);
+    } else if (event.key === 'Escape' && courseInput !== '') {
+      // Clears the query, not just the list: the list IS the query's shadow,
+      // and leaving the text behind means Escape looks like it did nothing.
+      event.preventDefault();
+      setCourseInput('');
+      setActiveMatch(-1);
+    }
+    // Enter is deliberately not handled here — the form's submit runs, and
+    // addCourse below prefers the highlighted match when there is one.
+  };
+
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
+    const highlighted = activeMatch >= 0 ? matches[activeMatch] : undefined;
+    if (highlighted !== undefined) {
+      addByCode(highlighted);
+      return;
+    }
     const code = courseInput.trim().toUpperCase();
     if (code === '') return;
     if (!feed) {
@@ -726,9 +772,7 @@ export function Component() {
       setAddError(`No course "${code}" in the current feed.`);
       return;
     }
-    setRoutine((prev) => pickCourse(prev, code));
-    setCourseInput('');
-    setAddError(null);
+    addByCode(code);
   };
 
   return (
@@ -904,11 +948,22 @@ export function Component() {
             autoComplete="off"
             spellCheck={false}
             aria-label="Add a course by code"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-controls="routine-suggestions"
+            aria-expanded={matches.length > 0}
+            aria-activedescendant={
+              activeMatch >= 0 && matches[activeMatch] ? `routine-sugg-${activeMatch}` : undefined
+            }
             value={courseInput}
             onChange={(e) => {
               setCourseInput(e.target.value);
+              // A new query invalidates the old highlight; keeping it would
+              // let Enter add a course the list no longer shows.
+              setActiveMatch(-1);
               if (addError) setAddError(null);
             }}
+            onKeyDown={onPickerKeyDown}
             data-testid="routine-course-input"
           />
           <button type="submit" className="btn-primary btn-sm" data-testid="routine-add-btn">
@@ -951,6 +1006,54 @@ export function Component() {
             <div className="routine-qr-cap">
               📱 Scan with another phone to open this routine in Shohoj.
             </div>
+          </div>
+        )}
+
+        {/* Legacy's #routineSuggestions (_suggestionsHTML): what the typed prefix
+          could mean, with the section count so a course with one section is
+          distinguishable from one with twenty. Rendered only while there is a
+          query to shadow — an always-present empty box would push the grid
+          down by a row for nothing. */}
+        {courseInput.trim().length >= 2 && feed && (
+          <div
+            className="routine-suggestions"
+            id="routine-suggestions"
+            role="listbox"
+            aria-label="Course matches"
+            data-testid="routine-suggestions"
+          >
+            {matches.length === 0 ? (
+              <div className="routine-suggest-empty" data-testid="routine-suggest-none">
+                No course matches &quot;{courseInput.trim().toUpperCase()}&quot;
+              </div>
+            ) : (
+              matches.map((code, i) => {
+                const sections = index.get(code) ?? [];
+                const name = sections[0]?.courseName ?? '';
+                return (
+                  <button
+                    type="button"
+                    key={code}
+                    id={`routine-sugg-${i}`}
+                    role="option"
+                    aria-selected={i === activeMatch}
+                    className={`routine-suggest-item ${i === activeMatch ? 'is-active' : ''}`}
+                    data-testid={`routine-suggest-${code}`}
+                    // The input loses focus to a click before onClick runs, and a
+                    // blur that closed the list would cancel the very pick being
+                    // made; the list is not focus-managed, so nothing needs it.
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => addByCode(code)}
+                  >
+                    <span className="routine-suggest-code">{code}</span>
+                    <span className="routine-suggest-name">{name}</span>
+                    <span className="routine-suggest-count">
+                      {sections.length} section{sections.length === 1 ? '' : 's'}
+                    </span>
+                  </button>
+                );
+              })
+            )}
           </div>
         )}
 
