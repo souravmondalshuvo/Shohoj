@@ -182,14 +182,18 @@ Build a clash-free weekly class schedule from the live BRACU section feed, then 
 
 - **Auto-suggest** — generates valid section combinations for your chosen courses, ranked to prefer **compact days** (a `gapWeight` factor penalizes idle time between same-day classes); each suggestion shows its total gap time
 - **Conflict detection** — overlapping sections are split and flagged in a weekly grid; faculty ratings surface inline on each section
-- **Calendar export** — download an `.ics` with class + exam reminders, or share a scannable QR / link of your routine
+- **Paste your CONNECT schedule** — the public feed is a catalog of every section on offer and carries **no student identity**, so nothing in it can say which sections are *yours*. Rather than ask for a CONNECT login — a field this project has ruled out — the builder takes the "Class and Exam Schedule" page pasted straight in, and reports what it could not place instead of guessing a class time
+- **Import from your Semester Plan** — pre-fill the picker with the courses you already intend to take, skipping the ones not offered this semester and the ones already picked
+- **Export** — an `.ics` with class + exam reminders, a **PNG** of the grid, or a scannable QR / link of your routine
+- **Semester switcher** — build against the live feed or any semester in the [archive](#-semester-archive-new), so last term's timetable is still there after CONNECT has moved on
+- **The feed says how old it is** — a badge marks the data Live, Cached, Offline cache or "Pasted from CONNECT", with its age, because "cached" alone cannot tell you whether seat counts are two minutes or two days old, and during registration that is the difference between a usable number and a misleading one
 - **Time-of-day & day-off filters** — narrow sections to your availability before building
 
 ### 🪑 Seat Status & Seat-Drop Alerts
 
 Live seat availability across every section, with a watchlist that tells you the moment a full section opens.
 
-- **Live seat lookup** — capacity / consumed / room / schedule pulled from the public CONNECT feed (one cached fetch serves the whole app)
+- **Live seat lookup** — capacity / consumed / room / schedule pulled from the public CONNECT feed (one cached fetch serves the whole app), with a freshness badge and a **Refresh** that re-fetches on demand
 - **In-browser alerts** — watch a full section and get a browser notification + in-app toast when a seat frees up while Shohoj is open
 - **Email alerts** — a cron-triggered Cloudflare Worker polls the feed centrally and emails you on a real full→open transition, even with Shohoj closed (requires an operator-configured verified email sender; fails safe and logs when unconfigured)
 
@@ -1040,6 +1044,7 @@ Additional notes on Repeat:
 - **Free Rooms and the campus map show scheduled occupancy only.** There is no ad-hoc room booking feed, so a room that is free on the timetable may still be in use by a club, a makeup class, or an event.
 - **Seat email alerts** require an operator-configured verified email sender. Unconfigured, the cron logs and sends nothing rather than failing silently in a way that looks like delivery.
 - The campus map's 3D rendering is a presentation layer. Room status is readable without it.
+- **A pasted CONNECT schedule is the only way Shohoj can know your own enrolment.** The feed carries no student identity, and Shohoj will not ask for a CONNECT login. A paste is parsed tolerantly and reports what it could not read; it stays in your browser and is cleared on sign-out.
 
 ### Lost & Found
 
