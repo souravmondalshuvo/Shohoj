@@ -913,7 +913,10 @@ Shohoj/
 │   └── architecture/             Migration roadmap, current state, target architecture, risk register, test matrix, ADRs
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci.yml                One CI/CD pipeline: full validation, then gated deploy of frontend + Worker + Firestore on push to main
+│   │   ├── ci.yml                One CI/CD pipeline: full validation (incl. the
+│   │   │                         blocking shell-vs-legacy visual parity gate and
+│   │   │                         an advisory per-route parity report), then gated
+│   │   │                         deploy of frontend + Worker + Firestore on push to main
 │   │   ├── production-check.yml  Daily probe of Pages + the Worker's /health and /ready; files and closes its own alert issue
 │   │   └── dependency-review.yml Blocks PRs adding vulnerable dependencies
 │   └── dependabot.yml            Monthly grouped dependency-update policy
@@ -983,6 +986,35 @@ npm run test:rules
 npm run test:e2e:shell
 # Playwright E2E for the React Router shell
 ```
+
+```bash
+npm run test:visual
+# Shell-vs-legacy visual parity — a blocking CI gate
+
+npm run parity:report
+# Advisory per-route punch list of where the shell still differs from legacy
+```
+
+> **Before any E2E run, delete `js/config/runtime-config.js`.** It is gitignored,
+> so `git status` never mentions it, but a stale copy loads *after* the specs
+> inject their own globals and overwrites them — and `e2e/campus-gate.spec.js`
+> asserts the unconfigured state outright, so no value of the file can satisfy
+> the suite. An unfilled template placeholder is the worst case: ~20 failures
+> spread across unrelated specs, none of which names the cause. CI deletes it
+> before its E2E step, which is why CI can be green while your machine is not.
+>
+> ```bash
+> rm -f js/config/runtime-config.js
+> ```
+>
+> Run `npm run config:local` when you *do* want it — for `npm run dev` against
+> real Firebase — then delete it again before testing.
+
+> **Visual baselines are not portable.** `npm run test:visual` compares against
+> PNGs rendered on the CI runner. Re-author them locally with
+> `npm run test:visual:baseline` before trusting a local failure, then
+> `git checkout -- e2e-visual/__screenshots__` — never commit baselines rendered
+> on your own machine.
 
 **Build the bundled version:**
 
@@ -1278,6 +1310,7 @@ Shohoj is built for students, by students. Contributions are welcome.
 
 - Strict TypeScript, no emit. `npm run typecheck` is a CI gate
 - Domain logic belongs in `src/core/` as pure, framework-free modules, parity-tested against `js/` via `tests/typedCoreParity.test.js`. Keep the two in sync when you change shared behaviour
+- **17 modules under `js/` are hand-maintained twins of a `src/` original** (they say so in a header comment). TypeScript is the source of truth: change `src/` first, then mirror it into `js/`. `tests/twinParity.test.js` diffs the export surface *and* runs identical fixtures through both copies, so a divergence inside a function body fails too — when the pair disagrees, `js/` is the bug unless it is a declared asymmetry
 - Firebase access goes through the typed repositories in `src/platform/firebase/`, never directly from a component
 - New routes need a route-level Playwright + axe smoke test in `e2e-shell/`
 
