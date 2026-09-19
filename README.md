@@ -849,7 +849,7 @@ Shohoj/
 ├── firestore.rules               Firestore security rules
 ├── firestore.indexes.json        Required Firestore composite indexes
 ├── firebase.json                 Firestore emulator config
-├── tests/                        106 Node test-runner unit suites (see the CI badge for pass status). Representative:
+├── tests/                        125 Node test-runner unit suites (see the CI badge for pass status). Representative:
 │   ├── calculator.test.js        GPA engine, retake/repeat policies, grade detection
 │   ├── parser.test.js            department detection, semester parsing, blob parser
 │   ├── planner.test.js           prereq resolution, plan validation
@@ -865,8 +865,8 @@ Shohoj/
 │   ├── backfillCampus.test.js    campus backfill — the cases where a mistake is expensive
 │   ├── typedCoreParity.test.js   src/ typed core parity vs the legacy js/ logic
 │   └── firestore.rules.test.js   84 emulator-driven security rules checks
-├── e2e/                          Playwright E2E for the legacy bundled app (15 specs)
-├── e2e-shell/                    Playwright E2E for the React Router shell routes (42 specs)
+├── e2e/                          Playwright E2E for the legacy bundled app (25 specs)
+├── e2e-shell/                    Playwright E2E for the React Router shell routes (53 specs)
 ├── e2e-vite/                     Playwright E2E for the Vite island build (3 specs)
 ├── e2e-pages/                    Playwright E2E for the built standalone pages (3 specs)
 ├── e2e-visual/                   Visual parity: legacy baseline vs shell (2 specs)
