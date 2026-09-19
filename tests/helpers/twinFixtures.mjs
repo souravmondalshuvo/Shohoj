@@ -544,6 +544,16 @@ export const FIXTURES = {
   },
 
   routineFaculty: {
+    parseRatingCache: [
+      [null, 1_000_000],
+      ['', 1_000_000],
+      ['not json', 1_000_000],
+      ['{"at":1,"entries":"nope"}', 1_000_000],
+      ['{"at":0,"entries":[{"initials":"ABC","overall":4.2,"count":9,"tier":"excellent"}]}', 1_000_000],
+      ['{"at":1000000,"entries":[{"initials":"ABC","overall":4.2,"count":9,"tier":"excellent"}]}', 1_000_000],
+      ['{"at":1000000,"entries":[]}', 1_000_000],
+      ['{"at":1000000,"entries":[{"overall":3}]}', 1_000_000],
+    ],
     formatRatingScore: [[4.25], [0], [null], [3]],
     ratingTier: [
       [4.6, 12],
