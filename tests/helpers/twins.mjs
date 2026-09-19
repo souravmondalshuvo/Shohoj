@@ -2,10 +2,10 @@
 //
 // Support for the hand-maintained js/ ↔ src/ twin family (#484).
 //
-// Nothing generates one side from the other, so the "Generated from" header is
-// the only thing asserting a relationship. This module turns that header into
-// something executable: it discovers the pairs, and it makes the typed side
-// importable from a plain node test.
+// Nothing generates one side from the other, so the `// Twin of src/...`
+// header each mirror carries is the only thing asserting a relationship. This
+// module turns that header into something executable: it discovers the pairs,
+// and it makes the typed side importable from a plain node test.
 //
 // Why transpile rather than import the .ts directly: most of src/ uses
 // extensionless relative imports ('./grades'), which Vite and tsc resolve but
@@ -21,7 +21,7 @@ import ts from 'typescript';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-/** Directories scanned for `// Generated from ...` headers. */
+/** Directories scanned for `// Twin of ...` headers. */
 const JS_ROOTS = ['js'];
 
 /** Rewrite local specifiers to the transpiled .mjs siblings. Handles both the
