@@ -1312,7 +1312,7 @@ Shohoj is built for students, by students. Contributions are welcome.
 
 - Strict TypeScript, no emit. `npm run typecheck` is a CI gate
 - Domain logic belongs in `src/core/` as pure, framework-free modules, parity-tested against `js/` via `tests/typedCoreParity.test.js`. Keep the two in sync when you change shared behaviour
-- **17 modules under `js/` are hand-maintained twins of a `src/` original** (they say so in a header comment). TypeScript is the source of truth: change `src/` first, then mirror it into `js/`. `tests/twinParity.test.js` diffs the export surface *and* runs identical fixtures through both copies, so a divergence inside a function body fails too — when the pair disagrees, `js/` is the bug unless it is a declared asymmetry
+- **A module under `js/` whose header reads `// Twin of src/…` is a hand-maintained mirror.** TypeScript is the source of truth: change `src/` first, then mirror it into `js/`. `tests/twinParity.test.js` diffs the export surface *and* runs identical fixtures through both copies, so a divergence inside a function body fails too — when the pair disagrees, `js/` is the bug unless it is a declared asymmetry
 - Firebase access goes through the typed repositories in `src/platform/firebase/`, never directly from a component
 - New routes need a route-level Playwright + axe smoke test in `e2e-shell/`
 
