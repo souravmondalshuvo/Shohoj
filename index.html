@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-SvGoLXUpw5B/DM6sEn8ZDysSjM+KANikWIvozZizb08='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-NqxTNWYjoiQJHufNNRyHXuSqec1OB94GYxpby8WhaSU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22121,6 +22121,49 @@ function formatRatingScore(value, digits = 1) {
     return value.toFixed(digits);
 }
 
+/**
+ * Where the built rating map is cached, and for how long.
+ *
+ * Deliberately NOT personal data — it is public aggregate, which is why both
+ * `personalData` copies exclude it from the sign-out wipe. The key, the TTL and
+ * the shape below live here rather than in a tab because two front ends write
+ * this one key, and a format that drifts between them is a cache that poisons
+ * whichever side reads it second (#688).
+ */
+const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
+const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** FacultyRating is flat and JSON-safe, so the map serializes as its values. */
+function serializeRatingCache(ratingMap, now = Date.now()) {
+    return { at: now, entries: Array.from(ratingMap.values()) };
+}
+
+/**
+ * Rebuild the map from a cached string, or null when there is nothing usable:
+ * absent, unparseable, the wrong shape, expired, or empty. Callers treat null
+ * as "not cached" and fetch — so a corrupt entry costs a read, not an error.
+ */
+function parseRatingCache(raw, now = Date.now(), ttlMs = RATING_CACHE_TTL_MS) {
+    if (typeof raw !== 'string' || raw === '') return null;
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+    if (parsed === null || typeof parsed !== 'object') return null;
+    if (typeof parsed.at !== 'number' || !Array.isArray(parsed.entries)) return null;
+    if (now - parsed.at > ttlMs) return null;
+
+    const map = new Map();
+    for (const entry of parsed.entries) {
+        if (entry && typeof entry.initials === 'string' && entry.initials !== '') {
+            map.set(entry.initials, entry);
+        }
+    }
+    return map.size > 0 ? map : null;
+}
+
 // ── js/core/routineSuggestions.js ───────────────────────────────
 // Twin of src/core/routineSuggestions.ts — hand-maintained, not generated.
 // src/core/routineSuggestions.ts is the source of truth: change it there first, then mirror the
@@ -25060,12 +25103,6 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 // is the real ceiling — asking for more just gets clamped.
 const REVIEWS_FETCH_LIMIT = 1000;
 
-// Cross-session cache for the aggregated faculty rating map. Faculty ratings
-// move slowly, so a returning user within the TTL gets instant badges and pays
-// zero Firestore reads. Mirrors the CONNECT-feed cache pattern.
-const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
-const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
-
 // Every semester's picks, read once. A routine is picks against ONE semester's
 // sections, and the codes carry across while the section ids do not (#633).
 function _restoreRoutineBook() {
@@ -25717,28 +25754,17 @@ async function _loadFacultyRatings(force) {
   }
 }
 
-// FacultyRating entries are flat, JSON-safe objects ({ initials, overall,
-// count, tier }), so we serialize the map as a list and rebuild it keyed by
-// the same normalized initials buildFacultyRatingMap used.
+// The cache format lives in core/routineFaculty.js: the shell writes this same
+// key, so the shape is shared rather than restated here (#688).
 function _readRatingCache() {
   try {
-    const raw = localStorage.getItem(RATING_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.at !== 'number' || !Array.isArray(parsed.entries)) return null;
-    if (Date.now() - parsed.at > RATING_CACHE_TTL_MS) return null;
-    const map = new Map();
-    for (const e of parsed.entries) {
-      if (e && typeof e.initials === 'string') map.set(e.initials, e);
-    }
-    return map.size > 0 ? map : null;
+    return parseRatingCache(localStorage.getItem(RATING_CACHE_KEY));
   } catch { return null; }
 }
 
 function _writeRatingCache(map) {
   try {
-    const entries = Array.from(map.values());
-    localStorage.setItem(RATING_CACHE_KEY, JSON.stringify({ at: Date.now(), entries }));
+    localStorage.setItem(RATING_CACHE_KEY, JSON.stringify(serializeRatingCache(map)));
   } catch { /* quota / disabled storage — caching is best-effort */ }
 }
 
