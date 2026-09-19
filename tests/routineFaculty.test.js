@@ -5,10 +5,13 @@
  */
 
 import {
+    RATING_CACHE_TTL_MS,
     buildFacultyRatingMap,
     getRatingForSection,
     ratingTier,
     formatRatingScore,
+    parseRatingCache,
+    serializeRatingCache,
     LOW_SAMPLE_THRESHOLD,
 } from '../js/core/routineFaculty.js';
 
@@ -116,6 +119,64 @@ test('formats to one decimal by default', () => eq(formatRatingScore(4.234), '4.
 test('null formats to em-dash', () => eq(formatRatingScore(null), '—'));
 test('NaN formats to em-dash', () => eq(formatRatingScore(NaN), '—'));
 test('respects custom digits', () => eq(formatRatingScore(4.234, 2), '4.23'));
+
+// ---- the rating cache (#688) ----
+// Two front ends write this one key, so the format is shared. Everything here
+// is about refusing to trust a payload rather than about the happy path: a bad
+// cache entry must cost a fetch, never a crash or a wrong badge.
+console.log('\nrating cache:');
+
+const CACHED = buildFacultyRatingMap([
+    { facultyInitials: 'ABC', overall: 4.6, count: 12 },
+    { facultyInitials: 'XYZ', overall: 2.1, count: 8 },
+]);
+const NOW = 1_000_000;
+const round = (map, now = NOW) => parseRatingCache(JSON.stringify(serializeRatingCache(map, now)), now);
+
+test('a map survives the round trip, keys and tiers intact', () => {
+    const back = round(CACHED);
+    assert(back !== null);
+    eq(back.size, 2);
+    eq(back.get('ABC').tier, 'excellent');
+    eq(back.get('XYZ').overall, 2.1);
+});
+test('the stamp is the time it was written', () => {
+    eq(serializeRatingCache(CACHED, NOW).at, NOW);
+});
+test('a cache inside the TTL is used', () => {
+    const raw = JSON.stringify(serializeRatingCache(CACHED, NOW));
+    assert(parseRatingCache(raw, NOW + RATING_CACHE_TTL_MS - 1) !== null);
+});
+test('a cache past the TTL is refused, not served stale', () => {
+    const raw = JSON.stringify(serializeRatingCache(CACHED, NOW));
+    eq(parseRatingCache(raw, NOW + RATING_CACHE_TTL_MS + 1), null);
+});
+test('absent, empty and unparseable all read as "not cached"', () => {
+    eq(parseRatingCache(null, NOW), null);
+    eq(parseRatingCache(undefined, NOW), null);
+    eq(parseRatingCache('', NOW), null);
+    eq(parseRatingCache('{oh no', NOW), null);
+});
+test('a payload of the wrong shape is refused', () => {
+    eq(parseRatingCache('null', NOW), null);
+    eq(parseRatingCache('[]', NOW), null);
+    eq(parseRatingCache('{"entries":[]}', NOW), null);
+    eq(parseRatingCache('{"at":"soon","entries":[]}', NOW), null);
+    eq(parseRatingCache('{"at":1000000,"entries":"nope"}', NOW), null);
+});
+test('an empty map is not a cache — it would suppress every badge', () => {
+    eq(parseRatingCache(JSON.stringify({ at: NOW, entries: [] }), NOW), null);
+});
+test('entries with no initials are dropped, the rest kept', () => {
+    const raw = JSON.stringify({
+        at: NOW,
+        entries: [{ overall: 3 }, { initials: '', overall: 3 }, { initials: 'ABC', overall: 4.6, count: 12, tier: 'excellent' }],
+    });
+    const back = parseRatingCache(raw, NOW);
+    assert(back !== null);
+    eq(back.size, 1);
+    eq(back.get('ABC').overall, 4.6);
+});
 
 // -------------
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
