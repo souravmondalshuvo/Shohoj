@@ -50,9 +50,12 @@ import {
   sortSections,
 } from '../core/routineSectionList.js';
 import {
+  RATING_CACHE_KEY,
   buildFacultyRatingMap,
   getRatingForSection,
   formatRatingScore,
+  parseRatingCache,
+  serializeRatingCache,
 } from '../core/routineFaculty.js';
 import { fetchRecentReviews, aggregateByFaculty } from '../core/reviews.js';
 import {
@@ -177,12 +180,6 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 // The Firestore hook caps at Math.min(n, 1000) (js/auth/firebase.js), so 1000
 // is the real ceiling — asking for more just gets clamped.
 const REVIEWS_FETCH_LIMIT = 1000;
-
-// Cross-session cache for the aggregated faculty rating map. Faculty ratings
-// move slowly, so a returning user within the TTL gets instant badges and pays
-// zero Firestore reads. Mirrors the CONNECT-feed cache pattern.
-const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
-const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
 // Every semester's picks, read once. A routine is picks against ONE semester's
 // sections, and the codes carry across while the section ids do not (#633).
@@ -835,28 +832,17 @@ async function _loadFacultyRatings(force) {
   }
 }
 
-// FacultyRating entries are flat, JSON-safe objects ({ initials, overall,
-// count, tier }), so we serialize the map as a list and rebuild it keyed by
-// the same normalized initials buildFacultyRatingMap used.
+// The cache format lives in core/routineFaculty.js: the shell writes this same
+// key, so the shape is shared rather than restated here (#688).
 function _readRatingCache() {
   try {
-    const raw = localStorage.getItem(RATING_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed.at !== 'number' || !Array.isArray(parsed.entries)) return null;
-    if (Date.now() - parsed.at > RATING_CACHE_TTL_MS) return null;
-    const map = new Map();
-    for (const e of parsed.entries) {
-      if (e && typeof e.initials === 'string') map.set(e.initials, e);
-    }
-    return map.size > 0 ? map : null;
+    return parseRatingCache(localStorage.getItem(RATING_CACHE_KEY));
   } catch { return null; }
 }
 
 function _writeRatingCache(map) {
   try {
-    const entries = Array.from(map.values());
-    localStorage.setItem(RATING_CACHE_KEY, JSON.stringify({ at: Date.now(), entries }));
+    localStorage.setItem(RATING_CACHE_KEY, JSON.stringify(serializeRatingCache(map)));
   } catch { /* quota / disabled storage — caching is best-effort */ }
 }
 
