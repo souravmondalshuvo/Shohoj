@@ -732,744 +732,761 @@ export function Component() {
   };
 
   return (
-    <section className="shell-page routine-page routine-tab" data-testid="routine-page">
-      {/* Legacy's one-row header (js/ui/routineTab.js:_headerHTML): title, feed
+    // Legacy keeps the page container and the component container apart —
+    // `.calc-body > div > .routine-tab` — and the shell had merged them, so
+    // `.shell-page`'s `padding: 0` (which it needs, or routes inherit the
+    // global `section` rule's 5rem/2rem) also stripped the `4px 0` that
+    // `.routine-tab` gives itself in style.css:5823. One element cannot be
+    // both reset and styled; nesting is what legacy does and costs no new CSS.
+    <section className="shell-page routine-page" data-testid="routine-page">
+      <div className="routine-tab">
+        {/* Legacy's one-row header (js/ui/routineTab.js:_headerHTML): title, feed
           badge and Refresh on a single 31px line. The shell spread the same
           information over an <h1>, a description legacy does not have, and a
           separate feed-status paragraph — 100px against legacy's 31, which was
           most of this route's +90 against legacy's panel (#582). Same shape as
           the /rooms pass, which shares this header. */}
-      <div className="routine-header">
-        <div className="routine-header-left">
-          <h1>🗓️ Routine Builder</h1>
-          {feed && (
-            <span
-              className={`routine-source-badge routine-source--${feed.source}`}
-              title={feedBadgeTitle(feed.source, feed.fetchedAt)}
-              data-testid="routine-feed-source"
-            >
-              {feedBadgeText(feed.source, feed.fetchedAt)}
-            </span>
-          )}
-          {feed && (
-            <span
-              className={`routine-semester-badge routine-semester--${feed.semester.status}`}
-              title={semesterCaveat(feed.semester)}
-              data-testid="routine-semester"
-            >
-              {semesterHeadline(feed.semester)}
-            </span>
-          )}
-          {(archived.length > 0 || imported.length > 0) && (
-            <select
-              className="routine-semester-picker"
-              aria-label="Semester to show"
-              value={chosenSession ?? ''}
-              data-testid="routine-semester-picker"
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === '') chooseSemester(null);
-                else if (raw === IMPORTED_SESSION) chooseSemester(IMPORTED_SESSION);
-                else chooseSemester(Number(raw));
-              }}
-            >
-              <option value="">Live feed</option>
-              {imported.length > 0 && <option value={IMPORTED_SESSION}>My CONNECT schedule</option>}
-              {archived.map((a) => (
-                <option key={a.sessionId} value={a.sessionId}>
-                  {semesterNameFromSessionId(a.sessionId) ?? `Session ${a.sessionId}`}
-                </option>
-              ))}
-            </select>
-          )}
-          {clashCount > 0 && (
-            <span
-              className="routine-clash-warn"
-              title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
-            >
-              ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
-            </span>
-          )}
-        </div>
-        {/* Legacy's header toolbar (_headerHTML): the exports appear only once
+        <div className="routine-header">
+          <div className="routine-header-left">
+            <h1>🗓️ Routine Builder</h1>
+            {feed && (
+              <span
+                className={`routine-source-badge routine-source--${feed.source}`}
+                title={feedBadgeTitle(feed.source, feed.fetchedAt)}
+                data-testid="routine-feed-source"
+              >
+                {feedBadgeText(feed.source, feed.fetchedAt)}
+              </span>
+            )}
+            {feed && (
+              <span
+                className={`routine-semester-badge routine-semester--${feed.semester.status}`}
+                title={semesterCaveat(feed.semester)}
+                data-testid="routine-semester"
+              >
+                {semesterHeadline(feed.semester)}
+              </span>
+            )}
+            {(archived.length > 0 || imported.length > 0) && (
+              <select
+                className="routine-semester-picker"
+                aria-label="Semester to show"
+                value={chosenSession ?? ''}
+                data-testid="routine-semester-picker"
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') chooseSemester(null);
+                  else if (raw === IMPORTED_SESSION) chooseSemester(IMPORTED_SESSION);
+                  else chooseSemester(Number(raw));
+                }}
+              >
+                <option value="">Live feed</option>
+                {imported.length > 0 && (
+                  <option value={IMPORTED_SESSION}>My CONNECT schedule</option>
+                )}
+                {archived.map((a) => (
+                  <option key={a.sessionId} value={a.sessionId}>
+                    {semesterNameFromSessionId(a.sessionId) ?? `Session ${a.sessionId}`}
+                  </option>
+                ))}
+              </select>
+            )}
+            {clashCount > 0 && (
+              <span
+                className="routine-clash-warn"
+                title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
+              >
+                ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
+              </span>
+            )}
+          </div>
+          {/* Legacy's header toolbar (_headerHTML): the exports appear only once
             there is a routine to export, which is also what keeps the empty
             state identical to the parity baseline. Clear stays in the summary
             row below, where the shell has always had it. */}
-        <div className="routine-header-right">
-          {shareNote && (
-            <span className="routine-share-note" role="status" data-testid="routine-share-note">
-              {shareNote}
-            </span>
-          )}
-          {codes.length > 0 && (
-            <>
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                title="Copy a shareable link to this routine"
-                data-testid="routine-share"
-                onClick={onShare}
-              >
-                🔗 Share
-              </button>
-              <button
-                type="button"
-                className={`btn-secondary btn-sm ${qrOpen ? 'is-active' : ''}`}
-                aria-pressed={qrOpen}
-                title="Show a scannable QR of the share link"
-                data-testid="routine-qr-toggle"
-                onClick={() => setQrOpen((open) => !open)}
-              >
-                📱 QR
-              </button>
-            </>
-          )}
-          {resolved.length > 0 && (
-            <>
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                title="Download an .ics calendar of your classes + exams with reminders"
-                data-testid="routine-calendar"
-                onClick={onCalendar}
-              >
-                📅 Add to Calendar
-              </button>
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                title="Download this schedule as a PNG image"
-                data-testid="routine-export-png"
-                onClick={onExportPng}
-              >
-                ⬇ Export PNG
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => load(true)}
-            title="Re-fetch from CONNECT now"
-          >
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              style={{ marginRight: 6 }}
-            >
-              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-              <path d="M21 3v6h-6" />
-            </svg>
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {loading && !feed && (
-        <div className="routine-loading" data-testid="routine-loading">
-          Loading the course feed…
-        </div>
-      )}
-      {feedError && (
-        <div className="routine-error" role="alert">
-          {feedError}
-        </div>
-      )}
-
-      {/* Legacy's picker (_pickerHTML): one row, no visible label — the input
-          carries an aria-label instead, which is what legacy does and what
-          keeps this a 38px row rather than a 66px stack. */}
-      <form className="routine-picker" onSubmit={addCourse}>
-        <input
-          id="routine-course-input"
-          className="routine-input"
-          type="text"
-          placeholder="Add course (e.g. CSE220) — start typing for matches"
-          autoComplete="off"
-          spellCheck={false}
-          aria-label="Add a course by code"
-          value={courseInput}
-          onChange={(e) => {
-            setCourseInput(e.target.value);
-            if (addError) setAddError(null);
-          }}
-          data-testid="routine-course-input"
-        />
-        <button type="submit" className="btn-primary btn-sm" data-testid="routine-add-btn">
-          Add
-        </button>
-        {/* The other way in, and the one that answers "show me the semester I
-            am actually in" — picking courses by hand only works if you already
-            know which sections you are in. */}
-        {planCourses.length > 0 && (
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above"
-            data-testid="routine-plan-import"
-            onClick={importFromPlan}
-          >
-            ↧ Import from Planner ({planCourses.length})
-          </button>
-        )}
-        <button
-          type="button"
-          className={`btn-secondary btn-sm ${importOpen ? 'is-active' : ''}`}
-          aria-expanded={importOpen}
-          data-testid="routine-import-toggle"
-          title="Copy your Class and Exam Schedule in CONNECT, then click here"
-          onClick={() => void onConnectImportClick()}
-        >
-          📋 Paste CONNECT schedule
-        </button>
-      </form>
-      {qrOpen && codes.length > 0 && qrSvg !== '' && (
-        <div className="routine-qr-panel" data-testid="routine-qr-panel">
-          <div
-            className="routine-qr-code"
-            aria-label="QR code for this routine's share link"
-            // The generator emits rect/path geometry only — no text from the
-            // payload reaches the markup, so there is nothing to inject.
-            dangerouslySetInnerHTML={{ __html: qrSvg }}
-          />
-          <div className="routine-qr-cap">
-            📱 Scan with another phone to open this routine in Shohoj.
-          </div>
-        </div>
-      )}
-
-      {planNote && (
-        <div className="routine-plan-note" role="status" data-testid="routine-plan-note">
-          {planNote}
-        </div>
-      )}
-      {addError && (
-        <div className="routine-add-error" role="alert" data-testid="routine-add-error">
-          {addError}
-        </div>
-      )}
-
-      {codes.length > 0 && (
-        <>
-          {/* Legacy's _controlsInner + _filtersInner, on the same markup so the
-              shared stylesheet dresses them identically. */}
-          <div className="routine-controls" data-testid="routine-controls">
-            <div className="routine-stats">
-              <span className="routine-stat">
-                {codes.length} course{codes.length === 1 ? '' : 's'}
+          <div className="routine-header-right">
+            {shareNote && (
+              <span className="routine-share-note" role="status" data-testid="routine-share-note">
+                {shareNote}
               </span>
-              <span className="routine-stat" data-testid="routine-credits">
-                {plannedCredits} cr
-              </span>
-              <span className="routine-stat">
-                {summary.resolvedCount}/{codes.length} set
-              </span>
-              {clashCount > 0 ? (
-                <span
-                  className="routine-stat routine-stat--clash"
-                  title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
-                >
-                  ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
-                </span>
-              ) : (
-                <span className="routine-stat routine-stat--ok">✓ no clashes</span>
-              )}
-            </div>
-            <div className="routine-controls-right">
-              {/* Hiding clashes can only do anything once something is picked. */}
-              {resolved.length > 0 && (
+            )}
+            {codes.length > 0 && (
+              <>
                 <button
                   type="button"
-                  className={`routine-chip-toggle ${hideClashing ? 'is-active' : ''}`}
-                  aria-pressed={hideClashing}
-                  title="Hide sections that clash with your current picks"
-                  data-testid="routine-hide-clash"
-                  onClick={() => setHideClashing((on) => !on)}
+                  className="btn-secondary btn-sm"
+                  title="Copy a shareable link to this routine"
+                  data-testid="routine-share"
+                  onClick={onShare}
                 >
-                  {hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}
+                  🔗 Share
                 </button>
-              )}
-              <div className="routine-sort" role="group" aria-label="Sort sections">
-                <span className="routine-sort-label">Sort</span>
-                {SECTION_SORT_MODES.filter(([mode]) => mode !== 'faculty' || ratingsLoaded).map(
-                  ([mode, label]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={`routine-sort-btn ${sortMode === mode ? 'is-active' : ''}`}
-                      aria-pressed={sortMode === mode}
-                      data-testid={`routine-sort-${mode}`}
-                      onClick={() => setSortMode(mode)}
-                    >
-                      {label}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="routine-filters" data-testid="routine-filters">
-            <span className="routine-filter-label">Filters</span>
-            <button
-              type="button"
-              className={`routine-filter-toggle ${filters.noEarly ? 'is-active' : ''}`}
-              aria-pressed={!!filters.noEarly}
-              title="Hide sections starting before 9:00 AM"
-              data-testid="routine-filter-early"
-              onClick={() => setFilters((f) => ({ ...f, noEarly: !f.noEarly }))}
-            >
-              No early
-            </button>
-            <button
-              type="button"
-              className={`routine-filter-toggle ${filters.noEvening ? 'is-active' : ''}`}
-              aria-pressed={!!filters.noEvening}
-              title="Hide sections ending after 5:00 PM"
-              data-testid="routine-filter-evening"
-              onClick={() => setFilters((f) => ({ ...f, noEvening: !f.noEvening }))}
-            >
-              No evening
-            </button>
-            <span className="routine-filter-sep" aria-hidden="true" />
-            <span className="routine-filter-label">Suggest</span>
-            <button
-              type="button"
-              className={`routine-filter-toggle ${compactDays ? 'is-active' : ''}`}
-              aria-pressed={compactDays}
-              title="Prefer compact days (fewer idle gaps between classes) when ranking suggestions"
-              data-testid="routine-compact-days"
-              onClick={() => {
-                const next = !compactDays;
-                setCompactDays(next);
-                // Re-rank live rather than leaving a panel that no longer
-                // reflects the preference beside the toggle that changed it.
-                if (suggestions) runSuggest(next);
-              }}
-            >
-              Compact days
-            </button>
-            <span className="routine-filter-sep" aria-hidden="true" />
-            <span className="routine-filter-label">Avoid</span>
-            <div className="routine-filter-days" role="group" aria-label="Avoid days">
-              {DAY_ORDER.map((day) => {
-                const on = (filters.avoidDays ?? []).includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`routine-filter-day ${on ? 'is-active' : ''}`}
-                    aria-pressed={on}
-                    title={`Avoid classes on ${DAY_LABEL[day]}`}
-                    data-testid={`routine-avoid-${day}`}
-                    onClick={() => toggleAvoidDay(day)}
-                  >
-                    {DAY_LABEL[day]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
-
-      {codes.length > 0 && (
-        <div className="routine-suggest-toolbar">
-          <button
-            type="button"
-            className="btn-primary btn-sm"
-            title="Find the best clash-free section combinations"
-            data-testid="routine-suggest"
-            onClick={() => runSuggest(compactDays)}
-          >
-            ✨ Auto-suggest combinations
-          </button>
-          <span className="routine-suggest-hint">
-            {codes.length} course{codes.length === 1 ? '' : 's'} picked
-          </span>
-        </div>
-      )}
-
-      {suggestions && (
-        <div className="routine-suggest-panel" data-testid="routine-suggest-panel">
-          <div className="routine-suggest-panel-head">
-            <h4>
-              {suggestions.suggestions.length === 0
-                ? 'No clash-free combinations found'
-                : `Top ${suggestions.suggestions.length} clash-free combination${
-                    suggestions.suggestions.length === 1 ? '' : 's'
-                  }`}
-            </h4>
-            {suggestions.suggestions.length > 0 && (
-              <div className="routine-suggest-meta" data-testid="routine-suggest-meta">
-                {suggestions.feasible} feasible of {suggestions.enumerated} enumerated
-              </div>
+                <button
+                  type="button"
+                  className={`btn-secondary btn-sm ${qrOpen ? 'is-active' : ''}`}
+                  aria-pressed={qrOpen}
+                  title="Show a scannable QR of the share link"
+                  data-testid="routine-qr-toggle"
+                  onClick={() => setQrOpen((open) => !open)}
+                >
+                  📱 QR
+                </button>
+              </>
+            )}
+            {resolved.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  title="Download an .ics calendar of your classes + exams with reminders"
+                  data-testid="routine-calendar"
+                  onClick={onCalendar}
+                >
+                  📅 Add to Calendar
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  title="Download this schedule as a PNG image"
+                  data-testid="routine-export-png"
+                  onClick={onExportPng}
+                >
+                  ⬇ Export PNG
+                </button>
+              </>
             )}
             <button
               type="button"
-              className="routine-remove-x"
-              aria-label="Close"
-              data-testid="routine-suggest-close"
-              onClick={() => setSuggestions(null)}
+              className="btn-secondary btn-sm"
+              onClick={() => load(true)}
+              title="Re-fetch from CONNECT now"
             >
-              ×
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{ marginRight: 6 }}
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+              Refresh
             </button>
           </div>
+        </div>
 
-          {/* A course with nothing usable left, and a search that gave up, both
-              narrow the answer — saying so beats a shorter list with no reason. */}
-          {suggestions.skippedCourses.length > 0 && (
-            <div className="routine-suggest-warn" data-testid="routine-suggest-skipped">
-              Skipped (no open sections): {suggestions.skippedCourses.join(', ')}
-            </div>
-          )}
-          {suggestions.truncated && (
-            <div className="routine-suggest-warn" data-testid="routine-suggest-truncated">
-              ⚠ Search truncated at {suggestions.enumerated} combos — too many to enumerate.
-            </div>
-          )}
+        {loading && !feed && (
+          <div className="routine-loading" data-testid="routine-loading">
+            Loading the course feed…
+          </div>
+        )}
+        {feedError && (
+          <div className="routine-error" role="alert">
+            {feedError}
+          </div>
+        )}
 
-          {suggestions.suggestions.length === 0 ? (
-            <div className="routine-suggest-empty" data-testid="routine-suggest-empty">
-              Try removing a course or relaxing your filters. Enumerated {suggestions.enumerated},
-              all had class clashes.
+        {/* Legacy's picker (_pickerHTML): one row, no visible label — the input
+          carries an aria-label instead, which is what legacy does and what
+          keeps this a 38px row rather than a 66px stack. */}
+        <form className="routine-picker" onSubmit={addCourse}>
+          <input
+            id="routine-course-input"
+            className="routine-input"
+            type="text"
+            placeholder="Add course (e.g. CSE220) — start typing for matches"
+            autoComplete="off"
+            spellCheck={false}
+            aria-label="Add a course by code"
+            value={courseInput}
+            onChange={(e) => {
+              setCourseInput(e.target.value);
+              if (addError) setAddError(null);
+            }}
+            data-testid="routine-course-input"
+          />
+          <button type="submit" className="btn-primary btn-sm" data-testid="routine-add-btn">
+            Add
+          </button>
+          {/* The other way in, and the one that answers "show me the semester I
+            am actually in" — picking courses by hand only works if you already
+            know which sections you are in. */}
+          {planCourses.length > 0 && (
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above"
+              data-testid="routine-plan-import"
+              onClick={importFromPlan}
+            >
+              ↧ Import from Planner ({planCourses.length})
+            </button>
+          )}
+          <button
+            type="button"
+            className={`btn-secondary btn-sm ${importOpen ? 'is-active' : ''}`}
+            aria-expanded={importOpen}
+            data-testid="routine-import-toggle"
+            title="Copy your Class and Exam Schedule in CONNECT, then click here"
+            onClick={() => void onConnectImportClick()}
+          >
+            📋 Paste CONNECT schedule
+          </button>
+        </form>
+        {qrOpen && codes.length > 0 && qrSvg !== '' && (
+          <div className="routine-qr-panel" data-testid="routine-qr-panel">
+            <div
+              className="routine-qr-code"
+              aria-label="QR code for this routine's share link"
+              // The generator emits rect/path geometry only — no text from the
+              // payload reaches the markup, so there is nothing to inject.
+              dangerouslySetInnerHTML={{ __html: qrSvg }}
+            />
+            <div className="routine-qr-cap">
+              📱 Scan with another phone to open this routine in Shohoj.
             </div>
-          ) : (
-            <div className="routine-suggest-cards">
-              {suggestions.suggestions.map((combo, i) => {
-                const b = combo.breakdown;
-                const seatNotes = [];
-                if (b.fullCount > 0) seatNotes.push(`${b.fullCount} FULL`);
-                if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
-                return (
-                  <div
-                    className="routine-suggest-card"
-                    key={combo.sections.map((x) => x.sectionId).join('-')}
-                    data-testid={`routine-suggest-card-${i}`}
+          </div>
+        )}
+
+        {planNote && (
+          <div className="routine-plan-note" role="status" data-testid="routine-plan-note">
+            {planNote}
+          </div>
+        )}
+        {addError && (
+          <div className="routine-add-error" role="alert" data-testid="routine-add-error">
+            {addError}
+          </div>
+        )}
+
+        {codes.length > 0 && (
+          <>
+            {/* Legacy's _controlsInner + _filtersInner, on the same markup so the
+              shared stylesheet dresses them identically. */}
+            <div className="routine-controls" data-testid="routine-controls">
+              <div className="routine-stats">
+                <span className="routine-stat">
+                  {codes.length} course{codes.length === 1 ? '' : 's'}
+                </span>
+                <span className="routine-stat" data-testid="routine-credits">
+                  {plannedCredits} cr
+                </span>
+                <span className="routine-stat">
+                  {summary.resolvedCount}/{codes.length} set
+                </span>
+                {clashCount > 0 ? (
+                  <span
+                    className="routine-stat routine-stat--clash"
+                    title={`Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}`}
                   >
-                    <div className="routine-suggest-card-head">
-                      <span className="routine-suggest-card-rank">#{i + 1}</span>
-                      {/* The average the ranking actually used, in legacy's
+                    ⚠ {clashCount} clash{clashCount === 1 ? '' : 'es'}
+                  </span>
+                ) : (
+                  <span className="routine-stat routine-stat--ok">✓ no clashes</span>
+                )}
+              </div>
+              <div className="routine-controls-right">
+                {/* Hiding clashes can only do anything once something is picked. */}
+                {resolved.length > 0 && (
+                  <button
+                    type="button"
+                    className={`routine-chip-toggle ${hideClashing ? 'is-active' : ''}`}
+                    aria-pressed={hideClashing}
+                    title="Hide sections that clash with your current picks"
+                    data-testid="routine-hide-clash"
+                    onClick={() => setHideClashing((on) => !on)}
+                  >
+                    {hideClashing ? '◉ Hiding clashes' : '◯ Hide clashes'}
+                  </button>
+                )}
+                <div className="routine-sort" role="group" aria-label="Sort sections">
+                  <span className="routine-sort-label">Sort</span>
+                  {SECTION_SORT_MODES.filter(([mode]) => mode !== 'faculty' || ratingsLoaded).map(
+                    ([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        className={`routine-sort-btn ${sortMode === mode ? 'is-active' : ''}`}
+                        aria-pressed={sortMode === mode}
+                        data-testid={`routine-sort-${mode}`}
+                        onClick={() => setSortMode(mode)}
+                      >
+                        {label}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="routine-filters" data-testid="routine-filters">
+              <span className="routine-filter-label">Filters</span>
+              <button
+                type="button"
+                className={`routine-filter-toggle ${filters.noEarly ? 'is-active' : ''}`}
+                aria-pressed={!!filters.noEarly}
+                title="Hide sections starting before 9:00 AM"
+                data-testid="routine-filter-early"
+                onClick={() => setFilters((f) => ({ ...f, noEarly: !f.noEarly }))}
+              >
+                No early
+              </button>
+              <button
+                type="button"
+                className={`routine-filter-toggle ${filters.noEvening ? 'is-active' : ''}`}
+                aria-pressed={!!filters.noEvening}
+                title="Hide sections ending after 5:00 PM"
+                data-testid="routine-filter-evening"
+                onClick={() => setFilters((f) => ({ ...f, noEvening: !f.noEvening }))}
+              >
+                No evening
+              </button>
+              <span className="routine-filter-sep" aria-hidden="true" />
+              <span className="routine-filter-label">Suggest</span>
+              <button
+                type="button"
+                className={`routine-filter-toggle ${compactDays ? 'is-active' : ''}`}
+                aria-pressed={compactDays}
+                title="Prefer compact days (fewer idle gaps between classes) when ranking suggestions"
+                data-testid="routine-compact-days"
+                onClick={() => {
+                  const next = !compactDays;
+                  setCompactDays(next);
+                  // Re-rank live rather than leaving a panel that no longer
+                  // reflects the preference beside the toggle that changed it.
+                  if (suggestions) runSuggest(next);
+                }}
+              >
+                Compact days
+              </button>
+              <span className="routine-filter-sep" aria-hidden="true" />
+              <span className="routine-filter-label">Avoid</span>
+              <div className="routine-filter-days" role="group" aria-label="Avoid days">
+                {DAY_ORDER.map((day) => {
+                  const on = (filters.avoidDays ?? []).includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      className={`routine-filter-day ${on ? 'is-active' : ''}`}
+                      aria-pressed={on}
+                      title={`Avoid classes on ${DAY_LABEL[day]}`}
+                      data-testid={`routine-avoid-${day}`}
+                      onClick={() => toggleAvoidDay(day)}
+                    >
+                      {DAY_LABEL[day]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {codes.length > 0 && (
+          <div className="routine-suggest-toolbar">
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              title="Find the best clash-free section combinations"
+              data-testid="routine-suggest"
+              onClick={() => runSuggest(compactDays)}
+            >
+              ✨ Auto-suggest combinations
+            </button>
+            <span className="routine-suggest-hint">
+              {codes.length} course{codes.length === 1 ? '' : 's'} picked
+            </span>
+          </div>
+        )}
+
+        {suggestions && (
+          <div className="routine-suggest-panel" data-testid="routine-suggest-panel">
+            <div className="routine-suggest-panel-head">
+              <h4>
+                {suggestions.suggestions.length === 0
+                  ? 'No clash-free combinations found'
+                  : `Top ${suggestions.suggestions.length} clash-free combination${
+                      suggestions.suggestions.length === 1 ? '' : 's'
+                    }`}
+              </h4>
+              {suggestions.suggestions.length > 0 && (
+                <div className="routine-suggest-meta" data-testid="routine-suggest-meta">
+                  {suggestions.feasible} feasible of {suggestions.enumerated} enumerated
+                </div>
+              )}
+              <button
+                type="button"
+                className="routine-remove-x"
+                aria-label="Close"
+                data-testid="routine-suggest-close"
+                onClick={() => setSuggestions(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* A course with nothing usable left, and a search that gave up, both
+              narrow the answer — saying so beats a shorter list with no reason. */}
+            {suggestions.skippedCourses.length > 0 && (
+              <div className="routine-suggest-warn" data-testid="routine-suggest-skipped">
+                Skipped (no open sections): {suggestions.skippedCourses.join(', ')}
+              </div>
+            )}
+            {suggestions.truncated && (
+              <div className="routine-suggest-warn" data-testid="routine-suggest-truncated">
+                ⚠ Search truncated at {suggestions.enumerated} combos — too many to enumerate.
+              </div>
+            )}
+
+            {suggestions.suggestions.length === 0 ? (
+              <div className="routine-suggest-empty" data-testid="routine-suggest-empty">
+                Try removing a course or relaxing your filters. Enumerated {suggestions.enumerated},
+                all had class clashes.
+              </div>
+            ) : (
+              <div className="routine-suggest-cards">
+                {suggestions.suggestions.map((combo, i) => {
+                  const b = combo.breakdown;
+                  const seatNotes = [];
+                  if (b.fullCount > 0) seatNotes.push(`${b.fullCount} FULL`);
+                  if (b.tightCount > 0) seatNotes.push(`${b.tightCount} tight`);
+                  return (
+                    <div
+                      className="routine-suggest-card"
+                      key={combo.sections.map((x) => x.sectionId).join('-')}
+                      data-testid={`routine-suggest-card-${i}`}
+                    >
+                      <div className="routine-suggest-card-head">
+                        <span className="routine-suggest-card-rank">#{i + 1}</span>
+                        {/* The average the ranking actually used, in legacy's
                           tier colours — a score with no visible basis reads
                           as arbitrary. Absent while ratings are unloaded. */}
-                      {ratingsLoaded && b.avgRating !== null && (
-                        <span
-                          className={`routine-suggest-card-rating routine-faculty-badge--${avgRatingTier(
-                            b.avgRating,
-                          )}`}
-                          title="Average faculty rating"
-                          data-testid={`routine-suggest-rating-${i}`}
-                        >
-                          ★ {formatRatingScore(b.avgRating)}
-                        </span>
-                      )}
-                      <span className="routine-suggest-card-score" title="Score">
-                        score {combo.score.toFixed(1)}
-                      </span>
-                      {seatNotes.length > 0 && (
-                        <span className="routine-suggest-card-seats">{seatNotes.join(' · ')}</span>
-                      )}
-                      {b.gapMinutes === 0 ? (
-                        <span
-                          className="routine-suggest-card-gap is-compact"
-                          title="No idle gaps between classes"
-                        >
-                          compact
-                        </span>
-                      ) : (
-                        <span
-                          className="routine-suggest-card-gap"
-                          title="Total idle time between classes across the week"
-                        >
-                          {formatGapMinutes(b.gapMinutes)} gaps
-                        </span>
-                      )}
-                      {b.examClashPairs > 0 && (
-                        <span className="routine-suggest-card-warn">
-                          ⚠ {b.examClashPairs} exam clash{b.examClashPairs === 1 ? '' : 'es'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="routine-suggest-card-list">
-                      {combo.sections.map((section) => (
-                        <div className="routine-suggest-line" key={section.sectionId}>
-                          <span className="routine-suggest-line-code">{section.courseCode}</span>
-                          <span className="routine-suggest-line-sec">§{section.sectionName}</span>
-                          <span className="routine-suggest-line-fac">
-                            {section.facultyInitials || 'TBA'}
-                            <FacultyBadge
-                              section={section}
-                              ratingMap={ratingMap}
-                              loaded={ratingsLoaded}
-                            />
-                          </span>
-                          <span className="routine-suggest-line-sched">{slotSummary(section)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="routine-suggest-card-actions">
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm"
-                        data-testid={`routine-suggest-apply-${i}`}
-                        onClick={() => applyCombo(combo)}
-                      >
-                        Apply this combination
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {codes.length > 0 ? (
-        <>
-          <ul className="routine-courses" data-testid="routine-courses">
-            {codes.map((code) => {
-              const { rows, hiddenFilter, hiddenClash, total } = visibleSections(code);
-              const pickedId = routine.picks[code] ?? null;
-              const hiddenParts = [];
-              if (hiddenClash > 0) hiddenParts.push(`${hiddenClash} clashing`);
-              if (hiddenFilter > 0) hiddenParts.push(`${hiddenFilter} filtered`);
-              return (
-                <li className="routine-course" key={code} data-testid={`routine-course-${code}`}>
-                  <div className="routine-course-head">
-                    <span className="routine-course-code">{code}</span>
-                    <button
-                      type="button"
-                      className="routine-remove"
-                      onClick={() => setRoutine((prev) => unpickCourse(prev, code))}
-                      aria-label={`Remove ${code}`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  {total === 0 ? (
-                    <p className="routine-course-empty shell-muted">
-                      No sections for {code} in the current feed.
-                    </p>
-                  ) : rows.length === 0 ? (
-                    // Everything was filtered away. Saying so beats an empty
-                    // box that reads as "this course has no sections".
-                    <p
-                      className="routine-section-empty"
-                      data-testid={`routine-sections-empty-${code}`}
-                    >
-                      No sections match your current picks and filters.
-                    </p>
-                  ) : (
-                    <div
-                      className="routine-sections"
-                      role="group"
-                      aria-label={`Sections for ${code}`}
-                    >
-                      {rows.map((section) => {
-                        const isPicked = section.sectionId === pickedId;
-                        const clash = isPicked ? clashMap.get(section.sectionId) : undefined;
-                        const hasClash = !!clash && (clash.classClash || clash.examClash);
-                        return (
-                          <button
-                            type="button"
-                            key={section.sectionId}
-                            className={[
-                              'routine-section',
-                              isPicked ? 'routine-section--picked' : '',
-                              hasClash ? 'routine-section--clash' : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                            aria-pressed={isPicked}
-                            onClick={() =>
-                              setRoutine((prev) =>
-                                pickSection(prev, code, isPicked ? null : section.sectionId),
-                              )
-                            }
+                        {ratingsLoaded && b.avgRating !== null && (
+                          <span
+                            className={`routine-suggest-card-rating routine-faculty-badge--${avgRatingTier(
+                              b.avgRating,
+                            )}`}
+                            title="Average faculty rating"
+                            data-testid={`routine-suggest-rating-${i}`}
                           >
-                            <span className="routine-section-name">
-                              Section {section.sectionName}
-                            </span>
-                            <span className="routine-section-meta">
+                            ★ {formatRatingScore(b.avgRating)}
+                          </span>
+                        )}
+                        <span className="routine-suggest-card-score" title="Score">
+                          score {combo.score.toFixed(1)}
+                        </span>
+                        {seatNotes.length > 0 && (
+                          <span className="routine-suggest-card-seats">
+                            {seatNotes.join(' · ')}
+                          </span>
+                        )}
+                        {b.gapMinutes === 0 ? (
+                          <span
+                            className="routine-suggest-card-gap is-compact"
+                            title="No idle gaps between classes"
+                          >
+                            compact
+                          </span>
+                        ) : (
+                          <span
+                            className="routine-suggest-card-gap"
+                            title="Total idle time between classes across the week"
+                          >
+                            {formatGapMinutes(b.gapMinutes)} gaps
+                          </span>
+                        )}
+                        {b.examClashPairs > 0 && (
+                          <span className="routine-suggest-card-warn">
+                            ⚠ {b.examClashPairs} exam clash{b.examClashPairs === 1 ? '' : 'es'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="routine-suggest-card-list">
+                        {combo.sections.map((section) => (
+                          <div className="routine-suggest-line" key={section.sectionId}>
+                            <span className="routine-suggest-line-code">{section.courseCode}</span>
+                            <span className="routine-suggest-line-sec">§{section.sectionName}</span>
+                            <span className="routine-suggest-line-fac">
                               {section.facultyInitials || 'TBA'}
                               <FacultyBadge
                                 section={section}
                                 ratingMap={ratingMap}
                                 loaded={ratingsLoaded}
                               />
-                              {section.roomName ? ` · ${section.roomName}` : ''}
-                              {` · ${section.consumedSeat}/${section.capacity} seats`}
-                              {` · ${seatsLeft(section)} left`}
                             </span>
-                            <span className="routine-section-slots">{slotSummary(section)}</span>
-                            {hasClash && (
-                              <span className="routine-section-clash-badge">
-                                {clash?.examClash ? 'Exam clash' : 'Time clash'}
+                            <span className="routine-suggest-line-sched">
+                              {slotSummary(section)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="routine-suggest-card-actions">
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm"
+                          data-testid={`routine-suggest-apply-${i}`}
+                          onClick={() => applyCombo(combo)}
+                        >
+                          Apply this combination
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {codes.length > 0 ? (
+          <>
+            <ul className="routine-courses" data-testid="routine-courses">
+              {codes.map((code) => {
+                const { rows, hiddenFilter, hiddenClash, total } = visibleSections(code);
+                const pickedId = routine.picks[code] ?? null;
+                const hiddenParts = [];
+                if (hiddenClash > 0) hiddenParts.push(`${hiddenClash} clashing`);
+                if (hiddenFilter > 0) hiddenParts.push(`${hiddenFilter} filtered`);
+                return (
+                  <li className="routine-course" key={code} data-testid={`routine-course-${code}`}>
+                    <div className="routine-course-head">
+                      <span className="routine-course-code">{code}</span>
+                      <button
+                        type="button"
+                        className="routine-remove"
+                        onClick={() => setRoutine((prev) => unpickCourse(prev, code))}
+                        aria-label={`Remove ${code}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    {total === 0 ? (
+                      <p className="routine-course-empty shell-muted">
+                        No sections for {code} in the current feed.
+                      </p>
+                    ) : rows.length === 0 ? (
+                      // Everything was filtered away. Saying so beats an empty
+                      // box that reads as "this course has no sections".
+                      <p
+                        className="routine-section-empty"
+                        data-testid={`routine-sections-empty-${code}`}
+                      >
+                        No sections match your current picks and filters.
+                      </p>
+                    ) : (
+                      <div
+                        className="routine-sections"
+                        role="group"
+                        aria-label={`Sections for ${code}`}
+                      >
+                        {rows.map((section) => {
+                          const isPicked = section.sectionId === pickedId;
+                          const clash = isPicked ? clashMap.get(section.sectionId) : undefined;
+                          const hasClash = !!clash && (clash.classClash || clash.examClash);
+                          return (
+                            <button
+                              type="button"
+                              key={section.sectionId}
+                              className={[
+                                'routine-section',
+                                isPicked ? 'routine-section--picked' : '',
+                                hasClash ? 'routine-section--clash' : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              aria-pressed={isPicked}
+                              onClick={() =>
+                                setRoutine((prev) =>
+                                  pickSection(prev, code, isPicked ? null : section.sectionId),
+                                )
+                              }
+                            >
+                              <span className="routine-section-name">
+                                Section {section.sectionName}
                               </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {hiddenParts.length > 0 && (
-                    <div className="routine-section-hidden" data-testid={`routine-hidden-${code}`}>
-                      {hiddenParts.join(' · ')} section
-                      {hiddenClash + hiddenFilter === 1 ? '' : 's'} hidden
-                    </div>
-                  )}
-                  {pickedId === null && rows.length > 0 && (
-                    <p className="routine-course-hint shell-muted">Pick a section above.</p>
-                  )}
-                </li>
+                              <span className="routine-section-meta">
+                                {section.facultyInitials || 'TBA'}
+                                <FacultyBadge
+                                  section={section}
+                                  ratingMap={ratingMap}
+                                  loaded={ratingsLoaded}
+                                />
+                                {section.roomName ? ` · ${section.roomName}` : ''}
+                                {` · ${section.consumedSeat}/${section.capacity} seats`}
+                                {` · ${seatsLeft(section)} left`}
+                              </span>
+                              <span className="routine-section-slots">{slotSummary(section)}</span>
+                              {hasClash && (
+                                <span className="routine-section-clash-badge">
+                                  {clash?.examClash ? 'Exam clash' : 'Time clash'}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {hiddenParts.length > 0 && (
+                      <div
+                        className="routine-section-hidden"
+                        data-testid={`routine-hidden-${code}`}
+                      >
+                        {hiddenParts.join(' · ')} section
+                        {hiddenClash + hiddenFilter === 1 ? '' : 's'} hidden
+                      </div>
+                    )}
+                    {pickedId === null && rows.length > 0 && (
+                      <p className="routine-course-hint shell-muted">Pick a section above.</p>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="routine-summary" data-testid="routine-summary">
+              <span>
+                {summary.pickedCount} course{summary.pickedCount === 1 ? '' : 's'} ·{' '}
+                {summary.resolvedCount} scheduled
+              </span>
+              {summary.classClashPairs + summary.examClashPairs > 0 ? (
+                <span className="routine-summary-clash" data-testid="routine-summary-clash">
+                  {summary.classClashPairs} time / {summary.examClashPairs} exam clash
+                  {summary.classClashPairs + summary.examClashPairs === 1 ? '' : 'es'}
+                </span>
+              ) : (
+                summary.resolvedCount > 0 && (
+                  <span className="routine-summary-ok" data-testid="routine-summary-ok">
+                    No clashes
+                  </span>
+                )
+              )}
+              <button
+                type="button"
+                className="routine-clear"
+                onClick={() => setRoutine((prev) => clearRoutine(prev))}
+                data-testid="routine-clear"
+              >
+                Clear all
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="routine-empty" data-testid="routine-empty">
+            <p>
+              Add courses to start planning. Try <code>CSE220</code>, <code>MAT215</code>,{' '}
+              <code>BUS102</code>.
+            </p>
+          </div>
+        )}
+
+        {importOpen && (
+          <div className="routine-import-panel" data-testid="routine-import-panel">
+            <label className="routine-import-label" htmlFor="routine-connect-paste">
+              Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.
+            </label>
+            <textarea
+              id="routine-connect-paste"
+              className="routine-import-box"
+              rows={6}
+              spellCheck={false}
+              value={importText}
+              data-testid="routine-import-box"
+              onChange={(e) => setImportText(e.target.value)}
+            />
+            <div className="routine-import-actions">
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                data-testid="routine-import-apply"
+                onClick={applyConnectImport}
+              >
+                Build my routine
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setImportOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {importNote !== '' && (
+          <p className="routine-import-note" role="status" data-testid="routine-import-note">
+            {importNote}
+          </p>
+        )}
+
+        {archiveNote !== null && (
+          <p className="routine-archive-note" role="status" data-testid="routine-archive-note">
+            {archiveNote}
+          </p>
+        )}
+
+        {layout && (
+          <div
+            className="routine-grid"
+            data-testid="routine-grid"
+            role="group"
+            aria-label="Weekly class grid"
+            style={{
+              gridTemplateColumns: `auto repeat(${layout.days.length}, minmax(0, 1fr))`,
+              gridTemplateRows: `auto repeat(${layout.totalRows}, 1.4rem)`,
+            }}
+          >
+            {layout.days.map((day, i) => (
+              <div
+                key={day}
+                className="routine-grid-dayhead"
+                style={{ gridColumn: i + 2, gridRow: 1 }}
+              >
+                {DAY_LABEL[day]}
+              </div>
+            ))}
+            {layout.rowLabels.map((label, r) =>
+              // Label every hour boundary (:00) to avoid a cramped 30-min ladder.
+              label.endsWith(':00') ? (
+                <div
+                  key={label + r}
+                  className="routine-grid-timelabel"
+                  style={{ gridColumn: 1, gridRow: r + 2 }}
+                >
+                  {label}
+                </div>
+              ) : null,
+            )}
+            {layout.blocks.map((block) => {
+              const clash = clashMap.get(block.sectionId);
+              const hasClash = !!clash && (clash.classClash || clash.examClash);
+              return (
+                <div
+                  key={`${block.sectionId}-${block.day}-${block.startMin}`}
+                  className={hasClash ? 'routine-block routine-block--clash' : 'routine-block'}
+                  style={{
+                    gridColumn: block.dayCol + 2,
+                    gridRow: `${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
+                    width: `${100 / block.subCols}%`,
+                    marginLeft: `${(block.subCol / block.subCols) * 100}%`,
+                  }}
+                  title={`${block.courseCode} §${block.sectionName} · ${fmtMinutes(block.startMin)}–${fmtMinutes(block.endMin)} · ${block.facultyInitials || 'TBA'}${block.roomName ? ` · ${block.roomName}` : ''}`}
+                >
+                  <span className="routine-block-code">{block.courseCode}</span>
+                  <span className="routine-block-room">{block.roomName}</span>
+                </div>
               );
             })}
-          </ul>
-
-          <div className="routine-summary" data-testid="routine-summary">
-            <span>
-              {summary.pickedCount} course{summary.pickedCount === 1 ? '' : 's'} ·{' '}
-              {summary.resolvedCount} scheduled
-            </span>
-            {summary.classClashPairs + summary.examClashPairs > 0 ? (
-              <span className="routine-summary-clash" data-testid="routine-summary-clash">
-                {summary.classClashPairs} time / {summary.examClashPairs} exam clash
-                {summary.classClashPairs + summary.examClashPairs === 1 ? '' : 'es'}
-              </span>
-            ) : (
-              summary.resolvedCount > 0 && (
-                <span className="routine-summary-ok" data-testid="routine-summary-ok">
-                  No clashes
-                </span>
-              )
-            )}
-            <button
-              type="button"
-              className="routine-clear"
-              onClick={() => setRoutine((prev) => clearRoutine(prev))}
-              data-testid="routine-clear"
-            >
-              Clear all
-            </button>
           </div>
-        </>
-      ) : (
-        <div className="routine-empty" data-testid="routine-empty">
-          <p>
-            Add courses to start planning. Try <code>CSE220</code>, <code>MAT215</code>,{' '}
-            <code>BUS102</code>.
-          </p>
-        </div>
-      )}
-
-      {importOpen && (
-        <div className="routine-import-panel" data-testid="routine-import-panel">
-          <label className="routine-import-label" htmlFor="routine-connect-paste">
-            Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.
-          </label>
-          <textarea
-            id="routine-connect-paste"
-            className="routine-import-box"
-            rows={6}
-            spellCheck={false}
-            value={importText}
-            data-testid="routine-import-box"
-            onChange={(e) => setImportText(e.target.value)}
-          />
-          <div className="routine-import-actions">
-            <button
-              type="button"
-              className="btn-primary btn-sm"
-              data-testid="routine-import-apply"
-              onClick={applyConnectImport}
-            >
-              Build my routine
-            </button>
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={() => setImportOpen(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {importNote !== '' && (
-        <p className="routine-import-note" role="status" data-testid="routine-import-note">
-          {importNote}
-        </p>
-      )}
-
-      {archiveNote !== null && (
-        <p className="routine-archive-note" role="status" data-testid="routine-archive-note">
-          {archiveNote}
-        </p>
-      )}
-
-      {layout && (
-        <div
-          className="routine-grid"
-          data-testid="routine-grid"
-          role="group"
-          aria-label="Weekly class grid"
-          style={{
-            gridTemplateColumns: `auto repeat(${layout.days.length}, minmax(0, 1fr))`,
-            gridTemplateRows: `auto repeat(${layout.totalRows}, 1.4rem)`,
-          }}
-        >
-          {layout.days.map((day, i) => (
-            <div
-              key={day}
-              className="routine-grid-dayhead"
-              style={{ gridColumn: i + 2, gridRow: 1 }}
-            >
-              {DAY_LABEL[day]}
-            </div>
-          ))}
-          {layout.rowLabels.map((label, r) =>
-            // Label every hour boundary (:00) to avoid a cramped 30-min ladder.
-            label.endsWith(':00') ? (
-              <div
-                key={label + r}
-                className="routine-grid-timelabel"
-                style={{ gridColumn: 1, gridRow: r + 2 }}
-              >
-                {label}
-              </div>
-            ) : null,
-          )}
-          {layout.blocks.map((block) => {
-            const clash = clashMap.get(block.sectionId);
-            const hasClash = !!clash && (clash.classClash || clash.examClash);
-            return (
-              <div
-                key={`${block.sectionId}-${block.day}-${block.startMin}`}
-                className={hasClash ? 'routine-block routine-block--clash' : 'routine-block'}
-                style={{
-                  gridColumn: block.dayCol + 2,
-                  gridRow: `${block.gridRowStart + 1} / span ${block.gridRowSpan}`,
-                  width: `${100 / block.subCols}%`,
-                  marginLeft: `${(block.subCol / block.subCols) * 100}%`,
-                }}
-                title={`${block.courseCode} §${block.sectionName} · ${fmtMinutes(block.startMin)}–${fmtMinutes(block.endMin)} · ${block.facultyInitials || 'TBA'}${block.roomName ? ` · ${block.roomName}` : ''}`}
-              >
-                <span className="routine-block-code">{block.courseCode}</span>
-                <span className="routine-block-room">{block.roomName}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
