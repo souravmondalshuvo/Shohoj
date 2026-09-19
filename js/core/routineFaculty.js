@@ -52,3 +52,46 @@ export function formatRatingScore(value, digits = 1) {
     if (value === null || Number.isNaN(value)) return '—';
     return value.toFixed(digits);
 }
+
+/**
+ * Where the built rating map is cached, and for how long.
+ *
+ * Deliberately NOT personal data — it is public aggregate, which is why both
+ * `personalData` copies exclude it from the sign-out wipe. The key, the TTL and
+ * the shape below live here rather than in a tab because two front ends write
+ * this one key, and a format that drifts between them is a cache that poisons
+ * whichever side reads it second (#688).
+ */
+export const RATING_CACHE_KEY = 'shohoj_routine_ratings_v1';
+export const RATING_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+/** FacultyRating is flat and JSON-safe, so the map serializes as its values. */
+export function serializeRatingCache(ratingMap, now = Date.now()) {
+    return { at: now, entries: Array.from(ratingMap.values()) };
+}
+
+/**
+ * Rebuild the map from a cached string, or null when there is nothing usable:
+ * absent, unparseable, the wrong shape, expired, or empty. Callers treat null
+ * as "not cached" and fetch — so a corrupt entry costs a read, not an error.
+ */
+export function parseRatingCache(raw, now = Date.now(), ttlMs = RATING_CACHE_TTL_MS) {
+    if (typeof raw !== 'string' || raw === '') return null;
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+    if (parsed === null || typeof parsed !== 'object') return null;
+    if (typeof parsed.at !== 'number' || !Array.isArray(parsed.entries)) return null;
+    if (now - parsed.at > ttlMs) return null;
+
+    const map = new Map();
+    for (const entry of parsed.entries) {
+        if (entry && typeof entry.initials === 'string' && entry.initials !== '') {
+            map.set(entry.initials, entry);
+        }
+    }
+    return map.size > 0 ? map : null;
+}
