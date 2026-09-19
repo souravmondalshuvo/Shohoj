@@ -1,8 +1,12 @@
 // tests/twinParity.test.js — the js/ ↔ src/ twin contract, enforced (#484).
 //
-// 17 files under js/ carry a `// Generated from src/...` header. Nothing
-// generates them and, until this test, nothing diffed them: they were kept in
-// step by hand and the header was the only thing asserting a relationship.
+// Files under js/ that carry a `// Twin of src/...` header are hand-written
+// mirrors of a TypeScript original. Nothing generates them and, until this
+// test, nothing diffed them: they were kept in step by hand and the header was
+// the only thing asserting a relationship. (An older spelling of that header
+// read `// Generated from src/...`, which was misleading — nothing was ever
+// generated. No file uses it now; discoverTwins still matches it so a stray
+// one could not go unchecked.)
 // #479 was the result — the JS grew per-slot room tagging, the TS never did,
 // and the gap sat there until semesterBriefing.ts had to work around it.
 //
