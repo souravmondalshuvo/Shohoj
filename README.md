@@ -1155,9 +1155,15 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | Key                | Location     | Contents                                      |
 | ------------------ | ------------ | --------------------------------------------- |
 | `shohoj_cgpa_v1`          | localStorage | All semesters, grades, department, settings                            |
-| `shohoj_theme`            | localStorage | `"dark"` or `"light"` (defaults to dark)                               |
-| `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
+| `shohoj_cgpa_backup_v1`   | localStorage | The shell's one-time pre-migration copy of the above                   |
+| `shohoj_routine_v1` / `shohoj_routine_picks_v1` | localStorage | Your picked sections — legacy and shell write different keys |
+| `shohoj_routine_import_v1` | localStorage | A CONNECT "Class and Exam Schedule" you pasted in — your own timetable |
+| `shohoj_connect_profile_v1` | localStorage | Your transcript profile snapshot                                     |
+| `shohoj_seat_watch_v1`    | localStorage | Sections on your seat watchlist                                        |
 | `shohoj_seat_alerts_enabled` | localStorage | Whether seat-drop email alerts are armed                            |
+| `shohoj_my_reviews_v1`    | localStorage | Local receipt of reviews you wrote, so "your reviews" needs no UID-indexed query |
+| `shohoj_last_sync`        | localStorage | Timestamp of last successful cloud sync                                |
+| `shohoj_theme`            | localStorage | `"dark"` or `"light"` (defaults to dark) — deliberately survives sign-out |
 | `shohoj_assistant`        | IndexedDB    | Assistant transcript, uid-stamped — device-only, deleted by "Clear chat"  |
 | `users/{uid}`             | Firestore    | Same shape as localStorage value, JSON string                          |
 | `facultyReviews/{faculty_course_hash}` | Firestore | Immutable review docs — faculty initials, course code, 5 ratings, text, server timestamp; duplicate writes are rejected |
@@ -1178,6 +1184,15 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
 | `semesters/{sessionId}`   | Cloudflare R2 | Archived CONNECT section feeds — public timetable data, nothing personal |
+
+The rest of what Shohoj writes to `localStorage` is either a cache of public data
+(the CONNECT feed, faculty ratings) or UI bookkeeping (active tab, sync flags,
+the campus gate's per-tab demo unlock) — no student data, and
+`js/core/personalData.js` is the single list that decides which is which.
+**Signing out clears every personal key from the device**, not just the cloud
+copy, so a shared campus machine does not hand your transcript to whoever signs
+in next; the personal slices ride in `users/{uid}` so they come back when you
+sign in again, on any device.
 
 Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in IndexedDB on your own device, stamped with your uid so a record only ever reads back for the account that wrote it — never Firestore, never the Worker, never any server. A chat therefore survives closing the tab, does not follow you to a second device, and is deleted by the drawer's **Clear chat**. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
