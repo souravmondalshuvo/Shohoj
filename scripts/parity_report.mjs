@@ -33,18 +33,35 @@ const SETTLE_MS = 900;
 
 /** Geometry + the container properties that decide whether two boxes read as
  *  the same surface. Returned for whichever element the feature renders into. */
+/** Anything that makes a printed number untrustworthy. Empty is the happy path. */
+const warnings = [];
+
 // Selectors are tried IN ORDER and the first one that matches wins. A single
 // comma-joined selector cannot express that: querySelector returns the first
 // match in DOCUMENT order, so `main` would always beat `main .shell-page`.
-const MEASURE = (selectors) => {
-  let el = null;
-  for (const sel of selectors) {
-    el = document.querySelector(sel);
-    if (el) break;
-  }
+//
+// Geometry and styling are read from DIFFERENT elements on purpose. The box a
+// feature OCCUPIES is the panel (legacy) or <main> (shell); the box that
+// decides how it READS — the inset, the surface, the border — is legacy's
+// inner `.calc-body`, which the shell merged into <main>. Measuring both from
+// the panel printed `legacy 0px vs shell 24px 32px` on nine of ten routes;
+// measuring both from `.calc-body` instead dropped whatever a panel renders
+// outside it (the calculator's meter, standing and trend live there, and the
+// row jumped to a fictitious +167). So: size from the outer box, style from
+// the inset owner.
+const MEASURE = ([selectors, styleSelectors]) => {
+  const pick = (list) => {
+    for (const sel of list) {
+      const found = document.querySelector(sel);
+      if (found) return found;
+    }
+    return null;
+  };
+  const el = pick(selectors);
   if (!el) return null;
+  const styleEl = pick(styleSelectors) ?? el;
   const r = el.getBoundingClientRect();
-  const cs = getComputedStyle(el);
+  const cs = getComputedStyle(styleEl);
   return {
     width: Math.round(r.width),
     height: Math.round(r.height),
@@ -56,7 +73,7 @@ const MEASURE = (selectors) => {
   };
 };
 
-async function measure(page, url, selectors) {
+async function measure(page, url, selectors, styleSelectors = selectors) {
   // Legacy selects its panel in restoreCalcTab, which runs once at init. Two
   // consecutive gotos that differ only by hash are a same-document navigation —
   // no reload, no init, so the page would keep showing the previous panel and
@@ -65,6 +82,20 @@ async function measure(page, url, selectors) {
   await page.goto('about:blank');
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForTimeout(SETTLE_MS);
+  // Forcing `.visible` below starts the reveal transition; it does not finish
+  // it. Legacy was being measured at transform: matrix(0.998638, …), which is
+  // why its wrapper read 854.83 against the shell's 856.00 with both styled
+  // `width: 856px` — every legacy width ~1-3px small, and no row ever able to
+  // reach a clean 0. Zeroing the delay (what _stabilize.js does) leaves the
+  // duration running, so both go to zero here and the end state lands at once.
+  await page.addStyleTag({
+    content: `*, *::before, *::after {
+      transition-duration: 0ms !important;
+      transition-delay: 0ms !important;
+      animation-duration: 0ms !important;
+      animation-delay: 0ms !important;
+    }`,
+  });
   // Force the reveal end state before measuring, exactly as e2e-visual's
   // stabilize() does. Without it every legacy number comes out 1.8% small:
   // .calc-wrapper[data-reveal-calc] sits at scale(0.982) until the observer
@@ -78,7 +109,43 @@ async function measure(page, url, selectors) {
       .forEach((el) => el.classList.add('visible'));
   });
   await page.waitForTimeout(400);
-  return page.evaluate(MEASURE, selectors);
+
+  // Belt and braces for the trap above: a box still under a transform is a
+  // wrong number that looks plausible, so say so rather than print it. The
+  // measured element inherits any ancestor's transform, so the whole chain is
+  // checked — and this is the shape #619 took, where the instrument was wrong
+  // for weeks and nobody could tell from the output.
+  const animating = await page.evaluate((sels) => {
+    // An identity matrix is not a distortion, and the reveal settles to one —
+    // so compare against identity rather than against the string 'none', or
+    // every row warns and the warning stops meaning anything.
+    const DISTORTS = (transform) => {
+      const nums = /^matrix\(([^)]+)\)$/.exec(transform)?.[1]?.split(',').map(Number);
+      if (!nums || nums.length !== 6) return transform !== 'none';
+      const [a, b, c, d, e, f] = nums;
+      const off = (v, target) => Math.abs(v - target) > 0.01;
+      // Sub-pixel translation moves a box without resizing it; only scale and
+      // skew change what getBoundingClientRect reports as width/height.
+      return (
+        off(a, 1) || off(d, 1) || off(b, 0) || off(c, 0) || Math.abs(e) > 0.5 || Math.abs(f) > 0.5
+      );
+    };
+    let el = null;
+    for (const sel of sels) {
+      el = document.querySelector(sel);
+      if (el) break;
+    }
+    for (let n = el; n && n.tagName !== 'HTML'; n = n.parentElement) {
+      const t = getComputedStyle(n).transform;
+      if (t && DISTORTS(t)) {
+        return `${n.tagName}.${(n.className || '').toString().split(' ')[0]} ${t}`;
+      }
+    }
+    return null;
+  }, selectors);
+  if (animating) warnings.push(`${url} measured under a transform: ${animating}`);
+
+  return page.evaluate(MEASURE, [selectors, styleSelectors]);
 }
 
 const browser = await chromium.launch();
@@ -136,10 +203,23 @@ const rows = [];
 for (const entry of PANEL_ROUTES) {
   // A route may name the box it actually shares with legacy; #tabPlayground has
   // no `.calc-body`, so its default pairing measures two different containers.
+  // Legacy nests the inset owner INSIDE the panel — `#tabRoutine` (padding 0)
+  // wraps `.calc-body` (padding 24/32) — while the shell merges the two into
+  // `main.shell-main.calc-body`. The panel is still the box to SIZE; it is the
+  // styling that has to come from the inner one, or every route reports a
+  // padding gap that is not there.
   const legacySelectors = entry.legacySelector
     ? [`#${entry.panel} ${entry.legacySelector}`, entry.legacySelector]
     : [`#${entry.panel}`];
-  const legacy = await measure(page, `${LEGACY}/index.html${entry.hash}`, legacySelectors);
+  const legacyStyleSelectors = entry.legacySelector
+    ? legacySelectors
+    : [`#${entry.panel} > .calc-body`, `#${entry.panel}`];
+  const legacy = await measure(
+    page,
+    `${LEGACY}/index.html${entry.hash}`,
+    legacySelectors,
+    legacyStyleSelectors,
+  );
 
   if (!entry.route) {
     rows.push({ name: entry.name, status: 'MISSING', legacy, shell: null });
@@ -210,4 +290,13 @@ for (const r of rows) {
       diffs.push(`${key}: legacy \`${r.legacy[key]}\` vs shell \`${r.shell[key]}\``);
   }
   console.log(`- **${r.name}** — ${diffs.length ? diffs.join('; ') : 'container matches'}`);
+}
+
+if (warnings.length > 0) {
+  console.log('\n## ⚠ Measurements to distrust\n');
+  for (const w of warnings) console.log(`- ${w}`);
+  console.log(
+    '\nA box under a transform reports its TRANSFORMED size. Fix the page state,' +
+      ' not the number.',
+  );
 }
