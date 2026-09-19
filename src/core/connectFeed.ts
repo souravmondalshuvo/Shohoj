@@ -7,12 +7,13 @@
  * deterministic so it can be unit-tested against fixtures.
  *
  * TWIN: `js/core/connectFeed.js` is the shipping legacy copy and carries a
- * "Generated from src/core/connectFeed.ts" header, but nothing regenerates or
- * diffs it — the two are kept in step BY HAND. This file is the source of
- * truth; when they disagree, port the JS behaviour here rather than the other
- * way round (#479 fixed exactly such a drift: the JS had gained per-slot room
- * tagging that this file never received). `tests/connectFeed.test.js` runs the
- * shared cases against BOTH copies so a future drift fails the suite.
+ * "Twin of src/core/connectFeed.ts" header. Nothing regenerates it — the two
+ * are kept in step BY HAND. This file is the source of truth; when they
+ * disagree, port the JS behaviour here rather than the other way round (#479
+ * fixed exactly such a drift: the JS had gained per-slot room tagging that
+ * this file never received). Two suites guard it: `tests/connectFeed.test.js`
+ * runs the shared cases against BOTH copies, and `tests/twinParity.test.js`
+ * (#484) diffs the export surfaces and the behaviour of every twin pair.
  */
 
 import type { CourseCode } from './types';
