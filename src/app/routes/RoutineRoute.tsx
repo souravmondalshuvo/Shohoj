@@ -9,9 +9,9 @@
 // connectFeed) — this component is the thin React shell over it, matching how
 // CampusRoute consumes the same feed. Richer legacy features (section
 // suggestions/combos, PNG export, share link + QR, add-to-calendar, live
-// faculty ratings) are deferred to follow-up slices under #397. Sort, filters
-// and clash-hiding landed in #682, planner import in #684 and auto-suggest in
-// #686, off the same pure helpers the legacy tab uses.
+// #397. Sort, filters and clash-hiding landed in #682, planner import in #684,
+// auto-suggest in #686 and faculty ratings in #688, off the same pure helpers
+// the legacy tab uses.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -44,6 +44,12 @@ import {
 import { useCalculator } from '../providers/CalculatorProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { resolvePlanImport, summarizePlanImport } from '../../core/routinePlannerImport';
+import {
+  formatRatingScore,
+  getRatingForSection,
+  type FacultyRating,
+} from '../../core/routineFaculty';
+import { useFacultyRatings } from '../../features/routine/useFacultyRatings';
 import {
   ROUTINE_GAP_WEIGHT,
   formatGapMinutes,
@@ -175,12 +181,56 @@ function restoreSemesterChoice(): SessionChoice {
   }
 }
 
+/** Tier colour for a combination's AVERAGE rating. Legacy buckets the average
+    by score rather than reusing ratingTier, which judges one faculty against a
+    review count the average does not have (_comboCardHTML). */
+function avgRatingTier(avg: number): string {
+  if (avg >= 4.3) return 'excellent';
+  if (avg >= 3.7) return 'good';
+  if (avg >= 3.0) return 'mid';
+  if (avg >= 2.0) return 'warn';
+  return 'bad';
+}
+
+/** Legacy's ★ badge (_facultyBadgeHTML): tier class, score, and a hover line
+    that says how much evidence is behind it. Renders nothing when ratings are
+    not loaded or the faculty is unrated — an absent badge, never a blank one. */
+function FacultyBadge({
+  section,
+  ratingMap,
+  loaded,
+}: {
+  section: Pick<NormalizedSection, 'facultyInitials'>;
+  ratingMap: Map<string, FacultyRating>;
+  loaded: boolean;
+}) {
+  if (!loaded) return null;
+  const rating = getRatingForSection(section, ratingMap);
+  if (!rating || rating.tier === 'unknown') return null;
+  const score = formatRatingScore(rating.overall);
+  const reviews = `${rating.count} review${rating.count === 1 ? '' : 's'}`;
+  return (
+    <span
+      className={`routine-faculty-badge routine-faculty-badge--${rating.tier}`}
+      title={
+        rating.tier === 'low-sample'
+          ? `Low sample (${reviews})`
+          : `Faculty rating ${score} from ${reviews}`
+      }
+      data-testid="routine-faculty-badge"
+    >
+      ★ {score}
+    </span>
+  );
+}
+
 export function Component() {
   const config = useRuntimeConfig();
   // The Planner's courses. Legacy reaches them through a window bridge
   // (_shohoj_getPlanCourses); on the shell they are calculator state, which
   // RootLayout hoists above every route.
   const { state: calcState } = useCalculator();
+  const { ratingMap, loaded: ratingsLoaded } = useFacultyRatings();
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -404,6 +454,18 @@ export function Component() {
   const summary = useMemo(() => summarizeRoutine(routine, index), [routine, index]);
   const clashCount = summary.classClashPairs + summary.examClashPairs;
 
+  /** A section's rating on the engine's scale; below 0 means "no opinion",
+      which is how an unrated faculty sinks under a rated one rather than
+      leading the list on a 0 it never earned. */
+  const ratingValue = useCallback(
+    (section: NormalizedSection) => {
+      if (!ratingsLoaded) return -1;
+      const rating = getRatingForSection(section, ratingMap);
+      return rating && rating.tier !== 'unknown' && rating.overall !== null ? rating.overall : -1;
+    },
+    [ratingsLoaded, ratingMap],
+  );
+
   const toggleAvoidDay = (day: string) =>
     setFilters((prev) => {
       const days = prev.avoidDays ?? [];
@@ -449,7 +511,7 @@ export function Component() {
       let hiddenFilter = 0;
       let hiddenClash = 0;
       const rows: NormalizedSection[] = [];
-      for (const section of sortSections(all, sortMode)) {
+      for (const section of sortSections(all, sortMode, ratingValue)) {
         const isPicked = section.sectionId === pickedId;
         if (!isPicked && !sectionPassesFilters(section, filters)) {
           hiddenFilter++;
@@ -463,7 +525,7 @@ export function Component() {
       }
       return { rows, hiddenFilter, hiddenClash, total: all.length };
     },
-    [index, routine, sortMode, filters, hideClashing, candidateClashes],
+    [index, routine, sortMode, filters, hideClashing, candidateClashes, ratingValue],
   );
 
   const planCourses = calcState.planCourses;
@@ -486,13 +548,13 @@ export function Component() {
     (compact: boolean) => {
       if (!feed || codes.length === 0) return;
       setSuggestions(
-        suggestCombinations(codes, index, new Map(), {
+        suggestCombinations(codes, index, ratingMap, {
           sectionFilter: (section) => sectionPassesFilters(section, filters),
           gapWeight: compact ? ROUTINE_GAP_WEIGHT : 0,
         }),
       );
     },
-    [feed, codes, index, filters],
+    [feed, codes, index, filters, ratingMap],
   );
 
   /** Set every section of a combination at once, and close the panel: leaving
@@ -727,18 +789,20 @@ export function Component() {
               )}
               <div className="routine-sort" role="group" aria-label="Sort sections">
                 <span className="routine-sort-label">Sort</span>
-                {SECTION_SORT_MODES.filter(([mode]) => mode !== 'faculty').map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    className={`routine-sort-btn ${sortMode === mode ? 'is-active' : ''}`}
-                    aria-pressed={sortMode === mode}
-                    data-testid={`routine-sort-${mode}`}
-                    onClick={() => setSortMode(mode)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {SECTION_SORT_MODES.filter(([mode]) => mode !== 'faculty' || ratingsLoaded).map(
+                  ([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={`routine-sort-btn ${sortMode === mode ? 'is-active' : ''}`}
+                      aria-pressed={sortMode === mode}
+                      data-testid={`routine-sort-${mode}`}
+                      onClick={() => setSortMode(mode)}
+                    >
+                      {label}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           </div>
@@ -883,6 +947,20 @@ export function Component() {
                   >
                     <div className="routine-suggest-card-head">
                       <span className="routine-suggest-card-rank">#{i + 1}</span>
+                      {/* The average the ranking actually used, in legacy's
+                          tier colours — a score with no visible basis reads
+                          as arbitrary. Absent while ratings are unloaded. */}
+                      {ratingsLoaded && b.avgRating !== null && (
+                        <span
+                          className={`routine-suggest-card-rating routine-faculty-badge--${avgRatingTier(
+                            b.avgRating,
+                          )}`}
+                          title="Average faculty rating"
+                          data-testid={`routine-suggest-rating-${i}`}
+                        >
+                          ★ {formatRatingScore(b.avgRating)}
+                        </span>
+                      )}
                       <span className="routine-suggest-card-score" title="Score">
                         score {combo.score.toFixed(1)}
                       </span>
@@ -917,6 +995,11 @@ export function Component() {
                           <span className="routine-suggest-line-sec">§{section.sectionName}</span>
                           <span className="routine-suggest-line-fac">
                             {section.facultyInitials || 'TBA'}
+                            <FacultyBadge
+                              section={section}
+                              ratingMap={ratingMap}
+                              loaded={ratingsLoaded}
+                            />
                           </span>
                           <span className="routine-suggest-line-sched">{slotSummary(section)}</span>
                         </div>
@@ -1008,6 +1091,11 @@ export function Component() {
                             </span>
                             <span className="routine-section-meta">
                               {section.facultyInitials || 'TBA'}
+                              <FacultyBadge
+                                section={section}
+                                ratingMap={ratingMap}
+                                loaded={ratingsLoaded}
+                              />
                               {section.roomName ? ` · ${section.roomName}` : ''}
                               {` · ${section.consumedSeat}/${section.capacity} seats`}
                               {` · ${seatsLeft(section)} left`}
