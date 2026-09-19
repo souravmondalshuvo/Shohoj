@@ -10,10 +10,10 @@
 // CampusRoute consumes the same feed. Richer legacy features (section
 // suggestions/combos, PNG export, share link + QR, add-to-calendar, live
 // #397. Sort, filters and clash-hiding landed in #682, planner import in #684,
-// auto-suggest in #686 and faculty ratings in #688, off the same pure helpers
-// the legacy tab uses.
+// auto-suggest in #686, faculty ratings in #688 and the exports (share link,
+// QR, PNG, calendar) in #690, off the same pure helpers the legacy tab uses.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { fetchConnectFeed, type FeedSource } from '../../core/connectFeedClient';
 import {
@@ -33,6 +33,9 @@ import {
   withRoutineForSession,
   buildClashMap,
   clearRoutine,
+  decodeRoutinePicks,
+  emptyRoutineState,
+  encodeRoutinePicks,
   pickCourse,
   pickSection,
   pickedCourseCodes,
@@ -75,6 +78,10 @@ import {
   type SemesterIdentity,
 } from '../../core/semesterIdentity';
 import { computeGridLayout } from '../../core/routineGrid';
+import { buildRoutineICS } from '../../core/calendarExport';
+import { buildExportPlan, exportFileName } from '../../core/routineExport';
+import { paintExportPlan } from '../../features/routine/paintExportPlan';
+import qrcode from 'qrcode-generator';
 import {
   SECTION_SORT_MODES,
   type SectionFilters,
@@ -85,6 +92,46 @@ import {
 } from '../../core/routineSectionList';
 
 const STORAGE_KEY = 'shohoj_routine_picks_v1';
+
+/**
+ * Read a `?routine=…` shared-link payload once, and strip it from the URL.
+ *
+ * Read at import time rather than in an effect: stripping is what stops a
+ * later refresh re-applying the shared picks over edits made since, and an
+ * effect that runs twice (StrictMode) would read the already-stripped URL.
+ */
+/** Hand the browser a file. The anchor is removed either way. */
+function downloadUrl(url: string, filename: string): void {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  try {
+    downloadUrl(url, filename);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const PENDING_SHARE: string | null = (() => {
+  try {
+    if (typeof location === 'undefined') return null;
+    const raw = new URLSearchParams(location.search).get('routine');
+    if (!raw) return null;
+    if (typeof history !== 'undefined' && history.replaceState) {
+      history.replaceState(null, '', location.pathname + location.hash);
+    }
+    return raw;
+  } catch {
+    return null;
+  }
+})();
 
 /** Weekday order for the avoid-day chips, as legacy lists them. */
 const DAY_ORDER: readonly WeekdayName[] = [
@@ -259,6 +306,9 @@ export function Component() {
   // beside the filters rather than in them — exactly as legacy has it.
   const [compactDays, setCompactDays] = useState(true);
   const [suggestions, setSuggestions] = useState<SuggestionsResult | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [shareNote, setShareNote] = useState('');
+  const sharePending = useRef<string | null>(PENDING_SHARE);
   const [importText, setImportText] = useState('');
   const [importNote, setImportNote] = useState('');
 
@@ -569,6 +619,101 @@ export function Component() {
     setSuggestions(null);
   };
 
+  const shareUrl = useCallback(() => {
+    const payload = encodeRoutinePicks(routine);
+    const base = typeof location === 'undefined' ? '' : location.origin + location.pathname;
+    return `${base}?routine=${encodeURIComponent(payload)}`;
+  }, [routine]);
+
+  /** A pill that says what just happened, then gets out of the way. */
+  const flashNote = useCallback((message: string) => {
+    setShareNote(message);
+    window.setTimeout(() => setShareNote(''), 2500);
+  }, []);
+
+  const onShare = () => {
+    if (codes.length === 0) return;
+    const url = shareUrl();
+    navigator.clipboard
+      ?.writeText(url)
+      .then(
+        () => flashNote('✓ Link copied'),
+        () => flashNote('Press Ctrl/⌘+C to copy'),
+      )
+      .catch(() => flashNote('Copy failed'));
+  };
+
+  /** An .ics of the weekly classes and the mid/final exams, so the student's
+      own calendar app fires the reminders rather than this page. */
+  const onCalendar = () => {
+    if (resolved.length === 0) return;
+    downloadBlob(
+      new Blob([buildRoutineICS(resolved)], { type: 'text/calendar;charset=utf-8' }),
+      'shohoj-routine.ics',
+    );
+    flashNote('📅 Calendar downloaded');
+  };
+
+  const onExportPng = () => {
+    const exportLayout = computeGridLayout(resolved);
+    if (!exportLayout) return;
+    const plan = buildExportPlan(exportLayout, { title: 'Shohoj — Weekly Routine' });
+    const scale = window.devicePixelRatio || 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(plan.width * scale);
+    canvas.height = Math.round(plan.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(scale, scale);
+    ctx.textBaseline = 'alphabetic';
+    paintExportPlan(ctx, plan);
+    let url: string;
+    try {
+      url = canvas.toDataURL('image/png');
+    } catch {
+      // Tainted canvas — nothing here is drawn from another origin, but a
+      // failed export must not take the page down with it.
+      return;
+    }
+    downloadUrl(url, exportFileName());
+    flashNote('⬇ PNG downloaded');
+  };
+
+  // A shared link is picks, not sections that still exist: validate against the
+  // live feed, skip what it no longer offers, and leave the current routine
+  // alone if nothing survives — a dead link must not wipe a real routine.
+  useEffect(() => {
+    const encoded = sharePending.current;
+    if (encoded === null || !feed) return;
+    sharePending.current = null;
+    const decoded = decodeRoutinePicks(encoded);
+    let next = emptyRoutineState();
+    for (const code of pickedCourseCodes(decoded)) {
+      const list = index.get(code);
+      if (!list) continue;
+      next = pickCourse(next, code);
+      const sid = decoded.picks[code];
+      if (sid != null && list.some((section) => section.sectionId === sid)) {
+        next = pickSection(next, code, sid);
+      }
+    }
+    if (pickedCourseCodes(next).length === 0) return;
+    setRoutine(next);
+    flashNote('🔗 Opened a shared routine');
+  }, [feed, index, flashNote]);
+
+  const qrSvg = useMemo(() => {
+    if (!qrOpen || codes.length === 0) return '';
+    try {
+      const qr = qrcode(0, 'M'); // type 0 = auto-size, medium error correction
+      qr.addData(shareUrl());
+      qr.make();
+      return qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });
+    } catch {
+      return '';
+    }
+  }, [qrOpen, codes.length, shareUrl]);
+
   const addCourse = (event: React.FormEvent) => {
     event.preventDefault();
     const code = courseInput.trim().toUpperCase();
@@ -646,12 +791,61 @@ export function Component() {
             </span>
           )}
         </div>
-        {/* Legacy also carries Share, Add to Calendar, QR and Clear here once
-            courses are picked (_headerHTML). The shell has none of those yet
-            and keeps its own Clear in the summary row below, so this stays at
-            Refresh — matching legacy exactly in the empty state the parity
-            baseline captures, and short of it once picks exist. */}
+        {/* Legacy's header toolbar (_headerHTML): the exports appear only once
+            there is a routine to export, which is also what keeps the empty
+            state identical to the parity baseline. Clear stays in the summary
+            row below, where the shell has always had it. */}
         <div className="routine-header-right">
+          {shareNote && (
+            <span className="routine-share-note" role="status" data-testid="routine-share-note">
+              {shareNote}
+            </span>
+          )}
+          {codes.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                title="Copy a shareable link to this routine"
+                data-testid="routine-share"
+                onClick={onShare}
+              >
+                🔗 Share
+              </button>
+              <button
+                type="button"
+                className={`btn-secondary btn-sm ${qrOpen ? 'is-active' : ''}`}
+                aria-pressed={qrOpen}
+                title="Show a scannable QR of the share link"
+                data-testid="routine-qr-toggle"
+                onClick={() => setQrOpen((open) => !open)}
+              >
+                📱 QR
+              </button>
+            </>
+          )}
+          {resolved.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                title="Download an .ics calendar of your classes + exams with reminders"
+                data-testid="routine-calendar"
+                onClick={onCalendar}
+              >
+                📅 Add to Calendar
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                title="Download this schedule as a PNG image"
+                data-testid="routine-export-png"
+                onClick={onExportPng}
+              >
+                ⬇ Export PNG
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="btn-secondary btn-sm"
@@ -736,6 +930,21 @@ export function Component() {
           📋 Paste CONNECT schedule
         </button>
       </form>
+      {qrOpen && codes.length > 0 && qrSvg !== '' && (
+        <div className="routine-qr-panel" data-testid="routine-qr-panel">
+          <div
+            className="routine-qr-code"
+            aria-label="QR code for this routine's share link"
+            // The generator emits rect/path geometry only — no text from the
+            // payload reaches the markup, so there is nothing to inject.
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+          <div className="routine-qr-cap">
+            📱 Scan with another phone to open this routine in Shohoj.
+          </div>
+        </div>
+      )}
+
       {planNote && (
         <div className="routine-plan-note" role="status" data-testid="routine-plan-note">
           {planNote}
