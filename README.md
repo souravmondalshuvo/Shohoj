@@ -201,6 +201,20 @@ Find empty classrooms right now or across the week, computed from the live timet
 - **Weekly availability** — click a room to see its full-week free/busy grid in a modal
 - **Feed-aware** — derived purely from the scheduled timetable; no ad-hoc booking data is invented
 
+### 🗄️ Semester Archive (New)
+
+The public CONNECT feed is an *advising* feed: it carries exactly one semester
+and replaces it wholesale the moment the next opens for registration. On
+2026-08-31 it held only Fall 2026 while Summer 2026 was still in progress — the
+Summer timetable was simply gone, and there is no archive endpoint upstream. So
+Shohoj keeps its own.
+
+- **The Worker snapshots each semester into R2** before the feed forgets it, riding the cron that already polls for seat alerts but at its own much slower cadence (a semester changes three times a year, so re-archiving every six hours is plenty and costs four extra fetches a day)
+- **A semester switcher** appears on Routine, Seat Status and Free Rooms once there is more than the live feed to choose from, so last semester's timetable is still readable after CONNECT has moved on
+- **Snapshots say they are snapshots** — a captured semester is labelled with what it cannot tell you: seat counts frozen at the moment of capture, how many sections had no instructor assigned yet, how many carry no timetable at all
+- **Fails to the live feed, never to a broken page** — if the listing can't be read the switcher simply doesn't appear, and one malformed entry drops that semester rather than the whole response
+- **Nothing personal is archived** — the snapshot is the same public section feed every student already fetches
+
 ### 🗺️ Campus Map (New)
 
 A procedural 3D campus tower at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/) that renders live room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab.
@@ -532,7 +546,7 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF)            | Generating grade report PDFs                            |
 | Charts      | [Chart.js](https://www.chartjs.org/)                  | Admin dashboard and analytics visualizations           |
-| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, the Assistant relay, and the seat-alert / lost-&-found cron |
+| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, the Assistant relay, the semester archive, and the seat-alert / lost-&-found cron |
 | Assistant   | Google Gemini (free tier) via the Worker, with OpenAI and Anthropic Claude as fallbacks | In-app assistant; every key lives only on the Worker, never in the client, behind a monthly spend ceiling |
 | Build       | Python (`build3.py`) + Vite                           | `build3.py` bundles the shipping app; Vite builds the React shell and the standalone pages |
 | Hosting     | GitHub Pages                                          | Static hosting for the shipping app, the standalone pages, and the `/app/` beta |
@@ -606,7 +620,9 @@ Cloudflare Worker (auth-proxy, BRACU email + admin claim)
   ├── POST /upload, GET /download, DELETE /file — R2 past-paper files
   ├── POST /reviews         — service-account review writes
   ├── POST /api/assistant   — Assistant relay (Gemini → OpenAI → Claude)
-  └── scheduled()           — seat-drop alert + lost & found claim emails
+  ├── GET  /api/semesters   — archived semesters the CONNECT feed has dropped
+  └── scheduled()           — seat-drop alerts, lost & found claim emails,
+                              and the semester snapshot into R2
 
 Firebase custom claim `admin: true`
   ├── set out-of-band via scripts/set_admin_claim.js
@@ -783,6 +799,8 @@ Shohoj/
 │   │   ├── seatWatch.js          Seat watchlist persistence
 │   │   ├── freeRooms.js          Empty-room derivation from the timetable
 │   │   ├── routine*.js           Routine state, suggestions, grid, faculty, export
+│   │   ├── semesterArchive.js    Archived-semester listing + provenance notices
+│   │   ├── semesterIdentity.js   Naming a semester from the feed
 │   │   ├── calendarExport.js     .ics generation
 │   │   ├── assistantClient.js    Assistant relay client + drawer morph
 │   │   ├── dispatch.js           Delegated UI action registry
@@ -843,6 +861,7 @@ Shohoj/
 │   ├── assistant.js              Assistant orchestration + the read-only tools
 │   ├── assistantProviders.js     Gemini / OpenAI / Claude provider adapters
 │   ├── assistantBudget.js        Monthly spend ceiling
+│   ├── semesterArchive.js        Snapshot each CONNECT semester into R2, serve the listing
 │   ├── catalog.generated.js      Generated course catalog for the Worker
 │   ├── test/worker.test.js       Worker validation tests
 │   └── wrangler.toml             Worker deploy config
@@ -1016,6 +1035,8 @@ Additional notes on Repeat:
 ### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
 
 - All four read the **public CONNECT section feed**, which is third-party and best-effort. If the feed is down or changes shape, these features degrade rather than invent data.
+- **The feed holds one semester at a time.** It is an advising feed: when registration opens for the next semester it replaces the running one outright. Shohoj's own archive (see [Semester Archive](#-semester-archive-new)) covers this, but only for semesters captured since the cron started — anything the feed dropped before then is not recoverable.
+- **An archived semester is a snapshot, not a live view.** Its seat counts are frozen at the moment of capture and are historical, not current; sections that had no instructor assigned or no timetable at capture stay that way. Each snapshot states which of these apply to it rather than presenting stale numbers as live ones.
 - **Free Rooms and the campus map show scheduled occupancy only.** There is no ad-hoc room booking feed, so a room that is free on the timetable may still be in use by a club, a makeup class, or an event.
 - **Seat email alerts** require an operator-configured verified email sender. Unconfigured, the cron logs and sends nothing rather than failing silently in a way that looks like delivery.
 - The campus map's 3D rendering is a presentation layer. Room status is readable without it.
@@ -1144,6 +1165,7 @@ Touch devices: the custom cursor and dot-matrix animation are automatically disa
 | `seatAlertState/{...}`    | Firestore    | Cron-side full→open transition state, so an alert fires once            |
 | `adminLogs/{id}`          | Firestore    | Immutable admin moderation audit trail                                  |
 | Paper files               | Cloudflare R2 | PDF and raster-image uploads, accessed only through the Worker          |
+| `semesters/{sessionId}`   | Cloudflare R2 | Archived CONNECT section feeds — public timetable data, nothing personal |
 
 Academic sync and community metadata live in Firestore. Paper file bodies are stored in Cloudflare R2 behind the Worker. Assistant conversations live in IndexedDB on your own device, stamped with your uid so a record only ever reads back for the account that wrote it — never Firestore, never the Worker, never any server. A chat therefore survives closing the tab, does not follow you to a second device, and is deleted by the drawer's **Clear chat**. There are no ads, no analytics on your grade data, and no third-party data sharing. Google Analytics (GA4) tracks page views only — no grade or personal data is included.
 
