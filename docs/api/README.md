@@ -200,12 +200,14 @@ Moving a semester is creating a different one. An unknown patch field is
 `DELETE` removes the semester **and every enrolment in it**, and says how many:
 
 ```json
-{ "deleted": { "id": "sem_bracu_20263", "removedEnrollments": 4 } }
+{ "deleted": { "id": "sem_bracu_20263", "removedEnrollments": 4, "removedTasks": 31 } }
 ```
 
-The cascade is not optional and there is no flag to skip it. An enrolment whose
-semester is gone appears in no view that lists by semester, so it could never be
-found or removed again.
+The cascade is not optional and there is no flag to skip it, and it runs all the
+way down: semester → enrolments → tasks. An enrolment whose semester is gone
+appears in no view that lists by semester, and a task whose enrolment is gone
+appears in no course-filtered view, so neither could ever be found or removed
+again. Both counts come back so the client can say what went.
 
 ```json
 {
@@ -245,7 +247,7 @@ different id.
 | `POST /api/v1/enrollments` | Create **or update** — idempotent, as above |
 | `GET /api/v1/enrollments/{id}` | One enrolment |
 | `PATCH /api/v1/enrollments/{id}` | `section`, `facultyInitials`, `status` |
-| `DELETE /api/v1/enrollments/{id}` | |
+| `DELETE /api/v1/enrollments/{id}` | Cascades to the course's tasks; returns `removedTasks` |
 
 ```json
 {
@@ -283,6 +285,124 @@ Two fields the client cannot set:
 the id; the last is the server's. Changing a course means dropping this
 enrolment and creating another, which is also what actually happened.
 
+### Tasks
+
+One model for every kind. A quiz and an assignment differ in `type` and in
+whether they eventually carry an assessment — not in their storage, their
+queries, their sort order or their Today view.
+
+Task ids are **assigned, not derived** — the one place Tasks diverges from
+Semester and Enrollment. Deriving an id from content would make two identical
+tasks the same task, and a student who genuinely has two readings due Friday
+must be able to create both. **`POST /api/v1/tasks` is therefore not
+idempotent**, unlike the two endpoints above.
+
+| | |
+|---|---|
+| `GET /api/v1/tasks` | `?enrollmentId=` · `?status=` |
+| `POST /api/v1/tasks` | Create. Always a new task |
+| `GET /api/v1/tasks/{id}` | |
+| `PATCH /api/v1/tasks/{id}` | |
+| `DELETE /api/v1/tasks/{id}` | |
+| `PUT /api/v1/tasks/{id}/completion` | `{ "completed": true \| false }` |
+| `GET /api/v1/tasks/today` | `?tz=` **required** |
+| `GET /api/v1/tasks/upcoming` | `?tz=` **required**, `?days=` (default 7, max 90) |
+
+```json
+{
+  "task": {
+    "id": "tsk_0123456789abcdef0123456789abcdef",
+    "enrollmentId": "enr_0123456789abcdef0123456789abcdef",
+    "title": "CSE220 Assignment 2",
+    "description": null,
+    "type": "ASSIGNMENT",
+    "status": "TODO",
+    "priority": "HIGH",
+    "priorityScore": null,
+    "dueAt": "2026-10-09T17:59:00.000Z",
+    "startAt": null,
+    "estimatedMinutes": 180,
+    "source": "MANUAL",
+    "sourceReference": null,
+    "createdAt": "2026-09-20T10:00:00.000Z",
+    "updatedAt": "2026-09-20T10:00:00.000Z",
+    "completedAt": null
+  }
+}
+```
+
+`type` is `ASSIGNMENT` · `QUIZ` · `EXAM` · `PROJECT` · `LAB` · `READING` ·
+`PERSONAL` · `OTHER`. `status` is `TODO` · `IN_PROGRESS` · `COMPLETED` ·
+`CANCELLED`. `priority` is `LOW` · `MEDIUM` · `HIGH` · `CRITICAL`, set by the
+student; `priorityScore` is reserved for the automatic engine in Phase 5 and is
+null until then.
+
+`enrollmentId` is nullable — a `PERSONAL` task belongs to no course. When it is
+set, the enrolment must be one of the caller's, checked on **create and on
+patch**: moving a task to another course is an edit like any other, and an
+unchecked one could point it at an id the client guessed, producing a task no
+course-filtered view can reach.
+
+`dueAt` is nullable: a reading with no deadline is still a task. When present it
+must be a full ISO 8601 instant **with an offset** — `2026-10-09T23:59:00+06:00`
+or `...Z`. A bare local time like `2026-10-09T23:59` is refused, because it does
+not name a moment and guessing a zone for it is how a deadline moves when a
+student travels.
+
+`completedAt` is maintained by the server in **both** directions: completing
+stamps it, reopening clears it. It is stored rather than inferred from `status`
+because "when did I finish this" is a question a status field cannot answer.
+Reopening returns a task to `TODO` rather than to whatever it was before —
+restoring `IN_PROGRESS` would be guessing at a state the student left behind.
+
+#### Completion has its own endpoint
+
+`PUT .../completion` rather than a `PATCH` with a status, because ticking a box
+is the most common write in the product and deserves to be one call with no body
+to assemble and nothing else it could accidentally change. It insists on an
+explicit boolean, so a malformed request cannot silently reopen finished work.
+`PATCH` still works for anyone who prefers it, and routes through the same logic.
+
+#### Today and Upcoming require a timezone
+
+Both take `?tz=` as an IANA zone (`Asia/Dhaka`) and **refuse without it**. This
+is the one place the API asks the client for something it could have defaulted,
+and the default would have been wrong:
+
+> Bangladesh is UTC+6. A student's entire evening — 6pm to midnight — is already
+> the next day in UTC. A Today view computed in UTC is wrong every evening, for
+> every student, which is exactly when they would be checking it.
+
+The browser knows its zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`);
+the server does not, and a campus-wide default would be wrong for anybody on
+exchange. An unrecognised zone is a `400` rather than a silent fallback.
+
+**Today** is two lists, because they mean different things:
+
+```json
+{ "overdue": [ ... ], "dueToday": [ ... ] }
+```
+
+`overdue` is **open** work whose deadline has passed — it stays there until it is
+dealt with, because a missed deadline that scrolls off the screen gets missed
+twice. `dueToday` **keeps completed** tasks: a Today list that empties itself as
+work is finished takes away the only evidence the day went well. Cancelled tasks
+appear in neither.
+
+**Upcoming** starts *tomorrow* — today has its own view, and a task in both would
+be double-counted by anything that adds them — and excludes finished work, since
+something already done is not ahead of anybody.
+
+```json
+{ "days": 7, "items": [ ... ] }
+```
+
+#### Ordering
+
+Soonest first, then by priority. **Undated tasks sort last**, not first: a null
+due date is not "due now", and sorting nulls to the top would bury the exam that
+is actually tomorrow under every undated reading.
+
 ### There is no `GET /api/v1/courses`
 
 Shohoj already ships the full BRACU catalogue in the frontend bundle
@@ -305,6 +425,16 @@ to add the endpoint, and it is additive.
 | Repository | `worker/academicRepo.js` | Firestore paths. I/O injected |
 | Wiring | `worker/index.js` | Method, path, auth, CORS, correlation id |
 
+Tasks follow the same layering — `worker/taskTime.js` (timezones and enums,
+pure), `worker/tasks.js` (rules, pure), `worker/taskHandlers.js`. Tests:
+`worker/test/taskTime.test.js`, `worker/test/tasks.test.js`,
+`worker/test/taskApi.test.js`.
+
+One wiring detail worth knowing before editing the route table: `/tasks/today`
+and `/tasks/upcoming` must be matched **before** `/tasks/{id}`, or the id pattern
+swallows both and the two most-used endpoints in the product answer 404. A test
+fails if they are ever reordered.
+
 A rule in the handler has to be re-tested through HTTP; a rule in the repository
 needs a database to check. Both are how validation ends up duplicated and
 drifting. `worker/apiV1.js` holds what the namespace shares — the error envelope
@@ -314,7 +444,7 @@ and user resolution. Tests: `worker/test/apiV1.test.js`,
 **Frontend** — `src/platform/api/apiClient.ts` is the only place Shohoj talks to
 its own API. It owns the base URL, the token, response validation and the
 mapping from HTTP status onto the typed error hierarchy. Features call typed
-modules beside it (`shohojUser.ts`, `academic.ts`), never `fetch`. Tests: `tests/apiClient.test.js`,
+modules beside it (`shohojUser.ts`, `academic.ts`, `tasks.ts`), never `fetch`. Tests: `tests/apiClient.test.js`,
 `tests/academicApi.test.js`, and `tests/apiIntegration.test.js` /
 `tests/academicIntegration.test.js`, which drive the real client against the
 real Worker handlers with no network.
