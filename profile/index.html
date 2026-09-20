@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-7/mt2K0hNuzWSDnv2JHXWdbrfDA9tcx+6WHQQAGaqs4=' 'sha256-9XDhlFOW6yrN2FtyAn0OvPFR6iRDUMI6satkZNmt490='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-9XDhlFOW6yrN2FtyAn0OvPFR6iRDUMI6satkZNmt490='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -8534,7 +8534,7 @@ body[data-page="admin"] .orb { display: none !important; }
   <script type="module">
 // ── js/auth/firebase-init.js ────────────────────────────────────
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -8593,9 +8593,27 @@ const app = firebaseAvailable ? initializeApp(firebaseConfig) : null;
 const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
 if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   try {
-    initializeAppCheck(app, {
+    const appCheck = initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
+    });
+
+    // initializeAppCheck returns as soon as the provider is wired up. The part
+    // that can actually fail — exchanging a reCAPTCHA token for an App Check
+    // token — happens later, over the network, so the catch below never sees
+    // it. For months that meant a hard 403 ("App attestation failed", #709)
+    // surfaced only as an uncaught console error nobody was looking for, while
+    // the docs described App Check as working.
+    //
+    // Asking for a token costs nothing extra: auto-refresh already fetches one,
+    // and getToken joins that in-flight request rather than issuing a second.
+    // We only want to observe it.
+    getAppCheckToken(appCheck).catch((err) => {
+      console.warn(
+        '[Shohoj] App Check attestation failed — App Check is providing no protection '
+          + '(this does not break auth or sync while enforcement is off):',
+        err?.code || err?.message || err,
+      );
     });
   } catch (err) {
     console.warn('[Shohoj] App Check init failed:', err?.message || err);
