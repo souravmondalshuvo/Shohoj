@@ -73,11 +73,12 @@ import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
 // academic.js is pure rules, academicRepo.js knows Firestore, academicHandlers.js
 // returns plain { status, body }. This file supplies the I/O and turns the
 // result into a Response; that is the whole of its job here.
-import { createAcademicRepo } from './academicRepo.js';
+import { USERS_COLLECTION, createAcademicRepo } from './academicRepo.js';
 import * as academic from './academicHandlers.js';
 // Shohoj Tasks (#715). Same layering as the academic core: taskTime.js and
 // tasks.js are pure, taskHandlers.js returns plain { status, body }.
 import * as tasks from './taskHandlers.js';
+import { buildReminderEmail, isStale, shouldSend } from './reminders.js';
 
 export { campusOfEmail };
 
@@ -1391,6 +1392,20 @@ async function dispatchAcademic(ctx, request, url) {
     return null;
   }
 
+  const remindersMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/reminders$/.exec(path);
+  if (remindersMatch) {
+    const taskId = remindersMatch[1];
+    if (method === 'GET') return tasks.listReminders(ctx, taskId);
+    if (method === 'POST') return tasks.createReminder(ctx, taskId, await readJsonBody(request));
+    return null;
+  }
+
+  const reminderMatch =
+    /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/reminders\/([A-Za-z0-9_-]{1,64})$/.exec(path);
+  if (reminderMatch && method === 'DELETE') {
+    return tasks.deleteReminder(ctx, reminderMatch[1], reminderMatch[2]);
+  }
+
   const taskMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})$/.exec(path);
   if (taskMatch) {
     const id = taskMatch[1];
@@ -1789,6 +1804,10 @@ async function firestoreRunQuery(env, token, structuredQuery) {
     const name = row.document.name || '';
     out.push({
       id: name.slice(name.lastIndexOf('/') + 1),
+      // The full resource path. A collection-group query returns documents
+      // from many parents, and the path is the only thing that says WHICH —
+      // the reminder cron reads the owning uid out of it.
+      name,
       fields: fromFirestoreFields(row.document.fields || {}),
     });
   }
@@ -1930,6 +1949,145 @@ async function recordAssistantSpend(env, token, month, spentUsd, costUsd) {
 // Poll the feed once, fan out over every user's watchlist, email on drops, and
 // persist updated state. Resolves to a small summary for logging. All counts are
 // aggregate — no UID or email is returned or logged.
+/**
+ * Deliver due task reminders (#727).
+ *
+ * Reuses the scheduler, the Resend sender and the operating discipline the
+ * seat-alert cron established: **state advances only on a confirmed send**. A
+ * reminder marked SENT after a failed delivery is a missed deadline the student
+ * was told about, which is worse than no reminder at all.
+ *
+ * Reminders live under each student for ownership, so finding due ones across
+ * everybody needs a collection-group query — `allDescendants` over the
+ * `reminders` subcollection. That is a server-side read the API never exposes.
+ *
+ * Filtered on STATUS server-side and on time in memory. A pending-only query is
+ * bounded by what has not yet fired, which is small; adding a range filter on
+ * `scheduledFor` would need a composite index for a list that is already short.
+ */
+export async function runReminderCron(env, nowMs = Date.now()) {
+  const emailCfg = seatAlertEmailConfig(env);
+  if (!emailCfg.configured) {
+    return { configured: false, reason: emailCfg.reason, due: 0, emailed: 0, failed: 0 };
+  }
+
+  let token;
+  try {
+    token = await getServiceAccountAccessToken(env);
+  } catch (e) {
+    return {
+      configured: false,
+      reason: `service account unavailable: ${e?.message || e}`,
+      due: 0,
+      emailed: 0,
+      failed: 0,
+    };
+  }
+
+  const pending = await firestoreRunQuery(env, token, {
+    from: [{ collectionId: 'reminders', allDescendants: true }],
+    where: {
+      fieldFilter: {
+        field: { fieldPath: 'status' },
+        op: 'EQUAL',
+        value: { stringValue: 'PENDING' },
+      },
+    },
+    limit: 500,
+  });
+
+  let due = 0;
+  let emailed = 0;
+  let failed = 0;
+  let dropped = 0;
+
+  for (const row of pending) {
+    const reminder = row.fields;
+    // The document PATH carries the owning uid; the record carries the Shohoj
+    // user id, which is a different value and cannot address the document.
+    const ownerUid = ownerUidFromPath(row);
+    if (ownerUid === null) continue;
+
+    const task = await firestoreGetFields(
+      env,
+      token,
+      `${USERS_COLLECTION}/${ownerUid}/tasks/${reminder.taskId}`,
+    );
+
+    if (isStale(reminder, nowMs)) {
+      // Too late to be worth sending — a cron that was down overnight must not
+      // deliver yesterday's nudges about work that is now simply overdue.
+      await firestorePatchFields(
+        env,
+        token,
+        `${USERS_COLLECTION}/${ownerUid}/reminders/${reminder.id}`,
+        { ...reminder, status: 'CANCELLED', updatedAt: new Date(nowMs).toISOString() },
+      );
+      dropped += 1;
+      continue;
+    }
+
+    if (!shouldSend(reminder, task, nowMs)) continue;
+    due += 1;
+
+    const email = await reminderRecipient(env, token, ownerUid);
+    if (email === null) {
+      failed += 1;
+      continue;
+    }
+
+    const courseCode = await reminderCourseCode(env, token, ownerUid, task);
+    const { subject, html } = buildReminderEmail(task, reminder, courseCode);
+    const sent = await resendSeatAlert(env, email, subject, html);
+
+    // The whole point: only a confirmed send advances the record.
+    if (sent) {
+      await firestorePatchFields(
+        env,
+        token,
+        `${USERS_COLLECTION}/${ownerUid}/reminders/${reminder.id}`,
+        {
+          ...reminder,
+          status: 'SENT',
+          sentAt: new Date(nowMs).toISOString(),
+          updatedAt: new Date(nowMs).toISOString(),
+        },
+      );
+      emailed += 1;
+    } else {
+      // Left PENDING on purpose, so the next pass retries it. Marking FAILED
+      // here would need a separate retry policy for no benefit.
+      failed += 1;
+    }
+  }
+
+  return { configured: true, due, emailed, failed, dropped };
+}
+
+/** The owning uid, read from a reminder document's own path. */
+function ownerUidFromPath(row) {
+  const match = /shohojUsers\/([^/]+)\/reminders\//.exec(String(row?.name ?? ''));
+  return match ? match[1] : null;
+}
+
+/** The address to reach a student on: their verified sign-in email. */
+async function reminderRecipient(env, token, ownerUid) {
+  const user = await firestoreGetFields(env, token, `${USERS_COLLECTION}/${ownerUid}`);
+  const email = user?.email;
+  return typeof email === 'string' && email.includes('@') ? email : null;
+}
+
+/** The course code a task belongs to, for the subject line. Null when unattached. */
+async function reminderCourseCode(env, token, ownerUid, task) {
+  if (!task?.enrollmentId) return null;
+  const enrollment = await firestoreGetFields(
+    env,
+    token,
+    `${USERS_COLLECTION}/${ownerUid}/enrollments/${task.enrollmentId}`,
+  );
+  return typeof enrollment?.courseCode === 'string' ? enrollment.courseCode : null;
+}
+
 export async function runSeatAlertCron(env) {
   // Fail safe before any I/O: if mail can't be delivered, do nothing and report
   // it, rather than reading watches and silently dropping every email.
@@ -2112,6 +2270,26 @@ export default {
           );
         } catch (e) {
           console.error('seat-alert cron failed:', e?.message || e);
+        }
+      })(),
+    );
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const r = await runReminderCron(env);
+          if (!r.configured) {
+            console.error(
+              `reminder cron: email channel not configured — ${r.reason}; skipped (no emails sent)`,
+            );
+            return;
+          }
+          if (r.due > 0 || r.dropped > 0) {
+            console.log(
+              `reminder cron: due=${r.due} emailed=${r.emailed} failed=${r.failed} dropped=${r.dropped}`,
+            );
+          }
+        } catch (e) {
+          console.error('reminder cron failed:', e?.message || e);
         }
       })(),
     );
