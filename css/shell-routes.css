@@ -1667,3 +1667,89 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   .tasks-field-narrow { flex: 1 1 100%; }
   .tasks-summary { font-size: 0.78rem; }
 }
+
+/* ── Tasks on the dashboard (#719) ───────────────────────────────────────────
+ *
+ * Reuses the .lg-panel glass card the meter, tracker and standing box already
+ * use, so the digest reads as part of the dashboard rather than as something
+ * bolted on. Rows reuse .tasks-check from the route above — one checkbox
+ * definition, two surfaces.
+ */
+
+.tasks-digest {
+  position: relative;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 14px;
+}
+
+.tasks-digest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tasks-digest-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tasks-digest-overdue {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d9534f;
+}
+
+.tasks-digest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tasks-digest-group {
+  margin: 10px 0 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-item:first-child .tasks-digest-group { margin-top: 0; }
+.tasks-digest-group-overdue { color: #d9534f; }
+
+.tasks-digest-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.tasks-digest-body { flex: 1 1 auto; min-width: 0; }
+
+.tasks-digest-item-title {
+  margin: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.tasks-digest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  color: var(--green, #2f855a);
+  font-weight: 600;
+}
+
+.tasks-digest-link:hover { text-decoration: underline; }
