@@ -11,6 +11,8 @@ import test from 'node:test';
 
 import { createApiClient } from '../src/platform/api/apiClient.ts';
 import {
+  AssessmentSchema,
+  PRIORITY_FACTOR_LABELS,
   TASK_PRIORITY_LABELS,
   TASK_TYPES,
   TASK_TYPE_LABELS,
@@ -25,6 +27,10 @@ import {
   isOpen,
   listTasks,
   setTaskCompleted,
+  deleteAssessment,
+  explainPriority,
+  fetchAssessment,
+  putAssessment,
   updateTask,
   viewerTimeZone,
 } from '../src/platform/api/tasks.ts';
@@ -228,4 +234,122 @@ test('groupByEnrollment keys unattached tasks on null', () => {
   ]);
   assert.equal(groups.get('enr_1').length, 2);
   assert.equal(groups.get(null).length, 1);
+});
+
+// ── Priority score and its explanation (#721) ───────────────────────────────
+
+const FACTORS = [
+  { name: 'urgency', value: 0.857, weight: 0.45, points: 38.57 },
+  { name: 'weight', value: 0.4, weight: 0.25, points: 10 },
+  { name: 'workload', value: 0.875, weight: 0.15, points: 13.13 },
+  { name: 'importance', value: 0.667, weight: 0.15, points: 10 },
+];
+
+test('a task carrying a score and its breakdown is accepted', () => {
+  const scored = { ...TASK, priorityScore: 71.7, priorityFactors: FACTORS };
+  const parsed = TaskSchema.safeParse(scored);
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.priorityScore, 71.7);
+  assert.equal(parsed.data.priorityFactors.length, 4);
+});
+
+test('a task from a backend without the engine still validates', () => {
+  // priorityFactors is optional on purpose: the field shipped after the task
+  // shape did, and an older Worker must not break a newer client.
+  const parsed = TaskSchema.safeParse({ ...TASK, priorityScore: null });
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.priorityFactors, undefined);
+});
+
+test('an unknown factor name is refused', () => {
+  const bogus = { ...TASK, priorityFactors: [{ ...FACTORS[0], name: 'vibes' }] };
+  assert.equal(TaskSchema.safeParse(bogus).success, false);
+});
+
+test('the explanation drops factors that contributed nothing', () => {
+  // "Takes a while: 0 points" is noise. A student reading why something ranked
+  // highly wants the reasons it did, not the reasons it did not.
+  const task = {
+    ...TASK,
+    priorityScore: 48.6,
+    priorityFactors: [
+      { name: 'urgency', value: 0.9, weight: 0.45, points: 40.5 },
+      { name: 'weight', value: 0, weight: 0.25, points: 0 },
+      { name: 'workload', value: 0, weight: 0.15, points: 0 },
+      { name: 'importance', value: 0.54, weight: 0.15, points: 8.1 },
+    ],
+  };
+  const shown = explainPriority(task);
+  assert.deepEqual(
+    shown.map((f) => f.name),
+    ['urgency', 'importance'],
+    'biggest first, zeros gone',
+  );
+});
+
+test('a task with no breakdown explains nothing rather than throwing', () => {
+  assert.deepEqual(explainPriority(TASK), []);
+});
+
+test('every factor has a label', () => {
+  for (const name of ['urgency', 'weight', 'workload', 'importance']) {
+    assert.equal(typeof PRIORITY_FACTOR_LABELS[name], 'string');
+  }
+});
+
+// ── Assessments (#721) ──────────────────────────────────────────────────────
+
+const ASSESSMENT = {
+  taskId: TASK.id,
+  totalMarks: 40,
+  earnedMarks: null,
+  weightPercent: 40,
+  syllabus: 'Chapters 4-6',
+  location: null,
+  notes: null,
+  createdAt: '2026-09-20T10:00:00.000Z',
+  updatedAt: '2026-09-20T10:00:00.000Z',
+};
+
+test('an ungraded assessment is valid, with earnedMarks null', () => {
+  // Null means NOT MARKED YET, which is not zero — and the two are a keystroke
+  // apart, so the schema has to accept null rather than coerce it.
+  const parsed = AssessmentSchema.safeParse(ASSESSMENT);
+  assert.equal(parsed.success, true);
+  assert.equal(parsed.data.earnedMarks, null);
+
+  const graded = AssessmentSchema.safeParse({ ...ASSESSMENT, earnedMarks: 0 });
+  assert.equal(graded.data.earnedMarks, 0, 'and a real zero survives as zero');
+});
+
+test('putAssessment PUTs to the task sub-resource', async () => {
+  const fetchFn = recordingFetch(json({ assessment: ASSESSMENT }, 201));
+  const result = await putAssessment(clientWith(fetchFn), TASK.id, {
+    totalMarks: 40,
+    weightPercent: 40,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(fetchFn.calls[0].init.method, 'PUT');
+  assert.equal(fetchFn.calls[0].url, `${BASE}/api/v1/tasks/${TASK.id}/assessment`);
+});
+
+test('fetchAssessment GETs it, deleteAssessment DELETEs it', async () => {
+  const get = recordingFetch(json({ assessment: ASSESSMENT }));
+  const fetched = await fetchAssessment(clientWith(get), TASK.id);
+  assert.equal(fetched.value.weightPercent, 40);
+
+  const del = recordingFetch(json({ deleted: { taskId: TASK.id } }));
+  const removed = await deleteAssessment(clientWith(del), TASK.id);
+  assert.equal(del.calls[0].init.method, 'DELETE');
+  assert.equal(removed.value.taskId, TASK.id);
+});
+
+test('a task with no assessment surfaces as a typed not-found', async () => {
+  const fetchFn = recordingFetch(
+    json({ error: { code: 'not_found', message: 'This task has no assessment.' } }, 404),
+  );
+  const result = await fetchAssessment(clientWith(fetchFn), TASK.id);
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'not_found');
 });
