@@ -29,6 +29,7 @@ import { ShellTabs } from '../ShellTabs';
 import { AuthProvider, useAuth } from '../providers/AuthProvider';
 import { SignInPortal } from '../SignInPortal';
 import { CloudSyncProvider } from '../providers/CloudSyncProvider';
+import { ApiProvider } from '../providers/ApiProvider';
 import { ModalProvider } from '../providers/ModalProvider';
 import { RuntimeConfigProvider, useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { runtimeConfigFromGlobals } from '../../platform/configuration/runtimeConfig';
@@ -365,14 +366,21 @@ function ShellChrome() {
 
   return (
     <AuthProvider source={providerSource}>
-      <ModalProvider>
-        {/* Live faculty chip scores (inert until a chip requests one; no repo
+      {/* The Shohoj API client and the signed-in student's Shohoj user record
+          (#710). Inside AuthProvider because it needs the token getter, and
+          above the chrome because Tasks, the dashboard and the planner all read
+          the same resolution rather than each fetching their own. Offline
+          shells get a null client and every consumer handles that. */}
+      <ApiProvider>
+        <ModalProvider>
+          {/* Live faculty chip scores (inert until a chip requests one; no repo
             when offline → chips stay '–'). */}
-        <FacultyReviewsProvider>
-          {/* Cloud sync runs only on a configured shell; offline keeps chrome bare. */}
-          {config ? <CloudSyncProvider config={config}>{chrome}</CloudSyncProvider> : chrome}
-        </FacultyReviewsProvider>
-      </ModalProvider>
+          <FacultyReviewsProvider>
+            {/* Cloud sync runs only on a configured shell; offline keeps chrome bare. */}
+            {config ? <CloudSyncProvider config={config}>{chrome}</CloudSyncProvider> : chrome}
+          </FacultyReviewsProvider>
+        </ModalProvider>
+      </ApiProvider>
     </AuthProvider>
   );
 }
