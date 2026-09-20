@@ -3,7 +3,7 @@
 // The shell used to render a flat list of 19 nav links that collapsed behind a
 // "Menu" toggle on narrow viewports, so specs could click any route by name (or
 // open the toggle first). The bar now mirrors legacy's grouped structure
-// (src/app/ShellTabs.tsx): five top-level slots, with most routes inside a
+// (src/app/ShellTabs.tsx): six top-level slots, with most routes inside a
 // dropdown that must be opened before its items are clickable.
 //
 // Use navigateTo() instead of clicking a route link directly — it opens the
