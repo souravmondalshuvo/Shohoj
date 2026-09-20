@@ -395,6 +395,13 @@ A task with no assessment still scores — on urgency, workload and the student'
 own priority. An undated task scores **zero** urgency rather than "low", or it
 would quietly outrank everything past the 14-day horizon.
 
+#### `GET /api/v1/assessments`
+
+Every assessment the student has, in one call — `{ "items": [...] }`, sorted by
+task id. The per-task endpoint answers "what is this one worth"; this answers
+"what does this course look like", which a grade panel needs and which would
+otherwise cost one request per task for data held in a single collection.
+
 #### `GET` · `PUT` · `DELETE /api/v1/tasks/{id}/assessment`
 
 What a task is worth. A sub-resource because that is what it is: one slot per
