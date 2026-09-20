@@ -16,6 +16,7 @@
 //   shohojUsers/{firebaseUid}/enrollments/{enrollmentId}
 //   shohojUsers/{firebaseUid}/tasks/{taskId}
 //   shohojUsers/{firebaseUid}/assessments/{taskId}   <- keyed BY task id
+//   shohojUsers/{firebaseUid}/reminders/{reminderId}
 //
 // Subcollections under the user, for three reasons that all point the same way:
 // a student's data is co-located, so deleting an account is one subtree; no
@@ -46,6 +47,15 @@ export const TASKS_SUBCOLLECTION = 'tasks';
  * plus a lookup, rather than a query.
  */
 export const ASSESSMENTS_SUBCOLLECTION = 'assessments';
+/**
+ * Reminders (#727).
+ *
+ * Under the user like everything else, so ownership stays structural — but the
+ * delivery cron has to see EVERY student's reminders, which a per-user path
+ * cannot serve. That is what the collection-group query in runReminderCron is
+ * for: the same subtree, read across all users, server-side only.
+ */
+export const REMINDERS_SUBCOLLECTION = 'reminders';
 
 /**
  * How many records one student may hold.
@@ -84,6 +94,10 @@ export function assessmentPath(firebaseUid, taskId) {
   return `${userPath(firebaseUid)}/${ASSESSMENTS_SUBCOLLECTION}/${taskId}`;
 }
 
+export function reminderPath(firebaseUid, id) {
+  return `${userPath(firebaseUid)}/${REMINDERS_SUBCOLLECTION}/${id}`;
+}
+
 /**
  * Build the repository for one signed-in student.
  *
@@ -102,6 +116,7 @@ export function createAcademicRepo(deps, firebaseUid) {
   const enrollments = `${userPath(firebaseUid)}/${ENROLLMENTS_SUBCOLLECTION}`;
   const tasks = `${userPath(firebaseUid)}/${TASKS_SUBCOLLECTION}`;
   const assessments = `${userPath(firebaseUid)}/${ASSESSMENTS_SUBCOLLECTION}`;
+  const reminders = `${userPath(firebaseUid)}/${REMINDERS_SUBCOLLECTION}`;
 
   return {
     listSemesters: () => deps.listDocs(semesters),
@@ -123,6 +138,11 @@ export function createAcademicRepo(deps, firebaseUid) {
     getAssessment: (taskId) => deps.getDoc(assessmentPath(firebaseUid, taskId)),
     putAssessment: (record) => deps.patchDoc(assessmentPath(firebaseUid, record.taskId), record),
     deleteAssessment: (taskId) => deps.deleteDoc(assessmentPath(firebaseUid, taskId)),
+
+    listReminders: () => deps.listDocs(reminders),
+    getReminder: (id) => deps.getDoc(reminderPath(firebaseUid, id)),
+    putReminder: (record) => deps.patchDoc(reminderPath(firebaseUid, record.id), record),
+    deleteReminder: (id) => deps.deleteDoc(reminderPath(firebaseUid, id)),
   };
 }
 
@@ -144,9 +164,15 @@ export async function assessmentsByTaskId(repo) {
 
 /** Delete a task and the assessment attached to it. */
 export async function deleteTaskCascade(repo, taskId) {
-  // Assessment first: an assessment whose task is gone is unreachable through
-  // every path the API offers, exactly like an orphaned task or enrolment.
+  // Assessment and reminders first: both are unreachable through every path the
+  // API offers once their task is gone, exactly like an orphaned task or
+  // enrolment. A surviving reminder is worse than a surviving row, because it
+  // would go on to EMAIL somebody about a task that no longer exists.
   await repo.deleteAssessment(taskId);
+  const reminders = await repo.listReminders();
+  for (const reminder of reminders) {
+    if (reminder.taskId === taskId) await repo.deleteReminder(reminder.id);
+  }
   await repo.deleteTask(taskId);
 }
 
