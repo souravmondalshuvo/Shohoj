@@ -442,7 +442,9 @@ and user resolution. Tests: `worker/test/apiV1.test.js`,
 `worker/test/academic.test.js`, `worker/test/academicApi.test.js`.
 
 **Frontend** — `src/platform/api/apiClient.ts` is the only place Shohoj talks to
-its own API. It owns the base URL, the token, response validation and the
+its own API. The screens that consume it live at `src/features/tasks/` and
+`src/app/routes/TasksRoute.tsx`; the timezone `/tasks/today` requires is
+attached once, in `src/platform/api/tasks.ts`, rather than at each call site. It owns the base URL, the token, response validation and the
 mapping from HTTP status onto the typed error hierarchy. Features call typed
 modules beside it (`shohojUser.ts`, `academic.ts`, `tasks.ts`), never `fetch`. Tests: `tests/apiClient.test.js`,
 `tests/academicApi.test.js`, and `tests/apiIntegration.test.js` /
