@@ -67,6 +67,59 @@ export const TASK_PRIORITY_LABELS: Readonly<Record<TaskPriority, string>> = {
 
 const TaskIdSchema = z.string().regex(/^tsk_[0-9a-f]{32}$/, 'malformed task id');
 
+/** One axis of the automatic priority score. Mirrors worker/priority.js. */
+export const PriorityFactorSchema = z.object({
+  name: z.enum(['urgency', 'weight', 'workload', 'importance']),
+  /** Normalised 0-1, so the axes are comparable. */
+  value: z.number(),
+  /** The configured weight applied to it. */
+  weight: z.number(),
+  /** Points contributed, out of 100. The four sum to `priorityScore`. */
+  points: z.number(),
+});
+
+export type PriorityFactor = z.infer<typeof PriorityFactorSchema>;
+
+/** Human labels for the factors, kept beside the schema so screens agree. */
+export const PRIORITY_FACTOR_LABELS: Readonly<Record<PriorityFactor['name'], string>> = {
+  urgency: 'Due soon',
+  weight: 'Counts for a lot',
+  workload: 'Takes a while',
+  importance: 'You marked it',
+};
+
+// ── Assessments ─────────────────────────────────────────────────────────────
+
+export const AssessmentSchema = z.object({
+  taskId: TaskIdSchema,
+  totalMarks: z.number(),
+  /**
+   * Null means NOT MARKED YET, which is not the same as zero.
+   *
+   * Every projection built on an assessment depends on the distinction, and the
+   * two are a keystroke apart — so it is spelled out here as well as on the
+   * server.
+   */
+  earnedMarks: z.number().nullable(),
+  weightPercent: z.number(),
+  syllabus: z.string().nullable(),
+  location: z.string().nullable(),
+  notes: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type Assessment = z.infer<typeof AssessmentSchema>;
+
+export interface AssessmentInput {
+  readonly totalMarks: number;
+  readonly weightPercent: number;
+  readonly earnedMarks?: number | null;
+  readonly syllabus?: string | null;
+  readonly location?: string | null;
+  readonly notes?: string | null;
+}
+
 export const TaskSchema = z.object({
   id: TaskIdSchema,
   /** Null for PERSONAL tasks and anything else not tied to a course. */
@@ -76,7 +129,13 @@ export const TaskSchema = z.object({
   type: z.enum(TASK_TYPES),
   status: z.enum(TASK_STATUSES),
   priority: z.enum(TASK_PRIORITIES),
-  /** Reserved for the Phase 5 scoring engine; null until then. */
+  /**
+   * The automatic score (#721), 0-100, computed server-side on read.
+   *
+   * Rides ALONGSIDE `priority` rather than replacing it: the student's own pick
+   * is an input to the score and is never overwritten. Nullable because a
+   * backend that has not shipped the engine still answers this shape.
+   */
   priorityScore: z.number().nullable(),
   /** ISO 8601 UTC. Null is valid — a reading with no deadline is still a task. */
   dueAt: z.string().nullable(),
@@ -87,6 +146,15 @@ export const TaskSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   completedAt: z.string().nullable(),
+  /**
+   * Why the task scored what it did — one entry per factor, with the
+   * normalised value, the weight applied and the points contributed.
+   *
+   * Optional rather than required so an older backend still validates. It
+   * exists because a ranking a student cannot interrogate is a ranking they
+   * will not trust, and the UI shows it.
+   */
+  priorityFactors: z.array(PriorityFactorSchema).optional(),
 });
 
 export type Task = z.infer<typeof TaskSchema>;
@@ -252,6 +320,53 @@ export function fetchUpcoming(
   });
 }
 
+const AssessmentResponseSchema = z.object({ assessment: AssessmentSchema });
+const DeletedAssessmentSchema = z.object({ deleted: z.object({ taskId: z.string() }) });
+
+/** The task's assessment, or a not-found error when it has none. */
+export function fetchAssessment(
+  client: ApiClient,
+  taskId: string,
+  options?: ApiRequestOptions,
+): Call<Assessment> {
+  return client
+    .get(`/tasks/${encodeURIComponent(taskId)}/assessment`, AssessmentResponseSchema, options)
+    .then((response) => unwrap(response, 'assessment'));
+}
+
+/**
+ * Create or replace the task's assessment.
+ *
+ * PUT, and a replacement rather than a merge: there is one slot per task, and
+ * writing to it twice must leave one assessment, not two. Omitting a field
+ * clears it.
+ */
+export function putAssessment(
+  client: ApiClient,
+  taskId: string,
+  input: AssessmentInput,
+  options?: ApiRequestOptions,
+): Call<Assessment> {
+  return client
+    .put(
+      `/tasks/${encodeURIComponent(taskId)}/assessment`,
+      input,
+      AssessmentResponseSchema,
+      options,
+    )
+    .then((response) => unwrap(response, 'assessment'));
+}
+
+export function deleteAssessment(
+  client: ApiClient,
+  taskId: string,
+  options?: ApiRequestOptions,
+): Call<{ taskId: string }> {
+  return client
+    .delete(`/tasks/${encodeURIComponent(taskId)}/assessment`, DeletedAssessmentSchema, options)
+    .then((response) => unwrap(response, 'deleted'));
+}
+
 // ── Derived views ───────────────────────────────────────────────────────────
 
 /** True when a task is still work: not finished, not abandoned. */
@@ -301,4 +416,17 @@ export function groupByEnrollment(items: readonly Task[]): Map<string | null, Ta
     else bucket.push(task);
   }
   return groups;
+}
+
+/**
+ * The factors that actually moved a score, biggest first.
+ *
+ * Zero-point factors are dropped: "Takes a while: 0 points" is noise on an
+ * explanation, and a student reading why something ranked highly wants the
+ * reasons it did, not a list of the reasons it did not.
+ */
+export function explainPriority(task: Task): readonly PriorityFactor[] {
+  return [...(task.priorityFactors ?? [])]
+    .filter((factor) => factor.points > 0)
+    .sort((a, b) => b.points - a.points);
 }
