@@ -355,6 +355,84 @@ because "when did I finish this" is a question a status field cannot answer.
 Reopening returns a task to `TODO` rather than to whatever it was before —
 restoring `IN_PROGRESS` would be guessing at a state the student left behind.
 
+#### The automatic priority score
+
+Every task response carries `priorityScore` (0–100) and `priorityFactors`,
+computed server-side **on read**. A stored score would be wrong the moment it
+was written — urgency changes every hour — and keeping one current would mean a
+job rewriting every task in the database hourly for a number that is arithmetic.
+
+```json
+"priorityScore": 71.7,
+"priorityFactors": [
+  { "name": "urgency",    "value": 0.857, "weight": 0.45, "points": 38.57 },
+  { "name": "weight",     "value": 0.4,   "weight": 0.25, "points": 10 },
+  { "name": "workload",   "value": 0.875, "weight": 0.15, "points": 13.13 },
+  { "name": "importance", "value": 0.667, "weight": 0.15, "points": 10 }
+]
+```
+
+The breakdown is part of the contract, not a debug field: **a ranking a student
+cannot interrogate is a ranking they will not trust.** Each factor carries its
+normalised value, the weight applied and the points contributed; the four sum to
+the score.
+
+Four properties the engine guarantees, each with a test in
+`worker/test/priority.test.js`:
+
+| | |
+|---|---|
+| **Deterministic** | `now` is a parameter, not a clock read |
+| **No magic numbers** | every threshold is justified where it is defined |
+| **Configurable** | weights are an argument; a set not summing to 1 throws rather than silently rescaling |
+| **Manual priority survives** | `priority` is an *input* to the score and is never overwritten |
+
+`priorityScore` **does not change the response ordering**, which stays by due
+date. A client sorts by it or ignores it; reordering every existing response
+would change what current callers see without asking.
+
+A task with no assessment still scores — on urgency, workload and the student's
+own priority. An undated task scores **zero** urgency rather than "low", or it
+would quietly outrank everything past the 14-day horizon.
+
+#### `GET` · `PUT` · `DELETE /api/v1/tasks/{id}/assessment`
+
+What a task is worth. A sub-resource because that is what it is: one slot per
+task, keyed by task id, with no identity of its own. `PUT` rather than `POST`
+for the same reason, and it **replaces rather than merges** — writing twice
+leaves one assessment, and an omitted field is cleared.
+
+```json
+{
+  "assessment": {
+    "taskId": "tsk_0123456789abcdef0123456789abcdef",
+    "totalMarks": 40,
+    "earnedMarks": null,
+    "weightPercent": 40,
+    "syllabus": "Chapters 4-6",
+    "location": null,
+    "notes": null,
+    "createdAt": "2026-09-20T10:00:00.000Z",
+    "updatedAt": "2026-09-20T10:00:00.000Z"
+  }
+}
+```
+
+> **`earnedMarks: null` means NOT MARKED YET. It does not mean zero.**
+>
+> This is the single most important field in the Tasks API. A course whose final
+> has not been marked must not read as a final *scored* 0 — that is the
+> difference between "we do not know yet" and "you failed it", and every grade
+> projection built on an assessment depends on it. `0` is a real score and is
+> kept as `0`.
+
+`earnedMarks` above `totalMarks` is refused. Bonus marks exist, but so do typos,
+and a component scoring over its own total breaks every percentage derived from
+it; raise the total if the bonus is real.
+
+Deleting a task deletes its assessment, and dropping a course takes its tasks
+**and** their assessments — the same orphan rule as everywhere else.
+
 #### Completion has its own endpoint
 
 `PUT .../completion` rather than a `PATCH` with a status, because ticking a box
