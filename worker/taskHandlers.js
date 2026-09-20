@@ -9,7 +9,9 @@
 // owner, and reaching another student's task is not a call that can be written.
 
 import { API_ERROR_CODES, apiError } from './apiV1.js';
-import { MAX_TASKS } from './academicRepo.js';
+import { MAX_TASKS, assessmentsByTaskId, deleteTaskCascade } from './academicRepo.js';
+import { assessmentDto, buildAssessmentRecord, validateAssessmentInput } from './assessments.js';
+import { scoreTasks } from './priority.js';
 import {
   applyTaskPatch,
   buildTaskRecord,
@@ -91,7 +93,35 @@ export async function listTasks(ctx, query = {}) {
     filtered = filtered.filter((task) => task.status === query.status);
   }
 
-  return ok({ items: sortTasks(filtered).map(taskDto) });
+  return ok({ items: await scored(ctx, sortTasks(filtered)) });
+}
+
+/**
+ * Attach the automatic priority score to a list of tasks.
+ *
+ * Computed on read, never stored: urgency changes every hour, so a stored score
+ * is wrong the moment it is written, and keeping one current would mean a job
+ * rewriting every task in the database hourly for a number that is arithmetic.
+ *
+ * The assessments are fetched once per request and joined in memory rather than
+ * per task — see assessmentsByTaskId. A list of fifty tasks costs one extra
+ * read, not fifty.
+ *
+ * Ordering is left alone. The score rides ALONGSIDE the due-date order the API
+ * has always returned, so a client can sort by it or ignore it; silently
+ * reordering every existing response would change what every current caller
+ * sees without asking.
+ */
+async function scored(ctx, tasks) {
+  if (tasks.length === 0) return [];
+  const byTask = await assessmentsByTaskId(ctx.repo);
+  return scoreTasks(tasks, { assessmentsByTaskId: byTask, nowMs: ctx.now().getTime() }).map(
+    (task) => ({
+      ...taskDto(task),
+      priorityScore: task.priorityScore,
+      priorityFactors: task.priorityFactors,
+    }),
+  );
 }
 
 export async function createTask(ctx, payload) {
@@ -125,7 +155,8 @@ export async function createTask(ctx, payload) {
 export async function getTask(ctx, id) {
   const record = await ctx.repo.getTask(id);
   if (record === null) return notFound();
-  return ok({ task: taskDto(record) });
+  const [withScore] = await scored(ctx, [record]);
+  return ok({ task: withScore });
 }
 
 export async function patchTask(ctx, id, payload) {
@@ -148,7 +179,7 @@ export async function patchTask(ctx, id, payload) {
 export async function deleteTask(ctx, id) {
   const existing = await ctx.repo.getTask(id);
   if (existing === null) return notFound();
-  await ctx.repo.deleteTask(id);
+  await deleteTaskCascade(ctx.repo, id);
   return ok({ deleted: { id } });
 }
 
@@ -197,8 +228,8 @@ export async function todayTasks(ctx, query = {}) {
   const { overdue, dueToday } = selectToday(all, ctx.now().getTime(), tz.value);
 
   return ok({
-    overdue: overdue.map(taskDto),
-    dueToday: dueToday.map(taskDto),
+    overdue: await scored(ctx, overdue),
+    dueToday: await scored(ctx, dueToday),
   });
 }
 
@@ -215,5 +246,53 @@ export async function upcomingTasks(ctx, query = {}) {
   const all = await ctx.repo.listTasks();
   const items = selectUpcoming(all, ctx.now().getTime(), tz.value, days);
 
-  return ok({ days, items: items.map(taskDto) });
+  return ok({ days, items: await scored(ctx, items) });
+}
+
+// ── Assessments ─────────────────────────────────────────────────────────────
+//
+// Addressed as a sub-resource of their task — /tasks/{id}/assessment — because
+// that is what they are: 0..1 per task, keyed by task id, with no identity of
+// their own. PUT rather than POST for the same reason: there is one slot, and
+// writing to it twice should leave one assessment, not two.
+
+export async function getAssessment(ctx, taskId) {
+  if ((await ctx.repo.getTask(taskId)) === null) return notFound();
+  const record = await ctx.repo.getAssessment(taskId);
+  if (record === null) {
+    return fail(404, API_ERROR_CODES.NOT_FOUND, 'This task has no assessment.');
+  }
+  return ok({ assessment: assessmentDto(record) });
+}
+
+/** Create or replace the task's assessment. */
+export async function putAssessment(ctx, taskId, payload) {
+  // The task is checked first, so an assessment cannot be attached to a task
+  // that does not exist or is not the caller's — which, because the repository
+  // is bound to them, is the same read.
+  if ((await ctx.repo.getTask(taskId)) === null) return notFound();
+
+  const parsed = validateAssessmentInput(payload);
+  if (parsed.error) return invalidRequest(parsed.error);
+
+  const existing = await ctx.repo.getAssessment(taskId);
+  const record = buildAssessmentRecord({
+    taskId,
+    userId: ctx.userId,
+    input: parsed.value,
+    nowIso: ctx.now().toISOString(),
+    existing,
+  });
+
+  await ctx.repo.putAssessment(record);
+  return ok({ assessment: assessmentDto(record) }, existing === null ? 201 : 200);
+}
+
+export async function deleteAssessment(ctx, taskId) {
+  if ((await ctx.repo.getTask(taskId)) === null) return notFound();
+  if ((await ctx.repo.getAssessment(taskId)) === null) {
+    return fail(404, API_ERROR_CODES.NOT_FOUND, 'This task has no assessment.');
+  }
+  await ctx.repo.deleteAssessment(taskId);
+  return ok({ deleted: { taskId } });
 }

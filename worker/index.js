@@ -1376,6 +1376,17 @@ async function dispatchAcademic(ctx, request, url) {
     return tasks.setTaskCompletion(ctx, completionMatch[1], body.completed);
   }
 
+  // Assessments are a sub-resource of their task, so they match before the
+  // bare /tasks/{id} pattern for the same reason today/upcoming do.
+  const assessmentMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/assessment$/.exec(path);
+  if (assessmentMatch) {
+    const taskId = assessmentMatch[1];
+    if (method === 'GET') return tasks.getAssessment(ctx, taskId);
+    if (method === 'PUT') return tasks.putAssessment(ctx, taskId, await readJsonBody(request));
+    if (method === 'DELETE') return tasks.deleteAssessment(ctx, taskId);
+    return null;
+  }
+
   const taskMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})$/.exec(path);
   if (taskMatch) {
     const id = taskMatch[1];
