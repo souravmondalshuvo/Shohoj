@@ -384,6 +384,106 @@ export function deleteAssessment(
     .then((response) => unwrap(response, 'deleted'));
 }
 
+// ── Reminders (#727) ────────────────────────────────────────────────────────
+
+export const REMINDER_CHANNELS = ['WEB', 'EMAIL', 'PUSH'] as const;
+export const REMINDER_STATUSES = ['PENDING', 'SENT', 'FAILED', 'CANCELLED'] as const;
+
+export type ReminderChannel = (typeof REMINDER_CHANNELS)[number];
+export type ReminderStatus = (typeof REMINDER_STATUSES)[number];
+
+/**
+ * The offsets the UI offers, mirroring COMMON_OFFSETS in worker/reminders.js.
+ * A menu, not a limit — any whole number of minutes is accepted.
+ */
+export const COMMON_REMINDER_OFFSETS: readonly { minutes: number; label: string }[] = [
+  { minutes: 24 * 60, label: 'A day before' },
+  { minutes: 3 * 60, label: 'Three hours before' },
+  { minutes: 30, label: 'Thirty minutes before' },
+];
+
+export const ReminderSchema = z.object({
+  id: z.string().regex(/^rem_[0-9a-f]{32}$/, 'malformed reminder id'),
+  taskId: TaskIdSchema,
+  /** Minutes before the deadline. The thing of record — see worker/reminders.js. */
+  offsetMinutes: z.number().int(),
+  channel: z.enum(REMINDER_CHANNELS),
+  /**
+   * When it fires, derived from the task's deadline. Null when the task has no
+   * deadline yet — the reminder simply waits rather than being refused.
+   */
+  scheduledFor: z.string().nullable(),
+  status: z.enum(REMINDER_STATUSES),
+  sentAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type Reminder = z.infer<typeof ReminderSchema>;
+
+const ReminderListSchema = z.object({ items: z.array(ReminderSchema) });
+const ReminderResponseSchema = z.object({ reminder: ReminderSchema });
+
+export function listReminders(
+  client: ApiClient,
+  taskId: string,
+  options?: ApiRequestOptions,
+): Call<Reminder[]> {
+  return client
+    .get(`/tasks/${encodeURIComponent(taskId)}/reminders`, ReminderListSchema, options)
+    .then((response) => unwrap(response, 'items'));
+}
+
+/** Add a reminder. Idempotent: the same offset and channel twice is one reminder. */
+export function addReminder(
+  client: ApiClient,
+  taskId: string,
+  input: { offsetMinutes: number; channel?: ReminderChannel },
+  options?: ApiRequestOptions,
+): Call<Reminder> {
+  return client
+    .post(`/tasks/${encodeURIComponent(taskId)}/reminders`, input, ReminderResponseSchema, options)
+    .then((response) => unwrap(response, 'reminder'));
+}
+
+export function removeReminder(
+  client: ApiClient,
+  taskId: string,
+  reminderId: string,
+  options?: ApiRequestOptions,
+): Call<{ id: string }> {
+  return client
+    .delete(
+      `/tasks/${encodeURIComponent(taskId)}/reminders/${encodeURIComponent(reminderId)}`,
+      DeletedSchema,
+      options,
+    )
+    .then((response) => unwrap(response, 'deleted'));
+}
+
+/**
+ * How a reminder reads on screen.
+ *
+ * A reminder with no `scheduledFor` is waiting on a deadline rather than
+ * broken, and says so — otherwise a student sees a reminder they set doing
+ * apparently nothing, with no explanation.
+ */
+export function reminderLabel(reminder: Reminder): string {
+  const offset = COMMON_REMINDER_OFFSETS.find((o) => o.minutes === reminder.offsetMinutes);
+  const when =
+    offset?.label ??
+    (reminder.offsetMinutes === 0
+      ? 'At the deadline'
+      : reminder.offsetMinutes % 60 === 0
+        ? `${reminder.offsetMinutes / 60} hours before`
+        : `${reminder.offsetMinutes} minutes before`);
+
+  if (reminder.status === 'SENT') return `${when} · sent`;
+  if (reminder.status === 'CANCELLED') return `${when} · missed`;
+  if (reminder.scheduledFor === null) return `${when} · waiting for a deadline`;
+  return when;
+}
+
 // ── Derived views ───────────────────────────────────────────────────────────
 
 /** True when a task is still work: not finished, not abandoned. */
