@@ -62,6 +62,10 @@ import {
   useSubmitReview,
 } from '../../features/calculator/FacultyReviewsProvider';
 import { useAuth } from '../providers/AuthProvider';
+import { useAcademicRecords } from '../../features/academic/useAcademicRecords.ts';
+import { TaskDigest } from '../../features/tasks/TaskDigest.tsx';
+import { useTaskDigest } from '../../features/tasks/useTaskDigest.ts';
+import { useApiClient } from '../providers/ApiProvider';
 
 import { deptSeasonsFor } from '../../features/calculator/departments.ts';
 import { demoCalculatorState } from '../../features/calculator/demoData.ts';
@@ -77,6 +81,12 @@ import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
 
 export function Component() {
+  // The dashboard's Tasks card. Both hooks are no-ops on an offline shell —
+  // they resolve to an empty digest and the card renders nothing.
+  const apiClient = useApiClient();
+  const academic = useAcademicRecords(apiClient);
+  const taskDigest = useTaskDigest(apiClient);
+
   // The signed-in student's campus decides the grading scale this whole route
   // renders against. Null only reaches here for an admin with no campus of
   // their own, since RequireFeature turns every other case away.
@@ -224,6 +234,13 @@ export function Component() {
             keeps it — on the Playground tab beside the grade changer and the
             reverse solver, not on the calculator panel. */}
       </CalculatorBridgeProvider>
+      {/* Shohoj Tasks on the dashboard (#719). Below the results rather than
+          above: a student opens this route for their CGPA, and the card is a
+          reminder on the way past, not the headline. It renders nothing at all
+          when there is nothing to show, so a student who does not use Tasks
+          sees no change here. Adding a sibling inside .shell-page leaves the
+          container width untouched, which is what the visual gate asserts. */}
+      <TaskDigest state={taskDigest} enrollments={academic.enrollments} />
       {rateTarget && rateCourse && rateCourseCode && (
         <RateFacultyModal
           courseCode={rateCourseCode}
