@@ -30,6 +30,9 @@ const firebaseStubs = {
     export function initializeAppCheck() {
       return {};
     }
+    export function getToken() {
+      return Promise.resolve({ token: 'stub' });
+    }
   `,
   'firebase-auth.js': `
     export class GoogleAuthProvider {
