@@ -70,6 +70,7 @@ absent (see `CLAUDE.md` for why that matters):
 - `npm run test:bundle` — production bundle smoke passing
 - `npm run test:csp` — no inline `on*` handlers in the bundle
 - `npm run check:bundle-size` — every bundle within budget
+- `npx playwright test --workers=1` — **142** legacy E2E cases passing (single worker: the suite flakes under parallelism locally, and 142 is the count `CLAUDE.md` records for a clean tree)
 
 CI is the authoritative gate and runs the full E2E matrix (legacy, shell, Vite
 island, standalone pages, visual parity) on the release commit.
