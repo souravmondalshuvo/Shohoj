@@ -288,6 +288,29 @@ rather than occasionally.
 document keyed by task id, as specced; reminders are their own records. Nothing
 in what shipped needs changing to add either.
 
+## What Phase 4 settled
+
+**There is no `GET /api/v1/dashboard`, and there should not be one yet.** The
+original plan named it. It would save no round trips — `/tasks/today` already
+returns overdue and due-today together — and it would be a third representation
+of the same tasks, which is exactly the duplication the phase exists to prevent.
+Every rule it would encode already has one definition. The trigger to revisit:
+aggregation Firestore cannot serve cheaply, or a client that cannot make two
+calls.
+
+**The dashboard adds selection and ordering, and nothing else.**
+`src/features/tasks/taskDigest.ts` is the entire surface area of "Tasks on the
+dashboard": which tasks, in what order, capped for a card. Labels, deadline
+tones and status meaning are imported from the same modules `/tasks` uses. If
+that file grows a rule of its own, the dashboard has started duplicating the
+feature.
+
+**Silence is a feature.** The card renders nothing when there is nothing to say
+— including on error and on an offline build. A dashboard is shared space, and
+a student who does not use Tasks should see no trace of it. That is a
+deliberate asymmetry with `/tasks`, which explains its empty states because
+there the student asked.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -314,7 +337,7 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 2 ✅ | Semester + Enrollment: CRUD, ownership, the calculator adapter |
 | 3a ✅ | Task CRUD, Today, Upcoming, course filtering — the API |
 | 3b ✅ | The `/tasks` route and screens |
-| 4 | Dashboard integration — surfaced through the Tasks service, not reimplemented |
+| 4 ✅ | Dashboard integration — surfaced through the Tasks service, not reimplemented |
 | 5 | Priority scoring, Assessment, grade-impact foundations |
 | 6 | Calendar + reminders, over the existing cron and sender |
 | 7 | Gmail, Google Calendar, AI — behind an integration boundary, `Detect → Suggest → Confirm → Create` |
