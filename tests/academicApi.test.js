@@ -108,10 +108,20 @@ test('nullable fields really are nullable', () => {
   assert.equal(EnrollmentSchema.safeParse(unpriced).success, true);
 });
 
-test('fields the server adds later do not break an older client', () => {
+test('a field the server adds later does not break an older client', () => {
   const parsed = SemesterSchema.safeParse({ ...SEMESTER, creditCap: 15 });
   assert.equal(parsed.success, true);
   assert.equal(parsed.data.name, 'Fall 2026');
+});
+
+test('...but it is STRIPPED, not carried through', () => {
+  // Worth pinning explicitly, because the comfortable reading of the test above
+  // is "new fields flow to the app", and they do not: Zod drops what a schema
+  // does not name. A server field nobody adds to a schema is a field nobody can
+  // use — which is exactly how `removedTasks` went missing between the Worker
+  // and the UI before it was noticed (#715).
+  const parsed = SemesterSchema.safeParse({ ...SEMESTER, creditCap: 15 });
+  assert.equal('creditCap' in parsed.data, false);
 });
 
 // ── Calls ───────────────────────────────────────────────────────────────────
@@ -159,13 +169,16 @@ test('listEnrollments with no filter sends no query at all', async () => {
   assert.equal(fetchFn.calls[0].url, `${BASE}/api/v1/enrollments`);
 });
 
-test('deleteSemester reports how many enrolments went with it', async () => {
-  // The cascade is not optional, so the student has to be told.
-  const fetchFn = recordingFetch(json({ deleted: { id: SEMESTER.id, removedEnrollments: 4 } }));
+test('deleteSemester reports what the cascade took', async () => {
+  // The cascade is not optional, so the student has to be told — both counts.
+  const fetchFn = recordingFetch(
+    json({ deleted: { id: SEMESTER.id, removedEnrollments: 4, removedTasks: 31 } }),
+  );
   const result = await deleteSemester(clientWith(fetchFn), SEMESTER.id);
 
   assert.equal(result.ok, true);
   assert.equal(result.value.removedEnrollments, 4);
+  assert.equal(result.value.removedTasks, 31);
   assert.equal(fetchFn.calls[0].init.method, 'DELETE');
 });
 
