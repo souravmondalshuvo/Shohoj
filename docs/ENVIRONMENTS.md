@@ -59,6 +59,44 @@ project → Authentication → Settings.
 > `__PLACEHOLDER__` strings clobber the specs' values rather than merely being
 > wrong. See [`CLAUDE.md`](../CLAUDE.md) for the measured breakdown.
 
+### Working on the API (`/api/v1`)
+
+Shohoj Tasks and everything else under `/api/v1` is served by the same Worker.
+It needs **no new environment variables**: the frontend reaches it at
+`PAPERS_WORKER_URL`, and the Worker reads Firestore with the
+`SERVICE_ACCOUNT_JSON` secret it already uses for `/reviews`.
+
+Most API work needs no Worker running at all. The suites drive the real handler
+in-process:
+
+```bash
+npm run test:worker                  # the Worker's own tests
+node tests/apiIntegration.test.js    # the real API client against the real handler
+```
+
+That integration test wires `src/platform/api` to `worker/index.js` with a
+locally-signed token and fakes only Google's OAuth exchange and Firestore REST —
+no network, no emulator, no credentials. It is the fastest way to see a change to
+the contract end to end, and the first thing to run after touching either side.
+
+To exercise it from a browser instead:
+
+```bash
+cd worker && npx wrangler dev        # serves the Worker on http://localhost:8787
+```
+
+Then point `PAPERS_WORKER_URL` in `.env.local` at `http://localhost:8787`, re-run
+`npm run config:local`, and start the shell with `npm run dev:shell`. Two things
+that will otherwise waste an afternoon:
+
+- **Add the shell's origin to `ALLOWED_ORIGINS`** in `worker/wrangler.toml`.
+  `http://localhost:5173` is already listed; the shell dev server runs on
+  **5174**. Without it every authenticated call answers `403 Forbidden origin`,
+  which looks like an auth failure and is not one.
+- **`wrangler dev` needs `SERVICE_ACCOUNT_JSON`** (`.dev.vars`, gitignored) or
+  `/api/v1/me` answers `503` — correctly, but confusingly if you were not
+  expecting it.
+
 ## Staging (not yet provisioned)
 
 Staging is documented here so it can be added **safely** later. The rule that
