@@ -14,6 +14,7 @@
 //
 //   shohojUsers/{firebaseUid}/semesters/{semesterId}
 //   shohojUsers/{firebaseUid}/enrollments/{enrollmentId}
+//   shohojUsers/{firebaseUid}/tasks/{taskId}
 //
 // Subcollections under the user, for three reasons that all point the same way:
 // a student's data is co-located, so deleting an account is one subtree; no
@@ -35,6 +36,7 @@
 export const USERS_COLLECTION = 'shohojUsers';
 export const SEMESTERS_SUBCOLLECTION = 'semesters';
 export const ENROLLMENTS_SUBCOLLECTION = 'enrollments';
+export const TASKS_SUBCOLLECTION = 'tasks';
 
 /**
  * How many records one student may hold.
@@ -46,6 +48,12 @@ export const ENROLLMENTS_SUBCOLLECTION = 'enrollments';
  */
 export const MAX_SEMESTERS = 40;
 export const MAX_ENROLLMENTS = 400;
+/**
+ * Tasks are the one collection a student legitimately fills, so this is set
+ * where a heavy user will not meet it: five thousand is roughly four years of
+ * three tasks a day, every day.
+ */
+export const MAX_TASKS = 5000;
 
 function userPath(firebaseUid) {
   return `${USERS_COLLECTION}/${firebaseUid}`;
@@ -57,6 +65,10 @@ export function semesterPath(firebaseUid, id) {
 
 export function enrollmentPath(firebaseUid, id) {
   return `${userPath(firebaseUid)}/${ENROLLMENTS_SUBCOLLECTION}/${id}`;
+}
+
+export function taskPath(firebaseUid, id) {
+  return `${userPath(firebaseUid)}/${TASKS_SUBCOLLECTION}/${id}`;
 }
 
 /**
@@ -75,6 +87,7 @@ export function enrollmentPath(firebaseUid, id) {
 export function createAcademicRepo(deps, firebaseUid) {
   const semesters = `${userPath(firebaseUid)}/${SEMESTERS_SUBCOLLECTION}`;
   const enrollments = `${userPath(firebaseUid)}/${ENROLLMENTS_SUBCOLLECTION}`;
+  const tasks = `${userPath(firebaseUid)}/${TASKS_SUBCOLLECTION}`;
 
   return {
     listSemesters: () => deps.listDocs(semesters),
@@ -86,6 +99,11 @@ export function createAcademicRepo(deps, firebaseUid) {
     getEnrollment: (id) => deps.getDoc(enrollmentPath(firebaseUid, id)),
     putEnrollment: (record) => deps.patchDoc(enrollmentPath(firebaseUid, record.id), record),
     deleteEnrollment: (id) => deps.deleteDoc(enrollmentPath(firebaseUid, id)),
+
+    listTasks: () => deps.listDocs(tasks),
+    getTask: (id) => deps.getDoc(taskPath(firebaseUid, id)),
+    putTask: (record) => deps.patchDoc(taskPath(firebaseUid, record.id), record),
+    deleteTask: (id) => deps.deleteDoc(taskPath(firebaseUid, id)),
   };
 }
 
@@ -106,9 +124,30 @@ export function createAcademicRepo(deps, firebaseUid) {
 export async function deleteSemesterCascade(repo, semesterIdValue) {
   const all = await repo.listEnrollments();
   const doomed = all.filter((enrollment) => enrollment.semesterId === semesterIdValue);
+  let removedTasks = 0;
   for (const enrollment of doomed) {
-    await repo.deleteEnrollment(enrollment.id);
+    removedTasks += await deleteEnrollmentCascade(repo, enrollment.id);
   }
   await repo.deleteSemester(semesterIdValue);
+  return { removedEnrollments: doomed.length, removedTasks };
+}
+
+/**
+ * Delete an enrolment and every task attached to it.
+ *
+ * Same reasoning as the semester cascade, one level down: a task whose
+ * enrolment is gone shows up in no course-filtered view, so it cannot be found
+ * or removed again. Tasks go first, so an interruption leaves an enrolment with
+ * fewer tasks — visible and repeatable — rather than orphans.
+ *
+ * Returns the number of tasks removed, so the handler can say what it did.
+ */
+export async function deleteEnrollmentCascade(repo, enrollmentIdValue) {
+  const all = await repo.listTasks();
+  const doomed = all.filter((task) => task.enrollmentId === enrollmentIdValue);
+  for (const task of doomed) {
+    await repo.deleteTask(task.id);
+  }
+  await repo.deleteEnrollment(enrollmentIdValue);
   return doomed.length;
 }
