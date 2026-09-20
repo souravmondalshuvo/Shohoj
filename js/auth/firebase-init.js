@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
+import { initializeAppCheck, ReCaptchaV3Provider, getToken as getAppCheckToken } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check.js';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -81,9 +81,27 @@ export const app = firebaseAvailable ? initializeApp(firebaseConfig) : null;
 const appCheckSiteKey = window._shohoj_recaptcha_v3_site_key;
 if (app && appCheckSiteKey && appCheckSiteKey !== '__RECAPTCHA_V3_SITE_KEY__') {
   try {
-    initializeAppCheck(app, {
+    const appCheck = initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(appCheckSiteKey),
       isTokenAutoRefreshEnabled: true,
+    });
+
+    // initializeAppCheck returns as soon as the provider is wired up. The part
+    // that can actually fail — exchanging a reCAPTCHA token for an App Check
+    // token — happens later, over the network, so the catch below never sees
+    // it. For months that meant a hard 403 ("App attestation failed", #709)
+    // surfaced only as an uncaught console error nobody was looking for, while
+    // the docs described App Check as working.
+    //
+    // Asking for a token costs nothing extra: auto-refresh already fetches one,
+    // and getToken joins that in-flight request rather than issuing a second.
+    // We only want to observe it.
+    getAppCheckToken(appCheck).catch((err) => {
+      console.warn(
+        '[Shohoj] App Check attestation failed — App Check is providing no protection '
+          + '(this does not break auth or sync while enforcement is off):',
+        err?.code || err?.message || err,
+      );
     });
   } catch (err) {
     console.warn('[Shohoj] App Check init failed:', err?.message || err);
