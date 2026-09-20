@@ -5,8 +5,9 @@
 > it. Decided in [ADR 0002](decisions/0002-shohoj-tasks-on-the-existing-stack.md);
 > served over the contract in [`docs/api/`](../api/README.md).
 >
-> **Status:** Semester, Enrollment and Course are implemented (#712). Task,
-> Assessment and TaskReminder are the specification Phase 3 is built against.
+> **Status:** Semester, Enrollment, Course and **Task** are implemented (#712,
+> #715). Assessment and TaskReminder remain the specification Phases 5 and 6 are
+> built against.
 > Where this document and the code disagree, the code wins and this is a bug —
 > `docs/api/README.md` is the live contract.
 
@@ -265,6 +266,28 @@ One thing the spec got wrong and the code corrects: it listed a `GET
 bundle, so that endpoint would be a slower path to data the client already has.
 The server keeps codes and credits only — enough to validate what it is told.
 
+## What Phase 3a settled
+
+**Task ids are assigned, not derived** — as predicted above, and it is the only
+place the three entities differ. `POST /api/v1/tasks` is therefore not
+idempotent, unlike semesters and enrolments.
+
+**The cascade runs the full depth**: semester → enrolments → tasks, with both
+counts reported. A task orphaned by a deleted enrolment is invisible in every
+course-filtered view, so it could never be found again.
+
+**Today and Upcoming take the timezone from the client**, and refuse without it.
+The spec said "rendered in the viewer's local zone" and left the mechanism open;
+the mechanism is now an explicit `?tz=` rather than a server-side guess, because
+the server genuinely does not know and a campus default is wrong for anybody
+abroad. See `docs/api/README.md` for why a UTC default is wrong every evening
+rather than occasionally.
+
+**Assessment and TaskReminder are still unbuilt, and Task does not block them.**
+`priorityScore` is on the record and null; the assessment relation is a separate
+document keyed by task id, as specced; reminders are their own records. Nothing
+in what shipped needs changing to add either.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -289,7 +312,8 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 |---|---|
 | 1 ✅ | `/api/v1`, the Shohoj user record, the typed API client |
 | 2 ✅ | Semester + Enrollment: CRUD, ownership, the calculator adapter |
-| 3 | Task CRUD, Today, Upcoming, course filtering, the `/tasks` route |
+| 3a ✅ | Task CRUD, Today, Upcoming, course filtering — the API |
+| 3b | The `/tasks` route and screens |
 | 4 | Dashboard integration — surfaced through the Tasks service, not reimplemented |
 | 5 | Priority scoring, Assessment, grade-impact foundations |
 | 6 | Calendar + reminders, over the existing cron and sender |
