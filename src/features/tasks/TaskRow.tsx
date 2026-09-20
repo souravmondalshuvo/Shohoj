@@ -7,6 +7,8 @@
 // read anything, so the tick target is large, first in the tab order, and
 // labelled with the task's own title rather than a generic "done".
 
+import type { ReactNode } from 'react';
+
 import type { Task } from '../../platform/api/tasks.ts';
 import type { Enrollment } from '../../platform/api/academic.ts';
 import {
@@ -23,9 +25,21 @@ export interface TaskRowProps {
   readonly enrollments: readonly Enrollment[];
   readonly onToggle: (task: Task, completed: boolean) => void;
   readonly onDelete: (task: Task) => void;
+  /** Rendered under the row when expanded. Absent means the row cannot expand. */
+  readonly details?: ReactNode;
+  readonly expanded?: boolean;
+  readonly onToggleDetails?: (task: Task) => void;
 }
 
-export function TaskRow({ task, enrollments, onToggle, onDelete }: TaskRowProps) {
+export function TaskRow({
+  task,
+  enrollments,
+  onToggle,
+  onDelete,
+  details,
+  expanded = false,
+  onToggleDetails,
+}: TaskRowProps) {
   const done = task.status === 'COMPLETED';
   const course = courseLabel(task, enrollments);
   const workload = workloadLabel(task.estimatedMinutes);
@@ -61,6 +75,20 @@ export function TaskRow({ task, enrollments, onToggle, onDelete }: TaskRowProps)
         </p>
       </div>
 
+      {onToggleDetails !== undefined && (
+        <button
+          type="button"
+          className="tasks-disclose"
+          onClick={() => onToggleDetails(task)}
+          aria-expanded={expanded}
+          // Named for the task, like the checkbox: a list of buttons all
+          // called "Details" is unusable by name.
+          aria-label={`${expanded ? 'Hide' : 'Show'} details for ${task.title}`}
+        >
+          {expanded ? '▴' : '▾'}
+        </button>
+      )}
+
       <button
         type="button"
         className="tasks-delete"
@@ -70,6 +98,8 @@ export function TaskRow({ task, enrollments, onToggle, onDelete }: TaskRowProps)
       >
         ×
       </button>
+
+      {expanded && details !== undefined && details}
     </li>
   );
 }
