@@ -6,6 +6,10 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.6.0] — 2026-09-20
+
 ### Added
 - **The assistant can find you an empty room.** Free Rooms has been a tab since the campus move, but the assistant couldn't answer from it — ask "is there a room free right now?" and it declined. Now it reads the same timetable the tab does: which rooms are empty at this moment, which ones stay empty for a whole gap ("where can I sit for the next hour?"), which floor they're on so the answer is somewhere you can actually walk to, and whether one particular room is free — and if it isn't, what's in it and when it frees up. It answers in campus time rather than the server's, so "right now" means right now in Dhaka, and outside campus hours it says the building is shut instead of cheerfully listing every room in it. One honest limit, which it will tell you itself: a room counts as free when no class is timetabled in it, and there is no booking feed for anything else — so it offers you somewhere to try, never somewhere reserved. (#645)
 - **Paste your CONNECT schedule and the routine builds itself.** The public section feed is a catalog of everything on offer and carries no student identity, so nothing in it can say which sections are *yours* — and asking for a CONNECT login is something this project has ruled out. What was left is the page you can already see: copy your "Class and Exam Schedule" and paste it in. The grid, clash detection, calendar export and exam briefing all then work on it exactly as they do on a routine you built by hand, because the paste is turned into the same shape the feed produces. Pasted text is shapeless — browsers serialize a table differently, cells go missing, whitespace collapses — so the parser is tolerant by construction and tells you what it could not place rather than inventing a class time. It reads the semester off the paste, so picks made in one semester stay with it, and the freshness badge reads "Pasted from CONNECT" rather than claiming an age it does not have. One click imports straight from the clipboard. (#639, #647, #653)
@@ -154,7 +158,8 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 Initial tagged snapshot. Refer to git history for the changes that
 landed before the changelog existed.
 
-[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/souravmondalshuvo/Shohoj/compare/v0.2.0...v0.3.0
