@@ -109,6 +109,18 @@ export interface ApiClient {
     options?: ApiRequestOptions,
   ): Promise<Result<T, ShohojError>>;
   /**
+   * PUT, for endpoints that set a value rather than merge a change — a task's
+   * completion, say. Distinct from PATCH because it is idempotent by contract:
+   * sending it twice is the same as sending it once, which is what a retried
+   * checkbox needs.
+   */
+  put<T>(
+    path: string,
+    body: unknown,
+    schema: z.ZodType<T>,
+    options?: ApiRequestOptions,
+  ): Promise<Result<T, ShohojError>>;
+  /**
    * DELETE. Takes a schema like the rest: the API answers deletions with a body
    * (the deleted id, or the updated parent), and a method that silently
    * discarded it would make that unreachable.
@@ -316,6 +328,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       request('POST', path, body, schema, requestOptions),
     patch: (path, body, schema, requestOptions) =>
       request('PATCH', path, body, schema, requestOptions),
+    put: (path, body, schema, requestOptions) => request('PUT', path, body, schema, requestOptions),
     delete: (path, schema, requestOptions) =>
       request('DELETE', path, undefined, schema, requestOptions),
   };
