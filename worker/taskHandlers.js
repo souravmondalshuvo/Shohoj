@@ -256,6 +256,24 @@ export async function upcomingTasks(ctx, query = {}) {
 // their own. PUT rather than POST for the same reason: there is one slot, and
 // writing to it twice should leave one assessment, not two.
 
+/**
+ * Every assessment the student has, in one call.
+ *
+ * The per-task endpoint answers "what is this one worth"; this answers "what
+ * does this course look like", which needs all of them. Without it a grade
+ * panel over a five-task course costs five requests, and the repository
+ * already keeps them in one collection keyed by task id — so this is a list
+ * that was already cheap, not a new index.
+ */
+export async function listAssessments(ctx) {
+  const all = await ctx.repo.listAssessments();
+  const items = all
+    .filter((record) => typeof record?.taskId === 'string')
+    .map(assessmentDto)
+    .sort((a, b) => a.taskId.localeCompare(b.taskId));
+  return ok({ items });
+}
+
 export async function getAssessment(ctx, taskId) {
   if ((await ctx.repo.getTask(taskId)) === null) return notFound();
   const record = await ctx.repo.getAssessment(taskId);

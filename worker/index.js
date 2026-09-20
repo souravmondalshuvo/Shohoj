@@ -1376,6 +1376,10 @@ async function dispatchAcademic(ctx, request, url) {
     return tasks.setTaskCompletion(ctx, completionMatch[1], body.completed);
   }
 
+  if (path === '/api/v1/assessments' && method === 'GET') {
+    return tasks.listAssessments(ctx);
+  }
+
   // Assessments are a sub-resource of their task, so they match before the
   // bare /tasks/{id} pattern for the same reason today/upcoming do.
   const assessmentMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/assessment$/.exec(path);
@@ -2253,7 +2257,8 @@ export default {
       if (
         url.pathname.startsWith('/api/v1/semesters') ||
         url.pathname.startsWith('/api/v1/enrollments') ||
-        url.pathname.startsWith('/api/v1/tasks')
+        url.pathname.startsWith('/api/v1/tasks') ||
+        url.pathname.startsWith('/api/v1/assessments')
       )
         return withRequestId(await handleAcademicApi(request, env, origin, url), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
