@@ -65,6 +65,10 @@ import { isKnownCourse } from './catalog.generated.js';
 // belongs where. Was a hand-maintained third copy (#571).
 import { campusOfEmail } from './campus.generated.js';
 import { ARCHIVE_INDEX_KEY, archiveKeyFor, runSemesterArchiveCron } from './semesterArchive.js';
+// The /api/v1 namespace (#710). Its logic is pure and its I/O is injected, so
+// everything below is wiring: real Firestore reads/writes, the real hash, the
+// real clock.
+import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
 
 export { campusOfEmail };
 
@@ -1007,6 +1011,115 @@ async function handleReview(request, env, origin) {
   return jsonResponse({ ok: true, id: docId }, { status: 201 }, env, origin);
 }
 
+// ── /api/v1 ─────────────────────────────────────────────────────────────────
+
+/**
+ * Build the standard /api/v1 error response.
+ *
+ * Separate from jsonResponse's ad-hoc `{ error: '<prose>' }` shape, which the
+ * older endpoints use and which must not change — the legacy site that is still
+ * the production deploy reads it. New endpoints get `{ error: { code, message } }`
+ * so a client can branch on a closed set of codes.
+ */
+function apiV1Error(env, origin, status, code, message) {
+  return jsonResponse(apiError(code, message), { status }, env, origin);
+}
+
+/**
+ * GET /api/v1/me — the signed-in student's Shohoj user record, bootstrapped on
+ * first call.
+ *
+ * This is the endpoint everything else in Tasks depends on: a task belongs to a
+ * Shohoj user id, and this is where that id comes from. The frontend never
+ * supplies it — it is derived here from the verified token, which is the whole
+ * point (a client that could name its own user id could read another student's
+ * tasks).
+ *
+ * Deliberately not rate-limited. It is called once per shell boot, it performs
+ * a single keyed read in the steady state, and the rate-limit bindings are
+ * sized for write abuse. Putting the identity endpoint behind a limiter would
+ * mean a student who reloads too often cannot use the app at all.
+ */
+async function handleApiV1Me(request, env, origin) {
+  const originErr = requireBrowserOriginAllowed(request, env, origin);
+  if (originErr) return originErr;
+
+  let claims;
+  try {
+    ({ claims } = await readAuth(request, env));
+  } catch (e) {
+    if (e instanceof AuthError) {
+      return apiV1Error(
+        env,
+        origin,
+        401,
+        API_ERROR_CODES.UNAUTHENTICATED,
+        'Sign in with your university Google account to continue.',
+      );
+    }
+    throw e;
+  }
+
+  let accessToken;
+  try {
+    accessToken = await getServiceAccountAccessToken(env);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'api_v1_sa_token_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    // 503, not 500: the Worker is fine, its Firestore credential is not. A
+    // client should retry this, and the readiness probe already reports it.
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.INTERNAL,
+      'Shohoj accounts are temporarily unavailable. Please try again shortly.',
+    );
+  }
+
+  let resolved;
+  try {
+    resolved = await resolveShohojUser(
+      {
+        getDoc: (path) => firestoreGetFields(env, accessToken, path),
+        patchDoc: (path, obj) => firestorePatchFields(env, accessToken, path, obj),
+        sha256Hex,
+        now: () => new Date(),
+      },
+      claims,
+    );
+  } catch (e) {
+    // Caught here rather than left to the top-level handler, which would answer
+    // in the OLD `{ error: '<prose>' }` envelope. A client parsing /api/v1
+    // responses must never have to handle two shapes.
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'api_v1_me_resolve_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      502,
+      API_ERROR_CODES.INTERNAL,
+      'Could not load your Shohoj account. Please try again.',
+    );
+  }
+  const { user, created } = resolved;
+
+  // 201 on the call that created the record, 200 afterwards. Worth
+  // distinguishing: it is the only signal that a student is new, which the
+  // dashboard uses to decide between an empty state and an onboarding prompt.
+  return jsonResponse({ user }, { status: created ? 201 : 200 }, env, origin);
+}
+
 export function validateReviewPayload(p) {
   if (!p || typeof p !== 'object') return { error: 'Invalid payload' };
   const facultyInitials = String(p.facultyInitials || '')
@@ -1856,6 +1969,8 @@ export default {
         return withRequestId(await handleDelete(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/reviews')
         return withRequestId(await handleReview(request, env, origin), requestId);
+      if (request.method === 'GET' && url.pathname === '/api/v1/me')
+        return withRequestId(await handleApiV1Me(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
         return withRequestId(await handleAssistant(request, env, origin, ctx), requestId);
       return jsonResponse(
