@@ -13,6 +13,14 @@ import { MAX_TASKS, assessmentsByTaskId, deleteTaskCascade } from './academicRep
 import { assessmentDto, buildAssessmentRecord, validateAssessmentInput } from './assessments.js';
 import { scoreTasks } from './priority.js';
 import {
+  MAX_REMINDERS_PER_TASK,
+  buildReminderRecord,
+  reminderDto,
+  reminderId,
+  rescheduleReminder,
+  validateReminderInput,
+} from './reminders.js';
+import {
   applyTaskPatch,
   buildTaskRecord,
   selectToday,
@@ -173,7 +181,28 @@ export async function patchTask(ctx, id, payload) {
   }
 
   await ctx.repo.putTask(patched.value);
+
+  // A deadline that moves takes its reminders with it. Without this a student
+  // who reschedules an exam gets reminded at the old time about a date that no
+  // longer exists — which is worse than not being reminded at all.
+  if (patched.value.dueAt !== existing.dueAt) {
+    await rescheduleRemindersFor(ctx, patched.value);
+  }
+
   return ok({ task: taskDto(patched.value) });
+}
+
+/** Recompute every pending reminder on a task whose deadline just changed. */
+async function rescheduleRemindersFor(ctx, task) {
+  const nowIso = ctx.now().toISOString();
+  const all = await ctx.repo.listReminders();
+  for (const reminder of all) {
+    if (reminder.taskId !== task.id) continue;
+    const next = rescheduleReminder(reminder, task, nowIso);
+    // Null means nothing moved — skip the write rather than touching every
+    // reminder on every edit.
+    if (next !== null) await ctx.repo.putReminder(next);
+  }
 }
 
 export async function deleteTask(ctx, id) {
@@ -313,4 +342,83 @@ export async function deleteAssessment(ctx, taskId) {
   }
   await ctx.repo.deleteAssessment(taskId);
   return ok({ deleted: { taskId } });
+}
+
+// ── Reminders ───────────────────────────────────────────────────────────────
+//
+// A sub-resource of their task, like assessments — but a list rather than a
+// single slot, because "a day before AND thirty minutes before" is a normal
+// thing to want.
+
+export async function listReminders(ctx, taskId) {
+  if ((await ctx.repo.getTask(taskId)) === null) return notFound();
+  const all = await ctx.repo.listReminders();
+  const items = all
+    .filter((reminder) => reminder.taskId === taskId)
+    // Furthest-out first, which is the order a student set them in and reads
+    // them in: a day before, then three hours, then thirty minutes.
+    .sort((a, b) => b.offsetMinutes - a.offsetMinutes)
+    .map(reminderDto);
+  return ok({ items });
+}
+
+/**
+ * Add a reminder to a task.
+ *
+ * Idempotent: the id is derived from the task, the offset and the channel, so
+ * asking twice for "a day before" leaves one reminder. Re-adding one that
+ * already fired resets it to PENDING — the student is asking to be reminded
+ * again, which is the only thing the request can mean.
+ */
+export async function createReminder(ctx, taskId, payload) {
+  const task = await ctx.repo.getTask(taskId);
+  if (task === null) return notFound();
+
+  const parsed = validateReminderInput(payload);
+  if (parsed.error) return invalidRequest(parsed.error);
+
+  const id = await reminderId(
+    taskId,
+    parsed.value.offsetMinutes,
+    parsed.value.channel,
+    ctx.sha256Hex,
+  );
+  const existing = await ctx.repo.getReminder(id);
+
+  if (existing === null) {
+    const mine = (await ctx.repo.listReminders()).filter((r) => r.taskId === taskId);
+    if (mine.length >= MAX_REMINDERS_PER_TASK) {
+      return fail(
+        400,
+        API_ERROR_CODES.INVALID_REQUEST,
+        `A task can carry up to ${MAX_REMINDERS_PER_TASK} reminders.`,
+      );
+    }
+  }
+
+  const record = buildReminderRecord({
+    id,
+    taskId,
+    userId: ctx.userId,
+    input: parsed.value,
+    task,
+    nowIso: ctx.now().toISOString(),
+    existing,
+  });
+
+  await ctx.repo.putReminder(record);
+  return ok({ reminder: reminderDto(record) }, existing === null ? 201 : 200);
+}
+
+export async function deleteReminder(ctx, taskId, id) {
+  if ((await ctx.repo.getTask(taskId)) === null) return notFound();
+  const existing = await ctx.repo.getReminder(id);
+  // The taskId check is not redundant: a reminder id is derivable, so without
+  // it a caller could remove a reminder from a DIFFERENT task of their own by
+  // addressing it under this one.
+  if (existing === null || existing.taskId !== taskId) {
+    return fail(404, API_ERROR_CODES.NOT_FOUND, 'That reminder could not be found.');
+  }
+  await ctx.repo.deleteReminder(id);
+  return ok({ deleted: { id } });
 }
