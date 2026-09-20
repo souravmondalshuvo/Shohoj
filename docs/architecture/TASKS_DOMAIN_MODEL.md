@@ -5,9 +5,10 @@
 > it. Decided in [ADR 0002](decisions/0002-shohoj-tasks-on-the-existing-stack.md);
 > served over the contract in [`docs/api/`](../api/README.md).
 >
-> **Status:** Semester, Enrollment, Course and **Task** are implemented and
-> reachable at `/tasks` (#712, #715, #717). Assessment and TaskReminder remain
-> the specification Phases 5 and 6 are built against.
+> **Status:** Semester, Enrollment, Course, **Task** and **Assessment** are
+> implemented (#712, #715, #717, #721), with Tasks reachable at `/tasks` and on
+> the dashboard (#719). TaskReminder remains the specification Phase 6 is built
+> against.
 > Where this document and the code disagree, the code wins and this is a bug —
 > `docs/api/README.md` is the live contract.
 
@@ -338,6 +339,7 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 3a ✅ | Task CRUD, Today, Upcoming, course filtering — the API |
 | 3b ✅ | The `/tasks` route and screens |
 | 4 ✅ | Dashboard integration — surfaced through the Tasks service, not reimplemented |
-| 5 | Priority scoring, Assessment, grade-impact foundations |
+| 5a ✅ | Priority scoring, Assessment, grade-impact foundations — the engine |
+| 5b | Surfacing them: why-this-ranks-here, marks entry, grade impact on screen |
 | 6 | Calendar + reminders, over the existing cron and sender |
 | 7 | Gmail, Google Calendar, AI — behind an integration boundary, `Detect → Suggest → Confirm → Create` |
