@@ -312,6 +312,26 @@ a student who does not use Tasks should see no trace of it. That is a
 deliberate asymmetry with `/tasks`, which explains its empty states because
 there the student asked.
 
+## What Phase 5 settled
+
+**The breakdown is the feature, not the score.** `/tasks` shows *why* a task
+ranks where it does, in sentences, and never shows the raw number — 71.7 means
+nothing on its own and comparing two scores digit by digit implies a precision
+the model does not have. Scores become bands.
+
+**Sorting by priority is opt-in.** The engine orders nothing by default, server
+side or client side. Reordering the list every existing student sees, without
+asking, is not an improvement.
+
+**Grade impact reuses the calculator's engine.** `computeCourseMarks` answers
+the arithmetic; `gradeImpact.ts` bridges to it and `gradeImpactView.ts` decides
+the phrasing. There are now two modules between an assessment and a sentence on
+screen, and neither of them does grade maths.
+
+**Tone is a constraint, not a polish pass.** The wording describes the task,
+never the student, and any line that projects forward states its own
+assumption. Both have tests.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -340,6 +360,6 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 3b ✅ | The `/tasks` route and screens |
 | 4 ✅ | Dashboard integration — surfaced through the Tasks service, not reimplemented |
 | 5a ✅ | Priority scoring, Assessment, grade-impact foundations — the engine |
-| 5b | Surfacing them: why-this-ranks-here, marks entry, grade impact on screen |
+| 5b ✅ | Surfacing them: why-this-ranks-here, marks entry, grade impact on screen |
 | 6 | Calendar + reminders, over the existing cron and sender |
 | 7 | Gmail, Google Calendar, AI — behind an integration boundary, `Detect → Suggest → Confirm → Create` |
