@@ -195,7 +195,15 @@ test('a student creates a semester, activates it, and enrols courses', async () 
     );
     // Credits are the server's, from its own catalogue: 3 + 1 + 3.
     assert.equal(enrolledCredits(enrollments.value), 7);
-    assert.equal(enrollments.value.find((e) => e.courseCode === 'CSE220').section, '13');
+    const cse = enrollments.value.find((e) => e.courseCode === 'CSE220');
+    assert.equal(cse.section, '13');
+
+    // 5. Change a section the way a student does after swapping in advising.
+    const moved = await updateEnrollment(client, cse.id, { section: '07' });
+    assert.equal(moved.ok, true, `patch failed: ${moved.error?.message}`);
+    assert.equal(moved.value.section, '07');
+    assert.equal(moved.value.credits, 3, 'a section change does not disturb credits');
+    assert.equal(moved.value.courseCode, 'CSE220');
   } finally {
     __setTestJwksForTests(null);
   }
