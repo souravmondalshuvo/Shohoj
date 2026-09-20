@@ -67,6 +67,7 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
           },
         ],
         tasks: tasks.slice(),
+        assessments: [],
       };
       let seq = 0;
       const ok = (value) => Promise.resolve({ ok: true, value });
@@ -81,9 +82,25 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
 
       window.__shohojApiClient = {
         get(path) {
-          if (path === '/semesters') return ok({ items: state.semesters });
-          if (path === '/enrollments') return ok({ items: state.enrollments });
-          if (path === '/tasks') return ok({ items: state.tasks });
+          // COPIES, not the live arrays. A real response is freshly parsed
+          // JSON every time; handing out the mutable state means a later
+          // in-place push leaves React holding the same reference, bailing out
+          // of the re-render, and the UI silently never updates.
+          if (path === '/semesters') return ok({ items: state.semesters.slice() });
+          if (path === '/enrollments') return ok({ items: state.enrollments.slice() });
+          if (path === '/tasks') return ok({ items: state.tasks.map((t) => ({ ...t })) });
+          if (path === '/assessments')
+            return ok({ items: state.assessments.map((a) => ({ ...a })) });
+          const one = /^\/tasks\/([^/]+)\/assessment$/.exec(path);
+          if (one) {
+            const found = state.assessments.find((a) => a.taskId === one[1]);
+            return found
+              ? ok({ assessment: found })
+              : Promise.resolve({
+                  ok: false,
+                  error: { code: 'not_found', userMessage: 'This task has no assessment.' },
+                });
+          }
           if (path === '/tasks/today') {
             const dated = state.tasks.filter((t) => t.dueAt && t.status !== 'CANCELLED');
             return ok({
@@ -135,6 +152,35 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
         },
         patch: (path, body) => ok({ task: { ...state.tasks[0], ...body } }),
         put(path, body) {
+          const assessmentMatch = /^\/tasks\/([^/]+)\/assessment$/.exec(path);
+          if (assessmentMatch) {
+            const taskId = assessmentMatch[1];
+            const record = {
+              taskId,
+              totalMarks: body.totalMarks,
+              earnedMarks: body.earnedMarks ?? null,
+              weightPercent: body.weightPercent,
+              syllabus: null,
+              location: null,
+              notes: null,
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: new Date().toISOString(),
+            };
+            const at = state.assessments.findIndex((a) => a.taskId === taskId);
+            if (at === -1) state.assessments.push(record);
+            else state.assessments[at] = record;
+            // The real Worker re-scores on every read, so the weight factor
+            // appears as soon as an assessment exists. Mirror that here, or the
+            // test would pass against a constant rather than the behaviour.
+            const scored = state.tasks.find((x) => x.id === taskId);
+            if (scored && Array.isArray(scored.priorityFactors)) {
+              const value = Math.min(1, (body.weightPercent ?? 0) / 100);
+              scored.priorityFactors = scored.priorityFactors.map((f) =>
+                f.name === 'weight' ? { ...f, value, points: value * f.weight * 100 } : f,
+              );
+            }
+            return ok({ assessment: record });
+          }
           const id = path.split('/')[2];
           const task = state.tasks.find((t) => t.id === id);
           if (task) {
@@ -168,7 +214,6 @@ function taskDue(offset, over = {}) {
     type: 'ASSIGNMENT',
     status: 'TODO',
     priority: 'MEDIUM',
-    priorityScore: null,
     dueAt: d.toISOString(),
     startAt: null,
     estimatedMinutes: over.estimatedMinutes ?? null,
@@ -177,6 +222,14 @@ function taskDue(offset, over = {}) {
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
     completedAt: null,
+    // A score and its breakdown, as the scored API now returns (#721).
+    priorityScore: over.priorityScore ?? 50,
+    priorityFactors: over.priorityFactors ?? [
+      { name: 'urgency', value: 0.8, weight: 0.45, points: 36 },
+      { name: 'weight', value: 0, weight: 0.25, points: 0 },
+      { name: 'workload', value: 0, weight: 0.15, points: 0 },
+      { name: 'importance', value: 0.33, weight: 0.15, points: 5 },
+    ],
     ...(over.enrollmentId ? { enrollmentId: over.enrollmentId } : {}),
     ...(over.status ? { status: over.status } : {}),
   };
@@ -420,4 +473,141 @@ test('the route does not overflow a phone viewport', async ({ page }) => {
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// ── Priority explanations, marks and grade impact (#723) ────────────────────
+
+test('a task explains why it ranks where it does', async ({ page }) => {
+  // The whole reason the API returns a breakdown. Four numbers are not an
+  // interrogation; these are sentences.
+  // A deadline three days out, read on Upcoming. taskDue(0) is noon TODAY,
+  // which reads as "Already overdue" whenever the suite runs after midday —
+  // a clock-dependent assertion, not a stable one.
+  await installApi(page, { tasks: [taskDue(3, { key: '1', title: 'Quiz 3 revision' })] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+
+  await expect(page.getByTestId('tasks-details')).toHaveCount(0);
+  await page.getByRole('button', { name: /show details for Quiz 3 revision/i }).click();
+
+  const why = page.getByTestId('tasks-why-list');
+  await expect(why).toBeVisible();
+  await expect(why).toContainText(/Due in \d+ days/);
+  await expect(why).toContainText(/You marked it/);
+  // Factors that contributed nothing are not listed.
+  await expect(why).not.toContainText(/estimated/i);
+});
+
+test('the disclosure is named for its task, not "details"', async ({ page }) => {
+  // A list of buttons all called "Details" is unusable by name.
+  await installApi(page, {
+    tasks: [
+      taskDue(0, { key: '1', title: 'Quiz 3 revision' }),
+      taskDue(0, { key: '2', title: 'Read chapter 4' }),
+    ],
+  });
+  await goTasks(page);
+
+  await expect(page.getByRole('button', { name: /details for Quiz 3 revision/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /details for Read chapter 4/i })).toBeVisible();
+});
+
+test('marks can be recorded, and blank stays blank rather than becoming zero', async ({ page }) => {
+  // THE distinction. A "You scored" box that defaults to 0 would turn "not
+  // marked yet" into "scored zero" on the way in.
+  await installApi(page, { tasks: [taskDue(3, { key: '1', title: 'MAT215 Final' })] });
+  await goTasks(page);
+
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+  await page.getByRole('button', { name: /show details for MAT215 Final/i }).click();
+
+  const editor = page.getByTestId('tasks-assessment');
+  await expect(editor.getByLabel('You scored')).toHaveValue('');
+
+  await editor.getByLabel('% of course').fill('40');
+  await editor.getByLabel('Out of').fill('40');
+  await page.getByTestId('tasks-assessment-save').click();
+
+  // Reopened, the score box is still blank — it was never marked.
+  await page.getByRole('button', { name: /hide details for MAT215 Final/i }).click();
+  await page.getByRole('button', { name: /show details for MAT215 Final/i }).click();
+  await expect(page.getByTestId('tasks-assessment').getByLabel('You scored')).toHaveValue('');
+});
+
+test('the explanation names the weight once it is known', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(3, { key: '1', title: 'MAT215 Final' })] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+  await page.getByRole('button', { name: /show details for MAT215 Final/i }).click();
+
+  const editor = page.getByTestId('tasks-assessment');
+  await editor.getByLabel('% of course').fill('40');
+  await editor.getByLabel('Out of').fill('40');
+  await page.getByTestId('tasks-assessment-save').click();
+
+  await expect(page.getByTestId('tasks-why-list')).toContainText('Worth 40% of the course');
+});
+
+test('sorting by priority is opt-in and lives in the URL', async ({ page }) => {
+  // Off by default: reordering the list every current student sees, without
+  // asking, is not an improvement.
+  await installApi(page, {
+    tasks: [
+      taskDue(0, { key: '1', title: 'Low scorer', priorityScore: 10 }),
+      taskDue(0, { key: '2', title: 'High scorer', priorityScore: 90 }),
+    ],
+  });
+  await goTasks(page);
+
+  const titles = () => page.getByTestId('tasks-row').allInnerTexts();
+  const before = await titles();
+  expect(before[0]).toContain('Low scorer');
+
+  // click(), not check(). The box is CONTROLLED by the URL parameter, so the
+  // browser flips it, React re-renders from a URL that has not updated yet and
+  // flips it back, and only then does the parameter land — which Playwright's
+  // check() reads as "clicking did not change its state". The URL and the
+  // resulting order are what actually matter, and both are asserted.
+  await page.getByLabel('Sort by priority').click();
+  await expect(page).toHaveURL(/sort=priority/);
+  await expect(page.getByLabel('Sort by priority')).toBeChecked();
+  const after = await titles();
+  expect(after[0]).toContain('High scorer');
+});
+
+test('grade impact appears when one course is in view, and not before', async ({ page }) => {
+  // "What do I need" is not a question about a mixed list.
+  await installApi(page, {
+    tasks: [
+      taskDue(3, { key: '1', title: 'MAT215 Final' }),
+      taskDue(3, { key: '2', title: 'CSE work', enrollmentId: 'enr_' + 'b'.repeat(32) }),
+    ],
+  });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+
+  await expect(page.getByTestId('tasks-grade')).toHaveCount(0);
+
+  // Record what the final is worth, and that 60% is already banked elsewhere.
+  await page.getByRole('button', { name: /show details for MAT215 Final/i }).click();
+  const editor = page.getByTestId('tasks-assessment');
+  await editor.getByLabel('% of course').fill('100');
+  await editor.getByLabel('Out of').fill('100');
+  await editor.getByLabel('You scored').fill('78');
+  await page.getByTestId('tasks-assessment-save').click();
+
+  await page.getByLabel('Filter by course').selectOption({ label: 'CSE220' });
+
+  const grade = page.getByTestId('tasks-grade');
+  await expect(grade).toBeVisible();
+  await expect(page.getByTestId('tasks-grade-inhand')).toContainText('78%');
+  await expect(page.getByTestId('tasks-grade-floor')).toContainText(/Final result|lands on/);
+});
+
+test('a course with no recorded weights shows no grade panel and no error', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(0, { key: '1', title: 'Unweighted' })] });
+  await goTasks(page);
+  await page.getByLabel('Filter by course').selectOption({ label: 'CSE220' });
+  await expect(page.getByTestId('tasks-grade')).toHaveCount(0);
+  await expect(page.getByTestId('tasks-page')).toBeVisible();
 });
