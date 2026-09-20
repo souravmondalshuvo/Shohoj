@@ -20,8 +20,12 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
 import { useAcademicRecords } from '../../features/academic/useAcademicRecords.ts';
+import { GradeImpactPanel } from '../../features/tasks/GradeImpactPanel.tsx';
 import { TaskComposer } from '../../features/tasks/TaskComposer.tsx';
+import { TaskDetails } from '../../features/tasks/TaskDetails.tsx';
 import { TaskRow } from '../../features/tasks/TaskRow.tsx';
+import { gradeImpactView } from '../../features/tasks/gradeImpactView.ts';
+import { useAssessments } from '../../features/tasks/useAssessments.ts';
 import {
   TASK_VIEWS,
   courseOptions,
@@ -32,7 +36,7 @@ import {
   type TaskView,
 } from '../../features/tasks/taskView.ts';
 import { useTasks } from '../../features/tasks/useTasks.ts';
-import type { Task } from '../../platform/api/tasks.ts';
+import { byPriority, type Task } from '../../platform/api/tasks.ts';
 import { useApiClient } from '../providers/ApiProvider';
 import { useAuth } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
@@ -51,7 +55,13 @@ export function Component() {
 
   const academic = useAcademicRecords(client);
   const tasks = useTasks(client, view);
+  const assessments = useAssessments(client);
   const [busy, setBusy] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+
+  // Sorting lives in the URL beside the view and the filter, so a student who
+  // prefers priority order keeps it across navigations and can link to it.
+  const sortByPriority = params.get('sort') === 'priority';
 
   const courses = useMemo(
     () => courseOptions(academic.activeEnrollments),
@@ -76,10 +86,37 @@ export function Component() {
     [tasks.overdue, courseFilter],
   );
 
+  const ordered = useMemo(
+    () => (sortByPriority ? [...visible].sort(byPriority) : visible),
+    [visible, sortByPriority],
+  );
+  const orderedOverdue = useMemo(
+    () => (sortByPriority ? [...visibleOverdue].sort(byPriority) : visibleOverdue),
+    [visibleOverdue, sortByPriority],
+  );
+
   const summary = useMemo(
     () => summarise([...visibleOverdue, ...visible]),
     [visible, visibleOverdue],
   );
+
+  /**
+   * The grade picture, but only when one course is in view.
+   *
+   * "What do I need" is not a question about a mixed list, so the panel appears
+   * exactly when it means something and is absent otherwise — rather than
+   * rendering an empty shell on every screen.
+   */
+  const gradeView = useMemo(() => {
+    if (courseFilter === '') return null;
+    const assessed = tasks.items
+      .concat(tasks.overdue)
+      .filter((task) => task.enrollmentId === courseFilter)
+      .map((task) => ({ task, assessment: assessments.byTaskId.get(task.id) }))
+      .filter((entry) => entry.assessment !== undefined)
+      .map((entry) => ({ task: entry.task, assessment: entry.assessment! }));
+    return assessed.length === 0 ? null : gradeImpactView(assessed);
+  }, [courseFilter, tasks.items, tasks.overdue, assessments.byTaskId]);
 
   /**
    * Update one query parameter.
@@ -159,6 +196,39 @@ export function Component() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  /** One row, with its disclosure wired to the shared open-row state. */
+  const renderRow = (task: Task) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      enrollments={academic.enrollments}
+      onToggle={onToggle}
+      onDelete={onDelete}
+      expanded={openTaskId === task.id}
+      onToggleDetails={(t) => setOpenTaskId((current) => (current === t.id ? null : t.id))}
+      details={
+        <TaskDetails
+          task={task}
+          assessment={assessments.byTaskId.get(task.id) ?? null}
+          // Saving an assessment changes the task's PRIORITY SCORE, which the
+          // server computes on read — so the task list has to be refetched too,
+          // or the explanation keeps citing the old weight until the student
+          // navigates away and back.
+          onSaveAssessment={async (input) => {
+            const failure = await assessments.save(task.id, input);
+            if (failure === null) tasks.refresh();
+            return failure;
+          }}
+          onRemoveAssessment={async () => {
+            const failure = await assessments.remove(task.id);
+            if (failure === null) tasks.refresh();
+            return failure;
+          }}
+        />
+      }
+    />
+  );
+
   const empty = emptyState({
     view,
     hasActiveSemester: academic.active !== null,
@@ -166,7 +236,7 @@ export function Component() {
     totalTasks: tasks.items.length + tasks.overdue.length,
     filtered: courseFilter !== '',
   });
-  const nothingToShow = visible.length === 0 && visibleOverdue.length === 0;
+  const nothingToShow = ordered.length === 0 && orderedOverdue.length === 0;
   const workload = workloadLabel(summary.workloadMinutes);
 
   return (
@@ -202,6 +272,19 @@ export function Component() {
             </button>
           ))}
         </div>
+
+        <label className="tasks-sort">
+          <input
+            type="checkbox"
+            checked={sortByPriority}
+            onChange={(event) =>
+              setParam('sort', event.target.checked ? 'priority' : '', { replace: true })
+            }
+          />
+          {/* Off by default. Reordering the list every current student sees,
+              without asking, is not an improvement. */}
+          <span>Sort by priority</span>
+        </label>
 
         {courses.length > 1 && (
           <label className="tasks-filter">
@@ -242,6 +325,11 @@ export function Component() {
         </p>
       )}
 
+      <GradeImpactPanel
+        view={gradeView}
+        courseLabel={courses.find((c) => c.value === courseFilter)?.label ?? 'This course'}
+      />
+
       {nothingToShow && tasks.status !== 'loading' ? (
         <div className="tasks-empty" data-testid="tasks-empty">
           <p className="tasks-empty-title">{empty.title}</p>
@@ -254,36 +342,20 @@ export function Component() {
         </div>
       ) : (
         <>
-          {visibleOverdue.length > 0 && (
+          {orderedOverdue.length > 0 && (
             <section className="tasks-group tasks-group-overdue">
               <h3 className="tasks-group-title">Overdue</h3>
               <ul className="tasks-list" data-testid="tasks-list">
-                {visibleOverdue.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    enrollments={academic.enrollments}
-                    onToggle={onToggle}
-                    onDelete={onDelete}
-                  />
-                ))}
+                {orderedOverdue.map(renderRow)}
               </ul>
             </section>
           )}
 
-          {visible.length > 0 && (
+          {ordered.length > 0 && (
             <section className="tasks-group">
-              {visibleOverdue.length > 0 && <h3 className="tasks-group-title">Due today</h3>}
+              {orderedOverdue.length > 0 && <h3 className="tasks-group-title">Due today</h3>}
               <ul className="tasks-list" data-testid="tasks-list">
-                {visible.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    enrollments={academic.enrollments}
-                    onToggle={onToggle}
-                    onDelete={onDelete}
-                  />
-                ))}
+                {ordered.map(renderRow)}
               </ul>
             </section>
           )}
