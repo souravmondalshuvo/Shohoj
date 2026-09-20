@@ -73,6 +73,29 @@ declare global {
  * keeping the id would hide it outright. Legacy toggles `.is-admin` at runtime
  * because its anchor is always in the DOM — the shell mounts the node only for
  * admins, so the class is unconditional here. */
+/**
+ * The Tasks link in the TOP nav — signed out only.
+ *
+ * It exists to mirror the link legacy's nav carries (index.html), which is how
+ * a student on the main site finds Tasks at all: the feature lives on this
+ * shell, not in that bundle. The visual-parity gate captures both navs SIGNED
+ * OUT and compares them, so the item has to be here for that capture.
+ *
+ * Signed in it disappears, because the route tab bar renders its own Tasks tab
+ * and two controls with the same accessible name on one page is exactly the
+ * ambiguity that makes a screen reader unusable — and it broke two e2e specs
+ * that navigate by name, which is how it was caught.
+ */
+function TasksNavLink() {
+  const { status } = useAuth();
+  if (status === 'authenticated') return null;
+  return (
+    <NavLink to="/tasks" className="nav-link magnetic">
+      Tasks
+    </NavLink>
+  );
+}
+
 function AdminNavLink() {
   const { isAdmin } = useAuth();
   if (!isAdmin) return null;
@@ -319,6 +342,7 @@ function ShellChrome() {
           <NavLink to="/calculator" className="nav-link magnetic">
             CGPA Calc
           </NavLink>
+          <TasksNavLink />
           <AdminNavLink />
           <AuthControls source={firebaseSource} />
           <ThemeToggle />
