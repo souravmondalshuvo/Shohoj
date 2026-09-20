@@ -13,7 +13,7 @@
 
 <p align="center">
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
-  <img src="https://img.shields.io/badge/Status-v0.5.0-2ECC71?style=flat-square" alt="Status" />
+  <img src="https://img.shields.io/badge/Status-v0.6.0-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-TypeScript%20·%20React%20·%20Firebase%20·%20Cloudflare-3498DB?style=flat-square" alt="Stack" />
   <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
@@ -101,7 +101,7 @@ See [Features — What's Live Today](#features--whats-live-today) and the [Roadm
 | [docs/architecture/](docs/architecture/) | Migration roadmap, current state, target architecture, risk register, test matrix, ADRs |
 | [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md) | Script + shot-by-shot storyboard for the 55-second walkthrough (video pending) |
 | [CHANGELOG.md](CHANGELOG.md) | Version history and notable changes |
-| Release notes | [v0.3.0](docs/RELEASE_NOTES_v0.3.0.md) · [v0.4.0](docs/RELEASE_NOTES_v0.4.0.md) · [v0.5.0](docs/RELEASE_NOTES_v0.5.0.md) |
+| Release notes | [v0.3.0](docs/RELEASE_NOTES_v0.3.0.md) · [v0.4.0](docs/RELEASE_NOTES_v0.4.0.md) · [v0.5.0](docs/RELEASE_NOTES_v0.5.0.md) · [v0.6.0](docs/RELEASE_NOTES_v0.6.0.md) |
 
 ---
 
