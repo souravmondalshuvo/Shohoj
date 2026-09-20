@@ -448,6 +448,56 @@ to assemble and nothing else it could accidentally change. It insists on an
 explicit boolean, so a malformed request cannot silently reopen finished work.
 `PATCH` still works for anyone who prefers it, and routes through the same logic.
 
+#### `GET` · `POST /api/v1/tasks/{id}/reminders` · `DELETE .../reminders/{rid}`
+
+A list rather than one slot — "a day before **and** thirty minutes before" is a
+normal thing to want, capped at five per task.
+
+```json
+{
+  "id": "rem_0123456789abcdef0123456789abcdef",
+  "taskId": "tsk_0123456789abcdef0123456789abcdef",
+  "offsetMinutes": 180,
+  "channel": "EMAIL",
+  "scheduledFor": "2026-10-09T14:00:00.000Z",
+  "status": "PENDING",
+  "sentAt": null
+}
+```
+
+> **A reminder is an offset, not a timestamp.**
+>
+> `offsetMinutes` is the thing of record; `scheduledFor` is derived from the
+> task's deadline and recomputed whenever it moves. That is the difference
+> between a reminder that follows a rescheduled exam and one that fires at the
+> old time for a date that no longer exists.
+
+`scheduledFor` is `null` when the task has no deadline. That is not an error and
+the reminder is not refused — it waits, and starts working the moment a deadline
+is added.
+
+`POST` is idempotent on offset + channel, so asking twice leaves one reminder.
+Re-posting one that already fired resets it to `PENDING`: the student is asking
+to be reminded again.
+
+`channel` is `WEB` · `EMAIL` · `PUSH`, but **only `EMAIL` is deliverable today**.
+The other two are storable so a choice survives their arrival; the cron skips
+what it cannot send rather than marking it sent.
+
+#### How reminders are delivered
+
+The Worker's existing two-minute cron, the same Resend sender that has delivered
+seat-drop alerts since #186, and the same operating rule:
+
+> **State advances only on a confirmed send.** A failed send leaves the reminder
+> `PENDING` for the next pass. A reminder marked `SENT` when it was not is a
+> missed deadline the student was told about.
+
+A reminder is not sent when its task is completed, cancelled or deleted — the
+deadline stopped mattering, and buzzing anyway teaches a student to ignore the
+next one. One past its grace window is `CANCELLED` rather than sent, so a cron
+that was down overnight does not wake everybody with yesterday's nudges.
+
 #### Today and Upcoming require a timezone
 
 Both take `?tz=` as an IANA zone (`Asia/Dhaka`) and **refuse without it**. This
