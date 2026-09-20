@@ -66,6 +66,12 @@ Three rules, in force for every endpoint:
    student off the wire.
 3. **Hidden UI is not authorization.** Every ownership check is server-side.
 
+For the per-student collections, ownership is *structural* rather than a check
+each handler remembers: the repository is bound to the verified uid before any
+handler runs, and the records live under that uid's path. "Read another
+student's semester" is not a call that can be written. It also means "not yours"
+and "not there" are the same read, which is why both answer `404`.
+
 ## Request and response shapes
 
 - JSON in, JSON out. `Content-Type: application/json` on any request with a body.
@@ -156,17 +162,162 @@ Not rate-limited: it is called once per shell boot and performs a single keyed
 read in the steady state, while the rate limiters are sized for write abuse. A
 student who reloads too often should not lose the app.
 
+### Semesters
+
+A semester's id is **derived** — `sem_<campus>_<year><term>`, e.g.
+`sem_bracu_20263` for Fall 2026 — not assigned. Two devices that both decide
+"this is Fall 2026" therefore converge on one semester instead of minting two,
+and a student's tasks do not split across a pair of them. The campus is part of
+the id because the same term at two universities has different dates and is a
+different semester.
+
+At most **one semester is `ACTIVE`** at a time. Promoting one demotes the
+previous one to `COMPLETED`.
+
+| | |
+|---|---|
+| `GET /api/v1/semesters` | `{ "items": [...] }`, newest first |
+| `POST /api/v1/semesters` | Create **or update** — see below |
+| `GET /api/v1/semesters/{id}` | One semester |
+| `PATCH /api/v1/semesters/{id}` | `status`, `sessionId`, `startDate`, `endDate` |
+| `DELETE /api/v1/semesters/{id}` | **Cascades** — see below |
+
+`POST` takes either `year` + `season`, or a CONNECT `sessionId` to derive both
+from. Supplying both is fine when they agree; when they disagree it is a `400`
+rather than a preference, because guessing which the caller meant is how a task
+lands in the wrong term.
+
+Because the id is derived, **`POST` is idempotent**: a second create for the
+same term is the same semester. It answers `200` instead of `201` and updates,
+rather than `409`. A client retrying a dropped request needs this.
+
+`year` and `season` are **not patchable** — they are what the id is derived
+from, so changing them would leave the record somewhere other than its own id.
+Moving a semester is creating a different one. An unknown patch field is
+**refused**, not ignored: a client that thinks it renamed a semester and got a
+`200` back has been lied to.
+
+`DELETE` removes the semester **and every enrolment in it**, and says how many:
+
+```json
+{ "deleted": { "id": "sem_bracu_20263", "removedEnrollments": 4 } }
+```
+
+The cascade is not optional and there is no flag to skip it. An enrolment whose
+semester is gone appears in no view that lists by semester, so it could never be
+found or removed again.
+
+```json
+{
+  "semester": {
+    "id": "sem_bracu_20263",
+    "name": "Fall 2026",
+    "year": 2026,
+    "season": "Fall",
+    "sessionId": 20263,
+    "status": "ACTIVE",
+    "startDate": "2026-10-03",
+    "endDate": null,
+    "createdAt": "2026-09-20T10:00:00.000Z",
+    "updatedAt": "2026-09-20T10:00:00.000Z"
+  }
+}
+```
+
+`status` is `PLANNED` · `ACTIVE` · `COMPLETED` · `ARCHIVED`; `season` is
+`Spring` · `Summer` · `Fall`.
+
+### Enrolments
+
+The student's place in one course in one semester — `CSE220` is a course,
+*`CSE220`, Fall 2026, Section 13* is an enrolment. Tasks attach to these, never
+to a bare course string, so the same course across two semesters does not
+collide and a retake has somewhere to live.
+
+The id is derived from student + semester + course, which makes it the
+uniqueness constraint a document store will not give: **one course, one
+semester, one enrolment**. A retake falls out for free — different semester,
+different id.
+
+| | |
+|---|---|
+| `GET /api/v1/enrollments` | `?semesterId=` to filter; sorted by course code |
+| `POST /api/v1/enrollments` | Create **or update** — idempotent, as above |
+| `GET /api/v1/enrollments/{id}` | One enrolment |
+| `PATCH /api/v1/enrollments/{id}` | `section`, `facultyInitials`, `status` |
+| `DELETE /api/v1/enrollments/{id}` | |
+
+```json
+{
+  "enrollment": {
+    "id": "enr_0123456789abcdef0123456789abcdef",
+    "semesterId": "sem_bracu_20263",
+    "courseCode": "CSE220",
+    "credits": 3,
+    "section": "13",
+    "facultyInitials": "SHO",
+    "status": "ENROLLED",
+    "source": "MANUAL",
+    "createdAt": "2026-09-20T10:00:00.000Z",
+    "updatedAt": "2026-09-20T10:00:00.000Z"
+  }
+}
+```
+
+`status` is `ENROLLED` · `COMPLETED` · `DROPPED` · `WITHDRAWN`. `source` is
+`MANUAL` · `CALCULATOR` · `CONNECT_IMPORT` · `ROUTINE` — where the enrolment came
+from, so a derived one can later be told from one the student typed.
+
+Two fields the client cannot set:
+
+- **`courseCode` is validated for existence**, not shape. `ZZZ999` matches the
+  pattern and is still refused — the catalogue is server-controlled, the same
+  gate `/upload` and `/reviews` already apply.
+- **`credits` come from the server's catalogue**, never the request, and are
+  copied at enrolment time. They feed workload now and grade impact later, so a
+  client that could name them could name its own academic arithmetic; copying
+  rather than looking up on read means a catalogue revision cannot retroactively
+  change what a finished semester was worth.
+
+`courseCode`, `semesterId` and `credits` are not patchable. The first two define
+the id; the last is the server's. Changing a course means dropping this
+enrolment and creating another, which is also what actually happened.
+
+### There is no `GET /api/v1/courses`
+
+Shohoj already ships the full BRACU catalogue in the frontend bundle
+(`src/core/catalog.ts`), so an endpoint serving course names and credits would
+be a slower path to data the client already holds, and would need a second copy
+of the names in the Worker. The server keeps codes and credits only — enough to
+validate what it is told and to stamp a credit value it can vouch for.
+
+If a campus ever arrives whose catalogue is too large to ship, that is the point
+to add the endpoint, and it is additive.
+
 ## Implementation notes
 
-**Backend** — `worker/apiV1.js` holds the logic (pure, with its I/O injected);
-`worker/index.js` wires it to a route. Tests: `worker/test/apiV1.test.js`.
+**Backend** — layered, deliberately:
+
+| Layer | Module | Knows about |
+|---|---|---|
+| Handler | `worker/academicHandlers.js` | Returns plain `{ status, body }` — no `Request`, no `Response` |
+| Domain | `worker/academic.js` | Rules, validation, identity. Pure |
+| Repository | `worker/academicRepo.js` | Firestore paths. I/O injected |
+| Wiring | `worker/index.js` | Method, path, auth, CORS, correlation id |
+
+A rule in the handler has to be re-tested through HTTP; a rule in the repository
+needs a database to check. Both are how validation ends up duplicated and
+drifting. `worker/apiV1.js` holds what the namespace shares — the error envelope
+and user resolution. Tests: `worker/test/apiV1.test.js`,
+`worker/test/academic.test.js`, `worker/test/academicApi.test.js`.
 
 **Frontend** — `src/platform/api/apiClient.ts` is the only place Shohoj talks to
 its own API. It owns the base URL, the token, response validation and the
 mapping from HTTP status onto the typed error hierarchy. Features call typed
-modules beside it (`shohojUser.ts`), never `fetch`. Tests:
-`tests/apiClient.test.js`, and `tests/apiIntegration.test.js` which drives the
-real client against the real Worker handler with no network.
+modules beside it (`shohojUser.ts`, `academic.ts`), never `fetch`. Tests: `tests/apiClient.test.js`,
+`tests/academicApi.test.js`, and `tests/apiIntegration.test.js` /
+`tests/academicIntegration.test.js`, which drive the real client against the
+real Worker handlers with no network.
 
 **Caching and retries are not the client's job.** They belong to whatever
 server-state layer sits above it. A transport that also caches is a transport
