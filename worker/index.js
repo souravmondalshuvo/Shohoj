@@ -69,6 +69,12 @@ import { ARCHIVE_INDEX_KEY, archiveKeyFor, runSemesterArchiveCron } from './seme
 // everything below is wiring: real Firestore reads/writes, the real hash, the
 // real clock.
 import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
+// The academic core (#712): Semester and Enrollment. Layered deliberately —
+// academic.js is pure rules, academicRepo.js knows Firestore, academicHandlers.js
+// returns plain { status, body }. This file supplies the I/O and turns the
+// result into a Response; that is the whole of its job here.
+import { createAcademicRepo } from './academicRepo.js';
+import * as academic from './academicHandlers.js';
 
 export { campusOfEmail };
 
@@ -1120,6 +1126,198 @@ async function handleApiV1Me(request, env, origin) {
   return jsonResponse({ user }, { status: created ? 201 : 200 }, env, origin);
 }
 
+// ── /api/v1 academic core (#712) ────────────────────────────────────────────
+
+/**
+ * Firestore access for the academic repository, bound to one service-account
+ * token.
+ *
+ * `listDocs` unwraps firestoreListAll's `{ id, fields }` into plain records —
+ * the stored document already carries its own `id` field, so the wrapper adds
+ * nothing the domain layer needs and its shape would leak Firestore's REST
+ * response into pure code.
+ */
+function academicDeps(env, token) {
+  return {
+    getDoc: (path) => firestoreGetFields(env, token, path),
+    patchDoc: (path, fields) => firestorePatchFields(env, token, path, fields),
+    deleteDoc: (path) => firestoreDeleteDoc(env, token, path),
+    listDocs: async (path) => (await firestoreListAll(env, token, path)).map((d) => d.fields),
+  };
+}
+
+/** Parse the request body, or null when it is absent or not JSON. */
+async function readJsonBody(request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Route every `/api/v1/semesters` and `/api/v1/enrollments` request.
+ *
+ * One entry point rather than ten route lines, because all ten share the same
+ * preamble — origin, token, service account, user resolution, repository — and
+ * duplicating that per route is how one of them eventually skips a step.
+ *
+ * The repository is bound to the verified uid BEFORE dispatch. That is the
+ * ownership boundary: a handler has no way to name a different owner, so
+ * "read another student's semester" is not a call that can be written, let
+ * alone forgotten.
+ */
+async function handleAcademicApi(request, env, origin, url) {
+  const originErr = requireBrowserOriginAllowed(request, env, origin);
+  if (originErr) return originErr;
+
+  let claims;
+  try {
+    ({ claims } = await readAuth(request, env));
+  } catch (e) {
+    if (e instanceof AuthError) {
+      return apiV1Error(
+        env,
+        origin,
+        401,
+        API_ERROR_CODES.UNAUTHENTICATED,
+        'Sign in with your university Google account to continue.',
+      );
+    }
+    throw e;
+  }
+
+  const firebaseUid = claims?.user_id || claims?.sub;
+  const isWrite = request.method !== 'GET';
+  if (isWrite && !(await rateLimit(env, firebaseUid, 'academic', { failClosed: false }))) {
+    return apiV1Error(
+      env,
+      origin,
+      429,
+      API_ERROR_CODES.RATE_LIMITED,
+      "You're changing things faster than Shohoj can keep up. Try again in a moment.",
+    );
+  }
+
+  let token;
+  try {
+    token = await getServiceAccountAccessToken(env);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'api_v1_sa_token_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.INTERNAL,
+      'Shohoj accounts are temporarily unavailable. Please try again shortly.',
+    );
+  }
+
+  const deps = academicDeps(env, token);
+  let user;
+  try {
+    // The same resolution /api/v1/me performs, and for the same reason: every
+    // record below is owned by the Shohoj user id, which only this can supply.
+    // It bootstraps on first sight, so a student's very first action can be
+    // creating a semester rather than having to load their profile first.
+    ({ user } = await resolveShohojUser(
+      { getDoc: deps.getDoc, patchDoc: deps.patchDoc, sha256Hex, now: () => new Date() },
+      claims,
+    ));
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'api_v1_user_resolve_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      502,
+      API_ERROR_CODES.INTERNAL,
+      'Could not load your Shohoj account. Please try again.',
+    );
+  }
+
+  if (user.university === null) {
+    // The semester id embeds the campus, so there is no correct id to mint for
+    // somebody who belongs to none. Admins on non-campus addresses hit this;
+    // saying so plainly beats filing their data under a guessed university.
+    return apiV1Error(
+      env,
+      origin,
+      403,
+      API_ERROR_CODES.FORBIDDEN,
+      'Shohoj could not tell which campus you belong to, so it cannot set up your semesters.',
+    );
+  }
+
+  const ctx = {
+    repo: createAcademicRepo(deps, firebaseUid),
+    userId: user.id,
+    university: user.university,
+    sha256Hex,
+    now: () => new Date(),
+  };
+
+  const result = await dispatchAcademic(ctx, request, url);
+  if (result === null) {
+    return apiV1Error(env, origin, 404, API_ERROR_CODES.NOT_FOUND, 'No such endpoint.');
+  }
+  return jsonResponse(result.body, { status: result.status }, env, origin);
+}
+
+/**
+ * Method + path to handler. Returns null when nothing matches, so the caller
+ * answers 404 in the one place that builds responses.
+ */
+async function dispatchAcademic(ctx, request, url) {
+  const { method } = request;
+  const path = url.pathname;
+
+  if (path === '/api/v1/semesters') {
+    if (method === 'GET') return academic.listSemesters(ctx);
+    if (method === 'POST') return academic.createSemester(ctx, await readJsonBody(request));
+    return null;
+  }
+
+  const semesterMatch = /^\/api\/v1\/semesters\/([A-Za-z0-9_-]{1,64})$/.exec(path);
+  if (semesterMatch) {
+    const id = semesterMatch[1];
+    if (method === 'GET') return academic.getSemester(ctx, id);
+    if (method === 'PATCH') return academic.patchSemester(ctx, id, await readJsonBody(request));
+    if (method === 'DELETE') return academic.deleteSemester(ctx, id);
+    return null;
+  }
+
+  if (path === '/api/v1/enrollments') {
+    if (method === 'GET') {
+      return academic.listEnrollments(ctx, { semesterId: url.searchParams.get('semesterId') });
+    }
+    if (method === 'POST') return academic.createEnrollment(ctx, await readJsonBody(request));
+    return null;
+  }
+
+  const enrollmentMatch = /^\/api\/v1\/enrollments\/([A-Za-z0-9_-]{1,64})$/.exec(path);
+  if (enrollmentMatch) {
+    const id = enrollmentMatch[1];
+    if (method === 'GET') return academic.getEnrollment(ctx, id);
+    if (method === 'PATCH') return academic.patchEnrollment(ctx, id, await readJsonBody(request));
+    if (method === 'DELETE') return academic.deleteEnrollment(ctx, id);
+    return null;
+  }
+
+  return null;
+}
+
 export function validateReviewPayload(p) {
   if (!p || typeof p !== 'object') return { error: 'Invalid payload' };
   const facultyInitials = String(p.facultyInitials || '')
@@ -1971,6 +2169,11 @@ export default {
         return withRequestId(await handleReview(request, env, origin), requestId);
       if (request.method === 'GET' && url.pathname === '/api/v1/me')
         return withRequestId(await handleApiV1Me(request, env, origin), requestId);
+      if (
+        url.pathname.startsWith('/api/v1/semesters') ||
+        url.pathname.startsWith('/api/v1/enrollments')
+      )
+        return withRequestId(await handleAcademicApi(request, env, origin, url), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
         return withRequestId(await handleAssistant(request, env, origin, ctx), requestId);
       return jsonResponse(
