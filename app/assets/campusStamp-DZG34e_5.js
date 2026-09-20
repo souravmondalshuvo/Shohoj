@@ -1,1 +1,0 @@
-import{h as e}from"./result-CybeFHrF.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
