@@ -321,7 +321,24 @@ export function fetchUpcoming(
 }
 
 const AssessmentResponseSchema = z.object({ assessment: AssessmentSchema });
+const AssessmentListSchema = z.object({ items: z.array(AssessmentSchema) });
 const DeletedAssessmentSchema = z.object({ deleted: z.object({ taskId: z.string() }) });
+
+/**
+ * Every assessment the student has, keyed by task id at the call site.
+ *
+ * One call rather than one per task: a grade panel over a five-task course
+ * would otherwise cost five requests for data the server keeps in a single
+ * collection.
+ */
+export function listAssessments(
+  client: ApiClient,
+  options?: ApiRequestOptions,
+): Call<Assessment[]> {
+  return client
+    .get('/assessments', AssessmentListSchema, options)
+    .then((response) => unwrap(response, 'items'));
+}
 
 /** The task's assessment, or a not-found error when it has none. */
 export function fetchAssessment(
@@ -429,4 +446,29 @@ export function explainPriority(task: Task): readonly PriorityFactor[] {
   return [...(task.priorityFactors ?? [])]
     .filter((factor) => factor.points > 0)
     .sort((a, b) => b.points - a.points);
+}
+
+/** Assessments as a lookup by task id — the shape every screen actually wants. */
+export function assessmentsByTask(
+  assessments: readonly Assessment[],
+): ReadonlyMap<string, Assessment> {
+  return new Map(assessments.map((assessment) => [assessment.taskId, assessment]));
+}
+
+/**
+ * Order by the automatic score, highest first.
+ *
+ * Mirrors `byPriorityScore` in worker/priority.js, including the tiebreak:
+ * score, then due date, then id — so the order is total and a list cannot
+ * appear to shuffle itself between renders. A task the backend did not score
+ * sorts last rather than first, since an unknown score is not a high one.
+ */
+export function byPriority(a: Task, b: Task): number {
+  const aScore = a.priorityScore ?? -1;
+  const bScore = b.priorityScore ?? -1;
+  if (aScore !== bScore) return bScore - aScore;
+  const aDue = a.dueAt ?? '\uffff';
+  const bDue = b.dueAt ?? '\uffff';
+  if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+  return a.id.localeCompare(b.id);
 }
