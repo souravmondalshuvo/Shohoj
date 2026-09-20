@@ -7,8 +7,14 @@
 // schema here accepts it, so a backend that changes shape fails loudly and
 // locally rather than half-rendering a screen. The schemas are deliberately
 // strict about the fields the app depends on and tolerant about everything
-// else — unknown fields pass through, so a field the server adds tomorrow does
-// not break a client that shipped today.
+// else — an unknown field is IGNORED rather than rejected, so a field the
+// server adds tomorrow does not break a client that shipped today.
+//
+// Ignored, not preserved: Zod strips what a schema does not name, so a new
+// field is invisible here until it is added below. That is the safe direction
+// (nothing silently half-typed reaches the app) but it does mean a server
+// field nobody adds to a schema is a field nobody can use — which is exactly
+// how `removedTasks` went missing between the Worker and the UI once already.
 //
 // Note what is NOT here: a courses endpoint. Shohoj already ships the full
 // BRACU catalogue in the bundle (src/core/catalog.ts), so fetching course names
@@ -80,9 +86,16 @@ const SemesterResponseSchema = z.object({ semester: SemesterSchema });
 const EnrollmentListSchema = z.object({ items: z.array(EnrollmentSchema) });
 const EnrollmentResponseSchema = z.object({ enrollment: EnrollmentSchema });
 const DeletedSemesterSchema = z.object({
-  deleted: z.object({ id: z.string(), removedEnrollments: z.number().int() }),
+  deleted: z.object({
+    id: z.string(),
+    removedEnrollments: z.number().int(),
+    /** Tasks that went with those enrolments (#715). */
+    removedTasks: z.number().int(),
+  }),
 });
-const DeletedSchema = z.object({ deleted: z.object({ id: z.string() }) });
+const DeletedEnrollmentSchema = z.object({
+  deleted: z.object({ id: z.string(), removedTasks: z.number().int() }),
+});
 
 // ── Request shapes ──────────────────────────────────────────────────────────
 
@@ -173,17 +186,18 @@ export function updateSemester(
 }
 
 /**
- * Delete a semester and everything enrolled in it.
+ * Delete a semester, everything enrolled in it, and every task on those
+ * enrolments.
  *
- * The cascade is not optional, so the result reports how many enrolments went
- * with it — a student should be told that four courses left with the semester,
+ * The cascade is not optional, so the result reports both counts — a student
+ * should be told that four courses and thirty tasks left with the semester,
  * not discover it later.
  */
 export function deleteSemester(
   client: ApiClient,
   id: string,
   options?: ApiRequestOptions,
-): Call<{ id: string; removedEnrollments: number }> {
+): Call<{ id: string; removedEnrollments: number; removedTasks: number }> {
   return client
     .delete(`/semesters/${encodeURIComponent(id)}`, DeletedSemesterSchema, options)
     .then((response) => unwrap(response, 'deleted'));
@@ -225,13 +239,14 @@ export function updateEnrollment(
     .then((response) => unwrap(response, 'enrollment'));
 }
 
+/** Drop a course. Its tasks go too; the count comes back so the UI can say so. */
 export function deleteEnrollment(
   client: ApiClient,
   id: string,
   options?: ApiRequestOptions,
-): Call<{ id: string }> {
+): Call<{ id: string; removedTasks: number }> {
   return client
-    .delete(`/enrollments/${encodeURIComponent(id)}`, DeletedSchema, options)
+    .delete(`/enrollments/${encodeURIComponent(id)}`, DeletedEnrollmentSchema, options)
     .then((response) => unwrap(response, 'deleted'));
 }
 
