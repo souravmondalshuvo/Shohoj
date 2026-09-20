@@ -1753,3 +1753,144 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 }
 
 .tasks-digest-link:hover { text-decoration: underline; }
+
+/* ── Priority explanations, marks and grade impact (#723) ──────────────────── */
+
+.tasks-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tasks-disclose {
+  border: 0;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 0.9rem;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* The details panel spans the whole row, below the three columns above it. */
+.tasks-details {
+  flex-basis: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border, rgba(0, 0, 0, 0.1));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tasks-why-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+}
+
+.tasks-band {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.14));
+}
+
+.tasks-band-urgent { color: #d9534f; border-color: #d9534f; }
+.tasks-band-high { color: #c05621; border-color: #c05621; }
+
+.tasks-why-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tasks-why-item {
+  position: relative;
+  font-size: 0.8rem;
+  padding: 3px 0;
+}
+
+/* A proportion bar behind the text. Decoration for a number already stated in
+ * words, which is why it is aria-hidden in the markup. */
+.tasks-why-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--green, #2f855a);
+  opacity: 0.45;
+  border-radius: 2px;
+}
+
+.tasks-assessment-hint {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+}
+
+/* ── Grade impact ─────────────────────────────────────────────────────────── */
+
+.tasks-grade {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.tasks-grade-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tasks-grade-title { margin: 0; font-size: 0.98rem; }
+
+.tasks-grade-inhand {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green, #2f855a);
+}
+
+.tasks-grade-partial,
+.tasks-grade-pace {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+
+.tasks-grade-floor {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.tasks-grade-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.tasks-grade-secured { color: var(--green, #2f855a); }
+.tasks-grade-unreachable { color: var(--c-text-muted); text-decoration: line-through; }
+
+@media (max-width: 560px) {
+  .tasks-details .tasks-composer-row .tasks-field-narrow { flex: 1 1 30%; }
+}
