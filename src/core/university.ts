@@ -149,6 +149,13 @@ export type FeatureId =
   | 'rooms'
   | 'routine'
   | 'seats'
+  /**
+   * Shohoj Tasks (#717). BRACU only for now: enrolment validates course codes
+   * against the BRACU catalogue, so an NSU student could open the screen but
+   * could not attach any of their actual courses — worse than not offering it.
+   * Enabling it elsewhere means shipping that campus's catalogue first.
+   */
+  | 'tasks'
   | 'transcript';
 
 export interface UniversityProfile {
@@ -251,6 +258,7 @@ const BRACU: UniversityProfile = {
     'rooms',
     'routine',
     'seats',
+    'tasks',
     'transcript',
   ],
 };
