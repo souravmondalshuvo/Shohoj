@@ -26,8 +26,9 @@ The rules suite (`tests/firestore.rules.test.js`) runs in CI against the Firesto
 
 ## App Check
 
-The client initializes Firebase App Check with a reCAPTCHA v3 provider
-(`src/platform/firebase/firebaseClient.ts`), so Firestore calls from a real
+Both clients initialize Firebase App Check with a reCAPTCHA v3 provider — the
+shipping vanilla app in `js/auth/firebase-init.js` and the React shell in
+`src/platform/firebase/firebaseClient.ts` — so Firestore calls from a real
 browser session attach an attestation token. Three things are worth stating
 precisely, because they are often conflated:
 
@@ -35,11 +36,24 @@ precisely, because they are often conflated:
   to initialize, auth and the Firestore calls still proceed (offline tools must
   keep working). So the presence of App Check in the client does not, by itself,
   reject anything.
-- **Monitor mode** (the current expected state) records attestation results in
-  the Firebase console but **does not reject** un-attested traffic. A scripted
-  client with a valid ID token is still served.
+- **Monitor mode** records attestation results in the Firebase console but
+  **does not reject** un-attested traffic. A scripted client with a valid ID
+  token is still served.
 - **Enforce mode** is what actually rejects un-attested requests, and it is a
   **Firebase console setting**, not something this repo can turn on or verify.
+
+> **Measured state as of 2026-09-20: App Check is not working at all.** On the
+> live site the reCAPTCHA token exchange returns
+> `403 PERMISSION_DENIED — "App attestation failed."`, and the SDK then backs off
+> with `appCheck/throttled`. reCAPTCHA itself issues a token, so the site key and
+> its allowed domains are fine; the web app is not registered against that key in
+> the Firebase console's App Check section. The practical consequence is that App
+> Check is **not even providing monitor-mode telemetry** — there are no successful
+> attestations to record. Tracked in
+> [#709](https://github.com/souravmondalshuvo/Shohoj/issues/709), which also
+> carries the console steps. Enforcement must stay **off** until the exchange
+> succeeds: turning it on while attestation fails would reject every browser
+> Firestore read and write at once.
 
 We therefore do **not** claim that scripted traffic is currently rejected by App
 Check. Enabling and confirming enforcement is tracked as an external action in
@@ -131,9 +145,11 @@ Three layers, in order of how much they actually stop:
      legitimate coursework. A limiter *exception* is logged (safe metadata only);
      a *missing* binding is a deploy-time fault surfaced by `GET /ready`, not a
      silent outage.
-2. **Firebase App Check (reCAPTCHA v3).** In monitor mode this records but does
-   not reject (see the App Check section). Treat it as telemetry today, and as a
-   second enforcement layer only once console enforcement is verified.
+2. **Firebase App Check (reCAPTCHA v3).** Currently contributing **nothing** —
+   attestation fails with a 403 in production, so there is neither rejection nor
+   telemetry (see the App Check section and #709). Even once the registration is
+   fixed, monitor mode only records; it becomes a second enforcement layer only
+   when console enforcement is turned on.
 3. **Schema constraints.** Firestore rules enforce one review per
    `(user, faculty, course)` pair, one report per `(user, target)` pair, private
    per-user feedback upvote reads, approved/uploader/admin paper visibility, and
