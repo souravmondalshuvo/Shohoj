@@ -12,6 +12,12 @@ import test from 'node:test';
 import { createApiClient } from '../src/platform/api/apiClient.ts';
 import {
   AssessmentSchema,
+  COMMON_REMINDER_OFFSETS,
+  ReminderSchema,
+  addReminder,
+  listReminders,
+  reminderLabel,
+  removeReminder,
   PRIORITY_FACTOR_LABELS,
   TASK_PRIORITY_LABELS,
   TASK_TYPES,
@@ -352,4 +358,59 @@ test('a task with no assessment surfaces as a typed not-found', async () => {
   const result = await fetchAssessment(clientWith(fetchFn), TASK.id);
   assert.equal(result.ok, false);
   assert.equal(result.error.code, 'not_found');
+});
+
+// ── Reminders (#727) ────────────────────────────────────────────────────────
+
+const REMINDER = {
+  id: 'rem_0123456789abcdef0123456789abcdef',
+  taskId: TASK.id,
+  offsetMinutes: 180,
+  channel: 'EMAIL',
+  scheduledFor: '2026-10-09T14:00:00.000Z',
+  status: 'PENDING',
+  sentAt: null,
+  createdAt: '2026-09-20T10:00:00.000Z',
+  updatedAt: '2026-09-20T10:00:00.000Z',
+};
+
+test('a reminder validates, including one still waiting for a deadline', () => {
+  assert.equal(ReminderSchema.safeParse(REMINDER).success, true);
+  // Null scheduledFor is a reminder on an undated task — waiting, not broken.
+  assert.equal(ReminderSchema.safeParse({ ...REMINDER, scheduledFor: null }).success, true);
+  assert.equal(ReminderSchema.safeParse({ ...REMINDER, id: 'rem_nope' }).success, false);
+  assert.equal(ReminderSchema.safeParse({ ...REMINDER, channel: 'SMS' }).success, false);
+});
+
+test('reminders are added, listed and removed against the task sub-resource', async () => {
+  const list = recordingFetch(json({ items: [REMINDER] }));
+  const listed = await listReminders(clientWith(list), TASK.id);
+  assert.equal(listed.value.length, 1);
+  assert.equal(list.calls[0].url, `${BASE}/api/v1/tasks/${TASK.id}/reminders`);
+
+  const add = recordingFetch(json({ reminder: REMINDER }, 201));
+  await addReminder(clientWith(add), TASK.id, { offsetMinutes: 180 });
+  assert.equal(add.calls[0].init.method, 'POST');
+
+  const del = recordingFetch(json({ deleted: { id: REMINDER.id } }));
+  await removeReminder(clientWith(del), TASK.id, REMINDER.id);
+  assert.equal(del.calls[0].init.method, 'DELETE');
+  assert.equal(del.calls[0].url, `${BASE}/api/v1/tasks/${TASK.id}/reminders/${REMINDER.id}`);
+});
+
+test('a reminder reads as words, and says when it is waiting', () => {
+  // A student who set a reminder and sees it doing nothing needs to know why.
+  assert.equal(reminderLabel(REMINDER), 'Three hours before');
+  assert.equal(reminderLabel({ ...REMINDER, offsetMinutes: 1440 }), 'A day before');
+  assert.equal(reminderLabel({ ...REMINDER, offsetMinutes: 0 }), 'At the deadline');
+  assert.equal(reminderLabel({ ...REMINDER, offsetMinutes: 45 }), '45 minutes before');
+  assert.match(reminderLabel({ ...REMINDER, status: 'SENT' }), /sent/);
+  assert.match(reminderLabel({ ...REMINDER, scheduledFor: null }), /waiting for a deadline/);
+});
+
+test('the offered offsets match the ones the server names', () => {
+  assert.deepEqual(
+    COMMON_REMINDER_OFFSETS.map((o) => o.minutes),
+    [1440, 180, 30],
+  );
 });
