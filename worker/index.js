@@ -75,6 +75,9 @@ import { API_ERROR_CODES, apiError, resolveShohojUser } from './apiV1.js';
 // result into a Response; that is the whole of its job here.
 import { createAcademicRepo } from './academicRepo.js';
 import * as academic from './academicHandlers.js';
+// Shohoj Tasks (#715). Same layering as the academic core: taskTime.js and
+// tasks.js are pure, taskHandlers.js returns plain { status, body }.
+import * as tasks from './taskHandlers.js';
 
 export { campusOfEmail };
 
@@ -463,6 +466,21 @@ function fromFirestoreFields(fields) {
     out[k] = fromFirestoreValue(v);
   }
   return out;
+}
+
+/**
+ * `bytes` random bytes as lowercase hex.
+ *
+ * Task ids are assigned rather than derived (see worker/tasks.js), so they need
+ * a real source of randomness — crypto.getRandomValues, not Math.random, since
+ * a guessable id is still guessable behind an ownership check.
+ */
+function randomHex(bytes) {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return Array.from(buf)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 // SHA-256 a string → 64-char lowercase hex.
@@ -1156,7 +1174,7 @@ async function readJsonBody(request) {
 }
 
 /**
- * Route every `/api/v1/semesters` and `/api/v1/enrollments` request.
+ * Route every `/api/v1/semesters`, `/api/v1/enrollments` and `/api/v1/tasks` request.
  *
  * One entry point rather than ten route lines, because all ten share the same
  * preamble — origin, token, service account, user resolution, repository — and
@@ -1265,6 +1283,7 @@ async function handleAcademicApi(request, env, origin, url) {
     userId: user.id,
     university: user.university,
     sha256Hex,
+    randomHex,
     now: () => new Date(),
   };
 
@@ -1312,6 +1331,57 @@ async function dispatchAcademic(ctx, request, url) {
     if (method === 'GET') return academic.getEnrollment(ctx, id);
     if (method === 'PATCH') return academic.patchEnrollment(ctx, id, await readJsonBody(request));
     if (method === 'DELETE') return academic.deleteEnrollment(ctx, id);
+    return null;
+  }
+
+  // Today and Upcoming come BEFORE the /tasks/{id} pattern. Both are literal
+  // paths that the id regex would otherwise swallow, answering 404 for the two
+  // most-used endpoints in the product.
+  if (path === '/api/v1/tasks/today' && method === 'GET') {
+    return tasks.todayTasks(ctx, { tz: url.searchParams.get('tz') });
+  }
+  if (path === '/api/v1/tasks/upcoming' && method === 'GET') {
+    return tasks.upcomingTasks(ctx, {
+      tz: url.searchParams.get('tz'),
+      days: url.searchParams.get('days'),
+    });
+  }
+
+  if (path === '/api/v1/tasks') {
+    if (method === 'GET') {
+      return tasks.listTasks(ctx, {
+        enrollmentId: url.searchParams.get('enrollmentId'),
+        status: url.searchParams.get('status'),
+      });
+    }
+    if (method === 'POST') return tasks.createTask(ctx, await readJsonBody(request));
+    return null;
+  }
+
+  const completionMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/completion$/.exec(path);
+  if (completionMatch && method === 'PUT') {
+    const body = await readJsonBody(request);
+    if (body === null || typeof body !== 'object' || typeof body.completed !== 'boolean') {
+      return {
+        status: 400,
+        body: {
+          error: {
+            code: API_ERROR_CODES.INVALID_REQUEST,
+            message: 'Send { "completed": true } or { "completed": false }.',
+            field: 'completed',
+          },
+        },
+      };
+    }
+    return tasks.setTaskCompletion(ctx, completionMatch[1], body.completed);
+  }
+
+  const taskMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})$/.exec(path);
+  if (taskMatch) {
+    const id = taskMatch[1];
+    if (method === 'GET') return tasks.getTask(ctx, id);
+    if (method === 'PATCH') return tasks.patchTask(ctx, id, await readJsonBody(request));
+    if (method === 'DELETE') return tasks.deleteTask(ctx, id);
     return null;
   }
 
@@ -2171,7 +2241,8 @@ export default {
         return withRequestId(await handleApiV1Me(request, env, origin), requestId);
       if (
         url.pathname.startsWith('/api/v1/semesters') ||
-        url.pathname.startsWith('/api/v1/enrollments')
+        url.pathname.startsWith('/api/v1/enrollments') ||
+        url.pathname.startsWith('/api/v1/tasks')
       )
         return withRequestId(await handleAcademicApi(request, env, origin, url), requestId);
       if (request.method === 'POST' && url.pathname === '/api/assistant')
