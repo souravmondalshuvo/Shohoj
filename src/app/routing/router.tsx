@@ -60,6 +60,10 @@ export const router = createBrowserRouter(
           path: 'calculator',
           lazy: campusRoute('calculator', () => import('../routes/CalculatorRoute')),
         },
+        // Shohoj Tasks (#717). The view lives in `?view=` rather than in nested
+        // routes: all three render the same screen over a different query, so
+        // separate route modules would mean three chunks of the same component.
+        { path: 'tasks', lazy: campusRoute('tasks', () => import('../routes/TasksRoute')) },
         // Transcript view (#445) — shares the calculator's persisted state.
         {
           path: 'transcript',

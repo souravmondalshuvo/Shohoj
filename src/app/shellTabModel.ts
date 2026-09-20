@@ -26,11 +26,19 @@ export type TabEntry = TabLeaf | TabGroup;
 
 export const isGroup = (entry: TabEntry): entry is TabGroup => 'items' in entry;
 
-/** Five top-level slots, matching legacy's Calculator / Plan / Courses / Campus
- *  / Groups. Profile is deliberately absent: legacy reaches it from the
- *  top-right account pill, not the tab bar (index.html:439). */
+/** Top-level slots. Five of them mirror legacy's Calculator / Plan / Courses /
+ *  Campus / Groups; Tasks is the sixth and has no legacy counterpart (#717).
+ *
+ *  Tasks earns a top-level slot rather than a place inside Plan because it is
+ *  the screen a student opens daily — burying the thing they came for one
+ *  dropdown down would be the wrong trade for tidiness. The sixth slot was
+ *  checked against the responsive suite rather than assumed safe.
+ *
+ *  Profile is deliberately absent: legacy reaches it from the top-right account
+ *  pill, not the tab bar (index.html:439). */
 export const TABS: readonly TabEntry[] = [
   { to: '/calculator', label: 'Calculator', icon: '🧮', feature: 'calculator' },
+  { to: '/tasks', label: 'Tasks', icon: '✅', feature: 'tasks' },
   {
     group: 'plan',
     label: 'Plan',
