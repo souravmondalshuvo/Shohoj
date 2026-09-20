@@ -20,13 +20,16 @@
 //
 // Everything is built with createElement + textContent and wired with
 // addEventListener: model output is never parsed as HTML, and prod CSP drops
-// inline on* attributes anyway (script-src-attr).
+// inline on* attributes anyway (script-src-attr). Replies go through
+// assistantFormat, which renders the model's markdown as real elements rather
+// than printing its punctuation (#730) — still node by node, never innerHTML.
 
 import {
   examplePromptsForTab,
   fetchAssistantAvailability,
   sendAssistantTurn,
 } from '../core/assistantClient.js';
+import { renderAssistantReply } from '../core/assistantFormat.js';
 // The transcript moved from sessionStorage (dies with the tab) to a device-local
 // IndexedDB record that survives a new tab and a new day (#543). Still local,
 // still uid-stamped, still deletable from the drawer.
@@ -130,11 +133,18 @@ function persist() {
 
 function bubble(role, text, extraClass) {
   const div = document.createElement('div');
+  const isUser = role === 'user';
   div.className =
     'assistant-bubble ' +
-    (role === 'user' ? 'assistant-bubble--user' : 'assistant-bubble--reply') +
+    (isUser ? 'assistant-bubble--user' : 'assistant-bubble--reply assistant-bubble--rich') +
     (extraClass ? ' ' + extraClass : '');
-  div.textContent = text;
+  if (isUser) {
+    // The student's own message is shown exactly as typed: their newlines are
+    // theirs, and there is no markdown in it to render.
+    div.textContent = text;
+  } else {
+    div.appendChild(renderAssistantReply(text, document));
+  }
   return div;
 }
 
