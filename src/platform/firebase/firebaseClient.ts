@@ -54,10 +54,22 @@ export function loadFirebaseClient(
 
     if (!existing && recaptchaV3SiteKey) {
       try {
-        const { initializeAppCheck, ReCaptchaV3Provider } = await import('firebase/app-check');
-        initializeAppCheck(app, {
+        const { initializeAppCheck, ReCaptchaV3Provider, getToken } =
+          await import('firebase/app-check');
+        const appCheck = initializeAppCheck(app, {
           provider: new ReCaptchaV3Provider(recaptchaV3SiteKey),
           isTokenAutoRefreshEnabled: true,
+        });
+
+        // The catch below only covers wiring up the provider. Exchanging a
+        // reCAPTCHA token for an App Check token happens later over the
+        // network, so a hard failure there (#709: 403 "App attestation
+        // failed") would otherwise be invisible. Auto-refresh already requests
+        // a token; getToken joins that request rather than issuing a second.
+        void getToken(appCheck).catch((err: unknown) => {
+          logger.warn('platform.firebase.app_check_attestation_failed', {
+            message: err instanceof Error ? err.message : String(err),
+          });
         });
       } catch (err) {
         // Legacy parity: App Check is best-effort; auth still works without it.
