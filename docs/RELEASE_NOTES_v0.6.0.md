@@ -70,10 +70,26 @@ absent (see `CLAUDE.md` for why that matters):
 - `npm run test:bundle` — production bundle smoke passing
 - `npm run test:csp` — no inline `on*` handlers in the bundle
 - `npm run check:bundle-size` — every bundle within budget
-- `npx playwright test --workers=1` — **142** legacy E2E cases passing (single worker: the suite flakes under parallelism locally, and 142 is the count `CLAUDE.md` records for a clean tree)
 
-CI is the authoritative gate and runs the full E2E matrix (legacy, shell, Vite
-island, standalone pages, visual parity) on the release commit.
+End-to-end tests are verified **in CI, not locally**. The full matrix — legacy,
+shell, Vite island, standalone pages and visual parity — passed on this commit in
+[run 35491505770](https://github.com/souravmondalshuvo/Shohoj/actions/runs/35491505770).
+
+> **Correction (2026-09-20).** This section first claimed "142 legacy E2E cases
+> passing" from a local run. That was wrong. The run had 4 failures, missed
+> because the command was piped through `tail`, so the shell reported the
+> pipe's exit status (0) rather than Playwright's (1).
+>
+> Re-measured properly, the local legacy suite is heavily flaky on a developer
+> machine: unmodified `main` fails **11 of 146** at `--workers=1`, and a
+> different subset fails on each run (two runs of the same tree gave 2 and then
+> 4 failures). The specs that fail pass in isolation, so it is cross-test state,
+> not broken behaviour. `CLAUDE.md`'s "142 passed" is therefore not a constant
+> to check against either.
+>
+> No local E2E number belongs in a verification section. CI runs on a clean
+> runner with `runtime-config.js` deleted, is green on this commit, and is the
+> gate that governs deploys.
 
 ## Known limitations
 
