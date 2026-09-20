@@ -36,7 +36,12 @@ import {
   validateEnrollmentInput,
   validateSemesterInput,
 } from './academic.js';
-import { MAX_ENROLLMENTS, MAX_SEMESTERS, deleteSemesterCascade } from './academicRepo.js';
+import {
+  MAX_ENROLLMENTS,
+  MAX_SEMESTERS,
+  deleteEnrollmentCascade,
+  deleteSemesterCascade,
+} from './academicRepo.js';
 
 const ok = (body, status = 200) => ({ status, body });
 
@@ -163,19 +168,21 @@ async function demoteOtherActive(ctx, activeId, nowIso) {
 }
 
 /**
- * Delete a semester and everything enrolled in it.
+ * Delete a semester, everything enrolled in it, and every task on those
+ * enrolments.
  *
  * The cascade is not optional and there is no flag to skip it — an enrolment
- * whose semester is gone appears in no view that lists by semester, so it can
- * never be found or removed again. The count comes back so the client can say
- * what went, rather than a student discovering afterwards that four courses
- * left with it.
+ * whose semester is gone appears in no view that lists by semester, and a task
+ * whose enrolment is gone appears in no course-filtered view, so neither can
+ * ever be found or removed again. Both counts come back so the client can say
+ * what went, rather than a student discovering afterwards that four courses and
+ * thirty tasks left with it.
  */
 export async function deleteSemester(ctx, id) {
   const existing = await ctx.repo.getSemester(id);
   if (existing === null) return notFound('semester');
-  const removedEnrollments = await deleteSemesterCascade(ctx.repo, id);
-  return ok({ deleted: { id, removedEnrollments } });
+  const { removedEnrollments, removedTasks } = await deleteSemesterCascade(ctx.repo, id);
+  return ok({ deleted: { id, removedEnrollments, removedTasks } });
 }
 
 // ── Enrollments ─────────────────────────────────────────────────────────────
@@ -265,9 +272,15 @@ export async function patchEnrollment(ctx, id, payload) {
   return ok({ enrollment: enrollmentDto(patched.value) });
 }
 
+/**
+ * Delete an enrolment and every task attached to it.
+ *
+ * Dropping a course should not leave its assignments behind with nowhere to
+ * appear. The count comes back for the same reason the semester cascade's does.
+ */
 export async function deleteEnrollment(ctx, id) {
   const existing = await ctx.repo.getEnrollment(id);
   if (existing === null) return notFound('enrolment');
-  await ctx.repo.deleteEnrollment(id);
-  return ok({ deleted: { id } });
+  const removedTasks = await deleteEnrollmentCascade(ctx.repo, id);
+  return ok({ deleted: { id, removedTasks } });
 }
