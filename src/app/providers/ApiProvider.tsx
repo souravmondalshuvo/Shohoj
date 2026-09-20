@@ -65,6 +65,17 @@ interface ApiContextValue {
 
 const ApiContext = createContext<ApiContextValue | null>(null);
 
+declare global {
+  interface Window {
+    /**
+     * e2e seam (the __shohoj* convention): an injected API client, so the Tasks
+     * screens can be driven without a Worker or a Firebase session. Read only
+     * when no client is passed as a prop.
+     */
+    __shohojApiClient?: ApiClient;
+  }
+}
+
 export interface ApiProviderProps {
   readonly children: ReactNode;
   /**
@@ -84,6 +95,8 @@ export function ApiProvider({ children, client: injectedClient }: ApiProviderPro
   // effect below on every render.
   const client = useMemo<ApiClient | null>(() => {
     if (injectedClient !== undefined) return injectedClient;
+    const injected = typeof window !== 'undefined' ? window.__shohojApiClient : undefined;
+    if (injected !== undefined) return injected;
     if (config === null) return null;
     return createApiClient({ baseUrl: config.papersWorkerUrl, getIdToken });
   }, [injectedClient, config, getIdToken]);
