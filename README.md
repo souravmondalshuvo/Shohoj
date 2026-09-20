@@ -905,7 +905,7 @@ Shohoj/
 │   ├── gpaMultiCampus.test.js    the same transcript scored on each campus's rules
 │   ├── backfillCampus.test.js    campus backfill — the cases where a mistake is expensive
 │   ├── typedCoreParity.test.js   src/ typed core parity vs the legacy js/ logic
-│   └── firestore.rules.test.js   84 emulator-driven security rules checks
+│   └── firestore.rules.test.js   83 emulator-driven security rules checks
 ├── e2e/                          Playwright E2E for the legacy bundled app (25 specs)
 ├── e2e-shell/                    Playwright E2E for the React Router shell routes (53 specs)
 ├── e2e-vite/                     Playwright E2E for the Vite island build (3 specs)
