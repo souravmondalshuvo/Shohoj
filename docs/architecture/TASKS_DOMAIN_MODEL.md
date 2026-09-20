@@ -5,8 +5,10 @@
 > it. Decided in [ADR 0002](decisions/0002-shohoj-tasks-on-the-existing-stack.md);
 > served over the contract in [`docs/api/`](../api/README.md).
 >
-> Nothing here is implemented yet beyond the user record. This document exists
-> so the next two phases are reviewable against something.
+> **Status:** Semester, Enrollment and Course are implemented (#712). Task,
+> Assessment and TaskReminder are the specification Phase 3 is built against.
+> Where this document and the code disagree, the code wins and this is a bug —
+> `docs/api/README.md` is the live contract.
 
 ## The problem this model solves
 
@@ -238,6 +240,31 @@ The reminder sweep is the only collection-group query — the cron runs across a
 students by definition, which is exactly the case the owner-in-the-path layout
 does not serve. It is server-side only and never reachable from a client.
 
+## What Phase 2 settled
+
+The spec above left three things to implementation. They are now decided, and
+Task inherits all three:
+
+**Creates are idempotent, not 409.** Both ids are derived, so a repeated create
+is the same record. `POST` answers `201` the first time and `200` after,
+updating rather than refusing — which is what a client retrying a dropped
+request needs. Task ids will NOT be derived (two identical tasks are two tasks),
+so this is the one place Task diverges: a repeated task create is a new task.
+
+**Deletes cascade, and say what they took.** A semester takes its enrolments
+with it, and the response carries the count. Tasks must do the same when an
+enrolment goes — an orphaned task is invisible in every course-filtered view.
+
+**Ownership is structural, not checked.** The repository is bound to the
+verified uid and the records live under that uid's path, so a handler cannot
+name another owner. Tasks reuse the same repository construction, and therefore
+inherit the property rather than re-implementing it.
+
+One thing the spec got wrong and the code corrects: it listed a `GET
+/api/v1/courses`. Shohoj already ships the full catalogue in the frontend
+bundle, so that endpoint would be a slower path to data the client already has.
+The server keeps codes and credits only — enough to validate what it is told.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -261,7 +288,7 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | Phase | Delivers |
 |---|---|
 | 1 ✅ | `/api/v1`, the Shohoj user record, the typed API client |
-| 2 | Semester + Enrollment: CRUD, ownership, the calculator adapter |
+| 2 ✅ | Semester + Enrollment: CRUD, ownership, the calculator adapter |
 | 3 | Task CRUD, Today, Upcoming, course filtering, the `/tasks` route |
 | 4 | Dashboard integration — surfaced through the Tasks service, not reimplemented |
 | 5 | Priority scoring, Assessment, grade-impact foundations |
