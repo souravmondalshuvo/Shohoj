@@ -1,1 +1,0 @@
-import{m as e}from"./result-DhJVwaYK.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
