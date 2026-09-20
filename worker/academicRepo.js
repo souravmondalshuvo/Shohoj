@@ -15,6 +15,7 @@
 //   shohojUsers/{firebaseUid}/semesters/{semesterId}
 //   shohojUsers/{firebaseUid}/enrollments/{enrollmentId}
 //   shohojUsers/{firebaseUid}/tasks/{taskId}
+//   shohojUsers/{firebaseUid}/assessments/{taskId}   <- keyed BY task id
 //
 // Subcollections under the user, for three reasons that all point the same way:
 // a student's data is co-located, so deleting an account is one subtree; no
@@ -37,6 +38,14 @@ export const USERS_COLLECTION = 'shohojUsers';
 export const SEMESTERS_SUBCOLLECTION = 'semesters';
 export const ENROLLMENTS_SUBCOLLECTION = 'enrollments';
 export const TASKS_SUBCOLLECTION = 'tasks';
+/**
+ * Assessments, keyed by TASK id rather than an id of their own.
+ *
+ * That is what makes "at most one assessment per task" structural instead of a
+ * rule somebody has to enforce on write — and it makes the join a single list
+ * plus a lookup, rather than a query.
+ */
+export const ASSESSMENTS_SUBCOLLECTION = 'assessments';
 
 /**
  * How many records one student may hold.
@@ -71,6 +80,10 @@ export function taskPath(firebaseUid, id) {
   return `${userPath(firebaseUid)}/${TASKS_SUBCOLLECTION}/${id}`;
 }
 
+export function assessmentPath(firebaseUid, taskId) {
+  return `${userPath(firebaseUid)}/${ASSESSMENTS_SUBCOLLECTION}/${taskId}`;
+}
+
 /**
  * Build the repository for one signed-in student.
  *
@@ -88,6 +101,7 @@ export function createAcademicRepo(deps, firebaseUid) {
   const semesters = `${userPath(firebaseUid)}/${SEMESTERS_SUBCOLLECTION}`;
   const enrollments = `${userPath(firebaseUid)}/${ENROLLMENTS_SUBCOLLECTION}`;
   const tasks = `${userPath(firebaseUid)}/${TASKS_SUBCOLLECTION}`;
+  const assessments = `${userPath(firebaseUid)}/${ASSESSMENTS_SUBCOLLECTION}`;
 
   return {
     listSemesters: () => deps.listDocs(semesters),
@@ -104,7 +118,36 @@ export function createAcademicRepo(deps, firebaseUid) {
     getTask: (id) => deps.getDoc(taskPath(firebaseUid, id)),
     putTask: (record) => deps.patchDoc(taskPath(firebaseUid, record.id), record),
     deleteTask: (id) => deps.deleteDoc(taskPath(firebaseUid, id)),
+
+    listAssessments: () => deps.listDocs(assessments),
+    getAssessment: (taskId) => deps.getDoc(assessmentPath(firebaseUid, taskId)),
+    putAssessment: (record) => deps.patchDoc(assessmentPath(firebaseUid, record.taskId), record),
+    deleteAssessment: (taskId) => deps.deleteDoc(assessmentPath(firebaseUid, taskId)),
   };
+}
+
+/**
+ * Assessments as a lookup by task id.
+ *
+ * One list call, then an in-memory join — which is why they are keyed by task
+ * id. Scoring a list of tasks needs every assessment, and fetching them one per
+ * task would turn a page render into fifty reads.
+ */
+export async function assessmentsByTaskId(repo) {
+  const all = await repo.listAssessments();
+  const byId = {};
+  for (const assessment of all) {
+    if (typeof assessment?.taskId === 'string') byId[assessment.taskId] = assessment;
+  }
+  return byId;
+}
+
+/** Delete a task and the assessment attached to it. */
+export async function deleteTaskCascade(repo, taskId) {
+  // Assessment first: an assessment whose task is gone is unreachable through
+  // every path the API offers, exactly like an orphaned task or enrolment.
+  await repo.deleteAssessment(taskId);
+  await repo.deleteTask(taskId);
 }
 
 /**
@@ -146,7 +189,7 @@ export async function deleteEnrollmentCascade(repo, enrollmentIdValue) {
   const all = await repo.listTasks();
   const doomed = all.filter((task) => task.enrollmentId === enrollmentIdValue);
   for (const task of doomed) {
-    await repo.deleteTask(task.id);
+    await deleteTaskCascade(repo, task.id);
   }
   await repo.deleteEnrollment(enrollmentIdValue);
   return doomed.length;
