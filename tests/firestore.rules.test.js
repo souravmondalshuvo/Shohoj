@@ -995,6 +995,43 @@ async function run() {
     }));
   });
 
+  // ── Server-owned collections (#710) ──────────────────────────────────────
+  // The /api/v1 collections are written ONLY by the Worker, with a
+  // service-account token that bypasses these rules. No client may touch them.
+  //
+  // Nothing in firestore.rules mentions them by name — they are closed by the
+  // deny-all `match /{document=**}` at the bottom of the file. That is exactly
+  // why these tests exist: the guarantee is implicit, so a future rule added
+  // above the catch-all could open them without anyone noticing. These fail if
+  // that happens.
+
+  await test('shohojUsers is not readable by its own subject', async () => {
+    await seedRaw('shohojUsers', BRACU_UID, {
+      id: 'usr_0123456789abcdef0123456789abcdef',
+      firebaseUid: BRACU_UID,
+      email: BRACU_EMAIL,
+      university: 'bracu',
+    });
+    // Not even the student the record is about: it is reached through
+    // GET /api/v1/me, which is where ownership is checked.
+    await assertFails(getDoc(doc(bracuCtx().firestore(), 'shohojUsers', BRACU_UID)));
+  });
+
+  await test('shohojUsers is not writable by any client', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'shohojUsers', BRACU_UID), { university: 'bracu' }));
+    // Including the obvious attack: claiming a campus you are not on.
+    await assertFails(setDoc(doc(db, 'shohojUsers', NSU_UID), { university: 'nsu' }));
+  });
+
+  await test('the Tasks subcollections are closed to clients', async () => {
+    const db = bracuCtx().firestore();
+    for (const sub of ['semesters', 'enrollments', 'tasks', 'reminders']) {
+      await assertFails(getDoc(doc(db, 'shohojUsers', BRACU_UID, sub, 'anything')));
+      await assertFails(setDoc(doc(db, 'shohojUsers', BRACU_UID, sub, 'anything'), { x: 1 }));
+    }
+  });
+
   await test('campus isolation: an outsider is still refused everywhere', async () => {
     await seedRaw('studyGroups', 'grp_any', {
       courseCode: 'CSE220', title: 'Any', mode: 'online',
