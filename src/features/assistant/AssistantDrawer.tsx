@@ -10,7 +10,8 @@
 // was a deliberate privacy choice over storing it under users/{uid}, which
 // would sync across devices at the cost of v1's promise that chats never leave
 // the browser. No streaming: one request, one reply, with loading / error /
-// empty states per the design brief.
+// empty states per the design brief. The reply's markdown is rendered by the
+// shared js/core/assistantFormat parser, not printed as punctuation (#730).
 //
 // The launcher renders only when the shell is cloud-capable (papersWorkerUrl
 // configured) AND the student is signed in — the endpoint requires a BRACU
@@ -28,6 +29,7 @@ import {
   loadStoredHistory,
   saveStoredHistory,
 } from '../../../js/core/assistantHistory.js';
+import { parseAssistantReply, type AssistantSpan } from '../../../js/core/assistantFormat.js';
 import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
 import {
   examplePromptsForTab,
@@ -83,6 +85,42 @@ interface AssistantDrawerProps {
   readonly onClose: () => void;
   readonly onOpened: () => void;
   readonly onClosed: () => void;
+}
+
+/**
+ * One reply, with the model's markdown rendered rather than printed (#730).
+ *
+ * The parse is shared with the legacy front-end so both panels format a reply
+ * the same way; only the mapping to elements differs. JSX means the text is
+ * escaped by React on the way in — model output never becomes markup.
+ */
+function ReplyBody({ text }: { readonly text: string }) {
+  const spans = (items: readonly AssistantSpan[]) =>
+    items.map((span, i) =>
+      span.bold ? <strong key={i}>{span.text}</strong> : <span key={i}>{span.text}</span>,
+    );
+
+  return (
+    <>
+      {parseAssistantReply(text).map((block, i) =>
+        block.type === 'p' ? (
+          <p key={i}>{spans(block.spans)}</p>
+        ) : block.type === 'ol' ? (
+          <ol key={i}>
+            {block.items.map((item, j) => (
+              <li key={j}>{spans(item)}</li>
+            ))}
+          </ol>
+        ) : (
+          <ul key={i}>
+            {block.items.map((item, j) => (
+              <li key={j}>{spans(item)}</li>
+            ))}
+          </ul>
+        ),
+      )}
+    </>
+  );
 }
 
 function AssistantDrawer({
@@ -275,19 +313,26 @@ function AssistantDrawer({
             ))}
           </div>
         )}
-        {transcript.map((message, index) => (
-          <div
-            // Stateless append-only transcript: index identity is stable.
-            key={index}
-            className={
-              message.role === 'user'
-                ? 'assistant-bubble assistant-bubble--user'
-                : 'assistant-bubble assistant-bubble--reply'
-            }
-          >
-            {message.content}
-          </div>
-        ))}
+        {transcript.map((message, index) =>
+          message.role === 'user' ? (
+            <div
+              // Stateless append-only transcript: index identity is stable.
+              key={index}
+              className="assistant-bubble assistant-bubble--user"
+            >
+              {/* Shown exactly as typed: the student's newlines are theirs,
+                  and there is no markdown in their own message to render. */}
+              {message.content}
+            </div>
+          ) : (
+            <div
+              key={index}
+              className="assistant-bubble assistant-bubble--reply assistant-bubble--rich"
+            >
+              <ReplyBody text={message.content} />
+            </div>
+          ),
+        )}
         {pending && (
           <div className="assistant-bubble assistant-bubble--reply assistant-bubble--pending">
             {/* Motion, not a static word: several seconds of unchanging text
