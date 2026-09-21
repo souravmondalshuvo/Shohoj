@@ -1509,6 +1509,128 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
   gap: 8px;
 }
 
+/* ── Import from text (#735) ──────────────────────────────────────────────────
+ *
+ * The composer and the import panel are two ways into the same thing, so they
+ * share a row and the import entry is the quieter of the two: adding one task
+ * by hand is the common case and keeps the filled pill.
+ */
+
+.tasks-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* The composer becomes the panel when open, so it takes the row on its own. */
+.tasks-create .tasks-composer { flex: 1 1 100%; }
+
+.tasks-import-open,
+.tasks-import-submit,
+.tasks-import-cancel,
+.tasks-import-back {
+  font: inherit;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+}
+
+.tasks-import-submit {
+  border-color: transparent;
+  background: var(--green, #2f855a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tasks-import-submit[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-import {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 12px;
+  background: var(--c-surface, #fff);
+}
+
+.tasks-import-text {
+  resize: vertical;
+  min-height: 96px;
+  font-family: inherit;
+}
+
+.tasks-import-note,
+.tasks-import-skipped,
+.tasks-import-none {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.tasks-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tasks-import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tasks-import-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.1));
+  border-radius: 10px;
+}
+
+.tasks-import-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tasks-import-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tasks-import-why {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* The quoted source text is evidence, so it reads as a quotation rather than
+ * as part of Shohoj's own sentence. */
+.tasks-import-source { font-style: italic; }
+
+.tasks-import-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: #8a2b28;
+  background: rgba(217, 83, 79, 0.1);
+}
+
 /* ── List ─────────────────────────────────────────────────────────────────── */
 
 .tasks-group { margin: 0; }
