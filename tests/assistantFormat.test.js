@@ -96,6 +96,23 @@ test('no stray markdown marker survives any shape of reply', () => {
   assert.ok(text.includes('link'), `the link label was eaten: ${text}`);
 });
 
+// Caught by e2e/assistant-fab.spec.js first: a blanket strip of `__` quietly
+// rewrote the text of a reply. Stripping is for DANGLING delimiters only —
+// anything else is the student's content and must arrive exactly as sent.
+test('a double underscore inside an identifier is not a delimiter', () => {
+  const payload = '<img src=x onerror="window.__xss=1">';
+  const [para] = parseAssistantReply(payload);
+  assert.equal(para.spans.map((s) => s.text).join(''), payload);
+
+  for (const kept of ['a.__b', 'snake__case__word', 'CSE__370']) {
+    assert.equal(
+      plain(parseAssistantReply(kept)),
+      kept,
+      `rewrote text that is not a delimiter: ${kept}`,
+    );
+  }
+});
+
 test('an empty or absent reply parses to nothing rather than throwing', () => {
   assert.deepEqual(parseAssistantReply(''), []);
   assert.deepEqual(parseAssistantReply('   \n\n  '), []);

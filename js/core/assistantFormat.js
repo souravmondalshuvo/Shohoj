@@ -43,9 +43,17 @@ function stripInlineMarkers(text) {
     text
       // `code` → code, without pretending we style code spans.
       .replace(/`+([^`]*)`+/g, '$1')
-      // Unmatched bold/italic runs left over after the bold pass.
-      .replace(/\*\*/g, '')
-      .replace(/__/g, '')
+      // Dangling bold delimiters left over after the bold pass — an opener the
+      // model never closed. Position-sensitive on purpose: a blanket strip of
+      // `__` also eats the one in `window.__xss` or `__proto__`, corrupting
+      // text the student is entitled to read exactly as sent. A real delimiter
+      // hugs the phrase it opens or closes; one buried mid-identifier does not.
+      .replace(/(^|[\s([{])(\*\*|__)(?=\S)/g, '$1')
+      .replace(/(\S)(\*\*|__)(?=[\s)\]}.,;:!?]|$)/g, '$1')
+      // An orphan with nothing on either side to delimit (the `****` the model
+      // emits for an empty bold). Coding help is out of scope, so a lone `**`
+      // is a stray marker here and never Python's power operator.
+      .replace(/(^|\s)(\*\*|__)(?=\s|$)/g, '$1')
       // A single * or _ used as emphasis, but never one inside a word
       // (file_name, 3*4) — only a marker hugging the text it wraps.
       .replace(/(^|\s)[*_](\S[^*_]*\S|\S)[*_](?=\s|$)/g, '$1$2')
@@ -62,20 +70,28 @@ function stripInlineMarkers(text) {
  */
 export function parseSpans(line) {
   const spans = [];
-  const re = /\*\*([^*]+)\*\*|__([^_]+)__/g;
+  // __bold__ is rewritten to **bold** first, so one regex handles both — and
+  // the rewrite is word-boundary aware, exactly as CommonMark is: the
+  // underscores in snake__case__word are part of the identifier, not emphasis
+  // around "case". Skipping that check turned a course code into bold soup.
+  const src = line.replace(
+    /(^|[^A-Za-z0-9_])__([^_\n]+)__(?![A-Za-z0-9_])/g,
+    '$1**$2**',
+  );
+  const re = /\*\*([^*]+)\*\*/g;
   let last = 0;
   let m;
-  while ((m = re.exec(line)) !== null) {
+  while ((m = re.exec(src)) !== null) {
     if (m.index > last) {
-      const plain = stripInlineMarkers(line.slice(last, m.index));
+      const plain = stripInlineMarkers(src.slice(last, m.index));
       if (plain) spans.push({ text: plain, bold: false });
     }
-    const inner = stripInlineMarkers(m[1] ?? m[2] ?? '').trim();
+    const inner = stripInlineMarkers(m[1] ?? '').trim();
     if (inner) spans.push({ text: inner, bold: true });
     last = re.lastIndex;
   }
-  if (last < line.length) {
-    const plain = stripInlineMarkers(line.slice(last));
+  if (last < src.length) {
+    const plain = stripInlineMarkers(src.slice(last));
     if (plain) spans.push({ text: plain, bold: false });
   }
   return spans;
