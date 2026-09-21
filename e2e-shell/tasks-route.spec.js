@@ -81,6 +81,11 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
       };
       const open = (t) => t.status === 'TODO' || t.status === 'IN_PROGRESS';
 
+      // A read-only peek at what the fake stored, for the few assertions about
+      // fields the UI does not render — provenance, most of all. Reading the
+      // DOM cannot tell you whether a task says it came from a paste.
+      window.__shohojApiState = state;
+
       window.__shohojApiClient = {
         get(path) {
           // COPIES, not the live arrays. A real response is freshly parsed
@@ -171,8 +176,11 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
               dueAt: body.dueAt ?? null,
               startAt: null,
               estimatedMinutes: body.estimatedMinutes ?? null,
-              source: 'MANUAL',
-              sourceReference: null,
+              // Provenance comes from the REQUEST, as the Worker stores it.
+              // Hardcoding MANUAL here would let an import that forgot to say
+              // where it came from still pass.
+              source: body.source ?? 'MANUAL',
+              sourceReference: body.sourceReference ?? null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               completedAt: null,
@@ -777,4 +785,204 @@ test('with tasks but none dated, the calendar explains why it is empty', async (
 
   await page.getByRole('tab', { name: 'Calendar' }).click();
   await expect(page.getByTestId('tasks-empty')).toContainText(/deadline/i);
+});
+
+// ── Import from text (#735) ─────────────────────────────────────────────────
+//
+// The point of these is the CONFIRM step. A detector that proposes well is
+// only half of it; what makes the flow safe is that nothing is written while
+// the student is still looking at proposals, and these assert that directly —
+// by checking the list is unchanged at the moment the proposals are on screen.
+
+/**
+ * A date a few days out, written the way an announcement writes it.
+ *
+ * Relative to today rather than fixed, because the detector resolves a bare
+ * day and month FORWARD — a hardcoded date would start resolving into next
+ * year partway through this one and these would fail on a calendar boundary
+ * rather than on a code change.
+ */
+function writtenDate(daysAhead) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return `${d.getDate()} ${d.toLocaleString('en-US', { month: 'long' })}`;
+}
+
+/** The announcement most of these paste: one quiz, with a course and a time. */
+function announcementFor(daysAhead) {
+  return {
+    text: `MAT215 Quiz 3 will be held on ${writtenDate(daysAhead)} at 9:30 am, chapters 4-6.`,
+  };
+}
+
+const openImport = async (page) => {
+  await page.getByTestId('tasks-import-open').click();
+  await expect(page.getByTestId('tasks-import')).toBeVisible();
+};
+
+test('pasting an announcement proposes a task and creates nothing until confirmed', async ({
+  page,
+}) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+
+  // Suggest: the proposal is on screen, editable, and named from the text.
+  await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Task 1' })).toHaveValue('Quiz 3');
+
+  // …and NOTHING has been created. This is the whole guarantee.
+  expect(await page.evaluate(() => window.__shohojApiState.tasks.length)).toBe(0);
+  await expect(page.getByTestId('tasks-list')).toHaveCount(0);
+
+  // Confirm.
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-list')).toContainText('Quiz 3');
+  expect(await page.evaluate(() => window.__shohojApiState.tasks.length)).toBe(1);
+});
+
+test('a confirmed task records that it came from a paste, and what from', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-list')).toContainText('Quiz 3');
+
+  const stored = await page.evaluate(() => window.__shohojApiState.tasks[0]);
+  // "I typed this" and "a parser read this and I said yes" are different
+  // answers to the same question, and only one of them is true here.
+  expect(stored.source).toBe('PASTE');
+  expect(stored.sourceReference).toContain('MAT215');
+});
+
+test('a proposal shows the text it was read from, so it can be checked', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+
+  const item = page.getByTestId('tasks-import-list').locator('li').first();
+  await expect(item).toContainText('Read from:');
+  await expect(item).toContainText('MAT215');
+});
+
+test('a course the student is enrolled in is pre-selected on the proposal', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+
+  // MAT215 is the second enrolment the fake installs.
+  await expect(page.getByRole('combobox', { name: 'Course 1' })).toHaveValue(
+    'enr_' + 'b'.repeat(32),
+  );
+});
+
+test('an undated proposal is offered but not selected by default', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page
+    .getByRole('textbox', { name: 'Announcement' })
+    .fill('Quiz 3 is coming up at some point.');
+  await page.getByTestId('tasks-import-detect').click();
+
+  const pick = page.getByRole('checkbox', { name: 'Add this 1' });
+  await expect(pick).not.toBeChecked();
+  await expect(page.getByTestId('tasks-import-confirm')).toBeDisabled();
+
+  // Offered, not hidden: one click and it goes in.
+  await pick.click();
+  await expect(page.getByTestId('tasks-import-confirm')).toHaveText('Add 1 task');
+});
+
+test('editing a proposal changes what is created, not what was detected', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+  await page.getByRole('textbox', { name: 'Task 1' }).fill('Quiz 3 — rescheduled');
+  await page.getByTestId('tasks-import-confirm').click();
+
+  await expect(page.getByTestId('tasks-list')).toContainText('Quiz 3 — rescheduled');
+});
+
+test('text with no deadline in it proposes nothing and says so', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+
+  await openImport(page);
+  await page
+    .getByRole('textbox', { name: 'Announcement' })
+    .fill('Hello everyone, hope your week is going well. See you around campus.');
+  await page.getByTestId('tasks-import-detect').click();
+
+  await expect(page.getByTestId('tasks-import-none')).toBeVisible();
+  await expect(page.getByTestId('tasks-import-list')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__shohojApiState.tasks.length)).toBe(0);
+});
+
+test('two announcements in one paste become two proposals and two tasks', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page
+    .getByRole('textbox', { name: 'Announcement' })
+    .fill(`${announcementFor(3).text}\n\nCSE220 Assignment 2 is due ${writtenDate(5)}.`);
+  await page.getByTestId('tasks-import-detect').click();
+
+  await expect(page.getByTestId('tasks-import-list').locator('li')).toHaveCount(2);
+  await expect(page.getByTestId('tasks-import-confirm')).toHaveText('Add 2 tasks');
+
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-list').getByRole('listitem')).toHaveCount(2);
+});
+
+test('cancelling an import leaves the list exactly as it was', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'Already here' })] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+  await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByTestId('tasks-import')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__shohojApiState.tasks.length)).toBe(1);
+});
+
+test('the import panel has no accessibility violations', async ({ page }) => {
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+
+  await openImport(page);
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
+  await page.getByTestId('tasks-import-detect').click();
+  await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(results.violations).toEqual([]);
 });
