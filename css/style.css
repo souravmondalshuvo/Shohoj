@@ -8157,11 +8157,13 @@ body[data-page="admin"] .orb { display: none !important; }
 .assistant-bubble--rich li::marker {
   color: var(--text3);
 }
-/* The one number the student asked for. Weight alone reads as flat at 13.5px
-   against --text1, so emphasis carries a little colour too. */
+/* Weight only, no accent colour. The prompt asks for emphasis on the ONE number
+   that answers the question, but a model that ignores that and bolds nine spans
+   must not repaint the bubble green — that would only trade the old wall of
+   asterisks for a wall of colour. Weight stays legible at one emphasis and
+   stays quiet at nine. */
 .assistant-bubble--rich strong {
   font-weight: 600;
-  color: var(--ink-green);
 }
 /* Announced to screen readers, invisible on screen: they get the word, sighted
    users get the motion (#553). */
