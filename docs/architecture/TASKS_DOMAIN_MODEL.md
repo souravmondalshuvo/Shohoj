@@ -113,7 +113,7 @@ their storage, their queries, or their Today view.
 | `dueAt` | `string \| null` | ISO 8601 **UTC**. Null is valid: a reading with no deadline is still a task. |
 | `startAt` | `string \| null` | For work with a window rather than a moment. |
 | `estimatedMinutes` | `number \| null` | Feeds the future study planner. |
-| `source` | enum | `MANUAL` `GMAIL` `CALENDAR` `AI_SUGGESTION` |
+| `source` | enum | `MANUAL` `PASTE` `GMAIL` `CALENDAR` `AI_SUGGESTION` |
 | `sourceReference` | `string \| null` | Opaque handle for the originating item. |
 | `createdAt` · `updatedAt` · `completedAt` | `string \| null` | |
 
