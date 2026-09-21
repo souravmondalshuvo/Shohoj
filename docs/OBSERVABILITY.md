@@ -35,6 +35,42 @@ promises through the logger. Wired into the shell entry
   not configured — no emails sent), and **failure** (caught, logged, state not
   advanced so the work is retried next tick).
 
+### Assistant turn timing
+Every answered `/api/assistant` turn logs one `assistant_turn_timing` line
+(`worker/index.js`), splitting the student's wait into the phases that produce
+it. Timestamps and counts only — no transcript, no uid, nothing about the
+student, per the redaction rule below.
+
+```
+{"level":"info","event":"assistant_turn_timing","provider":"gemini",
+ "totalMs":5120,"authMs":40,"budgetMs":180,"turnMs":4900,
+ "modelMs":4400,"toolMs":420,"modelCalls":2,"toolCalls":1,"rounds":2,
+ "outputTokens":210}
+```
+
+Read it as:
+- `authMs` — Firebase token verification.
+- `budgetMs` — the spend-ledger Firestore read, which happens **before** the
+  first model call and fails closed.
+- `turnMs` — everything the provider chain did; `modelMs` and `toolMs` split
+  that into waiting on the model and waiting on our own executors.
+- `rounds` — model round-trips. A tool-grounded question normally costs 2 (pick
+  the tool, then answer); the cap is `MAX_TOOL_ROUNDS`.
+- `turnMs - modelMs - toolMs` is mostly time spent on providers that FAILED
+  before the one that answered — a visible fallback cost, since only the
+  answering provider reports its own timing.
+
+Watch it with:
+
+```bash
+npx wrangler tail --format json --search assistant_turn_timing
+```
+
+A caveat specific to Workers: `Date.now()` only advances after I/O, so these
+fields measure real waits and the computation between them reads as free. That
+is a property of the runtime's timing-attack mitigation, not a bug — and it is
+why there is no `cpuMs` field here.
+
 ### Build/deploy metadata
 Every production deploy publishes `version.json` (app version, commit SHA, ref,
 build time, target, CI run id) — see [DEPLOYMENT.md](DEPLOYMENT.md). This makes
