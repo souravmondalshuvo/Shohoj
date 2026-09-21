@@ -199,3 +199,23 @@ test('planCourses round-trip through persistence, junk filtered on load (#327)',
   store.setItem('shohoj_cgpa_v1', JSON.stringify({ semesters: [], planCourses: ['CSE220', 7, '', null] }));
   assert.deepEqual(loadCalculatorState(store).state.planCourses, ['CSE220']);
 });
+
+test('setMinor updates the minor and leaves the plan alone (#731)', () => {
+  const s = { ...EMPTY_CALCULATOR_STATE, planCourses: ['CSE220'] };
+  const next = calculatorReducer(s, { type: 'setMinor', currentMinor: 'MATH' });
+  assert.equal(next.currentMinor, 'MATH');
+  assert.deepEqual(next.planCourses, ['CSE220'], 'a minor adds requirements, it replaces nothing');
+  assert.equal(EMPTY_CALCULATOR_STATE.currentMinor, '');
+});
+
+test('currentMinor round-trips through persistence, junk falls back to none (#731)', () => {
+  const store = new MemoryKeyValueStore();
+  persistCalculatorState(store, { ...base(), currentMinor: 'MATH' });
+  assert.equal(loadCalculatorState(store).state.currentMinor, 'MATH');
+
+  store.setItem('shohoj_cgpa_v1', JSON.stringify({ semesters: [], currentMinor: 7 }));
+  assert.equal(loadCalculatorState(store).state.currentMinor, '');
+
+  store.setItem('shohoj_cgpa_v1', JSON.stringify({ semesters: [] }));
+  assert.equal(loadCalculatorState(store).state.currentMinor, '', 'an older snapshot has none');
+});
