@@ -70,6 +70,35 @@ const GEMINI_GENERATION_CONFIG = Object.freeze({ thinking_level: GEMINI_THINKING
 
 const MAX_TOOL_ROUNDS = 5;
 
+/**
+ * Wall-clock accumulator for one turn (#734).
+ *
+ * The Assistant "feels slow" and nobody could say which part was slow, because
+ * a turn is several sequential waits — model, tool, model — behind one pending
+ * bubble. This splits that number without touching what the student sees.
+ *
+ * A Workers caveat worth knowing before reading the output: Date.now() only
+ * ADVANCES after I/O. Timing a stretch of pure computation here reports 0ms,
+ * and correctly so — the runtime freezes the clock between I/O to blunt timing
+ * attacks. Every field below brackets a fetch or an SDK call, which is exactly
+ * where the clock does move, so the waits are measured and the arithmetic
+ * between them reads as free. It is not free; it is merely not the problem.
+ */
+export function createTurnTiming() {
+  return { modelMs: 0, toolMs: 0, modelCalls: 0, toolCalls: 0, rounds: 0 };
+}
+
+/** Run `fn`, adding its wall time to `timing[key]`. Failures are timed too. */
+async function timed(timing, key, fn) {
+  const startedAt = Date.now();
+  try {
+    return await fn();
+  } finally {
+    timing[key] += Date.now() - startedAt;
+    timing[key === 'modelMs' ? 'modelCalls' : 'toolCalls'] += 1;
+  }
+}
+
 const NO_ANSWER = 'Sorry, I could not produce an answer. Please try rephrasing.';
 const TOO_MANY_ROUNDS =
   'Sorry, that took too many steps to answer. Please ask a more specific question.';
@@ -111,17 +140,21 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   let lastText = '';
   const usage = { inputTokens: 0, outputTokens: 0 };
+  const timing = createTurnTiming();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    timing.rounds = round + 1;
     let response;
     try {
-      response = await anthropic.messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: CLAUDE_MAX_TOKENS,
-        system: ASSISTANT_SYSTEM,
-        tools: ASSISTANT_TOOLS,
-        messages: convo,
-      });
+      response = await timed(timing, 'modelMs', () =>
+        anthropic.messages.create({
+          model: CLAUDE_MODEL,
+          max_tokens: CLAUDE_MAX_TOKENS,
+          system: ASSISTANT_SYSTEM,
+          tools: ASSISTANT_TOOLS,
+          messages: convo,
+        }),
+      );
     } catch (e) {
       // Every throw out of the SDK is transport or API failure (it does not
       // throw on refusals), so it is exactly the fallback signal.
@@ -132,7 +165,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
     usage.outputTokens += Number(response?.usage?.output_tokens) || 0;
 
     lastText = claudeText(response.content) || lastText;
-    if (response.stop_reason !== 'tool_use') return { text: lastText || NO_ANSWER, usage };
+    if (response.stop_reason !== 'tool_use') return { text: lastText || NO_ANSWER, usage, timing };
 
     convo.push({ role: 'assistant', content: response.content });
     const results = [];
@@ -141,7 +174,9 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
       let content;
       let isError = false;
       try {
-        content = JSON.stringify(await executeAssistantTool(block.name, block.input, ctx));
+        content = JSON.stringify(
+          await timed(timing, 'toolMs', () => executeAssistantTool(block.name, block.input, ctx)),
+        );
       } catch (e) {
         content = `Error: ${e?.message || 'tool failed'}`;
         isError = true;
@@ -156,7 +191,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
     convo.push({ role: 'user', content: results });
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
 }
 
 // ── OpenAI ────────────────────────────────────────────────────────────────────
@@ -196,24 +231,28 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   const tools = openAiTools();
   let lastText = '';
   const usage = { inputTokens: 0, outputTokens: 0 };
+  const timing = createTurnTiming();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    timing.rounds = round + 1;
     let res;
     try {
-      res = await fetchImpl(OPENAI_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: OPENAI_MODEL,
-          input,
-          tools,
-          max_output_tokens: OPENAI_MAX_OUTPUT_TOKENS,
-          reasoning: { effort: OPENAI_REASONING_EFFORT },
+      res = await timed(timing, 'modelMs', () =>
+        fetchImpl(OPENAI_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: OPENAI_MODEL,
+            input,
+            tools,
+            max_output_tokens: OPENAI_MAX_OUTPUT_TOKENS,
+            reasoning: { effort: OPENAI_REASONING_EFFORT },
+          }),
         }),
-      });
+      );
     } catch (e) {
       throw new ProviderUnavailable('openai', 'request failed', e);
     }
@@ -245,7 +284,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
           `incomplete: ${body?.incomplete_details?.reason || 'unknown'}`,
         );
       }
-      return { text: lastText || NO_ANSWER, usage };
+      return { text: lastText || NO_ANSWER, usage, timing };
     }
 
     // Echo the calls back verbatim, then answer each one. Both halves must
@@ -265,7 +304,9 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
         // mistake, so it is reported back as a tool error rather than treated
         // as the provider being down.
         const args = JSON.parse(call.arguments || '{}');
-        out = JSON.stringify(await executeAssistantTool(call.name, args, ctx));
+        out = JSON.stringify(
+          await timed(timing, 'toolMs', () => executeAssistantTool(call.name, args, ctx)),
+        );
       } catch (e) {
         out = `Error: ${e?.message || 'tool failed'}`;
       }
@@ -273,7 +314,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     }
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
 }
 
 // ── Gemini ────────────────────────────────────────────────────────────────────
@@ -358,6 +399,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   // wants, so there is one translation, not two.
   const tools = openAiTools();
   const usage = { inputTokens: 0, outputTokens: 0 };
+  const timing = createTurnTiming();
   let payload = {
     model: GEMINI_MODEL,
     system_instruction: ASSISTANT_SYSTEM,
@@ -372,13 +414,16 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   let continuationRefused = false;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    timing.rounds = round + 1;
     let res;
     try {
-      res = await fetchImpl(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      res = await timed(timing, 'modelMs', () =>
+        fetchImpl(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }),
+      );
     } catch (e) {
       throw new ProviderUnavailable('gemini', 'request failed', e);
     }
@@ -441,7 +486,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     lastText = geminiText(body) || lastText;
 
     const calls = geminiSteps(body).filter((step) => step?.type === 'function_call');
-    if (calls.length === 0) return { text: lastText || NO_ANSWER, usage };
+    if (calls.length === 0) return { text: lastText || NO_ANSWER, usage, timing };
 
     const results = [];
     for (const call of calls) {
@@ -452,7 +497,9 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
         // mistake and belongs in the tool result, not in a provider failure.
         const args =
           typeof call.arguments === 'string' ? JSON.parse(call.arguments || '{}') : call.arguments;
-        out = JSON.stringify(await executeAssistantTool(call.name, args || {}, ctx));
+        out = JSON.stringify(
+          await timed(timing, 'toolMs', () => executeAssistantTool(call.name, args || {}, ctx)),
+        );
       } catch (e) {
         out = `Error: ${e?.message || 'tool failed'}`;
       }
@@ -475,7 +522,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     };
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
 }
 
 // ── Orchestration ─────────────────────────────────────────────────────────────
@@ -536,8 +583,11 @@ export async function runAssistantTurn({ providers, messages, ctx, onFallback })
   let lastFailure = null;
   for (const provider of providers) {
     try {
-      const { text, usage } = await provider.run({ messages, ctx });
-      return { reply: text, provider: provider.name, usage };
+      const { text, usage, timing } = await provider.run({ messages, ctx });
+      // A stub provider (and every unit test) may return no timing; the caller
+      // logs whatever arrives, so an empty accumulator is the honest default
+      // rather than a crash on the response path.
+      return { reply: text, provider: provider.name, usage, timing: timing || createTurnTiming() };
     } catch (e) {
       if (!(e instanceof ProviderUnavailable)) throw e;
       lastFailure = e;
