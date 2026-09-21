@@ -69,8 +69,27 @@ export const TARGETS = [
     dir: 'dist-shell/assets',
     match: /^index-.*\.js$/,
     build: 'npm run build:shell',
-    measured: { raw: 443, gzip: 138 },
-    budget: { raw: 465, gzip: 146 },
+    // Raised from 465/146 for the minor tracker (#731), and the reason matters
+    // more than the number: almost none of this is new first-paint work.
+    //
+    // The minor feature is lazy — it lands in the DegreeRoute chunk (1.7 kB ->
+    // 11.7 kB), not here. What grew this entry is a chunk BOUNDARY moving.
+    // DegreeRoute used to import calculatorState directly; it now reads the
+    // shared CalculatorProvider instead, which left calculatorState with a
+    // single importer, so Rollup inlined it into the entry rather than emitting
+    // the shared chunk it used to (48 chunks -> 46). Those bytes were already
+    // downloaded by the entry before, as a separate file it imported. The
+    // boundary moved; the work a student waits for did not.
+    //
+    // `shell JS, all chunks` below is the honest total, and it grew by only
+    // ~7 kB for the whole feature. If this entry number rises again WITHOUT a
+    // matching rise there, that is a real regression and not this case.
+    //
+    // Recorded from CI, which is where the gate runs — it measures ~16 kB above
+    // a local build off the same tree, because `npm ci` resolves dependencies
+    // that a working node_modules may not match exactly.
+    measured: { raw: 469, gzip: 147 },
+    budget: { raw: 490, gzip: 154 },
   },
   {
     label: 'shell stylesheet',
@@ -101,6 +120,10 @@ export const TARGETS = [
     // what students wait for — which is why it is raised rather than chased.
     //
     // If it tightens again, the campus chunk is the place to look first.
+    //
+    // (#731 did move `shell entry` afterwards, but by relocating a chunk
+    // boundary rather than by adding first-paint work — see the note there.
+    // The claim above still holds for the Tasks work it was written about.)
     measured: { raw: 2015 },
     budget: { raw: 2120 },
   },
