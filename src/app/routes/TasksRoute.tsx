@@ -23,6 +23,7 @@ import { useAcademicRecords } from '../../features/academic/useAcademicRecords.t
 import { GradeImpactPanel } from '../../features/tasks/GradeImpactPanel.tsx';
 import { TaskComposer } from '../../features/tasks/TaskComposer.tsx';
 import { TaskDetails } from '../../features/tasks/TaskDetails.tsx';
+import { TaskImport } from '../../features/tasks/TaskImport.tsx';
 import { TaskRow } from '../../features/tasks/TaskRow.tsx';
 import { gradeImpactView } from '../../features/tasks/gradeImpactView.ts';
 import { useAssessments } from '../../features/tasks/useAssessments.ts';
@@ -182,6 +183,17 @@ export function Component() {
     return null;
   };
 
+  /**
+   * Create one confirmed proposal.
+   *
+   * Deliberately quieter than `onCreate`: the import panel reports the batch
+   * once it is done, so notifying here would fire a toast per task.
+   */
+  const onImportCreate = async (input: Parameters<typeof tasks.create>[0]) => {
+    const failure = await tasks.create(input);
+    return failure === null ? null : failure.userMessage;
+  };
+
   const onToggle = async (task: Task, completed: boolean) => {
     const failure = await tasks.setCompleted(task.id, completed);
     if (failure !== null) notify({ kind: 'error', message: failure.userMessage });
@@ -339,12 +351,26 @@ export function Component() {
         )}
       </div>
 
-      <TaskComposer
-        courses={courses}
-        defaultEnrollmentId={courseFilter}
-        onCreate={onCreate}
-        busy={busy}
-      />
+      <div className="tasks-create">
+        <TaskComposer
+          courses={courses}
+          defaultEnrollmentId={courseFilter}
+          onCreate={onCreate}
+          busy={busy}
+        />
+        <TaskImport
+          courses={courses}
+          enrollments={academic.activeEnrollments}
+          onCreate={onImportCreate}
+          onDone={(count) =>
+            notify({
+              kind: 'success',
+              message: count === 1 ? 'Task added.' : `${count} tasks added.`,
+            })
+          }
+          busy={busy}
+        />
+      </div>
 
       {tasks.status === 'error' && tasks.error !== null && (
         <p className="tasks-error" role="alert">
