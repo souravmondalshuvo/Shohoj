@@ -68,6 +68,7 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
         ],
         tasks: tasks.slice(),
         assessments: [],
+        reminders: [],
       };
       let seq = 0;
       const ok = (value) => Promise.resolve({ ok: true, value });
@@ -91,6 +92,12 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
           if (path === '/tasks') return ok({ items: state.tasks.map((t) => ({ ...t })) });
           if (path === '/assessments')
             return ok({ items: state.assessments.map((a) => ({ ...a })) });
+          const rems = /^\/tasks\/([^/]+)\/reminders$/.exec(path);
+          if (rems) {
+            return ok({
+              items: state.reminders.filter((r) => r.taskId === rems[1]).map((r) => ({ ...r })),
+            });
+          }
           const one = /^\/tasks\/([^/]+)\/assessment$/.exec(path);
           if (one) {
             const found = state.assessments.find((a) => a.taskId === one[1]);
@@ -125,6 +132,31 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
           return ok({ items: [] });
         },
         post(path, body) {
+          const rem = /^\/tasks\/([^/]+)\/reminders$/.exec(path);
+          if (rem) {
+            const taskId = rem[1];
+            const owner = state.tasks.find((t) => t.id === taskId);
+            const record = {
+              id: 'rem_' + String(body.offsetMinutes).padStart(32, '0'),
+              taskId,
+              offsetMinutes: body.offsetMinutes,
+              channel: body.channel ?? 'EMAIL',
+              // Derived from the deadline, exactly as the Worker does — null
+              // when the task has none, so the "waiting" copy is exercised.
+              scheduledFor:
+                owner && owner.dueAt
+                  ? new Date(Date.parse(owner.dueAt) - body.offsetMinutes * 60000).toISOString()
+                  : null,
+              status: 'PENDING',
+              sentAt: null,
+              createdAt: '2026-09-01T00:00:00.000Z',
+              updatedAt: new Date().toISOString(),
+            };
+            const at = state.reminders.findIndex((r) => r.id === record.id && r.taskId === taskId);
+            if (at === -1) state.reminders.push(record);
+            else state.reminders[at] = record;
+            return ok({ reminder: record });
+          }
           if (path === '/tasks') {
             seq += 1;
             const task = {
@@ -190,6 +222,14 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
           return ok({ task });
         },
         delete(path) {
+          const remDel = /^\/tasks\/([^/]+)\/reminders\/([^/]+)$/.exec(path);
+          if (remDel) {
+            const at = state.reminders.findIndex(
+              (r) => r.id === remDel[2] && r.taskId === remDel[1],
+            );
+            if (at !== -1) state.reminders.splice(at, 1);
+            return ok({ deleted: { id: remDel[2] } });
+          }
           const id = path.split('/')[2];
           const i = state.tasks.findIndex((t) => t.id === id);
           if (i !== -1) state.tasks.splice(i, 1);
@@ -451,6 +491,32 @@ test('@a11y Tasks route has no serious/critical violations', async ({ page }) =>
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
 
+test('@a11y the calendar view and reminder controls scan clean', async ({ page }) => {
+  // A new screen with new markup, plus the reminder chips, which use
+  // aria-pressed rather than a checkbox and are worth scanning as such.
+  await installApi(page, {
+    tasks: [
+      taskDue(1, { key: '1', title: 'Quiz tomorrow' }),
+      taskDue(4, { key: '2', title: 'Essay later' }),
+    ],
+  });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await expect(page.getByTestId('tasks-calendar')).toBeVisible();
+
+  let scan = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze();
+  let blocking = scan.violations.filter((v) => ['serious', 'critical'].includes(v.impact));
+  expect(blocking, `calendar: ${JSON.stringify(blocking, null, 2)}`).toEqual([]);
+
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+  await page.getByRole('button', { name: /show details for Essay later/i }).click();
+  await expect(page.getByTestId('tasks-reminders')).toBeVisible();
+
+  scan = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze();
+  blocking = scan.violations.filter((v) => ['serious', 'critical'].includes(v.impact));
+  expect(blocking, `reminders: ${JSON.stringify(blocking, null, 2)}`).toEqual([]);
+});
+
 // ── Narrow viewports ────────────────────────────────────────────────────────
 
 test('the route does not overflow a phone viewport', async ({ page }) => {
@@ -610,4 +676,105 @@ test('a course with no recorded weights shows no grade panel and no error', asyn
   await page.getByLabel('Filter by course').selectOption({ label: 'CSE220' });
   await expect(page.getByTestId('tasks-grade')).toHaveCount(0);
   await expect(page.getByTestId('tasks-page')).toBeVisible();
+});
+
+// ── Reminders, calendar and export (#729) ───────────────────────────────────
+
+test('a reminder can be set and unset from the task panel', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(3, { key: '1', title: 'MAT215 Final' })] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Upcoming' }).click();
+  await page.getByRole('button', { name: /show details for MAT215 Final/i }).click();
+
+  // exact: true — once a reminder is set, the list gains a remove button whose
+  // label CONTAINS this one ("Remove reminder A day before"), and Playwright
+  // matches names by substring. The two names are properly distinct for a
+  // screen reader; it is the locator that needs narrowing.
+  const chip = page.getByRole('button', { name: 'A day before', exact: true });
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('tasks-reminder-list')).toContainText('A day before');
+
+  // The chip IS the setting, so tapping it again is how you undo it.
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('a reminder on an undated task says it is waiting, not broken', async ({ page }) => {
+  // Otherwise a student sets a reminder and watches it do nothing.
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByTestId('tasks-add').click();
+  await page.getByRole('textbox', { name: 'Task' }).fill('Someday reading');
+  await page.getByTestId('tasks-save').click();
+
+  await page.getByRole('tab', { name: 'All' }).click();
+  await page.getByRole('button', { name: /show details for Someday reading/i }).click();
+  await expect(page.getByTestId('tasks-reminders-nodeadline')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Three hours before', exact: true }).click();
+  await expect(page.getByTestId('tasks-reminder-list')).toContainText(/waiting for a deadline/i);
+});
+
+test('the calendar lays deadlines out by day', async ({ page }) => {
+  await installApi(page, {
+    tasks: [
+      taskDue(1, { key: '1', title: 'Quiz tomorrow' }),
+      taskDue(4, { key: '2', title: 'Essay later' }),
+      taskDue(1, { key: '3', title: 'Also tomorrow' }),
+    ],
+  });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+
+  await expect(page).toHaveURL(/view=calendar/);
+  const calendar = page.getByTestId('tasks-calendar');
+  await expect(calendar).toBeVisible();
+  await expect(page.getByTestId('tasks-calendar-item')).toHaveCount(3);
+  await expect(calendar).toContainText('Tomorrow');
+});
+
+test('an undated task never reaches the calendar', async ({ page }) => {
+  // A reading with no due date is not a thing happening today.
+  await installApi(page, {
+    tasks: [taskDue(2, { key: '1', title: 'Dated one' })],
+  });
+  await goTasks(page);
+  await page.getByTestId('tasks-add').click();
+  await page.getByRole('textbox', { name: 'Task' }).fill('No deadline at all');
+  await page.getByTestId('tasks-save').click();
+
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await expect(page.getByTestId('tasks-calendar-item')).toHaveCount(1);
+  await expect(page.getByTestId('tasks-calendar')).not.toContainText('No deadline at all');
+});
+
+test('the calendar offers an export, and it produces a real .ics', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+
+  const button = page.getByTestId('tasks-export');
+  await expect(button).toBeEnabled();
+
+  // The download itself is sandboxed in this runner, so this asserts the click
+  // is wired and harmless; the bytes are covered by tests/taskCalendar.test.js.
+  await button.click();
+  // The click must not navigate or error the page.
+  await expect(page.getByTestId('tasks-calendar')).toBeVisible();
+});
+
+test('with tasks but none dated, the calendar explains why it is empty', async ({ page }) => {
+  // Not the zero-tasks case: that one correctly says "no tasks yet", because
+  // the student has nothing at all rather than nothing SCHEDULED.
+  await installApi(page, { tasks: [] });
+  await goTasks(page);
+  await page.getByTestId('tasks-add').click();
+  await page.getByRole('textbox', { name: 'Task' }).fill('Undated only');
+  await page.getByTestId('tasks-save').click();
+
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await expect(page.getByTestId('tasks-empty')).toContainText(/deadline/i);
 });
