@@ -28,6 +28,8 @@ export interface StoredShohojStateV1 {
   startYear?: string;
   /** Planner course codes (validated against the course-code regex). */
   planCourses?: string[];
+  /** Selected minor program code (e.g. "MATH"); absent/'' when none (#731). */
+  currentMinor?: string;
   [key: string]: unknown;
 }
 
