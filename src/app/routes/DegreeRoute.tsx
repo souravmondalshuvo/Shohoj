@@ -2,10 +2,16 @@
 //
 // Degree Progress on the shell (#450) — the LAST placeholder swap before
 // cutover. Renders the existing DegreeTracker (calculator slice, #315)
-// standalone over the shared persisted calculator state, through a read-only
+// standalone over the shared calculator state, through a read-only
 // CalculatorBridge: useInputs is live, every mutating hook is a no-op because
-// nothing here mutates (editing happens on /calculator, which shares the same
-// storage key).
+// the tracker itself mutates nothing.
+//
+// #731 adds the minor tracker below it, and with it this route's first write —
+// picking a minor. That is why the state now comes from the shared
+// CalculatorProvider rather than a private loadCalculatorState: a second
+// reducer seeded at its own time, persisting to the same storage key, is the
+// last-writer-wins bug CalculatorProvider was created to end (#586). The
+// tracker's own view of the state is unchanged; it simply reads the one copy.
 
 import { useMemo } from 'react';
 import { Link } from 'react-router';
@@ -15,18 +21,17 @@ import {
   CalculatorBridgeProvider,
   type CalculatorBridge,
 } from '../../features/calculator/calculatorBridge.ts';
-import { loadCalculatorState } from '../../features/calculator/calculatorState.ts';
 import { BRACU_COURSE_CATALOG, isKnownCourseCode } from '../../features/calculator/catalog.ts';
 import { getDepartment } from '../../features/calculator/departments.ts';
 import DegreeTracker from '../../features/calculator/DegreeTracker.tsx';
-import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
+import MinorTracker from '../../features/calculator/MinorTracker.tsx';
+import { useCalculator } from '../providers/CalculatorProvider';
 import { useUniversity } from '../providers/AuthProvider';
 import { CampusRequired } from '../routing/CampusRequired';
 
 export function Component() {
   const university = useUniversity();
-  const store = useMemo(() => createBrowserStore(), []);
-  const state = useMemo(() => loadCalculatorState(store).state, [store]);
+  const { state, dispatch } = useCalculator();
 
   const bridge = useMemo<CalculatorBridge | null>(
     () =>
@@ -57,7 +62,10 @@ export function Component() {
   // so the empty state can explain where to set things up.
   const hasTracker = getDepartment(state.currentDept) !== null;
 
-  if (bridge === null) return <CampusRequired />;
+  // Both conditions are the same one — the bridge is null exactly when the
+  // campus is unknown — but naming `university` here is what lets the minor
+  // tracker below read its grading scale without a non-null assertion.
+  if (university === null || bridge === null) return <CampusRequired />;
 
   return (
     <section className="shell-page degree-page" data-testid="degree-page">
@@ -78,6 +86,16 @@ export function Component() {
           <DegreeTracker />
         </CalculatorBridgeProvider>
       )}
+
+      {/* The minor stands on its own: it is measured against named courses, not
+          against the department's credit total, so it renders (as a picker)
+          even for a student who has not set a department yet. */}
+      <MinorTracker
+        semesters={state.semesters}
+        selected={state.currentMinor}
+        onSelect={(currentMinor) => dispatch({ type: 'setMinor', currentMinor })}
+        scale={university.grades}
+      />
     </section>
   );
 }
