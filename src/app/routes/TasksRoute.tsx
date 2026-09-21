@@ -35,6 +35,9 @@ import {
   workloadLabel,
   type TaskView,
 } from '../../features/tasks/taskView.ts';
+import { TaskCalendarView } from '../../features/tasks/TaskCalendarView.tsx';
+import { buildTasksICS, icsFilename, toCalendarEvents } from '../../features/tasks/taskCalendar.ts';
+import { useReminders } from '../../features/tasks/useReminders.ts';
 import { useTasks } from '../../features/tasks/useTasks.ts';
 import { byPriority, type Task } from '../../platform/api/tasks.ts';
 import { useApiClient } from '../providers/ApiProvider';
@@ -58,6 +61,8 @@ export function Component() {
   const assessments = useAssessments(client);
   const [busy, setBusy] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  // Only the open task's reminders are fetched — see useReminders.
+  const reminders = useReminders(client, openTaskId);
 
   // Sorting lives in the URL beside the view and the filter, so a student who
   // prefers priority order keeps it across navigations and can link to it.
@@ -209,6 +214,9 @@ export function Component() {
       details={
         <TaskDetails
           task={task}
+          reminders={reminders.items}
+          onAddReminder={(minutes) => reminders.add(minutes)}
+          onRemoveReminder={(id) => reminders.remove(id)}
           assessment={assessments.byTaskId.get(task.id) ?? null}
           // Saving an assessment changes the task's PRIORITY SCORE, which the
           // server computes on read — so the task list has to be refetched too,
@@ -228,6 +236,28 @@ export function Component() {
       }
     />
   );
+
+  const calendarEvents = useMemo(
+    () => toCalendarEvents([...visibleOverdue, ...visible], academic.enrollments),
+    [visible, visibleOverdue, academic.enrollments],
+  );
+
+  /**
+   * Hand the student an .ics file.
+   *
+   * A Blob and an object URL rather than a server endpoint: the data is already
+   * in the page, and a download route would need its own auth. Revoked on the
+   * next tick — not revoking leaks the blob for the life of the document.
+   */
+  const exportCalendar = () => {
+    const ics = buildTasksICS(calendarEvents, { alarmMinutes: 60 });
+    const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = icsFilename();
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
 
   const empty = emptyState({
     view,
@@ -330,7 +360,19 @@ export function Component() {
         courseLabel={courses.find((c) => c.value === courseFilter)?.label ?? 'This course'}
       />
 
-      {nothingToShow && tasks.status !== 'loading' ? (
+      {/* The calendar is its own branch, not a variant of the list. Sharing the
+          list's `nothingToShow` let a screen labelled Calendar render a LIST of
+          undated tasks — which are precisely the ones a calendar cannot show. */}
+      {view === 'calendar' && tasks.status !== 'loading' ? (
+        calendarEvents.length > 0 ? (
+          <TaskCalendarView events={calendarEvents} onExport={exportCalendar} />
+        ) : (
+          <div className="tasks-empty" data-testid="tasks-empty">
+            <p className="tasks-empty-title">{empty.title}</p>
+            <p className="tasks-empty-detail shell-muted">{empty.detail}</p>
+          </div>
+        )
+      ) : nothingToShow && tasks.status !== 'loading' ? (
         <div className="tasks-empty" data-testid="tasks-empty">
           <p className="tasks-empty-title">{empty.title}</p>
           <p className="tasks-empty-detail shell-muted">{empty.detail}</p>
