@@ -65,11 +65,30 @@ const localIso = (s) => new Date(s).toISOString();
 
 // ── Views ───────────────────────────────────────────────────────────────────
 
-test('the three views are Today, Upcoming and All', () => {
-  assert.deepEqual(TASK_VIEWS.map((v) => v.key), ['today', 'upcoming', 'all']);
+test('the four views are Today, Upcoming, All and Calendar', () => {
+  assert.deepEqual(
+    TASK_VIEWS.map((v) => v.key),
+    ['today', 'upcoming', 'all', 'calendar'],
+  );
   assert.equal(isTaskView('today'), true);
+  assert.equal(isTaskView('calendar'), true);
   assert.equal(isTaskView('yesterday'), false);
   assert.equal(isTaskView(undefined), false);
+});
+
+test('an empty calendar explains that a task needs a due date', () => {
+  // Distinct from "no tasks yet": the student HAS work, it just is not
+  // scheduled, and a calendar is the one view that cannot show it.
+  const state = emptyState({
+    view: 'calendar',
+    hasActiveSemester: true,
+    enrollmentCount: 2,
+    totalTasks: 3,
+    filtered: false,
+  });
+  assert.match(state.title, /deadline/i);
+  assert.match(state.detail, /due date/i);
+  assert.equal(state.needsSetup, false);
 });
 
 // ── Course labelling ────────────────────────────────────────────────────────
@@ -91,7 +110,10 @@ test('the course filter lists enrolled courses alphabetically, with an all optio
     { ...ENROLLMENT, id: 'enr_b', courseCode: 'MAT215' },
     { ...ENROLLMENT, id: 'enr_a', courseCode: 'CSE220' },
   ]);
-  assert.deepEqual(options.map((o) => o.label), ['All courses', 'CSE220', 'MAT215']);
+  assert.deepEqual(
+    options.map((o) => o.label),
+    ['All courses', 'CSE220', 'MAT215'],
+  );
   assert.equal(options[0].value, '', 'the all option carries an empty value');
 });
 
@@ -100,7 +122,10 @@ test('dropped courses are not offered as filters', () => {
     { ...ENROLLMENT, id: 'enr_a', courseCode: 'CSE220', status: 'ENROLLED' },
     { ...ENROLLMENT, id: 'enr_b', courseCode: 'MAT215', status: 'DROPPED' },
   ]);
-  assert.deepEqual(options.map((o) => o.label), ['All courses', 'CSE220']);
+  assert.deepEqual(
+    options.map((o) => o.label),
+    ['All courses', 'CSE220'],
+  );
 });
 
 // ── Deadline text ───────────────────────────────────────────────────────────
@@ -134,7 +159,10 @@ test('"overdue" means before TODAY, not earlier today', () => {
   // between two lists during the day and disagree with what the API returns,
   // which is the worse of the two inconsistencies.
   assert.match(dueLabel({ ...TASK, dueAt: localIso('2026-10-05T06:00:00') }, NOW), /^Today /);
-  assert.equal(toneClass({ ...TASK, dueAt: localIso('2026-10-05T06:00:00') }, NOW), 'tasks-due-today');
+  assert.equal(
+    toneClass({ ...TASK, dueAt: localIso('2026-10-05T06:00:00') }, NOW),
+    'tasks-due-today',
+  );
 });
 
 test('no deadline says so rather than rendering an invalid date', () => {
@@ -168,7 +196,12 @@ const base = {
 test('no semester is explained before anything else', () => {
   // The most common first-run state, and the one where "no tasks" would be
   // actively misleading.
-  const state = emptyState({ ...base, hasActiveSemester: false, enrollmentCount: 0, totalTasks: 0 });
+  const state = emptyState({
+    ...base,
+    hasActiveSemester: false,
+    enrollmentCount: 0,
+    totalTasks: 0,
+  });
   assert.match(state.title, /semester/i);
   assert.equal(state.needsSetup, true);
 });
@@ -250,7 +283,10 @@ test('completed work is not counted toward the workload ahead', () => {
 
 test('priority and tone map to CSS classes rather than inline branching', () => {
   assert.equal(priorityClass('CRITICAL'), 'tasks-priority-critical');
-  assert.equal(toneClass({ ...TASK, dueAt: localIso('2026-10-01T09:00:00') }, NOW), 'tasks-due-overdue');
+  assert.equal(
+    toneClass({ ...TASK, dueAt: localIso('2026-10-01T09:00:00') }, NOW),
+    'tasks-due-overdue',
+  );
   assert.equal(toneClass({ ...TASK, dueAt: null }, NOW), 'tasks-due-none');
 });
 
