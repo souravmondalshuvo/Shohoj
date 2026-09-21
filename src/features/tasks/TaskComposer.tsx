@@ -18,6 +18,7 @@ import {
   type TaskPriority,
   type TaskType,
 } from '../../platform/api/tasks.ts';
+import { localInputToInstant } from './localInstant.ts';
 import type { CourseOption } from './taskView.ts';
 import { PRIORITY_ORDER } from './taskView.ts';
 
@@ -27,21 +28,6 @@ export interface TaskComposerProps {
   readonly defaultEnrollmentId?: string;
   readonly onCreate: (input: CreateTaskInput) => Promise<string | null>;
   readonly busy: boolean;
-}
-
-/**
- * Turn a datetime-local value into an instant the API will accept.
- *
- * `<input type="datetime-local">` yields a BARE local time (`2026-10-09T23:59`)
- * with no zone, which the API refuses — correctly, since it does not name a
- * moment. The browser's own offset is what resolves it, and `new Date(...)` on
- * a bare value applies exactly that, so this is the one conversion that must
- * happen on the client rather than being guessed on the server.
- */
-function localInputToInstant(value: string): string | null {
-  if (value === '') return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 export function TaskComposer({
