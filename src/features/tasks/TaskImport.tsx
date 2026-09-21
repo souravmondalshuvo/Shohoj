@@ -181,11 +181,17 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
             </p>
           ) : (
             <ul className="tasks-import-list" data-testid="tasks-import-list">
-              {drafts.map((draft) => (
+              {drafts.map((draft, index) => (
                 <li key={draft.key} className="tasks-import-item">
                   <label className="tasks-import-pick">
+                    {/* Every field here is numbered. The composer on the same
+                        screen already has a "Task" and a "Course", and several
+                        proposals would repeat each other — so the number is
+                        what makes each control nameable, while still leading
+                        with its visible label. */}
                     <input
                       type="checkbox"
+                      aria-label={`Add this ${index + 1}`}
                       checked={draft.selected}
                       onChange={(e) => update(draft.key, { selected: e.target.checked })}
                     />
@@ -197,6 +203,7 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
                       <span className="tasks-label">Task</span>
                       <input
                         className="tasks-input"
+                        aria-label={`Task ${index + 1}`}
                         value={draft.title}
                         maxLength={200}
                         onChange={(e) => update(draft.key, { title: e.target.value })}
@@ -207,6 +214,7 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
                       <span className="tasks-label">Type</span>
                       <select
                         className="tasks-input"
+                        aria-label={`Type ${index + 1}`}
                         value={draft.type}
                         onChange={(e) => update(draft.key, { type: e.target.value as TaskType })}
                       >
@@ -222,6 +230,7 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
                       <span className="tasks-label">Due</span>
                       <input
                         className="tasks-input"
+                        aria-label={`Due ${index + 1}`}
                         type="datetime-local"
                         value={draft.dueLocal}
                         onChange={(e) => update(draft.key, { dueLocal: e.target.value })}
@@ -232,6 +241,7 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
                       <span className="tasks-label">Course</span>
                       <select
                         className="tasks-input"
+                        aria-label={`Course ${index + 1}`}
                         value={draft.enrollmentId}
                         onChange={(e) => update(draft.key, { enrollmentId: e.target.value })}
                       >
