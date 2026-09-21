@@ -87,8 +87,22 @@ export const TARGETS = [
     match: /\.js$/,
     all: true,
     build: 'npm run build:shell',
-    measured: { raw: 1935 },
-    budget: { raw: 2035 },
+    // Raised from 2035 with Shohoj Tasks complete (#710-#729), which took this
+    // to 2015 — 1.0% headroom, enough to block the next feature of any size.
+    //
+    // Worth knowing what this number is before reading a change to it: it sums
+    // EVERY chunk, not what a visit downloads. 599 kB of it — 30% — is the
+    // Three.js campus map, which is correctly lazy and only loads on /campus.
+    // Tasks contributed ~80 kB, all of it in lazily-loaded route chunks.
+    //
+    // The number that governs load time is `shell entry` above, and it did NOT
+    // grow: 137.4 kB gzip, slightly UNDER its recorded baseline, with 5.9%
+    // headroom. So this ceiling is total artifact weight, not a regression in
+    // what students wait for — which is why it is raised rather than chased.
+    //
+    // If it tightens again, the campus chunk is the place to look first.
+    measured: { raw: 2015 },
+    budget: { raw: 2120 },
   },
 ];
 
