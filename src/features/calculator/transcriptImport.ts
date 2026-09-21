@@ -115,8 +115,16 @@ export function parseTranscriptForImport(
  * state. Sequential ids, course-field defaults, the detected department label
  * resolved to its code, and start season/year from the first semester name
  * (the season only when the resolved department's calendar offers it).
+ *
+ * `currentMinor` is carried across rather than derived (#731). A BRACU
+ * transcript lists courses, not declarations, so an import can neither detect a
+ * minor nor rule one out — and dropping the student's own selection because a
+ * file did not mention it would read as the import having lost it.
  */
-export function importedCalculatorState(parsed: ParsedTranscript): CalculatorState {
+export function importedCalculatorState(
+  parsed: ParsedTranscript,
+  currentMinor = '',
+): CalculatorState {
   const currentDept =
     (parsed.detectedDept &&
       DEPARTMENT_LIST.find((dept) => dept.label === parsed.detectedDept)?.code) ||
@@ -148,5 +156,5 @@ export function importedCalculatorState(parsed: ParsedTranscript): CalculatorSta
 
   // Legacy applyImport calls resetPlanner(): an import invalidates the plan
   // (planned courses may now be completed), so it always comes back empty.
-  return { semesters, startSeason, startYear, currentDept, planCourses: [] };
+  return { semesters, startSeason, startYear, currentDept, currentMinor, planCourses: [] };
 }
