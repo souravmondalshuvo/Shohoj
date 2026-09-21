@@ -1573,7 +1573,18 @@ async function handleAssistant(request, env, origin, execCtx) {
   const originCheck = requireBrowserOriginAllowed(request, env, origin);
   if (originCheck) return originCheck;
 
+  // Phase clock (#734). A turn is several sequential waits behind one pending
+  // bubble, and "the assistant feels slow" was not actionable without knowing
+  // WHICH wait. Timestamps only — no transcript, no uid, nothing about the
+  // student — so this stays as privacy-safe as the rest of the log.
+  const startedAt = Date.now();
+  // Both are set before the only line that reads them; an early return on a
+  // rejected turn never reaches it.
+  let authAt;
+  let budgetAt;
+
   const { claims } = await readAuth(request, env); // throws AuthError → 401
+  authAt = Date.now();
   const uid = safePathSegment(claims?.user_id || claims?.sub);
   if (!uid) throw new AuthError('Token carries no uid');
 
@@ -1638,6 +1649,7 @@ async function handleAssistant(request, env, origin, execCtx) {
     );
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
   }
+  budgetAt = Date.now();
   if (isBudgetExhausted(spentUsd, budgetUsd)) {
     console.warn(
       JSON.stringify({ level: 'warn', event: 'assistant_budget_exhausted', month, budgetUsd }),
@@ -1692,8 +1704,9 @@ async function handleAssistant(request, env, origin, execCtx) {
     },
   };
 
+  const turnStartedAt = Date.now();
   try {
-    const { reply, provider, usage } = await runAssistantTurn({
+    const { reply, provider, usage, timing } = await runAssistantTurn({
       providers,
       messages,
       ctx,
@@ -1710,6 +1723,27 @@ async function handleAssistant(request, env, origin, execCtx) {
           }),
         ),
     });
+    // Where the student's wait actually went. One line per answered turn, so a
+    // week of `wrangler tail` says whether the model, our own Firestore reads,
+    // or the round-trip count is the thing worth fixing.
+    const finishedAt = Date.now();
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        event: 'assistant_turn_timing',
+        provider,
+        totalMs: finishedAt - startedAt,
+        authMs: authAt - startedAt,
+        budgetMs: budgetAt - authAt,
+        turnMs: finishedAt - turnStartedAt,
+        modelMs: timing?.modelMs ?? 0,
+        toolMs: timing?.toolMs ?? 0,
+        modelCalls: timing?.modelCalls ?? 0,
+        toolCalls: timing?.toolCalls ?? 0,
+        rounds: timing?.rounds ?? 0,
+        outputTokens: usage?.outputTokens ?? 0,
+      }),
+    );
     // Record what the answer cost — but off the response path (#553): the
     // student has no reason to wait on our bookkeeping. A write that fails must
     // not lose them their answer either, so it is logged loudly instead,
