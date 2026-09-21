@@ -8168,6 +8168,43 @@ body[data-page="admin"] .orb { display: none !important; }
   align-items: center;
   min-height: 30px;
 }
+/* A reply is structured elements now, not one pre-wrapped string (#730), so the
+   bubble stops preserving layout whitespace and lets the blocks below own the
+   spacing. pre-line, not normal: a line break the model put INSIDE a paragraph
+   is deliberate, and only the runs of spaces around our own markup collapse.
+   Loaded by both front-ends — index.html and app/shell.tsx both pull style.css
+   — so these rules are deliberately NOT restated in shell-routes.css. */
+.assistant-bubble--rich {
+  white-space: pre-line;
+}
+.assistant-bubble--rich > :first-child {
+  margin-top: 0;
+}
+.assistant-bubble--rich > :last-child {
+  margin-bottom: 0;
+}
+.assistant-bubble--rich p {
+  margin: 0 0 8px;
+}
+.assistant-bubble--rich ul,
+.assistant-bubble--rich ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.assistant-bubble--rich li {
+  margin: 2px 0;
+}
+.assistant-bubble--rich li::marker {
+  color: var(--text3);
+}
+/* Weight only, no accent colour. The prompt asks for emphasis on the ONE number
+   that answers the question, but a model that ignores that and bolds nine spans
+   must not repaint the bubble green — that would only trade the old wall of
+   asterisks for a wall of colour. Weight stays legible at one emphasis and
+   stays quiet at nine. */
+.assistant-bubble--rich strong {
+  font-weight: 600;
+}
 /* Announced to screen readers, invisible on screen: they get the word, sighted
    users get the motion (#553). */
 .assistant-sr-only {

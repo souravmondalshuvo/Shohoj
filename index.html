@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-NqxTNWYjoiQJHufNNRyHXuSqec1OB94GYxpby8WhaSU='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-lIG8TFjKboKf6Ud1GuNZhN/vjn/kf/jwxXzu/WvTxoE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8185,6 +8185,43 @@ body[data-page="admin"] .orb { display: none !important; }
   display: inline-flex;
   align-items: center;
   min-height: 30px;
+}
+/* A reply is structured elements now, not one pre-wrapped string (#730), so the
+   bubble stops preserving layout whitespace and lets the blocks below own the
+   spacing. pre-line, not normal: a line break the model put INSIDE a paragraph
+   is deliberate, and only the runs of spaces around our own markup collapse.
+   Loaded by both front-ends — index.html and app/shell.tsx both pull style.css
+   — so these rules are deliberately NOT restated in shell-routes.css. */
+.assistant-bubble--rich {
+  white-space: pre-line;
+}
+.assistant-bubble--rich > :first-child {
+  margin-top: 0;
+}
+.assistant-bubble--rich > :last-child {
+  margin-bottom: 0;
+}
+.assistant-bubble--rich p {
+  margin: 0 0 8px;
+}
+.assistant-bubble--rich ul,
+.assistant-bubble--rich ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.assistant-bubble--rich li {
+  margin: 2px 0;
+}
+.assistant-bubble--rich li::marker {
+  color: var(--text3);
+}
+/* Weight only, no accent colour. The prompt asks for emphasis on the ONE number
+   that answers the question, but a model that ignores that and bolds nine spans
+   must not repaint the bubble green — that would only trade the old wall of
+   asterisks for a wall of colour. Weight stays legible at one emphasis and
+   stays quiet at nine. */
+.assistant-bubble--rich strong {
+  font-weight: 600;
 }
 /* Announced to screen readers, invisible on screen: they get the word, sighted
    users get the motion (#553). */
@@ -32729,6 +32766,224 @@ function examplePromptsForTab(tabId) {
   return ASSISTANT_TAB_PROMPTS[key] || ASSISTANT_DEFAULT_PROMPTS;
 }
 
+// ── js/core/assistantFormat.js ──────────────────────────────────
+// js/core/assistantFormat.js
+//
+// Turns an Assistant reply into display blocks (#730).
+//
+// The model writes markdown whether or not we ask it to. Before this module
+// both front-ends printed the reply with `textContent` under
+// `white-space: pre-wrap`, so every `**`, `###` and `---` landed on screen
+// verbatim — a chat bubble full of punctuation.
+//
+// The system prompt now asks for plain prose, but a prompt is best-effort and
+// this is the guarantee: whatever shape the answer arrives in, the markers are
+// either rendered as formatting or removed. Nothing leaks.
+//
+// Authored in vanilla JS, in js/core, because BOTH front-ends need it — the
+// legacy bundle (build3.py flattens js/ into shohoj.html and cannot load .ts)
+// and the React shell, which imports it through assistantFormat.d.ts. The same
+// arrangement assistantClient.js already uses.
+//
+// The parser is pure and returns data, not DOM: the legacy FAB builds elements
+// from it, the shell maps it to JSX, and a unit test can assert on it without a
+// browser. Only `renderAssistantReply` below touches the DOM, and it builds
+// every node with createElement/textContent — model output must never reach
+// innerHTML, both because it is untrusted text and because the production CSP
+// leaves us no margin for cleverness there.
+
+// A line that is nothing but a horizontal rule: ---, ***, ___ (3+).
+const RULE_RE = /^\s*([-*_])\1{2,}\s*$/;
+// ### Heading — up to 6 hashes, then the text.
+const HEADING_RE = /^\s{0,3}(#{1,6})\s+(.*)$/;
+// Bulleted item: -, *, + or an actual bullet the model sometimes emits.
+const BULLET_RE = /^\s*[-*+•]\s+(.*)$/;
+// Numbered item: 1. or 1)
+const NUMBER_RE = /^\s*\d{1,2}[.)]\s+(.*)$/;
+
+/**
+ * Strip inline markers we do not render, leaving the text they wrapped.
+ *
+ * Runs AFTER bold extraction, so a `**` that survives to here was unmatched —
+ * an opening marker with no partner, which would otherwise print as two stars.
+ */
+function stripInlineMarkers(text) {
+  return (
+    text
+      // `code` → code, without pretending we style code spans.
+      .replace(/`+([^`]*)`+/g, '$1')
+      // Dangling bold delimiters left over after the bold pass — an opener the
+      // model never closed. Position-sensitive on purpose: a blanket strip of
+      // `__` also eats the one in `window.__xss` or `__proto__`, corrupting
+      // text the student is entitled to read exactly as sent. A real delimiter
+      // hugs the phrase it opens or closes; one buried mid-identifier does not.
+      .replace(/(^|[\s([{])(\*\*|__)(?=\S)/g, '$1')
+      .replace(/(\S)(\*\*|__)(?=[\s)\]}.,;:!?]|$)/g, '$1')
+      // An orphan with nothing on either side to delimit (the `****` the model
+      // emits for an empty bold). Coding help is out of scope, so a lone `**`
+      // is a stray marker here and never Python's power operator.
+      .replace(/(^|\s)(\*\*|__)(?=\s|$)/g, '$1')
+      // A single * or _ used as emphasis, but never one inside a word
+      // (file_name, 3*4) — only a marker hugging the text it wraps.
+      .replace(/(^|\s)[*_](\S[^*_]*\S|\S)[*_](?=\s|$)/g, '$1$2')
+      // Markdown links [label](url): keep the label, drop the plumbing.
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  );
+}
+
+/**
+ * Split one line into bold and plain spans.
+ *
+ * Returns [{ text, bold }]. Adjacent plain text is not merged — the callers
+ * both emit one node per span, and a stray empty span is dropped here.
+ */
+function parseSpans(line) {
+  const spans = [];
+  // __bold__ is rewritten to **bold** first, so one regex handles both — and
+  // the rewrite is word-boundary aware, exactly as CommonMark is: the
+  // underscores in snake__case__word are part of the identifier, not emphasis
+  // around "case". Skipping that check turned a course code into bold soup.
+  const src = line.replace(
+    /(^|[^A-Za-z0-9_])__([^_\n]+)__(?![A-Za-z0-9_])/g,
+    '$1**$2**',
+  );
+  const re = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m;
+  while ((m = re.exec(src)) !== null) {
+    if (m.index > last) {
+      const plain = stripInlineMarkers(src.slice(last, m.index));
+      if (plain) spans.push({ text: plain, bold: false });
+    }
+    const inner = stripInlineMarkers(m[1] ?? '').trim();
+    if (inner) spans.push({ text: inner, bold: true });
+    last = re.lastIndex;
+  }
+  if (last < src.length) {
+    const plain = stripInlineMarkers(src.slice(last));
+    if (plain) spans.push({ text: plain, bold: false });
+  }
+  return spans;
+}
+
+/**
+ * Parse a reply into blocks:
+ *   { type: 'p',  spans: [...] }            a paragraph (or a heading's text)
+ *   { type: 'ul' | 'ol', items: [[...]] }   a list, each item a span array
+ *
+ * A heading becomes a paragraph whose text is bold rather than an <h3>: the
+ * bubble is ~300px wide and a real heading scale there looks like a mistake,
+ * but the emphasis the model meant is still worth keeping.
+ */
+function parseAssistantReply(text) {
+  const blocks = [];
+  let paragraph = [];
+  let list = null;
+
+  const flushParagraph = () => {
+    if (paragraph.length === 0) return;
+    const spans = [];
+    paragraph.forEach((line, i) => {
+      // A newline inside a paragraph is a line break the model meant to keep
+      // (a list of numbers, an address); between spans it is just a space.
+      if (i > 0) spans.push({ text: '\n', bold: false });
+      spans.push(...parseSpans(line));
+    });
+    if (spans.some((s) => s.text.trim())) blocks.push({ type: 'p', spans });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list && list.items.length > 0) blocks.push(list);
+    list = null;
+  };
+
+  for (const raw of String(text ?? '').split('\n')) {
+    const line = raw.replace(/\s+$/, '');
+
+    if (!line.trim()) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    if (RULE_RE.test(line)) {
+      // A divider inside a chat bubble is noise whichever way it renders; the
+      // blank line it implies is the part worth keeping.
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const heading = line.match(HEADING_RE);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      const spans = parseSpans(heading[2]).map((s) => ({ ...s, bold: true }));
+      if (spans.length > 0) blocks.push({ type: 'p', spans });
+      continue;
+    }
+
+    const bullet = line.match(BULLET_RE);
+    const numbered = bullet ? null : line.match(NUMBER_RE);
+    if (bullet || numbered) {
+      flushParagraph();
+      const type = bullet ? 'ul' : 'ol';
+      if (!list || list.type !== type) {
+        flushList();
+        list = { type, items: [] };
+      }
+      const spans = parseSpans((bullet ? bullet[1] : numbered[1]).trim());
+      if (spans.length > 0) list.items.push(spans);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(line);
+  }
+  flushParagraph();
+  flushList();
+  return blocks;
+}
+
+/**
+ * Build the DOM for a reply, for the legacy front-end.
+ *
+ * `doc` is injected so this is testable without a browser. Returns a
+ * DocumentFragment the caller appends to the bubble.
+ */
+function renderAssistantReply(text, doc) {
+  const d = doc || (typeof document !== 'undefined' ? document : null);
+  const frag = d.createDocumentFragment();
+
+  const appendSpans = (parent, spans) => {
+    for (const span of spans) {
+      if (span.bold) {
+        const strong = d.createElement('strong');
+        strong.textContent = span.text;
+        parent.appendChild(strong);
+      } else {
+        parent.appendChild(d.createTextNode(span.text));
+      }
+    }
+  };
+
+  for (const block of parseAssistantReply(text)) {
+    if (block.type === 'p') {
+      const p = d.createElement('p');
+      appendSpans(p, block.spans);
+      frag.appendChild(p);
+    } else {
+      const listEl = d.createElement(block.type);
+      for (const item of block.items) {
+        const li = d.createElement('li');
+        appendSpans(li, item);
+        listEl.appendChild(li);
+      }
+      frag.appendChild(listEl);
+    }
+  }
+  return frag;
+}
+
 // ── js/core/assistantHistory.js ─────────────────────────────────
 // js/core/assistantHistory.js
 //
@@ -33016,7 +33271,9 @@ function morphPanel(panel, pillRect, direction) {
 //
 // Everything is built with createElement + textContent and wired with
 // addEventListener: model output is never parsed as HTML, and prod CSP drops
-// inline on* attributes anyway (script-src-attr).
+// inline on* attributes anyway (script-src-attr). Replies go through
+// assistantFormat, which renders the model's markdown as real elements rather
+// than printing its punctuation (#730) — still node by node, never innerHTML.
 
 // The transcript moved from sessionStorage (dies with the tab) to a device-local
 // IndexedDB record that survives a new tab and a new day (#543). Still local,
@@ -33114,11 +33371,18 @@ function persist() {
 
 function bubble(role, text, extraClass) {
   const div = document.createElement('div');
+  const isUser = role === 'user';
   div.className =
     'assistant-bubble ' +
-    (role === 'user' ? 'assistant-bubble--user' : 'assistant-bubble--reply') +
+    (isUser ? 'assistant-bubble--user' : 'assistant-bubble--reply assistant-bubble--rich') +
     (extraClass ? ' ' + extraClass : '');
-  div.textContent = text;
+  if (isUser) {
+    // The student's own message is shown exactly as typed: their newlines are
+    // theirs, and there is no markdown in it to render.
+    div.textContent = text;
+  } else {
+    div.appendChild(renderAssistantReply(text, document));
+  }
   return div;
 }
 
