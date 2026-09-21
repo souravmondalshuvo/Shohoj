@@ -355,6 +355,46 @@ is wrong about the only thing it exists to show.
 not learn about later edits. A subscribable feed is a server endpoint with its
 own auth story and belongs with the Phase 7 integration work.
 
+## What Phase 7a settled
+
+**Detection proposes; only a student creates.** A `TaskDetector` returns
+`DetectedTask` values and never touches the Tasks API. There is no
+`DetectedTask → CreateTaskInput` path, so `Detect → Suggest → Confirm → Create`
+is enforced by the types rather than by anyone remembering it — a future
+detector cannot skip the student by accident.
+
+**The first detector needs no OAuth and no model.** A student can already see
+an announcement, so they can already paste it — the same argument
+`connectScheduleImport` makes for the routine. The parse runs in the page. That
+is how the brief's rule that AI must never be a hard dependency is met: the
+dependency does not exist. Gmail and an AI extractor arrive later as further
+detectors behind the same boundary, not as a second path into the model.
+
+**An invented deadline is worse than an absent one.** The parser refuses rather
+than guesses: a bare number is not a time without am/pm, a colon or a 24-hour
+value; a course code must be in the catalogue, so `ROOM 301` stays a room;
+`31 September` is rejected rather than rolled into October; and text that pins
+nothing down is reported as unrecognised rather than becoming a task named after
+its first line.
+
+**A date with no year resolves forward, not backward.** This year, unless that
+is more than a month past — which puts a January exam mentioned in December
+where it belongs, while still allowing a slightly old email to read as recent.
+
+**Only dated proposals are selected by default.** An undated one is still
+offered, one checkbox away, but `Add 3 tasks` should mean three things the
+parser actually pinned down. Un-adding costs far more than ticking a box.
+
+**Nothing detected proposes a priority.** A parser has no view on how much a
+quiz matters to this student. Supplying one would put an invented value in front
+of the deterministic engine that exists to decide exactly that.
+
+**`PASTE` is its own source, not `MANUAL`.** Both were approved by the student,
+but only one had its date read by a parser, and that is the distinction they
+need when a deadline turns out wrong. `sourceReference` carries the sentence it
+was read from, so the answer is one they can check rather than one they must
+trust.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -386,4 +426,5 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 5b ✅ | Surfacing them: why-this-ranks-here, marks entry, grade impact on screen |
 | 6a ✅ | Reminders, over the existing cron and sender |
 | 6b ✅ | The internal calendar and ICS export |
-| 7 | Gmail, Google Calendar, AI — behind an integration boundary, `Detect → Suggest → Confirm → Create` |
+| 7a ✅ | The detection boundary, and reading deadlines out of pasted text |
+| 7b | Gmail, Google Calendar, AI — further detectors behind the same boundary |
