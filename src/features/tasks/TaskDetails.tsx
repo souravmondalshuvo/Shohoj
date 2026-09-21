@@ -8,7 +8,8 @@
 
 import { useId, useState, type FormEvent } from 'react';
 
-import type { Assessment, Task } from '../../platform/api/tasks.ts';
+import type { Assessment, Reminder, Task } from '../../platform/api/tasks.ts';
+import { TaskReminders } from './TaskReminders.tsx';
 import { PRIORITY_BAND_LABELS, priorityBand, priorityReasons } from './priorityExplainer.ts';
 
 export interface TaskDetailsProps {
@@ -20,6 +21,9 @@ export interface TaskDetailsProps {
     earnedMarks: number | null;
   }) => Promise<string | null>;
   readonly onRemoveAssessment: () => Promise<string | null>;
+  readonly reminders: readonly Reminder[];
+  readonly onAddReminder: (offsetMinutes: number) => Promise<string | null>;
+  readonly onRemoveReminder: (id: string) => Promise<string | null>;
 }
 
 export function TaskDetails({
@@ -27,6 +31,9 @@ export function TaskDetails({
   assessment,
   onSaveAssessment,
   onRemoveAssessment,
+  reminders,
+  onAddReminder,
+  onRemoveReminder,
 }: TaskDetailsProps) {
   const reasons = priorityReasons(task, {
     assessmentWeight: assessment?.weightPercent ?? null,
@@ -60,6 +67,13 @@ export function TaskDetails({
           </ul>
         </section>
       )}
+
+      <TaskReminders
+        reminders={reminders}
+        hasDeadline={task.dueAt !== null}
+        onAdd={onAddReminder}
+        onRemove={onRemoveReminder}
+      />
 
       <AssessmentEditor
         assessment={assessment}
