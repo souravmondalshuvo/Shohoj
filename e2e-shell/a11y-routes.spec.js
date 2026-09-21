@@ -402,17 +402,28 @@ test('@a11y Degree route (tracker over seeded state) has no serious/critical vio
       JSON.stringify({
         semesters: [
           { id: 1, summary: true, courses: [], summaryCGPA: 3.42, summaryCredits: 60, summaryAttempted: 63, summarySemesters: 5 },
-          { id: 2, name: 'Spring 2026', courses: [{ name: 'CSE220 - Data Structures', credits: 3, grade: 'A', gradePoint: 4 }] },
+          { id: 2, name: 'Spring 2026', courses: [
+            { name: 'CSE220 - Data Structures', credits: 3, grade: 'A', gradePoint: 4 },
+            // Seeds the minor tracker's populated state (#731): without a
+            // passing MAT course the checklist renders all-unmet, and without a
+            // minor selected it does not render at all — so the requirement
+            // rows, the status marks and the elective list would go unscanned.
+            { name: 'Principles of Mathematics (MAT111)', credits: 3, grade: 'A', gradePoint: 4 },
+            { name: 'Optimization (CSE402)', credits: 3, grade: 'B', gradePoint: 3 },
+          ] },
         ],
         startSeason: 'Spring',
         startYear: '2024',
         currentDept: 'CSE',
+        currentMinor: 'MATH',
         planCourses: [],
       }),
     );
   });
   await page.goto('/degree-progress', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('degree-tracker')).toBeVisible();
+  await expect(page.getByTestId('minor-core-list')).toBeVisible();
+  await expect(page.getByTestId('minor-elective-list')).toBeVisible();
   const blocking = await scanPage(page);
   expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 });
