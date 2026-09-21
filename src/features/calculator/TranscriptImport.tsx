@@ -32,6 +32,8 @@ export interface TranscriptImportProps {
   readonly lookupCourse: CourseLookup;
   /** A confirmed import — the parsed transcript mapped to calculator state. */
   readonly onImport: (state: CalculatorState) => void;
+  /** The minor already selected, carried across the import (#731). */
+  readonly currentMinor?: string;
   readonly ref?: Ref<TranscriptImportHandle>;
 }
 
@@ -73,7 +75,12 @@ function Dialog({
   );
 }
 
-export default function TranscriptImport({ lookupCourse, onImport, ref }: TranscriptImportProps) {
+export default function TranscriptImport({
+  lookupCourse,
+  onImport,
+  currentMinor = '',
+  ref,
+}: TranscriptImportProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
 
@@ -165,7 +172,7 @@ export default function TranscriptImport({ lookupCourse, onImport, ref }: Transc
               variant="primary"
               autoFocus
               onClick={() => {
-                onImport(importedCalculatorState(phase.parsed));
+                onImport(importedCalculatorState(phase.parsed, currentMinor));
                 close();
               }}
             >
