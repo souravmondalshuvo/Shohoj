@@ -2615,6 +2615,58 @@ async function makeServiceAccountJson() {
     for (const body of bodies) assertEq(body.generation_config.thinking_budget, undefined);
   });
 
+  await test('a turn reports where its wall clock went', async () => {
+    // The point of the split is telling a slow MODEL from a slow TOOL. Both
+    // are stalled deliberately here, by different amounts, so a regression
+    // that attributes one to the other fails instead of looking plausible.
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const bodies = [];
+    const { timing } = await runGeminiTurn({
+      apiKey: 'k',
+      messages: [{ role: 'user', content: 'can I take CSE370?' }],
+      ctx: {
+        loadUserSnapshot: async () => {
+          await sleep(30);
+          return JSON.parse(ALICE_SNAPSHOT);
+        },
+      },
+      fetchImpl: async (url, init) => {
+        await sleep(20);
+        bodies.push(JSON.parse(init.body));
+        if (bodies.length === 1) {
+          return json({
+            id: 'i1',
+            steps: [{ type: 'function_call', id: 'c1', name: 'check_prerequisite',
+              arguments: { course_code: 'CSE370' } }],
+          });
+        }
+        return json(geminiSays('Not yet.'));
+      },
+    });
+
+    assertEq(timing.rounds, 2, 'a tool question costs two round-trips');
+    assertEq(timing.modelCalls, 2);
+    assertEq(timing.toolCalls, 1);
+    assert(timing.modelMs >= 40, `two 20ms calls should total >=40ms, got ${timing.modelMs}`);
+    assert(timing.toolMs >= 30, `a 30ms tool should read >=30ms, got ${timing.toolMs}`);
+    // The two buckets must not double-count each other: the tool runs BETWEEN
+    // the model calls, so its time belongs to exactly one of them.
+    assert(timing.toolMs < timing.modelMs + timing.toolMs, 'buckets overlap');
+  });
+
+  await test('a provider that reports no timing does not break the turn', async () => {
+    // Every stub provider in this file returns { text, usage } and nothing
+    // else. The response path must survive that rather than throwing on a
+    // field only the real loops populate.
+    const answered = await runAssistantTurn({
+      providers: [{ name: 'stub', run: async () => ({ text: 'hi', usage: { inputTokens: 1, outputTokens: 1 } }) }],
+      messages: [], ctx: {},
+    });
+    assertEq(answered.reply, 'hi');
+    assertEq(answered.timing.modelMs, 0, 'an empty accumulator, not undefined');
+    assertEq(answered.timing.rounds, 0);
+  });
+
   await test('free-tier turns are charged nothing by the ceiling', () => {
     assertEq(estimateCostUsd('gemini', { inputTokens: 1e6, outputTokens: 1e6 }), 0);
   });
