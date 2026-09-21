@@ -12,6 +12,18 @@ import type { CalculatorState } from './calculatorState.ts';
 export function demoCalculatorState(): CalculatorState {
   return {
     currentDept: 'CSE',
+    // No minor, matching legacy's loadSampleData, which has no such field.
+    //
+    // Seeding one here was tried and reverted (#731): it changes where
+    // /calculator comes to rest after the demo loads, and at that scroll offset
+    // the rate-faculty modal lands over `.calc-tabs`, which paints on top of it
+    // and swallows the clicks. That is a latent stacking bug — `.shell-page` is
+    // a <section>, so style.css:366 gives it position:relative;z-index:1, and
+    // the backdrop's z-index:9999 is capped inside that context while
+    // `.calc-tabs` sits outside it at z-index:2 — not something this field
+    // caused. Filed separately; the demo does not need a minor to earn its
+    // keep, and should not be what holds that fix hostage. See #738.
+    currentMinor: '',
     // loadSampleData seeds the planner too (DEMO_PLAN_COURSES in render.js).
     planCourses: ['CSE221', 'MAT120', 'PHY112'],
     semesters: [

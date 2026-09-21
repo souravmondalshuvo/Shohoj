@@ -34,6 +34,8 @@ export interface CalculatorState {
   readonly startYear: string;
   /** Department code (e.g. "CSE"); '' until the user picks one. */
   readonly currentDept: string;
+  /** Minor program code (e.g. "MATH"); '' when the student has no minor (#731). */
+  readonly currentMinor: string;
   /** Planned course codes (#327) — the legacy planner's plan.courses. */
   readonly planCourses: readonly string[];
 }
@@ -43,6 +45,7 @@ export const EMPTY_CALCULATOR_STATE: CalculatorState = {
   startSeason: '',
   startYear: '',
   currentDept: '',
+  currentMinor: '',
   planCourses: [],
 };
 
@@ -56,6 +59,7 @@ export type CalculatorAction =
   | { type: 'reorderSemesters'; srcId: number; tgtId: number }
   | { type: 'setStart'; startSeason: string; startYear: string }
   | { type: 'setDept'; currentDept: string }
+  | { type: 'setMinor'; currentMinor: string }
   | { type: 'addPlanCourse'; code: string }
   | { type: 'removePlanCourse'; code: string }
   | { type: 'clearPlan' }
@@ -123,6 +127,10 @@ export function calculatorReducer(
         currentDept: action.currentDept,
         planCourses: action.currentDept ? [] : state.planCourses,
       };
+    case 'setMinor':
+      // Unlike setDept, picking a minor resets nothing: the planner is scoped to
+      // the major, and a minor adds requirements rather than replacing any.
+      return { ...state, currentMinor: action.currentMinor };
     case 'addPlanCourse':
       // Legacy addToPlan: adding an already-planned code is a no-op.
       if (!action.code || state.planCourses.includes(action.code)) return state;
@@ -180,6 +188,8 @@ export function loadCalculatorState(store: KeyValueStore): LoadedCalculatorState
         startSeason: result.state.startSeason ?? '',
         startYear: result.state.startYear ?? '',
         currentDept: result.state.currentDept ?? '',
+        currentMinor:
+          typeof result.state.currentMinor === 'string' ? result.state.currentMinor : '',
         planCourses: (result.state.planCourses ?? []).filter(
           (c): c is string => typeof c === 'string' && c !== '',
         ),
@@ -211,6 +221,7 @@ export function persistCalculatorState(
     startSeason: state.startSeason,
     startYear: state.startYear,
     currentDept: state.currentDept,
+    currentMinor: state.currentMinor,
     planCourses: [...state.planCourses],
     // The routine, seat watchlist, review receipt and profile snapshot ride in
     // the same snapshot so the cloud copy is the whole picture, not just the
