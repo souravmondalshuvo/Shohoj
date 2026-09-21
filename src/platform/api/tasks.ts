@@ -37,7 +37,7 @@ export const TASK_TYPES = [
 
 export const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
-export const TASK_SOURCES = ['MANUAL', 'GMAIL', 'CALENDAR', 'AI_SUGGESTION'] as const;
+export const TASK_SOURCES = ['MANUAL', 'PASTE', 'GMAIL', 'CALENDAR', 'AI_SUGGESTION'] as const;
 
 export type TaskType = (typeof TASK_TYPES)[number];
 export type TaskStatus = (typeof TASK_STATUSES)[number];
