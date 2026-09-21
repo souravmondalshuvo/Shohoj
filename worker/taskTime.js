@@ -43,12 +43,23 @@ export const TASK_PRIORITIES = Object.freeze(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL
 /**
  * Where a task came from.
  *
- * GMAIL, CALENDAR and AI_SUGGESTION are Phase 7 and nothing produces them yet.
- * They ship now anyway: a task that cannot say where it came from is a task a
- * student cannot audit, and adding the field later would leave every existing
- * row reading MANUAL whether it was or not.
+ * PASTE is a task the student confirmed out of text they pasted (#735). It is
+ * deliberately not MANUAL: both were approved by the student, but only one had
+ * its date read by a parser, and that is exactly the distinction they need when
+ * a deadline turns out to be wrong.
+ *
+ * GMAIL, CALENDAR and AI_SUGGESTION are the rest of Phase 7 and nothing
+ * produces them yet. They ship now anyway: a task that cannot say where it came
+ * from is a task a student cannot audit, and adding the field later would leave
+ * every existing row reading MANUAL whether it was or not.
  */
-export const TASK_SOURCES = Object.freeze(['MANUAL', 'GMAIL', 'CALENDAR', 'AI_SUGGESTION']);
+export const TASK_SOURCES = Object.freeze([
+  'MANUAL',
+  'PASTE',
+  'GMAIL',
+  'CALENDAR',
+  'AI_SUGGESTION',
+]);
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
