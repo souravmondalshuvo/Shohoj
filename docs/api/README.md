@@ -337,6 +337,12 @@ idempotent**, unlike the two endpoints above.
 student; `priorityScore` is reserved for the automatic engine in Phase 5 and is
 null until then.
 
+`source` is `MANUAL` · `PASTE` · `GMAIL` · `CALENDAR` · `AI_SUGGESTION`, and
+`sourceReference` is free text up to 512 characters saying what it came from.
+`PASTE` and `MANUAL` are both student-approved, but only one had its date read
+by a parser — which is the distinction a student needs when a deadline turns
+out to be wrong.
+
 `enrollmentId` is nullable — a `PERSONAL` task belongs to no course. When it is
 set, the enrolment must be one of the caller's, checked on **create and on
 patch**: moving a task to another course is an edit like any other, and an
