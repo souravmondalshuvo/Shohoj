@@ -39,7 +39,7 @@ export function useTranscriptImport(): () => void {
 }
 
 export function TranscriptImportProvider({ children }: { readonly children: ReactNode }) {
-  const { dispatch } = useCalculator();
+  const { state, dispatch } = useCalculator();
   const { notify } = useNotifications();
   const ref = useRef<TranscriptImportHandle>(null);
   const open = useCallback(() => ref.current?.open(), []);
@@ -50,6 +50,7 @@ export function TranscriptImportProvider({ children }: { readonly children: Reac
       <TranscriptImport
         ref={ref}
         lookupCourse={lookupCourse}
+        currentMinor={state.currentMinor}
         onImport={(imported) => {
           dispatch({ type: 'replace', state: imported });
           notify({
