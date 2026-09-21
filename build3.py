@@ -109,6 +109,7 @@ MAIN_JS_FILES = [
     # Shohoj Assistant launcher + its Worker transport and opening morph (both
     # shared with the shell through their .d.ts boundaries)
     'js/core/assistantClient.js',
+    'js/core/assistantFormat.js',
     'js/core/assistantHistory.js',
     'js/core/assistantMorph.js',
     'js/ui/assistantFab.js',
