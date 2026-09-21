@@ -332,6 +332,29 @@ screen, and neither of them does grade maths.
 never the student, and any line that projects forward states its own
 assumption. Both have tests.
 
+## What Phase 6 settled
+
+**A reminder is an offset, not an instant.** `scheduledFor` is derived and
+recomputed whenever the deadline moves. Where the two disagree, the offset wins.
+
+**Delivery advances state only on a confirmed send**, inherited from the
+seat-alert cron. A failed send stays `PENDING` and retries; a reminder past its
+grace window is `CANCELLED` rather than delivered late.
+
+**Calendar events are a normalised layer, not an export format.**
+`toCalendarEvents` produces title/start/end/type/course/enrollment/metadata and
+knows nothing about ICS. That is the seam a Google or Apple integration maps
+from in Phase 7, so the task model never learns a provider's vocabulary — and
+the ICS writer is just its first consumer.
+
+**Undated work is excluded from the calendar, not placed on today.** A task with
+no due date is not a thing happening now, and a calendar that pretends otherwise
+is wrong about the only thing it exists to show.
+
+**The ICS is an export, not a subscription.** A calendar that imported it does
+not learn about later edits. A subscribable feed is a server endpoint with its
+own auth story and belongs with the Phase 7 integration work.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -362,5 +385,5 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 5a ✅ | Priority scoring, Assessment, grade-impact foundations — the engine |
 | 5b ✅ | Surfacing them: why-this-ranks-here, marks entry, grade impact on screen |
 | 6a ✅ | Reminders, over the existing cron and sender |
-| 6b | The internal calendar and ICS export |
+| 6b ✅ | The internal calendar and ICS export |
 | 7 | Gmail, Google Calendar, AI — behind an integration boundary, `Detect → Suggest → Confirm → Create` |
