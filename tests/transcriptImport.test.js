@@ -128,3 +128,9 @@ test('an import always resets the plan (legacy resetPlanner parity, #327)', () =
   const state = importedCalculatorState(parseTranscriptForImport(LINE_TRANSCRIPT, lookup));
   assert.deepEqual(state.planCourses, []);
 });
+
+test('an import carries the selected minor across — a transcript names none (#731)', () => {
+  const parsed = parseTranscriptForImport(LINE_TRANSCRIPT, lookup);
+  assert.equal(importedCalculatorState(parsed, 'MATH').currentMinor, 'MATH');
+  assert.equal(importedCalculatorState(parsed).currentMinor, '', 'no selection stays none');
+});
