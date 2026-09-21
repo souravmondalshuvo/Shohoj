@@ -90,6 +90,9 @@ export function useTasks(client: ApiClient | null, view: TaskView): TasksState {
           ? { items: result.value.items, overdue: EMPTY, error: null }
           : { items: EMPTY, overdue: EMPTY, error: result.error };
       }
+      // 'all' and 'calendar' both read the whole list; the calendar filters
+      // out undated work itself, in toCalendarEvents, rather than asking the
+      // server for a different slice of the same thing.
       const result = await listTasks(client, {}, options);
       return result.ok
         ? { items: result.value, overdue: EMPTY, error: null }

@@ -19,17 +19,23 @@ import {
   isOpen,
 } from '../../platform/api/tasks.ts';
 
-/** The three views. `all` is the only one that shows undated work. */
-export type TaskView = 'today' | 'upcoming' | 'all';
+/**
+ * The four views.
+ *
+ * `all` is the only one that shows undated work; `calendar` lays the dated work
+ * out by day and is the only one that is not a list.
+ */
+export type TaskView = 'today' | 'upcoming' | 'all' | 'calendar';
 
 export const TASK_VIEWS: readonly { readonly key: TaskView; readonly label: string }[] = [
   { key: 'today', label: 'Today' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'all', label: 'All' },
+  { key: 'calendar', label: 'Calendar' },
 ];
 
 export function isTaskView(value: unknown): value is TaskView {
-  return value === 'today' || value === 'upcoming' || value === 'all';
+  return value === 'today' || value === 'upcoming' || value === 'all' || value === 'calendar';
 }
 
 // ── Course labelling ────────────────────────────────────────────────────────
@@ -187,6 +193,13 @@ export function emptyState(input: EmptyStateInput): EmptyState {
     return {
       title: 'Nothing in the next week',
       detail: 'Anything without a deadline is under All.',
+      needsSetup: false,
+    };
+  }
+  if (input.view === 'calendar') {
+    return {
+      title: 'Nothing with a deadline',
+      detail: 'A task needs a due date before it can appear on a calendar.',
       needsSetup: false,
     };
   }
