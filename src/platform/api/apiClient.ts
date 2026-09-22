@@ -159,18 +159,31 @@ const ApiErrorEnvelope = z.object({
   }),
 });
 
-/** Map an HTTP status onto the typed error hierarchy. */
-function errorForStatus(status: number, message: string, detail: string): ShohojError {
+/**
+ * Map an HTTP status onto the typed error hierarchy.
+ *
+ * `apiCode` rides along when the response carried the API's own envelope. The
+ * client taxonomy stays coarse on purpose — it says which LAYER failed — so a
+ * caller that needs to tell "the model provider is unconfigured" from "the
+ * server broke", both of which are `worker` here, reads that instead.
+ */
+function errorForStatus(
+  status: number,
+  message: string,
+  detail: string,
+  apiCode?: string,
+): ShohojError {
+  const options = apiCode === undefined ? { userMessage: message } : { userMessage: message, apiCode };
   if (status === 401 || status === 403) {
-    return new PermissionError(detail, { userMessage: message });
+    return new PermissionError(detail, options);
   }
   if (status === 404) {
-    return new NotFoundError(detail, { userMessage: message });
+    return new NotFoundError(detail, options);
   }
   // Everything else — 400, 409, 429, 5xx — is a Worker-layer failure from the
   // client's point of view. They differ in what the user should do about it,
   // and the server's own message is what says so.
-  return new WorkerError(detail, { userMessage: message });
+  return new WorkerError(detail, options);
 }
 
 /**
@@ -194,7 +207,7 @@ async function errorForResponse(response: Response, path: string): Promise<Shoho
     return errorForStatus(response.status, genericMessageFor(response.status), fallback);
   }
   const { code, message } = parsed.value.error;
-  return errorForStatus(response.status, message, `${fallback} (${code})`);
+  return errorForStatus(response.status, message, `${fallback} (${code})`, code);
 }
 
 /** Displayable prose for a response that did not carry its own. */
