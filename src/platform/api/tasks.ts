@@ -572,3 +572,50 @@ export function byPriority(a: Task, b: Task): number {
   if (aDue !== bDue) return aDue < bDue ? -1 : 1;
   return a.id.localeCompare(b.id);
 }
+
+// ── AI extraction (#741) ────────────────────────────────────────────────────
+
+/**
+ * A proposal the extractor read out of text.
+ *
+ * Shaped to match `DetectedTask` in src/features/tasks/detection/types.ts, but
+ * declared here because this is the API boundary and the Zod schema is what
+ * actually enforces agreement with the Worker at runtime. The Worker has
+ * already validated and bounded every field; this is the second wall, not the
+ * first — an endpoint that starts returning something else fails here rather
+ * than halfway through rendering a proposal.
+ */
+const ExtractedTaskSchema = z.object({
+  title: z.string(),
+  type: z.enum(TASK_TYPES),
+  dueAt: z.string().nullable(),
+  courseCode: z.string().nullable(),
+  syllabus: z.string().nullable(),
+  confidence: z.enum(['high', 'medium', 'low']),
+  evidence: z.string().nullable(),
+});
+
+const ExtractResponseSchema = z.object({ detected: z.array(ExtractedTaskSchema) });
+
+export type ExtractedTask = z.infer<typeof ExtractedTaskSchema>;
+
+/**
+ * Ask the server to read deadlines out of text.
+ *
+ * Returns PROPOSALS. Nothing here creates a task — the student confirms them
+ * through the same panel the deterministic parser feeds.
+ *
+ * `courseCodes` narrows what the extractor will call a course. They describe
+ * the WORK, not the student: nothing identifying is sent, and the uid the
+ * server acts on comes from the token, never from this body.
+ */
+export function extractTasks(
+  client: ApiClient,
+  text: string,
+  courseCodes: readonly string[] = [],
+  options?: ApiRequestOptions,
+): Call<readonly ExtractedTask[]> {
+  return client
+    .post('/tasks/extract', { text, courseCodes: [...courseCodes] }, ExtractResponseSchema, options)
+    .then((response) => unwrap(response, 'detected'));
+}
