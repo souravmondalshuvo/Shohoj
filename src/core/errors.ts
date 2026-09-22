@@ -27,6 +27,16 @@ export interface ShohojErrorOptions {
   readonly userMessage?: string;
   /** Underlying cause (e.g. a raw SDK error) — kept for logs, never shown. */
   readonly cause?: unknown;
+  /**
+   * The API's own error code, when the failure came from a `/api/v1` envelope.
+   *
+   * `code` above is the CLIENT's taxonomy — what layer failed — and it stays
+   * deliberately coarse. This is the server's, and it is what lets a caller
+   * tell apart two failures that are both `worker` to the client: a model
+   * provider being unconfigured is something to degrade around, a 500 is
+   * something to report. Undefined for anything not carrying the envelope.
+   */
+  readonly apiCode?: string;
 }
 
 const GENERIC_USER_MESSAGE = 'Something went wrong. Please try again.';
@@ -35,11 +45,14 @@ const GENERIC_USER_MESSAGE = 'Something went wrong. Please try again.';
 export class ShohojError extends Error {
   readonly code: ShohojErrorCode;
   readonly userMessage: string;
+  /** The API's own code, when this came from a `/api/v1` error envelope. */
+  readonly apiCode: string | undefined;
 
   constructor(code: ShohojErrorCode, message: string, options: ShohojErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.code = code;
     this.userMessage = options.userMessage ?? GENERIC_USER_MESSAGE;
+    this.apiCode = options.apiCode;
     // `name` mirrors the concrete subclass for readable stacks/logs.
     this.name = new.target.name;
   }
