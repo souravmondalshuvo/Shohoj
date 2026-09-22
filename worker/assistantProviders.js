@@ -120,7 +120,7 @@ export class ProviderUnavailable extends Error {
 
 // ── Claude ────────────────────────────────────────────────────────────────────
 
-function claudeText(content) {
+export function claudeText(content) {
   return (content || [])
     .filter((block) => block.type === 'text' && typeof block.text === 'string')
     .map((block) => block.text)
@@ -210,7 +210,7 @@ export function openAiTools() {
   }));
 }
 
-function openAiText(output) {
+export function openAiText(output) {
   return (Array.isArray(output) ? output : [])
     .filter((item) => item.type === 'message')
     .flatMap((item) => (Array.isArray(item.content) ? item.content : []))
@@ -344,7 +344,7 @@ function geminiSteps(body) {
   return [];
 }
 
-function geminiText(body) {
+export function geminiText(body) {
   if (typeof body?.output_text === 'string' && body.output_text.trim()) {
     return body.output_text.trim();
   }
