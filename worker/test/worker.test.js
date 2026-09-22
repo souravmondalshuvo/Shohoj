@@ -3050,6 +3050,116 @@ async function makeServiceAccountJson() {
     }
   });
 
+  console.log('\nTask extraction (POST /api/v1/tasks/extract):');
+
+  const EXTRACT_CLAIMS = {
+    user_id: 'uid_alice',
+    email: 'alice@g.bracu.ac.bd',
+    email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  };
+
+  /** Run one extraction request under a valid token. */
+  async function extractWith(env, body, { token } = {}) {
+    return worker.fetch(
+      req('POST', '/api/v1/tasks/extract', {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+      env,
+      {},
+    );
+  }
+
+  await test('extract: 401 without a bearer token', async () => {
+    const res = await worker.fetch(req('POST', '/api/v1/tasks/extract', {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Quiz 3 on 25 September.' }),
+    }), { ...ENV }, {});
+    assertEq(res.status, 401);
+  });
+
+  await test('extract: 403 for a disallowed browser origin', async () => {
+    const res = await worker.fetch(req('POST', '/api/v1/tasks/extract', {
+      origin: DISALLOWED_ORIGIN,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Quiz 3 on 25 September.' }),
+    }), { ...ENV }, {});
+    assertEq(res.status, 403);
+  });
+
+  await test('extract: 503 with no model key, and no quota consumed', async () => {
+    // The configuration check runs BEFORE the rate limit: a deployment with no
+    // key would 503 anyway, so burning the student's quota is pure punishment.
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      let called = 0;
+      const res = await extractWith({
+        ...ENV,
+        ASSISTANT_RATE_LIMIT: { async limit() { called++; return { success: true }; } },
+      }, { text: 'Quiz 3 on 25 September.' }, { token, jwk });
+      assertEq(res.status, 503);
+      assertEq(called, 0, 'no quota consumed for an unconfigured extractor');
+      const body = await res.json();
+      assertEq(body.error.code, 'unavailable');
+      assert(/add the task yourself/i.test(body.error.message), 'must point at the manual path');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('extract: 429 uses its own rate-limit bucket, not the assistant’s', async () => {
+    // Separate namespaces so extracting cannot starve a student out of chat.
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const keys = [];
+      const res = await extractWith({
+        ...ENV,
+        GEMINI_API_KEY: 'g-test',
+        ASSISTANT_RATE_LIMIT: { async limit({ key }) { keys.push(key); return { success: false }; } },
+      }, { text: 'Quiz 3 on 25 September.' }, { token, jwk });
+      assertEq(res.status, 429);
+      assertEq(keys[0], 'extract:uid_alice', 'rate-limit key must be the verified uid');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('extract: 400 on an empty or oversized paste', async () => {
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const env = { ...ENV, GEMINI_API_KEY: 'g-test' };
+      const empty = await extractWith(env, { text: '   ' }, { token, jwk });
+      assertEq(empty.status, 400);
+      const huge = await extractWith(env, { text: 'x'.repeat(9000) }, { token, jwk });
+      assertEq(huge.status, 400);
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('extract: the request body cannot name another student', async () => {
+    // The uid comes only from the verified token. A body field claiming to be
+    // someone else changes nothing — there is no uid input to override.
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const keys = [];
+      const res = await extractWith({
+        ...ENV,
+        GEMINI_API_KEY: 'g-test',
+        ASSISTANT_RATE_LIMIT: { async limit({ key }) { keys.push(key); return { success: false }; } },
+      }, { text: 'Quiz 3.', uid: 'uid_bob', userId: 'uid_bob' }, { token, jwk });
+      assertEq(res.status, 429);
+      assertEq(keys[0], 'extract:uid_alice', 'the token decides, never the body');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
   console.log(`\n${passed} passed, ${failed} failed\n`);
   process.exit(failed === 0 ? 0 : 1);
 })();
