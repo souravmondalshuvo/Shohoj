@@ -2647,8 +2647,23 @@ async function makeServiceAccountJson() {
     assertEq(timing.rounds, 2, 'a tool question costs two round-trips');
     assertEq(timing.modelCalls, 2);
     assertEq(timing.toolCalls, 1);
-    assert(timing.modelMs >= 40, `two 20ms calls should total >=40ms, got ${timing.modelMs}`);
-    assert(timing.toolMs >= 30, `a 30ms tool should read >=30ms, got ${timing.toolMs}`);
+    // One millisecond of slack, because the clock cannot express the bound this
+    // would otherwise assert. `timed` sums `Date.now() - startedAt`, and
+    // Date.now() reads whole milliseconds: a sleep started at t+0.4 and ending
+    // at t+29.9 is a real 29.5ms wait that subtracts to 29. CI caught exactly
+    // that ("got 29") on a loaded runner. Widening by 1ms keeps what this test
+    // is actually for — that a slow TOOL is not booked as a slow MODEL, which
+    // is a tens-of-milliseconds question — instead of asserting sub-millisecond
+    // precision that Date.now() does not have.
+    const CLOCK_MS = 1;
+    assert(
+      timing.modelMs >= 40 - CLOCK_MS,
+      `two 20ms calls should total >=40ms, got ${timing.modelMs}`,
+    );
+    assert(
+      timing.toolMs >= 30 - CLOCK_MS,
+      `a 30ms tool should read >=30ms, got ${timing.toolMs}`,
+    );
     // The two buckets must not double-count each other: the tool runs BETWEEN
     // the model calls, so its time belongs to exactly one of them.
     assert(timing.toolMs < timing.modelMs + timing.toolMs, 'buckets overlap');
