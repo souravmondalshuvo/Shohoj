@@ -49,7 +49,14 @@ export const API_V1_PREFIX = '/api/v1';
  * unrecognised code degrades to a generic failure rather than a crash.
  */
 export type ApiErrorCode =
-  'unauthenticated' | 'forbidden' | 'not_found' | 'invalid_request' | 'rate_limited' | 'internal';
+  | 'unauthenticated'
+  | 'forbidden'
+  | 'not_found'
+  | 'invalid_request'
+  | 'rate_limited'
+  /** A dependency Shohoj does not control is down, or a spend ceiling is reached. */
+  | 'unavailable'
+  | 'internal';
 
 /**
  * How a request relates to the signed-in student.
