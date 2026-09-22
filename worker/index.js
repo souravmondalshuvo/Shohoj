@@ -53,6 +53,13 @@ import {
   validateRoutinePicks,
 } from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
+import { buildExtractionProviders, runExtractionTurn } from './extractionProviders.js';
+import {
+  EXTRACTION_SYSTEM,
+  MAX_INPUT_CHARS,
+  buildExtractionPrompt,
+  parseExtractionResponse,
+} from './taskExtraction.js';
 import {
   estimateCostUsd,
   isBudgetExhausted,
@@ -1784,6 +1791,226 @@ async function handleAssistant(request, env, origin, execCtx) {
   }
 }
 
+/**
+ * POST /api/v1/tasks/extract — read deadlines out of text with a model (#741).
+ *
+ * Returns PROPOSALS. It writes nothing, owns nothing, and touches no
+ * repository — which is why it sits outside handleAcademicApi despite sharing
+ * its namespace: that router exists to bind a repository to a verified uid,
+ * and there is no repository here to bind.
+ *
+ * The guard order is the Assistant's, for the Assistant's reasons: the
+ * configuration check comes BEFORE the rate limit, so a deployment with no key
+ * does not burn a student's quota on a request that was always going to 503;
+ * and the spend ceiling comes last, immediately before any money is spent,
+ * because it costs a Firestore read that a flood of junk should never reach.
+ *
+ * Spend lands in the SAME monthly ledger as the Assistant. One ceiling bounds
+ * the whole bill — two would mean the owner's real exposure is the sum of two
+ * numbers neither of which they set.
+ */
+async function handleTaskExtraction(request, env, origin, execCtx) {
+  const originErr = requireBrowserOriginAllowed(request, env, origin);
+  if (originErr) return originErr;
+
+  let claims;
+  try {
+    ({ claims } = await readAuth(request, env));
+  } catch (e) {
+    if (e instanceof AuthError) {
+      return apiV1Error(
+        env,
+        origin,
+        401,
+        API_ERROR_CODES.UNAUTHENTICATED,
+        'Sign in with your university Google account to continue.',
+      );
+    }
+    throw e;
+  }
+  const uid = safePathSegment(claims?.user_id || claims?.sub);
+  if (!uid) throw new AuthError('Token carries no uid');
+
+  // Not configured is not an error the student caused. The client treats this
+  // as "the extra read is unavailable" and keeps the deterministic parser's
+  // result, which is the whole reason AI is not a hard dependency here.
+  const providers = buildExtractionProviders(env);
+  if (providers.length === 0) {
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj cannot read announcements for you right now. You can still add the task yourself.',
+    );
+  }
+
+  // Paid endpoint: a throwing limiter denies rather than granting unmetered
+  // model spend, exactly as /api/assistant does.
+  if (
+    !(await rateLimit(env, uid, 'extract', {
+      binding: env.ASSISTANT_RATE_LIMIT,
+      failClosed: true,
+    }))
+  ) {
+    return apiV1Error(
+      env,
+      origin,
+      429,
+      API_ERROR_CODES.RATE_LIMITED,
+      'That is a lot of reading. Give it a moment and try again.',
+    );
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return apiV1Error(env, origin, 400, API_ERROR_CODES.INVALID_REQUEST, 'Invalid JSON body.');
+  }
+  const text = typeof body?.text === 'string' ? body.text.trim() : '';
+  if (text === '' || text.length > MAX_INPUT_CHARS) {
+    return apiV1Error(
+      env,
+      origin,
+      400,
+      API_ERROR_CODES.INVALID_REQUEST,
+      `Paste between 1 and ${MAX_INPUT_CHARS} characters of text.`,
+    );
+  }
+  // Course codes narrow what the model will call a course. They are about the
+  // WORK, not the person — nothing identifying goes into the prompt.
+  const courseCodes = Array.isArray(body?.courseCodes)
+    ? body.courseCodes.filter((c) => typeof c === 'string').slice(0, 20)
+    : [];
+
+  const month = monthKey();
+  const budgetUsd = monthlyBudgetUsd(env);
+  let spentUsd;
+  let budgetToken;
+  try {
+    budgetToken = await getServiceAccountAccessToken(env);
+    spentUsd = await readAssistantSpend(env, budgetToken, month);
+  } catch (e) {
+    // Fails CLOSED: not knowing what has been spent and guessing wrong runs up
+    // someone's personal card.
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'extract_budget_read_failed',
+        month,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj cannot read announcements for you right now. You can still add the task yourself.',
+    );
+  }
+  if (isBudgetExhausted(spentUsd, budgetUsd)) {
+    console.warn(
+      JSON.stringify({ level: 'warn', event: 'extract_budget_exhausted', month, budgetUsd }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj has done all the reading it can this month. You can still add the task yourself.',
+    );
+  }
+
+  let reply;
+  let provider;
+  let usage;
+  try {
+    ({ text: reply, provider, usage } = await runExtractionTurn({
+      providers,
+      system: EXTRACTION_SYSTEM,
+      prompt: buildExtractionPrompt(text, { now: new Date(), courseCodes }),
+      onFallback: (e) =>
+        console.warn(
+          JSON.stringify({
+            level: 'warn',
+            event: 'extract_provider_fallback',
+            provider: e?.provider,
+            reason: e?.reason,
+          }),
+        ),
+    }));
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'extract_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      502,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj could not read that just now. You can still add the task yourself.',
+    );
+  }
+
+  // Bookkeeping off the response path, as /api/assistant does: the student has
+  // no reason to wait on it, and a failed write must not cost them their
+  // result. Logged loudly, because a ceiling that silently stops counting is
+  // worse than no ceiling.
+  const record = recordAssistantSpend(
+    env,
+    budgetToken,
+    month,
+    spentUsd,
+    estimateCostUsd(provider, usage),
+  ).catch((e) => {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'extract_budget_write_failed',
+        month,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+  });
+  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(record);
+  else await record;
+
+  const parsed = parseExtractionResponse(reply, { now: new Date() });
+  if (parsed === null) {
+    // The model answered with something that is not an extraction. That is a
+    // failure, not an empty result — telling a student "nothing found" when we
+    // could not read the reply would be a lie about their announcement.
+    console.warn(JSON.stringify({ level: 'warn', event: 'extract_unparseable', provider }));
+    return apiV1Error(
+      env,
+      origin,
+      502,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj could not read that just now. You can still add the task yourself.',
+    );
+  }
+  if (parsed.dropped > 0) {
+    // Counts only — never the student's text. A rising number here means the
+    // model is drifting from the format.
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        event: 'extract_entries_dropped',
+        provider,
+        dropped: parsed.dropped,
+      }),
+    );
+  }
+
+  return jsonResponse({ detected: parsed.tasks }, { status: 200 }, env, origin);
+}
+
 async function resendSeatAlert(env, to, subject, html) {
   const cfg = seatAlertEmailConfig(env);
   if (!cfg.ok) return false;
@@ -2466,6 +2693,9 @@ export default {
         return withRequestId(await handleReview(request, env, origin), requestId);
       if (request.method === 'GET' && url.pathname === '/api/v1/me')
         return withRequestId(await handleApiV1Me(request, env, origin), requestId);
+      // Before the /api/v1/tasks prefix below, which would otherwise swallow it.
+      if (request.method === 'POST' && url.pathname === '/api/v1/tasks/extract')
+        return withRequestId(await handleTaskExtraction(request, env, origin, ctx), requestId);
       if (
         url.pathname.startsWith('/api/v1/semesters') ||
         url.pathname.startsWith('/api/v1/enrollments') ||
