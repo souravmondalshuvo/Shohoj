@@ -886,6 +886,7 @@ export function createCampusScene(
         baseDepthWrite: boolean;
     }> = [];
     let modelSlabGeometry: RoundedBoxGeometry | null = null;
+    let modelAdopted = false;
     const modelAbort = new AbortController();
     let disposed = false;
 
@@ -949,6 +950,16 @@ export function createCampusScene(
         // at absolute heights, so a plan-only scale leaves them on their slab.
         const planScale = MODEL_FLOOR_PLATE.width / SLAB_W;
         roomGroup.scale.set(planScale, 1, planScale);
+        modelAdopted = true;
+        // Re-derive slab targets now that outlines are hidden. Called directly
+        // rather than via applyFloorFocus so an open floor's rooms aren't rebuilt.
+        for (const f of floors) {
+            const isFocused = focusedFloor !== null && f.floor === focusedFloor;
+            if (!isFocused) {
+                f.targetOpacity = 0;
+                f.mesh.material.depthWrite = false;
+            }
+        }
     }
 
     function loadExteriorModel(url: string): void {
@@ -1097,6 +1108,14 @@ export function createCampusScene(
             const isFocused = focusedFloor !== null && f.floor === focusedFloor;
             f.targetOpacity =
                 focusedFloor === null ? 0.1 : isFocused ? 0.78 : lifted ? 0.04 : 0.07;
+            // With the exterior model in, the model's own floors read as the
+            // building, and the plate-sized slabs only poke out past its set-back
+            // west façade — so every slab but the focused one goes fully clear.
+            // It stays in floorGroup (the raycaster ignores visibility, so the
+            // building still answers floor clicks) and its label still shows.
+            if (modelAdopted && !isFocused) f.targetOpacity = 0;
+            // A clear slab must not write depth, or it walls off what's behind it.
+            f.mesh.material.depthWrite = f.targetOpacity > 0;
             f.targetLabelOpacity =
                 focusedFloor === null
                     ? f.interactive ? 0.86 : 0.3
