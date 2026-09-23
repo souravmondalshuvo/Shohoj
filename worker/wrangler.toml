@@ -67,9 +67,11 @@ ASSISTANT_MONTHLY_BUDGET_USD = "5"
 # payment path in this deployment.
 ASSISTANT_DAILY_MESSAGE_LIMIT = "40"
 # Sender for seat-alert + admin-upload emails. MUST be a sender on a domain you
-# have verified in Resend (SPF + DKIM) — see worker/README.md. Leave UNSET until
-# then: the Resend test sender (onboarding@resend.dev) only delivers to the
-# Resend account owner, so the Worker treats a missing or test EMAIL_FROM as
-# "not configured" and skips sends (logging a loud operational error) rather
-# than silently dropping every student's email.
-# EMAIL_FROM = "Shohoj Alerts <alerts@your-verified-domain.example>"
+# have verified in Resend (SPF + DKIM) — see worker/README.md. mail.shohoj.app
+# verified in Resend as of 2026-09-24. If it's ever unverified or replaced,
+# comment this back out rather than leaving a stale sender: the Resend test
+# sender (onboarding@resend.dev) only delivers to the Resend account owner, so
+# the Worker treats a missing or test EMAIL_FROM as "not configured" and skips
+# sends (logging a loud operational error) rather than silently dropping every
+# student's email.
+EMAIL_FROM = "Shohoj Alerts <alerts@mail.shohoj.app>"
