@@ -155,6 +155,7 @@ const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
 const IDLE_ORBIT_AFTER_MS = 9000;   // idle time before the camera starts drifting
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
+const MODEL_FOCUSED_OPACITY = 0.04;    // exterior model opacity while a floor is open
 const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
 const FRAMING_MAX_SCALE = 1.85;        // 101 m default distance x 1.85 stays under maxDistance 190
 
@@ -887,6 +888,9 @@ export function createCampusScene(
     }> = [];
     let modelSlabGeometry: RoundedBoxGeometry | null = null;
     let modelAdopted = false;
+    // The model fades harder than the drawn architecture when a floor opens:
+    // its dense façade screens (180k triangles) still read as busy at 10%.
+    let modelTargetFactor = 1;
     const modelAbort = new AbortController();
     let disposed = false;
 
@@ -1127,6 +1131,7 @@ export function createCampusScene(
         }
         const focused = focusedFloor !== null;
         architectureTargetFactor = focused ? 0.1 : 1;
+        modelTargetFactor = focused ? MODEL_FOCUSED_OPACITY : 1;
         shellTargetOpacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
         shellEdgesTargetOpacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
         fresnelTargetOpacity = focused ? FRESNEL_OPACITY.focused : FRESNEL_OPACITY.tower;
@@ -1236,7 +1241,7 @@ export function createCampusScene(
         // off the room layer behind it.
         for (const entry of modelMaterials) {
             const { material } = entry;
-            const targetOpacity = entry.baseOpacity * architectureTargetFactor;
+            const targetOpacity = entry.baseOpacity * modelTargetFactor;
             material.opacity += (targetOpacity - material.opacity) * k;
             const blend = entry.baseTransparent || material.opacity < 0.995;
             if (material.transparent !== blend) {
