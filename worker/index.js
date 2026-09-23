@@ -59,6 +59,12 @@
 //                           without removing the keys. Covers task extraction
 //                           too: one ledger, so the owner's exposure is the
 //                           number they set rather than the sum of two.
+//   ASSISTANT_DAILY_MESSAGE_LIMIT  Free daily allowance per student (default
+//                           40), combined across /api/assistant and task
+//                           extraction. Resets at UTC midnight. A backstop
+//                           against one student eating the shared monthly
+//                           budget alone, not a paywall — there is no payment
+//                           path here.
 //   ANTHROPIC_API_KEY       Claude API key for /api/assistant — lives only
 //                           here, never shipped to the client
 
@@ -88,6 +94,7 @@ import {
   monthKey,
   monthlyBudgetUsd,
 } from './assistantBudget.js';
+import { dailyLimit, dayKey, isQuotaExhausted, resetsAtIso } from './assistantQuota.js';
 import { isKnownCourse } from './catalog.generated.js';
 // The domain -> campus map, generated from src/core/university.ts so the
 // Worker, the Firestore rules and the registry cannot disagree about who
@@ -1668,6 +1675,42 @@ async function handleAssistant(request, env, origin, execCtx) {
   // tool to "nothing picked" rather than failing the turn.
   const routinePicks = validateRoutinePicks(body?.routine);
 
+  // Daily quota — one student's share of the shared monthly budget (#746).
+  // Same placement rationale as the spend ceiling below: it costs a Firestore
+  // read, so it sits behind the rate limiter and payload validation, and it is
+  // checked BEFORE the monthly ceiling because it is the more specific, more
+  // actionable failure for the student who tripped it.
+  //
+  // Fails CLOSED, same policy as the spend ceiling: a quota we cannot read is
+  // treated as exhausted risk, not as an all-clear.
+  const day = dayKey();
+  const quotaLimit = dailyLimit(env);
+  let quotaCount;
+  let quotaToken;
+  try {
+    quotaToken = await getServiceAccountAccessToken(env);
+    quotaCount = await readDailyQuotaCount(env, quotaToken, uid, day);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'assistant_quota_read_failed',
+        day,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
+  }
+  if (isQuotaExhausted(quotaCount, quotaLimit)) {
+    console.warn(JSON.stringify({ level: 'warn', event: 'assistant_quota_exhausted', day, quotaLimit }));
+    return jsonResponse(
+      { error: 'assistant_daily_quota_exhausted', resetsAt: resetsAtIso() },
+      { status: 429 },
+      env,
+      origin,
+    );
+  }
+
   // Spend ceiling — checked last of the guards, immediately before any money is
   // spent. It costs a Firestore read, so it deliberately sits behind the rate
   // limiter and the payload validation: a flood of junk requests should be
@@ -1816,7 +1859,33 @@ async function handleAssistant(request, env, origin, execCtx) {
     } else {
       await record;
     }
-    return jsonResponse({ reply }, { status: 200 }, env, origin);
+    // Quota counts only a turn that actually answered — a failed provider
+    // attempt (the catch block below) never costs the student part of their
+    // day. Same off-response-path treatment as the spend ledger above.
+    const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch((e) => {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'assistant_quota_write_failed',
+          day,
+          errorMessage: e?.message || String(e),
+        }),
+      );
+    });
+    if (typeof execCtx?.waitUntil === 'function') {
+      execCtx.waitUntil(quotaRecord);
+    } else {
+      await quotaRecord;
+    }
+    return jsonResponse(
+      {
+        reply,
+        quota: { remaining: Math.max(0, quotaLimit - quotaCount - 1), limit: quotaLimit, resetsAt: resetsAtIso() },
+      },
+      { status: 200 },
+      env,
+      origin,
+    );
   } catch (e) {
     console.error(
       JSON.stringify({
@@ -1922,6 +1991,45 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     ? body.courseCodes.filter((c) => typeof c === 'string').slice(0, 20)
     : [];
 
+  // Daily quota — the SAME counter /api/assistant checks (#746), so a student
+  // cannot dodge it by switching features. Checked before the monthly ceiling
+  // for the same reason as there: it is the more specific, more actionable
+  // failure. Fails CLOSED, same policy as the ceiling below.
+  const day = dayKey();
+  const quotaLimit = dailyLimit(env);
+  let quotaCount;
+  let quotaToken;
+  try {
+    quotaToken = await getServiceAccountAccessToken(env);
+    quotaCount = await readDailyQuotaCount(env, quotaToken, uid, day);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'extract_quota_read_failed',
+        day,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return apiV1Error(
+      env,
+      origin,
+      503,
+      API_ERROR_CODES.UNAVAILABLE,
+      'Shohoj cannot read announcements for you right now. You can still add the task yourself.',
+    );
+  }
+  if (isQuotaExhausted(quotaCount, quotaLimit)) {
+    console.warn(JSON.stringify({ level: 'warn', event: 'extract_quota_exhausted', day, quotaLimit }));
+    return apiV1Error(
+      env,
+      origin,
+      429,
+      API_ERROR_CODES.QUOTA_EXCEEDED,
+      "You've used today's free readings. You can still add the task yourself — more open up tomorrow.",
+    );
+  }
+
   const month = monthKey();
   const budgetUsd = monthlyBudgetUsd(env);
   let spentUsd;
@@ -2023,6 +2131,22 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
   if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(record);
   else await record;
 
+  // Quota is charged at the same point as spend, for the same reason: the
+  // model call happened and cost money regardless of whether the reply turns
+  // out to be parseable below.
+  const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch((e) => {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'extract_quota_write_failed',
+        day,
+        errorMessage: e?.message || String(e),
+      }),
+    );
+  });
+  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(quotaRecord);
+  else await quotaRecord;
+
   const parsed = parseExtractionResponse(reply, { now: new Date() });
   if (parsed === null) {
     // The model answered with something that is not an extraction. That is a
@@ -2050,7 +2174,15 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     );
   }
 
-  return jsonResponse({ detected: parsed.tasks }, { status: 200 }, env, origin);
+  return jsonResponse(
+    {
+      detected: parsed.tasks,
+      quota: { remaining: Math.max(0, quotaLimit - quotaCount - 1), limit: quotaLimit, resetsAt: resetsAtIso() },
+    },
+    { status: 200 },
+    env,
+    origin,
+  );
 }
 
 /**
@@ -2329,6 +2461,28 @@ async function readAssistantSpend(env, token, month) {
 async function recordAssistantSpend(env, token, month, spentUsd, costUsd) {
   await firestorePatchFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`, {
     spentUsd: spentUsd + costUsd,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+// ── Assistant daily quota (#746) ─────────────────────────────────────────────
+// One document per student per calendar day, at
+// assistantDailyQuota/{uid}_{YYYY-MM-DD}. Same read-modify-write tradeoff as
+// the budget ledger above, and the same reason: a lost update under a race
+// undercounts by at most one turn, which is not worth a transaction for a
+// cost backstop. Worker-only — no firestore.rules entry needed, the file's
+// catch-all match already denies every client read and write.
+const ASSISTANT_QUOTA_COLLECTION = 'assistantDailyQuota';
+
+async function readDailyQuotaCount(env, token, uid, day) {
+  const fields = await firestoreGetFields(env, token, `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`);
+  const count = Number(fields?.count);
+  return Number.isFinite(count) && count > 0 ? count : 0;
+}
+
+async function recordAssistantQuotaUse(env, token, uid, day, count) {
+  await firestorePatchFields(env, token, `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`, {
+    count: count + 1,
     updatedAt: new Date().toISOString(),
   });
 }
