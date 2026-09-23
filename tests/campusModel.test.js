@@ -17,7 +17,11 @@ import {
     MODEL_FLOOR_PLATE,
     MODEL_GROUND_Y,
 } from '../src/features/campus/campusModel.ts';
-import { framingDistanceScale } from '../src/features/campus/campusScene.ts';
+import {
+    framingDistanceScale,
+    MODEL_LIGHTING,
+    skyMoodForHour,
+} from '../src/features/campus/campusScene.ts';
 
 /** A minimal 12-byte GLB header: magic "glTF", version 2, total length. */
 function fakeGlb(extra = 0) {
@@ -98,4 +102,13 @@ test('framingDistanceScale: nonsense aspects fall back to 1', () => {
     for (const aspect of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
         assert.equal(framingDistanceScale(aspect), 1, String(aspect));
     }
+});
+
+test('MODEL_LIGHTING is neutral white, unlike the time-of-day mood (#755)', () => {
+    // The model must keep its Blender colours: white sky and sun, no tint.
+    assert.equal(MODEL_LIGHTING.sky, '#ffffff');
+    assert.equal(MODEL_LIGHTING.sunColor, '#ffffff');
+    // The golden-hour mood the owner saw at 19:46 is exactly what it replaces.
+    assert.notEqual(skyMoodForHour(19).sunColor, MODEL_LIGHTING.sunColor);
+    assert.ok(MODEL_LIGHTING.sun > 0 && MODEL_LIGHTING.ambient > 0);
 });
