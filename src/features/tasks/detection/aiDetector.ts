@@ -55,9 +55,9 @@ const NOTES: Record<Exclude<ExtractionOutcome, 'ok'>, string> = {
  * whose paste already produced dated tasks is offered nothing, so the common
  * case costs nothing.
  */
-export function shouldOfferAi(detected: readonly DetectedTask[]): boolean {
-  if (detected.length === 0) return true;
-  return detected.every((task) => task.dueAt === null);
+export function shouldOfferAi(proposals: readonly { readonly dueAt: string | null }[]): boolean {
+  if (proposals.length === 0) return true;
+  return proposals.every((task) => task.dueAt === null);
 }
 
 /**
