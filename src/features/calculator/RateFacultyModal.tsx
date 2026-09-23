@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 import type { RatingKey, ReviewLike } from '../../core/reviews';
 import {
@@ -163,138 +164,142 @@ export default function RateFacultyModal({
   };
 
   return (
-    <div
-      className="shell-modal-backdrop"
-      onClick={() => {
-        if (!submitting) onClose();
-      }}
-      onKeyDown={onKeyDown}
-    >
+    <Portal>
       <div
-        ref={dialogRef}
-        className="shell-modal rv-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rv-modal-title"
-        data-testid="rate-faculty-modal"
-        onClick={(e) => e.stopPropagation()}
+        className="shell-modal-backdrop"
+        onClick={() => {
+          if (!submitting) onClose();
+        }}
+        onKeyDown={onKeyDown}
       >
-        <h2 id="rv-modal-title" className="shell-modal-title">
-          {existing ? 'Review already submitted' : 'Rate your faculty'}
-        </h2>
-        <p className="shell-modal-message rv-subtitle">
-          {existing
-            ? 'You already used your one public review slot for this faculty-course pair. To preserve review integrity, client-side editing is disabled.'
-            : 'Pseudonymous to other students.'}
-          {courseCode && (
-            <>
-              <br />
-              Course: <strong>{courseCode}</strong>
-              {semester && <> · {semester}</>}
-            </>
-          )}
-        </p>
-
-        {existing === undefined ? (
-          <p className="rv-probing" role="status">
-            Checking your reviews…
+        <div
+          ref={dialogRef}
+          className="shell-modal rv-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rv-modal-title"
+          data-testid="rate-faculty-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="rv-modal-title" className="shell-modal-title">
+            {existing ? 'Review already submitted' : 'Rate your faculty'}
+          </h2>
+          <p className="shell-modal-message rv-subtitle">
+            {existing
+              ? 'You already used your one public review slot for this faculty-course pair. To preserve review integrity, client-side editing is disabled.'
+              : 'Pseudonymous to other students.'}
+            {courseCode && (
+              <>
+                <br />
+                Course: <strong>{courseCode}</strong>
+                {semester && <> · {semester}</>}
+              </>
+            )}
           </p>
-        ) : existing ? (
-          <>
-            <div className="rv-existing" data-testid="existing-review">
-              <div className="rv-existing-heading">Existing Review</div>
-              <div className="rv-existing-ratings">
-                {RATING_FIELDS.map((field) => (
-                  <div key={field.key} className="rv-existing-row">
-                    <span className="rv-existing-label">{field.label}</span>
-                    <span className="rv-existing-value">
-                      {existing.ratings?.[field.key] ?? '—'}/5
-                    </span>
+
+          {existing === undefined ? (
+            <p className="rv-probing" role="status">
+              Checking your reviews…
+            </p>
+          ) : existing ? (
+            <>
+              <div className="rv-existing" data-testid="existing-review">
+                <div className="rv-existing-heading">Existing Review</div>
+                <div className="rv-existing-ratings">
+                  {RATING_FIELDS.map((field) => (
+                    <div key={field.key} className="rv-existing-row">
+                      <span className="rv-existing-label">{field.label}</span>
+                      <span className="rv-existing-value">
+                        {existing.ratings?.[field.key] ?? '—'}/5
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {existing.text && (
+                  <div className="rv-existing-note">
+                    <div className="rv-existing-heading">Your Note</div>
+                    <div className="rv-existing-text">{existing.text}</div>
                   </div>
+                )}
+              </div>
+              <div className="shell-modal-actions">
+                <Button variant="secondary" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="rv-field">
+                <label className="rv-field-label" htmlFor="rv-initials">
+                  Faculty Initials
+                </label>
+                <input
+                  id="rv-initials"
+                  ref={initialsRef}
+                  className="rv-input rv-initials"
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. MNR"
+                  autoComplete="off"
+                  value={draft.initials}
+                  onChange={(e) => {
+                    setDraft((d) => setDraftInitials(d, e.target.value));
+                    setInitialsError(false);
+                  }}
+                />
+                {initialsError && (
+                  <div className="rv-field-error">Initials must be 2–6 letters.</div>
+                )}
+              </div>
+
+              <div className="rv-stars-box">
+                {RATING_FIELDS.map((field) => (
+                  <StarRow
+                    key={field.key}
+                    field={field}
+                    value={draft.ratings[field.key as RatingKey]}
+                    onSelect={(v) => setDraft((d) => setDraftRating(d, field.key, v))}
+                  />
                 ))}
               </div>
-              {existing.text && (
-                <div className="rv-existing-note">
-                  <div className="rv-existing-heading">Your Note</div>
-                  <div className="rv-existing-text">{existing.text}</div>
+
+              <div className="rv-field">
+                <label className="rv-field-label" htmlFor="rv-text">
+                  Your experience (optional)
+                </label>
+                <textarea
+                  id="rv-text"
+                  className="rv-input rv-text"
+                  rows={3}
+                  maxLength={REVIEW_TEXT_MAX}
+                  placeholder="What stood out? Keep it honest and respectful."
+                  value={draft.text}
+                  onChange={(e) => setDraft((d) => setDraftText(d, e.target.value))}
+                />
+                <div className="rv-count" aria-hidden="true">
+                  {draft.text.length} / {REVIEW_TEXT_MAX}
+                </div>
+              </div>
+
+              {error && (
+                <div className="rv-error" role="alert">
+                  {error}
                 </div>
               )}
-            </div>
-            <div className="shell-modal-actions">
-              <Button variant="secondary" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="rv-field">
-              <label className="rv-field-label" htmlFor="rv-initials">
-                Faculty Initials
-              </label>
-              <input
-                id="rv-initials"
-                ref={initialsRef}
-                className="rv-input rv-initials"
-                type="text"
-                maxLength={6}
-                placeholder="e.g. MNR"
-                autoComplete="off"
-                value={draft.initials}
-                onChange={(e) => {
-                  setDraft((d) => setDraftInitials(d, e.target.value));
-                  setInitialsError(false);
-                }}
-              />
-              {initialsError && <div className="rv-field-error">Initials must be 2–6 letters.</div>}
-            </div>
 
-            <div className="rv-stars-box">
-              {RATING_FIELDS.map((field) => (
-                <StarRow
-                  key={field.key}
-                  field={field}
-                  value={draft.ratings[field.key as RatingKey]}
-                  onSelect={(v) => setDraft((d) => setDraftRating(d, field.key, v))}
-                />
-              ))}
-            </div>
-
-            <div className="rv-field">
-              <label className="rv-field-label" htmlFor="rv-text">
-                Your experience (optional)
-              </label>
-              <textarea
-                id="rv-text"
-                className="rv-input rv-text"
-                rows={3}
-                maxLength={REVIEW_TEXT_MAX}
-                placeholder="What stood out? Keep it honest and respectful."
-                value={draft.text}
-                onChange={(e) => setDraft((d) => setDraftText(d, e.target.value))}
-              />
-              <div className="rv-count" aria-hidden="true">
-                {draft.text.length} / {REVIEW_TEXT_MAX}
+              <div className="shell-modal-actions">
+                <Button variant="secondary" disabled={submitting} onClick={onClose}>
+                  Skip
+                </Button>
+                <Button variant="primary" disabled={submitting} onClick={() => void submit()}>
+                  {submitting ? 'Submitting…' : 'Submit Review'}
+                </Button>
               </div>
-            </div>
-
-            {error && (
-              <div className="rv-error" role="alert">
-                {error}
-              </div>
-            )}
-
-            <div className="shell-modal-actions">
-              <Button variant="secondary" disabled={submitting} onClick={onClose}>
-                Skip
-              </Button>
-              <Button variant="primary" disabled={submitting} onClick={() => void submit()}>
-                {submitting ? 'Submitting…' : 'Submit Review'}
-              </Button>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
