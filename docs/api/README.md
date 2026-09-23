@@ -112,6 +112,7 @@ Every `/api/v1` failure answers with the same envelope:
 | `not_found` | 404 | No such resource, **or** one the caller may not know exists |
 | `invalid_request` | 400 | Malformed body, failed validation |
 | `rate_limited` | 429 | Too many requests for this account |
+| `unavailable` | 502 / 503 | A dependency Shohoj does not control is not answering, or a spend ceiling is reached. Distinct from `internal` so a client can **degrade** rather than report a fault |
 | `internal` | 500 / 502 / 503 | Server-side failure. 503 specifically means "retry shortly" |
 
 A resource belonging to another student answers `404`, not `403`. `403` confirms
@@ -543,6 +544,54 @@ something already done is not ahead of anybody.
 Soonest first, then by priority. **Undated tasks sort last**, not first: a null
 due date is not "due now", and sorting nulls to the top would bury the exam that
 is actually tomorrow under every undated reading.
+
+### `POST /api/v1/tasks/extract`
+
+Read deadlines out of text with a model. Returns **proposals**; it writes
+nothing.
+
+```json
+{ "text": "Hi all — the assessment has been pushed back...", "courseCodes": ["MAT215"] }
+```
+
+`text` is 1–8000 characters. `courseCodes` is optional and narrows what the
+extractor will call a course; it describes the *work*, not the student, and
+nothing identifying is sent. The uid acted on comes from the token, never the
+body.
+
+```json
+{
+  "detected": [
+    {
+      "title": "Assignment 4",
+      "type": "ASSIGNMENT",
+      "dueAt": "2026-09-27T11:00:00.000Z",
+      "courseCode": "MAT215",
+      "syllabus": null,
+      "confidence": "high",
+      "evidence": "the assessment has been pushed back a week"
+    }
+  ]
+}
+```
+
+Nothing here is a task: there is no id and no status, and the client has no
+path from one of these to a create. A student confirms them first.
+
+The model's output is validated before it is returned — dates must carry an
+offset and fall within a real academic horizon, course codes must be in the
+catalogue, unknown fields are dropped, and a reply that cannot be parsed is a
+`502`, not an empty list. `confidence` is the model's own claim, downgraded
+when the date it referred to was refused.
+
+**This endpoint is optional infrastructure.** A deployment with no model key
+answers `503 unavailable`, as does one whose monthly spend ceiling is reached.
+Clients are expected to carry on without it — Tasks does not depend on it, and
+the deterministic paste parser in the shell needs no server at all.
+
+Rate limited per account under its own bucket, separate from `/api/assistant`
+so that reading announcements cannot exhaust a student's chat quota. Spend is
+charged to the **same** monthly ledger, so one ceiling bounds the whole bill.
 
 ### There is no `GET /api/v1/courses`
 
