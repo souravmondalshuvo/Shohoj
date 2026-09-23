@@ -22,9 +22,9 @@ import { navigateTo } from './_nav.js';
  * It answers the same paths the real Worker does and applies the same Today /
  * Upcoming rules, so the route sees realistic data without a network.
  */
-function installApi(page, { semesters = null, enrollments = null, tasks = [] } = {}) {
+function installApi(page, { semesters = null, enrollments = null, tasks = [], extract = null } = {}) {
   return page.addInitScript(
-    ({ semesters, enrollments, tasks }) => {
+    ({ semesters, enrollments, tasks, extract }) => {
       const state = {
         semesters: semesters ?? [
           {
@@ -162,6 +162,28 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
             else state.reminders[at] = record;
             return ok({ reminder: record });
           }
+          if (path === '/tasks/extract') {
+            // Mirrors the Worker: proposals on success, the API's own error
+            // envelope otherwise. `extract` is null when the test wants a
+            // deployment with no model configured at all.
+            if (extract === null) {
+              return Promise.resolve({
+                ok: false,
+                error: { code: 'worker', apiCode: 'unavailable', userMessage: 'No reader here.' },
+              });
+            }
+            if (extract.fail) {
+              return Promise.resolve({
+                ok: false,
+                error: {
+                  code: 'worker',
+                  apiCode: extract.fail,
+                  userMessage: extract.message || 'Could not read that.',
+                },
+              });
+            }
+            return ok({ detected: extract.detected || [] });
+          }
           if (path === '/tasks') {
             seq += 1;
             const task = {
@@ -245,7 +267,7 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [] } =
         },
       };
     },
-    { semesters, enrollments, tasks },
+    { semesters, enrollments, tasks, extract },
   );
 }
 
@@ -980,6 +1002,158 @@ test('the import panel has no accessibility violations', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Announcement' }).fill(announcementFor(3).text);
   await page.getByTestId('tasks-import-detect').click();
   await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+// ── The second reading (#741) ───────────────────────────────────────────────
+//
+// The deterministic parser is free and runs on every paste; the model costs
+// real money and runs when a student asks. These pin the policy — when the
+// offer appears at all — and the rule the whole feature is built to keep: a
+// model that is missing, refusing or broken leaves Tasks exactly as useful as
+// it was without it.
+
+/** A proposal in the shape the extract endpoint returns. */
+function extracted(over = {}) {
+  const due = new Date();
+  due.setDate(due.getDate() + 4);
+  due.setHours(17, 0, 0, 0);
+  return {
+    title: 'Assignment 4',
+    type: 'ASSIGNMENT',
+    dueAt: due.toISOString(),
+    courseCode: 'MAT215',
+    syllabus: null,
+    confidence: 'high',
+    evidence: 'the assessment has been pushed back a week',
+    ...over,
+  };
+}
+
+/** Text the deterministic parser finds NOTHING in — no event it recognises. */
+const VAGUE = 'Hi all — following up, the assessment has been pushed back. Same chapters.';
+
+/**
+ * Text that yields a proposal with NO DATE.
+ *
+ * Different from VAGUE on purpose: this one gives the student something to
+ * lose, which is what the "don't wipe it" cases are actually about.
+ */
+const DATELESS = 'Quiz 3 has been pushed back a week. Same chapters.';
+
+const pasteAndDetect = async (page, text) => {
+  await page.getByTestId('tasks-import-open').click();
+  await page.getByRole('textbox', { name: 'Announcement' }).fill(text);
+  await page.getByTestId('tasks-import-detect').click();
+};
+
+test('the second reading is not offered when the free parser already worked', async ({ page }) => {
+  // The common case must cost nothing.
+  await installApi(page, { tasks: [], extract: { detected: [extracted()] } });
+  await goTasks(page);
+
+  await pasteAndDetect(page, announcementFor(3).text);
+  await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+  await expect(page.getByTestId('tasks-import-ai')).toHaveCount(0);
+});
+
+test('the second reading is offered when the paste yielded no date', async ({ page }) => {
+  await installApi(page, { tasks: [], extract: { detected: [extracted()] } });
+  await goTasks(page);
+
+  await pasteAndDetect(page, VAGUE);
+  await expect(page.getByTestId('tasks-import-ai')).toBeVisible();
+});
+
+test('asking Shohoj to read it proposes tasks, and still creates nothing', async ({ page }) => {
+  await installApi(page, { tasks: [], extract: { detected: [extracted()] } });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await pasteAndDetect(page, VAGUE);
+  await page.getByTestId('tasks-import-ai').click();
+
+  await expect(page.getByRole('textbox', { name: 'Task 1' })).toHaveValue('Assignment 4');
+  // Still nothing written. The confirm step is the only thing that writes.
+  expect(await page.evaluate(() => window.__shohojApiState.tasks.length)).toBe(0);
+
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-list')).toContainText('Assignment 4');
+});
+
+test('a task from the second reading records that a model proposed it', async ({ page }) => {
+  await installApi(page, { tasks: [], extract: { detected: [extracted()] } });
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  await pasteAndDetect(page, VAGUE);
+  await page.getByTestId('tasks-import-ai').click();
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-list')).toContainText('Assignment 4');
+
+  // AI_SUGGESTION, not PASTE. Both were confirmed by the student through the
+  // same panel; what separates them is which reading produced the deadline,
+  // and that is exactly what a student wants to know if one turns out wrong.
+  const stored = await page.evaluate(() => window.__shohojApiState.tasks[0]);
+  expect(stored.source).toBe('AI_SUGGESTION');
+  expect(stored.sourceReference).toContain('pushed back');
+});
+
+test('with no model configured, the panel says so and keeps what you had', async ({ page }) => {
+  // `extract: null` is a deployment with no key. The paste result must survive.
+  await installApi(page, { tasks: [], extract: null });
+  await goTasks(page);
+
+  await pasteAndDetect(page, DATELESS);
+  const before = await page.getByTestId('tasks-import-list').locator('li').count();
+
+  await page.getByTestId('tasks-import-ai').click();
+  await expect(page.getByTestId('tasks-import-ai-note')).toContainText(/No reader here/i);
+
+  // Nothing lost, nothing broken, the confirm button still works.
+  await expect(page.getByTestId('tasks-import-list').locator('li')).toHaveCount(before);
+  await expect(page.getByTestId('tasks-import-confirm')).toBeVisible();
+});
+
+test('a failing reading leaves the panel usable', async ({ page }) => {
+  await installApi(page, {
+    tasks: [],
+    extract: { fail: 'internal', message: 'Could not read that.' },
+  });
+  await goTasks(page);
+
+  await pasteAndDetect(page, DATELESS);
+  await page.getByTestId('tasks-import-ai').click();
+
+  await expect(page.getByTestId('tasks-import-ai-note')).toContainText(/Could not read that/i);
+  await expect(page.getByTestId('tasks-import-list')).toBeVisible();
+});
+
+test('a reading that finds nothing does not wipe the paste’s proposals', async ({ page }) => {
+  // A student holding dateless proposals must not lose them because the
+  // second reading agreed there were no dates.
+  await installApi(page, { tasks: [], extract: { detected: [] } });
+  await goTasks(page);
+
+  await pasteAndDetect(page, DATELESS);
+  const before = await page.getByTestId('tasks-import-list').locator('li').count();
+  expect(before).toBeGreaterThan(0);
+
+  await page.getByTestId('tasks-import-ai').click();
+  await expect(page.getByTestId('tasks-import-ai-note')).toContainText(/found nothing more/i);
+  await expect(page.getByTestId('tasks-import-list').locator('li')).toHaveCount(before);
+});
+
+test('the second-reading offer has no accessibility violations', async ({ page }) => {
+  await installApi(page, { tasks: [], extract: { detected: [extracted()] } });
+  await goTasks(page);
+
+  await pasteAndDetect(page, VAGUE);
+  await expect(page.getByTestId('tasks-import-ai')).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
