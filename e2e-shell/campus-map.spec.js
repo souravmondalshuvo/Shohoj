@@ -176,11 +176,8 @@ test.describe('exterior model (#750)', () => {
     await page.addInitScript(() => {
       window.__cspViolations = [];
       document.addEventListener('securitypolicyviolation', (event) => {
-        // zod v4 probes for JIT support with a caught `Function('')` on every
-        // page (pre-existing, harmless — it falls back to jitless). That
-        // reports blockedURI "eval"; a WASM decoder would report "wasm-eval"
-        // and a texture "blob:", which must still fail this test.
-        if (event.blockedURI === 'eval') return;
+        // No exemptions: zod's JIT probe ("eval") is gone since #752, so any
+        // violation — a WASM decoder's "wasm-eval", a texture's "blob:" — fails.
         window.__cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`);
       });
     });
