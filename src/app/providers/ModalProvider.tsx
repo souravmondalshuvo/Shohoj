@@ -22,6 +22,7 @@ import {
 } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 
 export interface ConfirmOptions {
@@ -91,33 +92,37 @@ function ConfirmDialog({
   };
 
   return (
-    <div className="shell-modal-backdrop" onClick={() => onSettle(false)} onKeyDown={onKeyDown}>
-      <div
-        ref={dialogRef}
-        className="shell-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="shell-modal-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="shell-modal-title" className="shell-modal-title">
-          {options.title}
-        </h2>
-        {options.message !== undefined && <p className="shell-modal-message">{options.message}</p>}
-        <div className="shell-modal-actions">
-          <Button variant="secondary" onClick={() => onSettle(false)}>
-            {options.cancelLabel ?? 'Cancel'}
-          </Button>
-          <Button
-            ref={confirmRef}
-            variant={options.danger ? 'danger' : 'primary'}
-            onClick={() => onSettle(true)}
-          >
-            {options.confirmLabel ?? 'Confirm'}
-          </Button>
+    <Portal>
+      <div className="shell-modal-backdrop" onClick={() => onSettle(false)} onKeyDown={onKeyDown}>
+        <div
+          ref={dialogRef}
+          className="shell-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shell-modal-title"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="shell-modal-title" className="shell-modal-title">
+            {options.title}
+          </h2>
+          {options.message !== undefined && (
+            <p className="shell-modal-message">{options.message}</p>
+          )}
+          <div className="shell-modal-actions">
+            <Button variant="secondary" onClick={() => onSettle(false)}>
+              {options.cancelLabel ?? 'Cancel'}
+            </Button>
+            <Button
+              ref={confirmRef}
+              variant={options.danger ? 'danger' : 'primary'}
+              onClick={() => onSettle(true)}
+            >
+              {options.confirmLabel ?? 'Confirm'}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 
