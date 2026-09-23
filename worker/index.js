@@ -65,16 +65,8 @@ import {
 } from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import { buildExtractionProviders, runExtractionTurn } from './extractionProviders.js';
-import {
-  CALENDAR_FEED_COLLECTION,
-  parseCalendarFeedPath,
-  redactFeedPath,
-} from './calendarFeed.js';
-import {
-  createCalendarFeed,
-  deleteCalendarFeed,
-  getCalendarFeed,
-} from './calendarFeedHandlers.js';
+import { CALENDAR_FEED_COLLECTION, parseCalendarFeedPath, redactFeedPath } from './calendarFeed.js';
+import { createCalendarFeed, deleteCalendarFeed, getCalendarFeed } from './calendarFeedHandlers.js';
 import {
   buildTasksICS as buildFeedICS,
   toCalendarEvents as toFeedEvents,
