@@ -21,6 +21,9 @@ import {
   type CreateTaskInput,
   type TaskType,
 } from '../../platform/api/tasks.ts';
+import type { TaskDetector } from './detection/types.ts';
+import type { AiDetectionResult } from './detection/aiDetector.ts';
+import { shouldOfferAi } from './detection/aiDetector.ts';
 import { detectFromText } from './detection/announcementDetector.ts';
 import {
   confidenceNote,
@@ -45,20 +48,46 @@ export interface TaskImportProps {
    * should not bury the screen under six identical toasts.
    */
   readonly onDone: (count: number) => void;
+  /**
+   * The model-backed detector, when this build has one.
+   *
+   * Optional on purpose: a deployment with no key passes nothing and the panel
+   * simply never offers a second reading. That is the "AI is not a hard
+   * dependency" rule expressed as a type — there is no configuration to check
+   * and no failure path to forget, because the feature is absent rather than
+   * broken.
+   */
+  readonly aiDetector?: TaskDetector | null;
   readonly busy: boolean;
 }
 
 type Stage = 'closed' | 'paste' | 'review';
 
-export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: TaskImportProps) {
+export function TaskImport({
+  courses,
+  enrollments,
+  onCreate,
+  onDone,
+  aiDetector = null,
+  busy,
+}: TaskImportProps) {
   const baseId = useId();
   const [stage, setStage] = useState<Stage>('closed');
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState<readonly ProposalDraft[]>([]);
   const [unrecognised, setUnrecognised] = useState<readonly string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aiState, setAiState] = useState<'idle' | 'reading' | 'done'>('idle');
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
   const selectable = useMemo(() => creatable(drafts), [drafts]);
+  // What the offer policy reads: a draft's date, in the shape shouldOfferAi
+  // wants. Derived from drafts rather than the raw detection so that clearing
+  // a date by hand also makes the second reading worth offering.
+  const asProposals = useMemo(
+    () => drafts.map((d) => ({ dueAt: d.dueLocal === '' ? null : d.dueLocal })),
+    [drafts],
+  );
 
   // ── Detect ────────────────────────────────────────────────────────────────
 
@@ -72,7 +101,45 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
     setDrafts(toDrafts(result.detected, enrollments));
     setUnrecognised(result.unrecognised);
     setError(null);
+    // New text, so any previous second reading no longer describes it.
+    setAiState('idle');
+    setAiNote(null);
     setStage('review');
+  };
+
+  /**
+   * Ask the model to read the same text.
+   *
+   * Only ever REPLACES the list when it actually found something. An empty
+   * result keeps what the deterministic parser produced — a student who had
+   * three dateless proposals should not lose them because the second reading
+   * agreed there were no dates.
+   */
+  const askAi = async () => {
+    if (aiDetector === null) return;
+    setAiState('reading');
+    setAiNote(null);
+
+    const result = (await aiDetector.detect(text, {
+      now: new Date(),
+      knownCourseCodes: enrollments.map((e) => e.courseCode),
+    })) as AiDetectionResult;
+
+    setAiState('done');
+    if (result.outcome !== 'ok') {
+      setAiNote(result.note);
+      return;
+    }
+    if (result.detected.length === 0) {
+      setAiNote('Shohoj read it too and found nothing more.');
+      return;
+    }
+    setDrafts(toDrafts(result.detected, enrollments));
+    setAiNote(
+      result.detected.length === 1
+        ? 'Shohoj read it and found 1 more thing. Check it before adding.'
+        : `Shohoj read it and found ${result.detected.length} things. Check them before adding.`,
+    );
   };
 
   const reset = () => {
@@ -80,6 +147,8 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
     setDrafts([]);
     setUnrecognised([]);
     setError(null);
+    setAiState('idle');
+    setAiNote(null);
     setStage('closed');
   };
 
@@ -284,6 +353,32 @@ export function TaskImport({ courses, enrollments, onCreate, onDone, busy }: Tas
               {unrecognised.length === 1
                 ? '1 line had no deadline in it and was skipped.'
                 : `${unrecognised.length} lines had no deadline in them and were skipped.`}
+            </p>
+          )}
+
+          {/* Offered only when the free parser came up short, so the common
+              case never spends anything. Absent entirely on a build with no
+              model configured — nothing to check, nothing to fail. */}
+          {aiDetector !== null && aiState !== 'done' && shouldOfferAi(asProposals) && (
+            <div className="tasks-import-ai">
+              <button
+                type="button"
+                className="tasks-import-ai-ask"
+                data-testid="tasks-import-ai"
+                disabled={aiState === 'reading'}
+                onClick={() => void askAi()}
+              >
+                {aiState === 'reading' ? 'Reading…' : 'Ask Shohoj to read it'}
+              </button>
+              <span className="tasks-import-ai-hint shell-muted">
+                Sends this text to Shohoj’s reader. Nothing is added without you.
+              </span>
+            </div>
+          )}
+
+          {aiNote !== null && (
+            <p className="tasks-import-ai-note shell-muted" data-testid="tasks-import-ai-note">
+              {aiNote}
             </p>
           )}
 
