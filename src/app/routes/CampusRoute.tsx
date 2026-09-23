@@ -47,6 +47,10 @@ import {
   type RoomStatus,
   type RoomTooltip,
 } from '../../features/campus/campusScene';
+import type { ExteriorModelState } from '../../features/campus/campusModel';
+// The revision-4 BRACU exterior (#750): a hashed, base-aware asset URL, so the
+// same import works in the shell and on the standalone /campus/ page.
+import exteriorModelUrl from '../../features/campus/assets/bracu-exterior.glb.gz?url';
 
 const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
   'SUNDAY',
@@ -165,6 +169,8 @@ export function Component() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationState>({ phase: 'idle' });
   const [webglOk, setWebglOk] = useState(true);
+  // Exterior model lifecycle (#750); null until a scene has been created.
+  const [modelState, setModelState] = useState<ExteriorModelState | null>(null);
   // v2 interaction (#385): a room search and an "only free" filter over the
   // DOM room list — the accessible layer the 3D view mirrors.
   const [search, setSearch] = useState('');
@@ -396,6 +402,8 @@ export function Component() {
       onFloorClick: (f) => selectFloor(f),
       onRoomClick: (code) => selectRoom(code),
       describeRoom: (code) => describeRoomRef.current(code),
+      exteriorModelUrl,
+      onModelState: setModelState,
     });
     if (!handle) {
       setWebglOk(false);
@@ -616,6 +624,7 @@ export function Component() {
               aria-hidden="true"
               data-refreshing={refreshing ? 'true' : undefined}
               data-testid="campus-canvas"
+              data-model-state={modelState ?? undefined}
             />
           ) : (
             <p className="shell-muted" data-testid="campus-no-webgl">
