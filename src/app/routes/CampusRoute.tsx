@@ -35,6 +35,13 @@ import {
   type CampusModel,
 } from '../../core/campusRooms';
 import {
+  levelLabel,
+  placeKindLabel,
+  placesByLevel,
+  searchPlaces,
+  type CampusPlace,
+} from '../../core/campusPlaces';
+import {
   createCampusScene,
   type CampusSceneHandle,
   type RoomStatus,
@@ -136,6 +143,20 @@ const SOURCE_LABEL: Record<FeedSource, string> = {
   fallback: 'Offline copy',
 };
 
+// Place directory (#748): static Campus 360 data, so it renders whether or not
+// the schedule feed has loaded. Search results are capped so a one-letter
+// query doesn't dump the whole directory above the fold.
+const PLACE_LEVELS = placesByLevel();
+const PLACE_RESULT_LIMIT = 12;
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
 export function Component() {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
@@ -151,6 +172,9 @@ export function Component() {
   // A brief shimmer over the map while a manual refresh is in flight (#385
   // liveness) — the feed is honest about being live, so refetching shows it.
   const [refreshing, setRefreshing] = useState(false);
+  // Place directory (#748): offices and facilities by floor, from Campus 360.
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [selectedPlace, setSelectedPlace] = useState<CampusPlace | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkConsumed = useRef(false);
@@ -284,6 +308,29 @@ export function Component() {
     const onlyMatch = matches.length === 1 ? matches[0] : undefined;
     if (onlyMatch !== undefined) selectRoom(onlyMatch);
   }, [model, search, selectRoom]);
+
+  // A floor the 3D map can focus — only floors with feed rooms are data floors.
+  const isMapFloor = useCallback(
+    (f: number) => model?.floors.some((entry) => entry.floor === f) ?? false,
+    [model],
+  );
+
+  // Choose a place (#748): always say which floor it's on; when the map has that
+  // floor, focus it and bring the map into view so the answer is visible.
+  const choosePlace = useCallback(
+    (place: CampusPlace) => {
+      setSelectedPlace(place);
+      if (!isMapFloor(place.floor)) return;
+      selectFloor(place.floor);
+      canvasHost.current?.scrollIntoView({
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+        block: 'center',
+      });
+    },
+    [isMapFloor, selectFloor],
+  );
+
+  const placeResults = useMemo(() => searchPlaces(placeQuery), [placeQuery]);
 
   // Mirror the selection into ?room= so it's shareable — but only after the
   // inbound deep link (if any) has been consumed, so we never clear it while
@@ -727,6 +774,120 @@ export function Component() {
           )}
         </>
       )}
+
+      <section
+        className="campus-places"
+        data-testid="campus-places"
+        aria-labelledby="campus-places-title"
+      >
+        <h2 className="campus-places-title" id="campus-places-title">
+          Find a place
+        </h2>
+        <p className="shell-muted campus-places-lede">
+          Offices, departments and facilities by floor, from{' '}
+          <a href="https://www.bracu.ac.bd/campus-360" target="_blank" rel="noreferrer">
+            BRACU Campus 360
+          </a>
+          . Floors only — Campus 360 doesn&apos;t say where on a floor each place is.
+        </p>
+        <form
+          className="campus-controls"
+          role="search"
+          aria-label="Find a place"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const first = placeResults[0];
+            if (first) choosePlace(first);
+          }}
+        >
+          <label className="campus-search-field">
+            <span className="shell-muted">Place</span>
+            <input
+              type="search"
+              className="campus-search-input campus-search-input--text"
+              data-testid="campus-place-input"
+              placeholder="e.g. Registrar, exam, prayer"
+              value={placeQuery}
+              onChange={(e) => setPlaceQuery(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+        </form>
+
+        {selectedPlace && (
+          <p className="campus-place-status" data-testid="campus-place-status" role="status">
+            <strong>{selectedPlace.name}</strong> is on {levelLabel(selectedPlace.floor)}.
+            {!isMapFloor(selectedPlace.floor)
+              ? ' The 3D map only focuses floors with scheduled rooms.'
+              : floor === selectedPlace.floor
+                ? ` Showing ${levelLabel(selectedPlace.floor)} on the map.`
+                : ''}
+          </p>
+        )}
+
+        {placeQuery.trim() !== '' && (
+          <div data-testid="campus-place-results">
+            <p className="campus-room-sr" role="status">
+              {placeResults.length === 0
+                ? 'No places match.'
+                : `${placeResults.length} place${placeResults.length === 1 ? '' : 's'} found.`}
+            </p>
+            {placeResults.length === 0 ? (
+              <p className="shell-muted campus-places-lede">
+                No places match “{placeQuery.trim()}”.
+              </p>
+            ) : (
+              <ul className="campus-place-list">
+                {placeResults.slice(0, PLACE_RESULT_LIMIT).map((place) => (
+                  <li key={place.id}>
+                    <button
+                      type="button"
+                      className="campus-place-btn"
+                      data-testid="campus-place-result"
+                      aria-pressed={selectedPlace?.id === place.id}
+                      onClick={() => choosePlace(place)}
+                    >
+                      <span className="campus-place-name">{place.name}</span>
+                      <span className="campus-place-meta">
+                        {levelLabel(place.floor)} · {placeKindLabel(place.kind)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {placeResults.length > PLACE_RESULT_LIMIT && (
+              <p className="shell-muted campus-places-lede">
+                {placeResults.length - PLACE_RESULT_LIMIT} more — keep typing to narrow it down.
+              </p>
+            )}
+          </div>
+        )}
+
+        <details className="campus-place-directory" data-testid="campus-place-directory">
+          <summary>All places by floor</summary>
+          {PLACE_LEVELS.map((level) => (
+            <div key={level.floor}>
+              <h3 className="campus-zone-title">{level.label}</h3>
+              <ul className="campus-place-list">
+                {level.places.map((place) => (
+                  <li key={place.id}>
+                    <button
+                      type="button"
+                      className="campus-place-btn"
+                      aria-pressed={selectedPlace?.id === place.id}
+                      onClick={() => choosePlace(place)}
+                    >
+                      <span className="campus-place-name">{place.name}</span>
+                      <span className="campus-place-meta">{placeKindLabel(place.kind)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </details>
+      </section>
     </section>
   );
 }
