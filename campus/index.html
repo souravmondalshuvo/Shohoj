@@ -183,6 +183,26 @@
       }
       .campus-error { padding: 16px 0; }
       .campus-other { margin-top: 16px; font-size: 13px; color: var(--c-text-muted); }
+      /* Place directory (#748) — kept in sync with css/shell-routes.css */
+      .campus-places { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--c-border); }
+      .campus-places-title { font-size: 16px; font-weight: 800; margin: 0 0 4px; color: var(--c-text); }
+      .campus-places-lede { font-size: 12px; margin: 0 0 10px; }
+      .campus-places-lede a { color: var(--c-blue-ink); font-weight: 600; }
+      .campus-search-input--text { text-transform: none; min-width: 220px; }
+      .campus-place-status { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); font-size: 13px; color: var(--c-text); }
+      .campus-place-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
+      .campus-place-btn {
+        display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left;
+        font: inherit; padding: 8px 12px; min-height: 44px; border-radius: 8px; cursor: pointer;
+        border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text);
+      }
+      .campus-place-btn[aria-pressed="true"] { border-color: var(--c-blue-ink); background: rgba(86,180,233,0.10); }
+      .campus-place-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
+      .campus-place-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
+      .campus-place-meta { font-size: 11px; color: var(--c-text-muted); }
+      .campus-place-directory { margin-top: 12px; font-size: 13px; color: var(--c-text-muted); }
+      .campus-place-directory summary { cursor: pointer; font-weight: 700; color: var(--c-text); }
+      .campus-place-directory summary:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 3px; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
       [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
       [data-theme="dark"] select,
@@ -193,7 +213,7 @@
       [data-theme="dark"] input::placeholder,
       [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
-    <script type="module" crossorigin src="../assets/campus-CNNBbsVy.js"></script>
+    <script type="module" crossorigin src="../assets/campus-BRgwPnrW.js"></script>
     <link rel="modulepreload" crossorigin href="../assets/jsx-runtime-Dj5rtymu.js">
     <link rel="modulepreload" crossorigin href="../assets/campusRooms-Y6OxURsj.js">
   </head>
