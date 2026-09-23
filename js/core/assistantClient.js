@@ -125,7 +125,7 @@ export async function sendAssistantTurn(transcript, options) {
   if (res.ok) {
     const body = await res.json().catch(() => null);
     if (body && typeof body.reply === 'string' && body.reply.trim()) {
-      return { ok: true, reply: body.reply };
+      return { ok: true, reply: body.reply, quota: body.quota ?? null };
     }
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
   }
@@ -137,6 +137,18 @@ export async function sendAssistantTurn(transcript, options) {
     };
   }
   if (res.status === 429) {
+    // Two different 429s share this status: the burst limiter (wait a
+    // minute) and the daily quota (wait until tomorrow). The body's `error`
+    // string is the only thing that tells them apart.
+    const body = await res.json().catch(() => null);
+    if (body?.error === 'assistant_daily_quota_exhausted') {
+      return {
+        ok: false,
+        code: 'quota-exhausted',
+        error: "You've used today's free messages. More open up tomorrow.",
+        resetsAt: typeof body.resetsAt === 'string' ? body.resetsAt : null,
+      };
+    }
     return { ok: false, code: 'rate-limited', error: 'Slow down a little — try again in a minute.' };
   }
   if (res.status === 400) {
