@@ -52,9 +52,16 @@ let _drawer = null;
 let _logEl = null;
 let _inputEl = null;
 let _sendEl = null;
+let _quotaHintEl = null;
 let _transcript = [];
 let _pending = false;
 let _error = null;
+// The Worker's daily allowance for this student (#746), last known from a
+// turn's response. Null until the first turn — the drawer opens with no
+// pre-emptive count, since GET /ready is unauthenticated and cannot carry
+// one. Twin of the state in src/features/assistant/AssistantDrawer.tsx —
+// change both.
+let _quota = null;
 let _availability = 'unknown';
 // The readiness probe runs at most once per page load. refreshLauncher() is
 // called on every auth change (which flaps repeatedly while Firestore settles),
@@ -206,8 +213,27 @@ function renderLog() {
   }
 
   _logEl.scrollTo({ top: _logEl.scrollHeight });
-  if (_sendEl) _sendEl.disabled = _pending || !_inputEl?.value.trim();
+  const exhausted = _quota != null && _quota.remaining <= 0;
+  if (_sendEl) _sendEl.disabled = _pending || exhausted || !_inputEl?.value.trim();
   if (_inputEl) _inputEl.disabled = _pending;
+  renderQuotaHint();
+}
+
+// A quiet reminder once the allowance is running low, and the reason the send
+// button is disabled once it hits zero — otherwise a greyed-out button with no
+// explanation reads as broken, not as "come back tomorrow".
+function renderQuotaHint() {
+  if (!_quotaHintEl) return;
+  if (_quota == null || _quota.remaining > 5) {
+    _quotaHintEl.textContent = '';
+    _quotaHintEl.hidden = true;
+    return;
+  }
+  _quotaHintEl.hidden = false;
+  _quotaHintEl.textContent =
+    _quota.remaining <= 0
+      ? "You've used today's free messages. More open up tomorrow."
+      : `${_quota.remaining} free message${_quota.remaining === 1 ? '' : 's'} left today.`;
 }
 
 async function ask(question) {
@@ -238,8 +264,12 @@ async function ask(question) {
     if (result.ok) {
       _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
       persist();
+      if (result.quota) _quota = result.quota;
     } else {
       _error = result.error;
+      if (result.code === 'quota-exhausted') {
+        _quota = { remaining: 0, limit: _quota?.limit ?? 0, resetsAt: result.resetsAt ?? null };
+      }
     }
   } finally {
     _pending = false;
@@ -312,7 +342,8 @@ function buildDrawer() {
     ask(_inputEl.value);
   });
   _inputEl.addEventListener('input', () => {
-    _sendEl.disabled = _pending || !_inputEl.value.trim();
+    const exhausted = _quota != null && _quota.remaining <= 0;
+    _sendEl.disabled = _pending || exhausted || !_inputEl.value.trim();
   });
   _inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -321,7 +352,12 @@ function buildDrawer() {
     }
   });
 
-  aside.append(header, note, _logEl, form);
+  _quotaHintEl = document.createElement('p');
+  _quotaHintEl.className = 'assistant-quota-hint';
+  _quotaHintEl.hidden = true;
+
+  aside.append(header, note, _logEl, form, _quotaHintEl);
+  renderQuotaHint();
   return aside;
 }
 
@@ -403,6 +439,7 @@ function closeDrawer() {
   _logEl = null;
   _inputEl = null;
   _sendEl = null;
+  _quotaHintEl = null;
   // A close landing mid-open: drop the opening shape so the two morphs don't
   // fight over the same clip.
   _openMorph?.cancel();
