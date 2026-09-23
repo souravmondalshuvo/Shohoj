@@ -203,6 +203,17 @@ test.describe('place directory (#748)', () => {
     await expect(page.getByRole('button', { name: /10B-04L/ })).toBeVisible();
   });
 
+  test('works without the schedule feed, and makes no map claim', async ({ page }) => {
+    // No seeded cache and the CDN refused: the feed fails, the directory doesn't.
+    await page.route('**/connect.json', (route) => route.abort());
+    await page.goto('/campus', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('campus-error')).toBeVisible();
+    await page.getByTestId('campus-place-input').fill('computer lab');
+    await page.getByTestId('campus-place-result').filter({ hasText: 'Floor 10' }).click();
+    const status = page.getByTestId('campus-place-status');
+    await expect(status).toHaveText('Computer Lab is on Floor 10.');
+  });
+
   test('an unmatched query says so', async ({ page }) => {
     await openCampus(page);
     await page.getByTestId('campus-place-input').fill('zzzz');
