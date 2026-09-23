@@ -395,6 +395,52 @@ need when a deadline turns out wrong. `sourceReference` carries the sentence it
 was read from, so the answer is one they can check rather than one they must
 trust.
 
+## What Phase 7b settled
+
+**The model is a detector, not a path.** `POST /api/v1/tasks/extract` returns
+proposals through the same `DetectedTask` boundary the paste parser uses, and
+they reach the Tasks API only after a student confirms them. Nothing about
+Detect → Suggest → Confirm → Create is re-litigated for AI; it was built to
+hold exactly this.
+
+**AI is offered, never awaited.** The deterministic parser runs in the page on
+every paste — free, instant, private. The model runs when a student asks, and
+only when the parser came up empty or dateless. A paste that already produced
+dated tasks is offered nothing, so the common case spends nothing.
+
+**Every failure leaves Tasks exactly as useful as before.** No key, no budget,
+no provider, and an unreadable reply all return no proposals and a sentence the
+panel can say. The deterministic result is never discarded, replaced by an error
+state, or made to wait. On a build with no model the panel is handed a null
+detector and never offers the second reading at all — absent rather than broken.
+
+**`unavailable` is a distinct API error code.** "A dependency we do not control
+is not answering" and "Shohoj is broken" call for different behaviour, and
+collapsing them into `internal` would make graceful degradation impossible to
+express. The code is now carried onto the typed client error, which the API had
+always documented as the thing clients branch on and no client could.
+
+**The model's output is not trusted.** It is shape-checked, its dates are
+required to carry an offset and bounded to a real academic horizon, its course
+codes are checked against the catalogue, and unknown fields are dropped. A
+confidence claim about a date that was then refused is downgraded. Unparseable
+output is a failure, not an empty result — telling a student "nothing found"
+when the reply could not be read would be a lie about their announcement.
+
+**Prompt injection is contained structurally, not by wording.** The text being
+read is untrusted by definition. The model is handed no tools and no uid, can
+produce only one JSON shape, and cannot write anything. The worst case is a bad
+suggestion the student declines.
+
+**One ceiling bounds the whole bill.** Extraction spends against the same
+monthly ledger as the Assistant. Two ledgers would mean the owner's real
+exposure is the sum of two numbers neither of which they set. The rate-limit
+bucket is separate, so reading announcements cannot starve a student out of chat.
+
+**The source follows the reading.** `AI_SUGGESTION` and `PASTE` were both
+confirmed by the student; what separates them is what read the deadline. It is
+carried on the draft, because by create time the two are indistinguishable.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -427,4 +473,5 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 6a ✅ | Reminders, over the existing cron and sender |
 | 6b ✅ | The internal calendar and ICS export |
 | 7a ✅ | The detection boundary, and reading deadlines out of pasted text |
-| 7b | Gmail, Google Calendar, AI — further detectors behind the same boundary |
+| 7b ✅ | AI extraction, behind the same boundary and never a hard dependency |
+| 7c | Gmail and Google Calendar — gated on OAuth scope verification, not on code |
