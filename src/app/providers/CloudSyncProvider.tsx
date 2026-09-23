@@ -21,6 +21,7 @@ import {
 } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import type { RuntimeConfig } from '../../platform/configuration/runtimeConfig';
 import { createUserDocRepo } from '../../platform/firebase/userDocRepo';
 import {
@@ -112,33 +113,35 @@ export function CloudSyncProvider({ config, children }: CloudSyncProviderProps) 
     <>
       <CloudSyncContext value={engine}>{children}</CloudSyncContext>
       {pending !== null && (
-        <div className="shell-modal-backdrop" data-testid="cloud-migration-modal">
-          {/* No backdrop/Escape dismiss — a choice is required (legacy parity). */}
-          <div
-            className="shell-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cloud-migration-title"
-          >
-            <h2 id="cloud-migration-title" className="shell-modal-title">
-              Which data should we keep?
-            </h2>
-            <p className="shell-modal-message">
-              This device has {pending.localSemesters} semester
-              {pending.localSemesters !== 1 ? 's' : ''} and your cloud account has{' '}
-              {pending.cloudSemesters} semester{pending.cloudSemesters !== 1 ? 's' : ''}. Keep one —
-              the other is replaced.
-            </p>
-            <div className="shell-modal-actions">
-              <Button variant="primary" onClick={() => settle('local')}>
-                Keep this device&apos;s data
-              </Button>
-              <Button variant="secondary" onClick={() => settle('cloud')}>
-                Keep cloud data
-              </Button>
+        <Portal>
+          <div className="shell-modal-backdrop" data-testid="cloud-migration-modal">
+            {/* No backdrop/Escape dismiss — a choice is required (legacy parity). */}
+            <div
+              className="shell-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cloud-migration-title"
+            >
+              <h2 id="cloud-migration-title" className="shell-modal-title">
+                Which data should we keep?
+              </h2>
+              <p className="shell-modal-message">
+                This device has {pending.localSemesters} semester
+                {pending.localSemesters !== 1 ? 's' : ''} and your cloud account has{' '}
+                {pending.cloudSemesters} semester{pending.cloudSemesters !== 1 ? 's' : ''}. Keep one
+                — the other is replaced.
+              </p>
+              <div className="shell-modal-actions">
+                <Button variant="primary" onClick={() => settle('local')}>
+                  Keep this device&apos;s data
+                </Button>
+                <Button variant="secondary" onClick={() => settle('cloud')}>
+                  Keep cloud data
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </>
   );
