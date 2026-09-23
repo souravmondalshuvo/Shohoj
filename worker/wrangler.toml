@@ -60,6 +60,12 @@ ADMIN_MODERATION_URL = "https://souravmondalshuvo.github.io/Shohoj/admin/"
 # stop on an unbounded bill. Reaching it makes /api/assistant refuse turns until
 # the month rolls over; "0" switches the assistant off without removing keys.
 ASSISTANT_MONTHLY_BUDGET_USD = "5"
+# Free daily allowance per student, combined across /api/assistant and
+# /api/v1/tasks/extract (one shared counter — a student can't dodge it by
+# switching features). Resets at UTC midnight. A backstop against one student
+# eating the whole month's shared budget alone, not a paywall — there is no
+# payment path in this deployment.
+ASSISTANT_DAILY_MESSAGE_LIMIT = "40"
 # Sender for seat-alert + admin-upload emails. MUST be a sender on a domain you
 # have verified in Resend (SPF + DKIM) — see worker/README.md. Leave UNSET until
 # then: the Resend test sender (onboarding@resend.dev) only delivers to the
