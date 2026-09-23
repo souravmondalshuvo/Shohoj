@@ -134,7 +134,7 @@ export function TaskImport({
       setAiNote('Shohoj read it too and found nothing more.');
       return;
     }
-    setDrafts(toDrafts(result.detected, enrollments));
+    setDrafts(toDrafts(result.detected, enrollments, 'AI_SUGGESTION'));
     setAiNote(
       result.detected.length === 1
         ? 'Shohoj read it and found 1 more thing. Check it before adding.'
