@@ -54,6 +54,8 @@ export type ApiErrorCode =
   | 'not_found'
   | 'invalid_request'
   | 'rate_limited'
+  /** This caller specifically has used today's free AI allowance (#746). */
+  | 'quota_exceeded'
   /** A dependency Shohoj does not control is down, or a spend ceiling is reached. */
   | 'unavailable'
   | 'internal';
