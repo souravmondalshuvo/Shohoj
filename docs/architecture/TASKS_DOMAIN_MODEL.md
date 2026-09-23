@@ -441,6 +441,58 @@ bucket is separate, so reading announcements cannot starve a student out of chat
 confirmed by the student; what separates them is what read the deadline. It is
 carried on the draft, because by create time the two are indistinguishable.
 
+## What Phase 7c settled
+
+**The URL is the credential, and that is adopted deliberately.** A calendar app
+fetches a feed server-to-server with no token, no cookie and no chance to
+prompt. This is the only unauthenticated per-student read in the Worker, and it
+is one because the alternative is the feature not existing.
+
+**The feed token is RANDOM, not derived.** Every other id in this system is
+derived and idempotent, which is right for records — the same inputs should name
+the same row — and exactly wrong for a credential. A derived token cannot be
+revoked without changing who the student is.
+
+**Two documents, and the write order is the safety property.** `shohojUsers/{uid}
+.calendarFeedToken` says what a student's feed is; `calendarFeeds/{token}` says
+whose feed that is. The reverse index makes an anonymous fetch resolvable in one
+keyed read with no query and no index. The failure is asymmetric — a forward
+pointer with no reverse doc is a dead link, while a reverse doc with no pointer
+is a live URL the student cannot see or revoke — so minting writes reverse-first
+and rotation deletes the old doc last, while revoking deletes reverse-first.
+
+**Rotation *is* revocation.** There is no separate rotate: creating when one
+exists replaces it and the old URL dies immediately. A student who thinks their
+link escaped should not have to work out which of two buttons kills it.
+
+**Unknown, malformed and revoked all answer the same flat 404.** Distinguishing
+them would confirm that a token once existed, which is information about a
+student. Malformed is refused on shape before any read, so sweeping the space
+costs an attacker a request and us nothing.
+
+**The token is never logged.** The Worker's error handler records
+`url.pathname`, which would have written the credential to disk on every failed
+poll. `redactFeedPath` passes every other path through unchanged so callers
+redact unconditionally — the version that has to remember which routes are
+sensitive is the version that eventually does not.
+
+**One calendar, two writers, pinned by output.** The download is built in the
+browser and the feed on the server, because neither module graph belongs in the
+other. `tests/calendarFeedParity.test.js` runs both over one fixture and
+compares the bytes, so a student who downloaded once and subscribed later cannot
+end up with two different calendars. It was verified to fail: changing one
+constant on one side breaks nine of eighteen cases.
+
+**Freshness is not ours to promise.** Calendar apps poll on their own schedule,
+which we neither control nor can shorten. The UI says a change can take a few
+hours rather than implying "instant", because a student who thinks a reminder
+failed is worse off than one who knows to wait.
+
+**The warning precedes the URL.** Anyone holding the link can read the student's
+deadlines — titles, courses, the shape of their term. That is the payload, not
+metadata, so the panel says so before it will produce a link, and revocation
+lives beside the link rather than in a settings page.
+
 ## Schema evolution without Flyway
 
 Every stored document carries `schemaVersion`. A read that finds an older version
@@ -474,4 +526,5 @@ local calendar day for exactly this reason, and Today/Upcoming must use it.
 | 6b ✅ | The internal calendar and ICS export |
 | 7a ✅ | The detection boundary, and reading deadlines out of pasted text |
 | 7b ✅ | AI extraction, behind the same boundary and never a hard dependency |
-| 7c | Gmail and Google Calendar — gated on OAuth scope verification, not on code |
+| 7c ✅ | A subscribable calendar feed — live deadlines in any calendar, no OAuth |
+| 7d | Gmail and Google Calendar APIs — gated on OAuth scope verification, not on code |
