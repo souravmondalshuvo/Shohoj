@@ -13,6 +13,7 @@
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import { loadPdfJs } from './pdfjsLoader';
 import {
   parseTranscriptForImport,
@@ -54,24 +55,26 @@ function Dialog({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div
-      className="shell-modal-backdrop"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose?.();
-      }}
-    >
+    <Portal>
       <div
-        className="shell-modal ti-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        data-testid="transcript-import-dialog"
-        onClick={(e) => e.stopPropagation()}
+        className="shell-modal-backdrop"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose?.();
+        }}
       >
-        {children}
+        <div
+          className="shell-modal ti-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={label}
+          data-testid="transcript-import-dialog"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 
