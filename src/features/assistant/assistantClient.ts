@@ -21,6 +21,7 @@ export type {
   AssistantClientOptions,
   AssistantErrorCode,
   AssistantMessage,
+  AssistantQuota,
   AssistantTurnResult,
 } from '../../../js/core/assistantClient.js';
 
