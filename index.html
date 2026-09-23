@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-wTUkEwv26XAN9rW6U3q91W/pecYGZV7J+3TmpPNs21g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-nqHAqiYmkPX63KbUppEnt/yFVMRJNAOquO2Il+Rrzhw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8290,6 +8290,15 @@ body[data-page="admin"] .orb { display: none !important; }
   color: #e05252;
   background: rgba(224, 82, 82, 0.08);
   border: 1px solid rgba(224, 82, 82, 0.3);
+}
+/* The daily-quota hint (#746): a heads-up once the free allowance is running
+   low, not an error, so it gets the same amber the routine tab already uses
+   for "upcoming" status rather than the error red above. */
+.assistant-quota-hint {
+  margin: 0;
+  padding: 6px 14px 10px;
+  font-size: 11px;
+  color: var(--ink-amber);
 }
 .assistant-composer {
   display: flex;
@@ -32712,7 +32721,7 @@ async function sendAssistantTurn(transcript, options) {
   if (res.ok) {
     const body = await res.json().catch(() => null);
     if (body && typeof body.reply === 'string' && body.reply.trim()) {
-      return { ok: true, reply: body.reply };
+      return { ok: true, reply: body.reply, quota: body.quota ?? null };
     }
     return { ok: false, code: 'unavailable', error: ASSISTANT_UNAVAILABLE_MESSAGE };
   }
@@ -32724,6 +32733,18 @@ async function sendAssistantTurn(transcript, options) {
     };
   }
   if (res.status === 429) {
+    // Two different 429s share this status: the burst limiter (wait a
+    // minute) and the daily quota (wait until tomorrow). The body's `error`
+    // string is the only thing that tells them apart.
+    const body = await res.json().catch(() => null);
+    if (body?.error === 'assistant_daily_quota_exhausted') {
+      return {
+        ok: false,
+        code: 'quota-exhausted',
+        error: "You've used today's free messages. More open up tomorrow.",
+        resetsAt: typeof body.resetsAt === 'string' ? body.resetsAt : null,
+      };
+    }
     return { ok: false, code: 'rate-limited', error: 'Slow down a little — try again in a minute.' };
   }
   if (res.status === 400) {
@@ -33311,9 +33332,16 @@ let _drawer = null;
 let _logEl = null;
 let _inputEl = null;
 let _sendEl = null;
+let _quotaHintEl = null;
 let _transcript = [];
 let _pending = false;
 let _error = null;
+// The Worker's daily allowance for this student (#746), last known from a
+// turn's response. Null until the first turn — the drawer opens with no
+// pre-emptive count, since GET /ready is unauthenticated and cannot carry
+// one. Twin of the state in src/features/assistant/AssistantDrawer.tsx —
+// change both.
+let _quota = null;
 let _availability = 'unknown';
 // The readiness probe runs at most once per page load. refreshLauncher() is
 // called on every auth change (which flaps repeatedly while Firestore settles),
@@ -33465,8 +33493,27 @@ function renderLog() {
   }
 
   _logEl.scrollTo({ top: _logEl.scrollHeight });
-  if (_sendEl) _sendEl.disabled = _pending || !_inputEl?.value.trim();
+  const exhausted = _quota != null && _quota.remaining <= 0;
+  if (_sendEl) _sendEl.disabled = _pending || exhausted || !_inputEl?.value.trim();
   if (_inputEl) _inputEl.disabled = _pending;
+  renderQuotaHint();
+}
+
+// A quiet reminder once the allowance is running low, and the reason the send
+// button is disabled once it hits zero — otherwise a greyed-out button with no
+// explanation reads as broken, not as "come back tomorrow".
+function renderQuotaHint() {
+  if (!_quotaHintEl) return;
+  if (_quota == null || _quota.remaining > 5) {
+    _quotaHintEl.textContent = '';
+    _quotaHintEl.hidden = true;
+    return;
+  }
+  _quotaHintEl.hidden = false;
+  _quotaHintEl.textContent =
+    _quota.remaining <= 0
+      ? "You've used today's free messages. More open up tomorrow."
+      : `${_quota.remaining} free message${_quota.remaining === 1 ? '' : 's'} left today.`;
 }
 
 async function ask(question) {
@@ -33497,8 +33544,12 @@ async function ask(question) {
     if (result.ok) {
       _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
       persist();
+      if (result.quota) _quota = result.quota;
     } else {
       _error = result.error;
+      if (result.code === 'quota-exhausted') {
+        _quota = { remaining: 0, limit: _quota?.limit ?? 0, resetsAt: result.resetsAt ?? null };
+      }
     }
   } finally {
     _pending = false;
@@ -33571,7 +33622,8 @@ function buildDrawer() {
     ask(_inputEl.value);
   });
   _inputEl.addEventListener('input', () => {
-    _sendEl.disabled = _pending || !_inputEl.value.trim();
+    const exhausted = _quota != null && _quota.remaining <= 0;
+    _sendEl.disabled = _pending || exhausted || !_inputEl.value.trim();
   });
   _inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -33580,7 +33632,12 @@ function buildDrawer() {
     }
   });
 
-  aside.append(header, note, _logEl, form);
+  _quotaHintEl = document.createElement('p');
+  _quotaHintEl.className = 'assistant-quota-hint';
+  _quotaHintEl.hidden = true;
+
+  aside.append(header, note, _logEl, form, _quotaHintEl);
+  renderQuotaHint();
   return aside;
 }
 
@@ -33662,6 +33719,7 @@ function closeDrawer() {
   _logEl = null;
   _inputEl = null;
   _sendEl = null;
+  _quotaHintEl = null;
   // A close landing mid-open: drop the opening shape so the two morphs don't
   // fight over the same clip.
   _openMorph?.cancel();

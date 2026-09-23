@@ -8273,6 +8273,15 @@ body[data-page="admin"] .orb { display: none !important; }
   background: rgba(224, 82, 82, 0.08);
   border: 1px solid rgba(224, 82, 82, 0.3);
 }
+/* The daily-quota hint (#746): a heads-up once the free allowance is running
+   low, not an error, so it gets the same amber the routine tab already uses
+   for "upcoming" status rather than the error red above. */
+.assistant-quota-hint {
+  margin: 0;
+  padding: 6px 14px 10px;
+  font-size: 11px;
+  color: var(--ink-amber);
+}
 .assistant-composer {
   display: flex;
   gap: 8px;
