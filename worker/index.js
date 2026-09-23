@@ -19,6 +19,11 @@
 //                                 tool-use loop whose read-only tools are
 //                                 scoped server-side to the caller's own
 //                                 users/{uid} doc + the public seat feed
+//   POST   /api/v1/tasks/extract  Read deadlines out of pasted text with a
+//                                 model (#741). Returns PROPOSALS and writes
+//                                 nothing; a student confirms them. Optional
+//                                 infrastructure — with no model key it 503s
+//                                 and the shell carries on with its own parser
 //
 // Bindings (configured in wrangler.toml)
 //   PAPERS_BUCKET         R2 bucket binding
@@ -26,7 +31,10 @@
 //   ALLOWED_ORIGINS       comma-separated CORS origins
 //   ADMIN_EMAIL/etc.      optional, for upload notifications
 //   PAPERS_RATE_LIMIT     Cloudflare Rate Limiting binding (per-UID)
-//   ASSISTANT_RATE_LIMIT  Cloudflare Rate Limiting binding (per-UID, /api/assistant)
+//   ASSISTANT_RATE_LIMIT  Cloudflare Rate Limiting binding (per-UID). Serves
+//                         BOTH /api/assistant and /api/v1/tasks/extract, under
+//                         separate key namespaces so neither can exhaust the
+//                         other's quota
 //
 // Secrets (set with `wrangler secret put`)
 //   RESEND_API_KEY          for upload notifications
@@ -34,7 +42,8 @@
 //                           OAuth2 access tokens that authorize the
 //                           Firestore REST writes for /upload metadata and
 //                           /reviews
-//   GEMINI_API_KEY          Google AI key for /api/assistant (#550). The free
+//   GEMINI_API_KEY          Google AI key for /api/assistant and task
+//                           extraction (#550). The free
 //                           tier needs no billing, so this is the default way
 //                           to run the assistant at zero cost; it LEADS the
 //                           provider chain when set
@@ -42,7 +51,9 @@
 //                           optional — a paid net under the free provider
 //   ASSISTANT_MONTHLY_BUDGET_USD  Ceiling on estimated model spend per calendar
 //                           month (default 5). 0 switches the assistant off
-//                           without removing the keys.
+//                           without removing the keys. Covers task extraction
+//                           too: one ledger, so the owner's exposure is the
+//                           number they set rather than the sum of two.
 //   ANTHROPIC_API_KEY       Claude API key for /api/assistant — lives only
 //                           here, never shipped to the client
 
