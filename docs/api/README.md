@@ -593,6 +593,39 @@ Rate limited per account under its own bucket, separate from `/api/assistant`
 so that reading announcements cannot exhaust a student's chat quota. Spend is
 charged to the **same** monthly ledger, so one ceiling bounds the whole bill.
 
+### `GET /api/v1/tasks/feed` · `POST` · `DELETE`
+
+Manage the student's subscribable calendar URL. Authenticated like every other
+endpoint here.
+
+```json
+{ "feed": { "url": "https://…/feeds/tasks/cft_….ics", "createdAt": "2026-09-23T08:00:00.000Z" } }
+```
+
+`feed` is `null` when none has been minted. `POST` mints one, or **replaces**
+an existing one — rotation is the revocation story, so there is no separate
+rotate call. `DELETE` revokes and is idempotent: revoking a feed that is already
+gone succeeds.
+
+### `GET /feeds/tasks/<token>.ics`
+
+The feed itself. **Unauthenticated**, and the only per-student read in this
+Worker that is — a calendar app fetches server-to-server with no token, no
+cookie and no chance to prompt, so the URL is the credential.
+
+Answers `text/calendar`. Malformed, unknown and revoked tokens all answer the
+same flat `404`: distinguishing them would confirm that a token once existed,
+which is information about a student. A malformed token is refused on shape
+before any read.
+
+No `Origin` check — calendar apps are not browsers and send none. The token is
+excluded from error logs. The response carries `Referrer-Policy: no-referrer`
+and `X-Robots-Tag: noindex`, because a credential in a URL should not travel in
+referrers or end up indexed.
+
+`Cache-Control` is a hint about staleness, not a promise of freshness: clients
+poll on their own schedule, which Shohoj neither controls nor can shorten.
+
 ### There is no `GET /api/v1/courses`
 
 Shohoj already ships the full BRACU catalogue in the frontend bundle
