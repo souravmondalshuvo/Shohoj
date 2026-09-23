@@ -1622,6 +1622,35 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
  * as part of Shohoj's own sentence. */
 .tasks-import-source { font-style: italic; }
 
+/* The second reading (#741). Quieter than the confirm button: it is an offer,
+ * not the next step, and the student's own reading already worked. */
+.tasks-import-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tasks-import-ai-ask {
+  font: inherit;
+  font-size: 0.86rem;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  border: 1px dashed var(--c-border, rgba(0, 0, 0, 0.28));
+  background: transparent;
+  color: var(--c-text);
+}
+
+.tasks-import-ai-ask[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-import-ai-hint { font-size: 0.78rem; }
+
+.tasks-import-ai-note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 .tasks-import-error {
   margin: 0;
   padding: 10px 12px;
