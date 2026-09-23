@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # scripts/build_campus_model.sh
 #
-# Rebuilds the Campus Map's exterior model (#750) from the revision-4 BRACU
+# Rebuilds the Campus Map's 3D building (#750, #755) from the revision-4 BRACU
 # campus .blend:
 #
-#   1. Blender (headless) exports the exterior collection, already placed in
+#   1. Blender (headless) exports the building minus furniture, already placed in
 #      scene coordinates          -> scripts/campus_model_export.py
 #   2. gltf-transform quantizes it with KHR_mesh_quantization, which three's
 #      GLTFLoader decodes natively. Draco/meshopt are deliberately NOT used:
