@@ -152,6 +152,19 @@ test('no failure path ever returns a proposal', async () => {
   }
 });
 
+test('a quota-exhausted reading is its own outcome, not folded into unavailable', async () => {
+  // The deployment DOES have the feature — this student has used their share.
+  // "Come back tomorrow" is a different sentence than "try again later".
+  const detector = createAiDetector(
+    clientReturning(failure('quota_exceeded', 'You’ve used today’s free readings.')),
+  );
+  const result = await detector.detect('x', CTX);
+
+  assert.equal(result.outcome, 'quota_exhausted');
+  assert.equal(result.detected.length, 0);
+  assert.equal(result.note, 'You’ve used today’s free readings.');
+});
+
 test('a successful but empty reading is ok, not a failure', async () => {
   // "I read it and there was nothing" is a real answer, and the panel uses the
   // difference to decide whether to keep what the student already had.
