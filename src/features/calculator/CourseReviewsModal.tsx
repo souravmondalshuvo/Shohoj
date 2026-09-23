@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import { useNotifications } from '../../state/NotificationProvider';
 import { useAuth } from '../../app/providers/AuthProvider';
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
@@ -175,78 +176,80 @@ export default function CourseReviewsModal({
 
   return (
     <>
-      <div
-        className="shell-modal-backdrop"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.stopPropagation();
-            onClose();
-            return;
-          }
-          trapTabKey(e, dialogRef);
-        }}
-      >
+      <Portal>
         <div
-          ref={dialogRef}
-          tabIndex={-1}
-          className="shell-modal rv-cr-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="rv-cr-title"
-          data-testid="course-reviews-modal"
-          onClick={(e) => e.stopPropagation()}
+          className="shell-modal-backdrop"
+          onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              onClose();
+              return;
+            }
+            trapTabKey(e, dialogRef);
+          }}
         >
-          <h2 id="rv-cr-title" className="shell-modal-title">
-            {courseCode} reviews
-          </h2>
-          {courseName && <p className="shell-modal-message rv-cr-subtitle">{courseName}</p>}
+          <div
+            ref={dialogRef}
+            tabIndex={-1}
+            className="shell-modal rv-cr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rv-cr-title"
+            data-testid="course-reviews-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="rv-cr-title" className="shell-modal-title">
+              {courseCode} reviews
+            </h2>
+            {courseName && <p className="shell-modal-message rv-cr-subtitle">{courseName}</p>}
 
-          {groups === undefined ? (
-            <p className="rv-cr-loading" role="status">
-              Loading course reviews…
-            </p>
-          ) : failed ? (
-            <div className="rv-cr-empty" data-testid="course-reviews-unavailable" role="alert">
-              <div className="rv-cr-empty-title">Reviews are unavailable right now</div>
-              <div className="rv-cr-empty-note">
-                We couldn’t load reviews for {courseCode}. Please try again in a moment.
+            {groups === undefined ? (
+              <p className="rv-cr-loading" role="status">
+                Loading course reviews…
+              </p>
+            ) : failed ? (
+              <div className="rv-cr-empty" data-testid="course-reviews-unavailable" role="alert">
+                <div className="rv-cr-empty-title">Reviews are unavailable right now</div>
+                <div className="rv-cr-empty-note">
+                  We couldn’t load reviews for {courseCode}. Please try again in a moment.
+                </div>
+                <button
+                  type="button"
+                  className="rv-cr-retry"
+                  onClick={() => setReloadKey((n) => n + 1)}
+                >
+                  Try again
+                </button>
               </div>
-              <button
-                type="button"
-                className="rv-cr-retry"
-                onClick={() => setReloadKey((n) => n + 1)}
-              >
-                Try again
-              </button>
-            </div>
-          ) : groups.length === 0 ? (
-            <div className="rv-cr-empty" data-testid="course-reviews-empty">
-              <div className="rv-cr-empty-title">No reviews yet</div>
-              <div className="rv-cr-empty-note">
-                Be the first — rate a faculty who taught you {courseCode}.
+            ) : groups.length === 0 ? (
+              <div className="rv-cr-empty" data-testid="course-reviews-empty">
+                <div className="rv-cr-empty-title">No reviews yet</div>
+                <div className="rv-cr-empty-note">
+                  Be the first — rate a faculty who taught you {courseCode}.
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="rv-cr-list">
-              {groups.map((group) => (
-                <FacultyCard
-                  key={group.facultyInitials}
-                  group={group}
-                  onReport={setReportReviewId}
-                  onAddRating={setRateInitials}
-                />
-              ))}
-            </div>
-          )}
+            ) : (
+              <div className="rv-cr-list">
+                {groups.map((group) => (
+                  <FacultyCard
+                    key={group.facultyInitials}
+                    group={group}
+                    onReport={setReportReviewId}
+                    onAddRating={setRateInitials}
+                  />
+                ))}
+              </div>
+            )}
 
-          <div className="shell-modal-actions">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
+            <div className="shell-modal-actions">
+              <Button variant="secondary" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      </Portal>
 
       {reportReviewId && (
         <ReportReviewModal
