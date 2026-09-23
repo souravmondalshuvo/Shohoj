@@ -96,8 +96,13 @@ export const TARGETS = [
     dir: 'dist-shell/assets',
     match: /^index-.*\.css$/,
     build: 'npm run build:shell',
-    measured: { gzip: 40 },
-    budget: { gzip: 43 },
+    // Re-measured 2026-09-23 at 42.6 kB. Phases 7a-7c each added a panel to
+    // the Tasks route — import, the AI offer, the calendar subscription — and
+    // the 43 kB ceiling was down to 0.4 kB of room, which fails the NEXT
+    // change rather than the one that used it up. Raised with the same
+    // headroom the original had (~7%), not to whatever happens to fit.
+    measured: { gzip: 42.6 },
+    budget: { gzip: 46 },
   },
   // Every shell chunk together: catches growth that merely moves between chunks.
   {
