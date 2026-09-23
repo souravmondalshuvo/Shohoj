@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '../../shared/ui/Button';
+import { Portal } from '../../shared/ui/Portal';
 import { REPORT_REASON_MAX } from '../../platform/firebase/reviewsWriteRepo';
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 import { useReportReview } from './FacultyReviewsProvider';
@@ -54,63 +55,65 @@ export default function ReportReviewModal({
   };
 
   return (
-    <div
-      className="shell-modal-backdrop"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onClose();
-          return;
-        }
-        trapTabKey(e, dialogRef);
-      }}
-    >
+    <Portal>
       <div
-        ref={dialogRef}
-        className="shell-modal rv-report-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rv-report-title"
-        data-testid="report-review-modal"
-        onClick={(e) => e.stopPropagation()}
+        className="shell-modal-backdrop"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+            return;
+          }
+          trapTabKey(e, dialogRef);
+        }}
       >
-        <h2 id="rv-report-title" className="shell-modal-title">
-          Report this review
-        </h2>
-        <p className="shell-modal-message">
-          Tell us what’s wrong with this review (spam, abuse, off-topic). Reports are private.
-        </p>
-
-        <textarea
-          ref={textareaRef}
-          className="rv-report-reason"
-          aria-label="Reason for reporting"
-          placeholder="Describe the issue…"
-          maxLength={REPORT_REASON_MAX}
-          rows={4}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="rv-report-counter" aria-hidden="true">
-          {reason.length}/{REPORT_REASON_MAX}
-        </div>
-
-        {error && (
-          <p className="rv-report-error" role="alert">
-            {error}
+        <div
+          ref={dialogRef}
+          className="shell-modal rv-report-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rv-report-title"
+          data-testid="report-review-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="rv-report-title" className="shell-modal-title">
+            Report this review
+          </h2>
+          <p className="shell-modal-message">
+            Tell us what’s wrong with this review (spam, abuse, off-topic). Reports are private.
           </p>
-        )}
 
-        <div className="shell-modal-actions">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void send()} disabled={submitting}>
-            {submitting ? 'Sending…' : 'Send report'}
-          </Button>
+          <textarea
+            ref={textareaRef}
+            className="rv-report-reason"
+            aria-label="Reason for reporting"
+            placeholder="Describe the issue…"
+            maxLength={REPORT_REASON_MAX}
+            rows={4}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <div className="rv-report-counter" aria-hidden="true">
+            {reason.length}/{REPORT_REASON_MAX}
+          </div>
+
+          {error && (
+            <p className="rv-report-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="shell-modal-actions">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={() => void send()} disabled={submitting}>
+              {submitting ? 'Sending…' : 'Send report'}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 }
