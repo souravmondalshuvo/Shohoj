@@ -634,7 +634,10 @@ export function extractTasks(
     .post('/tasks/extract', { text, courseCodes: [...courseCodes] }, ExtractResponseSchema, options)
     .then((response) =>
       response.ok
-        ? { ok: true, value: { tasks: response.value.detected, quota: response.value.quota ?? null } }
+        ? {
+            ok: true,
+            value: { tasks: response.value.detected, quota: response.value.quota ?? null },
+          }
         : response,
     );
 }
