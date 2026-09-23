@@ -22,12 +22,15 @@
  * a per-floor occupancy heat tint, and rooms answer to hover (a DOM tooltip)
  * and the "only free" glow filter. Every label/texture is generated in code.
  *
- * Exterior model (#750): #370's "no binary 3D assets" rule was lifted for the
- * revision-4 BRACU exterior. When the route passes `exteriorModelUrl`, the
- * scene streams that gzipped GLB in after first paint and, once parsed, hides
- * the procedural architecture and glass shell in its favour. The procedural
- * building remains the complete fallback (no DecompressionStream, fetch/parse
- * failure), so the scene never depends on the asset.
+ * Real building model (#750, #755): #370's "no binary 3D assets" rule was
+ * lifted for the revision-4 BRACU model — the whole building minus furniture.
+ * When the route passes `exteriorModelUrl`, the scene streams that gzipped GLB
+ * in after first paint and, once parsed, hides the procedural architecture and
+ * glass shell in its favour and switches to neutral lighting (MODEL_LIGHTING),
+ * so the model keeps its Blender colours at any hour. The procedural building,
+ * with its time-of-day mood, remains the complete fallback (no
+ * DecompressionStream, fetch/parse failure), so the scene never depends on the
+ * asset.
  *
  * React-free on purpose: the route owns state and calls the returned handle;
  * the scene only reports clicks and asks the route to describe a hovered room.
@@ -55,6 +58,7 @@ import {
     type Material,
     Mesh,
     MeshStandardMaterial,
+    NeutralToneMapping,
     Object3D,
     PCFSoftShadowMap,
     PerspectiveCamera,
@@ -185,6 +189,22 @@ export function framingDistanceScale(aspect: number): number {
     if (!Number.isFinite(aspect) || aspect <= 0) return 1;
     return Math.min(Math.max(FRAMING_REFERENCE_ASPECT / aspect, 1), FRAMING_MAX_SCALE);
 }
+
+/**
+ * Lighting for the real BRACU model (#755): neutral white light, independent
+ * of the clock, so the model shows the colours its author set in Blender. The
+ * time-of-day mood below tinted its light beige-grey materials orange-tan at
+ * golden hour and dim blue at night. Exported for unit tests.
+ */
+export const MODEL_LIGHTING = {
+    ambient: 0.9,
+    sky: '#ffffff',
+    ground: '#c9ccc6',
+    hemisphere: 1.1,
+    sunColor: '#ffffff',
+    sun: 1.9,
+    exposure: 1.0,
+} as const;
 
 /**
  * Sky/sun mood for the viewer's local hour — day, golden hour, night. Pure
@@ -321,7 +341,8 @@ export function createCampusScene(
     // Low ambient so the sun + hemisphere carry the modeling; the mood tracks
     // the viewer's clock, so the building looks different at night than noon.
     const mood = skyMoodForHour(new Date().getHours());
-    scene.add(new AmbientLight(0xffffff, 0.35));
+    const ambient = new AmbientLight(0xffffff, 0.35);
+    scene.add(ambient);
     const hemi = new HemisphereLight(new Color(mood.sky), new Color(mood.horizon), 0.7);
     scene.add(hemi);
     const sun = new DirectionalLight(new Color(mood.sunColor), mood.sunIntensity);
@@ -933,6 +954,18 @@ export function createCampusScene(
         shellEdges.visible = false;
         // The model carries its own site; drop the plaza disc beneath it.
         ground.position.y = MODEL_GROUND_Y - 1.2;
+        // Neutral light and colour-preserving tone mapping (#755): the model
+        // should look like the building in Blender at any hour. ACES shifts
+        // and darkens base colours; Khronos PBR Neutral keeps them. Changing
+        // toneMapping recompiles affected programs on the next frame.
+        renderer.toneMapping = NeutralToneMapping;
+        renderer.toneMappingExposure = MODEL_LIGHTING.exposure;
+        ambient.intensity = MODEL_LIGHTING.ambient;
+        hemi.color.set(MODEL_LIGHTING.sky);
+        hemi.groundColor.set(MODEL_LIGHTING.ground);
+        hemi.intensity = MODEL_LIGHTING.hemisphere;
+        sun.color.set(MODEL_LIGHTING.sunColor);
+        sun.intensity = MODEL_LIGHTING.sun;
         // Slabs grow to the model's floor plate so the live room layer sits
         // inside the building rather than floating in its atrium.
         modelSlabGeometry = new RoundedBoxGeometry(
