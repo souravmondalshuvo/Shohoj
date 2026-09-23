@@ -169,6 +169,44 @@ test.describe('geofence', () => {
   });
 });
 
+test.describe('exterior model (#750)', () => {
+  // Runs against the production build, whose CSP meta is the real policy — so
+  // this is where a blocked decoder, blob: image or connect-src gap would show.
+  test('loads under the production CSP without violations', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__cspViolations = [];
+      document.addEventListener('securitypolicyviolation', (event) => {
+        // zod v4 probes for JIT support with a caught `Function('')` on every
+        // page (pre-existing, harmless — it falls back to jitless). That
+        // reports blockedURI "eval"; a WASM decoder would report "wasm-eval"
+        // and a texture "blob:", which must still fail this test.
+        if (event.blockedURI === 'eval') return;
+        window.__cspViolations.push(`${event.violatedDirective} ${event.blockedURI}`);
+      });
+    });
+    await openCampus(page);
+    const canvas = page.getByTestId('campus-canvas');
+    const fallback = page.getByTestId('campus-no-webgl');
+    await expect(canvas.or(fallback).first()).toBeVisible();
+    test.skip(await fallback.isVisible(), 'no WebGL in this browser — nothing to load');
+    await expect(canvas).toHaveAttribute('data-model-state', 'loaded', { timeout: 30_000 });
+    expect(await page.evaluate(() => window.__cspViolations)).toEqual([]);
+  });
+
+  test('a failed download keeps the drawn building and the map working', async ({ page }) => {
+    await page.route('**/bracu-exterior*.gz', (route) => route.fulfill({ status: 404 }));
+    await openCampus(page);
+    const canvas = page.getByTestId('campus-canvas');
+    const fallback = page.getByTestId('campus-no-webgl');
+    await expect(canvas.or(fallback).first()).toBeVisible();
+    test.skip(await fallback.isVisible(), 'no WebGL in this browser — nothing to load');
+    await expect(canvas).toHaveAttribute('data-model-state', 'failed', { timeout: 30_000 });
+    await expect(canvas.locator('canvas')).toBeVisible();
+    await page.getByRole('button', { name: 'Floor 7', exact: true }).click();
+    await expect(page.getByRole('button', { name: /07A-01C/ })).toBeVisible();
+  });
+});
+
 test.describe('place directory (#748)', () => {
   test('searching a place names its floor, even off the map', async ({ page }) => {
     await openCampus(page);
