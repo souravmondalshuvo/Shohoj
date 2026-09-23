@@ -173,7 +173,8 @@ function errorForStatus(
   detail: string,
   apiCode?: string,
 ): ShohojError {
-  const options = apiCode === undefined ? { userMessage: message } : { userMessage: message, apiCode };
+  const options =
+    apiCode === undefined ? { userMessage: message } : { userMessage: message, apiCode };
   if (status === 401 || status === 403) {
     return new PermissionError(detail, options);
   }

@@ -90,22 +90,19 @@ export function createAiDetector(client: ApiClient): TaskDetector {
 
       return {
         source: 'AI_SUGGESTION',
-        detected: result.value.map(
-          (task): DetectedTask => ({
-            title: task.title,
-            type: task.type,
-            dueAt: task.dueAt,
-            courseCode: task.courseCode,
-            syllabus: task.syllabus,
-            confidence: task.confidence,
-            // The model quotes the sentence it read. Carried as evidence at
-            // index 0 rather than a real offset: the extractor works on text
-            // the server never returns, so there is no span to point into —
-            // and a fabricated offset would highlight the wrong words.
-            evidence:
-              task.evidence === null ? {} : { dueAt: { text: task.evidence, index: 0 } },
-          }),
-        ),
+        detected: result.value.map((task): DetectedTask => ({
+          title: task.title,
+          type: task.type,
+          dueAt: task.dueAt,
+          courseCode: task.courseCode,
+          syllabus: task.syllabus,
+          confidence: task.confidence,
+          // The model quotes the sentence it read. Carried as evidence at
+          // index 0 rather than a real offset: the extractor works on text
+          // the server never returns, so there is no span to point into —
+          // and a fabricated offset would highlight the wrong words.
+          evidence: task.evidence === null ? {} : { dueAt: { text: task.evidence, index: 0 } },
+        })),
         unrecognised: [],
         outcome: 'ok',
         note: '',

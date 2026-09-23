@@ -1938,7 +1938,11 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
   let provider;
   let usage;
   try {
-    ({ text: reply, provider, usage } = await runExtractionTurn({
+    ({
+      text: reply,
+      provider,
+      usage,
+    } = await runExtractionTurn({
       providers,
       system: EXTRACTION_SYSTEM,
       prompt: buildExtractionPrompt(text, { now: new Date(), courseCodes }),
