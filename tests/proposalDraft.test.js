@@ -147,6 +147,20 @@ test('a confirmed task says it came from a paste, and says what from', () => {
   assert.equal(input.description, 'chapters 4-6');
 });
 
+test('a draft records WHICH reading produced it', () => {
+  // MANUAL, PASTE and AI_SUGGESTION were all approved by the student. What
+  // separates them is what read the deadline, and only this says which.
+  const [pasted] = draftsFrom('Quiz 3 on 25 September.');
+  assert.equal(draftToInput(pasted).source, 'PASTE');
+
+  const [byModel] = toDrafts(
+    detectFromText('Quiz 3 on 25 September.', CTX).detected,
+    ENROLLMENTS,
+    'AI_SUGGESTION',
+  );
+  assert.equal(draftToInput(byModel).source, 'AI_SUGGESTION');
+});
+
 test('a confirmed task sends an instant with an offset, which the server requires', () => {
   const [draft] = draftsFrom('Quiz 3 on 25 September.');
   const input = draftToInput(draft);
