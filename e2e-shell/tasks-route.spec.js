@@ -22,9 +22,12 @@ import { navigateTo } from './_nav.js';
  * It answers the same paths the real Worker does and applies the same Today /
  * Upcoming rules, so the route sees realistic data without a network.
  */
-function installApi(page, { semesters = null, enrollments = null, tasks = [], extract = null } = {}) {
+function installApi(
+  page,
+  { semesters = null, enrollments = null, tasks = [], extract = null, feed = null } = {},
+) {
   return page.addInitScript(
-    ({ semesters, enrollments, tasks, extract }) => {
+    ({ semesters, enrollments, tasks, extract, feed }) => {
       const state = {
         semesters: semesters ?? [
           {
@@ -69,6 +72,8 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [], ex
         tasks: tasks.slice(),
         assessments: [],
         reminders: [],
+        // null = this student has never minted one.
+        feed: feed ?? null,
       };
       let seq = 0;
       const ok = (value) => Promise.resolve({ ok: true, value });
@@ -94,6 +99,7 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [], ex
           // of the re-render, and the UI silently never updates.
           if (path === '/semesters') return ok({ items: state.semesters.slice() });
           if (path === '/enrollments') return ok({ items: state.enrollments.slice() });
+          if (path === '/tasks/feed') return ok({ feed: state.feed });
           if (path === '/tasks') return ok({ items: state.tasks.map((t) => ({ ...t })) });
           if (path === '/assessments')
             return ok({ items: state.assessments.map((a) => ({ ...a })) });
@@ -161,6 +167,16 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [], ex
             if (at === -1) state.reminders.push(record);
             else state.reminders[at] = record;
             return ok({ reminder: record });
+          }
+          if (path === '/tasks/feed') {
+            // Mirrors the Worker: creating when one exists REPLACES it, so the
+            // token must actually change or the rotation test passes vacuously.
+            seq += 1;
+            state.feed = {
+              url: `https://worker.test/feeds/tasks/cft_${String(seq).padStart(32, '0')}.ics`,
+              createdAt: new Date().toISOString(),
+            };
+            return ok({ feed: state.feed });
           }
           if (path === '/tasks/extract') {
             // Mirrors the Worker: proposals on success, the API's own error
@@ -252,6 +268,10 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [], ex
           return ok({ task });
         },
         delete(path) {
+          if (path === '/tasks/feed') {
+            state.feed = null;
+            return ok({ feed: null });
+          }
           const remDel = /^\/tasks\/([^/]+)\/reminders\/([^/]+)$/.exec(path);
           if (remDel) {
             const at = state.reminders.findIndex(
@@ -267,7 +287,7 @@ function installApi(page, { semesters = null, enrollments = null, tasks = [], ex
         },
       };
     },
-    { semesters, enrollments, tasks, extract },
+    { semesters, enrollments, tasks, extract, feed },
   );
 }
 
@@ -1154,6 +1174,108 @@ test('the second-reading offer has no accessibility violations', async ({ page }
 
   await pasteAndDetect(page, VAGUE);
   await expect(page.getByTestId('tasks-import-ai')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(results.violations).toEqual([]);
+});
+
+// ── Calendar subscription (#744) ────────────────────────────────────────────
+//
+// The link works without signing in, which is the whole feature and the whole
+// risk. These pin the two things that follow from that: the student is told
+// what they are handing out BEFORE a URL exists, and the ways of killing one
+// are next to it rather than in a settings page.
+
+const goCalendar = async (page) => {
+  await goTasks(page);
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await expect(page.getByTestId('tasks-feed')).toBeVisible();
+};
+
+test('no URL exists until the student asks for one', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+
+  await expect(page.getByTestId('tasks-feed-url')).toHaveCount(0);
+  await expect(page.getByTestId('tasks-feed-create')).toBeVisible();
+});
+
+test('the warning is shown before a link is created, not after', async ({ page }) => {
+  // A student cannot consent to handing out their deadlines if the first time
+  // they hear about it is underneath a URL that already exists.
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+
+  const warning = page.getByTestId('tasks-feed-warning');
+  await expect(warning).toBeVisible();
+  await expect(warning).toContainText(/anyone who has it can read your deadlines/i);
+  await expect(page.getByTestId('tasks-feed-create')).toBeVisible();
+});
+
+test('creating a link shows it, and keeps the warning up', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+
+  await page.getByTestId('tasks-feed-create').click();
+
+  await expect(page.getByTestId('tasks-feed-url')).toHaveValue(/\/feeds\/tasks\/cft_[0-9a-f]{32}\.ics$/);
+  await expect(page.getByTestId('tasks-feed-warning')).toContainText(/anyone with this link/i);
+});
+
+test('replacing a link changes it', async ({ page }) => {
+  // Rotation is the revocation story: one click and the old URL is dead.
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+
+  await page.getByTestId('tasks-feed-create').click();
+  const first = await page.getByTestId('tasks-feed-url').inputValue();
+
+  await page.getByTestId('tasks-feed-rotate').click();
+  await expect(page.getByTestId('tasks-feed-url')).not.toHaveValue(first);
+});
+
+test('turning it off puts the student back to having no link', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+
+  await page.getByTestId('tasks-feed-create').click();
+  await expect(page.getByTestId('tasks-feed-url')).toBeVisible();
+
+  await page.getByTestId('tasks-feed-revoke').click();
+  await expect(page.getByTestId('tasks-feed-url')).toHaveCount(0);
+  await expect(page.getByTestId('tasks-feed-create')).toBeVisible();
+});
+
+test('an existing link is shown on arrival, with its controls', async ({ page }) => {
+  await installApi(page, {
+    tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })],
+    feed: {
+      url: `https://worker.test/feeds/tasks/cft_${'a'.repeat(32)}.ics`,
+      createdAt: '2026-09-20T00:00:00.000Z',
+    },
+  });
+  await goCalendar(page);
+
+  await expect(page.getByTestId('tasks-feed-url')).toHaveValue(/cft_a{32}\.ics$/);
+  await expect(page.getByTestId('tasks-feed-revoke')).toBeVisible();
+  await expect(page.getByTestId('tasks-feed-rotate')).toBeVisible();
+});
+
+test('the subscription is not offered outside the calendar', async ({ page }) => {
+  // The URL is a credential; it is not fetched on a screen that never shows it.
+  await installApi(page, { tasks: [taskDue(0, { key: '1', title: 'Due today' })] });
+  await goTasks(page);
+
+  await expect(page.getByTestId('tasks-feed')).toHaveCount(0);
+});
+
+test('the subscription panel has no accessibility violations', async ({ page }) => {
+  await installApi(page, { tasks: [taskDue(2, { key: '1', title: 'MAT215 Final' })] });
+  await goCalendar(page);
+  await page.getByTestId('tasks-feed-create').click();
+  await expect(page.getByTestId('tasks-feed-url')).toBeVisible();
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
