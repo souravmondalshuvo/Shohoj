@@ -47,7 +47,8 @@ export interface AiDetectionResult extends DetectionResult {
 
 const NOTES: Record<Exclude<ExtractionOutcome, 'ok'>, string> = {
   unavailable: 'Shohoj can’t read announcements right now — your own reading still works.',
-  quota_exhausted: 'You’ve used today’s free readings — your own reading still works. More open up tomorrow.',
+  quota_exhausted:
+    'You’ve used today’s free readings — your own reading still works. More open up tomorrow.',
   failed: 'That didn’t work. You can try again, or add the task yourself.',
 };
 
