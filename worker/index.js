@@ -19,6 +19,11 @@
 //                                 tool-use loop whose read-only tools are
 //                                 scoped server-side to the caller's own
 //                                 users/{uid} doc + the public seat feed
+//   GET    /feeds/tasks/<t>.ics   Subscribable calendar feed (#744). The ONLY
+//                                 unauthenticated per-student read here: a
+//                                 calendar app fetches server-to-server with no
+//                                 token, so the URL is the credential. Random,
+//                                 revocable, redacted from logs
 //   POST   /api/v1/tasks/extract  Read deadlines out of pasted text with a
 //                                 model (#741). Returns PROPOSALS and writes
 //                                 nothing; a student confirms them. Optional
