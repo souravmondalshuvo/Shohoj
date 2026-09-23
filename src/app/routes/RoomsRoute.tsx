@@ -39,6 +39,7 @@ import {
   type BusyInterval,
   type RoomTypeKey,
 } from '../../core/freeRooms';
+import { Portal } from '../../shared/ui/Portal';
 import { trapTabKey, useRestoreFocus } from '../../shared/ui/useFocusTrap';
 
 const DAY_ORDER: readonly WeekdayName[] = [
@@ -169,76 +170,78 @@ function RoomWeekDialog({
   }, []);
 
   return (
-    <div
-      className="shell-modal-backdrop"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onClose();
-          return;
-        }
-        trapTabKey(e, dialogRef);
-      }}
-    >
+    <Portal>
       <div
-        ref={dialogRef}
-        tabIndex={-1}
-        className="shell-modal rooms-week-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="rooms-week-title"
-        data-testid="rooms-week-modal"
-        onClick={(e) => e.stopPropagation()}
+        className="shell-modal-backdrop"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onClose();
+            return;
+          }
+          trapTabKey(e, dialogRef);
+        }}
       >
-        <h2 id="rooms-week-title" className="shell-modal-title">
-          {room} · weekly availability
-        </h2>
-        <div className="freerooms-week">
-          {DAY_ORDER.map((day) => {
-            const segs = dayTimeline(index, room, day);
-            const hasClasses = busyOnDay(index, room, day).length > 0;
-            return (
-              <div
-                key={day}
-                className={
-                  day === activeDay ? 'rooms-week-row rooms-week-row--active' : 'rooms-week-row'
-                }
-              >
-                <div className="rooms-week-day">{DAY_SHORT[day]}</div>
-                <ul className="rooms-week-segs">
-                  {!hasClasses ? (
-                    <li className="freerooms-seg freerooms-seg--none">No class data</li>
-                  ) : (
-                    segs.map((s, i) => {
-                      const cls = !s.busy
-                        ? 'freerooms-seg freerooms-seg--free'
-                        : s.lab
-                          ? 'freerooms-seg freerooms-seg--lab'
-                          : 'freerooms-seg freerooms-seg--busy';
-                      const label = !s.busy
-                        ? 'free'
-                        : `${s.sectionName ? `${s.courseCode} Section ${s.sectionName}` : s.courseCode}${s.lab ? ' · lab' : ''}`;
-                      return (
-                        <li key={i} className={cls}>
-                          <span className="freerooms-seg-time">
-                            {fmt12(s.startMin)} – {fmt12(s.endMin)}
-                          </span>
-                          <span className="freerooms-seg-label">{label}</span>
-                        </li>
-                      );
-                    })
-                  )}
-                </ul>
-              </div>
-            );
-          })}
+        <div
+          ref={dialogRef}
+          tabIndex={-1}
+          className="shell-modal rooms-week-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rooms-week-title"
+          data-testid="rooms-week-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="rooms-week-title" className="shell-modal-title">
+            {room} · weekly availability
+          </h2>
+          <div className="freerooms-week">
+            {DAY_ORDER.map((day) => {
+              const segs = dayTimeline(index, room, day);
+              const hasClasses = busyOnDay(index, room, day).length > 0;
+              return (
+                <div
+                  key={day}
+                  className={
+                    day === activeDay ? 'rooms-week-row rooms-week-row--active' : 'rooms-week-row'
+                  }
+                >
+                  <div className="rooms-week-day">{DAY_SHORT[day]}</div>
+                  <ul className="rooms-week-segs">
+                    {!hasClasses ? (
+                      <li className="freerooms-seg freerooms-seg--none">No class data</li>
+                    ) : (
+                      segs.map((s, i) => {
+                        const cls = !s.busy
+                          ? 'freerooms-seg freerooms-seg--free'
+                          : s.lab
+                            ? 'freerooms-seg freerooms-seg--lab'
+                            : 'freerooms-seg freerooms-seg--busy';
+                        const label = !s.busy
+                          ? 'free'
+                          : `${s.sectionName ? `${s.courseCode} Section ${s.sectionName}` : s.courseCode}${s.lab ? ' · lab' : ''}`;
+                        return (
+                          <li key={i} className={cls}>
+                            <span className="freerooms-seg-time">
+                              {fmt12(s.startMin)} – {fmt12(s.endMin)}
+                            </span>
+                            <span className="freerooms-seg-label">{label}</span>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          <button type="button" className="shell-btn rooms-week-close" onClick={onClose}>
+            Close
+          </button>
         </div>
-        <button type="button" className="shell-btn rooms-week-close" onClick={onClose}>
-          Close
-        </button>
       </div>
-    </div>
+    </Portal>
   );
 }
 
