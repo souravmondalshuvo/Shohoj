@@ -1702,7 +1702,9 @@ async function handleAssistant(request, env, origin, execCtx) {
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
   }
   if (isQuotaExhausted(quotaCount, quotaLimit)) {
-    console.warn(JSON.stringify({ level: 'warn', event: 'assistant_quota_exhausted', day, quotaLimit }));
+    console.warn(
+      JSON.stringify({ level: 'warn', event: 'assistant_quota_exhausted', day, quotaLimit }),
+    );
     return jsonResponse(
       { error: 'assistant_daily_quota_exhausted', resetsAt: resetsAtIso() },
       { status: 429 },
@@ -1862,16 +1864,18 @@ async function handleAssistant(request, env, origin, execCtx) {
     // Quota counts only a turn that actually answered — a failed provider
     // attempt (the catch block below) never costs the student part of their
     // day. Same off-response-path treatment as the spend ledger above.
-    const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch((e) => {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          event: 'assistant_quota_write_failed',
-          day,
-          errorMessage: e?.message || String(e),
-        }),
-      );
-    });
+    const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch(
+      (e) => {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            event: 'assistant_quota_write_failed',
+            day,
+            errorMessage: e?.message || String(e),
+          }),
+        );
+      },
+    );
     if (typeof execCtx?.waitUntil === 'function') {
       execCtx.waitUntil(quotaRecord);
     } else {
@@ -1880,7 +1884,11 @@ async function handleAssistant(request, env, origin, execCtx) {
     return jsonResponse(
       {
         reply,
-        quota: { remaining: Math.max(0, quotaLimit - quotaCount - 1), limit: quotaLimit, resetsAt: resetsAtIso() },
+        quota: {
+          remaining: Math.max(0, quotaLimit - quotaCount - 1),
+          limit: quotaLimit,
+          resetsAt: resetsAtIso(),
+        },
       },
       { status: 200 },
       env,
@@ -2020,7 +2028,9 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     );
   }
   if (isQuotaExhausted(quotaCount, quotaLimit)) {
-    console.warn(JSON.stringify({ level: 'warn', event: 'extract_quota_exhausted', day, quotaLimit }));
+    console.warn(
+      JSON.stringify({ level: 'warn', event: 'extract_quota_exhausted', day, quotaLimit }),
+    );
     return apiV1Error(
       env,
       origin,
@@ -2177,7 +2187,11 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
   return jsonResponse(
     {
       detected: parsed.tasks,
-      quota: { remaining: Math.max(0, quotaLimit - quotaCount - 1), limit: quotaLimit, resetsAt: resetsAtIso() },
+      quota: {
+        remaining: Math.max(0, quotaLimit - quotaCount - 1),
+        limit: quotaLimit,
+        resetsAt: resetsAtIso(),
+      },
     },
     { status: 200 },
     env,
@@ -2475,7 +2489,11 @@ async function recordAssistantSpend(env, token, month, spentUsd, costUsd) {
 const ASSISTANT_QUOTA_COLLECTION = 'assistantDailyQuota';
 
 async function readDailyQuotaCount(env, token, uid, day) {
-  const fields = await firestoreGetFields(env, token, `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`);
+  const fields = await firestoreGetFields(
+    env,
+    token,
+    `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`,
+  );
   const count = Number(fields?.count);
   return Number.isFinite(count) && count > 0 ? count : 0;
 }
