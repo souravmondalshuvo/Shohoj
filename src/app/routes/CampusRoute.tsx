@@ -817,11 +817,15 @@ export function Component() {
         {selectedPlace && (
           <p className="campus-place-status" data-testid="campus-place-status" role="status">
             <strong>{selectedPlace.name}</strong> is on {levelLabel(selectedPlace.floor)}.
-            {!isMapFloor(selectedPlace.floor)
-              ? ' The 3D map only focuses floors with scheduled rooms.'
-              : floor === selectedPlace.floor
-                ? ` Showing ${levelLabel(selectedPlace.floor)} on the map.`
-                : ''}
+            {/* Until the feed loads, no floor is known to be a map floor —
+                say nothing rather than claim this one isn't. */}
+            {!model
+              ? ''
+              : !isMapFloor(selectedPlace.floor)
+                ? ' The 3D map only focuses floors with scheduled rooms.'
+                : floor === selectedPlace.floor
+                  ? ` Showing ${levelLabel(selectedPlace.floor)} on the map.`
+                  : ''}
           </p>
         )}
 
