@@ -20,8 +20,14 @@
  * sky/sun mood follows the viewer's real clock (day / golden hour / night) —
  * honest, like the free/busy data. Floors carry canvas-drawn number labels and
  * a per-floor occupancy heat tint, and rooms answer to hover (a DOM tooltip)
- * and the "only free" glow filter. Every label/texture is generated in code,
- * so the "no binary 3D assets" constraint from #370 still holds.
+ * and the "only free" glow filter. Every label/texture is generated in code.
+ *
+ * Exterior model (#750): #370's "no binary 3D assets" rule was lifted for the
+ * revision-4 BRACU exterior. When the route passes `exteriorModelUrl`, the
+ * scene streams that gzipped GLB in after first paint and, once parsed, hides
+ * the procedural architecture and glass shell in its favour. The procedural
+ * building remains the complete fallback (no DecompressionStream, fetch/parse
+ * failure), so the scene never depends on the asset.
  *
  * React-free on purpose: the route owns state and calls the returned handle;
  * the scene only reports clicks and asks the route to describe a hovered room.
@@ -46,6 +52,7 @@ import {
     InstancedMesh,
     LineBasicMaterial,
     LineSegments,
+    type Material,
     Mesh,
     MeshStandardMaterial,
     Object3D,
@@ -65,8 +72,16 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import type { CampusModel, ParsedRoom } from '../../core/campusRooms';
+import {
+    canDecompressGzip,
+    fetchExteriorGlb,
+    MODEL_FLOOR_PLATE,
+    MODEL_GROUND_Y,
+    type ExteriorModelState,
+} from './campusModel.ts';
 
 export type RoomStatus = 'free' | 'busy';
 
@@ -99,6 +114,14 @@ export interface CampusSceneOptions {
     onRoomClick?: (code: string) => void;
     /** Describe a room for its hover tooltip, or null to suppress it. */
     describeRoom?: (code: string) => RoomTooltip | null;
+    /**
+     * URL of the gzipped exterior GLB (#750). When set, the scene streams it in
+     * after first paint and swaps out the procedural architecture on success;
+     * any failure keeps the procedural building.
+     */
+    exteriorModelUrl?: string;
+    /** Exterior model lifecycle, for the route (tests, diagnostics). */
+    onModelState?: (state: ExteriorModelState) => void;
 }
 
 export interface CampusSceneHandle {
@@ -132,6 +155,8 @@ const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
 const IDLE_ORBIT_AFTER_MS = 9000;   // idle time before the camera starts drifting
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
+const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
+const FRAMING_MAX_SCALE = 1.85;        // 101 m default distance x 1.85 stays under maxDistance 190
 
 function easeOutCubic(x: number): number {
     return 1 - Math.pow(1 - x, 3);
@@ -146,6 +171,18 @@ function easeOutCubic(x: number): number {
 export function floorHeatColor(baseHex: string, hotHex: string, fraction: number): string {
     const mix = Math.max(0, Math.min(1, fraction)) * HEAT_MAX_MIX;
     return `#${new Color(baseHex).lerp(new Color(hotHex), mix).getHexString()}`;
+}
+
+/**
+ * How much farther than the desktop framing the camera should sit for a given
+ * canvas aspect (width / height). The default framing was tuned on a wide
+ * canvas; a portrait phone canvas has far less horizontal field of view and
+ * clips the building, so the camera backs off — capped so it stays inside the
+ * orbit controls' max distance. Pure and exported for unit tests.
+ */
+export function framingDistanceScale(aspect: number): number {
+    if (!Number.isFinite(aspect) || aspect <= 0) return 1;
+    return Math.min(Math.max(FRAMING_REFERENCE_ASPECT / aspect, 1), FRAMING_MAX_SCALE);
 }
 
 /**
@@ -834,6 +871,110 @@ export function createCampusScene(
     let shellEdgesTargetOpacity = SHELL_EDGE_OPACITY.tower;
     let fresnelTargetOpacity = FRESNEL_OPACITY.tower;
 
+    // --- Exterior model (#750) ----------------------------------------------
+    // The revision-4 BRACU exterior, streamed in after first paint. Everything
+    // above stays on screen until the model has parsed, and for good if it
+    // can't load — the scene is complete either way. The model joins the same
+    // focus fade as the procedural architecture; it is never in floorGroup or
+    // roomGroup, so the click raycaster never sees it.
+    const modelGroup = new Group();
+    scene.add(modelGroup);
+    const modelMaterials: Array<{
+        material: Material;
+        baseOpacity: number;
+        baseTransparent: boolean;
+        baseDepthWrite: boolean;
+    }> = [];
+    let modelSlabGeometry: RoundedBoxGeometry | null = null;
+    const modelAbort = new AbortController();
+    let disposed = false;
+
+    function disposeObjectTree(root: Object3D): void {
+        root.traverse((object) => {
+            if (!(object instanceof Mesh)) return;
+            object.geometry.dispose();
+            const list: Material[] = Array.isArray(object.material)
+                ? object.material
+                : [object.material];
+            for (const material of list) material.dispose();
+        });
+    }
+
+    function adoptExteriorModel(root: Object3D): void {
+        root.traverse((object) => {
+            if (!(object instanceof Mesh)) return;
+            object.castShadow = true;
+            object.receiveShadow = true;
+            const list: Material[] = Array.isArray(object.material)
+                ? object.material
+                : [object.material];
+            for (const material of list) {
+                if (modelMaterials.some((entry) => entry.material === material)) continue;
+                modelMaterials.push({
+                    material,
+                    baseOpacity: material.opacity,
+                    baseTransparent: material.transparent,
+                    baseDepthWrite: material.depthWrite,
+                });
+            }
+        });
+        modelGroup.add(root);
+
+        // Hand over from the drawn building: its massing and the glass shell
+        // would z-fight the real façade.
+        architecture.visible = false;
+        shell.visible = false;
+        fresnel.visible = false;
+        shellEdges.visible = false;
+        // The model carries its own site; drop the plaza disc beneath it.
+        ground.position.y = MODEL_GROUND_Y - 1.2;
+        // Slabs grow to the model's floor plate so the live room layer sits
+        // inside the building rather than floating in its atrium.
+        modelSlabGeometry = new RoundedBoxGeometry(
+            MODEL_FLOOR_PLATE.width,
+            SLAB_H,
+            MODEL_FLOOR_PLATE.depth,
+            2,
+            0.28,
+        );
+        for (const f of floors) {
+            f.mesh.geometry = modelSlabGeometry;
+            f.label.position.set(
+                MODEL_FLOOR_PLATE.width / 2 + 1.4,
+                0.2,
+                MODEL_FLOOR_PLATE.depth / 2 + 1.4,
+            );
+        }
+        // Spread the room ring (and widen each room) with the plate. Rooms sit
+        // at absolute heights, so a plan-only scale leaves them on their slab.
+        const planScale = MODEL_FLOOR_PLATE.width / SLAB_W;
+        roomGroup.scale.set(planScale, 1, planScale);
+    }
+
+    function loadExteriorModel(url: string): void {
+        const report = (state: ExteriorModelState) => options.onModelState?.(state);
+        if (!canDecompressGzip()) {
+            report('unavailable');
+            return;
+        }
+        report('loading');
+        fetchExteriorGlb(url, modelAbort.signal)
+            .then((glb) => new GLTFLoader().parseAsync(glb, ''))
+            .then((gltf) => {
+                if (disposed) {
+                    disposeObjectTree(gltf.scene);
+                    return;
+                }
+                adoptExteriorModel(gltf.scene);
+                report('loaded');
+            })
+            .catch((error: unknown) => {
+                if (disposed) return;
+                console.warn('Campus map: exterior model unavailable; keeping the drawn building.', error);
+                report('failed');
+            });
+    }
+
     // --- Rooms (built per focused floor) ------------------------------------
     const roomGeometry = new RoundedBoxGeometry(ROOM_SIZE, ROOM_H, ROOM_SIZE, 2, 0.18);
     const roomGroup = new Group();
@@ -1024,12 +1165,26 @@ export function createCampusScene(
     const markActive = () => { lastInteraction = performance.now(); };
     controls.addEventListener('start', markActive);
 
+    // Aspect-aware framing: until the viewer orbits or zooms themselves, keep
+    // the camera at the default distance scaled for the canvas shape, along
+    // whatever bearing it currently has (idle drift included).
+    const defaultCameraDistance = camera.position.distanceTo(controls.target);
+    let cameraTouched = false;
+    controls.addEventListener('start', () => {
+        cameraTouched = true;
+    });
+
     function resize(): void {
         const width = Math.max(container.clientWidth, 1);
         const height = Math.max(container.clientHeight, 1);
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
+        if (!cameraTouched) {
+            const offset = camera.position.clone().sub(controls.target);
+            offset.setLength(defaultCameraDistance * framingDistanceScale(camera.aspect));
+            camera.position.copy(controls.target).add(offset);
+        }
     }
     resize();
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -1055,6 +1210,21 @@ export function createCampusScene(
         for (const entry of architectureMaterials) {
             const targetOpacity = entry.baseOpacity * architectureTargetFactor;
             entry.material.opacity += (targetOpacity - entry.material.opacity) * k;
+        }
+        // The exterior model fades with the architecture. Its opaque materials
+        // blend only while faded: an opaque façade keeps depth-writing (no
+        // sorting artefacts across 180k triangles), a faded one must not wall
+        // off the room layer behind it.
+        for (const entry of modelMaterials) {
+            const { material } = entry;
+            const targetOpacity = entry.baseOpacity * architectureTargetFactor;
+            material.opacity += (targetOpacity - material.opacity) * k;
+            const blend = entry.baseTransparent || material.opacity < 0.995;
+            if (material.transparent !== blend) {
+                material.transparent = blend;
+                material.depthWrite = blend ? false : entry.baseDepthWrite;
+                material.needsUpdate = true;
+            }
         }
         shellMaterial.opacity += (shellTargetOpacity - shellMaterial.opacity) * k;
         shellEdgesMaterial.opacity +=
@@ -1156,6 +1326,9 @@ export function createCampusScene(
 
     applyFloorFocus();
 
+    // Last, so the procedural scene is fully built (and painting) first.
+    if (options.exteriorModelUrl) loadExteriorModel(options.exteriorModelUrl);
+
     return {
         setFloor(floor) {
             focusedFloor = floor !== null && dataFloors.has(floor) ? floor : null;
@@ -1195,6 +1368,8 @@ export function createCampusScene(
             refreshRoomColors();
         },
         dispose() {
+            disposed = true;
+            modelAbort.abort();
             renderer.setAnimationLoop(null);
             resizeObserver?.disconnect();
             renderer.domElement.removeEventListener('pointerdown', onPointerDown);
@@ -1212,6 +1387,8 @@ export function createCampusScene(
                 if (object instanceof Mesh) object.geometry.dispose();
             });
             for (const entry of architectureMaterials) entry.material.dispose();
+            disposeObjectTree(modelGroup);
+            modelSlabGeometry?.dispose();
             slabGeometry.dispose();
             roomGeometry.dispose();
             groundGeometry.dispose();
