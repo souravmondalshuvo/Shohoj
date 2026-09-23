@@ -24,6 +24,7 @@ import { GradeImpactPanel } from '../../features/tasks/GradeImpactPanel.tsx';
 import { TaskComposer } from '../../features/tasks/TaskComposer.tsx';
 import { TaskDetails } from '../../features/tasks/TaskDetails.tsx';
 import { TaskImport } from '../../features/tasks/TaskImport.tsx';
+import { createAiDetector } from '../../features/tasks/detection/aiDetector.ts';
 import { TaskRow } from '../../features/tasks/TaskRow.tsx';
 import { gradeImpactView } from '../../features/tasks/gradeImpactView.ts';
 import { useAssessments } from '../../features/tasks/useAssessments.ts';
@@ -68,6 +69,10 @@ export function Component() {
   // Sorting lives in the URL beside the view and the filter, so a student who
   // prefers priority order keeps it across navigations and can link to it.
   const sortByPriority = params.get('sort') === 'priority';
+
+  // One detector for the life of the client. Null only on an offline build,
+  // where the panel then never offers a second reading at all.
+  const aiDetector = useMemo(() => (client === null ? null : createAiDetector(client)), [client]);
 
   const courses = useMemo(
     () => courseOptions(academic.activeEnrollments),
@@ -362,6 +367,7 @@ export function Component() {
           courses={courses}
           enrollments={academic.activeEnrollments}
           onCreate={onImportCreate}
+          aiDetector={aiDetector}
           onDone={(count) =>
             notify({
               kind: 'success',
