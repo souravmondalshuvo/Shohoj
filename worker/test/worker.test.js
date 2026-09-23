@@ -57,6 +57,13 @@ import {
   monthlyBudgetUsd,
 } from '../assistantBudget.js';
 import {
+  DEFAULT_DAILY_MESSAGE_LIMIT,
+  dailyLimit,
+  dayKey,
+  isQuotaExhausted,
+  resetsAtIso,
+} from '../assistantQuota.js';
+import {
   buildAssistantProviders,
   GEMINI_URL,
   openAiTools,
@@ -1991,7 +1998,7 @@ async function makeServiceAccountJson() {
       if (call.url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'service-account-token', expires_in: 3600 });
       }
-      if (/\/documents\/assistantBudget\//.test(call.url)) {
+      if (/\/documents\/(assistantBudget|assistantDailyQuota)\//.test(call.url)) {
         if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
         return json({});
       }
@@ -2095,7 +2102,7 @@ async function makeServiceAccountJson() {
         if (call.url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'service-account-token', expires_in: 3600 });
         }
-        if (/\/documents\/assistantBudget\//.test(call.url)) {
+        if (/\/documents\/(assistantBudget|assistantDailyQuota)\//.test(call.url)) {
           if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
           return json({});
         }
@@ -2166,7 +2173,7 @@ async function makeServiceAccountJson() {
       if (call.url === 'https://oauth2.googleapis.com/token') {
         return json({ access_token: 'service-account-token', expires_in: 3600 });
       }
-      if (/\/documents\/assistantBudget\//.test(call.url)) {
+      if (/\/documents\/(assistantBudget|assistantDailyQuota)\//.test(call.url)) {
         if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
         return json({});
       }
@@ -2733,6 +2740,9 @@ async function makeServiceAccountJson() {
         if (call.url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'service-account-token', expires_in: 3600 });
         }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          return new Response('not found', { status: 404 });
+        }
         if (/\/documents\/assistantBudget\//.test(call.url)) {
           return json({ fields: { spentUsd: { doubleValue: 5.01 } } });
         }
@@ -2759,6 +2769,9 @@ async function makeServiceAccountJson() {
         if (call.url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'service-account-token', expires_in: 3600 });
         }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          return new Response('not found', { status: 404 });
+        }
         if (/\/documents\/assistantBudget\//.test(call.url)) {
           return new Response('boom', { status: 500 });
         }
@@ -2783,6 +2796,10 @@ async function makeServiceAccountJson() {
         const call = await readFetchCall(input, init);
         if (call.url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
         }
         if (/\/documents\/assistantBudget\//.test(call.url)) {
           if ((call.init.method || 'GET') === 'GET') {
@@ -2853,7 +2870,7 @@ async function makeServiceAccountJson() {
         if (call.url === 'https://oauth2.googleapis.com/token') {
           return json({ access_token: 'service-account-token', expires_in: 3600 });
         }
-        if (/\/documents\/assistantBudget\//.test(call.url)) {
+        if (/\/documents\/(assistantBudget|assistantDailyQuota)\//.test(call.url)) {
           if ((call.init.method || 'GET') === 'GET') return new Response('nf', { status: 404 });
           return json({});
         }
@@ -2872,11 +2889,216 @@ async function makeServiceAccountJson() {
       { waitUntil: (p) => deferred.push(p) }));
 
       assertEq(res.status, 200);
-      assertEq(deferred.length, 1, 'the accounting was deferred, not awaited');
+      // Two ledgers, two deferred writes: the monthly spend ceiling and the
+      // daily per-uid quota, neither of which the student should wait on.
+      assertEq(deferred.length, 2, 'both ledger writes were deferred, not awaited');
       await Promise.all(deferred);
     } finally {
       __setTestJwksForTests(null);
     }
+  });
+
+  console.log('\nAssistant daily quota (#746):');
+
+  await test('the day key is UTC and zero-padded', () => {
+    assertEq(dayKey(new Date('2026-09-05T23:59:00Z')), '2026-09-05');
+    assertEq(dayKey(new Date('2026-01-01T00:00:00Z')), '2026-01-01');
+  });
+
+  await test('the configured daily limit falls back on junk, and 0 means off', () => {
+    assertEq(dailyLimit({}), DEFAULT_DAILY_MESSAGE_LIMIT);
+    assertEq(dailyLimit({ ASSISTANT_DAILY_MESSAGE_LIMIT: 'abc' }), DEFAULT_DAILY_MESSAGE_LIMIT);
+    assertEq(dailyLimit({ ASSISTANT_DAILY_MESSAGE_LIMIT: '-3' }), DEFAULT_DAILY_MESSAGE_LIMIT);
+    assertEq(dailyLimit({ ASSISTANT_DAILY_MESSAGE_LIMIT: '12' }), 12);
+    assertEq(dailyLimit({ ASSISTANT_DAILY_MESSAGE_LIMIT: '0' }), 0, 'an explicit off switch');
+    assert(isQuotaExhausted(0, 0), 'a zero limit refuses every turn');
+    assert(!isQuotaExhausted(39, 40));
+    assert(isQuotaExhausted(40, 40), 'reaching the limit counts as exhausted');
+  });
+
+  await test('resetsAtIso is the next UTC midnight', () => {
+    assertEq(resetsAtIso(new Date('2026-09-05T14:00:00Z')), '2026-09-06T00:00:00.000Z');
+    assertEq(resetsAtIso(new Date('2026-09-05T23:59:59Z')), '2026-09-06T00:00:00.000Z');
+  });
+
+  await test('a quota-exhausted student is refused without calling any model', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          return json({ fields: { count: { integerValue: '40' } } });
+        }
+        // Reaching the budget ledger or a model API would mean the quota check
+        // did not hold, or fired in the wrong order relative to the ceiling.
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test', ASSISTANT_DAILY_MESSAGE_LIMIT: '40' }, {}));
+
+      assertEq(res.status, 429);
+      const body = await res.json();
+      assertEq(body.error, 'assistant_daily_quota_exhausted');
+      assert(typeof body.resetsAt === 'string' && body.resetsAt.length > 0);
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('quota fires before the monthly ceiling when both are exhausted', async () => {
+    // Guard order matters: the student sees the more specific, more actionable
+    // failure — their own daily limit — not the project-wide one.
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    let budgetReads = 0;
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          return json({ fields: { count: { integerValue: '40' } } });
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          budgetReads++;
+          return json({ fields: { spentUsd: { doubleValue: 5.01 } } });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test', ASSISTANT_DAILY_MESSAGE_LIMIT: '40' }, {}));
+
+      assertEq(res.status, 429);
+      assertEq((await res.json()).error, 'assistant_daily_quota_exhausted');
+      assertEq(budgetReads, 0, 'the monthly ledger was never read');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('quota under the limit increments only after a successful turn', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    const quotaWrites = [];
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') {
+            return json({ fields: { count: { integerValue: '3' } } });
+          }
+          quotaWrites.push(JSON.parse(call.body));
+          return json({});
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          return json(assistantMessage({ content: [{ type: 'text', text: 'hello there' }] }));
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
+
+      assertEq(res.status, 200);
+      const body = await res.json();
+      assertEq(body.quota.remaining, DEFAULT_DAILY_MESSAGE_LIMIT - 4, 'count 3 read, this turn is the 4th');
+      assertEq(quotaWrites.length, 1);
+      assertEq(quotaWrites[0].fields.count.integerValue, '4', 'the read count, plus this turn');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('a failed turn never costs the student part of their day', async () => {
+    const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') {
+            return json({ fields: { count: { integerValue: '3' } } });
+          }
+          throw new Error('quota must not be written for a failed turn');
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          return new Response('boom', { status: 500 });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
+
+      assertEq(res.status, 502, 'every provider failed');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('quota is tracked per uid, not globally', async () => {
+    const alice = await makeFirebaseToken(ASSISTANT_CLAIMS);
+    const carol = await makeFirebaseToken({ ...ASSISTANT_CLAIMS, user_id: 'uid_carol', sub: 'uid_carol' });
+    const quotaPaths = [];
+    const runOne = async ({ token, jwk }) => {
+      __setTestJwksForTests({ keys: [jwk] });
+      try {
+        return await withMockedFetch(async (input, init = {}) => {
+          const call = await readFetchCall(input, init);
+          if (call.url === 'https://oauth2.googleapis.com/token') {
+            return json({ access_token: 'service-account-token', expires_in: 3600 });
+          }
+          if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+            quotaPaths.push(new URL(call.url).pathname);
+            if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+            return json({});
+          }
+          if (/\/documents\/assistantBudget\//.test(call.url)) {
+            if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+            return json({});
+          }
+          if (new URL(call.url).hostname === 'api.anthropic.com') {
+            return json(assistantMessage({ content: [{ type: 'text', text: 'hi' }] }));
+          }
+          throw new Error(`unexpected fetch: ${call.url}`);
+        }, () => worker.fetch(req('POST', '/api/assistant', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+        }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
+      } finally {
+        __setTestJwksForTests(null);
+      }
+    };
+
+    await runOne(alice);
+    await runOne(carol);
+
+    const aliceDoc = quotaPaths.find((p) => p.includes('uid_alice'));
+    const carolDoc = quotaPaths.find((p) => p.includes('uid_carol'));
+    assert(aliceDoc, 'alice has her own quota document');
+    assert(carolDoc, 'carol has her own quota document');
+    assert(aliceDoc !== carolDoc, 'the two students never share a document');
   });
 
   console.log('\nReadiness / capabilities (GET /ready):');
@@ -3155,6 +3377,129 @@ async function makeServiceAccountJson() {
       }, { text: 'Quiz 3.', uid: 'uid_bob', userId: 'uid_bob' }, { token, jwk });
       assertEq(res.status, 429);
       assertEq(keys[0], 'extract:uid_alice', 'the token decides, never the body');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('extract: quota-exhausted degrades gracefully, never a hard block', async () => {
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          return json({ fields: { count: { integerValue: '40' } } });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => extractWith(
+        { ...ENV, GEMINI_API_KEY: 'g-test', ASSISTANT_DAILY_MESSAGE_LIMIT: '40' },
+        { text: 'Quiz 3 on 25 September.' },
+        { token },
+      ));
+
+      assertEq(res.status, 429);
+      const body = await res.json();
+      assertEq(body.error.code, 'quota_exceeded');
+      assert(/add the task yourself/i.test(body.error.message), 'must point at the manual path');
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('extract: a successful read carries the quota forward on the response', async () => {
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await withMockedFetch(async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'generativelanguage.googleapis.com') {
+          return json({ output_text: JSON.stringify({ tasks: [] }) });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      }, () => extractWith(
+        { ...ENV, GEMINI_API_KEY: 'g-test' },
+        { text: 'Quiz 3 on 25 September.' },
+        { token },
+      ));
+
+      assertEq(res.status, 200);
+      const body = await res.json();
+      assertEq(body.quota.remaining, DEFAULT_DAILY_MESSAGE_LIMIT - 1);
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  });
+
+  await test('the daily quota is shared: exhausting it via chat blocks Find-deadlines too', async () => {
+    const { token, jwk } = await makeFirebaseToken(EXTRACT_CLAIMS);
+    __setTestJwksForTests({ keys: [jwk] });
+    // A tiny stateful mock: one shared counter document, so a write from one
+    // endpoint is visible to the other's next read — the same behaviour the
+    // real Firestore document gives both handlers, since they read/write the
+    // exact same path.
+    let storedCount = 0;
+    try {
+      const mockFetch = async (input, init = {}) => {
+        const call = await readFetchCall(input, init);
+        if (call.url === 'https://oauth2.googleapis.com/token') {
+          return json({ access_token: 'service-account-token', expires_in: 3600 });
+        }
+        if (/\/documents\/assistantDailyQuota\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') {
+            return storedCount === 0
+              ? new Response('not found', { status: 404 })
+              : json({ fields: { count: { integerValue: String(storedCount) } } });
+          }
+          storedCount = Number(JSON.parse(call.body).fields.count.integerValue);
+          return json({});
+        }
+        if (/\/documents\/assistantBudget\//.test(call.url)) {
+          if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
+          return json({});
+        }
+        if (new URL(call.url).hostname === 'api.anthropic.com') {
+          return json(assistantMessage({ content: [{ type: 'text', text: 'hi' }] }));
+        }
+        if (new URL(call.url).hostname === 'generativelanguage.googleapis.com') {
+          return json({ output_text: JSON.stringify({ tasks: [] }) });
+        }
+        throw new Error(`unexpected fetch: ${call.url}`);
+      };
+
+      const env = {
+        ...ENV,
+        ANTHROPIC_API_KEY: 'sk-test',
+        GEMINI_API_KEY: 'g-test',
+        ASSISTANT_DAILY_MESSAGE_LIMIT: '1',
+      };
+
+      const chatRes = await withMockedFetch(mockFetch, () => worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+      }), env, {}));
+      assertEq(chatRes.status, 200, 'the first turn fits inside a limit of 1');
+
+      const extractRes = await withMockedFetch(
+        mockFetch,
+        () => extractWith(env, { text: 'Quiz 3 on 25 September.' }, { token }),
+      );
+      assertEq(extractRes.status, 429, 'the shared counter is already spent');
+      assertEq((await extractRes.json()).error.code, 'quota_exceeded');
     } finally {
       __setTestJwksForTests(null);
     }
