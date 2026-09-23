@@ -19,11 +19,26 @@ export type AssistantErrorCode =
   | 'unauthenticated'
   | 'invalid'
   | 'rate-limited'
+  | 'quota-exhausted'
   | 'unavailable';
 
+/** How much of today's free allowance is left (#746), riding on a successful turn. */
+export interface AssistantQuota {
+  readonly remaining: number;
+  readonly limit: number;
+  /** ISO timestamp of the next reset (UTC midnight). */
+  readonly resetsAt: string;
+}
+
 export type AssistantTurnResult =
-  | { readonly ok: true; readonly reply: string }
-  | { readonly ok: false; readonly code: AssistantErrorCode; readonly error: string };
+  | { readonly ok: true; readonly reply: string; readonly quota: AssistantQuota | null }
+  | {
+      readonly ok: false;
+      readonly code: AssistantErrorCode;
+      readonly error: string;
+      /** Set only when code is 'quota-exhausted'. */
+      readonly resetsAt?: string | null;
+    };
 
 export interface AssistantClientOptions {
   /** The Worker base URL (config.papersWorkerUrl). */
