@@ -89,7 +89,7 @@ test('sendAssistantTurn: posts the clamped transcript with the bearer token', as
       return jsonResponse({ reply: 'Hello!' });
     },
   });
-  assert.deepEqual(result, { ok: true, reply: 'Hello!' });
+  assert.deepEqual(result, { ok: true, reply: 'Hello!', quota: null });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'https://worker.example/api/assistant');
   assert.equal(calls[0].init.headers.Authorization, 'Bearer id-token');
@@ -111,6 +111,37 @@ test('sendAssistantTurn maps HTTP failures to typed codes', async () => {
   assert.equal(await codeFor(400), 'invalid');
   assert.equal(await codeFor(503), 'unavailable');
   assert.equal(await codeFor(500), 'unavailable');
+});
+
+test('sendAssistantTurn: a successful turn carries the quota forward', async () => {
+  const result = await sendAssistantTurn([user('hi')], {
+    workerUrl: 'https://worker.example',
+    getToken: async () => 'id-token',
+    fetchImpl: async () =>
+      jsonResponse({ reply: 'Hello!', quota: { remaining: 5, limit: 40, resetsAt: '2026-09-24T00:00:00.000Z' } }),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.quota, { remaining: 5, limit: 40, resetsAt: '2026-09-24T00:00:00.000Z' });
+});
+
+test('sendAssistantTurn: a 429 distinguishes the daily quota from the burst limiter', async () => {
+  const quotaExhausted = await sendAssistantTurn([user('hi')], {
+    workerUrl: 'https://worker.example',
+    getToken: async () => 'id-token',
+    fetchImpl: async () =>
+      jsonResponse({ error: 'assistant_daily_quota_exhausted', resetsAt: '2026-09-24T00:00:00.000Z' }, 429),
+  });
+  assert.equal(quotaExhausted.ok, false);
+  assert.equal(quotaExhausted.code, 'quota-exhausted');
+  assert.equal(quotaExhausted.resetsAt, '2026-09-24T00:00:00.000Z');
+
+  const burstLimited = await sendAssistantTurn([user('hi')], {
+    workerUrl: 'https://worker.example',
+    getToken: async () => 'id-token',
+    fetchImpl: async () => jsonResponse({ error: 'Too many requests' }, 429),
+  });
+  assert.equal(burstLimited.ok, false);
+  assert.equal(burstLimited.code, 'rate-limited');
 });
 
 test('sendAssistantTurn: network failure and malformed success map to unavailable', async () => {
