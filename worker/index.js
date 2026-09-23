@@ -66,6 +66,20 @@ import {
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import { buildExtractionProviders, runExtractionTurn } from './extractionProviders.js';
 import {
+  CALENDAR_FEED_COLLECTION,
+  parseCalendarFeedPath,
+  redactFeedPath,
+} from './calendarFeed.js';
+import {
+  createCalendarFeed,
+  deleteCalendarFeed,
+  getCalendarFeed,
+} from './calendarFeedHandlers.js';
+import {
+  buildTasksICS as buildFeedICS,
+  toCalendarEvents as toFeedEvents,
+} from './taskCalendarIcs.js';
+import {
   EXTRACTION_SYSTEM,
   MAX_INPUT_CHARS,
   buildExtractionPrompt,
@@ -1304,6 +1318,14 @@ async function handleAcademicApi(request, env, origin, url) {
     sha256Hex,
     randomHex,
     now: () => new Date(),
+    // The calendar feed needs three things the rest of this namespace does
+    // not: raw Firestore, because its reverse index lives OUTSIDE the
+    // student's subtree by design; the Firebase uid, because that is what the
+    // reverse doc has to point at to rebuild this repository; and the origin
+    // the caller reached us on, so the URL handed back is one they can paste.
+    deps,
+    firebaseUid,
+    feedOrigin: url.origin,
   };
 
   const result = await dispatchAcademic(ctx, request, url);
@@ -1364,6 +1386,14 @@ async function dispatchAcademic(ctx, request, url) {
       tz: url.searchParams.get('tz'),
       days: url.searchParams.get('days'),
     });
+  }
+
+  // Literal, so it goes before the id patterns that would otherwise claim it.
+  if (path === '/api/v1/tasks/feed') {
+    if (method === 'GET') return getCalendarFeed(ctx);
+    if (method === 'POST') return createCalendarFeed(ctx);
+    if (method === 'DELETE') return deleteCalendarFeed(ctx);
+    return null;
   }
 
   if (path === '/api/v1/tasks') {
@@ -2024,6 +2054,90 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
   }
 
   return jsonResponse({ detected: parsed.tasks }, { status: 200 }, env, origin);
+}
+
+/**
+ * GET /feeds/tasks/<token>.ics — the subscribable calendar (#744).
+ *
+ * The ONLY unauthenticated per-student read in this Worker, and it is that way
+ * because it has to be: a calendar app fetches server-to-server with no token,
+ * no cookie and no chance to prompt. The URL is the credential.
+ *
+ * So the defences are the ones a capability URL allows:
+ *
+ *   - No Origin check. Calendar apps are not browsers and send none; requiring
+ *     one would mean the feature simply does not work.
+ *   - A malformed token is refused BEFORE any read, so sweeping the space costs
+ *     an attacker a request and us nothing.
+ *   - An unknown token is the same flat 404 as a revoked one. Never "no such
+ *     student", never a hint that some other token would have worked.
+ *   - The token is never logged — see redactFeedPath at the error handler.
+ *   - Read-only, and deadlines only. A token that grows new powers later is how
+ *     a capability URL becomes a liability.
+ *
+ * Ownership stays structural: the token resolves to a uid, and everything after
+ * that goes through the SAME uid-bound repository every other task read uses.
+ * There is no path here that can name a different student.
+ */
+async function handleCalendarFeed(request, env, url) {
+  const token = parseCalendarFeedPath(url.pathname);
+  // Shape-checked first: a guess has to be well-formed before it costs a read.
+  if (token === null) return notFoundFeed();
+
+  // Fails OPEN. A well-formed guess is one in 2^128, so sweeping is not the
+  // threat this limiter addresses — it is there to stop a single leaked URL
+  // being hammered. Failing closed would take every student's calendar down
+  // the moment the limiter hiccuped, which is the worse trade here.
+  if (!(await rateLimit(env, token, 'feed', { failClosed: false }))) {
+    return new Response('Too many requests', { status: 429 });
+  }
+
+  let saToken;
+  try {
+    saToken = await getServiceAccountAccessToken(env);
+  } catch (e) {
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'feed_sa_token_failed',
+        errorMessage: e?.message || String(e),
+      }),
+    );
+    return new Response('Unavailable', { status: 503 });
+  }
+
+  const deps = academicDeps(env, saToken);
+  const feed = await deps.getDoc(`${CALENDAR_FEED_COLLECTION}/${token}`);
+  // Unknown and revoked are the same answer. Distinguishing them would confirm
+  // that a token once existed, which is information about a student.
+  if (!feed || typeof feed.firebaseUid !== 'string' || feed.firebaseUid === '') {
+    return notFoundFeed();
+  }
+
+  const repo = createAcademicRepo(deps, feed.firebaseUid);
+  const [tasks, enrollments] = await Promise.all([repo.listTasks(), repo.listEnrollments()]);
+  const ics = buildFeedICS(toFeedEvents(tasks, enrollments), { now: new Date() });
+
+  return new Response(ics, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      // Calendar apps poll on their own schedule, which we do not control and
+      // cannot shorten. This is a hint about staleness, not a promise of
+      // freshness — the UI must not imply "instant".
+      'Cache-Control': 'private, max-age=900',
+      // A feed is a credential in a URL. Keeping it out of referrers and search
+      // indexes costs nothing and closes two ordinary ways URLs escape.
+      'Referrer-Policy': 'no-referrer',
+      'X-Robots-Tag': 'noindex, nofollow',
+      'Content-Disposition': 'inline; filename="shohoj-tasks.ics"',
+    },
+  });
+}
+
+/** One 404, used for malformed, unknown and revoked alike. */
+function notFoundFeed() {
+  return new Response('Not found', { status: 404 });
 }
 
 async function resendSeatAlert(env, to, subject, html) {
@@ -2706,6 +2820,9 @@ export default {
         return withRequestId(await handleDelete(request, env, origin), requestId);
       if (request.method === 'POST' && url.pathname === '/reviews')
         return withRequestId(await handleReview(request, env, origin), requestId);
+      // Public and unauthenticated by necessity — see handleCalendarFeed.
+      if (request.method === 'GET' && url.pathname.startsWith('/feeds/tasks/'))
+        return withRequestId(await handleCalendarFeed(request, env, url), requestId);
       if (request.method === 'GET' && url.pathname === '/api/v1/me')
         return withRequestId(await handleApiV1Me(request, env, origin), requestId);
       // Before the /api/v1/tasks prefix below, which would otherwise swallow it.
@@ -2736,7 +2853,9 @@ export default {
           event: 'worker_error',
           requestId,
           method: request.method,
-          path: url.pathname,
+          // Redacted: a calendar feed carries its credential in the path, and
+          // this line would otherwise write it to disk on every failed poll.
+          path: redactFeedPath(url.pathname),
           errorCode: isAuthErr ? 'unauthorized' : 'server_error',
           errorMessage: e?.message || String(e),
         }),
