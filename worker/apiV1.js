@@ -71,6 +71,11 @@ export const API_ERROR_CODES = Object.freeze({
   NOT_FOUND: 'not_found',
   INVALID_REQUEST: 'invalid_request',
   RATE_LIMITED: 'rate_limited',
+  // This caller specifically has used today's free AI allowance — distinct
+  // from RATE_LIMITED (which means "wait a minute") so a client can tell "try
+  // again shortly" from "try again tomorrow" by code alone, without matching
+  // prose.
+  QUOTA_EXCEEDED: 'quota_exceeded',
   // A dependency Shohoj does not control is not answering — a model provider,
   // or a spend ceiling reached. Distinct from INTERNAL on purpose: the client
   // degrades gracefully on this one (keep what the offline path produced) and
