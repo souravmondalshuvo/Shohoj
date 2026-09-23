@@ -175,6 +175,7 @@ export function Component() {
   // Place directory (#748): offices and facilities by floor, from Campus 360.
   const [placeQuery, setPlaceQuery] = useState('');
   const [selectedPlace, setSelectedPlace] = useState<CampusPlace | null>(null);
+  const pendingPlaceFloor = useRef<number | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const deepLinkConsumed = useRef(false);
@@ -320,6 +321,9 @@ export function Component() {
   const choosePlace = useCallback(
     (place: CampusPlace) => {
       setSelectedPlace(place);
+      // Chosen before the feed resolved: remember the floor so the effect
+      // below can focus it once the map knows which floors it has.
+      pendingPlaceFloor.current = model ? null : place.floor;
       if (!isMapFloor(place.floor)) return;
       selectFloor(place.floor);
       canvasHost.current?.scrollIntoView({
@@ -327,8 +331,18 @@ export function Component() {
         block: 'center',
       });
     },
-    [isMapFloor, selectFloor],
+    [model, isMapFloor, selectFloor],
   );
+
+  // Replay a place chosen during the initial load (or on the error screen
+  // before a retry) once the feed arrives. Declared after the deep-link effect
+  // so the user's later, explicit choice wins over an inbound ?floor= link.
+  useEffect(() => {
+    const pending = pendingPlaceFloor.current;
+    if (!model || pending === null) return;
+    pendingPlaceFloor.current = null;
+    if (isMapFloor(pending)) selectFloor(pending);
+  }, [model, isMapFloor, selectFloor]);
 
   const placeResults = useMemo(() => searchPlaces(placeQuery), [placeQuery]);
 
