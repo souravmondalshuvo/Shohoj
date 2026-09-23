@@ -619,3 +619,52 @@ export function extractTasks(
     .post('/tasks/extract', { text, courseCodes: [...courseCodes] }, ExtractResponseSchema, options)
     .then((response) => unwrap(response, 'detected'));
 }
+
+// ── Subscribable calendar feed (#744) ───────────────────────────────────────
+
+const CalendarFeedSchema = z.object({
+  /** The absolute URL to paste into a calendar app. */
+  url: z.string(),
+  createdAt: z.string().nullable(),
+});
+
+const CalendarFeedResponseSchema = z.object({ feed: CalendarFeedSchema.nullable() });
+
+export type CalendarFeed = z.infer<typeof CalendarFeedSchema>;
+
+/** The student's feed, or null when they have never minted one. */
+export function getCalendarFeed(
+  client: ApiClient,
+  options?: ApiRequestOptions,
+): Call<CalendarFeed | null> {
+  return client
+    .get('/tasks/feed', CalendarFeedResponseSchema, options)
+    .then((response) => unwrap(response, 'feed'));
+}
+
+/**
+ * Mint a feed, or rotate an existing one.
+ *
+ * Rotation IS revocation: one call replaces the URL and the old one stops
+ * working immediately. That is why there is no separate "rotate" — a student
+ * who thinks their link has escaped should not have to reason about which of
+ * two buttons kills it.
+ */
+export function createCalendarFeed(
+  client: ApiClient,
+  options?: ApiRequestOptions,
+): Call<CalendarFeed | null> {
+  return client
+    .post('/tasks/feed', {}, CalendarFeedResponseSchema, options)
+    .then((response) => unwrap(response, 'feed'));
+}
+
+/** Revoke. Idempotent — revoking a feed that is already gone succeeds. */
+export function deleteCalendarFeed(
+  client: ApiClient,
+  options?: ApiRequestOptions,
+): Call<CalendarFeed | null> {
+  return client
+    .delete('/tasks/feed', CalendarFeedResponseSchema, options)
+    .then((response) => unwrap(response, 'feed'));
+}
