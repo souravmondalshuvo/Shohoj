@@ -3160,6 +3160,88 @@ async function makeServiceAccountJson() {
     }
   });
 
+  console.log('\nCalendar feed (GET /feeds/tasks/<token>.ics):');
+
+  const FEED_TOKEN = `cft_${'a'.repeat(32)}`;
+
+  await test('feed: a malformed token is 404 and costs no read', async () => {
+    // Refused on shape alone, so sweeping the space costs an attacker a
+    // request and us nothing.
+    let reads = 0;
+    const env = {
+      ...ENV,
+      SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'x@y', private_key: 'k' }),
+    };
+    await withMockedFetch(async () => { reads++; return json({}); }, async () => {
+      for (const bad of ['/feeds/tasks/nope.ics', '/feeds/tasks/.ics', `/feeds/tasks/${FEED_TOKEN}`]) {
+        const res = await worker.fetch(req('GET', bad), env, {});
+        assertEq(res.status, 404);
+      }
+    });
+    assertEq(reads, 0, 'a malformed token must not reach Firestore');
+  });
+
+  await test('feed: needs no Origin header — calendar apps are not browsers', async () => {
+    // Requiring one would mean the feature simply does not work.
+    const res = await worker.fetch(
+      new Request(`https://worker.local/feeds/tasks/nope.ics`, { method: 'GET' }),
+      { ...ENV },
+      {},
+    );
+    // 404 for the bad token, NOT 403 for the missing origin.
+    assertEq(res.status, 404);
+  });
+
+  await test('feed: a disallowed Origin is still served, not 403d', async () => {
+    const res = await worker.fetch(
+      req('GET', '/feeds/tasks/nope.ics', { origin: DISALLOWED_ORIGIN }),
+      { ...ENV },
+      {},
+    );
+    assertEq(res.status, 404, 'the origin must not be what decides');
+  });
+
+  await test('feed: an unknown token answers exactly like a revoked one', async () => {
+    // Distinguishing them would confirm a token once existed, which is
+    // information about a student.
+    const env = {
+      ...ENV,
+      SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'x@y', private_key: 'k' }),
+    };
+    const seen = [];
+    const res = await withMockedFetch(async (input, init) => {
+      const call = await readFetchCall(input, init);
+      seen.push(call.url);
+      // Token minting, then a Firestore GET that finds nothing.
+      if (call.url.includes('oauth2')) return json({ access_token: 't', expires_in: 3600 });
+      return new Response('{}', { status: 404 });
+    }, () => worker.fetch(req('GET', `/feeds/tasks/${FEED_TOKEN}.ics`), env, {}));
+
+    assertEq(res.status, 404);
+    assertEq(await res.text(), 'Not found');
+  });
+
+  await test('feed: the token never appears in an error log', async () => {
+    // The error handler logs url.pathname, which would otherwise write the
+    // credential to disk on every failed poll.
+    const lines = [];
+    const originalError = console.error;
+    console.error = (line) => lines.push(String(line));
+    try {
+      await withMockedFetch(async () => { throw new Error('firestore exploded'); }, () =>
+        worker.fetch(req('GET', `/feeds/tasks/${FEED_TOKEN}.ics`), {
+          ...ENV,
+          SERVICE_ACCOUNT_JSON: JSON.stringify({ client_email: 'x@y', private_key: 'k' }),
+        }, {}),
+      );
+    } finally {
+      console.error = originalError;
+    }
+    const all = lines.join('\n');
+    assert(!all.includes('a'.repeat(32)), 'the token leaked into a log line');
+    assert(!all.includes(FEED_TOKEN), 'the token leaked into a log line');
+  });
+
   console.log(`\n${passed} passed, ${failed} failed\n`);
   process.exit(failed === 0 ? 0 : 1);
 })();
