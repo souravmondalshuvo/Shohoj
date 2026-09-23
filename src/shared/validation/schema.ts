@@ -18,6 +18,18 @@ import { z } from 'zod';
 import { type Result, ok, err } from '../../core/result.ts';
 import { ValidationError } from '../../core/errors.ts';
 
+// Jitless, before any schema exists. Constructing a z.object() otherwise probes
+// for JIT support with a caught `new Function('')`; under the shell's CSP (no
+// 'unsafe-eval') that throw is swallowed but the browser still reports a
+// script-src violation on every page load (#752). The shell's CSP rules out the
+// JIT anyway, so turning it off here changes no parse behaviour.
+//
+// It lives here, not in an entry module, because every feature schema gets `z`
+// through this module's re-export: whatever chunk a schema lands in, this body
+// has run first. An entry-level import has no such guarantee once Rollup hoists
+// a shared chunk above the entry's own code.
+z.config({ jitless: true });
+
 /** One human-readable field problem, ready for form highlighting. */
 export interface FieldIssue {
   /** Dotted path to the offending field, e.g. `ratings.teaching`. Empty for the root. */
