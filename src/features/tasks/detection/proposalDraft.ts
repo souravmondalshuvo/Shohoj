@@ -13,7 +13,7 @@
 // which this repo does not have.
 
 import type { Enrollment } from '../../../platform/api/academic.ts';
-import type { CreateTaskInput, TaskType } from '../../../platform/api/tasks.ts';
+import type { CreateTaskInput, TaskSource, TaskType } from '../../../platform/api/tasks.ts';
 import { instantToLocalInput, localInputToInstant } from '../localInstant.ts';
 import type { Confidence, DetectedTask } from './types.ts';
 
@@ -36,6 +36,14 @@ export interface ProposalDraft {
   readonly confidence: Confidence;
   /** The sentence this came from, shown so a student can check rather than trust. */
   readonly sourceText: string;
+  /**
+   * Which reading produced this.
+   *
+   * Carried on the draft rather than decided at create time, because by then
+   * the two are indistinguishable — a confirmed proposal looks the same
+   * whether a regex or a model read it, and only this says which.
+   */
+  readonly source: TaskSource;
 }
 
 /**
@@ -56,6 +64,7 @@ export interface ProposalDraft {
 export function toDrafts(
   detected: readonly DetectedTask[],
   enrollments: readonly Enrollment[] = [],
+  source: TaskSource = 'PASTE',
 ): ProposalDraft[] {
   const byCourse = new Map(enrollments.map((e) => [e.courseCode.toUpperCase(), e.id]));
 
@@ -70,6 +79,7 @@ export function toDrafts(
     syllabus: task.syllabus,
     confidence: task.confidence,
     sourceText: sourceTextOf(task),
+    source,
   }));
 }
 
@@ -99,9 +109,10 @@ export function patchDraft(
 /**
  * A draft as the API's create input.
  *
- * `source: 'PASTE'` rather than MANUAL: the student approved both, but only one
- * had its date read by a parser, and that is the distinction they will want if
- * a deadline turns out wrong. `sourceReference` carries the text it was read
+ * The source is the draft's own, not a constant: MANUAL, PASTE and
+ * AI_SUGGESTION were all approved by the student, and what separates them is
+ * what read the deadline in the first place. That is the distinction they will
+ * want if one turns out wrong. `sourceReference` carries the text it was read
  * from, which is the same answer in a form they can actually check.
  *
  * Priority is left to the server. The detector has no view on how much a quiz
@@ -114,7 +125,7 @@ export function draftToInput(draft: ProposalDraft): CreateTaskInput {
     type: draft.type,
     dueAt: localInputToInstant(draft.dueLocal),
     enrollmentId: draft.enrollmentId === '' ? null : draft.enrollmentId,
-    source: 'PASTE',
+    source: draft.source,
     sourceReference: draft.sourceText === '' ? null : draft.sourceText,
     ...(draft.syllabus === null ? {} : { description: draft.syllabus }),
   };
