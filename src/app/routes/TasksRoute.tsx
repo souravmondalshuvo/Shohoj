@@ -24,6 +24,8 @@ import { GradeImpactPanel } from '../../features/tasks/GradeImpactPanel.tsx';
 import { TaskComposer } from '../../features/tasks/TaskComposer.tsx';
 import { TaskDetails } from '../../features/tasks/TaskDetails.tsx';
 import { TaskImport } from '../../features/tasks/TaskImport.tsx';
+import { CalendarFeedPanel } from '../../features/tasks/CalendarFeedPanel.tsx';
+import { useCalendarFeed } from '../../features/tasks/useCalendarFeed.ts';
 import { createAiDetector } from '../../features/tasks/detection/aiDetector.ts';
 import { TaskRow } from '../../features/tasks/TaskRow.tsx';
 import { gradeImpactView } from '../../features/tasks/gradeImpactView.ts';
@@ -73,6 +75,11 @@ export function Component() {
   // One detector for the life of the client. Null only on an offline build,
   // where the panel then never offers a second reading at all.
   const aiDetector = useMemo(() => (client === null ? null : createAiDetector(client)), [client]);
+
+  // Only fetched once the student is actually on the calendar. A feed URL is a
+  // credential; asking for one on every Tasks load would request something most
+  // students never use, on a screen that never shows it.
+  const calendarFeed = useCalendarFeed(client, view === 'calendar');
 
   const courses = useMemo(
     () => courseOptions(academic.activeEnrollments),
@@ -397,7 +404,10 @@ export function Component() {
           undated tasks — which are precisely the ones a calendar cannot show. */}
       {view === 'calendar' && tasks.status !== 'loading' ? (
         calendarEvents.length > 0 ? (
-          <TaskCalendarView events={calendarEvents} onExport={exportCalendar} />
+          <>
+            <TaskCalendarView events={calendarEvents} onExport={exportCalendar} />
+            <CalendarFeedPanel state={calendarFeed} />
+          </>
         ) : (
           <div className="tasks-empty" data-testid="tasks-empty">
             <p className="tasks-empty-title">{empty.title}</p>
