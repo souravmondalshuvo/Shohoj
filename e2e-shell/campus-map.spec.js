@@ -214,6 +214,32 @@ test.describe('place directory (#748)', () => {
     await expect(status).toHaveText('Computer Lab is on Floor 10.');
   });
 
+  test('a place chosen while the feed loads is focused once it arrives', async ({ page }) => {
+    // Hold the live feed until the place is chosen, then release it.
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/connect.json', async (route) => {
+      await gate;
+      await route.fulfill({ json: STUB_FEED });
+    });
+    await page.goto('/campus', { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('campus-place-input').fill('computer lab');
+    await page.getByTestId('campus-place-result').filter({ hasText: 'Floor 10' }).click();
+    await expect(page.getByTestId('campus-place-status')).toHaveText(
+      'Computer Lab is on Floor 10.',
+    );
+    release();
+    await expect(page.getByRole('button', { name: 'Floor 10', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.getByTestId('campus-place-status')).toContainText(
+      'Showing Floor 10 on the map.',
+    );
+  });
+
   test('an unmatched query says so', async ({ page }) => {
     await openCampus(page);
     await page.getByTestId('campus-place-input').fill('zzzz');
