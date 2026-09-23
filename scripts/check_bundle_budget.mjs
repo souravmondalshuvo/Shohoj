@@ -129,8 +129,14 @@ export const TARGETS = [
     // (#731 did move `shell entry` afterwards, but by relocating a chunk
     // boundary rather than by adding first-paint work — see the note there.
     // The claim above still holds for the Tasks work it was written about.)
-    measured: { raw: 2015 },
-    budget: { raw: 2120 },
+    //
+    // Raised from 2120 for the campus exterior model (#750): three's
+    // GLTFLoader (~70 kB raw, ~19 kB gzip) joins the lazy campus chunk — the
+    // place the note above says to look. `shell entry` is untouched (449.8 kB
+    // raw / 140.8 kB gzip at the time), and the 1.8 MB model itself is a
+    // separate asset fetched after the map's first paint, not JS.
+    measured: { raw: 2123 },
+    budget: { raw: 2200 },
   },
 ];
 
