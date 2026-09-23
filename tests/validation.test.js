@@ -77,4 +77,10 @@ test('formatIssues: dotted paths for nested fields', () => {
   assert.equal(issues[0].path, 'ratings.teaching');
 });
 
+test('importing the boundary makes zod jitless (no CSP eval probe, #752)', () => {
+  // Without this, the first z.object() probes for JIT with `new Function('')`,
+  // which the shell's CSP reports as a script-src violation on every page.
+  assert.equal(z.config().jitless, true);
+});
+
 console.log('validation schema tests passed');
