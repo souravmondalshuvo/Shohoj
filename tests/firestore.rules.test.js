@@ -1032,6 +1032,23 @@ async function run() {
     }
   });
 
+  await test('calendarFeeds is closed to every client', async () => {
+    // The reverse index behind the subscribable calendar (#744). A token in
+    // this collection resolves to a student, so a client that could read it
+    // could walk everyone's feeds — and one that could WRITE it could point a
+    // token it knows at a uid it does not own. Only the service account, which
+    // bypasses rules entirely, may touch it.
+    const token = 'cft_0123456789abcdef0123456789abcdef';
+    await seedRaw('calendarFeeds', token, { firebaseUid: BRACU_UID, createdAt: new Date() });
+
+    const db = bracuCtx().firestore();
+    await assertFails(getDoc(doc(db, 'calendarFeeds', token)));
+    await assertFails(setDoc(doc(db, 'calendarFeeds', token), { firebaseUid: NSU_UID }));
+    // Not even the student it belongs to: the feed is reached by its URL, and
+    // minting one goes through /api/v1/tasks/feed where ownership is checked.
+    await assertFails(setDoc(doc(db, 'calendarFeeds', 'cft_' + 'f'.repeat(32)), { x: 1 }));
+  });
+
   await test('campus isolation: an outsider is still refused everywhere', async () => {
     await seedRaw('studyGroups', 'grp_any', {
       courseCode: 'CSE220', title: 'Any', mode: 'online',
