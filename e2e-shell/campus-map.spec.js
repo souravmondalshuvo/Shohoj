@@ -168,3 +168,55 @@ test.describe('geofence', () => {
     await expect(page.getByTestId('campus-location')).toContainText('On campus');
   });
 });
+
+test.describe('place directory (#748)', () => {
+  test('searching a place names its floor, even off the map', async ({ page }) => {
+    await openCampus(page);
+    await page.getByTestId('campus-place-input').fill('registrar');
+    const first = page.getByTestId('campus-place-result').first();
+    await expect(first).toContainText('Office of the Registrar');
+    await expect(first).toContainText('Floor 4');
+    await first.click();
+    const status = page.getByTestId('campus-place-status');
+    await expect(status).toContainText('Office of the Registrar is on Floor 4.');
+    // Floor 4 has no scheduled rooms, so the map stays where it was.
+    await expect(status).toContainText('only focuses floors with scheduled rooms');
+    await expect(page.getByRole('button', { name: 'Tower' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  test('choosing a place on a map floor focuses that floor', async ({ page }) => {
+    await openCampus(page);
+    await page.getByTestId('campus-place-input').fill('computer lab');
+    const onTen = page.getByTestId('campus-place-result').filter({ hasText: 'Floor 10' });
+    await expect(onTen).toHaveCount(1);
+    await onTen.click();
+    await expect(page.getByRole('button', { name: 'Floor 10', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.getByTestId('campus-place-status')).toContainText(
+      'Showing Floor 10 on the map.',
+    );
+    await expect(page.getByRole('button', { name: /10B-04L/ })).toBeVisible();
+  });
+
+  test('an unmatched query says so', async ({ page }) => {
+    await openCampus(page);
+    await page.getByTestId('campus-place-input').fill('zzzz');
+    await expect(page.getByTestId('campus-place-results')).toContainText('No places match');
+    await expect(page.getByTestId('campus-place-result')).toHaveCount(0);
+  });
+
+  test('the full directory lists every level, basements to upper roof', async ({ page }) => {
+    await openCampus(page);
+    const directory = page.getByTestId('campus-place-directory');
+    await directory.locator('summary').click();
+    await expect(directory.getByRole('heading', { name: 'Basements 1–3' })).toBeVisible();
+    await expect(directory.getByRole('heading', { name: 'Ground floor' })).toBeVisible();
+    await expect(directory.getByRole('heading', { name: 'Upper roof' })).toBeVisible();
+    await expect(directory.getByRole('button', { name: /Medical Center/ })).toBeVisible();
+  });
+});
