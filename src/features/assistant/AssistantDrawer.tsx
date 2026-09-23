@@ -137,6 +137,17 @@ function AssistantDrawer({
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The Worker's daily allowance for this student (#746), last known from a
+  // turn's response. Null until the first turn — the drawer opens with no
+  // pre-emptive count, since GET /ready is unauthenticated and cannot carry
+  // one. resetsAt is nullable here (unlike AssistantQuota's) because the
+  // exhausted-by-error case below may not have one. Twin of the state in
+  // js/ui/assistantFab.js — change both.
+  const [quota, setQuota] = useState<{
+    readonly remaining: number;
+    readonly limit: number;
+    readonly resetsAt: string | null;
+  } | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -237,8 +248,16 @@ function AssistantDrawer({
       });
       if (result.ok) {
         setTranscript([...next, { role: 'assistant', content: result.reply }]);
+        if (result.quota) setQuota(result.quota);
       } else {
         setError(result.error);
+        if (result.code === 'quota-exhausted') {
+          setQuota((current) => ({
+            remaining: 0,
+            limit: current?.limit ?? 0,
+            resetsAt: result.resetsAt ?? null,
+          }));
+        }
       }
     } finally {
       setPending(false);
@@ -371,10 +390,24 @@ function AssistantDrawer({
             }
           }}
         />
-        <button type="submit" className="assistant-send" disabled={pending || !draft.trim()}>
+        <button
+          type="submit"
+          className="assistant-send"
+          disabled={pending || (quota != null && quota.remaining <= 0) || !draft.trim()}
+        >
           {pending ? '…' : 'Send'}
         </button>
       </form>
+      {/* A heads-up once the allowance is running low, and the reason Send is
+          disabled once it hits zero — otherwise a greyed-out button with no
+          explanation reads as broken, not as "come back tomorrow". */}
+      {quota != null && quota.remaining <= 5 && (
+        <p className="assistant-quota-hint">
+          {quota.remaining <= 0
+            ? "You've used today's free messages. More open up tomorrow."
+            : `${quota.remaining} free message${quota.remaining === 1 ? '' : 's'} left today.`}
+        </p>
+      )}
     </aside>
   );
 }
