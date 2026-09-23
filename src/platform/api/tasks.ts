@@ -595,9 +595,24 @@ const ExtractedTaskSchema = z.object({
   evidence: z.string().nullable(),
 });
 
-const ExtractResponseSchema = z.object({ detected: z.array(ExtractedTaskSchema) });
+/** How much of today's shared AI allowance is left (#746), riding on a read. */
+const ExtractionQuotaSchema = z
+  .object({ remaining: z.number(), limit: z.number(), resetsAt: z.string() })
+  .nullable()
+  .optional();
+
+const ExtractResponseSchema = z.object({
+  detected: z.array(ExtractedTaskSchema),
+  quota: ExtractionQuotaSchema,
+});
 
 export type ExtractedTask = z.infer<typeof ExtractedTaskSchema>;
+export type ExtractionQuota = NonNullable<z.infer<typeof ExtractionQuotaSchema>>;
+
+export interface ExtractionResult {
+  readonly tasks: readonly ExtractedTask[];
+  readonly quota: ExtractionQuota | null;
+}
 
 /**
  * Ask the server to read deadlines out of text.
@@ -614,10 +629,14 @@ export function extractTasks(
   text: string,
   courseCodes: readonly string[] = [],
   options?: ApiRequestOptions,
-): Call<readonly ExtractedTask[]> {
+): Call<ExtractionResult> {
   return client
     .post('/tasks/extract', { text, courseCodes: [...courseCodes] }, ExtractResponseSchema, options)
-    .then((response) => unwrap(response, 'detected'));
+    .then((response) =>
+      response.ok
+        ? { ok: true, value: { tasks: response.value.detected, quota: response.value.quota ?? null } }
+        : response,
+    );
 }
 
 // ── Subscribable calendar feed (#744) ───────────────────────────────────────
