@@ -32,9 +32,12 @@ import type { DetectedTask, DetectionContext, DetectionResult, TaskDetector } fr
  * `unavailable` and `failed` are deliberately different: the first is a
  * feature this deployment does not currently have, the second is a thing that
  * went wrong. A student told "unavailable" knows not to retry; a student told
- * "failed" knows it might work next time.
+ * "failed" knows it might work next time. `quota_exhausted` (#746) is its own
+ * case rather than folded into `unavailable`: the deployment DOES have the
+ * feature, this student has just used today's share of it — a distinction
+ * worth a different sentence ("come back tomorrow" vs "try again later").
  */
-export type ExtractionOutcome = 'ok' | 'unavailable' | 'failed';
+export type ExtractionOutcome = 'ok' | 'unavailable' | 'quota_exhausted' | 'failed';
 
 export interface AiDetectionResult extends DetectionResult {
   readonly outcome: ExtractionOutcome;
@@ -44,6 +47,7 @@ export interface AiDetectionResult extends DetectionResult {
 
 const NOTES: Record<Exclude<ExtractionOutcome, 'ok'>, string> = {
   unavailable: 'Shohoj can’t read announcements right now — your own reading still works.',
+  quota_exhausted: 'You’ve used today’s free readings — your own reading still works. More open up tomorrow.',
   failed: 'That didn’t work. You can try again, or add the task yourself.',
 };
 
@@ -75,10 +79,15 @@ export function createAiDetector(client: ApiClient): TaskDetector {
 
       if (!result.ok) {
         // `unavailable` is the server saying it has no key, no budget or no
-        // provider. Anything else is a genuine failure. Both leave the
-        // student exactly where they were.
+        // provider. `quota_exhausted` is this student specifically having
+        // used today's share. Anything else is a genuine failure. All three
+        // leave the student exactly where they were.
         const outcome: ExtractionOutcome =
-          result.error.apiCode === 'unavailable' ? 'unavailable' : 'failed';
+          result.error.apiCode === 'unavailable'
+            ? 'unavailable'
+            : result.error.apiCode === 'quota_exceeded'
+              ? 'quota_exhausted'
+              : 'failed';
         return {
           source: 'AI_SUGGESTION',
           detected: [],
@@ -90,7 +99,7 @@ export function createAiDetector(client: ApiClient): TaskDetector {
 
       return {
         source: 'AI_SUGGESTION',
-        detected: result.value.map((task): DetectedTask => ({
+        detected: result.value.tasks.map((task): DetectedTask => ({
           title: task.title,
           type: task.type,
           dueAt: task.dueAt,
