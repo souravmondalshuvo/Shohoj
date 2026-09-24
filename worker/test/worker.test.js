@@ -29,6 +29,7 @@ import worker, {
   resolveEmailFrom,
   seatAlertEmailConfig,
   runSeatAlertCron,
+  runReminderCron,
   buildLostFoundClaimEmail,
   runLostFoundCron,
   RESEND_TEST_SENDER,
@@ -1227,6 +1228,43 @@ async function makeServiceAccountJson() {
       await Promise.all(captured);
     });
     assert(captured.length >= 2, 'seat + lost&found crons both scheduled');
+  });
+
+  // ── Task reminder delivery (#727) ───────────────────────────────────────
+  console.log('\nReminder cron (#727):');
+
+  function reminderRouter({ pending = [] } = {}) {
+    return async (input) => {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url === 'https://oauth2.googleapis.com/token') return json({ access_token: 'sa-token', expires_in: 3600 });
+      if (url === `${FS_BASE}:runQuery`) {
+        return json(pending.map(p => ({ document: { name: p.name, fields: fsFields(p.fields) } })));
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+  }
+
+  await test('reminder cron: missing RESEND_API_KEY → not configured, no I/O', async () => {
+    const throwing = async () => { throw new Error('no fetch should happen when unconfigured'); };
+    await withMockedFetch(throwing, async () => {
+      const r = await runReminderCron(cronEnv({ RESEND_API_KEY: undefined }));
+      assertEq(r.configured, false);
+      assert(/RESEND_API_KEY/.test(r.reason));
+    });
+  });
+
+  // Regression for a bug where the gate checked `emailCfg.configured` — a
+  // property `seatAlertEmailConfig` never returns (it returns `.ok`) — so this
+  // cron reported "not configured" and skipped every reminder unconditionally,
+  // even with a fully valid RESEND_API_KEY + verified EMAIL_FROM.
+  await test('reminder cron: valid config reaches the query, does not short-circuit as unconfigured', async () => {
+    await withMockedFetch(reminderRouter({ pending: [] }), async () => {
+      const r = await runReminderCron(cronEnv());
+      assertEq(r.configured, true, 'a valid RESEND_API_KEY + verified EMAIL_FROM must pass the gate');
+      assertEq(r.due, 0);
+      assertEq(r.emailed, 0);
+      assertEq(r.failed, 0);
+    });
   });
 
   // ── Lost & found claim delivery (#371) ─────────────────────────────────
