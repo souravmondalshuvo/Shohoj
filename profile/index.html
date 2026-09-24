@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-9XDhlFOW6yrN2FtyAn0OvPFR6iRDUMI6satkZNmt490='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-dXpg10KoAAEW7fdEuOKnz4vdk/2kVad8b2MnGnEDAvE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -12943,11 +12943,15 @@ function summarizeFeed(sections) {
 //
 // Thin wrapper around `usis-cdn.eniamza.com/connect.json` with a localStorage
 // TTL cache, ETag-aware refresh, and stale-cache fallback on network failure.
+// The origin is uncached and has taken 10–20 s to answer (#761): requests give
+// up after DEFAULT_FETCH_TIMEOUT_MS, and `staleWhileRevalidate` callers get an
+// expired copy back immediately.
 // I/O-free helpers live in ./connectFeed.js; this module composes them.
 
 const DEFAULT_FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
 const DEFAULT_CACHE_KEY = 'shohoj_connect_feed_v1';
 const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_FETCH_TIMEOUT_MS = 8_000;
 
 function safeRead(storage, key) {
     if (!storage) return null;
@@ -12978,10 +12982,10 @@ function safeRemove(storage, key) {
     catch { /* ignore */ }
 }
 
-function materialize(payload, source, fetchedAt, etag) {
+function materialize(payload, source, fetchedAt, etag, stale = false) {
     const { sections, dropped } = parseFeed(payload);
     const summary = summarizeFeed(sections);
-    return { sections, summary, source, fetchedAt, etag, dropped };
+    return { sections, summary, source, fetchedAt, etag, dropped, stale };
 }
 
 async function fetchConnectFeed(options = {}) {
@@ -12997,12 +13001,19 @@ async function fetchConnectFeed(options = {}) {
             ? (typeof fetch !== 'undefined' ? fetch : null)
             : options.fetcher;
     const now = options.now ?? (() => Date.now());
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : DEFAULT_FETCH_TIMEOUT_MS;
 
     const cache = safeRead(storage, cacheKey);
     const cacheFresh = cache !== null && now() - cache.fetchedAt < ttlMs;
 
     if (cache !== null && cacheFresh && !options.forceRefresh) {
         return materialize(cache.payload, 'cache', cache.fetchedAt, cache.etag);
+    }
+
+    // An expired copy now beats a skeleton for however long the origin takes.
+    // The caller sees `stale` and revalidates in the background.
+    if (cache !== null && options.staleWhileRevalidate && !options.forceRefresh) {
+        return materialize(cache.payload, 'cache', cache.fetchedAt, cache.etag, true);
     }
 
     if (fetcher === null) {
@@ -13015,8 +13026,8 @@ async function fetchConnectFeed(options = {}) {
     const headers = { Accept: 'application/json' };
     if (cache !== null && cache.etag) headers['If-None-Match'] = cache.etag;
 
-    try {
-        const response = await fetcher(url, { headers, signal: options.signal });
+    const request = async (signal) => {
+        const response = await fetcher(url, { headers, signal });
         if (response.status === 304 && cache !== null) {
             const refreshed = {
                 fetchedAt: now(),
@@ -13037,11 +13048,38 @@ async function fetchConnectFeed(options = {}) {
         const fetchedAt = now();
         safeWrite(storage, cacheKey, { fetchedAt, etag, payload });
         return materialize(payload, 'live', fetchedAt, etag);
+    };
+
+    // Our own controller, so the timeout can cancel the request; the caller's
+    // signal is forwarded into it rather than replaced.
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const callerSignal = options.signal;
+    const forwardAbort = () => controller?.abort();
+    if (callerSignal) {
+        if (callerSignal.aborted) forwardAbort();
+        else callerSignal.addEventListener('abort', forwardAbort, { once: true });
+    }
+    // Raced rather than left to the abort alone: the slow part is often the
+    // body, and a fetcher that ignores the signal must not hang us either.
+    let timer;
+    const timedOut = new Promise((_, reject) => {
+        if (!(timeoutMs > 0) || !Number.isFinite(timeoutMs)) return;
+        timer = setTimeout(() => {
+            forwardAbort();
+            reject(new Error(`Connect feed: timed out after ${Math.round(timeoutMs / 1000)}s.`));
+        }, timeoutMs);
+    });
+
+    try {
+        return await Promise.race([request(controller ? controller.signal : callerSignal), timedOut]);
     } catch (err) {
         if (cache !== null) {
             return materialize(cache.payload, 'fallback', cache.fetchedAt, cache.etag);
         }
         throw err instanceof Error ? err : new Error(String(err));
+    } finally {
+        clearTimeout(timer);
+        callerSignal?.removeEventListener('abort', forwardAbort);
     }
 }
 
