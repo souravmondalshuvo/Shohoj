@@ -2526,7 +2526,7 @@ async function recordAssistantQuotaUse(env, token, uid, day, count) {
  */
 export async function runReminderCron(env, nowMs = Date.now()) {
   const emailCfg = seatAlertEmailConfig(env);
-  if (!emailCfg.configured) {
+  if (!emailCfg.ok) {
     return { configured: false, reason: emailCfg.reason, due: 0, emailed: 0, failed: 0 };
   }
 
