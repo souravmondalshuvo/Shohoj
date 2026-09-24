@@ -24,7 +24,7 @@ import {
 } from '../core/semesterIdentity.js';
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
-import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
+import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { openModal } from './modal.js';
 
 const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
@@ -101,14 +101,17 @@ async function _frRefresh(force = false) {
   _frStore.error = null;
   _frRerender();
   try {
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    // Any saved copy paints at once and refreshes behind it (#761).
+    const result = await fetchConnectFeed(force ? { forceRefresh: true } : { staleWhileRevalidate: true });
     _frStore.index = buildRoomBusyIndex(result.sections);
     _frStore.semester = describeSemester(result.sections, todayISODate());
     _frStore.source = result.source;
     _frStore.fetchedAt = result.fetchedAt;
     // One fetch serves every tab: let routine/seats repaint from this result
-    // instead of going stale until their own next poll.
-    broadcastFeedResult(result, _frApplyLiveFeed);
+    // instead of going stale until their own next poll. An expired copy isn't
+    // worth sharing — the refresh it triggers reaches every tab.
+    if (result.stale) revalidateFeed();
+    else broadcastFeedResult(result, _frApplyLiveFeed);
   } catch (e) {
     _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
