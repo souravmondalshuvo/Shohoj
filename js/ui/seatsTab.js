@@ -28,7 +28,7 @@ import {
   semesterHeadline,
   todayISODate,
 } from '../core/semesterIdentity.js';
-import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, FEED_LIVE_POLL_MS } from './feedLive.js';
+import { onFeedUpdate, setFeedHiddenPolling, broadcastFeedResult, revalidateFeed, FEED_LIVE_POLL_MS } from './feedLive.js';
 import { saveState } from '../core/state.js';
 
 // Cap on rendered course groups so a 1-letter query doesn't paint the whole
@@ -108,7 +108,7 @@ function _seatsApplyFeed(result) {
   _seats.semester = describeSemester(result.sections, todayISODate());
   _seats.source = result.source;
   _seats.fetchedAt = result.fetchedAt;
-  _seatsEvaluateWatches();
+  if (!result.stale) _seatsEvaluateWatches();
   _seatsRender();
 }
 
@@ -236,16 +236,22 @@ async function _seatsRefresh(force = false) {
   _seats.error = null;
   _seatsRender();
   try {
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : {});
+    // Any saved copy paints at once and refreshes behind it (#761).
+    const result = await fetchConnectFeed(force ? { forceRefresh: true } : { staleWhileRevalidate: true });
     _seats.index = indexByCourse(result.sections);
     _seats.sections = result.sections;
     _seats.semester = describeSemester(result.sections, todayISODate());
     _seats.source = result.source;
     _seats.fetchedAt = result.fetchedAt;
-    _seatsEvaluateWatches();
+    // Watches are edge-triggered, and their last state may have come from
+    // newer data on another device: an expired copy must not read as a seat
+    // opening. The revalidation evaluates them against the live feed.
+    if (!result.stale) _seatsEvaluateWatches();
     // One fetch serves every tab: let routine/free-rooms repaint from this
-    // result instead of going stale until their own next poll.
-    broadcastFeedResult(result, _seatsApplyFeed);
+    // result instead of going stale until their own next poll. An expired
+    // copy isn't worth sharing — the refresh it triggers reaches every tab.
+    if (result.stale) revalidateFeed();
+    else broadcastFeedResult(result, _seatsApplyFeed);
   } catch (e) {
     _seats.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
