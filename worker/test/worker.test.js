@@ -1730,6 +1730,95 @@ async function makeServiceAccountJson() {
     assertEq(noData.error, 'no_data');
   });
 
+  // ── Minor progress (#760) ──────────────────────────────────────────────────
+
+  await test('assistant: get_minor_progress reads the shipped requirements, not the model', async () => {
+    // The published Mathematics minor is 27 credits: 7 core courses (21) plus 6
+    // elective. Asked without this tool, the model answered "18-21 credits, 2 to
+    // 3 additional MAT courses" — so these totals are the point of the test.
+    const ctx = {
+      loadUserSnapshot: async () => ({
+        semesters: [
+          { id: 1, courses: [
+            { name: 'Principles of Mathematics (MAT111)', credits: 3, grade: 'A' },
+            { name: 'Numerical Methods (CSE330)', credits: 3, grade: 'B' },
+            { name: 'Optimization (CSE402)', credits: 3, grade: 'A' },
+          ] },
+        ],
+        startSeason: 'Spring',
+        startYear: '2024',
+        currentDept: 'CSE',
+        currentMinor: 'MATH',
+      }),
+    };
+    const r = await executeAssistantTool('get_minor_progress', {}, ctx);
+    assertEq(r.minor, 'Minor in Mathematics');
+    assertEq(r.total_required_credits, 27, 'the published total, not a remembered one');
+    assertEq(r.core_requirements_total, 7);
+    assertEq(r.core_requirements_met, 2, 'MAT111 and CSE330');
+    assertEq(r.elective_credits_earned, 3, 'CSE402');
+    assertEq(r.elective_credits_required, 6);
+    assertEq(r.credits_earned, 9, '6 core + 3 elective');
+    assertEq(r.credits_remaining, 18);
+    // CSE330 is the published alternative to MAT223, and the answer must name
+    // the course that actually counted rather than the requirement's label.
+    const numerical = r.core_requirements.find((c) => c.title === 'Numerical Analysis I');
+    assertEq(numerical.course, 'CSE330');
+    assertEq(numerical.status, 'earned');
+    assertEq(numerical.grade, 'B');
+    // Where the requirements came from travels with them: they are transcribed
+    // from a departmental course guide, not read from a feed.
+    assert(
+      typeof r.requirements_source === 'string' && r.requirements_source.length > 0,
+      'requirements carry their provenance',
+    );
+  });
+
+  await test('assistant: get_minor_progress distinguishes no minor from no data', async () => {
+    const noMinor = await executeAssistantTool('get_minor_progress', {}, {
+      loadUserSnapshot: async () => ({ ...JSON.parse(ALICE_SNAPSHOT), currentDept: 'CSE' }),
+    });
+    assertEq(noMinor.error, 'no_minor');
+    // A student well into a degree who simply has no minor must not be told to
+    // go and add semesters — that is the other failure, and the wrong advice.
+    assert(
+      /Degree Progress/.test(noMinor.message),
+      'points at where a minor is chosen',
+    );
+    assert(
+      /own knowledge/.test(noMinor.message),
+      'the no-minor path still forbids answering from pretraining',
+    );
+
+    const noData = await executeAssistantTool('get_minor_progress', {}, {
+      loadUserSnapshot: async () => null,
+    });
+    assertEq(noData.error, 'no_data');
+
+    // An unknown code is the no-minor case, not a crash and not a guess.
+    const bogus = await executeAssistantTool('get_minor_progress', {}, {
+      loadUserSnapshot: async () => ({ ...JSON.parse(ALICE_SNAPSHOT), currentMinor: 'ASTROLOGY' }),
+    });
+    assertEq(bogus.error, 'no_minor');
+  });
+
+  await test('assistant: get_minor_progress takes no user identifier', async () => {
+    // The tool schema is the boundary: a prompt-injected model inventing a uid
+    // must not be able to aim this at anyone else.
+    const schema = ASSISTANT_TOOLS.find((t) => t.name === 'get_minor_progress');
+    assertEq(Object.keys(schema.input_schema.properties).length, 0);
+    assertEq(schema.input_schema.additionalProperties, false);
+    let seen = 0;
+    const r = await executeAssistantTool('get_minor_progress', { user_id: 'someone-else' }, {
+      loadUserSnapshot: async () => {
+        seen += 1;
+        return { ...JSON.parse(ALICE_SNAPSHOT), currentMinor: 'MATH' };
+      },
+    });
+    assertEq(seen, 1, 'one snapshot read, for the authenticated student');
+    assertEq(r.minor, 'Minor in Mathematics');
+  });
+
   await test('assistant: get_faculty_rating quotes the same number as the Routine Builder star', async () => {
     // MUNR is the faculty in the seeded corpus the grid renders as 4.9. If this
     // drifts, the Assistant and the UI are disagreeing about the same person —
