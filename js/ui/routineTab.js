@@ -67,7 +67,7 @@ import { resolvePlanImport, summarizePlanImport } from '../core/routinePlannerIm
 import { buildExportPlan, paintExportPlan, exportFileName } from '../core/routineExport.js';
 import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
-import { onFeedUpdate, broadcastFeedResult } from './feedLive.js';
+import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { saveState } from '../core/state.js';
 
 // Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
@@ -764,8 +764,10 @@ async function _refresh(force = false) {
   const archiveUrl = _store.chosenSession === null
     ? null
     : archivePayloadUrl(_workerUrl(), _store.chosenSession);
+  // The live feed paints any saved copy at once, however old, and refreshes
+  // behind it — its origin can take 20 s to answer (#761).
   const feedOptions = archiveUrl === null
-    ? (force ? { forceRefresh: true } : {})
+    ? (force ? { forceRefresh: true } : { staleWhileRevalidate: true })
     : { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(_store.chosenSession) };
   const feedPromise = fetchConnectFeed(feedOptions);
   const reviewsPromise = _loadFacultyRatings(force);
@@ -795,7 +797,13 @@ async function _refresh(force = false) {
     // silently move Seats and Free Rooms onto it too — a student reading last
     // semester's timetable here would find last semester's free rooms there,
     // with nothing on either tab saying why (#633).
-    if (_store.chosenSession === null) broadcastFeedResult(result, _applyLiveFeed);
+    //
+    // An expired copy is not news to the other tabs; the revalidation it
+    // triggers is, and reaches every tab — this one included.
+    if (_store.chosenSession === null) {
+      if (result.stale) revalidateFeed();
+      else broadcastFeedResult(result, _applyLiveFeed);
+    }
     if (force) _flashNote('✓ Refreshed from CONNECT');
   } catch {
     // Never surface raw exception text in the DOM (CodeQL js/xss-through-exception):
