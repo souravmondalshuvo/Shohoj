@@ -52,6 +52,13 @@ export function broadcastFeedResult(result, except = null) {
   }
 }
 
+// Fetch now, for every subscriber. A tab that painted an expired cache
+// (`staleWhileRevalidate`) calls this instead of waiting out a poll period;
+// it shares the in-flight guard, so two tabs asking at once cost one request.
+export function revalidateFeed() {
+  return _feedLiveTick();
+}
+
 function _feedLivePeriodMs() {
   const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
   if (!hidden) return FEED_LIVE_POLL_MS;
