@@ -4,6 +4,9 @@
 //
 // Thin wrapper around `usis-cdn.eniamza.com/connect.json` with a localStorage
 // TTL cache, ETag-aware refresh, and stale-cache fallback on network failure.
+// The origin is uncached and has taken 10–20 s to answer (#761): requests give
+// up after DEFAULT_FETCH_TIMEOUT_MS, and `staleWhileRevalidate` callers get an
+// expired copy back immediately.
 // I/O-free helpers live in ./connectFeed.js; this module composes them.
 
 import { parseFeed, summarizeFeed } from './connectFeed.js';
@@ -11,6 +14,7 @@ import { parseFeed, summarizeFeed } from './connectFeed.js';
 export const DEFAULT_FEED_URL = 'https://usis-cdn.eniamza.com/connect.json';
 export const DEFAULT_CACHE_KEY = 'shohoj_connect_feed_v1';
 export const DEFAULT_CACHE_TTL_MS = 10 * 60 * 1000;
+export const DEFAULT_FETCH_TIMEOUT_MS = 8_000;
 
 function safeRead(storage, key) {
     if (!storage) return null;
@@ -41,10 +45,10 @@ function safeRemove(storage, key) {
     catch { /* ignore */ }
 }
 
-function materialize(payload, source, fetchedAt, etag) {
+function materialize(payload, source, fetchedAt, etag, stale = false) {
     const { sections, dropped } = parseFeed(payload);
     const summary = summarizeFeed(sections);
-    return { sections, summary, source, fetchedAt, etag, dropped };
+    return { sections, summary, source, fetchedAt, etag, dropped, stale };
 }
 
 export async function fetchConnectFeed(options = {}) {
@@ -60,12 +64,19 @@ export async function fetchConnectFeed(options = {}) {
             ? (typeof fetch !== 'undefined' ? fetch : null)
             : options.fetcher;
     const now = options.now ?? (() => Date.now());
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : DEFAULT_FETCH_TIMEOUT_MS;
 
     const cache = safeRead(storage, cacheKey);
     const cacheFresh = cache !== null && now() - cache.fetchedAt < ttlMs;
 
     if (cache !== null && cacheFresh && !options.forceRefresh) {
         return materialize(cache.payload, 'cache', cache.fetchedAt, cache.etag);
+    }
+
+    // An expired copy now beats a skeleton for however long the origin takes.
+    // The caller sees `stale` and revalidates in the background.
+    if (cache !== null && options.staleWhileRevalidate && !options.forceRefresh) {
+        return materialize(cache.payload, 'cache', cache.fetchedAt, cache.etag, true);
     }
 
     if (fetcher === null) {
@@ -78,8 +89,8 @@ export async function fetchConnectFeed(options = {}) {
     const headers = { Accept: 'application/json' };
     if (cache !== null && cache.etag) headers['If-None-Match'] = cache.etag;
 
-    try {
-        const response = await fetcher(url, { headers, signal: options.signal });
+    const request = async (signal) => {
+        const response = await fetcher(url, { headers, signal });
         if (response.status === 304 && cache !== null) {
             const refreshed = {
                 fetchedAt: now(),
@@ -100,11 +111,38 @@ export async function fetchConnectFeed(options = {}) {
         const fetchedAt = now();
         safeWrite(storage, cacheKey, { fetchedAt, etag, payload });
         return materialize(payload, 'live', fetchedAt, etag);
+    };
+
+    // Our own controller, so the timeout can cancel the request; the caller's
+    // signal is forwarded into it rather than replaced.
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const callerSignal = options.signal;
+    const forwardAbort = () => controller?.abort();
+    if (callerSignal) {
+        if (callerSignal.aborted) forwardAbort();
+        else callerSignal.addEventListener('abort', forwardAbort, { once: true });
+    }
+    // Raced rather than left to the abort alone: the slow part is often the
+    // body, and a fetcher that ignores the signal must not hang us either.
+    let timer;
+    const timedOut = new Promise((_, reject) => {
+        if (!(timeoutMs > 0) || !Number.isFinite(timeoutMs)) return;
+        timer = setTimeout(() => {
+            forwardAbort();
+            reject(new Error(`Connect feed: timed out after ${Math.round(timeoutMs / 1000)}s.`));
+        }, timeoutMs);
+    });
+
+    try {
+        return await Promise.race([request(controller ? controller.signal : callerSignal), timedOut]);
     } catch (err) {
         if (cache !== null) {
             return materialize(cache.payload, 'fallback', cache.fetchedAt, cache.etag);
         }
         throw err instanceof Error ? err : new Error(String(err));
+    } finally {
+        clearTimeout(timer);
+        callerSignal?.removeEventListener('abort', forwardAbort);
     }
 }
 
