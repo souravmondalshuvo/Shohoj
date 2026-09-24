@@ -11,6 +11,7 @@ import {
     peekConnectFeedCache,
     DEFAULT_CACHE_KEY,
     DEFAULT_CACHE_TTL_MS,
+    DEFAULT_FETCH_TIMEOUT_MS,
 } from '../js/core/connectFeedClient.js';
 
 let passed = 0, failed = 0;
@@ -122,6 +123,7 @@ await test('returns cache, does not call fetcher', async () => {
     eq(result.source, 'cache');
     eq(result.fetchedAt, t0);
     eq(result.etag, 'W/"abc"');
+    eq(result.stale, false);
     eq(fetcher.calls.length, 0);
 });
 
@@ -265,6 +267,125 @@ await test('falls back to cache when response body is malformed', async () => {
         now: () => t0 + DEFAULT_CACHE_TTL_MS + 1,
     });
     eq(result.source, 'fallback');
+});
+
+// ---- staleWhileRevalidate ---------------------------------------------------
+// The origin has taken 20 s+ to answer (#761): an expired copy is handed back
+// at once, flagged, and the caller revalidates behind it.
+console.log('\nstaleWhileRevalidate:');
+function expiredCacheStorage(t0) {
+    return makeStorage({
+        [DEFAULT_CACHE_KEY]: JSON.stringify({ fetchedAt: t0, etag: 'W/"abc"', payload: SAMPLE }),
+    });
+}
+
+await test('returns an expired cache at once, flagged stale, without fetching', async () => {
+    const t0 = 1_700_000_000_000;
+    const fetcher = makeFetcher({ body: SAMPLE, etag: 'W/"new"' });
+    const result = await fetchConnectFeed({
+        storage: expiredCacheStorage(t0), fetcher, staleWhileRevalidate: true,
+        now: () => t0 + DEFAULT_CACHE_TTL_MS * 1000,
+    });
+    eq(result.source, 'cache');
+    eq(result.stale, true);
+    eq(result.fetchedAt, t0);
+    eq(result.sections.length, 1);
+    eq(fetcher.calls.length, 0);
+});
+
+await test('forceRefresh still goes to the network', async () => {
+    const t0 = 1_700_000_000_000;
+    const fetcher = makeFetcher({ body: SAMPLE, etag: 'W/"new"' });
+    const result = await fetchConnectFeed({
+        storage: expiredCacheStorage(t0), fetcher, staleWhileRevalidate: true, forceRefresh: true,
+        now: () => t0 + DEFAULT_CACHE_TTL_MS + 1,
+    });
+    eq(result.source, 'live');
+    eq(result.stale, false);
+    eq(fetcher.calls.length, 1);
+});
+
+await test('with no cache it fetches as usual', async () => {
+    const fetcher = makeFetcher({ body: SAMPLE, etag: null });
+    const result = await fetchConnectFeed({
+        storage: makeStorage(), fetcher, staleWhileRevalidate: true, now: () => 1_700_000_000_000,
+    });
+    eq(result.source, 'live');
+    eq(result.stale, false);
+});
+
+await test('without the option an expired cache is never served first', async () => {
+    const t0 = 1_700_000_000_000;
+    const fetcher = makeFetcher({ body: SAMPLE, etag: null });
+    const result = await fetchConnectFeed({
+        storage: expiredCacheStorage(t0), fetcher, now: () => t0 + DEFAULT_CACHE_TTL_MS + 1,
+    });
+    eq(result.source, 'live');
+    eq(fetcher.calls.length, 1);
+});
+
+// ---- Timeout ----------------------------------------------------------------
+console.log('\ntimeout:');
+const never = () => new Promise(() => {});
+
+await test('defaults to 8 seconds', () => {
+    eq(DEFAULT_FETCH_TIMEOUT_MS, 8000);
+});
+
+await test('a hanging request throws when there is no cache', async () => {
+    let caught = null;
+    try {
+        await fetchConnectFeed({ storage: makeStorage(), fetcher: never, timeoutMs: 20 });
+    } catch (e) {
+        caught = e;
+    }
+    assert(caught !== null, 'expected throw');
+    assert(/timed out/.test(caught.message), 'unexpected message: ' + caught.message);
+});
+
+await test('a hanging request falls back to the cache', async () => {
+    const t0 = 1_700_000_000_000;
+    const result = await fetchConnectFeed({
+        storage: expiredCacheStorage(t0), fetcher: never, timeoutMs: 20,
+        now: () => t0 + DEFAULT_CACHE_TTL_MS + 1,
+    });
+    eq(result.source, 'fallback');
+    eq(result.sections.length, 1);
+});
+
+await test('covers the body, not just the headers', async () => {
+    const fetcher = async () => ({
+        ok: true, status: 200, headers: { get: () => null }, json: never,
+    });
+    let caught = null;
+    try {
+        await fetchConnectFeed({ storage: makeStorage(), fetcher, timeoutMs: 20 });
+    } catch (e) {
+        caught = e;
+    }
+    assert(caught !== null && /timed out/.test(caught.message), 'expected a timeout');
+});
+
+await test('aborts the request it gave up on', async () => {
+    let seen = null;
+    const fetcher = (url, init) => { seen = init.signal; return never(); };
+    await fetchConnectFeed({ storage: makeStorage(), fetcher, timeoutMs: 20 }).catch(() => {});
+    assert(seen !== null && seen.aborted, 'expected the fetcher signal to be aborted');
+});
+
+await test("forwards the caller's own abort", async () => {
+    let seen = null;
+    const caller = new AbortController();
+    const fetcher = (url, init) => new Promise((_, reject) => {
+        seen = init.signal;
+        init.signal.addEventListener('abort', () => reject(new Error('aborted')));
+    });
+    const pending = fetchConnectFeed({ storage: makeStorage(), fetcher, signal: caller.signal });
+    caller.abort();
+    let caught = null;
+    try { await pending; } catch (e) { caught = e; }
+    assert(seen.aborted, 'expected the fetcher signal to be aborted');
+    assert(caught !== null && /aborted/.test(caught.message), 'expected the abort to surface');
 });
 
 // ---- Cache helpers ----------------------------------------------------------
