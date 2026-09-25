@@ -83,7 +83,7 @@ export function sectionPassesFilters(
  * the bottom whatever the sort; and section number is the universal tie-break,
  * so the order never looks arbitrary. Returns a new array.
  */
-export function sortSections(
+export function sortRoutineSections(
   sections: readonly NormalizedSection[],
   mode: SectionSortMode = 'section',
   ratingValue: RatingValue = () => -1,
