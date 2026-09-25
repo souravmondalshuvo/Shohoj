@@ -87,6 +87,11 @@ MAIN_JS_FILES = [
     'js/core/routineSuggestions.js',
     'js/core/routinePlannerImport.js',
     'js/core/routineExport.js',
+    # Section ordering + filters for the course list (#764: shipped unbundled,
+    # so the tab threw ReferenceError the moment a course was picked)
+    'js/core/routineSectionList.js',
+    # Shared modal shell (Free Rooms' weekly-availability view)
+    'js/ui/modal.js',
     # QR generator from the installed qrcode-generator package (defines a
     # top-level `qrcode` once `export default` is stripped; used by routineTab)
     'node_modules/qrcode-generator/dist/qrcode.mjs',
@@ -99,6 +104,8 @@ MAIN_JS_FILES = [
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
     'js/ui/signinPortal.js',
+    # Running-course mark projection, read by render.js (#764)
+    'js/core/courseMarks.js',
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
