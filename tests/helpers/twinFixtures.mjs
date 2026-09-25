@@ -307,7 +307,110 @@ const CONNECT_PASTES = [
   42,
 ];
 
+
+/**
+ * Minor fixtures (#766): the Math minor as authored, and a record that walks
+ * every rule — the CSE330 alternative, a retake, an F and a P that must not
+ * count, a summary block that cannot, an uncoded line, electives past the cap,
+ * and a running semester.
+ */
+const MINOR_MATH = {
+  code: 'MATH',
+  label: 'Minor in Mathematics',
+  shortLabel: 'Mathematics',
+  department: 'Department of Mathematics and Physical Sciences',
+  totalCredits: 27,
+  core: [
+    { id: 'mat111', title: 'Principles of Mathematics', codes: ['MAT111'], credits: 3 },
+    { id: 'mat123', title: 'Calculus I', codes: ['MAT123'], credits: 3 },
+    { id: 'mat221', title: 'Real Analysis I', codes: ['MAT221'], credits: 3 },
+    { id: 'mat222', title: 'Differential Equations I', codes: ['MAT222'], credits: 3 },
+    { id: 'mat223', title: 'Numerical Analysis I', codes: ['MAT223', 'CSE330'], credits: 3 },
+    { id: 'mat311', title: 'Abstract Algebra', codes: ['MAT311'], credits: 3 },
+    { id: 'mat316', title: 'Operations Research I', codes: ['MAT316'], credits: 3 },
+  ],
+  electives: {
+    credits: 6,
+    codes: ['STA301', 'CSE402', 'CSE490', 'CSE490C'],
+    patterns: [{ subject: 'MAT', levels: [3, 4] }],
+    options: [{ label: 'Any MAT 3XX or MAT 4XX level course listed on the website' }],
+  },
+  source: 'fixture',
+};
+
+const MINOR_SEMESTERS = [
+  { id: 1, summary: true, summaryCredits: 30, summaryCGPA: 3.1, courses: [] },
+  {
+    id: 2,
+    courses: [
+      { name: 'Principles of Mathematics (MAT111)', credits: 3, grade: 'A' },
+      { name: 'MAT123', credits: 3, grade: 'F' },
+      { name: 'calc 2', credits: 3, grade: 'A' },
+      { name: 'Numerical Methods (CSE330)', credits: 3, grade: 'B+' },
+      { name: 'STA301 Probability', credits: 3, grade: 'P' },
+    ],
+  },
+  {
+    id: 3,
+    courses: [
+      { name: 'Calculus I (MAT123)', credits: 3, grade: 'B' },
+      { name: 'Real Analysis I (MAT221)', credits: 3, grade: 'A-' },
+      { name: 'Complex Analysis (MAT341)', credits: 3, grade: 'A' },
+      { name: 'Optimization (CSE402)', credits: 3, grade: 'B' },
+      { name: 'Topology (MAT411)', credits: 4, grade: 'C' },
+      { name: 'MAT223', credits: 3, grade: 'A' },
+    ],
+  },
+  {
+    id: 4,
+    running: true,
+    courses: [
+      { name: 'Differential Equations I (MAT222)', credits: 3, grade: '' },
+      { name: 'Abstract Algebra (MAT311)', credits: 3, grade: '' },
+      { name: 'Quantum (CSE490C)', credits: 3, grade: '' },
+    ],
+  },
+];
+
+const MINOR_SCALE = {
+  points: { 'A+': 4, A: 4, 'A-': 3.7, 'B+': 3.3, B: 3, 'B-': 2.7, C: 2, D: 1, F: 0, P: null, I: null },
+};
+
 export const FIXTURES = {
+  minors: {
+    getMinorProgram: [['MATH'], [' math '], ['PHY'], [''], [null], [undefined]],
+    matchesPattern: [
+      ['MAT341', { subject: 'MAT', levels: [3, 4] }],
+      ['MAT499', { subject: 'mat', levels: [3, 4] }],
+      ['MAT223', { subject: 'MAT', levels: [3, 4] }],
+      ['PHY341', { subject: 'MAT', levels: [3, 4] }],
+      ['MAT3', { subject: 'MAT', levels: [3] }],
+      [null, { subject: 'MAT', levels: [3] }],
+    ],
+    isElectiveCode: [
+      ['cse402', MINOR_MATH.electives],
+      ['CSE490C', MINOR_MATH.electives],
+      ['CSE490A', MINOR_MATH.electives],
+      ['MAT411', MINOR_MATH.electives],
+      ['MAT111', MINOR_MATH.electives],
+      ['', MINOR_MATH.electives],
+    ],
+  },
+
+  minorProgress: {
+    collectTakenCourses: [
+      [MINOR_SEMESTERS, MINOR_SCALE],
+      [[], MINOR_SCALE],
+    ],
+    computeMinorProgress: [
+      [MINOR_SEMESTERS, MINOR_MATH, MINOR_SCALE],
+      [MINOR_SEMESTERS, MINOR_MATH],
+      [[], MINOR_MATH],
+      [MINOR_SEMESTERS, null],
+    ],
+  },
+
+
   courseMarks: {
     letterForMark: [[100], [97], [96.99], [85], [84.99], [50], [49.99], [0], [-5]],
     computeCourseMarks: [
