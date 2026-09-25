@@ -57,6 +57,7 @@ import {
 import { drawTrendChart } from './ui/charts.js';
 
 import { renderDegreeTracker } from './ui/tracker.js';
+import { renderMinorTracker } from './ui/minorTracker.js';
 
 import {
   runSimulator, updateSetupWizard, buildRetakeSuggestions, toggleRetake
@@ -305,6 +306,7 @@ window._shohoj_resetAppState = () => {
   state.semesters = [];
   state.semesterCounter = 0;
   state.currentDept = '';
+  state.currentMinor = '';
   state._restoredFromStorage = false;
 
   const deptSel = document.getElementById('deptSelect');
@@ -501,6 +503,7 @@ function loadState() {
     const deptSel = document.getElementById('deptSelect');
     if (deptSel && saved.currentDept) { deptSel.value = saved.currentDept; }
     state.currentDept = saved.currentDept || '';
+    state.currentMinor = typeof saved.currentMinor === 'string' ? saved.currentMinor : '';
 
     const seasonSel = document.getElementById('startSeason');
     const yearSel   = document.getElementById('startYear');
@@ -541,6 +544,7 @@ window._shohoj_applyState = function(saved) {
     const deptSel = document.getElementById('deptSelect');
     if (deptSel && clean.currentDept) deptSel.value = clean.currentDept;
     state.currentDept = clean.currentDept || '';
+    state.currentMinor = typeof clean.currentMinor === 'string' ? clean.currentMinor : '';
  
     const seasonSel = document.getElementById('startSeason');
     const yearSel   = document.getElementById('startYear');
@@ -887,6 +891,7 @@ function recalc() {
   }
 
   renderDegreeTracker(totalEarned);
+  renderMinorTracker();
 
   const standingBox = document.getElementById('standingBox');
   const cgpaNum = cgpaCompleted;
