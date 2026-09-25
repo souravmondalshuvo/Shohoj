@@ -88,7 +88,7 @@ import {
   type SectionSortMode,
   seatsLeft,
   sectionPassesFilters,
-  sortSections,
+  sortRoutineSections,
 } from '../../core/routineSectionList';
 
 const STORAGE_KEY = 'shohoj_routine_picks_v1';
@@ -564,7 +564,7 @@ export function Component() {
       let hiddenFilter = 0;
       let hiddenClash = 0;
       const rows: NormalizedSection[] = [];
-      for (const section of sortSections(all, sortMode, ratingValue)) {
+      for (const section of sortRoutineSections(all, sortMode, ratingValue)) {
         const isPicked = section.sectionId === pickedId;
         if (!isPicked && !sectionPassesFilters(section, filters)) {
           hiddenFilter++;
