@@ -7,6 +7,10 @@
 // /degree-progress and only needs legacy to leave it alone. Without the
 // passthrough, editing one grade on the legacy page silently clears a student's
 // minor — the kind of loss nothing else in the app would report.
+//
+// Legacy now picks minors too (#766). Once it has read the stored value,
+// `state.currentMinor` is a string and legacy's own choice is what gets saved;
+// until then it is null and the passthrough above still applies.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -65,4 +69,20 @@ test('corrupt storage does not stop the save', () => {
   localStorage.setItem(STORAGE_KEY, '{ not json');
   saveState();
   assert.equal(stored().currentDept, 'CSE');
+});
+
+// These run last: they move state.currentMinor off null, which the passthrough
+// tests above depend on.
+test('a minor picked on legacy is saved over the stored one', () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ semesters: [], currentMinor: 'MATH' }));
+  state.currentMinor = 'PHY';
+  saveState();
+  assert.equal(stored().currentMinor, 'PHY');
+});
+
+test('clearing the minor on legacy saves an empty selection, not the old one', () => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ semesters: [], currentMinor: 'MATH' }));
+  state.currentMinor = '';
+  saveState();
+  assert.equal(stored().currentMinor, '');
 });
