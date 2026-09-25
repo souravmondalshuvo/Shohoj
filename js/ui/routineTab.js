@@ -47,7 +47,7 @@ import {
   SECTION_SORT_MODES,
   seatsLeft,
   sectionPassesFilters,
-  sortSections,
+  sortRoutineSections,
 } from '../core/routineSectionList.js';
 import {
   RATING_CACHE_KEY,
@@ -1584,7 +1584,7 @@ function _sectionHeadHTML() {
 // Ordering lives in core/routineSectionList.js; the store supplies the mode and
 // the rating lookup, which is the only part the pure helper cannot know.
 function _sortSections(sections) {
-  return sortSections(sections, _store.sortMode, _ratingValue);
+  return sortRoutineSections(sections, _store.sortMode, _ratingValue);
 }
 
 
