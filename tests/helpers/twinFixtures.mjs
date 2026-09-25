@@ -589,7 +589,7 @@ export const FIXTURES = {
       [NORM_OPEN, { avoidDays: ['SUNDAY'] }],
       [NORM_NO_SLOTS, { noEarly: true, avoidDays: ['SUNDAY'] }],
     ],
-    sortSections: [
+    sortRoutineSections: [
       [[]],
       [[NORM_OPEN, NORM_FULL, NORM_LATE], 'section'],
       [[NORM_OPEN, NORM_FULL, NORM_LATE], 'seats'],
