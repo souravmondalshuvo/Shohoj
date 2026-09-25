@@ -283,6 +283,34 @@ def strip_local_imports_exports(code):
     return code
 
 
+# A relative import is stripped from the bundle, so the module it names must be
+# in the same file list or its names are simply undefined in production, while
+# dev and e2e, which load js/ un-bundled, keep passing (#535, #764). Checked
+# before anything is written, so the next one fails the build instead of shipping.
+LOCAL_IMPORT_RE = re.compile(
+    r"""^\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.{1,2}/[^'"]+)['"]"""
+    r"""|^\s*import\s*['"](\.{1,2}/[^'"]+)['"]""",
+    re.MULTILINE,
+)
+
+
+def find_unbundled_imports(js_files):
+    """(importer, module) pairs where a bundled file imports an unbundled module."""
+    bundled = {os.path.normpath(p) for p in js_files}
+    missing = []
+    for path in js_files:
+        if not os.path.exists(path):
+            continue
+        with open(path, 'r', encoding='utf-8') as f:
+            code = f.read()
+        for match in LOCAL_IMPORT_RE.finditer(code):
+            spec = match.group(1) or match.group(2)
+            target = os.path.normpath(os.path.join(os.path.dirname(path), spec))
+            if target not in bundled:
+                missing.append((path, target))
+    return missing
+
+
 def build_firebase_module(js_files):
     js_parts = []
     for path in js_files:
@@ -565,6 +593,17 @@ def render_page(template_path, output_path, css, firebase_js, bundled_js,
 
 
 def build():
+    unbundled = [
+        (label, importer, module)
+        for label, files in [('firebase module', FIREBASE_JS_FILES)]
+        + [(page['output'], page['js_files']) for page in PAGES]
+        for importer, module in find_unbundled_imports(files)
+    ]
+    for label, importer, module in unbundled:
+        print(f'  ✗ {label}: {importer} imports {module}, which is not bundled')
+    if unbundled:
+        raise SystemExit('Add each module above to that bundle\'s file list in build3.py.')
+
     firebase_js = build_firebase_module(FIREBASE_JS_FILES)
     print(f'   Firebase module files: {len(FIREBASE_JS_FILES)}')
 
