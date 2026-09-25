@@ -6,23 +6,26 @@ export const state = {
   semesters:            [],
   semesterCounter:      0,
   currentDept:          '',
+  // The selected minor's code ('' for none), or null until it has been read
+  // from storage — see currentMinorField below for why the two differ.
+  currentMinor:         null,
   _restoredFromStorage: false,
 };
 
 export const STORAGE_KEY = 'shohoj_cgpa_v1';
 
 /**
- * Fields the shell owns that legacy has no concept of, read back off the stored
- * snapshot so a legacy save carries them instead of dropping them (#731).
+ * The `currentMinor` field for the next save (#731, #766).
  *
- * `currentMinor` is set on the shell's /degree-progress and never here; without
- * this, a student who picked a minor and then edited a grade on the legacy page
- * would find the selection quietly gone. Legacy rebuilds the whole snapshot on
- * every save, so anything it does not name is lost by default — which is the
- * right default for a field legacy could corrupt, and the wrong one for a field
- * it only needs to leave alone.
+ * Both surfaces now set it — the shell on /degree-progress, legacy in the minor
+ * panel under the degree tracker — but legacy rebuilds the whole snapshot on
+ * every save, and a save can run before the stored state has been read. Until
+ * then `state.currentMinor` is null, and the stored value is carried through
+ * untouched rather than overwritten with a default: otherwise editing one grade
+ * before the restore finished would silently clear a student's minor.
  */
-function carriedShellFields() {
+function currentMinorField() {
+  if (typeof state.currentMinor === 'string') return { currentMinor: state.currentMinor };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
@@ -34,7 +37,7 @@ function carriedShellFields() {
 export function saveState() {
   try {
     const snap = {
-      ...carriedShellFields(),
+      ...currentMinorField(),
       currentDept:     state.currentDept,
       semesterCounter: state.semesterCounter,
       semesters:       state.semesters,
