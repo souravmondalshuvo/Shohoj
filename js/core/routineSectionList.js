@@ -61,7 +61,7 @@ export function sectionPassesFilters(section, filters = {}) {
  * the bottom whatever the sort; and section number is the universal tie-break,
  * so the order never looks arbitrary. Returns a new array.
  */
-export function sortSections(sections, mode = 'section', ratingValue = () => -1) {
+export function sortRoutineSections(sections, mode = 'section', ratingValue = () => -1) {
     const decorated = sections.map((s) => ({
         s,
         full: !!s.isFull,
