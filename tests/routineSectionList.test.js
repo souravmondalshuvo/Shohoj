@@ -20,7 +20,7 @@ import {
   seatsLeft,
   sectionNumber,
   sectionPassesFilters,
-  sortSections,
+  sortRoutineSections,
 } from '../js/core/routineSectionList.js';
 
 const section = (over = {}) => ({
@@ -101,7 +101,7 @@ test('full sections sink to the bottom whatever the sort', () => {
     section({ sectionId: 3, sectionName: '03' }),
   ];
   for (const mode of ['section', 'seats', 'time', 'faculty']) {
-    assert.equal(sortSections(list, mode).at(-1).sectionId, 1, `mode ${mode}`);
+    assert.equal(sortRoutineSections(list, mode).at(-1).sectionId, 1, `mode ${mode}`);
   }
 });
 
@@ -112,8 +112,8 @@ test('section number is the tie-break, so equal rows keep a stable order', () =>
     section({ sectionId: 2, sectionName: '02' }),
   ];
   // Every row has the same seats and the same start time.
-  assert.deepEqual(ids(sortSections(list, 'seats')), [1, 2, 3]);
-  assert.deepEqual(ids(sortSections(list, 'time')), [1, 2, 3]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'seats')), [1, 2, 3]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'time')), [1, 2, 3]);
 });
 
 test('seats sort puts the emptiest section first', () => {
@@ -121,7 +121,7 @@ test('seats sort puts the emptiest section first', () => {
     section({ sectionId: 1, sectionName: '01', consumedSeat: 29 }),
     section({ sectionId: 2, sectionName: '02', consumedSeat: 5 }),
   ];
-  assert.deepEqual(ids(sortSections(list, 'seats')), [2, 1]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'seats')), [2, 1]);
 });
 
 test('time sort puts the earliest class first', () => {
@@ -129,7 +129,7 @@ test('time sort puts the earliest class first', () => {
     section({ sectionId: 1, sectionName: '01', classSlots: [{ day: 'SUNDAY', startMin: 800, endMin: 880 }] }),
     section({ sectionId: 2, sectionName: '02', classSlots: [{ day: 'SUNDAY', startMin: 480, endMin: 560 }] }),
   ];
-  assert.deepEqual(ids(sortSections(list, 'time')), [2, 1]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'time')), [2, 1]);
 });
 
 test('faculty sort ranks by the accessor, and unrated sections fall behind', () => {
@@ -139,7 +139,7 @@ test('faculty sort ranks by the accessor, and unrated sections fall behind', () 
     section({ sectionId: 3, sectionName: '03', facultyInitials: 'CCC' }),
   ];
   const rating = (s) => ({ AAA: 3.2, BBB: 4.8 })[s.facultyInitials] ?? -1;
-  assert.deepEqual(ids(sortSections(list, 'faculty', rating)), [2, 1, 3]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'faculty', rating)), [2, 1, 3]);
 });
 
 test('with no rating accessor, faculty sort degrades to section order', () => {
@@ -147,12 +147,12 @@ test('with no rating accessor, faculty sort degrades to section order', () => {
     section({ sectionId: 2, sectionName: '02' }),
     section({ sectionId: 1, sectionName: '01' }),
   ];
-  assert.deepEqual(ids(sortSections(list, 'faculty')), [1, 2]);
+  assert.deepEqual(ids(sortRoutineSections(list, 'faculty')), [1, 2]);
 });
 
 test('sorting returns a new array and leaves the caller\'s alone', () => {
   const list = [section({ sectionId: 2, sectionName: '02' }), section({ sectionId: 1, sectionName: '01' })];
-  const sorted = sortSections(list, 'section');
+  const sorted = sortRoutineSections(list, 'section');
   assert.notEqual(sorted, list);
   assert.deepEqual(ids(list), [2, 1]);
 });
