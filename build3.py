@@ -62,6 +62,11 @@ MAIN_JS_FILES = [
     'js/ui/charts.js',
     'js/ui/suggestions.js',
     'js/ui/tracker.js',
+    # Minor programs (#766): the table and model are twins of the shell's
+    # minors.ts / minorProgress.ts; the panel renders under the degree tracker
+    'js/core/minors.js',
+    'js/core/minorProgress.js',
+    'js/ui/minorTracker.js',
     'js/ui/reviews.js',
     'js/ui/reviewsTab.js',
     'js/ui/difficultyMap.js',
