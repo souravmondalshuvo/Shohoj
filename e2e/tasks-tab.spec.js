@@ -52,6 +52,9 @@ function makeTask(overrides) {
 /** Boot with a Worker whose store starts as `tasks`. Returns the request log. */
 async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false } = {}) {
   const store = new Map(tasks.map((t) => [t.id, t]));
+  const assessments = new Map();
+  const reminders = new Map(); // taskId -> reminder[]
+  let reminderSeq = 0;
   const log = [];
   let failed = false;
 
@@ -105,6 +108,36 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
       const task = makeTask(input);
       store.set(task.id, task);
       return json(201, { task });
+    }
+    if (path === '/assessments') return json(200, { items: [...assessments.values()] });
+    const assess = path.match(/^\/tasks\/(tsk_[0-9a-f]+)\/assessment$/);
+    if (assess && req.method() === 'PUT') {
+      const input = JSON.parse(req.postData());
+      const a = { taskId: assess[1], syllabus: null, location: null, notes: null, createdAt: 'x', updatedAt: 'x', earnedMarks: null, ...input };
+      assessments.set(assess[1], a);
+      return json(200, { assessment: a });
+    }
+    if (assess && req.method() === 'DELETE') {
+      assessments.delete(assess[1]);
+      return json(200, { deleted: { taskId: assess[1] } });
+    }
+    const rem = path.match(/^\/tasks\/(tsk_[0-9a-f]+)\/reminders(?:\/(rem_[0-9a-f]+))?$/);
+    if (rem) {
+      const list = reminders.get(rem[1]) ?? [];
+      if (req.method() === 'GET') return json(200, { items: list });
+      if (req.method() === 'POST') {
+        const { offsetMinutes } = JSON.parse(req.postData());
+        reminderSeq += 1;
+        const r = {
+          id: `rem_${reminderSeq.toString(16).padStart(32, '0')}`, taskId: rem[1], offsetMinutes, channel: 'WEB',
+          scheduledFor: store.get(rem[1])?.dueAt ? '2026-12-01T00:00:00.000Z' : null,
+          status: 'PENDING', sentAt: null, createdAt: 'x', updatedAt: 'x',
+        };
+        reminders.set(rem[1], [...list, r]);
+        return json(201, { reminder: r });
+      }
+      reminders.set(rem[1], list.filter((r) => r.id !== rem[2]));
+      return json(200, { deleted: { id: rem[2] } });
     }
     const completion = path.match(/^\/tasks\/(tsk_[0-9a-f]+)\/completion$/);
     if (completion) {
@@ -217,4 +250,86 @@ test('the nav Tasks link opens the tab in place', async ({ page }) => {
   await page.locator('nav').getByRole('link', { name: 'Tasks' }).click();
   await expect(page.locator('#tabTasks')).toHaveClass(/active/);
   expect(page.url()).not.toContain('app/tasks');
+});
+
+// ── Phase 2: details and the grade picture ───────────────────────────────────
+
+const factor = (name, points) => ({ name, value: 0.5, weight: 25, points });
+
+test('details explain the ranking and a reminder chip toggles on and off', async ({ page }) => {
+  const log = await boot(page, {
+    tasks: [makeTask({
+      title: 'Midterm prep', dueAt: hoursFromNow(30), priorityScore: 64, estimatedMinutes: 180,
+      priorityFactors: [factor('urgency', 36), factor('workload', 18), factor('importance', 10)],
+    })],
+  });
+  await page.getByRole('tab', { name: 'All' }).click();
+  await page.getByRole('button', { name: 'Show details for Midterm prep' }).click();
+
+  const details = page.getByTestId('tasks-details');
+  // The panel spans the row beneath it, rather than squeezing in beside it.
+  const widths = await details.evaluate((d) => ({
+    details: d.getBoundingClientRect().width,
+    row: d.closest('.tasks-row').clientWidth,
+  }));
+  expect(widths.details).toBeGreaterThan(widths.row * 0.85);
+  await expect(details.getByTestId('tasks-why-list').locator('li')).toHaveCount(3);
+  await expect(details.getByTestId('tasks-why-list')).toContainText('Due in 30 hours');
+  await expect(details.locator('.tasks-band')).toHaveText('Needs attention');
+
+  const chip = details.getByRole('button', { name: 'A day before', exact: true });
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await expect(details.getByTestId('tasks-reminder-list')).toContainText('A day before');
+  expect(JSON.parse(log.find((r) => r.method === 'POST' && r.path.endsWith('/reminders')).body)).toEqual({ offsetMinutes: 1440 });
+
+  await details.getByRole('button', { name: 'A day before', exact: true }).click();
+  await expect(details.getByRole('button', { name: 'A day before', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(details.getByTestId('tasks-reminder-list')).toHaveCount(0);
+});
+
+test('a task with no deadline says reminders wait for one', async ({ page }) => {
+  await boot(page, { tasks: [makeTask({ title: 'Read chapter 5' })] });
+  await page.getByRole('tab', { name: 'All' }).click();
+  await page.getByRole('button', { name: 'Show details for Read chapter 5' }).click();
+  await expect(page.getByTestId('tasks-reminders-nodeadline')).toBeVisible();
+});
+
+test('what a task is worth: blank score saves as unmarked, and the course shows its grade picture', async ({ page }) => {
+  const log = await boot(page, {
+    tasks: [
+      makeTask({ title: 'Quiz 1', enrollmentId: 'enr_1', dueAt: hoursFromNow(-200), status: 'COMPLETED' }),
+      makeTask({ title: 'Final', enrollmentId: 'enr_1', dueAt: hoursFromNow(400) }),
+    ],
+  });
+  await page.getByRole('tab', { name: 'All' }).click();
+
+  // Validation happens before anything is sent.
+  await page.getByRole('button', { name: 'Show details for Final' }).click();
+  await page.getByTestId('tasks-assessment-save').click();
+  await expect(page.getByTestId('tasks-assessment').locator('.tasks-error')).toHaveText('How much of the course is this worth?');
+
+  await page.locator('#tasksAssessWeight').fill('40');
+  await page.locator('#tasksAssessTotal').fill('100');
+  await page.getByTestId('tasks-assessment-save').click();
+  await expect(page.getByTestId('tasks-assessment').getByRole('button', { name: 'Remove' })).toBeVisible();
+  const finalPut = log.find((r) => r.method === 'PUT' && r.path.endsWith('/assessment'));
+  expect(JSON.parse(finalPut.body)).toEqual({ totalMarks: 100, weightPercent: 40, earnedMarks: null });
+
+  await page.getByRole('button', { name: 'Hide details for Final' }).click();
+  await page.getByRole('button', { name: 'Show details for Quiz 1' }).click();
+  // The form is Quiz 1's own, not a carry-over of what was typed for Final.
+  await expect(page.locator('#tasksAssessWeight')).toHaveValue('');
+  await page.locator('#tasksAssessWeight').fill('20');
+  await page.locator('#tasksAssessTotal').fill('20');
+  await page.locator('#tasksAssessEarned').fill('18');
+  await page.getByTestId('tasks-assessment-save').click();
+  await expect(page.getByTestId('tasks-assessment').getByRole('button', { name: 'Remove' })).toBeVisible();
+
+  await page.getByLabel('Filter by course').selectOption('enr_1');
+  const grade = page.getByTestId('tasks-grade');
+  await expect(grade.locator('.tasks-grade-title')).toHaveText('CSE220');
+  await expect(grade.getByTestId('tasks-grade-inhand')).toHaveText('90% in hand');
+  await expect(grade.getByTestId('tasks-grade-partial')).toBeVisible(); // 60% of the course entered
+  await expect(grade.getByTestId('tasks-grade-targets')).toContainText('needs');
 });
