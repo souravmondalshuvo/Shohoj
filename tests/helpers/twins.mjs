@@ -60,6 +60,11 @@ export function transpiledSrcDir() {
   if (cachedTempDir) return cachedTempDir;
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shohoj-twin-parity-'));
+  // The tree lives under the OS temp dir, where no node_modules is on the
+  // resolution path, so a typed module with a bare package import (zod, for
+  // the Tasks API that taskView.ts reads its enums from) could not load. Link
+  // the repo's own in, so it resolves exactly as it does in src/.
+  fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(tempDir, 'node_modules'), 'dir');
   const files = walk(path.join(ROOT, 'src'), (f) => f.endsWith('.ts') && !f.endsWith('.d.ts'));
 
   for (const sourcePath of files) {
