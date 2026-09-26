@@ -111,6 +111,10 @@ MAIN_JS_FILES = [
     'js/core/tasksApi.js',
     'js/core/localInstant.js',
     'js/core/taskView.js',
+    # Phase 2 (#767): why a task ranks there, and what it is worth to a grade
+    'js/core/priorityExplainer.js',
+    'js/core/gradeImpact.js',
+    'js/core/gradeImpactView.js',
     'js/ui/tasksTab.js',
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
