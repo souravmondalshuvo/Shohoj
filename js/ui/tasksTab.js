@@ -336,7 +336,7 @@ function _gradeHTML(courses) {
   const label = courses.find((c) => c.value === filter)?.label ?? 'This course';
   const pace = paceText(view);
   return `
-    <section class="tasks-grade lg-panel" data-testid="tasks-grade" aria-label="${escHtml(`${label} grade impact`)}">
+    <section class="tasks-grade lg-panel lg-surface" data-testid="tasks-grade" aria-label="${escHtml(`${label} grade impact`)}">
       <div class="lg-shine"></div>
       <header class="tasks-grade-head">
         <h3 class="tasks-grade-title">${escHtml(label)}</h3>
