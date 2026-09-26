@@ -38,7 +38,12 @@ export const TARGETS = [
     file: 'shohoj.html',
     build: 'python3 build3.py',
     measured: { raw: 3406, gzip: 1656 },
-    budget: { raw: 3580, gzip: 1740 },
+    // Raw raised from 3580 for Shohoj Tasks on the legacy page (#767), all five
+    // phases at once so the stacked PRs do not each trip it. CI measured 3540
+    // with phase 2; phases 3-5 add ~54 kB locally (the announcement detector,
+    // calendar and digest), projecting ~3594. Gzip is unchanged: the projected
+    // ~1698 still sits under 1740.
+    budget: { raw: 3680, gzip: 1740 },
   },
   {
     label: 'admin.html',
@@ -61,7 +66,10 @@ export const TARGETS = [
     match: /^main-.*\.js$/,
     build: 'npm run build:vite',
     measured: { raw: 946, gzip: 274 },
-    budget: { raw: 995, gzip: 288 },
+    // Raised from 995/288 for the same Tasks port (#767): the legacy modules
+    // it adds are in this entry too. CI measured 993/288.4 with phase 2;
+    // phases 3-5 add ~25/7 kB locally, projecting ~1019/296.
+    budget: { raw: 1045, gzip: 303 },
   },
   // The shell entry — what a student would download after the cutover.
   {
