@@ -89,6 +89,7 @@ import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
+import { renderTasksTab } from './ui/tasksTab.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 import { initAssistantFab } from './ui/assistantFab.js';
 import { initSignInPortal, unlockForDemo } from './ui/signinPortal.js';
@@ -447,8 +448,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     const target = document.querySelector(href);
     if (!target) return;
     e.preventDefault();
-    // If linking to #calculator, ensure calculator tab is active
-    if (href === '#calculator') switchCalcTab('calculator');
+    // A link to #calculator opens the calculator tab — or the tab it names in
+    // data-calc-tab, as the nav's Tasks link does (#767).
+    if (href === '#calculator') switchCalcTab(a.dataset.calcTab || 'calculator');
     const top = target.getBoundingClientRect().top + window.scrollY - 72;
     window.scrollTo({ top, behavior: 'smooth' });
   });
@@ -463,7 +465,9 @@ function updateNav() {
     if (window.scrollY >= sec.offsetTop - 120) current = sec.id;
   });
   navLinks.forEach(l => {
-    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    // A link that opens a calculator tab (data-calc-tab) shares #calculator
+    // with the CGPA link; only the plain one marks the section.
+    l.classList.toggle('active', !l.dataset.calcTab && l.getAttribute('href') === '#' + current);
   });
 }
 window.addEventListener('scroll', updateNav, { passive: true });
@@ -597,6 +601,7 @@ const TAB_MAP = {
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
   groups:     'tabGroups',
+  tasks:      'tabTasks',
 };
 
 let _activeCalcTab = 'calculator';
@@ -758,6 +763,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'groups') {
     renderGroupsTab();
   }
+  if (tabId === 'tasks') {
+    renderTasksTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -783,6 +791,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
   if (hash.startsWith('#calculator/groups'))    return 'groups';
+  if (hash.startsWith('#calculator/tasks'))     return 'tasks';
 
   // Then check sessionStorage
   try {
