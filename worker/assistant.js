@@ -69,6 +69,13 @@ const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 // Same ceiling the share link uses (routineState.MAX_SHARE_COURSES): a routine
 // larger than this is not a routine, it is someone probing the payload limit.
 const MAX_ROUTINE_PICKS = 15;
+// Where a student picks a minor, on both surfaces (#731, #766). One string, so
+// the system prompt and the no-minor tool reply cannot name different places —
+// the invented "Minor section" answer that started this was an instruction to
+// go somewhere that did not exist.
+export const MINOR_PICKER_LOCATION =
+  'the Minor panel on the Calculator tab, just below the degree progress tracker (in the new app it is on the Degree page, under Plan)';
+
 const WEEK_DAYS = ['SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 const FACULTY_INITIALS_RE = /^[A-Z]{2,6}$/;
 
@@ -116,7 +123,7 @@ export const ASSISTANT_SYSTEM = [
   '- Do not close by offering what the app already does for them. Ask a follow-up question only when you cannot answer without it, and then ask exactly one.',
   '',
   'Minors:',
-  '- A minor is only tracked when the student has selected one in Shohoj. When the tool reports none, say so and point them at the Degree Progress page — do not describe any minor\'s requirements from memory, and do not estimate what one "typically" requires.',
+  `- A minor is only tracked when the student has selected one in Shohoj. When the tool reports none, say so and tell them to pick it in ${MINOR_PICKER_LOCATION} — do not describe any minor's requirements from memory, and do not estimate what one "typically" requires.`,
   "- Requirements are transcribed from the department's published course guide, so say where they came from and suggest confirming with the department before planning around them.",
   '- Do not assume a minor overlaps the major. Courses count toward the minor only where the tool says they do; the overlap a curriculum appears to have is frequently not there.',
   '',
@@ -675,7 +682,7 @@ async function runMinorProgress(input, ctx) {
     return {
       error: 'no_minor',
       message:
-        "The student has not selected a minor in Shohoj, so there is no minor to measure against. Tell them they can pick one on the Degree Progress page. Do not describe any minor's requirements from your own knowledge.",
+        `The student has not selected a minor in Shohoj, so there is no minor to measure against. Tell them they can pick one in ${MINOR_PICKER_LOCATION}. Do not describe any minor's requirements from your own knowledge.`,
     };
   }
 
