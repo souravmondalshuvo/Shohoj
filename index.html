@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-hiEOWYEOJQKXgLCdTaVDrQKGMt/ktKGMxvKTyZdvsE0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-vwpShzqJw44z0aidma8PuOmslaAJUHjvoUVip1/hggY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22781,6 +22781,138 @@ function paintExportPlan(ctx, plan) {
     }
 }
 
+// ── js/core/routineSectionList.js ───────────────────────────────
+// Twin of src/core/routineSectionList.ts — hand-maintained, not generated.
+// src/core/routineSectionList.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
+//
+// Ordering and filtering for a course's section list. Lifted out of
+// js/ui/routineTab.js (#682) so the shell's Routine route can offer the same
+// sort and filters rather than growing a second implementation of them.
+// Pure / I/O-free: no store, no DOM.
+
+/** "No early" hides anything starting before 9:00 AM. */
+const FILTER_EARLY_MIN = 9 * 60;
+/** "No evening" hides anything ending after 5:00 PM. */
+const FILTER_EVENING_MIN = 17 * 60;
+
+/** The sort modes the UI offers, in the order it offers them. */
+const SECTION_SORT_MODES = [
+    ['section', 'Section #'],
+    ['faculty', 'Faculty ★'],
+    ['seats', 'Seats'],
+    ['time', 'Earliest'],
+];
+
+function seatsLeft(section) {
+    return Math.max(0, (section.capacity || 0) - (section.consumedSeat || 0));
+}
+
+/** Start of the section's first class of the week; MAX_SAFE_INTEGER when it has none. */
+function earliestStart(section) {
+    const slots = section.classSlots ?? [];
+    if (slots.length === 0) return Number.MAX_SAFE_INTEGER;
+    return Math.min(...slots.map((s) => s.startMin));
+}
+
+/** Section number for ordering; unnumbered sections sort last. */
+function sectionNumber(name) {
+    const n = parseInt(String(name ?? ''), 10);
+    return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Does this section survive the student's filters?
+ *
+ * A section with no class slots passes everything — the filters are claims
+ * about when it meets, and there is nothing to judge.
+ */
+function sectionPassesFilters(section, filters = {}) {
+    const avoidDays = filters.avoidDays ?? [];
+    if (!filters.noEarly && !filters.noEvening && avoidDays.length === 0) return true;
+    for (const slot of section.classSlots ?? []) {
+        if (filters.noEarly && slot.startMin < FILTER_EARLY_MIN) return false;
+        if (filters.noEvening && slot.endMin > FILTER_EVENING_MIN) return false;
+        if (avoidDays.includes(slot.day)) return false;
+    }
+    return true;
+}
+
+/**
+ * Sort a course's sections by the active mode.
+ *
+ * Two rules outrank the mode: a full section can't be taken, so it sinks to
+ * the bottom whatever the sort; and section number is the universal tie-break,
+ * so the order never looks arbitrary. Returns a new array.
+ */
+function sortRoutineSections(sections, mode = 'section', ratingValue = () => -1) {
+    const decorated = sections.map((s) => ({
+        s,
+        full: !!s.isFull,
+        num: sectionNumber(s.sectionName),
+    }));
+
+    let primary;
+    if (mode === 'faculty') primary = (a, b) => ratingValue(b.s) - ratingValue(a.s);
+    else if (mode === 'seats') primary = (a, b) => seatsLeft(b.s) - seatsLeft(a.s);
+    else if (mode === 'time') primary = (a, b) => earliestStart(a.s) - earliestStart(b.s);
+    else primary = (a, b) => a.num - b.num;
+
+    decorated.sort((a, b) => {
+        if (a.full !== b.full) return a.full ? 1 : -1;
+        const p = primary(a, b);
+        if (p !== 0) return p;
+        return a.num - b.num;
+    });
+    return decorated.map((d) => d.s);
+}
+
+// ── js/ui/modal.js ──────────────────────────────────────────────
+// ── js/ui/modal.js ────────────────────────────────────────────────────────────
+// Generic content modal: a titled dialog over a dimmed backdrop for arbitrary
+// pre-rendered HTML. Closes on × / backdrop click / Escape. Unlike previewModal
+// (which is wired for PDF/image iframes), this takes a plain HTML body string.
+//
+// Callers must pass already-escaped HTML in `bodyHtml` (build it with escHtml /
+// escAttr), exactly like the other innerHTML-based renderers in this app.
+
+let _seq = 0;
+
+/**
+ * Open a modal. Returns a `close()` function.
+ * @param {{ title: string, bodyHtml: string }} opts
+ */
+function openModal({ title, bodyHtml }) {
+  const titleId = `app-modal-title-${++_seq}`;
+  const prevFocus = document.activeElement;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'app-modal-backdrop';
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  wrap.innerHTML = `
+    <div class="app-modal" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+      <header class="app-modal-head">
+        <div class="app-modal-title" id="${titleId}">${escHtml(title)}</div>
+        <button type="button" class="app-modal-close" aria-label="Close">×</button>
+      </header>
+      <div class="app-modal-body">${bodyHtml}</div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const close = () => {
+    wrap.remove();
+    document.removeEventListener('keydown', onKey);
+    if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus();
+  };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  wrap.querySelector('.app-modal-close').addEventListener('click', close);
+  wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+  document.addEventListener('keydown', onKey);
+  wrap.querySelector('.app-modal-close').focus();
+
+  return close;
+}
+
 // ── node_modules/qrcode-generator/dist/qrcode.mjs ───────────────
 //---------------------------------------------------------------------
 //
@@ -26644,7 +26776,7 @@ function _sectionHeadHTML() {
 // Ordering lives in core/routineSectionList.js; the store supplies the mode and
 // the rating lookup, which is the only part the pure helper cannot know.
 function _sortSections(sections) {
-  return sortSections(sections, _store.sortMode, _ratingValue);
+  return sortRoutineSections(sections, _store.sortMode, _ratingValue);
 }
 
 
@@ -28560,6 +28692,123 @@ function initSignInPortal() {
   });
 
   renderSignInPortal();
+}
+
+// ── js/core/courseMarks.js ──────────────────────────────────────
+// Twin of src/features/calculator/courseMarks.ts — hand-maintained, not generated.
+// src/features/calculator/courseMarks.ts is the source of truth: change it there first, then mirror the
+// change here. tests/twinParity.test.js fails if the two drift.
+//
+// Course-level marks model (#500): given the components a student has been
+// graded on, what do they need on what is left.
+
+/**
+ * BRACU's absolute mark → letter scale, highest first.
+ *
+ * VERIFY BEFORE RELYING ON THIS. These cutoffs are the commonly published BRACU
+ * scale, but they are not sourced from a document in this repo and the
+ * university has revised grading policy before. Confirm against the current
+ * official Grading Policy and correct here and in the typed twin.
+ *
+ * `min` is inclusive: a mark of exactly 85.0 is an A-, not a B+.
+ *
+ * The typed twin reads this table off the university profile so a second campus
+ * can supply its own; here it stays inline and BRACU-only on purpose. This is
+ * the legacy bundle, which is BRACU all the way down (see js/auth/firebase.js) —
+ * it has no other campus to serve. The optional parameter exists only to keep
+ * the two signatures identical for tests/twinParity.test.js.
+ */
+const MARK_SCALE = [
+  { letter: 'A+', min: 97 },
+  { letter: 'A',  min: 90 },
+  { letter: 'A-', min: 85 },
+  { letter: 'B+', min: 80 },
+  { letter: 'B',  min: 75 },
+  { letter: 'B-', min: 70 },
+  { letter: 'C+', min: 65 },
+  { letter: 'C',  min: 60 },
+  { letter: 'C-', min: 57 },
+  { letter: 'D+', min: 55 },
+  { letter: 'D',  min: 52 },
+  { letter: 'D-', min: 50 },
+  { letter: 'F',  min: 0 },
+];
+
+/** The letter an overall course mark earns. */
+function letterForMark(mark, marks = MARK_SCALE) {
+  for (const tier of marks) {
+    if (mark >= tier.min) return tier.letter;
+  }
+  return 'F';
+}
+
+function gradePointOf(letter) {
+  const gp = GRADES[letter];
+  return typeof gp === 'number' ? gp : 0;
+}
+
+function isGraded(c) {
+  return c.score !== null && c.score !== undefined && Number.isFinite(c.score) && c.outOf > 0;
+}
+
+function isUsable(c) {
+  return Number.isFinite(c.weight) && c.weight > 0;
+}
+
+function earnedWeight(components) {
+  return components.reduce((sum, c) => {
+    if (!isUsable(c) || !isGraded(c)) return sum;
+    const ratio = Math.max(0, c.score / c.outOf);
+    return sum + c.weight * ratio;
+  }, 0);
+}
+
+/**
+ * Answer the course-level question from whatever the student has entered.
+ * Returns null only when no component carries usable weight — a partial
+ * syllabus is the normal case, not a refusal case.
+ */
+function computeCourseMarks(components, marks = MARK_SCALE) {
+  const usable = components.filter(isUsable);
+  const totalWeight = usable.reduce((s, c) => s + c.weight, 0);
+  if (totalWeight <= 0) return null;
+
+  const gradedWeight = usable.filter(isGraded).reduce((s, c) => s + c.weight, 0);
+  const remainingWeight = Math.max(0, totalWeight - gradedWeight);
+  const earned = earnedWeight(usable);
+
+  const floor = (earned / totalWeight) * 100;
+  const ceiling = ((earned + remainingWeight) / totalWeight) * 100;
+
+  const targets = marks.filter(tier => tier.letter !== 'F').map(tier => {
+    const base = { letter: tier.letter, gradePoint: gradePointOf(tier.letter), cutoff: tier.min };
+    if (floor >= tier.min) return { ...base, neededOnRemaining: null, state: 'secured' };
+    if (ceiling < tier.min) return { ...base, neededOnRemaining: null, state: 'unreachable' };
+    return {
+      ...base,
+      neededOnRemaining: ((tier.min / 100) * totalWeight - earned) / (remainingWeight / 100),
+      state: 'reachable',
+    };
+  });
+
+  // The pace mark — what the course lands on if the rest scores at the rate the
+  // graded components did — is exactly inHandPercent, not a separate number:
+  //   (earned + remaining × earned/graded) / total = earned/graded.
+  const inHandPercent = gradedWeight > 0 ? (earned / gradedWeight) * 100 : null;
+
+  return {
+    totalWeight,
+    gradedWeight,
+    remainingWeight,
+    weightsComplete: Math.abs(totalWeight - 100) < 1e-9,
+    inHandPercent,
+    ceiling,
+    floor,
+    bestLetter: letterForMark(ceiling, marks),
+    worstLetter: letterForMark(floor, marks),
+    projectedLetter: inHandPercent === null ? null : letterForMark(inHandPercent, marks),
+    targets,
+  };
 }
 
 // ── js/ui/render.js ─────────────────────────────────────────────
