@@ -413,7 +413,86 @@ const TASK_ENROLLMENTS = [
   { id: 'enr_c', courseCode: 'CSE110', section: '01', status: 'DROPPED' },
 ];
 
+/**
+ * Task details fixtures (#767 phase 2): priority factors of every kind, and a
+ * course whose assessments are part-marked, over-marked, weightless and short
+ * of 100% — the cases the grade picture has to word carefully.
+ */
+const factor = (name, value, weight, points) => ({ name, value, weight, points });
+const PRIO_TASKS = [
+  taskFixture(11, {
+    dueAt: '2026-10-09T10:00:00.000Z',
+    priorityScore: 72,
+    estimatedMinutes: 240,
+    priorityFactors: [factor('urgency', 0.9, 40, 36), factor('weight', 0.6, 30, 18), factor('workload', 0.5, 20, 10), factor('importance', 0.8, 10, 8)],
+  }),
+  taskFixture(12, {
+    dueAt: '2026-10-08T12:30:00.000Z',
+    priorityScore: 45,
+    estimatedMinutes: 45,
+    priority: 'HIGH',
+    priorityFactors: [factor('urgency', 1, 40, 40), factor('importance', 0.5, 10, 5), factor('weight', 0, 30, 0)],
+  }),
+  taskFixture(13, { dueAt: '2026-10-01T10:00:00.000Z', priorityScore: 25, priorityFactors: [factor('urgency', 1, 40, 25)] }),
+  taskFixture(14, { dueAt: '2026-10-20T10:00:00.000Z', priorityScore: 5, priorityFactors: [factor('importance', 0.2, 10, 2), factor('workload', 0.3, 20, 3)] }),
+  taskFixture(15, { priorityScore: null }),
+  taskFixture(16, { priorityScore: 0, priorityFactors: [factor('urgency', 0, 40, 0)] }),
+];
+const assessment = (task, weightPercent, totalMarks, earnedMarks) => ({
+  taskId: task.id, totalMarks, earnedMarks, weightPercent,
+  syllabus: null, location: null, notes: null,
+  createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-01T00:00:00.000Z',
+});
+const ASSESSED = [
+  { task: PRIO_TASKS[0], assessment: assessment(PRIO_TASKS[0], 20, 20, 17) },
+  { task: PRIO_TASKS[1], assessment: assessment(PRIO_TASKS[1], 30, 40, 26) },
+  { task: PRIO_TASKS[2], assessment: assessment(PRIO_TASKS[2], 40, 100, null) },
+];
+const ASSESSED_FULL = [...ASSESSED, { task: PRIO_TASKS[3], assessment: assessment(PRIO_TASKS[3], 10, 10, null) }];
+const ASSESSED_DONE = ASSESSED_FULL.map((e) => ({ ...e, assessment: { ...e.assessment, earnedMarks: e.assessment.earnedMarks ?? e.assessment.totalMarks * 0.7 } }));
+const ASSESSED_ODD = [
+  { task: PRIO_TASKS[4], assessment: assessment(PRIO_TASKS[4], 0, 10, 5) },
+  { task: PRIO_TASKS[5], assessment: assessment(PRIO_TASKS[5], 50, 10, 12) },
+];
+
 export const FIXTURES = {
+  priorityExplainer: {
+    priorityReasons: [
+      ...PRIO_TASKS.map((t) => [t, { now: TASK_NOW }]),
+      [PRIO_TASKS[0], { now: TASK_NOW, assessmentWeight: 20 }],
+      [PRIO_TASKS[0], { now: TASK_NOW, assessmentWeight: 12.345 }],
+    ],
+    prioritySummary: [
+      [[]],
+      [[{ name: 'urgency', text: 'Due in 22 hours', points: 36, share: 0.5 }, { name: 'weight', text: 'Worth 20%', points: 18, share: 0.25 }]],
+      [[{ name: 'urgency', text: 'Due in 22 hours', points: 36, share: 0.9 }, { name: 'weight', text: 'Worth 20%', points: 4, share: 0.1 }]],
+    ],
+    priorityBand: [[null], [0], [19.9], [20], [40], [59.9], [60], [100]],
+  },
+
+  gradeImpact: {
+    toMarkComponents: [[ASSESSED], [[]]],
+    gradeImpactFor: [[ASSESSED], [ASSESSED_FULL], [ASSESSED_DONE], [ASSESSED_ODD], [[]]],
+    neededOnTask: [
+      [ASSESSED_FULL, PRIO_TASKS[2].id, 'A'],
+      [ASSESSED_FULL, PRIO_TASKS[2].id, 'B'],
+      [ASSESSED_FULL, PRIO_TASKS[0].id, 'A'],
+      [ASSESSED_FULL, 'tsk_missing', 'A'],
+      [ASSESSED_FULL, PRIO_TASKS[2].id, 'A+'],
+      [[], PRIO_TASKS[2].id, 'A'],
+    ],
+    gradeWindow: [[ASSESSED], [ASSESSED_FULL], [ASSESSED_DONE], [[]]],
+  },
+
+  gradeImpactView: {
+    gradeImpactView: [[ASSESSED], [ASSESSED_FULL], [ASSESSED_FULL, 5], [ASSESSED_DONE], [ASSESSED_ODD], [[]]],
+    paceText: [
+      [{ projectedLetter: null, remainingWeight: 40 }],
+      [{ projectedLetter: 'B+', remainingWeight: 40 }],
+      [{ projectedLetter: 'B+', remainingWeight: 0 }],
+    ],
+  },
+
   minors: {
     getMinorProgram: [['MATH'], [' math '], ['PHY'], [''], [null], [undefined]],
     matchesPattern: [
