@@ -50,7 +50,7 @@ function makeTask(overrides) {
 }
 
 /** Boot with a Worker whose store starts as `tasks`. Returns the request log. */
-async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false, extract = null } = {}) {
+async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false, extract = null, tab = 'tasks' } = {}) {
   const store = new Map(tasks.map((t) => [t.id, t]));
   const assessments = new Map();
   let feed = null;
@@ -58,7 +58,11 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
   const reminders = new Map(); // taskId -> reminder[]
   let reminderSeq = 0;
   const log = [];
-  let failed = false;
+  // Fails every task read until the test calls log.stopFailing(): the
+  // Calculator digest also reads /tasks/today at start-up, so "fail the first
+  // request" would be spent before the Tasks tab ever asked.
+  let failing = failFirstLoad;
+  log.stopFailing = () => { failing = false; };
 
   page.on('dialog', (d) => d.accept());
   await page.addInitScript(() => {
@@ -87,8 +91,7 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
     if (path === '/enrollments') {
       return json(200, { items: [{ id: 'enr_1', semesterId: 'sem_1', courseCode: 'CSE220', section: '04', status: 'ENROLLED' }] });
     }
-    if (failFirstLoad && !failed && path.startsWith('/tasks') && req.method() === 'GET') {
-      failed = true;
+    if (failing && path.startsWith('/tasks') && req.method() === 'GET') {
       return json(503, { error: { code: 'UNAVAILABLE', message: 'Tasks are resting. Try again shortly.' } });
     }
 
@@ -170,7 +173,7 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.switchCalcTab === 'function');
-  await page.evaluate(() => window.switchCalcTab('tasks'));
+  await page.evaluate((t) => window.switchCalcTab(t), tab);
   return log;
 }
 
@@ -179,7 +182,7 @@ const hoursFromNow = (h) => new Date(Date.now() + h * 3_600_000).toISOString();
 test('signed out (saved work resumed), the tab asks for sign-in and calls nothing', async ({ page }) => {
   const log = await boot(page, { stub: signedOutStub });
   await expect(page.getByTestId('tasks-signin')).toBeVisible();
-  expect(log).toEqual([]);
+  expect(log).toHaveLength(0);
 });
 
 test('Today splits overdue from due today, with course labels', async ({ page }) => {
@@ -252,8 +255,9 @@ test('one tick sends one completion request, and delete removes the row', async 
 });
 
 test('a failing load shows the Worker message and a working retry', async ({ page }) => {
-  await boot(page, { tasks: [makeTask({ title: 'Essay draft', dueAt: hoursFromNow(-30) })], failFirstLoad: true });
+  const log = await boot(page, { tasks: [makeTask({ title: 'Essay draft', dueAt: hoursFromNow(-30) })], failFirstLoad: true });
   await expect(page.getByTestId('tasks-error')).toContainText('Tasks are resting. Try again shortly.');
+  log.stopFailing();
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByTestId('tasks-row').filter({ hasText: 'Essay draft' })).toBeVisible();
 });
@@ -480,4 +484,49 @@ test('a calendar with nothing dated says so instead of listing undated work', as
   await page.getByRole('tab', { name: 'Calendar' }).click();
   await expect(page.getByTestId('tasks-empty')).toContainText('Nothing with a deadline');
   await expect(page.getByTestId('tasks-calendar')).toHaveCount(0);
+});
+
+// ── Phase 5: the digest on the Calculator tab ────────────────────────────────
+
+test('the calculator shows a digest of open work, and completing from it removes the row', async ({ page }) => {
+  const laterToday = new Date(); laterToday.setHours(23, 0, 0, 0);
+  const log = await boot(page, {
+    tab: 'calculator',
+    tasks: [
+      makeTask({ title: 'Problem set 3', dueAt: hoursFromNow(-72) }),
+      makeTask({ title: 'Lab report', dueAt: laterToday.toISOString(), enrollmentId: 'enr_1', type: 'LAB' }),
+      makeTask({ title: 'Essay draft', dueAt: hoursFromNow(80) }),
+      makeTask({ title: 'Done already', dueAt: hoursFromNow(-30), status: 'COMPLETED' }),
+    ],
+  });
+
+  const digest = page.getByTestId('tasks-digest');
+  await expect(digest).toBeVisible();
+  await expect(digest.getByTestId('tasks-digest-item')).toHaveCount(3);
+  await expect(digest.getByTestId('tasks-digest-overdue')).toHaveText('1 overdue');
+  await expect(digest.locator('.tasks-digest-group')).toHaveText(['Overdue', 'Today', 'Coming up']);
+  await expect(digest.getByTestId('tasks-digest-item').nth(1).locator('.tasks-course')).toHaveText('CSE220 · 04');
+
+  // click, not check(): the row leaves at once, so it is never seen checked.
+  await digest.getByRole('checkbox', { name: 'Mark Problem set 3 as done' }).click();
+  await expect(digest.getByTestId('tasks-digest-item')).toHaveCount(2);
+  await expect(digest.getByTestId('tasks-digest-overdue')).toHaveCount(0);
+  expect(log.filter((r) => r.path.endsWith('/completion'))).toHaveLength(1);
+
+  await digest.getByRole('button', { name: 'View all tasks' }).click();
+  await expect(page.locator('#tabTasks')).toHaveClass(/active/);
+  await expect(page.getByRole('tab', { name: 'Upcoming' })).toHaveAttribute('aria-selected', 'true');
+});
+
+test('no open work means no digest at all', async ({ page }) => {
+  await boot(page, { tab: 'calculator', tasks: [makeTask({ title: 'Undated', dueAt: null })] });
+  await page.waitForTimeout(500);
+  await expect(page.locator('#tasksDigestBox')).toBeHidden();
+});
+
+test('signed out, the calculator shows no digest and calls nothing', async ({ page }) => {
+  const log = await boot(page, { tab: 'calculator', stub: signedOutStub });
+  await page.waitForTimeout(500);
+  await expect(page.locator('#tasksDigestBox')).toBeHidden();
+  expect(log).toHaveLength(0);
 });
