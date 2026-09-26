@@ -255,8 +255,8 @@ function _genericMessageFor(status) {
   return 'That request could not be completed.';
 }
 
-function _fail(userMessage) {
-  return { ok: false, error: { userMessage } };
+function _fail(userMessage, apiCode) {
+  return { ok: false, error: apiCode ? { userMessage, apiCode } : { userMessage } };
 }
 
 /** The Worker base URL, from the runtime config, or null when unconfigured. */
@@ -327,9 +327,14 @@ async function _call(method, path, { body, query, read } = {}, deps = {}) {
   if (timer) clearTimeout(timer);
 
   if (!response.ok) {
-    // The Worker's error envelope carries a message written for students.
+    // The Worker's error envelope carries a message written for students, and
+    // a code callers branch on (the reader's 'unavailable' / 'quota_exceeded').
     const message = payload?.error?.message;
-    return _fail(typeof message === 'string' && message ? message : _genericMessageFor(response.status));
+    const code = payload?.error?.code;
+    return _fail(
+      typeof message === 'string' && message ? message : _genericMessageFor(response.status),
+      typeof code === 'string' ? code : undefined,
+    );
   }
   const value = read(payload);
   return value === null ? _fail(_MALFORMED) : { ok: true, value };
@@ -417,6 +422,42 @@ export function addReminder(taskId, input, deps) {
 export function removeReminder(taskId, reminderId, deps) {
   return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/reminders/${encodeURIComponent(reminderId)}`, {
     read: (p) => (typeof p?.deleted?.id === 'string' ? { id: p.deleted.id } : null),
+  }, deps);
+}
+
+const _EXTRACT_CONFIDENCES = ['high', 'medium', 'low'];
+
+function _readExtracted(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.title !== 'string' || !TASK_TYPES.includes(raw.type)) return null;
+  if (!_EXTRACT_CONFIDENCES.includes(raw.confidence)) return null;
+  for (const key of ['dueAt', 'courseCode', 'syllabus', 'evidence']) {
+    if (!_isStringOrNull(raw[key])) return null;
+  }
+  return {
+    title: raw.title,
+    type: raw.type,
+    dueAt: raw.dueAt,
+    courseCode: raw.courseCode,
+    syllabus: raw.syllabus,
+    confidence: raw.confidence,
+    evidence: raw.evidence,
+  };
+}
+
+/** The server-side reader (#741). The student is the token's; the body is only text. */
+export function extractTasks(text, courseCodes = [], deps) {
+  return _call('POST', '/tasks/extract', {
+    body: { text, courseCodes: [...courseCodes] },
+    read: (p) => {
+      const tasks = _readList(p?.detected, _readExtracted);
+      if (tasks === null) return null;
+      const q = p?.quota;
+      const quota = q && typeof q.remaining === 'number' && typeof q.limit === 'number' && typeof q.resetsAt === 'string'
+        ? { remaining: q.remaining, limit: q.limit, resetsAt: q.resetsAt }
+        : null;
+      return { tasks, quota };
+    },
   }, deps);
 }
 
