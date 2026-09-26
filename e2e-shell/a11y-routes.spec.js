@@ -86,6 +86,14 @@ test('@a11y Reviews route (directory over a stub feed) has no serious/critical v
 });
 
 test('@a11y Campus route (map over a seeded feed cache) has no serious/critical violations', async ({ page }) => {
+  // Reduced motion, so the scene settles and stops drawing (#769): with motion
+  // on, the selected floor's pulsing rooms and the idle orbit are deliberate
+  // animations that keep redrawing the building model, and on CI's software GPU
+  // they starved axe's page evaluation past the timeout. The scan checks
+  // structure, which motion does not change. slow() keeps headroom for the
+  // model's parse, which can still land during the scan on a slow runner.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  test.slow();
   // Seed the CONNECT feed cache so the route renders real content (floors,
   // room list, room panel) without touching the network — same seeding as
   // campus-map.spec.js.
