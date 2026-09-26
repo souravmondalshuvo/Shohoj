@@ -46,6 +46,7 @@ import {
 import {
   ASSISTANT_SYSTEM,
   ASSISTANT_TOOLS,
+  MINOR_PICKER_LOCATION,
   executeAssistantTool,
   validateRoutinePicks,
   validateAssistantMessages,
@@ -1781,9 +1782,18 @@ async function makeServiceAccountJson() {
     assertEq(noMinor.error, 'no_minor');
     // A student well into a degree who simply has no minor must not be told to
     // go and add semesters — that is the other failure, and the wrong advice.
+    // Both surfaces, named the same way the system prompt names them (#766).
     assert(
-      /Degree Progress/.test(noMinor.message),
+      noMinor.message.includes(MINOR_PICKER_LOCATION),
       'points at where a minor is chosen',
+    );
+    assert(
+      /Minor panel on the Calculator tab/.test(noMinor.message) && /Degree page/.test(noMinor.message),
+      'names the legacy panel and the new-app page',
+    );
+    assert(
+      ASSISTANT_SYSTEM.includes(MINOR_PICKER_LOCATION),
+      'the system prompt names the same place as the tool reply',
     );
     assert(
       /own knowledge/.test(noMinor.message),
