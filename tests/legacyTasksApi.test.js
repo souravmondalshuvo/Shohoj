@@ -189,3 +189,83 @@ test('the active semester is the first ACTIVE one', () => {
   assert.equal(legacy.activeSemester(semesters).id, 's2');
   assert.equal(legacy.activeSemester([]), null);
 });
+
+// ── Phase 2: priority factors, reminders, assessments (#767) ─────────────────
+
+const factors = [
+  { name: 'weight', value: 0.5, weight: 30, points: 15 },
+  { name: 'urgency', value: 1, weight: 40, points: 40 },
+  { name: 'workload', value: 0, weight: 20, points: 0 },
+];
+
+test('explainPriority, reminderLabel and assessmentsByTask agree with the shell', () => {
+  for (const t of [task(20, { priorityFactors: factors }), task(21), task(22, { priorityFactors: [] })]) {
+    assert.deepEqual(legacy.explainPriority(t), typed.explainPriority(t));
+  }
+  assert.deepEqual(legacy.COMMON_REMINDER_OFFSETS, typed.COMMON_REMINDER_OFFSETS.map((o) => ({ ...o })));
+  assert.deepEqual(legacy.REMINDER_CHANNELS, [...typed.REMINDER_CHANNELS]);
+  assert.deepEqual(legacy.REMINDER_STATUSES, [...typed.REMINDER_STATUSES]);
+  const base = { id: 'rem_' + '1'.repeat(32), taskId: task(1).id, channel: 'WEB', sentAt: null };
+  for (const r of [
+    { ...base, offsetMinutes: 1440, status: 'PENDING', scheduledFor: '2026-10-08T00:00:00Z' },
+    { ...base, offsetMinutes: 0, status: 'SENT', scheduledFor: '2026-10-08T00:00:00Z' },
+    { ...base, offsetMinutes: 120, status: 'CANCELLED', scheduledFor: '2026-10-08T00:00:00Z' },
+    { ...base, offsetMinutes: 45, status: 'PENDING', scheduledFor: null },
+  ]) {
+    assert.equal(legacy.reminderLabel(r), typed.reminderLabel(r), JSON.stringify(r));
+  }
+  const list = [{ taskId: 'a', weightPercent: 1 }, { taskId: 'b', weightPercent: 2 }];
+  assert.deepEqual([...legacy.assessmentsByTask(list)], [...typed.assessmentsByTask(list)]);
+});
+
+test('priority factors survive the reader, and a malformed one refuses the list', async () => {
+  const good = task(23, { priorityFactors: factors });
+  let { fetchFn } = fakeFetch(() => ({ body: { items: [good] } }));
+  const ok = await legacy.listTasks(deps(fetchFn));
+  assert.deepEqual(ok.value[0].priorityFactors, factors);
+
+  ({ fetchFn } = fakeFetch(() => ({ body: { items: [task(24, { priorityFactors: [{ name: 'vibes', value: 1, weight: 1, points: 1 }] })] } })));
+  assert.equal((await legacy.listTasks(deps(fetchFn))).ok, false);
+});
+
+test('reminders: list, add and remove hit the task routes', async () => {
+  const reminder = {
+    id: 'rem_' + 'a'.repeat(32), taskId: task(1).id, offsetMinutes: 30, channel: 'WEB',
+    scheduledFor: '2026-10-08T11:30:00Z', status: 'PENDING', sentAt: null,
+    createdAt: 'x', updatedAt: 'x',
+  };
+  const { calls, fetchFn } = fakeFetch((url, init) => {
+    if (init.method === 'GET') return { body: { items: [reminder] } };
+    if (init.method === 'POST') return { status: 201, body: { reminder } };
+    return { body: { deleted: { id: reminder.id } } };
+  });
+  const listed = await legacy.listReminders(task(1).id, deps(fetchFn));
+  assert.equal(listed.value[0].offsetMinutes, 30);
+  assert.equal((await legacy.addReminder(task(1).id, { offsetMinutes: 30 }, deps(fetchFn))).ok, true);
+  assert.equal((await legacy.removeReminder(task(1).id, reminder.id, deps(fetchFn))).ok, true);
+  assert.match(calls[0].url, /\/api\/v1\/tasks\/tsk_[0-9a-f]{32}\/reminders$/);
+  assert.deepEqual(JSON.parse(calls[1].init.body), { offsetMinutes: 30 });
+  assert.match(calls[2].url, /\/reminders\/rem_a+$/);
+  assert.equal(calls[2].init.method, 'DELETE');
+});
+
+test('assessments: an unmarked score stays null, never zero', async () => {
+  const unmarked = {
+    taskId: task(1).id, totalMarks: 40, earnedMarks: null, weightPercent: 30,
+    syllabus: null, location: null, notes: null, createdAt: 'x', updatedAt: 'x',
+  };
+  const { calls, fetchFn } = fakeFetch((url, init) => {
+    if (init.method === 'GET') return { body: { items: [unmarked] } };
+    if (init.method === 'PUT') return { body: { assessment: unmarked } };
+    return { body: { deleted: { taskId: unmarked.taskId } } };
+  });
+  const listed = await legacy.listAssessments(deps(fetchFn));
+  assert.equal(listed.value[0].earnedMarks, null);
+  const put = await legacy.putAssessment(task(1).id, { totalMarks: 40, weightPercent: 30, earnedMarks: null }, deps(fetchFn));
+  assert.equal(put.ok, true);
+  assert.equal(JSON.parse(calls[1].init.body).earnedMarks, null);
+  assert.equal((await legacy.deleteAssessment(task(1).id, deps(fetchFn))).ok, true);
+
+  const { fetchFn: bad } = fakeFetch(() => ({ body: { items: [{ ...unmarked, earnedMarks: '12' }] } }));
+  assert.equal((await legacy.listAssessments(deps(bad))).ok, false);
+});
