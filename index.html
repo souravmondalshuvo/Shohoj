@@ -139,14 +139,13 @@
     <div class="nav-right">
       <a href="#features" class="nav-link magnetic">Features</a>
       <a href="#calculator" class="nav-link magnetic">CGPA Calc</a>
-      <!-- Shohoj Tasks (#725) lives on the React shell at /app/, not in this
-           bundle, so this is a real navigation out of the legacy page rather
-           than a tab. Relative href so it resolves under the Pages project
-           path (/Shohoj/app/tasks) and still works from a local server root.
-           Mirrored in the shell's own nav (src/app/routes/RootLayout.tsx):
-           the visual-parity gate captures this nav signed-out and compares the
-           two, so a link on one side only would fail it. -->
-      <a href="app/tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
+      <!-- Shohoj Tasks (#725) is a calculator tab on this page since #767: the
+           link scrolls to the calculator and opens the tab named by
+           data-calc-tab (js/main.js, smooth anchor scroll). Mirrored in the
+           shell's own nav (src/app/routes/RootLayout.tsx): the visual-parity
+           gate captures this nav signed-out and compares the two, so a link on
+           one side only would fail it. -->
+      <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
       <!-- Auth button -->
@@ -397,6 +396,9 @@
             <button class="calc-tab-menu-item" data-tab="routine" role="menuitem">
               <span class="calc-tab-icon">🗓️</span><span>Routine</span>
             </button>
+            <button class="calc-tab-menu-item" data-tab="tasks" role="menuitem">
+              <span class="calc-tab-icon">✅</span><span>Tasks</span>
+            </button>
           </div>
         </div>
 
@@ -565,6 +567,13 @@
           <div id="papersContent">
             <!-- Rendered dynamically by papersTab.js -->
           </div>
+        </div>
+      </div>
+
+      <!-- ═══ TASKS (#767) — rendered by js/ui/tasksTab.js ═══ -->
+      <div class="calc-tab-panel" id="tabTasks">
+        <div class="calc-body">
+          <div id="tasksContent"></div>
         </div>
       </div>
 
