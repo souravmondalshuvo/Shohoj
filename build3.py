@@ -115,6 +115,11 @@ MAIN_JS_FILES = [
     'js/core/priorityExplainer.js',
     'js/core/gradeImpact.js',
     'js/core/gradeImpactView.js',
+    # Phase 3 (#767): finding deadlines in a pasted announcement, with the
+    # server reader as an opt-in second opinion
+    'js/core/announcementDetector.js',
+    'js/core/proposalDraft.js',
+    'js/core/aiDetector.js',
     'js/ui/tasksTab.js',
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
