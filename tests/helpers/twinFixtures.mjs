@@ -376,6 +376,43 @@ const MINOR_SCALE = {
   points: { 'A+': 4, A: 4, 'A-': 3.7, 'B+': 3.3, B: 3, 'B-': 2.7, C: 2, D: 1, F: 0, P: null, I: null },
 };
 
+/**
+ * Tasks fixtures (#767). The clock is pinned to a Thursday noon UTC, and the
+ * deadlines straddle every tone: overdue by days, today, tomorrow, this week,
+ * later, none, and an unparseable one.
+ */
+const TASK_NOW = new Date(Date.UTC(2026, 9, 8, 12, 0));
+const taskFixture = (id, overrides) => ({
+  id: `tsk_${String(id).repeat(32).slice(0, 32)}`,
+  enrollmentId: null,
+  title: `Task ${id}`,
+  description: null,
+  type: 'ASSIGNMENT',
+  status: 'TODO',
+  priority: 'MEDIUM',
+  priorityScore: null,
+  dueAt: null,
+  startAt: null,
+  estimatedMinutes: null,
+  completedAt: null,
+  ...overrides,
+});
+const TASKS = [
+  taskFixture(1, { dueAt: '2026-10-05T09:00:00.000Z', estimatedMinutes: 90 }),
+  taskFixture(2, { dueAt: '2026-10-07T20:00:00.000Z', type: 'QUIZ' }),
+  taskFixture(3, { dueAt: '2026-10-08T17:59:00.000Z', enrollmentId: 'enr_a', estimatedMinutes: 30 }),
+  taskFixture(4, { dueAt: '2026-10-09T10:00:00.000Z', status: 'IN_PROGRESS', type: 'EXAM' }),
+  taskFixture(5, { dueAt: '2026-10-12T10:00:00.000Z', enrollmentId: 'enr_b' }),
+  taskFixture(6, { dueAt: '2026-11-20T10:00:00.000Z', status: 'COMPLETED' }),
+  taskFixture(7, { dueAt: 'not a date', type: 'MYSTERY' }),
+  taskFixture(8, {}),
+];
+const TASK_ENROLLMENTS = [
+  { id: 'enr_b', courseCode: 'MAT215', section: null, status: 'ENROLLED' },
+  { id: 'enr_a', courseCode: 'CSE220', section: '04', status: 'ENROLLED' },
+  { id: 'enr_c', courseCode: 'CSE110', section: '01', status: 'DROPPED' },
+];
+
 export const FIXTURES = {
   minors: {
     getMinorProgram: [['MATH'], [' math '], ['PHY'], [''], [null], [undefined]],
@@ -408,6 +445,33 @@ export const FIXTURES = {
       [[], MINOR_MATH],
       [MINOR_SEMESTERS, null],
     ],
+  },
+
+  localInstant: {
+    localInputToInstant: [['2026-10-09T23:59'], [''], ['not a time']],
+    instantToLocalInput: [['2026-10-09T17:59:00.000Z'], [null], [''], ['garbage']],
+  },
+
+  taskView: {
+    isTaskView: [['today'], ['calendar'], ['week'], [null]],
+    courseLabel: TASKS.map((t) => [t, TASK_ENROLLMENTS]),
+    courseOptions: [[TASK_ENROLLMENTS], [[]]],
+    dueLabel: TASKS.map((t) => [t, TASK_NOW]),
+    workloadLabel: [[null], [0], [45], [60], [95], [-5]],
+    typeLabel: TASKS.map((t) => [t]),
+    emptyState: [
+      [{ view: 'today', hasActiveSemester: false, enrollmentCount: 0, totalTasks: 0, filtered: false }],
+      [{ view: 'today', hasActiveSemester: true, enrollmentCount: 0, totalTasks: 0, filtered: false }],
+      [{ view: 'all', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 3, filtered: true }],
+      [{ view: 'all', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 0, filtered: false }],
+      [{ view: 'today', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 3, filtered: false }],
+      [{ view: 'upcoming', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 3, filtered: false }],
+      [{ view: 'calendar', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 3, filtered: false }],
+      [{ view: 'all', hasActiveSemester: true, enrollmentCount: 2, totalTasks: 3, filtered: false }],
+    ],
+    summarise: [[TASKS, TASK_NOW], [[], TASK_NOW]],
+    priorityClass: [['CRITICAL'], ['LOW']],
+    toneClass: TASKS.map((t) => [t, TASK_NOW]),
   },
 
 
