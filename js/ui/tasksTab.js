@@ -8,7 +8,9 @@
 // worth) and the course grade picture (TaskDetails, TaskReminders,
 // GradeImpactPanel). Phase 3 adds pasting an announcement to find deadlines
 // in it, with the server-side reader as an opt-in second opinion (TaskImport).
-// Calendar and the digest are later phases.
+// Phase 4 adds the Calendar view: deadlines by day, a .ics download, and a
+// subscription link that keeps a calendar app in step (TaskCalendarView,
+// CalendarFeedPanel). The digest on the Calculator tab is the last phase.
 //
 // Every interpolation goes through escHtml. Wiring is data-action throughout:
 // the bundle's CSP blocks inline handlers.
@@ -18,6 +20,9 @@ import { escHtml } from '../core/helpers.js';
 import { localInputToInstant } from '../core/localInstant.js';
 import {
   COMMON_REMINDER_OFFSETS,
+  createCalendarFeed,
+  deleteCalendarFeed,
+  fetchCalendarFeed,
   TASK_PRIORITY_LABELS,
   TASK_TYPES,
   TASK_TYPE_LABELS,
@@ -46,6 +51,7 @@ import { gradeImpactView, paceText } from '../core/gradeImpactView.js';
 import { detectFromText } from '../core/announcementDetector.js';
 import { confidenceNote, confirmLabel, creatable, draftToInput, patchDraft, toDrafts } from '../core/proposalDraft.js';
 import { createAiDetector, shouldOfferAi } from '../core/aiDetector.js';
+import { buildTasksICS, groupByDay, icsFilename, localDayKey, toCalendarEvents } from '../core/taskCalendar.js';
 import {
   PRIORITY_ORDER,
   TASK_VIEWS,
@@ -60,8 +66,8 @@ import {
   workloadLabel,
 } from '../core/taskView.js';
 
-// Calendar is the one view that is not a list; it arrives in a later phase.
-const _TASKS_LIST_VIEWS = TASK_VIEWS.filter((v) => v.key !== 'calendar');
+// All four views, Calendar included since phase 4.
+const _TASKS_LIST_VIEWS = TASK_VIEWS;
 
 const _tasks = {
   uid: null,           // whose data is loaded; a change of user discards it
@@ -95,6 +101,8 @@ const _tasks = {
   aiState: 'idle',       // 'idle' | 'reading' | 'done'
   aiNote: '',
   importBusy: false,
+  // Phase 4: the calendar subscription link, read when the Calendar view opens.
+  feed: { status: 'idle', feed: null, busy: false, error: '', copied: false },
 };
 
 const _tasksAi = createAiDetector();
@@ -235,6 +243,81 @@ function _rowHTML(task) {
       <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
       ${expanded ? _detailsHTML(task) : ''}
     </li>`;
+}
+
+// ── Calendar (TaskCalendarView + CalendarFeedPanel on the shell) ────────────
+
+function _calendarDayHeading(dayKey, now) {
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dayKey === localDayKey(now)) return 'Today';
+  if (dayKey === localDayKey(tomorrow)) return 'Tomorrow';
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1)
+    .toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function _calendarHTML(events) {
+  const now = new Date();
+  const byDay = groupByDay(events);
+  const days = [...byDay.keys()].sort();
+  return `
+    <section class="tasks-calendar" data-testid="tasks-calendar">
+      <header class="tasks-calendar-head">
+        <p class="tasks-calendar-note">${events.length} deadline${events.length === 1 ? '' : 's'}</p>
+        <button type="button" class="tasks-export" data-testid="tasks-export" data-action="tasks:export">Add to your calendar</button>
+      </header>
+      ${days.map((day) => `
+        <section class="tasks-calendar-day">
+          <h3 class="tasks-calendar-date">${escHtml(_calendarDayHeading(day, now))}</h3>
+          <ul class="tasks-calendar-list">
+            ${(byDay.get(day) ?? []).map((e) => `
+              <li class="tasks-calendar-item" data-testid="tasks-calendar-item">
+                <span class="tasks-calendar-time">${escHtml(new Date(e.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span>
+                <span class="tasks-calendar-title">${escHtml(e.title)}</span>
+                <span class="tasks-type">${escHtml(e.type.toLowerCase())}</span>
+              </li>`).join('')}
+          </ul>
+        </section>`).join('')}
+    </section>`;
+}
+
+function _feedHTML() {
+  const f = _tasks.feed;
+  if (f.status === 'loading' || f.status === 'idle') {
+    return '<section class="tasks-feed" data-testid="tasks-feed" aria-busy="true"><p class="tasks-feed-copy">Checking…</p></section>';
+  }
+  const busy = f.busy ? 'disabled' : '';
+  const inner = f.feed === null ? `
+      <p class="tasks-feed-copy">A subscription keeps your deadlines up to date in Google Calendar, Apple Calendar or Outlook — unlike the download, which is a snapshot.</p>
+      <p class="tasks-feed-warning" data-testid="tasks-feed-warning">The link works without signing in, so <strong>anyone who has it can read your deadlines</strong> — the titles, the courses, the dates. Keep it to yourself, and replace it if it gets out.</p>
+      <button type="button" class="tasks-feed-create" data-testid="tasks-feed-create" data-action="tasks:feedCreate" ${busy}>${f.busy ? 'Creating…' : 'Create a subscription link'}</button>` : `
+      <label class="tasks-field tasks-field-grow" for="tasksFeedUrl">
+        <span class="tasks-label">Your link</span>
+        <input id="tasksFeedUrl" class="tasks-input tasks-feed-url" data-testid="tasks-feed-url" value="${escHtml(f.feed.url)}" readonly data-action="tasks:feedSelect">
+      </label>
+      <p class="tasks-feed-copy">Add it in your calendar app as a subscription — in Google Calendar that is <em>Other calendars → From URL</em>. Calendars refresh on their own schedule, so a change in Shohoj can take a few hours to appear.</p>
+      <p class="tasks-feed-warning" data-testid="tasks-feed-warning"><strong>Anyone with this link can read your deadlines.</strong> Replacing it makes the old one stop working straight away.</p>
+      <div class="tasks-feed-actions">
+        <button type="button" class="tasks-feed-copy-btn" data-action="tasks:feedCopy">${f.copied ? 'Copied' : 'Copy link'}</button>
+        <button type="button" class="tasks-feed-rotate" data-testid="tasks-feed-rotate" data-action="tasks:feedCreate" ${busy}>Replace link</button>
+        <button type="button" class="tasks-feed-revoke" data-testid="tasks-feed-revoke" data-action="tasks:feedRevoke" ${busy}>Turn off</button>
+      </div>`;
+  return `
+    <section class="tasks-feed" data-testid="tasks-feed" aria-label="Calendar subscription">
+      <h3 class="tasks-feed-title">Subscribe in your calendar</h3>
+      ${inner}
+      ${f.error ? `<p class="tasks-feed-error" role="alert">${escHtml(f.error)}</p>` : ''}
+    </section>`;
+}
+
+async function _loadFeed() {
+  _tasks.feed = { ..._tasks.feed, status: 'loading', error: '' };
+  const r = await fetchCalendarFeed();
+  _tasks.feed = r.ok
+    ? { ..._tasks.feed, status: 'ready', feed: r.value.feed }
+    : { ..._tasks.feed, status: 'ready', feed: null, error: r.error.userMessage };
+  _renderTasksBody();
 }
 
 // ── Import from text (TaskImport on the shell) ─────────────────────────────
@@ -518,7 +601,18 @@ function _tasksMainHTML() {
   });
 
   let body;
-  if (_tasks.status === 'error') {
+  if (_tasks.view === 'calendar' && _tasks.status !== 'error' && !loading) {
+    // Its own branch, not a list variant: a Calendar showing undated tasks
+    // would be showing exactly the ones a calendar cannot hold.
+    const events = toCalendarEvents([...overdue, ...visible], _tasks.academic.enrollments);
+    body = events.length > 0
+      ? _calendarHTML(events) + _feedHTML()
+      : `
+      <div class="tasks-empty" data-testid="tasks-empty">
+        <p class="tasks-empty-title">${escHtml(empty.title)}</p>
+        <p class="tasks-empty-detail">${escHtml(empty.detail)}</p>
+      </div>`;
+  } else if (_tasks.status === 'error') {
     body = `
       <p class="tasks-error" role="alert" data-testid="tasks-error">
         ${escHtml(_tasks.error)}
@@ -662,6 +756,7 @@ export function renderTasksTab() {
       reminderCustomOpen: false, assessDraft: null, detailsError: { reminders: '', assessment: '' },
       importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
       aiState: 'idle', aiNote: '', importBusy: false,
+      feed: { status: 'idle', feed: null, busy: false, error: '', copied: false },
     });
   }
   _renderTasksBody();
@@ -669,6 +764,7 @@ export function renderTasksTab() {
   // Opening the tab always re-reads: another device may have changed things.
   _loadTasks();
   _loadAssessments();
+  if (_tasks.view === 'calendar' && _tasks.feed.status === 'idle') _loadFeed();
 }
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -682,6 +778,7 @@ registerAction('tasks:view', (el) => {
   _tasks.items = [];
   _tasks.overdue = [];
   _loadTasks();
+  if (view === 'calendar' && _tasks.feed.status === 'idle') _loadFeed();
 });
 
 // Checkboxes and selects fire click/input AND change, and dispatch.js hands
@@ -787,6 +884,52 @@ registerAction('tasks:delete', async (el) => {
     return;
   }
   _loadTasks();
+});
+
+// ── Calendar actions ────────────────────────────────────────────────────────
+
+registerAction('tasks:export', () => {
+  const events = toCalendarEvents([..._tasks.overdue, ..._tasks.items], _tasks.academic.enrollments);
+  if (events.length === 0) return;
+  const ics = buildTasksICS(events, { alarmMinutes: 60 });
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = icsFilename();
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
+
+async function _feedChange(call) {
+  if (_tasks.feed.busy) return;
+  _tasks.feed = { ..._tasks.feed, busy: true, error: '', copied: false };
+  _renderTasksBody();
+  const r = await call();
+  _tasks.feed = r.ok
+    ? { ..._tasks.feed, busy: false, feed: r.value.feed }
+    : { ..._tasks.feed, busy: false, error: r.error.userMessage };
+  _renderTasksBody();
+}
+
+registerAction('tasks:feedCreate', () => _feedChange(createCalendarFeed));
+registerAction('tasks:feedRevoke', () => _feedChange(deleteCalendarFeed));
+registerAction('tasks:feedSelect', (el) => el.select());
+
+registerAction('tasks:feedCopy', async () => {
+  const url = _tasks.feed.feed?.url;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    _tasks.feed = { ..._tasks.feed, copied: true };
+    _renderTasksBody();
+    setTimeout(() => {
+      _tasks.feed = { ..._tasks.feed, copied: false };
+      _renderTasksBody();
+    }, 2000);
+  } catch {
+    // Clipboard refused (permissions, insecure context): the field is still
+    // selectable by hand, so nothing else to do.
+  }
 });
 
 // ── Import actions ──────────────────────────────────────────────────────────
