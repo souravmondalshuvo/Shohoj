@@ -50,7 +50,7 @@ function makeTask(overrides) {
 }
 
 /** Boot with a Worker whose store starts as `tasks`. Returns the request log. */
-async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false } = {}) {
+async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false, extract = null } = {}) {
   const store = new Map(tasks.map((t) => [t.id, t]));
   const assessments = new Map();
   const reminders = new Map(); // taskId -> reminder[]
@@ -108,6 +108,10 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
       const task = makeTask(input);
       store.set(task.id, task);
       return json(201, { task });
+    }
+    if (path === '/tasks/extract') {
+      if (extract === null) return json(503, { error: { code: 'unavailable', message: 'The reader is off.' } });
+      return json(extract.status ?? 200, extract.body);
     }
     if (path === '/assessments') return json(200, { items: [...assessments.values()] });
     const assess = path.match(/^\/tasks\/(tsk_[0-9a-f]+)\/assessment$/);
@@ -332,4 +336,80 @@ test('what a task is worth: blank score saves as unmarked, and the course shows 
   await expect(grade.getByTestId('tasks-grade-inhand')).toHaveText('90% in hand');
   await expect(grade.getByTestId('tasks-grade-partial')).toBeVisible(); // 60% of the course entered
   await expect(grade.getByTestId('tasks-grade-targets')).toContainText('needs');
+});
+
+// ── Phase 3: paste an announcement ───────────────────────────────────────────
+
+test('a pasted announcement becomes reviewed proposals, and only ticked ones are added', async ({ page }) => {
+  const log = await boot(page);
+  await page.getByTestId('tasks-import-open').click();
+  await page.locator('#tasksImportText').fill(
+    'Quiz 3 of CSE220 will be held on 25 December at 9:30 am and covers chapters 4-6.\n\n' +
+      'Term paper outline this month.\n\nPlease bring your ID cards.',
+  );
+  await page.getByTestId('tasks-import-detect').click();
+
+  const list = page.getByTestId('tasks-import-list');
+  await expect(list.locator('.tasks-import-item')).toHaveCount(2);
+  // Dated → ticked and course-matched; undated → unticked, never guessed.
+  await expect(page.getByLabel('Add this 1')).toBeChecked();
+  await expect(page.getByLabel('Task 1')).toHaveValue('Quiz 3');
+  await expect(page.getByLabel('Course 1')).toHaveValue('enr_1');
+  await expect(page.getByLabel('Add this 2')).not.toBeChecked();
+  await expect(page.getByLabel('Due 2')).toHaveValue('');
+  await expect(page.getByTestId('tasks-import-skipped')).toHaveText('1 line had no deadline in it and was skipped.');
+  // A dated proposal exists, so the paid reader is not offered.
+  await expect(page.getByTestId('tasks-import-ai')).toHaveCount(0);
+
+  await expect(page.getByTestId('tasks-import-confirm')).toHaveText('Add 1 task');
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-import-open')).toBeVisible();
+
+  const posts = log.filter((r) => r.method === 'POST' && r.path === '/tasks');
+  expect(posts).toHaveLength(1);
+  const body = JSON.parse(posts[0].body);
+  expect(body).toMatchObject({ title: 'Quiz 3', type: 'QUIZ', enrollmentId: 'enr_1', source: 'PASTE', description: 'chapters 4-6' });
+  expect(body.sourceReference).toContain('25 December');
+  expect(Date.parse(body.dueAt)).toBe(new Date(2026, 11, 25, 9, 30).getTime());
+});
+
+test('with nothing dated, the reader is offered and its proposals replace the empty ones', async ({ page }) => {
+  const log = await boot(page, {
+    extract: {
+      body: {
+        detected: [{
+          title: 'Midterm', type: 'EXAM', dueAt: '2026-11-14T04:00:00.000Z', courseCode: 'CSE220',
+          syllabus: null, confidence: 'medium', evidence: 'the midterm is on the 14th of next month',
+        }],
+        quota: { remaining: 4, limit: 5, resetsAt: '2026-10-09T00:00:00Z' },
+      },
+    },
+  });
+  await page.getByTestId('tasks-import-open').click();
+  await page.locator('#tasksImportText').fill('Heads up: the midterm is on the 14th of next month.');
+  await page.getByTestId('tasks-import-detect').click();
+  await expect(page.getByTestId('tasks-import-confirm')).toHaveText('Nothing selected');
+
+  await page.getByTestId('tasks-import-ai').click();
+  await expect(page.getByTestId('tasks-import-ai-note')).toHaveText('Shohoj read it and found 1 more thing. Check it before adding.');
+  await expect(page.getByLabel('Task 1')).toHaveValue('Midterm');
+  const extract = log.find((r) => r.path === '/tasks/extract');
+  expect(JSON.parse(extract.body)).toEqual({ text: 'Heads up: the midterm is on the 14th of next month.', courseCodes: ['CSE220'] });
+
+  await page.getByTestId('tasks-import-confirm').click();
+  await expect(page.getByTestId('tasks-import-open')).toBeVisible();
+  const post = JSON.parse(log.find((r) => r.method === 'POST' && r.path === '/tasks').body);
+  expect(post).toMatchObject({ title: 'Midterm', source: 'AI_SUGGESTION', enrollmentId: 'enr_1' });
+});
+
+test('when the reader cannot help, the student keeps what they had', async ({ page }) => {
+  await boot(page); // extract → 503 unavailable
+  await page.getByTestId('tasks-import-open').click();
+  await page.locator('#tasksImportText').fill('Assignment 4 sometime soon.');
+  await page.getByTestId('tasks-import-detect').click();
+  await expect(page.getByLabel('Task 1')).toHaveValue('Assignment 4');
+  await page.getByTestId('tasks-import-ai').click();
+  await expect(page.getByTestId('tasks-import-ai-note')).toHaveText('The reader is off.');
+  await expect(page.getByLabel('Task 1')).toHaveValue('Assignment 4');
+  await expect(page.getByTestId('tasks-import-ai')).toHaveCount(0);
 });
