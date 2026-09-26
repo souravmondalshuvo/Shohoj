@@ -485,7 +485,33 @@ const DETECTED_SAMPLE = [
 ];
 const DRAFT_ENROLLMENTS = [{ id: 'enr_a', courseCode: 'CSE220' }, { id: 'enr_b', courseCode: 'mat215' }];
 
+/** Calendar fixtures (#767 phase 4): the task set above, with estimates that
+ * hit the default, the cap and a real value, plus a cancelled one. */
+const CAL_TASKS = [
+  ...TASKS,
+  taskFixture(9, { dueAt: '2026-10-09T05:00:00.000Z', estimatedMinutes: 600, enrollmentId: 'enr_b', status: 'CANCELLED' }),
+  taskFixture(10, { dueAt: '2026-10-09T05:00:00.000Z', estimatedMinutes: 600, title: 'Lab; report, part 2\nfinal', source: 'PASTE' }),
+];
+
 export const FIXTURES = {
+  taskCalendar: {
+    toCalendarEvents: [[CAL_TASKS, TASK_ENROLLMENTS], [CAL_TASKS], [[]]],
+    localDayKey: [[TASK_NOW], [new Date(Date.UTC(2026, 11, 31, 23, 30))]],
+    groupByDay: [[[
+      { id: 'b', start: '2026-10-09T09:00:00.000Z' },
+      { id: 'a', start: '2026-10-09T05:00:00.000Z' },
+      { id: 'c', start: '2026-10-11T05:00:00.000Z' },
+    ]], [[]]],
+    buildTasksICS: [
+      [[
+        { id: 'tsk_1', title: 'CSE220: Lab; report, part 2\nfinal', start: '2026-10-09T05:00:00.000Z', end: '2026-10-09T07:00:00.000Z', type: 'LAB', courseCode: 'CSE220' },
+        { id: 'tsk_2', title: 'Reading', start: '2026-10-10T05:00:00.000Z', end: '2026-10-10T05:30:00.000Z', type: 'READING', courseCode: null },
+      ], { now: TASK_NOW, alarmMinutes: 60 }],
+      [[], { now: TASK_NOW, calName: 'My, calendar' }],
+    ],
+    icsFilename: [[TASK_NOW]],
+  },
+
   announcementDetector: {
     detectFromText: [
       ...ANNOUNCEMENTS.map((text) => [text, ANN_CTX]),
