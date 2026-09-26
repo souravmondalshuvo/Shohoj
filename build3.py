@@ -106,6 +106,12 @@ MAIN_JS_FILES = [
     'js/ui/freeRoomsTab.js',
     'js/ui/seatsTab.js',
     'js/ui/groupsTab.js',
+    # Shohoj Tasks, phase 1 (#767): the Worker client, the view model (a twin
+    # of the shell's taskView.ts) and its datetime-local bridge, then the tab
+    'js/core/tasksApi.js',
+    'js/core/localInstant.js',
+    'js/core/taskView.js',
+    'js/ui/tasksTab.js',
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
     'js/ui/signinPortal.js',
