@@ -455,7 +455,66 @@ const ASSESSED_ODD = [
   { task: PRIO_TASKS[5], assessment: assessment(PRIO_TASKS[5], 50, 10, 12) },
 ];
 
+/**
+ * Import fixtures (#767 phase 3): announcements as students actually paste them.
+ * The clock is pinned (TASK_NOW); a December clock tests the year rollover.
+ */
+const ANN_CTX = { now: TASK_NOW, knownCourseCodes: ['CSE220', 'MAT215'] };
+const ANN_DEC = { now: new Date(Date.UTC(2026, 11, 20, 12, 0)), knownCourseCodes: [] };
+const ANNOUNCEMENTS = [
+  'Quiz 3 of CSE220 will be held on 25 September at 9:30 am and covers chapters 4-6.',
+  'Assignment 2 is due 30/10/2026. Lab report 4 is due 2 Nov at 11:59 pm.',
+  'MAT215 midterm on October 14th, 2026 in room UB 301.',
+  'Final exam 25/12/2026',
+  'The final examination will be on 12 January.',
+  'Reminder: bring your ID cards to class.',
+  'Term paper on 31 September.',
+  'Quiz 2 covers chapter 7 on Nov 5 at 14:00.',
+  'Viva for CSE 471 next week.',
+  'Presentation schedule\n\nGroup 4 presents on 3 December at 10 am. PHY111 lab on 4/12 at 2 pm.',
+  '',
+];
+const DETECTED_SAMPLE = [
+  {
+    title: 'Quiz 3', type: 'QUIZ', dueAt: '2026-09-25T03:30:00.000Z', courseCode: 'CSE220',
+    syllabus: 'chapters 4-6', confidence: 'high',
+    evidence: { type: { text: 'Quiz', index: 0 }, dueAt: { text: '25 September', index: 30 } },
+  },
+  { title: 'Reading', type: 'READING', dueAt: null, courseCode: 'PHY111', syllabus: null, confidence: 'low', evidence: {} },
+  { title: 'Midterm', type: 'EXAM', dueAt: '2026-10-14T17:59:00.000Z', courseCode: null, syllabus: null, confidence: 'medium', evidence: { type: { text: 'x'.repeat(600), index: 0 } } },
+];
+const DRAFT_ENROLLMENTS = [{ id: 'enr_a', courseCode: 'CSE220' }, { id: 'enr_b', courseCode: 'mat215' }];
+
 export const FIXTURES = {
+  announcementDetector: {
+    detectFromText: [
+      ...ANNOUNCEMENTS.map((text) => [text, ANN_CTX]),
+      ['Quiz 1 on 5 January', ANN_DEC],
+      ['Assignment due 10 December', ANN_DEC],
+    ],
+  },
+
+  proposalDraft: {
+    toDrafts: [[DETECTED_SAMPLE, DRAFT_ENROLLMENTS], [DETECTED_SAMPLE], [DETECTED_SAMPLE, [], 'AI_SUGGESTION'], [[]]],
+    patchDraft: [[{ key: 'k', title: 'a', selected: true }, { title: 'b', selected: false }]],
+    draftToInput: [
+      [{ title: '  Quiz 3 ', type: 'QUIZ', dueLocal: '2026-09-25T09:30', enrollmentId: 'enr_a', source: 'PASTE', sourceText: 'Quiz · 25 September', syllabus: 'chapters 4-6' }],
+      [{ title: 'Midterm', type: 'EXAM', dueLocal: '', enrollmentId: '', source: 'AI_SUGGESTION', sourceText: '', syllabus: null }],
+    ],
+    creatable: [[[{ selected: true, title: 'a' }, { selected: false, title: 'b' }, { selected: true, title: '  ' }]]],
+    confirmLabel: [[[]], [[{ selected: true, title: 'a' }]], [[{ selected: true, title: 'a' }, { selected: true, title: 'b' }]]],
+    confidenceNote: [
+      [{ dueLocal: '', confidence: 'high' }],
+      [{ dueLocal: '2026-09-25T09:30', confidence: 'high' }],
+      [{ dueLocal: '2026-09-25T09:30', confidence: 'medium' }],
+      [{ dueLocal: '2026-09-25T09:30', confidence: 'low' }],
+    ],
+  },
+
+  aiDetector: {
+    shouldOfferAi: [[[]], [[{ dueAt: null }]], [[{ dueAt: null }, { dueAt: '2026-10-01T00:00' }]], [[{ dueAt: '2026-10-01T00:00' }]]],
+  },
+
   priorityExplainer: {
     priorityReasons: [
       ...PRIO_TASKS.map((t) => [t, { now: TASK_NOW }]),
