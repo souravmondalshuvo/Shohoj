@@ -31,6 +31,7 @@ const task = (n, overrides = {}) => ({
   startAt: null,
   estimatedMinutes: null,
   completedAt: null,
+  source: 'MANUAL',
   ...overrides,
 });
 
@@ -315,4 +316,29 @@ test('every AI failure is a note, never an error state', async () => {
     if (note !== null) assert.equal(r.note, note);
     else assert.ok(r.note.length > 0);
   }
+});
+
+// ── Phase 4: calendar subscription (#767) ────────────────────────────────────
+
+test('the task reader keeps source and refuses an unknown one', async () => {
+  let { fetchFn } = fakeFetch(() => ({ body: { items: [task(30, { source: 'PASTE' })] } }));
+  assert.equal((await legacy.listTasks(deps(fetchFn))).value[0].source, 'PASTE');
+  ({ fetchFn } = fakeFetch(() => ({ body: { items: [task(31, { source: 'FAX' })] } })));
+  assert.equal((await legacy.listTasks(deps(fetchFn))).ok, false);
+  assert.deepEqual(legacy.TASK_SOURCES, [...typed.TASK_SOURCES]);
+});
+
+test('the calendar feed: none, created, replaced, turned off', async () => {
+  const feed = { url: 'https://w.example.dev/api/v1/tasks/feed/abc.ics', createdAt: '2026-10-08T00:00:00Z' };
+  const { calls, fetchFn } = fakeFetch((url, init) => ({
+    body: { feed: init.method === 'GET' || init.method === 'DELETE' ? null : feed },
+  }));
+  assert.deepEqual((await legacy.fetchCalendarFeed(deps(fetchFn))).value, { feed: null });
+  assert.deepEqual((await legacy.createCalendarFeed(deps(fetchFn))).value, { feed });
+  assert.deepEqual((await legacy.deleteCalendarFeed(deps(fetchFn))).value, { feed: null });
+  assert.deepEqual(calls.map((c) => c.init.method), ['GET', 'POST', 'DELETE']);
+  assert.ok(calls.every((c) => c.url === 'https://w.example.dev/api/v1/tasks/feed'));
+
+  const { fetchFn: bad } = fakeFetch(() => ({ body: { nope: true } }));
+  assert.equal((await legacy.fetchCalendarFeed(deps(bad))).ok, false);
 });
