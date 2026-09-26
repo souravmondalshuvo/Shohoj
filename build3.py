@@ -120,6 +120,8 @@ MAIN_JS_FILES = [
     'js/core/announcementDetector.js',
     'js/core/proposalDraft.js',
     'js/core/aiDetector.js',
+    # Phase 4 (#767): deadlines by day, and as an .ics
+    'js/core/taskCalendar.js',
     'js/ui/tasksTab.js',
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
