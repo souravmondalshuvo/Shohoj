@@ -86,11 +86,6 @@ test('@a11y Reviews route (directory over a stub feed) has no serious/critical v
 });
 
 test('@a11y Campus route (map over a seeded feed cache) has no serious/critical violations', async ({ page }) => {
-  // The scene re-renders the full building model every frame, and CI draws it
-  // on a software GPU, so axe's page evaluation competes with the render loop
-  // for the main thread and routinely overran the 30s default. Tripled until
-  // the scene renders on demand when nothing is moving.
-  test.slow();
   // Seed the CONNECT feed cache so the route renders real content (floors,
   // room list, room panel) without touching the network — same seeding as
   // campus-map.spec.js.
