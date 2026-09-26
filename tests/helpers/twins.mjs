@@ -25,11 +25,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const JS_ROOTS = ['js'];
 
 /** Rewrite local specifiers to the transpiled .mjs siblings. Handles both the
- * explicit-.ts convention and the extensionless one. */
-function rewriteLocalImports(output) {
+ * explicit-.ts convention and the extensionless one. A specifier that leaves
+ * src/ (the shell's catalog.ts reads js/core/catalog.js) would dangle from the
+ * temp tree, so it becomes an absolute file URL back into the repo. */
+function rewriteLocalImports(output, sourcePath) {
   return output.replace(
     /(from\s+|import\s*\(\s*)(['"])(\.\.?\/[^'"]+)\2/g,
     (_m, lead, quote, specifier) => {
+      const target = path.resolve(path.dirname(sourcePath), specifier);
+      if (!target.startsWith(path.join(ROOT, 'src') + path.sep)) {
+        return `${lead}${quote}${pathToFileURL(target).href}${quote}`;
+      }
       if (/\.[cm]?js$/.test(specifier)) return `${lead}${quote}${specifier}${quote}`;
       if (/\.(css|json)$/.test(specifier)) return `${lead}${quote}${specifier}${quote}`;
       return `${lead}${quote}${specifier.replace(/\.tsx?$/, '')}.mjs${quote}`;
@@ -79,7 +85,7 @@ export function transpiledSrcDir() {
     });
     const outFile = path.join(tempDir, rel.replace(/\.ts$/, '.mjs'));
     fs.mkdirSync(path.dirname(outFile), { recursive: true });
-    fs.writeFileSync(outFile, rewriteLocalImports(result.outputText));
+    fs.writeFileSync(outFile, rewriteLocalImports(result.outputText, sourcePath));
   }
 
   cachedTempDir = tempDir;
