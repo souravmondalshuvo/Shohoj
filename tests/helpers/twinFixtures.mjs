@@ -494,6 +494,17 @@ const CAL_TASKS = [
 ];
 
 export const FIXTURES = {
+  taskDigest: {
+    buildDigest: [
+      [{ overdue: TASKS.slice(0, 2), dueToday: TASKS.slice(2, 4), upcoming: TASKS.slice(3) }],
+      [{ overdue: TASKS.slice(0, 2), dueToday: TASKS.slice(2, 4), upcoming: TASKS.slice(3), limit: 2 }],
+      [{ overdue: [], dueToday: [], upcoming: [] }],
+      [{ overdue: [TASKS[5]], dueToday: [], upcoming: [TASKS[5]] }],
+    ],
+    groupHeading: [['overdue', null], ['overdue', 'overdue'], ['today', 'overdue'], ['upcoming', 'today']],
+    digestLink: [[{ overdueCount: 2 }], [{ overdueCount: 0 }]],
+  },
+
   taskCalendar: {
     toCalendarEvents: [[CAL_TASKS, TASK_ENROLLMENTS], [CAL_TASKS], [[]]],
     localDayKey: [[TASK_NOW], [new Date(Date.UTC(2026, 11, 31, 23, 30))]],
