@@ -38,7 +38,7 @@ function gradeColor(g) {
   return 'var(--text3)';
 }
 
-function courseLabel(name) {
+function _pgCourseLabel(name) {
   const m = name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
   return m ? m[1] : (name.length > 30 ? name.slice(0, 27) + '...' : name);
 }
@@ -210,7 +210,7 @@ function renderGradeChanger(courses, totals) {
     const rows = changeDetails.map(ch => `
       <div class="pg-change-row">
         <div class="pg-change-course">
-          <strong>${escHtml(courseLabel(ch.name))}</strong>
+          <strong>${escHtml(_pgCourseLabel(ch.name))}</strong>
           <span class="pg-change-meta">${escHtml(ch.sem)} · ${ch.credits} cr</span>
         </div>
         <div class="pg-change-grades">
@@ -234,7 +234,7 @@ function renderGradeChanger(courses, totals) {
   const available = courses.filter(c => !pg.changes[c.key]);
   const gradeOpts = GRADE_LIST.map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
   const courseOpts = available.map(c =>
-    `<option value="${escAttr(c.key)}">${escHtml(courseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
+    `<option value="${escAttr(c.key)}">${escHtml(_pgCourseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const pickerHtml = available.length > 0 ? `
@@ -309,7 +309,7 @@ function computeSolverResult(courses, totals) {
   const minGrade = sortedGrades.find(x => x.gp >= neededGp);
 
   // XSS FIX: escape course labels
-  const safeCourseLabel = escHtml(courseLabel(c.name));
+  const safeCourseLabel = escHtml(_pgCourseLabel(c.name));
 
   if (neededGp > 4.0) {
     const bestPossible = (totals.pts - c.credits * c.gp + c.credits * 4.0) / totals.cr;
@@ -367,7 +367,7 @@ function renderReverseSolver(courses, totals) {
 
   // XSS FIX: escape course names/labels in option elements
   const courseOpts = courses.map(c =>
-    `<option value="${escAttr(c.key)}"${pg.solverKey === c.key ? ' selected' : ''}>${escHtml(courseLabel(c.name))}${c.running ? ' 🟡' : ''} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
+    `<option value="${escAttr(c.key)}"${pg.solverKey === c.key ? ' selected' : ''}>${escHtml(_pgCourseLabel(c.name))}${c.running ? ' 🟡' : ''} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const resultHtml = computeSolverResult(courses, totals);
