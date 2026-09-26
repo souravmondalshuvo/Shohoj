@@ -681,8 +681,7 @@ async function runMinorProgress(input, ctx) {
     // would be the wrong instruction entirely.
     return {
       error: 'no_minor',
-      message:
-        `The student has not selected a minor in Shohoj, so there is no minor to measure against. Tell them they can pick one in ${MINOR_PICKER_LOCATION}. Do not describe any minor's requirements from your own knowledge.`,
+      message: `The student has not selected a minor in Shohoj, so there is no minor to measure against. Tell them they can pick one in ${MINOR_PICKER_LOCATION}. Do not describe any minor's requirements from your own knowledge.`,
     };
   }
 
