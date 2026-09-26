@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-AIMP6MPn1TIOsnMFYdYSXvenogFXAb3+OH1FTg0oBHw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-n8lC9sPHuSsaAde9JygUCQ7kuId8PoZf56gH/GYRmAc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8726,6 +8726,485 @@ body[data-page="admin"] .orb { display: none !important; }
   .minor-picker .pf-select { width: 100%; }
 }
 
+/* ── Shohoj Tasks (#717, legacy #767) ───────────────────────────────────────
+ *
+ * `tasks-` prefixed throughout, shared by the shell's /tasks and the legacy
+ * calculator's Tasks tab, so it lives here: both load this sheet. No legacy
+ * rule competes for these names, which is the failure mode #600 traced the
+ * parity punch list back to.
+ *
+ * Colour comes from the shell's --c-* tokens (css/shell-routes.css). The legacy
+ * page does not load that sheet, so its Tasks panel aliases the five tokens
+ * used here to its own palette — which already follows the light/dark switch.
+ * The later Tasks sections (dashboard, grade impact, reminders, calendar, and
+ * the paste-import panel) stay in shell-routes.css until their phases reach
+ * legacy. The import panel has a second reason: the rule for its root class,
+ * a word ending in "-import" followed by a brace, trips CI's bare-ESM check on
+ * the inlined sheet (#773).
+ */
+
+#tabTasks {
+  --c-text: var(--text);
+  --c-text-muted: var(--text2);
+  --c-surface: var(--chip-hover);
+  --c-surface-2: var(--glass2);
+  --c-border: var(--border);
+}
+
+.tasks-route {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tasks-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tasks-heading {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.tasks-semester {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+}
+
+.tasks-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.tasks-summary span {
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.tasks-summary-overdue {
+  border-color: #d9534f;
+  color: #d9534f;
+}
+
+/* ── Controls ─────────────────────────────────────────────────────────────── */
+
+.tasks-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tasks-views {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--c-surface-2, rgba(0, 0, 0, 0.04));
+}
+
+.tasks-view {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--c-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tasks-view.is-active {
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+.tasks-view:focus-visible {
+  outline: 2px solid var(--green, #2f855a);
+  outline-offset: 2px;
+}
+
+.tasks-filter,
+.tasks-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tasks-field-grow { flex: 1 1 220px; }
+.tasks-field-narrow { flex: 0 0 96px; }
+
+.tasks-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-muted);
+}
+
+.tasks-input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 7px 10px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  border-radius: 8px;
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+  /* Without this a long <select> or a datetime input pushes the row wider than
+   * the panel on a phone, which is the overflow the responsive suite catches. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ── Composer ─────────────────────────────────────────────────────────────── */
+
+.tasks-add,
+.tasks-save,
+.tasks-cancel,
+.tasks-retry,
+.tasks-empty-link {
+  font: inherit;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+}
+
+.tasks-add,
+.tasks-save {
+  align-self: flex-start;
+  border-color: transparent;
+  background: var(--green, #2f855a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tasks-save[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 12px;
+  background: var(--c-surface, #fff);
+}
+
+.tasks-composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tasks-composer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Calendar subscription (#744) ────────────────────────────────────────────
+ *
+ * The warning is not a muted aside. It is the one thing a student has to read
+ * before deciding, so it gets the amber treatment the design language reserves
+ * for "this has consequences" rather than the grey used for hints.
+ */
+
+.tasks-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 12px;
+  background: var(--c-surface, #fff);
+}
+
+.tasks-feed-title {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.tasks-feed-copy {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.tasks-feed-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: #7a4a05;
+  background: rgba(214, 158, 46, 0.14);
+  border: 1px solid rgba(214, 158, 46, 0.35);
+}
+
+:root[data-theme='dark'] .tasks-feed-warning,
+:root:not([data-theme='light']) .tasks-feed-warning {
+  color: #f0c674;
+}
+
+/* A credential, so it reads as data to be copied rather than text to be read. */
+.tasks-feed-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.tasks-feed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tasks-feed-create,
+.tasks-feed-copy-btn,
+.tasks-feed-rotate,
+.tasks-feed-revoke {
+  font: inherit;
+  font-size: 0.86rem;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+}
+
+.tasks-feed-create,
+.tasks-feed-copy-btn {
+  align-self: flex-start;
+  border-color: transparent;
+  background: var(--green, #2f855a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tasks-feed-revoke { color: #8a2b28; }
+
+.tasks-feed-create[disabled],
+.tasks-feed-rotate[disabled],
+.tasks-feed-revoke[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-feed-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: #8a2b28;
+  background: rgba(217, 83, 79, 0.1);
+}
+
+/* The second reading (#741). Quieter than the confirm button: it is an offer,
+ * not the next step, and the student's own reading already worked. */
+.tasks-import-ai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tasks-import-ai-ask {
+  font: inherit;
+  font-size: 0.86rem;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  border: 1px dashed var(--c-border, rgba(0, 0, 0, 0.28));
+  background: transparent;
+  color: var(--c-text);
+}
+
+.tasks-import-ai-ask[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-import-ai-hint { font-size: 0.78rem; }
+
+.tasks-import-ai-note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.tasks-import-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: #8a2b28;
+  background: rgba(217, 83, 79, 0.1);
+}
+
+/* ── List ─────────────────────────────────────────────────────────────────── */
+
+.tasks-group { margin: 0; }
+
+.tasks-group-title {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+}
+
+.tasks-group-overdue .tasks-group-title { color: #d9534f; }
+
+.tasks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tasks-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  background: var(--c-surface, #fff);
+}
+
+.tasks-row.tasks-due-overdue { border-left: 3px solid #d9534f; }
+.tasks-row.tasks-due-today { border-left: 3px solid var(--gold, #d69e2e); }
+
+.tasks-row-done .tasks-row-title {
+  text-decoration: line-through;
+  color: var(--c-text-muted);
+}
+
+.tasks-row-body { flex: 1 1 auto; min-width: 0; }
+
+.tasks-row-title {
+  margin: 0;
+  font-size: 0.95rem;
+  /* A pasted assignment brief can be 200 characters with no spaces. */
+  overflow-wrap: anywhere;
+}
+
+.tasks-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 0.76rem;
+  color: var(--c-text-muted);
+}
+
+.tasks-course { font-weight: 600; color: var(--c-text); }
+.tasks-due-overdue { color: #d9534f; }
+.tasks-priority-critical { color: #d9534f; font-weight: 600; }
+.tasks-priority-high { color: #c05621; }
+
+/* The tick target: large enough to hit on a phone, and first in the row. */
+.tasks-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 34px;
+  cursor: pointer;
+}
+
+/* Transparent but full-size, rather than collapsed to 0x0. A zero-sized input
+ * is a zero-sized hit target and a zero-sized focus ring, and some assistive
+ * tech skips it entirely; this keeps the real control under the drawn box. */
+.tasks-check input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.tasks-check { position: relative; }
+
+.tasks-check-box {
+  width: 19px;
+  height: 19px;
+  border: 2px solid var(--c-border, rgba(0, 0, 0, 0.3));
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.tasks-check input:checked + .tasks-check-box {
+  background: var(--green, #2f855a);
+  border-color: var(--green, #2f855a);
+}
+
+.tasks-check input:focus-visible + .tasks-check-box {
+  outline: 2px solid var(--green, #2f855a);
+  outline-offset: 2px;
+}
+
+.tasks-delete {
+  border: 0;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tasks-delete:hover { color: #d9534f; }
+
+/* ── States ───────────────────────────────────────────────────────────────── */
+
+.tasks-empty {
+  padding: 28px 16px;
+  text-align: center;
+  border: 1px dashed var(--c-border, rgba(0, 0, 0, 0.18));
+  border-radius: 12px;
+}
+
+.tasks-empty-title { margin: 0 0 4px; font-weight: 600; }
+.tasks-empty-detail { margin: 0 0 12px; font-size: 0.86rem; }
+.tasks-empty-link { display: inline-block; text-decoration: none; }
+
+.tasks-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  color: #8a2b28;
+  background: rgba(217, 83, 79, 0.1);
+}
+
+.tasks-signin { padding: 24px 0; }
+
+/* ── Narrow screens ───────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .tasks-controls { align-items: stretch; }
+  .tasks-views { justify-content: space-between; }
+  .tasks-view { flex: 1 1 auto; text-align: center; }
+  /* Every composer field takes the full width rather than wrapping into
+   * uneven columns, which is what pushed the row past the viewport. */
+  .tasks-field,
+  .tasks-field-grow,
+  .tasks-field-narrow { flex: 1 1 100%; }
+  .tasks-summary { font-size: 0.78rem; }
+}
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -8809,14 +9288,13 @@ body[data-page="admin"] .orb { display: none !important; }
     <div class="nav-right">
       <a href="#features" class="nav-link magnetic">Features</a>
       <a href="#calculator" class="nav-link magnetic">CGPA Calc</a>
-      <!-- Shohoj Tasks (#725) lives on the React shell at /app/, not in this
-           bundle, so this is a real navigation out of the legacy page rather
-           than a tab. Relative href so it resolves under the Pages project
-           path (/Shohoj/app/tasks) and still works from a local server root.
-           Mirrored in the shell's own nav (src/app/routes/RootLayout.tsx):
-           the visual-parity gate captures this nav signed-out and compares the
-           two, so a link on one side only would fail it. -->
-      <a href="app/tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
+      <!-- Shohoj Tasks (#725) is a calculator tab on this page since #767: the
+           link scrolls to the calculator and opens the tab named by
+           data-calc-tab (js/main.js, smooth anchor scroll). Mirrored in the
+           shell's own nav (src/app/routes/RootLayout.tsx): the visual-parity
+           gate captures this nav signed-out and compares the two, so a link on
+           one side only would fail it. -->
+      <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
       <!-- Auth button -->
@@ -9067,6 +9545,9 @@ body[data-page="admin"] .orb { display: none !important; }
             <button class="calc-tab-menu-item" data-tab="routine" role="menuitem">
               <span class="calc-tab-icon">🗓️</span><span>Routine</span>
             </button>
+            <button class="calc-tab-menu-item" data-tab="tasks" role="menuitem">
+              <span class="calc-tab-icon">✅</span><span>Tasks</span>
+            </button>
           </div>
         </div>
 
@@ -9235,6 +9716,13 @@ body[data-page="admin"] .orb { display: none !important; }
           <div id="papersContent">
             <!-- Rendered dynamically by papersTab.js -->
           </div>
+        </div>
+      </div>
+
+      <!-- ═══ TASKS (#767) — rendered by js/ui/tasksTab.js ═══ -->
+      <div class="calc-tab-panel" id="tabTasks">
+        <div class="calc-body">
+          <div id="tasksContent"></div>
         </div>
       </div>
 
@@ -28981,6 +29469,983 @@ async function _toggleRoster(groupId) {
   }
 }
 
+// ── js/core/tasksApi.js ─────────────────────────────────────────
+// ── js/core/tasksApi.js ───────────────────────────────────────────────────────
+// The legacy page's client for Shohoj Tasks (#767): the same Worker endpoints
+// (/api/v1/tasks, /api/v1/semesters, /api/v1/enrollments) the shell reaches
+// through src/platform/api/tasks.ts and academic.ts.
+//
+// Not a twin — the shell's module is built on zod and its ApiClient, neither of
+// which the legacy bundle carries. The rules are the same ones, though:
+//   - a response is untrusted until its shape is checked, and a response that
+//     fails the check is an error rather than a partly-rendered list;
+//   - unknown enum values are refused;
+//   - every call carries a fresh ID token, and none is sent without one;
+//   - every call times out, so a hung Worker shows an error instead of a
+//     skeleton that never resolves (the routine tab's #764 lesson).
+// The pure helpers at the top (isOpen, dueTone, byPriority) are pinned to the
+// shell's by tests/legacyTasksApi.test.js.
+//
+// Every call resolves to { ok: true, value } or { ok: false, error }, where
+// error.userMessage is safe to show.
+
+const TASK_TYPES = ['ASSIGNMENT', 'QUIZ', 'EXAM', 'PROJECT', 'LAB', 'READING', 'PERSONAL', 'OTHER'];
+const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+const TASK_TYPE_LABELS = {
+  ASSIGNMENT: 'Assignment',
+  QUIZ: 'Quiz',
+  EXAM: 'Exam',
+  PROJECT: 'Project',
+  LAB: 'Lab',
+  READING: 'Reading',
+  PERSONAL: 'Personal',
+  OTHER: 'Other',
+};
+
+const TASK_PRIORITY_LABELS = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  CRITICAL: 'Critical',
+};
+
+// ── Pure helpers (mirrors of src/platform/api/tasks.ts) ─────────────────────
+
+function isOpen(task) {
+  return task.status === 'TODO' || task.status === 'IN_PROGRESS';
+}
+
+/** Where a deadline falls against the student's local calendar. */
+function dueTone(task, now = new Date()) {
+  if (task.dueAt === null) return 'none';
+  const due = Date.parse(task.dueAt);
+  if (Number.isNaN(due)) return 'none';
+
+  const startOfLocalDay = (offsetDays) => {
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + offsetDays);
+    return d.getTime();
+  };
+
+  if (due < startOfLocalDay(0)) return 'overdue';
+  if (due < startOfLocalDay(1)) return 'today';
+  if (due < startOfLocalDay(2)) return 'tomorrow';
+  if (due < startOfLocalDay(7)) return 'soon';
+  return 'later';
+}
+
+/** Highest automatic score first; then earliest deadline; then id, for stability. */
+function byPriority(a, b) {
+  const aScore = a.priorityScore ?? -1;
+  const bScore = b.priorityScore ?? -1;
+  if (aScore !== bScore) return bScore - aScore;
+  const aDue = a.dueAt ?? '\uffff';
+  const bDue = b.dueAt ?? '\uffff';
+  if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+  return a.id.localeCompare(b.id);
+}
+
+// ── Response checks ─────────────────────────────────────────────────────────
+
+const _TASK_ID_RE = /^tsk_[0-9a-f]{32}$/;
+
+function _isStringOrNull(v) {
+  return v === null || typeof v === 'string';
+}
+
+// Fields the shell's TaskSchema requires. Unknown fields are dropped, as there.
+function _readTask(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.id !== 'string' || !_TASK_ID_RE.test(raw.id)) return null;
+  if (typeof raw.title !== 'string') return null;
+  if (!TASK_TYPES.includes(raw.type)) return null;
+  if (!TASK_STATUSES.includes(raw.status)) return null;
+  if (!TASK_PRIORITIES.includes(raw.priority)) return null;
+  for (const key of ['enrollmentId', 'description', 'dueAt', 'startAt', 'completedAt']) {
+    if (!_isStringOrNull(raw[key])) return null;
+  }
+  if (raw.priorityScore !== null && typeof raw.priorityScore !== 'number') return null;
+  if (raw.estimatedMinutes !== null && !Number.isInteger(raw.estimatedMinutes)) return null;
+  return {
+    id: raw.id,
+    enrollmentId: raw.enrollmentId,
+    title: raw.title,
+    description: raw.description,
+    type: raw.type,
+    status: raw.status,
+    priority: raw.priority,
+    priorityScore: raw.priorityScore,
+    dueAt: raw.dueAt,
+    startAt: raw.startAt,
+    estimatedMinutes: raw.estimatedMinutes,
+    completedAt: raw.completedAt,
+  };
+}
+
+function _readSemester(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.id !== 'string' || typeof raw.name !== 'string' || typeof raw.status !== 'string') return null;
+  return { id: raw.id, name: raw.name, status: raw.status };
+}
+
+function _readEnrollment(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.id !== 'string' || typeof raw.semesterId !== 'string') return null;
+  if (typeof raw.courseCode !== 'string' || typeof raw.status !== 'string') return null;
+  if (!_isStringOrNull(raw.section)) return null;
+  return {
+    id: raw.id,
+    semesterId: raw.semesterId,
+    courseCode: raw.courseCode,
+    section: raw.section,
+    status: raw.status,
+  };
+}
+
+/** Every item must pass, or the whole list is refused — as the shell does. */
+function _readList(items, readItem) {
+  if (!Array.isArray(items)) return null;
+  const out = [];
+  for (const item of items) {
+    const read = readItem(item);
+    if (read === null) return null;
+    out.push(read);
+  }
+  return out;
+}
+
+// ── Transport ───────────────────────────────────────────────────────────────
+
+const _TASKS_TIMEOUT_MS = 15_000;
+const _TASKS_API_PREFIX = '/api/v1';
+
+const _MALFORMED = 'Shohoj sent back something unexpected. Please try again.';
+
+function _genericMessageFor(status) {
+  if (status === 401) return 'Please sign in to continue.';
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return "That item couldn't be found.";
+  if (status === 429) return "You're doing that too quickly. Please wait a moment.";
+  if (status >= 500) return 'Shohoj is having trouble right now. Please try again shortly.';
+  return 'That request could not be completed.';
+}
+
+function _fail(userMessage) {
+  return { ok: false, error: { userMessage } };
+}
+
+/** The Worker base URL, from the runtime config, or null when unconfigured. */
+function tasksWorkerUrl(scope = typeof window !== 'undefined' ? window : undefined) {
+  const url = scope?._shohoj_papers_worker_url;
+  return typeof url === 'string' && url.startsWith('http') ? url.replace(/\/+$/, '') : null;
+}
+
+/** The viewer's IANA timezone; Today and Upcoming are questions about it. */
+function viewerTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/**
+ * One authenticated call. `deps` is injectable for tests: { baseUrl, getIdToken, fetchFn }.
+ */
+async function _call(method, path, { body, query, read } = {}, deps = {}) {
+  const baseUrl = deps.baseUrl ?? tasksWorkerUrl();
+  if (baseUrl === null) return _fail('Tasks needs the Shohoj backend, which this build is not configured for.');
+
+  const getIdToken = deps.getIdToken
+    ?? (() => (typeof window !== 'undefined' && typeof window._shohoj_idToken === 'function'
+      ? window._shohoj_idToken()
+      : Promise.resolve(null)));
+  let token;
+  try { token = await getIdToken(); } catch { token = null; }
+  if (typeof token !== 'string' || token === '') return _fail('Please sign in to continue.');
+
+  let url = `${baseUrl}${_TASKS_API_PREFIX}${path}`;
+  if (query) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null) continue;
+      params.set(key, String(value));
+    }
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+  }
+
+  const headers = { Accept: 'application/json', Authorization: `Bearer ${token}` };
+  const init = { method, headers };
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  if (controller) init.signal = controller.signal;
+  const timer = controller ? setTimeout(() => controller.abort(), deps.timeoutMs ?? _TASKS_TIMEOUT_MS) : null;
+
+  const fetchFn = deps.fetchFn ?? fetch;
+  let response;
+  try {
+    response = await fetchFn(url, init);
+  } catch (cause) {
+    if (timer) clearTimeout(timer);
+    const aborted = cause && cause.name === 'AbortError';
+    return _fail(aborted
+      ? 'That took too long. Check your connection and try again.'
+      : "Couldn't reach the server. Please try again in a moment.");
+  }
+
+  let payload;
+  try { payload = await response.json(); } catch { payload = null; }
+  if (timer) clearTimeout(timer);
+
+  if (!response.ok) {
+    // The Worker's error envelope carries a message written for students.
+    const message = payload?.error?.message;
+    return _fail(typeof message === 'string' && message ? message : _genericMessageFor(response.status));
+  }
+  const value = read(payload);
+  return value === null ? _fail(_MALFORMED) : { ok: true, value };
+}
+
+// ── Endpoints ───────────────────────────────────────────────────────────────
+
+const _readTaskList = (p) => _readList(p?.items, _readTask);
+const _readOneTask = (p) => _readTask(p?.task);
+
+function listTasks(deps) {
+  return _call('GET', '/tasks', { read: _readTaskList }, deps);
+}
+
+function fetchToday(deps) {
+  return _call('GET', '/tasks/today', {
+    query: { tz: viewerTimeZone() },
+    read: (p) => {
+      const overdue = _readList(p?.overdue, _readTask);
+      const dueToday = _readList(p?.dueToday, _readTask);
+      return overdue && dueToday ? { overdue, dueToday } : null;
+    },
+  }, deps);
+}
+
+function fetchUpcoming(deps) {
+  return _call('GET', '/tasks/upcoming', { query: { tz: viewerTimeZone() }, read: _readTaskList }, deps);
+}
+
+function createTask(input, deps) {
+  return _call('POST', '/tasks', { body: input, read: _readOneTask }, deps);
+}
+
+function setTaskCompleted(id, completed, deps) {
+  return _call('PUT', `/tasks/${encodeURIComponent(id)}/completion`, {
+    body: { completed },
+    read: _readOneTask,
+  }, deps);
+}
+
+function deleteTask(id, deps) {
+  return _call('DELETE', `/tasks/${encodeURIComponent(id)}`, {
+    read: (p) => (typeof p?.deleted?.id === 'string' ? { id: p.deleted.id } : null),
+  }, deps);
+}
+
+function listSemesters(deps) {
+  return _call('GET', '/semesters', { read: (p) => _readList(p?.items, _readSemester) }, deps);
+}
+
+function listEnrollments(deps) {
+  return _call('GET', '/enrollments', { read: (p) => _readList(p?.items, _readEnrollment) }, deps);
+}
+
+/** The student's active semester, or null. The list arrives newest-first. */
+function activeSemester(semesters) {
+  return semesters.find((s) => s.status === 'ACTIVE') ?? null;
+}
+
+// ── js/core/localInstant.js ─────────────────────────────────────
+// Twin of src/features/tasks/localInstant.ts — hand-maintained, not generated.
+// src/features/tasks/localInstant.ts is the source of truth: change it there
+// first, then mirror the change here. tests/twinParity.test.js fails if the two
+// drift.
+//
+// The two conversions between `<input type="datetime-local">` and an API
+// instant (#735), for the legacy Tasks tab (#767). A datetime-local value is a
+// bare local time; the API wants an instant with an offset, and only the
+// browser knows which zone the student typed it in.
+
+/** A bare local `datetime-local` value → an ISO instant, or null if unusable. */
+function localInputToInstant(value) {
+  if (value === '') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+/** An ISO instant → the `datetime-local` value for the same moment locally. */
+function instantToLocalInput(iso) {
+  if (iso === null || iso === '') return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+// ── js/core/taskView.js ─────────────────────────────────────────
+// Twin of src/features/tasks/taskView.ts — hand-maintained, not generated.
+// src/features/tasks/taskView.ts is the source of truth: change it there first,
+// then mirror the change here. tests/twinParity.test.js fails if the two drift.
+//
+// What the Tasks screens display (#717), for the legacy Tasks tab (#767): which
+// view a student is on, what a deadline reads as, how a course is labelled,
+// what an empty screen should say. Pure functions from data to display values.
+
+/**
+ * The four views. The legacy tab shows the three lists; Calendar arrives with
+ * a later phase, but the table stays whole so the twins agree.
+ */
+const TASK_VIEWS = [
+  { key: 'today', label: 'Today' },
+  { key: 'upcoming', label: 'Upcoming' },
+  { key: 'all', label: 'All' },
+  { key: 'calendar', label: 'Calendar' },
+];
+
+function isTaskView(value) {
+  return value === 'today' || value === 'upcoming' || value === 'all' || value === 'calendar';
+}
+
+/** "CSE220 · 04" for a task filed against a course; null for anything else. */
+function courseLabel(task, enrollments) {
+  if (task.enrollmentId === null) return null;
+  const enrollment = enrollments.find((e) => e.id === task.enrollmentId);
+  if (enrollment === undefined) return null;
+  return enrollment.section === null
+    ? enrollment.courseCode
+    : `${enrollment.courseCode} · ${enrollment.section}`;
+}
+
+/** The course filter's options: "All courses", then the courses being taken. */
+function courseOptions(enrollments) {
+  const courses = [...enrollments]
+    .filter((e) => e.status === 'ENROLLED')
+    .sort((a, b) => a.courseCode.localeCompare(b.courseCode))
+    .map((e) => ({ value: e.id, label: e.courseCode }));
+  return [{ value: '', label: 'All courses' }, ...courses];
+}
+
+/** What a deadline reads as, relative to the student's own day. */
+function dueLabel(task, now = new Date()) {
+  if (task.dueAt === null) return 'No deadline';
+  const due = new Date(task.dueAt);
+  if (Number.isNaN(due.getTime())) return 'No deadline';
+
+  const time = due.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const tone = dueTone(task, now);
+
+  if (tone === 'today') return `Today ${time}`;
+  if (tone === 'tomorrow') return `Tomorrow ${time}`;
+  if (tone === 'overdue') {
+    const days = _taskWholeDaysBetween(due, now);
+    if (days === 0) return `Overdue · ${time}`;
+    return days === 1 ? 'Overdue · yesterday' : `Overdue · ${days} days ago`;
+  }
+  if (tone === 'soon') {
+    return `${due.toLocaleDateString(undefined, { weekday: 'long' })} ${time}`;
+  }
+  return due.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+function _taskWholeDaysBetween(earlier, later) {
+  const a = new Date(earlier);
+  const b = new Date(later);
+  a.setHours(0, 0, 0, 0);
+  b.setHours(0, 0, 0, 0);
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
+/** "1h 30m" for an estimate; null when there is none. */
+function workloadLabel(minutes) {
+  if (minutes === null || minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function typeLabel(task) {
+  return TASK_TYPE_LABELS[task.type] ?? task.type;
+}
+
+/** What an empty screen should say, most blocking reason first. */
+function emptyState(input) {
+  if (!input.hasActiveSemester) {
+    return {
+      title: 'Set your current semester first',
+      detail:
+        'Shohoj Tasks hangs off the semester you are in, so it knows which courses a deadline belongs to.',
+      needsSetup: true,
+    };
+  }
+  if (input.enrollmentCount === 0) {
+    return {
+      title: 'Add the courses you are taking',
+      detail: 'Once your courses are in, you can file assignments, quizzes and exams against them.',
+      needsSetup: true,
+    };
+  }
+  if (input.filtered) {
+    return {
+      title: 'Nothing for this course',
+      detail: 'Clear the course filter to see everything else.',
+      needsSetup: false,
+    };
+  }
+  if (input.totalTasks === 0) {
+    return {
+      title: 'No tasks yet',
+      detail: 'Add your first assignment, quiz or reading and it will show up here.',
+      needsSetup: false,
+    };
+  }
+  if (input.view === 'today') {
+    return {
+      title: 'Nothing due today',
+      detail: 'Nothing overdue either. Check Upcoming for what is next.',
+      needsSetup: false,
+    };
+  }
+  if (input.view === 'upcoming') {
+    return {
+      title: 'Nothing in the next week',
+      detail: 'Anything without a deadline is under All.',
+      needsSetup: false,
+    };
+  }
+  if (input.view === 'calendar') {
+    return {
+      title: 'Nothing with a deadline',
+      detail: 'A task needs a due date before it can appear on a calendar.',
+      needsSetup: false,
+    };
+  }
+  return {
+    title: 'No tasks here',
+    detail: 'Nothing matches the current filter.',
+    needsSetup: false,
+  };
+}
+
+/** Open count, overdue count, and summed estimate (null when nothing is estimated). */
+function summarise(tasks, now = new Date()) {
+  const open = tasks.filter(isOpen);
+  const overdue = open.filter((task) => dueTone(task, now) === 'overdue');
+  const estimated = open.filter((task) => task.estimatedMinutes !== null);
+  return {
+    open: open.length,
+    overdue: overdue.length,
+    workloadMinutes:
+      estimated.length === 0
+        ? null
+        : estimated.reduce((total, task) => total + (task.estimatedMinutes ?? 0), 0),
+  };
+}
+
+const PRIORITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+
+function priorityClass(priority) {
+  return `tasks-priority-${priority.toLowerCase()}`;
+}
+
+function toneClass(task, now = new Date()) {
+  return `tasks-due-${dueTone(task, now)}`;
+}
+
+// ── js/ui/tasksTab.js ───────────────────────────────────────────
+// ── js/ui/tasksTab.js ─────────────────────────────────────────────────────────
+// The legacy calculator's Tasks tab, phase 1 (#767): Today / Upcoming / All,
+// add a task, complete and delete, filter by course, sort by priority. It is
+// the legacy rendering of the shell's /tasks (TasksRoute, TaskRow,
+// TaskComposer) on the same Worker API and the same sign-in, with the same
+// markup classes so both are styled by the one set of rules in style.css.
+// Calendar, digest, reminders, paste/AI import and grade impact are later
+// phases.
+//
+// Every interpolation goes through escHtml. Wiring is data-action throughout:
+// the bundle's CSP blocks inline handlers.
+
+// Calendar is the one view that is not a list; it arrives in a later phase.
+const _TASKS_LIST_VIEWS = TASK_VIEWS.filter((v) => v.key !== 'calendar');
+
+const _tasks = {
+  uid: null,           // whose data is loaded; a change of user discards it
+  view: 'today',
+  sortByPriority: false,
+  courseFilter: '',
+  status: 'idle',      // 'idle' | 'loading' | 'ready' | 'error'
+  items: [],
+  overdue: [],
+  error: '',
+  loadSeq: 0,          // guards against a slow response for a view left behind
+  academic: { status: 'idle', active: null, enrollments: [] },
+  composerOpen: false,
+  draft: null,         // composer field values, kept across re-renders
+  composerError: '',
+  busy: false,
+};
+
+function _tasksUid() {
+  return typeof window._shohoj_currentUid === 'function' ? window._shohoj_currentUid() : null;
+}
+
+function _tasksAuthReady() {
+  return typeof window._shohoj_isAuthReady !== 'function' || window._shohoj_isAuthReady();
+}
+
+function _tasksToast(message) {
+  if (typeof window._shohoj_showToast === 'function') window._shohoj_showToast(message);
+}
+
+function _tasksPanelActive() {
+  return !!document.getElementById('tabTasks')?.classList.contains('active');
+}
+
+// ── Loading ─────────────────────────────────────────────────────────────────
+
+async function _loadTasks() {
+  const seq = ++_tasks.loadSeq;
+  _tasks.status = 'loading';
+  _tasks.error = '';
+  _renderTasksBody();
+
+  let next;
+  if (_tasks.view === 'today') {
+    const r = await fetchToday();
+    next = r.ok ? { items: r.value.dueToday, overdue: r.value.overdue } : r;
+  } else if (_tasks.view === 'upcoming') {
+    const r = await fetchUpcoming();
+    next = r.ok ? { items: r.value, overdue: [] } : r;
+  } else {
+    const r = await listTasks();
+    next = r.ok ? { items: r.value, overdue: [] } : r;
+  }
+  if (seq !== _tasks.loadSeq) return;
+
+  if (next.ok === false) {
+    _tasks.status = 'error';
+    _tasks.error = next.error.userMessage;
+    _tasks.items = [];
+    _tasks.overdue = [];
+  } else {
+    _tasks.status = 'ready';
+    _tasks.items = next.items;
+    _tasks.overdue = next.overdue;
+  }
+  _renderTasksBody();
+}
+
+// Semester and courses are best-effort: they label rows and fill the course
+// pickers, but the task list stands on its own if they fail.
+async function _loadAcademic() {
+  _tasks.academic = { status: 'loading', active: null, enrollments: [] };
+  const [semesters, enrollments] = await Promise.all([listSemesters(), listEnrollments()]);
+  if (!semesters.ok || !enrollments.ok) {
+    _tasks.academic = { status: 'error', active: null, enrollments: [] };
+  } else {
+    const active = activeSemester(semesters.value);
+    _tasks.academic = { status: 'ready', active, enrollments: enrollments.value };
+  }
+  _renderTasksBody();
+}
+
+function _activeEnrollments() {
+  const { active, enrollments } = _tasks.academic;
+  return active ? enrollments.filter((e) => e.semesterId === active.id) : [];
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
+
+function _signedOutHTML() {
+  return `
+    <section class="tasks-route" data-testid="tasks-page">
+      <h2 class="tasks-heading">Tasks</h2>
+      <p class="tasks-signin" data-testid="tasks-signin">
+        Sign in to keep your assignments, quizzes and deadlines in Shohoj.
+      </p>
+      <button type="button" class="tasks-add magnetic" data-action="tasks:signin">Sign in with Google</button>
+    </section>`;
+}
+
+function _messageHTML(text, testid) {
+  return `
+    <section class="tasks-route" data-testid="tasks-page">
+      <h2 class="tasks-heading">Tasks</h2>
+      <p class="tasks-signin" data-testid="${testid}">${escHtml(text)}</p>
+    </section>`;
+}
+
+function _rowHTML(task) {
+  const done = task.status === 'COMPLETED';
+  const course = courseLabel(task, _tasks.academic.enrollments);
+  const workload = workloadLabel(task.estimatedMinutes);
+  const tone = toneClass(task);
+  const label = done ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`;
+  return `
+    <li class="tasks-row ${done ? 'tasks-row-done' : ''} ${tone}" data-testid="tasks-row" data-task-id="${escHtml(task.id)}">
+      <label class="tasks-check">
+        <input type="checkbox" ${done ? 'checked' : ''} data-action="tasks:toggle" data-id="${escHtml(task.id)}" aria-label="${escHtml(label)}">
+        <span class="tasks-check-box" aria-hidden="true"></span>
+      </label>
+      <div class="tasks-row-body">
+        <p class="tasks-row-title">${escHtml(task.title)}</p>
+        <p class="tasks-row-meta">
+          ${course !== null ? `<span class="tasks-course">${escHtml(course)}</span>` : ''}
+          <span class="tasks-type">${escHtml(typeLabel(task))}</span>
+          <span class="tasks-due ${tone}">${escHtml(dueLabel(task))}</span>
+          ${workload !== null ? `<span class="tasks-workload">${escHtml(workload)}</span>` : ''}
+          <span class="tasks-priority ${priorityClass(task.priority)}">${escHtml(task.priority.toLowerCase())}</span>
+        </p>
+      </div>
+      <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
+    </li>`;
+}
+
+function _composerHTML(courses) {
+  if (!_tasks.composerOpen) {
+    return '<button type="button" class="tasks-add magnetic" data-testid="tasks-add" data-action="tasks:openComposer">+ Add a task</button>';
+  }
+  const d = _tasks.draft ?? {
+    title: '', type: 'ASSIGNMENT', enrollmentId: _tasks.courseFilter, due: '', priority: 'MEDIUM', estimate: '',
+  };
+  const opt = (value, label, selected) =>
+    `<option value="${escHtml(value)}"${value === selected ? ' selected' : ''}>${escHtml(label)}</option>`;
+  return `
+    <div class="tasks-composer" data-testid="tasks-composer">
+      <div class="tasks-composer-row">
+        <label class="tasks-field tasks-field-grow" for="tasksTitle">
+          <span class="tasks-label">Task</span>
+          <input id="tasksTitle" class="tasks-input" maxlength="200" placeholder="Assignment 2" value="${escHtml(d.title)}" data-enter-action="tasks:save">
+        </label>
+        <label class="tasks-field" for="tasksType">
+          <span class="tasks-label">Type</span>
+          <select id="tasksType" class="tasks-input">${TASK_TYPES.map((t) => opt(t, TASK_TYPE_LABELS[t], d.type)).join('')}</select>
+        </label>
+      </div>
+      <div class="tasks-composer-row">
+        <label class="tasks-field" for="tasksCourse">
+          <span class="tasks-label">Course</span>
+          <select id="tasksCourse" class="tasks-input">
+            ${opt('', 'No course', d.enrollmentId)}
+            ${courses.filter((c) => c.value !== '').map((c) => opt(c.value, c.label, d.enrollmentId)).join('')}
+          </select>
+        </label>
+        <label class="tasks-field" for="tasksDue">
+          <span class="tasks-label">Due</span>
+          <input id="tasksDue" class="tasks-input" type="datetime-local" value="${escHtml(d.due)}">
+        </label>
+        <label class="tasks-field" for="tasksPriority">
+          <span class="tasks-label">Priority</span>
+          <select id="tasksPriority" class="tasks-input">${PRIORITY_ORDER.map((p) => opt(p, TASK_PRIORITY_LABELS[p], d.priority)).join('')}</select>
+        </label>
+        <label class="tasks-field tasks-field-narrow" for="tasksEstimate">
+          <span class="tasks-label">Minutes</span>
+          <input id="tasksEstimate" class="tasks-input" type="number" min="1" step="5" placeholder="90" value="${escHtml(d.estimate)}">
+        </label>
+      </div>
+      ${_tasks.composerError ? `<p class="tasks-error" role="alert">${escHtml(_tasks.composerError)}</p>` : ''}
+      <div class="tasks-composer-actions">
+        <button type="button" class="tasks-save magnetic" data-testid="tasks-save" data-action="tasks:save" ${_tasks.busy ? 'disabled' : ''}>${_tasks.busy ? 'Adding…' : 'Add task'}</button>
+        <button type="button" class="tasks-cancel" data-action="tasks:cancel">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function _tasksMainHTML() {
+  const courses = courseOptions(_activeEnrollments());
+  const filter = _tasks.courseFilter;
+  const pick = (list) => (filter === '' ? list : list.filter((t) => t.enrollmentId === filter));
+  const sort = (list) => (_tasks.sortByPriority ? [...list].sort(byPriority) : list);
+  const visible = sort(pick(_tasks.items));
+  const overdue = sort(pick(_tasks.overdue));
+  const summary = summarise([...overdue, ...visible]);
+  const workload = workloadLabel(summary.workloadMinutes);
+  const loading = _tasks.status === 'loading';
+
+  const empty = emptyState({
+    view: _tasks.view,
+    hasActiveSemester: _tasks.academic.active !== null,
+    enrollmentCount: _activeEnrollments().length,
+    totalTasks: _tasks.items.length + _tasks.overdue.length,
+    filtered: filter !== '',
+  });
+
+  let body;
+  if (_tasks.status === 'error') {
+    body = `
+      <p class="tasks-error" role="alert" data-testid="tasks-error">
+        ${escHtml(_tasks.error)}
+        <button type="button" class="tasks-retry" data-action="tasks:retry">Try again</button>
+      </p>`;
+  } else if (loading && visible.length === 0 && overdue.length === 0) {
+    body = '<p class="tasks-signin" aria-busy="true">Loading…</p>';
+  } else if (visible.length === 0 && overdue.length === 0) {
+    // The shell sends setup to its planner; here the Planner is a tab away.
+    body = `
+      <div class="tasks-empty" data-testid="tasks-empty">
+        <p class="tasks-empty-title">${escHtml(empty.title)}</p>
+        <p class="tasks-empty-detail">${escHtml(empty.detail)}</p>
+        ${empty.needsSetup ? '<button type="button" class="tasks-empty-link" data-action="tasks:setup">Set up your semester</button>' : ''}
+      </div>`;
+  } else {
+    body = `
+      ${overdue.length > 0 ? `
+        <section class="tasks-group tasks-group-overdue">
+          <h3 class="tasks-group-title">Overdue</h3>
+          <ul class="tasks-list" data-testid="tasks-list">${overdue.map(_rowHTML).join('')}</ul>
+        </section>` : ''}
+      ${visible.length > 0 ? `
+        <section class="tasks-group">
+          ${overdue.length > 0 ? '<h3 class="tasks-group-title">Due today</h3>' : ''}
+          <ul class="tasks-list" data-testid="tasks-list">${visible.map(_rowHTML).join('')}</ul>
+        </section>` : ''}`;
+  }
+
+  return `
+    <section class="tasks-route" data-testid="tasks-page">
+      <header class="tasks-head">
+        <div>
+          <h2 class="tasks-heading">Tasks</h2>
+          ${_tasks.academic.active ? `<p class="tasks-semester">${escHtml(_tasks.academic.active.name)}</p>` : ''}
+        </div>
+        <p class="tasks-summary" data-testid="tasks-summary">
+          <span class="tasks-summary-open">${summary.open} open</span>
+          ${summary.overdue > 0 ? `<span class="tasks-summary-overdue">${summary.overdue} overdue</span>` : ''}
+          ${workload !== null ? `<span class="tasks-summary-load">${escHtml(workload)} of work</span>` : ''}
+        </p>
+      </header>
+
+      <div class="tasks-controls">
+        <div class="tasks-views" role="tablist" aria-label="Task views">
+          ${_TASKS_LIST_VIEWS.map((v) => `
+            <button type="button" role="tab" aria-selected="${v.key === _tasks.view}" class="tasks-view ${v.key === _tasks.view ? 'is-active' : ''}" data-action="tasks:view" data-view="${v.key}">${escHtml(v.label)}</button>`).join('')}
+        </div>
+        <label class="tasks-sort">
+          <input type="checkbox" ${_tasks.sortByPriority ? 'checked' : ''} data-action="tasks:sort">
+          <span>Sort by priority</span>
+        </label>
+        ${courses.length > 1 ? `
+          <label class="tasks-filter">
+            <span class="tasks-label">Course</span>
+            <select class="tasks-input" aria-label="Filter by course" data-action="tasks:course">
+              ${courses.map((c) => `<option value="${escHtml(c.value)}"${c.value === filter ? ' selected' : ''}>${escHtml(c.label)}</option>`).join('')}
+            </select>
+          </label>` : ''}
+      </div>
+
+      <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}</div>
+
+      <div id="tasksBody">${body}</div>
+    </section>`;
+}
+
+// Keep what the student typed when a response lands mid-composition.
+function _captureDraft() {
+  if (!_tasks.composerOpen) return;
+  const val = (id) => document.getElementById(id)?.value;
+  if (document.getElementById('tasksTitle') === null) return;
+  _tasks.draft = {
+    title: val('tasksTitle') ?? '',
+    type: val('tasksType') ?? 'ASSIGNMENT',
+    enrollmentId: val('tasksCourse') ?? '',
+    due: val('tasksDue') ?? '',
+    priority: val('tasksPriority') ?? 'MEDIUM',
+    estimate: val('tasksEstimate') ?? '',
+  };
+}
+
+function _renderTasksBody() {
+  const root = document.getElementById('tasksContent');
+  if (!root) return;
+  // A response that lands after sign-out, or after a switch of account, must
+  // not paint the previous student's list; renderTasksTab owns that transition.
+  if (_tasks.uid === null || _tasksUid() !== _tasks.uid) return;
+  const focusedId = document.activeElement?.id;
+  _captureDraft();
+  // Every interpolation above is escaped (escHtml) or a number/enum we produced.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  root.innerHTML = _tasksMainHTML();
+  if (focusedId) document.getElementById(focusedId)?.focus();
+}
+
+/** Entry point from switchCalcTab and the auth listener. */
+function renderTasksTab() {
+  const root = document.getElementById('tasksContent');
+  if (!root) return;
+
+  if (!_tasksAuthReady()) {
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+    root.innerHTML = _messageHTML('Loading…', 'tasks-loading');
+    return;
+  }
+  const uid = _tasksUid();
+  if (!uid) {
+    _tasks.uid = null;
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+    root.innerHTML = _signedOutHTML();
+    return;
+  }
+  if (tasksWorkerUrl() === null) {
+    // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+    root.innerHTML = _messageHTML('Tasks needs the Shohoj backend, which this build is not configured for.', 'tasks-offline');
+    return;
+  }
+
+  if (uid !== _tasks.uid) {
+    // A different student: nothing of the previous one's may show.
+    Object.assign(_tasks, {
+      uid, status: 'idle', items: [], overdue: [], error: '', courseFilter: '',
+      academic: { status: 'idle', active: null, enrollments: [] },
+      composerOpen: false, draft: null, composerError: '',
+    });
+  }
+  _renderTasksBody();
+  if (_tasks.academic.status === 'idle') _loadAcademic();
+  // Opening the tab always re-reads: another device may have changed things.
+  _loadTasks();
+}
+
+// ── Actions ─────────────────────────────────────────────────────────────────
+
+registerAction('tasks:signin', () => window._shohoj_signIn?.());
+
+registerAction('tasks:view', (el) => {
+  const view = el.dataset.view;
+  if (!_TASKS_LIST_VIEWS.some((v) => v.key === view) || view === _tasks.view) return;
+  _tasks.view = view;
+  _tasks.items = [];
+  _tasks.overdue = [];
+  _loadTasks();
+});
+
+// Checkboxes and selects fire click/input AND change, and dispatch.js hands
+// every one of them to the same action; these act on `change` alone so a single
+// tick is a single request.
+registerAction('tasks:sort', (el, event) => {
+  if (event?.type !== 'change') return;
+  _tasks.sortByPriority = !!el.checked;
+  _renderTasksBody();
+});
+
+registerAction('tasks:course', (el, event) => {
+  if (event?.type !== 'change') return;
+  _tasks.courseFilter = el.value;
+  _renderTasksBody();
+});
+
+registerAction('tasks:retry', () => _loadTasks());
+
+registerAction('tasks:setup', () => window.switchCalcTab?.('planner'));
+
+registerAction('tasks:openComposer', () => {
+  _tasks.composerOpen = true;
+  _tasks.draft = null;
+  _tasks.composerError = '';
+  _renderTasksBody();
+  document.getElementById('tasksTitle')?.focus();
+});
+
+registerAction('tasks:cancel', () => {
+  _tasks.composerOpen = false;
+  _tasks.draft = null;
+  _tasks.composerError = '';
+  _renderTasksBody();
+});
+
+registerAction('tasks:save', async (_el, event) => {
+  event?.preventDefault?.();
+  if (_tasks.busy) return;
+  _captureDraft();
+  const d = _tasks.draft;
+  if (!d) return;
+
+  const title = d.title.trim();
+  if (title === '') {
+    _tasks.composerError = 'Give the task a title.';
+    _renderTasksBody();
+    return;
+  }
+  const minutes = d.estimate.trim() === '' ? null : Number(d.estimate);
+  if (minutes !== null && (!Number.isInteger(minutes) || minutes <= 0)) {
+    _tasks.composerError = 'Estimate should be a whole number of minutes.';
+    _renderTasksBody();
+    return;
+  }
+
+  _tasks.busy = true;
+  _tasks.composerError = '';
+  _renderTasksBody();
+  const result = await createTask({
+    title,
+    type: d.type,
+    priority: d.priority,
+    enrollmentId: d.enrollmentId === '' ? null : d.enrollmentId,
+    dueAt: localInputToInstant(d.due),
+    estimatedMinutes: minutes,
+  });
+  _tasks.busy = false;
+  if (!result.ok) {
+    _tasks.composerError = result.error.userMessage;
+    _renderTasksBody();
+    return;
+  }
+  _tasks.composerOpen = false;
+  _tasks.draft = null;
+  _tasksToast('Task added.');
+  _loadTasks();
+});
+
+registerAction('tasks:toggle', async (el, event) => {
+  if (event?.type !== 'change') return;
+  const id = el.dataset.id;
+  const completed = !!el.checked;
+  // Tick at once; the refresh that follows is the source of truth.
+  const status = completed ? 'COMPLETED' : 'TODO';
+  const flip = (list) => list.map((t) => (t.id === id ? { ...t, status } : t));
+  _tasks.items = flip(_tasks.items);
+  _tasks.overdue = flip(_tasks.overdue);
+  _renderTasksBody();
+  const result = await setTaskCompleted(id, completed);
+  if (!result.ok) _tasksToast(result.error.userMessage);
+  _loadTasks();
+});
+
+registerAction('tasks:delete', async (el) => {
+  const id = el.dataset.id;
+  const task = [..._tasks.items, ..._tasks.overdue].find((t) => t.id === id);
+  if (!task) return;
+  if (!window.confirm(`Delete “${task.title}”? This cannot be undone.`)) return;
+  const result = await deleteTask(id);
+  if (!result.ok) {
+    _tasksToast(result.error.userMessage);
+    return;
+  }
+  _loadTasks();
+});
+
+// Sign-in, sign-out and a switch of account all re-render an open tab.
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:auth-changed', () => {
+    if (_tasksPanelActive()) renderTasksTab();
+  });
+}
+
 // ── js/ui/signinPortal.js ───────────────────────────────────────
 // ── SIGN-IN PORTAL / CAMPUS GATE ─────────────────────────────────────────────
 //
@@ -31807,7 +33272,7 @@ function gradeColor(g) {
   return 'var(--text3)';
 }
 
-function courseLabel(name) {
+function _pgCourseLabel(name) {
   const m = name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
   return m ? m[1] : (name.length > 30 ? name.slice(0, 27) + '...' : name);
 }
@@ -31979,7 +33444,7 @@ function renderGradeChanger(courses, totals) {
     const rows = changeDetails.map(ch => `
       <div class="pg-change-row">
         <div class="pg-change-course">
-          <strong>${escHtml(courseLabel(ch.name))}</strong>
+          <strong>${escHtml(_pgCourseLabel(ch.name))}</strong>
           <span class="pg-change-meta">${escHtml(ch.sem)} · ${ch.credits} cr</span>
         </div>
         <div class="pg-change-grades">
@@ -32003,7 +33468,7 @@ function renderGradeChanger(courses, totals) {
   const available = courses.filter(c => !pg.changes[c.key]);
   const gradeOpts = GRADE_LIST.map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
   const courseOpts = available.map(c =>
-    `<option value="${escAttr(c.key)}">${escHtml(courseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
+    `<option value="${escAttr(c.key)}">${escHtml(_pgCourseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const pickerHtml = available.length > 0 ? `
@@ -32078,7 +33543,7 @@ function computeSolverResult(courses, totals) {
   const minGrade = sortedGrades.find(x => x.gp >= neededGp);
 
   // XSS FIX: escape course labels
-  const safeCourseLabel = escHtml(courseLabel(c.name));
+  const safeCourseLabel = escHtml(_pgCourseLabel(c.name));
 
   if (neededGp > 4.0) {
     const bestPossible = (totals.pts - c.credits * c.gp + c.credits * 4.0) / totals.cr;
@@ -32136,7 +33601,7 @@ function renderReverseSolver(courses, totals) {
 
   // XSS FIX: escape course names/labels in option elements
   const courseOpts = courses.map(c =>
-    `<option value="${escAttr(c.key)}"${pg.solverKey === c.key ? ' selected' : ''}>${escHtml(courseLabel(c.name))}${c.running ? ' 🟡' : ''} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
+    `<option value="${escAttr(c.key)}"${pg.solverKey === c.key ? ' selected' : ''}>${escHtml(_pgCourseLabel(c.name))}${c.running ? ' 🟡' : ''} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
 
   const resultHtml = computeSolverResult(courses, totals);
@@ -35374,8 +36839,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     const target = document.querySelector(href);
     if (!target) return;
     e.preventDefault();
-    // If linking to #calculator, ensure calculator tab is active
-    if (href === '#calculator') switchCalcTab('calculator');
+    // A link to #calculator opens the calculator tab — or the tab it names in
+    // data-calc-tab, as the nav's Tasks link does (#767).
+    if (href === '#calculator') switchCalcTab(a.dataset.calcTab || 'calculator');
     const top = target.getBoundingClientRect().top + window.scrollY - 72;
     window.scrollTo({ top, behavior: 'smooth' });
   });
@@ -35390,7 +36856,9 @@ function updateNav() {
     if (window.scrollY >= sec.offsetTop - 120) current = sec.id;
   });
   navLinks.forEach(l => {
-    l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    // A link that opens a calculator tab (data-calc-tab) shares #calculator
+    // with the CGPA link; only the plain one marks the section.
+    l.classList.toggle('active', !l.dataset.calcTab && l.getAttribute('href') === '#' + current);
   });
 }
 window.addEventListener('scroll', updateNav, { passive: true });
@@ -35524,6 +36992,7 @@ const TAB_MAP = {
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
   groups:     'tabGroups',
+  tasks:      'tabTasks',
 };
 
 let _activeCalcTab = 'calculator';
@@ -35685,6 +37154,9 @@ function switchCalcTab(tabId) {
   if (tabId === 'groups') {
     renderGroupsTab();
   }
+  if (tabId === 'tasks') {
+    renderTasksTab();
+  }
   if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
@@ -35710,6 +37182,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
   if (hash.startsWith('#calculator/groups'))    return 'groups';
+  if (hash.startsWith('#calculator/tasks'))     return 'tasks';
 
   // Then check sessionStorage
   try {
