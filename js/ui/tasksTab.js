@@ -6,7 +6,9 @@
 // markup classes so both are styled by the one set of rules in style.css.
 // Phase 2 adds a task's details (why it ranks there, reminders, what it is
 // worth) and the course grade picture (TaskDetails, TaskReminders,
-// GradeImpactPanel). Calendar, digest and paste/AI import are later phases.
+// GradeImpactPanel). Phase 3 adds pasting an announcement to find deadlines
+// in it, with the server-side reader as an opt-in second opinion (TaskImport).
+// Calendar and the digest are later phases.
 //
 // Every interpolation goes through escHtml. Wiring is data-action throughout:
 // the bundle's CSP blocks inline handlers.
@@ -41,6 +43,9 @@ import {
 } from '../core/tasksApi.js';
 import { PRIORITY_BAND_LABELS, priorityBand, priorityReasons } from '../core/priorityExplainer.js';
 import { gradeImpactView, paceText } from '../core/gradeImpactView.js';
+import { detectFromText } from '../core/announcementDetector.js';
+import { confidenceNote, confirmLabel, creatable, draftToInput, patchDraft, toDrafts } from '../core/proposalDraft.js';
+import { createAiDetector, shouldOfferAi } from '../core/aiDetector.js';
 import {
   PRIORITY_ORDER,
   TASK_VIEWS,
@@ -81,7 +86,18 @@ const _tasks = {
   assessDraft: null,      // { taskId, weight, total, earned } across re-renders
   detailsError: { reminders: '', assessment: '' },
   detailsBusy: false,
+  // Phase 3: the paste-an-announcement panel (TaskImport on the shell).
+  importStage: 'closed', // 'closed' | 'paste' | 'review'
+  importText: '',
+  drafts: [],
+  unrecognised: [],
+  importError: '',
+  aiState: 'idle',       // 'idle' | 'reading' | 'done'
+  aiNote: '',
+  importBusy: false,
 };
+
+const _tasksAi = createAiDetector();
 
 function _tasksUid() {
   return typeof window._shohoj_currentUid === 'function' ? window._shohoj_currentUid() : null;
@@ -219,6 +235,86 @@ function _rowHTML(task) {
       <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
       ${expanded ? _detailsHTML(task) : ''}
     </li>`;
+}
+
+// ── Import from text (TaskImport on the shell) ─────────────────────────────
+
+function _importHTML(courses) {
+  if (_tasks.importStage === 'closed') {
+    return '<button type="button" class="tasks-import-open" data-testid="tasks-import-open" data-action="tasks:importOpen">Paste an announcement</button>';
+  }
+  if (_tasks.importStage === 'paste') {
+    return `
+      <section class="tasks-import" data-testid="tasks-import" aria-label="Import from text">
+        <label class="tasks-field tasks-field-grow" for="tasksImportText">
+          <span class="tasks-label">Announcement</span>
+          <textarea id="tasksImportText" class="tasks-input tasks-import-text" rows="5" maxlength="5000" placeholder="Quiz 3 will be held on 25 September and covers chapters 4-6." data-action="tasks:importText">${escHtml(_tasks.importText)}</textarea>
+        </label>
+        <p class="tasks-import-note">Nothing is added until you confirm it. Shohoj reads the text in your browser — it does not send it anywhere.</p>
+        <div class="tasks-import-actions">
+          <button type="button" class="tasks-import-submit" data-testid="tasks-import-detect" data-action="tasks:importDetect" ${_tasks.importText.trim() === '' ? 'disabled' : ''}>Find deadlines</button>
+          <button type="button" class="tasks-import-cancel" data-action="tasks:importCancel">Cancel</button>
+        </div>
+      </section>`;
+  }
+  const drafts = _tasks.drafts;
+  const opt = (value, label, selected) =>
+    `<option value="${escHtml(value)}"${value === selected ? ' selected' : ''}>${escHtml(label)}</option>`;
+  const items = drafts.map((d, i) => `
+    <li class="tasks-import-item">
+      <label class="tasks-import-pick">
+        <input type="checkbox" aria-label="Add this ${i + 1}" ${d.selected ? 'checked' : ''} data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="selected">
+        <span class="tasks-import-pick-label">Add this</span>
+      </label>
+      <div class="tasks-import-fields">
+        <label class="tasks-field tasks-field-grow">
+          <span class="tasks-label">Task</span>
+          <input class="tasks-input" aria-label="Task ${i + 1}" maxlength="200" value="${escHtml(d.title)}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="title">
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Type</span>
+          <select class="tasks-input" aria-label="Type ${i + 1}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="type">${TASK_TYPES.map((t) => opt(t, TASK_TYPE_LABELS[t], d.type)).join('')}</select>
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Due</span>
+          <input class="tasks-input" aria-label="Due ${i + 1}" type="datetime-local" value="${escHtml(d.dueLocal)}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="dueLocal">
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Course</span>
+          <select class="tasks-input" aria-label="Course ${i + 1}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="enrollmentId">
+            ${opt('', 'No course', d.enrollmentId)}
+            ${courses.filter((c) => c.value !== '').map((c) => opt(c.value, c.label, d.enrollmentId)).join('')}
+          </select>
+        </label>
+      </div>
+      <p class="tasks-import-why">
+        ${escHtml(confidenceNote(d))}
+        ${d.sourceText !== '' ? `<span class="tasks-import-source"> Read from: “${escHtml(d.sourceText)}”</span>` : ''}
+        ${d.courseCode !== null && d.enrollmentId === '' ? `<span class="tasks-import-source"> ${escHtml(d.courseCode)} is not one of your courses this semester.</span>` : ''}
+      </p>
+    </li>`).join('');
+  const offerAi = _tasks.aiState !== 'done'
+    && shouldOfferAi(drafts.map((d) => ({ dueAt: d.dueLocal === '' ? null : d.dueLocal })));
+  const count = _tasks.unrecognised.length;
+  return `
+    <section class="tasks-import" data-testid="tasks-import" aria-label="Import from text">
+      ${drafts.length === 0
+        ? '<p class="tasks-import-none" data-testid="tasks-import-none">No deadlines found in that text. You can edit it and look again, or add the task yourself.</p>'
+        : `<ul class="tasks-import-list" data-testid="tasks-import-list">${items}</ul>`}
+      ${count > 0 ? `<p class="tasks-import-skipped" data-testid="tasks-import-skipped">${count === 1 ? '1 line had no deadline in it and was skipped.' : `${count} lines had no deadline in them and were skipped.`}</p>` : ''}
+      ${offerAi ? `
+        <div class="tasks-import-ai">
+          <button type="button" class="tasks-import-ai-ask" data-testid="tasks-import-ai" data-action="tasks:importAi" ${_tasks.aiState === 'reading' ? 'disabled' : ''}>${_tasks.aiState === 'reading' ? 'Reading…' : 'Ask Shohoj to read it'}</button>
+          <span class="tasks-import-ai-hint">Sends this text to Shohoj’s reader. Nothing is added without you.</span>
+        </div>` : ''}
+      ${_tasks.aiNote ? `<p class="tasks-import-ai-note" data-testid="tasks-import-ai-note">${escHtml(_tasks.aiNote)}</p>` : ''}
+      ${_tasks.importError ? `<p class="tasks-import-error" role="alert">${escHtml(_tasks.importError)}</p>` : ''}
+      <div class="tasks-import-actions">
+        <button type="button" class="tasks-import-submit" data-testid="tasks-import-confirm" data-action="tasks:importConfirm" ${_tasks.importBusy || creatable(drafts).length === 0 ? 'disabled' : ''}>${escHtml(confirmLabel(drafts))}</button>
+        <button type="button" class="tasks-import-back" data-action="tasks:importBack">Back to the text</button>
+        <button type="button" class="tasks-import-cancel" data-action="tasks:importCancel">Cancel</button>
+      </div>
+    </section>`;
 }
 
 // ── Details (TaskDetails / TaskReminders / AssessmentEditor on the shell) ───
@@ -484,7 +580,7 @@ function _tasksMainHTML() {
           </label>` : ''}
       </div>
 
-      <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}</div>
+      <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}${_importHTML(courses)}</div>
 
       ${_tasks.status !== 'error' ? _gradeHTML(courses) : ''}
 
@@ -564,6 +660,8 @@ export function renderTasksTab() {
       composerOpen: false, draft: null, composerError: '',
       assessments: new Map(), openTaskId: null, reminders: { taskId: null, items: [], status: 'idle' },
       reminderCustomOpen: false, assessDraft: null, detailsError: { reminders: '', assessment: '' },
+      importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
+      aiState: 'idle', aiNote: '', importBusy: false,
     });
   }
   _renderTasksBody();
@@ -688,6 +786,113 @@ registerAction('tasks:delete', async (el) => {
     _tasksToast(result.error.userMessage);
     return;
   }
+  _loadTasks();
+});
+
+// ── Import actions ──────────────────────────────────────────────────────────
+
+function _importContext() {
+  return { now: new Date(), knownCourseCodes: _activeEnrollments().map((e) => e.courseCode) };
+}
+
+function _resetImport() {
+  Object.assign(_tasks, {
+    importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
+    aiState: 'idle', aiNote: '', importBusy: false,
+  });
+}
+
+registerAction('tasks:importOpen', () => {
+  _tasks.importStage = 'paste';
+  _renderTasksBody();
+  document.getElementById('tasksImportText')?.focus();
+});
+
+// Typing updates state without a re-render, so the caret never jumps; only
+// the Find button's enabled state follows along.
+registerAction('tasks:importText', (el) => {
+  _tasks.importText = el.value;
+  const find = document.querySelector('[data-testid="tasks-import-detect"]');
+  if (find) find.disabled = el.value.trim() === '';
+});
+
+registerAction('tasks:importDetect', () => {
+  const result = detectFromText(_tasks.importText, _importContext());
+  _tasks.drafts = toDrafts(result.detected, _activeEnrollments());
+  _tasks.unrecognised = result.unrecognised;
+  _tasks.importError = '';
+  _tasks.aiState = 'idle';
+  _tasks.aiNote = '';
+  _tasks.importStage = 'review';
+  _renderTasksBody();
+});
+
+registerAction('tasks:importBack', () => {
+  _tasks.importError = '';
+  _tasks.importStage = 'paste';
+  _renderTasksBody();
+});
+
+registerAction('tasks:importCancel', () => {
+  _resetImport();
+  _renderTasksBody();
+});
+
+registerAction('tasks:draft', (el, event) => {
+  const { key, field } = el.dataset;
+  const value = field === 'selected' ? !!el.checked : el.value;
+  _tasks.drafts = _tasks.drafts.map((d) => (d.key === key ? patchDraft(d, { [field]: value }) : d));
+  // Text fires `input` per keystroke: keep the caret by not re-rendering until
+  // the field commits (`change`), which is also when the confirm count moves.
+  if (event?.type === 'change') _renderTasksBody();
+});
+
+registerAction('tasks:importAi', async () => {
+  if (_tasks.aiState === 'reading') return;
+  _tasks.aiState = 'reading';
+  _tasks.aiNote = '';
+  _renderTasksBody();
+  const result = await _tasksAi.detect(_tasks.importText, _importContext());
+  _tasks.aiState = 'done';
+  if (result.outcome !== 'ok') {
+    _tasks.aiNote = result.note;
+  } else if (result.detected.length === 0) {
+    _tasks.aiNote = 'Shohoj read it too and found nothing more.';
+  } else {
+    _tasks.drafts = toDrafts(result.detected, _activeEnrollments(), 'AI_SUGGESTION');
+    _tasks.aiNote = result.detected.length === 1
+      ? 'Shohoj read it and found 1 more thing. Check it before adding.'
+      : `Shohoj read it and found ${result.detected.length} things. Check them before adding.`;
+  }
+  _renderTasksBody();
+});
+
+registerAction('tasks:importConfirm', async () => {
+  const queue = creatable(_tasks.drafts);
+  if (queue.length === 0 || _tasks.importBusy) return;
+  _tasks.importBusy = true;
+  _tasks.importError = '';
+  _renderTasksBody();
+
+  let added = 0;
+  for (const draft of queue) {
+    const result = await createTask(draftToInput(draft));
+    if (!result.ok) {
+      // Keep what was not added, so nothing already created is offered twice.
+      const done = new Set(queue.slice(0, added).map((d) => d.key));
+      _tasks.drafts = _tasks.drafts.filter((d) => !done.has(d.key));
+      _tasks.importError = added === 0
+        ? result.error.userMessage
+        : `Added ${added} of ${queue.length}. The rest are still here — ${result.error.userMessage}`;
+      _tasks.importBusy = false;
+      _renderTasksBody();
+      if (added > 0) _loadTasks();
+      return;
+    }
+    added += 1;
+  }
+  _resetImport();
+  _tasksToast(added === 1 ? 'Task added.' : `${added} tasks added.`);
   _loadTasks();
 });
 
