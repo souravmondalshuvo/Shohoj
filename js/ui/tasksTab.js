@@ -723,6 +723,12 @@ function _renderTasksBody() {
   if (focusedId) document.getElementById(focusedId)?.focus();
 }
 
+/** Open the Tasks tab on a given view (the Calculator digest's "View all"). */
+export function openTasksView(view) {
+  if (_TASKS_LIST_VIEWS.some((v) => v.key === view)) _tasks.view = view;
+  window.switchCalcTab?.('tasks');
+}
+
 /** Entry point from switchCalcTab and the auth listener. */
 export function renderTasksTab() {
   const root = document.getElementById('tasksContent');
