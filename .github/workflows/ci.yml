@@ -205,7 +205,10 @@ jobs:
                   r'<script\s+type=["\']module["\'][\s\S]*?</script>',
                   '', html, flags=re.IGNORECASE,
               )
-              if re.search(r'\b(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
+              # The lookbehind skips a keyword that continues a name: the
+              # inlined style.css has classes like .tasks-import, and `\b`
+              # alone matched after the hyphen and failed every page (#773).
+              if re.search(r'(?<![\w$.-])(export|import)\s+(function|const|let|var|class|default|\{)', stripped):
                   print(f'ERROR: bare ES module syntax leaked into {path}', file=sys.stderr)
                   ok = False
               csp_m = re.search(
