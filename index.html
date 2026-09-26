@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-d9AvwAWSMqx++toZNpZg56jfBOuZEuoQDThkq5FzS1Y='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-thE5Q+pKsw/1stD4sN28Sx76M6uWZ2vROKRY5Svhc2g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8736,8 +8736,8 @@ body[data-page="admin"] .orb { display: none !important; }
  * Colour comes from the shell's --c-* tokens (css/shell-routes.css). The legacy
  * page does not load that sheet, so its Tasks panel aliases the five tokens
  * used here to its own palette — which already follows the light/dark switch.
- * The dashboard and calendar sections stay in shell-routes.css until their
- * phases reach legacy.
+ * The dashboard section stays in shell-routes.css until its phase reaches
+ * legacy.
  */
 
 #tabTasks {
@@ -8769,7 +8769,14 @@ body[data-page="admin"] .orb { display: none !important; }
 #tabTasks .tasks-empty-detail,
 #tabTasks .tasks-assessment-hint,
 #tabTasks .tasks-grade-partial,
-#tabTasks .tasks-grade-pace {
+#tabTasks .tasks-grade-pace,
+#tabTasks .tasks-import-note,
+#tabTasks .tasks-import-why,
+#tabTasks .tasks-import-skipped,
+#tabTasks .tasks-import-ai-hint,
+#tabTasks .tasks-import-ai-note,
+#tabTasks .tasks-calendar-note,
+#tabTasks .tasks-feed-copy {
   color: var(--c-text-muted);
 }
 
@@ -9540,6 +9547,84 @@ body[data-page="admin"] .orb { display: none !important; }
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* ── Calendar ─────────────────────────────────────────────────────────────── */
+
+.tasks-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tasks-calendar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tasks-calendar-note { margin: 0; font-size: 0.82rem; }
+
+.tasks-export {
+  font: inherit;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+}
+
+.tasks-export[disabled] { opacity: 0.5; cursor: default; }
+
+.tasks-calendar-day { margin: 0; }
+
+.tasks-calendar-date {
+  margin: 0 0 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+}
+
+.tasks-calendar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tasks-calendar-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  background: var(--c-surface, #fff);
+  font-size: 0.88rem;
+}
+
+/* Fixed-width so the titles line up down the day rather than stepping in and
+ * out with the length of each time. */
+.tasks-calendar-time {
+  flex: 0 0 auto;
+  min-width: 68px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-muted);
+  font-size: 0.8rem;
+}
+
+.tasks-calendar-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .tasks-calendar-item { flex-wrap: wrap; }
+  .tasks-calendar-time { min-width: 0; }
 }
 
 </style>
@@ -29829,6 +29914,7 @@ async function _toggleRoster(groupId) {
 const TASK_TYPES = ['ASSIGNMENT', 'QUIZ', 'EXAM', 'PROJECT', 'LAB', 'READING', 'PERSONAL', 'OTHER'];
 const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const TASK_SOURCES = ['MANUAL', 'PASTE', 'GMAIL', 'CALENDAR', 'AI_SUGGESTION'];
 
 const TASK_TYPE_LABELS = {
   ASSIGNMENT: 'Assignment',
@@ -29940,6 +30026,7 @@ function _readTask(raw) {
   if (!TASK_TYPES.includes(raw.type)) return null;
   if (!TASK_STATUSES.includes(raw.status)) return null;
   if (!TASK_PRIORITIES.includes(raw.priority)) return null;
+  if (!TASK_SOURCES.includes(raw.source)) return null;
   for (const key of ['enrollmentId', 'description', 'dueAt', 'startAt', 'completedAt']) {
     if (!_isStringOrNull(raw[key])) return null;
   }
@@ -29970,6 +30057,7 @@ function _readTask(raw) {
     startAt: raw.startAt,
     estimatedMinutes: raw.estimatedMinutes,
     completedAt: raw.completedAt,
+    source: raw.source,
     ...(priorityFactors ? { priorityFactors } : {}),
   };
 }
@@ -30268,6 +30356,30 @@ function extractTasks(text, courseCodes = [], deps) {
       return { tasks, quota };
     },
   }, deps);
+}
+
+// ── Calendar subscription (#744) ────────────────────────────────────────────
+// Each call answers with the feed as it now stands: null when there is none.
+
+function _readFeed(p) {
+  if (!p || typeof p !== 'object' || !('feed' in p)) return null;
+  const f = p.feed;
+  if (f === null) return { feed: null };
+  if (!f || typeof f.url !== 'string' || !_isStringOrNull(f.createdAt ?? null)) return null;
+  return { feed: { url: f.url, createdAt: f.createdAt ?? null } };
+}
+
+function fetchCalendarFeed(deps) {
+  return _call('GET', '/tasks/feed', { read: _readFeed }, deps);
+}
+
+/** Creates the link, or replaces it: the old one stops working at once. */
+function createCalendarFeed(deps) {
+  return _call('POST', '/tasks/feed', { body: {}, read: _readFeed }, deps);
+}
+
+function deleteCalendarFeed(deps) {
+  return _call('DELETE', '/tasks/feed', { read: _readFeed }, deps);
 }
 
 /** The student's active semester, or null. The list arrives newest-first. */
@@ -31162,6 +31274,144 @@ function createAiDetector(deps) {
   };
 }
 
+// ── js/core/taskCalendar.js ─────────────────────────────────────
+// Twin of src/features/tasks/taskCalendar.ts — hand-maintained, not generated.
+// src/features/tasks/taskCalendar.ts is the source of truth: change it there
+// first, then mirror the change here. tests/twinParity.test.js fails if the two
+// drift.
+//
+// Tasks as calendar events (#729), for the legacy Tasks tab (#767): the day
+// list the Calendar view draws, and the .ics a student downloads. A deadline is
+// a moment, so an event starts at the due time and runs for the estimate
+// (30 minutes when there is none, capped at two hours).
+//
+// Private names carry a _cal prefix: calendarExport.js (the routine's .ics)
+// shares the flattened bundle scope.
+
+const _CAL_DEFAULT_EVENT_MINUTES = 30;
+const _CAL_MAX_EVENT_MINUTES = 120;
+
+function _calDurationMinutes(task) {
+  const estimate = task.estimatedMinutes;
+  if (estimate === null || estimate <= 0) return _CAL_DEFAULT_EVENT_MINUTES;
+  return Math.min(estimate, _CAL_MAX_EVENT_MINUTES);
+}
+
+/** Dated, non-cancelled tasks as events, titled with their course when known. */
+function toCalendarEvents(tasks, enrollments = []) {
+  const courseOf = new Map(enrollments.map((e) => [e.id, e.courseCode]));
+
+  return tasks
+    .filter((task) => task.dueAt !== null && task.status !== 'CANCELLED')
+    .flatMap((task) => {
+      const startMs = Date.parse(task.dueAt);
+      if (Number.isNaN(startMs)) return [];
+      const endMs = startMs + _calDurationMinutes(task) * 60_000;
+      const courseCode =
+        task.enrollmentId === null ? null : (courseOf.get(task.enrollmentId) ?? null);
+
+      return [
+        {
+          id: task.id,
+          title: courseCode === null ? task.title : `${courseCode}: ${task.title}`,
+          start: new Date(startMs).toISOString(),
+          end: new Date(endMs).toISOString(),
+          type: task.type,
+          courseCode,
+          enrollmentId: task.enrollmentId,
+          allDay: false,
+          metadata: {
+            status: task.status,
+            priority: task.priority,
+            estimatedMinutes: task.estimatedMinutes,
+            source: task.source,
+          },
+        },
+      ];
+    });
+}
+
+/** Events by local day ("2026-10-09"), each day in start order. */
+function groupByDay(events) {
+  const byDay = new Map();
+  for (const event of events) {
+    const day = localDayKey(new Date(event.start));
+    const bucket = byDay.get(day);
+    if (bucket === undefined) byDay.set(day, [event]);
+    else bucket.push(event);
+  }
+  for (const bucket of byDay.values()) bucket.sort((a, b) => a.start.localeCompare(b.start));
+  return byDay;
+}
+
+function localDayKey(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function _calEscapeText(value) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+function _calStamp(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}` +
+    `T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`
+  );
+}
+
+/** An RFC 5545 calendar of the events, optionally with a reminder alarm. */
+function buildTasksICS(events, options = {}) {
+  const { calName = 'Shohoj Tasks', alarmMinutes = 0, now = new Date() } = options;
+  const dtstamp = _calStamp(now);
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Shohoj//Tasks//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${_calEscapeText(calName)}`,
+  ];
+
+  for (const event of events) {
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${event.id}@tasks.shohoj`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART:${_calStamp(new Date(event.start))}`,
+      `DTEND:${_calStamp(new Date(event.end))}`,
+      `SUMMARY:${_calEscapeText(event.title)}`,
+      `CATEGORIES:${_calEscapeText(event.type)}`,
+    );
+    if (event.courseCode !== null) {
+      lines.push(`DESCRIPTION:${_calEscapeText(`${event.courseCode} — ${event.type.toLowerCase()}`)}`);
+    }
+    if (alarmMinutes > 0) {
+      lines.push(
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        `TRIGGER:-PT${Math.round(alarmMinutes)}M`,
+        `DESCRIPTION:${_calEscapeText(event.title)}`,
+        'END:VALARM',
+      );
+    }
+    lines.push('END:VEVENT');
+  }
+
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n') + '\r\n';
+}
+
+function icsFilename(now = new Date()) {
+  return `shohoj-tasks-${localDayKey(now)}.ics`;
+}
+
 // ── js/ui/tasksTab.js ───────────────────────────────────────────
 // ── js/ui/tasksTab.js ─────────────────────────────────────────────────────────
 // The legacy calculator's Tasks tab, phase 1 (#767): Today / Upcoming / All,
@@ -31173,13 +31423,15 @@ function createAiDetector(deps) {
 // worth) and the course grade picture (TaskDetails, TaskReminders,
 // GradeImpactPanel). Phase 3 adds pasting an announcement to find deadlines
 // in it, with the server-side reader as an opt-in second opinion (TaskImport).
-// Calendar and the digest are later phases.
+// Phase 4 adds the Calendar view: deadlines by day, a .ics download, and a
+// subscription link that keeps a calendar app in step (TaskCalendarView,
+// CalendarFeedPanel). The digest on the Calculator tab is the last phase.
 //
 // Every interpolation goes through escHtml. Wiring is data-action throughout:
 // the bundle's CSP blocks inline handlers.
 
-// Calendar is the one view that is not a list; it arrives in a later phase.
-const _TASKS_LIST_VIEWS = TASK_VIEWS.filter((v) => v.key !== 'calendar');
+// All four views, Calendar included since phase 4.
+const _TASKS_LIST_VIEWS = TASK_VIEWS;
 
 const _tasks = {
   uid: null,           // whose data is loaded; a change of user discards it
@@ -31213,6 +31465,8 @@ const _tasks = {
   aiState: 'idle',       // 'idle' | 'reading' | 'done'
   aiNote: '',
   importBusy: false,
+  // Phase 4: the calendar subscription link, read when the Calendar view opens.
+  feed: { status: 'idle', feed: null, busy: false, error: '', copied: false },
 };
 
 const _tasksAi = createAiDetector();
@@ -31353,6 +31607,81 @@ function _rowHTML(task) {
       <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
       ${expanded ? _detailsHTML(task) : ''}
     </li>`;
+}
+
+// ── Calendar (TaskCalendarView + CalendarFeedPanel on the shell) ────────────
+
+function _calendarDayHeading(dayKey, now) {
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dayKey === localDayKey(now)) return 'Today';
+  if (dayKey === localDayKey(tomorrow)) return 'Tomorrow';
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1)
+    .toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function _calendarHTML(events) {
+  const now = new Date();
+  const byDay = groupByDay(events);
+  const days = [...byDay.keys()].sort();
+  return `
+    <section class="tasks-calendar" data-testid="tasks-calendar">
+      <header class="tasks-calendar-head">
+        <p class="tasks-calendar-note">${events.length} deadline${events.length === 1 ? '' : 's'}</p>
+        <button type="button" class="tasks-export" data-testid="tasks-export" data-action="tasks:export">Add to your calendar</button>
+      </header>
+      ${days.map((day) => `
+        <section class="tasks-calendar-day">
+          <h3 class="tasks-calendar-date">${escHtml(_calendarDayHeading(day, now))}</h3>
+          <ul class="tasks-calendar-list">
+            ${(byDay.get(day) ?? []).map((e) => `
+              <li class="tasks-calendar-item" data-testid="tasks-calendar-item">
+                <span class="tasks-calendar-time">${escHtml(new Date(e.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }))}</span>
+                <span class="tasks-calendar-title">${escHtml(e.title)}</span>
+                <span class="tasks-type">${escHtml(e.type.toLowerCase())}</span>
+              </li>`).join('')}
+          </ul>
+        </section>`).join('')}
+    </section>`;
+}
+
+function _feedHTML() {
+  const f = _tasks.feed;
+  if (f.status === 'loading' || f.status === 'idle') {
+    return '<section class="tasks-feed" data-testid="tasks-feed" aria-busy="true"><p class="tasks-feed-copy">Checking…</p></section>';
+  }
+  const busy = f.busy ? 'disabled' : '';
+  const inner = f.feed === null ? `
+      <p class="tasks-feed-copy">A subscription keeps your deadlines up to date in Google Calendar, Apple Calendar or Outlook — unlike the download, which is a snapshot.</p>
+      <p class="tasks-feed-warning" data-testid="tasks-feed-warning">The link works without signing in, so <strong>anyone who has it can read your deadlines</strong> — the titles, the courses, the dates. Keep it to yourself, and replace it if it gets out.</p>
+      <button type="button" class="tasks-feed-create" data-testid="tasks-feed-create" data-action="tasks:feedCreate" ${busy}>${f.busy ? 'Creating…' : 'Create a subscription link'}</button>` : `
+      <label class="tasks-field tasks-field-grow" for="tasksFeedUrl">
+        <span class="tasks-label">Your link</span>
+        <input id="tasksFeedUrl" class="tasks-input tasks-feed-url" data-testid="tasks-feed-url" value="${escHtml(f.feed.url)}" readonly data-action="tasks:feedSelect">
+      </label>
+      <p class="tasks-feed-copy">Add it in your calendar app as a subscription — in Google Calendar that is <em>Other calendars → From URL</em>. Calendars refresh on their own schedule, so a change in Shohoj can take a few hours to appear.</p>
+      <p class="tasks-feed-warning" data-testid="tasks-feed-warning"><strong>Anyone with this link can read your deadlines.</strong> Replacing it makes the old one stop working straight away.</p>
+      <div class="tasks-feed-actions">
+        <button type="button" class="tasks-feed-copy-btn" data-action="tasks:feedCopy">${f.copied ? 'Copied' : 'Copy link'}</button>
+        <button type="button" class="tasks-feed-rotate" data-testid="tasks-feed-rotate" data-action="tasks:feedCreate" ${busy}>Replace link</button>
+        <button type="button" class="tasks-feed-revoke" data-testid="tasks-feed-revoke" data-action="tasks:feedRevoke" ${busy}>Turn off</button>
+      </div>`;
+  return `
+    <section class="tasks-feed" data-testid="tasks-feed" aria-label="Calendar subscription">
+      <h3 class="tasks-feed-title">Subscribe in your calendar</h3>
+      ${inner}
+      ${f.error ? `<p class="tasks-feed-error" role="alert">${escHtml(f.error)}</p>` : ''}
+    </section>`;
+}
+
+async function _loadFeed() {
+  _tasks.feed = { ..._tasks.feed, status: 'loading', error: '' };
+  const r = await fetchCalendarFeed();
+  _tasks.feed = r.ok
+    ? { ..._tasks.feed, status: 'ready', feed: r.value.feed }
+    : { ..._tasks.feed, status: 'ready', feed: null, error: r.error.userMessage };
+  _renderTasksBody();
 }
 
 // ── Import from text (TaskImport on the shell) ─────────────────────────────
@@ -31636,7 +31965,18 @@ function _tasksMainHTML() {
   });
 
   let body;
-  if (_tasks.status === 'error') {
+  if (_tasks.view === 'calendar' && _tasks.status !== 'error' && !loading) {
+    // Its own branch, not a list variant: a Calendar showing undated tasks
+    // would be showing exactly the ones a calendar cannot hold.
+    const events = toCalendarEvents([...overdue, ...visible], _tasks.academic.enrollments);
+    body = events.length > 0
+      ? _calendarHTML(events) + _feedHTML()
+      : `
+      <div class="tasks-empty" data-testid="tasks-empty">
+        <p class="tasks-empty-title">${escHtml(empty.title)}</p>
+        <p class="tasks-empty-detail">${escHtml(empty.detail)}</p>
+      </div>`;
+  } else if (_tasks.status === 'error') {
     body = `
       <p class="tasks-error" role="alert" data-testid="tasks-error">
         ${escHtml(_tasks.error)}
@@ -31780,6 +32120,7 @@ function renderTasksTab() {
       reminderCustomOpen: false, assessDraft: null, detailsError: { reminders: '', assessment: '' },
       importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
       aiState: 'idle', aiNote: '', importBusy: false,
+      feed: { status: 'idle', feed: null, busy: false, error: '', copied: false },
     });
   }
   _renderTasksBody();
@@ -31787,6 +32128,7 @@ function renderTasksTab() {
   // Opening the tab always re-reads: another device may have changed things.
   _loadTasks();
   _loadAssessments();
+  if (_tasks.view === 'calendar' && _tasks.feed.status === 'idle') _loadFeed();
 }
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -31800,6 +32142,7 @@ registerAction('tasks:view', (el) => {
   _tasks.items = [];
   _tasks.overdue = [];
   _loadTasks();
+  if (view === 'calendar' && _tasks.feed.status === 'idle') _loadFeed();
 });
 
 // Checkboxes and selects fire click/input AND change, and dispatch.js hands
@@ -31905,6 +32248,52 @@ registerAction('tasks:delete', async (el) => {
     return;
   }
   _loadTasks();
+});
+
+// ── Calendar actions ────────────────────────────────────────────────────────
+
+registerAction('tasks:export', () => {
+  const events = toCalendarEvents([..._tasks.overdue, ..._tasks.items], _tasks.academic.enrollments);
+  if (events.length === 0) return;
+  const ics = buildTasksICS(events, { alarmMinutes: 60 });
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = icsFilename();
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
+
+async function _feedChange(call) {
+  if (_tasks.feed.busy) return;
+  _tasks.feed = { ..._tasks.feed, busy: true, error: '', copied: false };
+  _renderTasksBody();
+  const r = await call();
+  _tasks.feed = r.ok
+    ? { ..._tasks.feed, busy: false, feed: r.value.feed }
+    : { ..._tasks.feed, busy: false, error: r.error.userMessage };
+  _renderTasksBody();
+}
+
+registerAction('tasks:feedCreate', () => _feedChange(createCalendarFeed));
+registerAction('tasks:feedRevoke', () => _feedChange(deleteCalendarFeed));
+registerAction('tasks:feedSelect', (el) => el.select());
+
+registerAction('tasks:feedCopy', async () => {
+  const url = _tasks.feed.feed?.url;
+  if (!url) return;
+  try {
+    await navigator.clipboard.writeText(url);
+    _tasks.feed = { ..._tasks.feed, copied: true };
+    _renderTasksBody();
+    setTimeout(() => {
+      _tasks.feed = { ..._tasks.feed, copied: false };
+      _renderTasksBody();
+    }, 2000);
+  } catch {
+    // Clipboard refused (permissions, insecure context): the field is still
+    // selectable by hand, so nothing else to do.
+  }
 });
 
 // ── Import actions ──────────────────────────────────────────────────────────
