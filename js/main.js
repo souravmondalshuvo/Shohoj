@@ -90,6 +90,7 @@ import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
 import { renderTasksTab } from './ui/tasksTab.js';
+import { renderTasksDigest } from './ui/tasksDigest.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 import { initAssistantFab } from './ui/assistantFab.js';
 import { initSignInPortal, unlockForDemo } from './ui/signinPortal.js';
@@ -767,6 +768,9 @@ function switchCalcTab(tabId) {
     renderTasksTab();
   }
   if (tabId === 'calculator') {
+    renderTasksDigest();
+  }
+  if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
       const trendCanvas = document.getElementById('trendCanvas');
@@ -1090,6 +1094,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore active tab from session/URL hash
   const savedTab = restoreCalcTab();
   if (savedTab !== 'calculator') switchCalcTab(savedTab);
+  // The Calculator tab is already showing, so switchCalcTab did not run for
+  // it; the digest also refreshes on auth changes (signed out → it stays hidden).
+  else renderTasksDigest();
   // Position slider on the initial active tab after layout settles
   requestAnimationFrame(() => _moveTabSlider(_activeCalcTab));
 
