@@ -156,6 +156,8 @@ const GROUND_RADIUS = 62;
 const SHELL_MARGIN = 1.6;
 const EASE_RATE = 7;            // exponential-damping rate for all transitions
 const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
+// Below this, an eased value is visually settled and stops asking for frames.
+const SETTLE_EPSILON = 1e-3;
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
 const IDLE_ORBIT_AFTER_MS = 9000;   // idle time before the camera starts drifting
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
@@ -1014,6 +1016,7 @@ export function createCampusScene(
                     return;
                 }
                 adoptExteriorModel(gltf.scene);
+                invalidate();
                 report('loaded');
             })
             .catch((error: unknown) => {
@@ -1231,6 +1234,16 @@ export function createCampusScene(
         cameraTouched = true;
     });
 
+    // Render on demand (#769). A settled scene redrawn every frame cost the
+    // full building model per frame for nothing — battery on phones, and on a
+    // software GPU enough main-thread time to starve the rest of the page. The
+    // loop still runs every frame (it is where easing lives), but draws only
+    // when something moved or something outside the loop asked for a frame.
+    let needsRender = true;
+    const invalidate = (): void => {
+        needsRender = true;
+    };
+
     function resize(): void {
         const width = Math.max(container.clientWidth, 1);
         const height = Math.max(container.clientHeight, 1);
@@ -1242,6 +1255,8 @@ export function createCampusScene(
             offset.setLength(defaultCameraDistance * framingDistanceScale(camera.aspect));
             camera.position.copy(controls.target).add(offset);
         }
+        // setSize clears the canvas, so a resize always needs a fresh frame.
+        invalidate();
     }
     resize();
     const resizeObserver = typeof ResizeObserver !== 'undefined'
@@ -1256,17 +1271,30 @@ export function createCampusScene(
         lastTime = time;
         const k = reducedMotion ? 1 : 1 - Math.exp(-dt * EASE_RATE);
 
+        // Every eased value goes through step(), which notes whether it still
+        // had visible distance to cover; a frame is drawn only if something did.
+        let moving = false;
+        const step = (current: number, target: number): number => {
+            const delta = target - current;
+            if (Math.abs(delta) > SETTLE_EPSILON) moving = true;
+            return current + delta * k;
+        };
+
         for (const f of floors) {
-            f.mesh.position.y += (f.targetY - f.mesh.position.y) * k;
-            f.mesh.material.opacity += (f.targetOpacity - f.mesh.material.opacity) * k;
-            f.mesh.material.color.lerp(f.targetColor, k);
+            f.mesh.position.y = step(f.mesh.position.y, f.targetY);
+            f.mesh.material.opacity = step(f.mesh.material.opacity, f.targetOpacity);
+            const c = f.mesh.material.color;
+            const t = f.targetColor;
+            if (Math.abs(c.r - t.r) + Math.abs(c.g - t.g) + Math.abs(c.b - t.b) > SETTLE_EPSILON) {
+                moving = true;
+            }
+            c.lerp(t, k);
             // Labels ride their slab's opacity so they fade with the exploded view.
-            f.labelMaterial.opacity +=
-                (f.targetLabelOpacity - f.labelMaterial.opacity) * k;
+            f.labelMaterial.opacity = step(f.labelMaterial.opacity, f.targetLabelOpacity);
         }
         for (const entry of architectureMaterials) {
             const targetOpacity = entry.baseOpacity * architectureTargetFactor;
-            entry.material.opacity += (targetOpacity - entry.material.opacity) * k;
+            entry.material.opacity = step(entry.material.opacity, targetOpacity);
         }
         // The exterior model fades with the architecture. Its opaque materials
         // blend only while faded: an opaque façade keeps depth-writing (no
@@ -1275,7 +1303,7 @@ export function createCampusScene(
         for (const entry of modelMaterials) {
             const { material } = entry;
             const targetOpacity = entry.baseOpacity * modelTargetFactor;
-            material.opacity += (targetOpacity - material.opacity) * k;
+            material.opacity = step(material.opacity, targetOpacity);
             const blend = entry.baseTransparent || material.opacity < 0.995;
             if (material.transparent !== blend) {
                 material.transparent = blend;
@@ -1283,18 +1311,20 @@ export function createCampusScene(
                 material.needsUpdate = true;
             }
         }
-        shellMaterial.opacity += (shellTargetOpacity - shellMaterial.opacity) * k;
-        shellEdgesMaterial.opacity +=
-            (shellEdgesTargetOpacity - shellEdgesMaterial.opacity) * k;
+        shellMaterial.opacity = step(shellMaterial.opacity, shellTargetOpacity);
+        shellEdgesMaterial.opacity = step(shellEdgesMaterial.opacity, shellEdgesTargetOpacity);
         const fresnelOpacity = fresnelMaterial.uniforms['uOpacity'] as { value: number };
-        fresnelOpacity.value += (fresnelTargetOpacity - fresnelOpacity.value) * k;
+        fresnelOpacity.value = step(fresnelOpacity.value, fresnelTargetOpacity);
 
         if (!reducedMotion) {
             for (const entry of roomEntries) {
                 const age = (time - entry.spawnAt) / 1000 - entry.stagger;
                 const scale = easeOutCubic(Math.min(Math.max(age / ROOM_POP_SECONDS, 0), 1));
                 entry.mesh.scale.setScalar(Math.max(0.001, scale));
+                if (age < ROOM_POP_SECONDS) moving = true;
                 if (entry.pulsing) {
+                    // The pulse is the one deliberate perpetual animation.
+                    moving = true;
                     entry.mesh.material.emissiveIntensity =
                         0.1 + 0.08 * (0.5 + 0.5 * Math.sin(time / 420 + entry.phase));
                 }
@@ -1303,7 +1333,11 @@ export function createCampusScene(
 
         controls.autoRotate =
             !reducedMotion && time - lastInteraction > IDLE_ORBIT_AFTER_MS;
-        controls.update();
+        // update() reports whether the camera moved: a drag, damping settling
+        // after one, or the idle orbit.
+        const cameraMoved = controls.update();
+        if (!needsRender && !moving && !cameraMoved) return;
+        needsRender = false;
         renderer.render(scene, camera);
     });
 
@@ -1391,6 +1425,7 @@ export function createCampusScene(
             focusedFloor = floor !== null && dataFloors.has(floor) ? floor : null;
             markActive();
             applyFloorFocus();
+            invalidate();
         },
         setRoomStatus(status) {
             statusByCode = status;
@@ -1414,15 +1449,18 @@ export function createCampusScene(
             floorBusyFraction = fractions;
             refreshFloorTints();
             refreshRoomColors();
+            invalidate();
         },
         setHighlight(code) {
             highlightCode = code ? code.trim().toUpperCase() : null;
             markActive();
             refreshRoomColors();
+            invalidate();
         },
         setOnlyFree(next) {
             onlyFree = next;
             refreshRoomColors();
+            invalidate();
         },
         dispose() {
             disposed = true;
