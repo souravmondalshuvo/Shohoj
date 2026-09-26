@@ -65,6 +65,43 @@ export function dueTone(task, now = new Date()) {
   return 'later';
 }
 
+/** The factors that moved the score, largest first; zero-point ones dropped. */
+export function explainPriority(task) {
+  return [...(task.priorityFactors ?? [])]
+    .filter((factor) => factor.points > 0)
+    .sort((a, b) => b.points - a.points);
+}
+
+export function assessmentsByTask(assessments) {
+  return new Map(assessments.map((assessment) => [assessment.taskId, assessment]));
+}
+
+export const REMINDER_CHANNELS = ['WEB', 'EMAIL', 'PUSH'];
+export const REMINDER_STATUSES = ['PENDING', 'SENT', 'FAILED', 'CANCELLED'];
+
+export const COMMON_REMINDER_OFFSETS = [
+  { minutes: 24 * 60, label: 'A day before' },
+  { minutes: 3 * 60, label: 'Three hours before' },
+  { minutes: 30, label: 'Thirty minutes before' },
+];
+
+/** "A day before · sent", "90 minutes before", … */
+export function reminderLabel(reminder) {
+  const offset = COMMON_REMINDER_OFFSETS.find((o) => o.minutes === reminder.offsetMinutes);
+  const when =
+    offset?.label ??
+    (reminder.offsetMinutes === 0
+      ? 'At the deadline'
+      : reminder.offsetMinutes % 60 === 0
+        ? `${reminder.offsetMinutes / 60} hours before`
+        : `${reminder.offsetMinutes} minutes before`);
+
+  if (reminder.status === 'SENT') return `${when} · sent`;
+  if (reminder.status === 'CANCELLED') return `${when} · missed`;
+  if (reminder.scheduledFor === null) return `${when} · waiting for a deadline`;
+  return when;
+}
+
 /** Highest automatic score first; then earliest deadline; then id, for stability. */
 export function byPriority(a, b) {
   const aScore = a.priorityScore ?? -1;
@@ -79,6 +116,8 @@ export function byPriority(a, b) {
 // ── Response checks ─────────────────────────────────────────────────────────
 
 const _TASK_ID_RE = /^tsk_[0-9a-f]{32}$/;
+const _REMINDER_ID_RE = /^rem_[0-9a-f]{32}$/;
+const _PRIORITY_FACTOR_NAMES = ['urgency', 'weight', 'workload', 'importance'];
 
 function _isStringOrNull(v) {
   return v === null || typeof v === 'string';
@@ -97,6 +136,18 @@ function _readTask(raw) {
   }
   if (raw.priorityScore !== null && typeof raw.priorityScore !== 'number') return null;
   if (raw.estimatedMinutes !== null && !Number.isInteger(raw.estimatedMinutes)) return null;
+  // Optional, as in the shell's schema: an older backend omits it. When
+  // present, every factor must be well formed.
+  let priorityFactors;
+  if (raw.priorityFactors !== undefined) {
+    if (!Array.isArray(raw.priorityFactors)) return null;
+    priorityFactors = [];
+    for (const f of raw.priorityFactors) {
+      if (!f || !_PRIORITY_FACTOR_NAMES.includes(f.name)) return null;
+      if (![f.value, f.weight, f.points].every((n) => typeof n === 'number')) return null;
+      priorityFactors.push({ name: f.name, value: f.value, weight: f.weight, points: f.points });
+    }
+  }
   return {
     id: raw.id,
     enrollmentId: raw.enrollmentId,
@@ -110,6 +161,49 @@ function _readTask(raw) {
     startAt: raw.startAt,
     estimatedMinutes: raw.estimatedMinutes,
     completedAt: raw.completedAt,
+    ...(priorityFactors ? { priorityFactors } : {}),
+  };
+}
+
+function _isNumberOrNull(v) {
+  return v === null || typeof v === 'number';
+}
+
+function _readAssessment(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.taskId !== 'string' || !_TASK_ID_RE.test(raw.taskId)) return null;
+  if (typeof raw.totalMarks !== 'number' || typeof raw.weightPercent !== 'number') return null;
+  // Null means NOT MARKED YET, which is not zero; the distinction is kept.
+  if (!_isNumberOrNull(raw.earnedMarks)) return null;
+  for (const key of ['syllabus', 'location', 'notes']) {
+    if (!_isStringOrNull(raw[key])) return null;
+  }
+  return {
+    taskId: raw.taskId,
+    totalMarks: raw.totalMarks,
+    earnedMarks: raw.earnedMarks,
+    weightPercent: raw.weightPercent,
+    syllabus: raw.syllabus,
+    location: raw.location,
+    notes: raw.notes,
+  };
+}
+
+function _readReminder(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.id !== 'string' || !_REMINDER_ID_RE.test(raw.id)) return null;
+  if (typeof raw.taskId !== 'string' || !_TASK_ID_RE.test(raw.taskId)) return null;
+  if (!Number.isInteger(raw.offsetMinutes)) return null;
+  if (!REMINDER_CHANNELS.includes(raw.channel) || !REMINDER_STATUSES.includes(raw.status)) return null;
+  if (!_isStringOrNull(raw.scheduledFor) || !_isStringOrNull(raw.sentAt)) return null;
+  return {
+    id: raw.id,
+    taskId: raw.taskId,
+    offsetMinutes: raw.offsetMinutes,
+    channel: raw.channel,
+    scheduledFor: raw.scheduledFor,
+    status: raw.status,
+    sentAt: raw.sentAt,
   };
 }
 
@@ -288,6 +382,42 @@ export function listSemesters(deps) {
 
 export function listEnrollments(deps) {
   return _call('GET', '/enrollments', { read: (p) => _readList(p?.items, _readEnrollment) }, deps);
+}
+
+export function listAssessments(deps) {
+  return _call('GET', '/assessments', { read: (p) => _readList(p?.items, _readAssessment) }, deps);
+}
+
+export function putAssessment(taskId, input, deps) {
+  return _call('PUT', `/tasks/${encodeURIComponent(taskId)}/assessment`, {
+    body: input,
+    read: (p) => _readAssessment(p?.assessment),
+  }, deps);
+}
+
+export function deleteAssessment(taskId, deps) {
+  return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/assessment`, {
+    read: (p) => (typeof p?.deleted?.taskId === 'string' ? { taskId: p.deleted.taskId } : null),
+  }, deps);
+}
+
+export function listReminders(taskId, deps) {
+  return _call('GET', `/tasks/${encodeURIComponent(taskId)}/reminders`, {
+    read: (p) => _readList(p?.items, _readReminder),
+  }, deps);
+}
+
+export function addReminder(taskId, input, deps) {
+  return _call('POST', `/tasks/${encodeURIComponent(taskId)}/reminders`, {
+    body: input,
+    read: (p) => _readReminder(p?.reminder),
+  }, deps);
+}
+
+export function removeReminder(taskId, reminderId, deps) {
+  return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/reminders/${encodeURIComponent(reminderId)}`, {
+    read: (p) => (typeof p?.deleted?.id === 'string' ? { id: p.deleted.id } : null),
+  }, deps);
 }
 
 /** The student's active semester, or null. The list arrives newest-first. */
