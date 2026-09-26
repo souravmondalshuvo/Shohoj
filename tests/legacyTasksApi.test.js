@@ -269,3 +269,50 @@ test('assessments: an unmarked score stays null, never zero', async () => {
   const { fetchFn: bad } = fakeFetch(() => ({ body: { items: [{ ...unmarked, earnedMarks: '12' }] } }));
   assert.equal((await legacy.listAssessments(deps(bad))).ok, false);
 });
+
+// ── Phase 3: the server reader (#767) ────────────────────────────────────────
+
+import { createAiDetector } from '../js/core/aiDetector.js';
+
+const extracted = {
+  title: 'Quiz 3', type: 'QUIZ', dueAt: '2026-09-25T03:30:00.000Z', courseCode: 'CSE220',
+  syllabus: null, confidence: 'high', evidence: 'Quiz 3 is on 25 September at 9:30 am',
+};
+
+test('extractTasks posts only text and course codes, and reads the quota', async () => {
+  const { calls, fetchFn } = fakeFetch(() => ({
+    body: { detected: [extracted], quota: { remaining: 4, limit: 5, resetsAt: '2026-10-09T00:00:00Z' } },
+  }));
+  const r = await legacy.extractTasks('Quiz 3 is on 25 September', ['CSE220'], deps(fetchFn));
+  assert.equal(r.ok, true);
+  assert.equal(r.value.tasks[0].title, 'Quiz 3');
+  assert.deepEqual(r.value.quota, { remaining: 4, limit: 5, resetsAt: '2026-10-09T00:00:00Z' });
+  assert.match(calls[0].url, /\/api\/v1\/tasks\/extract$/);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { text: 'Quiz 3 is on 25 September', courseCodes: ['CSE220'] });
+});
+
+test('the AI detector maps a reading to proposals, with the quote as evidence', async () => {
+  const { fetchFn } = fakeFetch(() => ({ body: { detected: [extracted], quota: null } }));
+  const r = await createAiDetector(deps(fetchFn)).detect('text', { now: NOW, knownCourseCodes: [] });
+  assert.equal(r.outcome, 'ok');
+  assert.equal(r.source, 'AI_SUGGESTION');
+  assert.deepEqual(r.detected[0].evidence, { dueAt: { text: extracted.evidence, index: 0 } });
+});
+
+test('every AI failure is a note, never an error state', async () => {
+  const cases = [
+    [{ code: 'unavailable', message: 'Reader is off today.' }, 'unavailable', 'Reader is off today.'],
+    [{ code: 'quota_exceeded', message: '' }, 'quota_exhausted', null],
+    [{ code: 'boom', message: 'Nope.' }, 'failed', 'Nope.'],
+  ];
+  for (const [error, outcome, note] of cases) {
+    const { fetchFn } = fakeFetch(() => ({ status: 503, body: { error } }));
+    const r = await createAiDetector(deps(fetchFn)).detect('text', { now: NOW });
+    assert.equal(r.outcome, outcome);
+    assert.deepEqual(r.detected, []);
+    // With no message in the envelope, the transport's generic wording for the
+    // status is what arrives — as userMessage does on the shell.
+    if (note !== null) assert.equal(r.note, note);
+    else assert.ok(r.note.length > 0);
+  }
+});
