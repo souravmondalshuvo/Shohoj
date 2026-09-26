@@ -53,6 +53,8 @@ function makeTask(overrides) {
 async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = false, extract = null } = {}) {
   const store = new Map(tasks.map((t) => [t.id, t]));
   const assessments = new Map();
+  let feed = null;
+  let feedSeq = 0;
   const reminders = new Map(); // taskId -> reminder[]
   let reminderSeq = 0;
   const log = [];
@@ -108,6 +110,14 @@ async function boot(page, { stub = signedInStub, tasks = [], failFirstLoad = fal
       const task = makeTask(input);
       store.set(task.id, task);
       return json(201, { task });
+    }
+    if (path === '/tasks/feed') {
+      if (req.method() === 'POST') {
+        feedSeq += 1;
+        feed = { url: `${WORKER}/api/v1/tasks/feed/secret${feedSeq}.ics`, createdAt: '2026-10-08T00:00:00Z' };
+      }
+      if (req.method() === 'DELETE') feed = null;
+      return json(200, { feed });
     }
     if (path === '/tasks/extract') {
       if (extract === null) return json(503, { error: { code: 'unavailable', message: 'The reader is off.' } });
@@ -412,4 +422,62 @@ test('when the reader cannot help, the student keeps what they had', async ({ pa
   await expect(page.getByTestId('tasks-import-ai-note')).toHaveText('The reader is off.');
   await expect(page.getByLabel('Task 1')).toHaveValue('Assignment 4');
   await expect(page.getByTestId('tasks-import-ai')).toHaveCount(0);
+});
+
+// ── Phase 4: the calendar ────────────────────────────────────────────────────
+
+test('the calendar lists deadlines by day and downloads them as an .ics', async ({ page }) => {
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(10, 0, 0, 0);
+  const later = new Date(); later.setDate(later.getDate() + 5); later.setHours(9, 0, 0, 0);
+  await boot(page, {
+    tasks: [
+      makeTask({ title: 'Lab report 2', type: 'LAB', enrollmentId: 'enr_1', dueAt: tomorrow.toISOString(), estimatedMinutes: 90 }),
+      makeTask({ title: 'Essay', dueAt: later.toISOString() }),
+      makeTask({ title: 'Undated reading' }),
+    ],
+  });
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+
+  const cal = page.getByTestId('tasks-calendar');
+  await expect(cal.getByTestId('tasks-calendar-item')).toHaveCount(2);
+  await expect(cal.locator('.tasks-calendar-date').first()).toHaveText('Tomorrow');
+  await expect(cal.getByTestId('tasks-calendar-item').first()).toContainText('CSE220: Lab report 2');
+  // Undated work cannot sit on a calendar.
+  await expect(cal).not.toContainText('Undated reading');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    cal.getByTestId('tasks-export').click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^shohoj-tasks-\d{4}-\d{2}-\d{2}\.ics$/);
+  const text = await (await download.createReadStream()).toArray().then((c) => Buffer.concat(c).toString('utf8'));
+  expect(text).toContain('BEGIN:VCALENDAR');
+  expect(text).toContain('SUMMARY:CSE220: Lab report 2');
+  expect(text).toContain('TRIGGER:-PT60M');
+  expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+});
+
+test('the subscription link can be created, replaced and turned off', async ({ page }) => {
+  const soon = new Date(Date.now() + 48 * 3_600_000).toISOString();
+  const log = await boot(page, { tasks: [makeTask({ title: 'Quiz 4', dueAt: soon })] });
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+
+  const panel = page.getByTestId('tasks-feed');
+  await expect(panel.getByTestId('tasks-feed-warning')).toContainText('anyone who has it can read your deadlines');
+  await panel.getByTestId('tasks-feed-create').click();
+  await expect(panel.getByTestId('tasks-feed-url')).toHaveValue(/secret1\.ics$/);
+
+  await panel.getByTestId('tasks-feed-rotate').click();
+  await expect(panel.getByTestId('tasks-feed-url')).toHaveValue(/secret2\.ics$/);
+
+  await panel.getByTestId('tasks-feed-revoke').click();
+  await expect(panel.getByTestId('tasks-feed-create')).toBeVisible();
+  expect(log.filter((r) => r.path === '/tasks/feed').map((r) => r.method)).toEqual(['GET', 'POST', 'POST', 'DELETE']);
+});
+
+test('a calendar with nothing dated says so instead of listing undated work', async ({ page }) => {
+  await boot(page, { tasks: [makeTask({ title: 'Someday reading' })] });
+  await page.getByRole('tab', { name: 'Calendar' }).click();
+  await expect(page.getByTestId('tasks-empty')).toContainText('Nothing with a deadline');
+  await expect(page.getByTestId('tasks-calendar')).toHaveCount(0);
 });
