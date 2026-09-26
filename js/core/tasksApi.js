@@ -20,6 +20,7 @@
 export const TASK_TYPES = ['ASSIGNMENT', 'QUIZ', 'EXAM', 'PROJECT', 'LAB', 'READING', 'PERSONAL', 'OTHER'];
 export const TASK_STATUSES = ['TODO', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+export const TASK_SOURCES = ['MANUAL', 'PASTE', 'GMAIL', 'CALENDAR', 'AI_SUGGESTION'];
 
 export const TASK_TYPE_LABELS = {
   ASSIGNMENT: 'Assignment',
@@ -131,6 +132,7 @@ function _readTask(raw) {
   if (!TASK_TYPES.includes(raw.type)) return null;
   if (!TASK_STATUSES.includes(raw.status)) return null;
   if (!TASK_PRIORITIES.includes(raw.priority)) return null;
+  if (!TASK_SOURCES.includes(raw.source)) return null;
   for (const key of ['enrollmentId', 'description', 'dueAt', 'startAt', 'completedAt']) {
     if (!_isStringOrNull(raw[key])) return null;
   }
@@ -161,6 +163,7 @@ function _readTask(raw) {
     startAt: raw.startAt,
     estimatedMinutes: raw.estimatedMinutes,
     completedAt: raw.completedAt,
+    source: raw.source,
     ...(priorityFactors ? { priorityFactors } : {}),
   };
 }
@@ -459,6 +462,30 @@ export function extractTasks(text, courseCodes = [], deps) {
       return { tasks, quota };
     },
   }, deps);
+}
+
+// ── Calendar subscription (#744) ────────────────────────────────────────────
+// Each call answers with the feed as it now stands: null when there is none.
+
+function _readFeed(p) {
+  if (!p || typeof p !== 'object' || !('feed' in p)) return null;
+  const f = p.feed;
+  if (f === null) return { feed: null };
+  if (!f || typeof f.url !== 'string' || !_isStringOrNull(f.createdAt ?? null)) return null;
+  return { feed: { url: f.url, createdAt: f.createdAt ?? null } };
+}
+
+export function fetchCalendarFeed(deps) {
+  return _call('GET', '/tasks/feed', { read: _readFeed }, deps);
+}
+
+/** Creates the link, or replaces it: the old one stops working at once. */
+export function createCalendarFeed(deps) {
+  return _call('POST', '/tasks/feed', { body: {}, read: _readFeed }, deps);
+}
+
+export function deleteCalendarFeed(deps) {
+  return _call('DELETE', '/tasks/feed', { read: _readFeed }, deps);
 }
 
 /** The student's active semester, or null. The list arrives newest-first. */
