@@ -8718,11 +8718,12 @@ body[data-page="admin"] .orb { display: none !important; }
  * Colour comes from the shell's --c-* tokens (css/shell-routes.css). The legacy
  * page does not load that sheet, so its Tasks panel aliases the five tokens
  * used here to its own palette — which already follows the light/dark switch.
- * The dashboard section stays in shell-routes.css until its phase reaches
- * legacy.
+ * Every Tasks section now lives here (#767 phase 5 moved the last, the
+ * dashboard digest).
  */
 
-#tabTasks {
+#tabTasks,
+#tasksDigestBox {
   --c-text: var(--text);
   --c-text-muted: var(--text2);
   --c-surface: var(--chip-hover);
@@ -8736,7 +8737,7 @@ body[data-page="admin"] .orb { display: none !important; }
    inside the panel that rule is undone. :where() keeps this at element
    specificity: it beats the landing rule by coming later, and every tasks-*
    class rule still beats it. */
-:where(#tabTasks) section {
+:where(#tabTasks, #tasksDigestBox) section {
   max-width: none;
   margin: 0;
   padding: 0;
@@ -9608,6 +9609,101 @@ body[data-page="admin"] .orb { display: none !important; }
   .tasks-calendar-item { flex-wrap: wrap; }
   .tasks-calendar-time { min-width: 0; }
 }
+
+/* ── Tasks on the dashboard (#719) ───────────────────────────────────────────
+ *
+ * Reuses the .lg-panel glass card the meter, tracker and standing box already
+ * use, so the digest reads as part of the dashboard rather than as something
+ * bolted on. Rows reuse .tasks-check from the route above — one checkbox
+ * definition, two surfaces.
+ */
+
+.tasks-digest {
+  position: relative;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 14px;
+}
+
+.tasks-digest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tasks-digest-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tasks-digest-overdue {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d9534f;
+}
+
+.tasks-digest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tasks-digest-group {
+  margin: 10px 0 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-item:first-child .tasks-digest-group { margin-top: 0; }
+.tasks-digest-group-overdue { color: #d9534f; }
+
+.tasks-digest-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.tasks-digest-body { flex: 1 1 auto; min-width: 0; }
+
+.tasks-digest-item-title {
+  margin: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.tasks-digest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  color: var(--green, #2f855a);
+  font-weight: 600;
+}
+
+.tasks-digest-link:hover { text-decoration: underline; }
+
+/* The legacy Calculator tab's digest container (#767): the same side margins
+   as the result boxes above it (.degree-tracker, .trend-chart-box). */
+#tasksDigestBox { margin: 0 2rem 1.5rem; }
+#tasksDigestBox .tasks-digest { margin-top: 0; }
+@media (max-width: 480px) { #tasksDigestBox { margin: 0 0.8rem 0.8rem; } }
+@media (min-width: 768px) { #tasksDigestBox { margin: 0 1.5rem 1.2rem; } }
+@media (min-width: 1024px) { #tasksDigestBox { margin: 0 2rem 1.5rem; } }
+@media (min-width: 1440px) { #tasksDigestBox { margin: 0 2.5rem 1.8rem; } }
 
 </style>
   <!-- Public runtime config — see js/config/runtime-config.template.js. -->

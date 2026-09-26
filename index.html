@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-thE5Q+pKsw/1stD4sN28Sx76M6uWZ2vROKRY5Svhc2g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-q5pw5zpxpUYZ5KcikeR1KYskhImb3NK1NY1j0ASNBns='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8736,11 +8736,12 @@ body[data-page="admin"] .orb { display: none !important; }
  * Colour comes from the shell's --c-* tokens (css/shell-routes.css). The legacy
  * page does not load that sheet, so its Tasks panel aliases the five tokens
  * used here to its own palette — which already follows the light/dark switch.
- * The dashboard section stays in shell-routes.css until its phase reaches
- * legacy.
+ * Every Tasks section now lives here (#767 phase 5 moved the last, the
+ * dashboard digest).
  */
 
-#tabTasks {
+#tabTasks,
+#tasksDigestBox {
   --c-text: var(--text);
   --c-text-muted: var(--text2);
   --c-surface: var(--chip-hover);
@@ -8754,7 +8755,7 @@ body[data-page="admin"] .orb { display: none !important; }
    inside the panel that rule is undone. :where() keeps this at element
    specificity: it beats the landing rule by coming later, and every tasks-*
    class rule still beats it. */
-:where(#tabTasks) section {
+:where(#tabTasks, #tasksDigestBox) section {
   max-width: none;
   margin: 0;
   padding: 0;
@@ -9627,6 +9628,101 @@ body[data-page="admin"] .orb { display: none !important; }
   .tasks-calendar-time { min-width: 0; }
 }
 
+/* ── Tasks on the dashboard (#719) ───────────────────────────────────────────
+ *
+ * Reuses the .lg-panel glass card the meter, tracker and standing box already
+ * use, so the digest reads as part of the dashboard rather than as something
+ * bolted on. Rows reuse .tasks-check from the route above — one checkbox
+ * definition, two surfaces.
+ */
+
+.tasks-digest {
+  position: relative;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 14px;
+}
+
+.tasks-digest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tasks-digest-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.tasks-digest-overdue {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d9534f;
+}
+
+.tasks-digest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tasks-digest-group {
+  margin: 10px 0 4px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-item:first-child .tasks-digest-group { margin-top: 0; }
+.tasks-digest-group-overdue { color: #d9534f; }
+
+.tasks-digest-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.tasks-digest-body { flex: 1 1 auto; min-width: 0; }
+
+.tasks-digest-item-title {
+  margin: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.tasks-digest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--c-text-muted);
+}
+
+.tasks-digest-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  color: var(--green, #2f855a);
+  font-weight: 600;
+}
+
+.tasks-digest-link:hover { text-decoration: underline; }
+
+/* The legacy Calculator tab's digest container (#767): the same side margins
+   as the result boxes above it (.degree-tracker, .trend-chart-box). */
+#tasksDigestBox { margin: 0 2rem 1.5rem; }
+#tasksDigestBox .tasks-digest { margin-top: 0; }
+@media (max-width: 480px) { #tasksDigestBox { margin: 0 0.8rem 0.8rem; } }
+@media (min-width: 768px) { #tasksDigestBox { margin: 0 1.5rem 1.2rem; } }
+@media (min-width: 1024px) { #tasksDigestBox { margin: 0 2rem 1.5rem; } }
+@media (min-width: 1440px) { #tasksDigestBox { margin: 0 2.5rem 1.8rem; } }
+
 </style>
   <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
@@ -10082,6 +10178,10 @@ body[data-page="admin"] .orb { display: none !important; }
             <canvas id="trendCanvas"></canvas>
           </div>
         </div>
+
+        <!-- Shohoj Tasks on the calculator (#767) — rendered by js/ui/tasksDigest.js;
+             hidden unless a signed-in student has open work to show. -->
+        <div id="tasksDigestBox" hidden></div>
       </div>
 
       <!-- ═══ TAB 2: PLANNER ═══ -->
@@ -31412,6 +31512,63 @@ function icsFilename(now = new Date()) {
   return `shohoj-tasks-${localDayKey(now)}.ics`;
 }
 
+// ── js/core/taskDigest.js ───────────────────────────────────────
+// Twin of src/features/tasks/taskDigest.ts — hand-maintained, not generated.
+// src/features/tasks/taskDigest.ts is the source of truth: change it there
+// first, then mirror the change here. tests/twinParity.test.js fails if the two
+// drift.
+//
+// The few tasks worth seeing on the way past (#719), for the legacy
+// Calculator tab (#767): overdue first, then today, then what is coming up,
+// open work only, capped, with a count of what did not fit.
+
+const DIGEST_LIMIT = 5;
+
+function buildDigest(input) {
+  const limit = input.limit ?? DIGEST_LIMIT;
+  const open = (tasks) =>
+    tasks.filter((task) => task.status === 'TODO' || task.status === 'IN_PROGRESS');
+
+  const overdue = open(input.overdue);
+  const today = open(input.dueToday);
+  const upcoming = open(input.upcoming);
+
+  const all = [
+    ...overdue.map((task) => ({ task, group: 'overdue' })),
+    ...today.map((task) => ({ task, group: 'today' })),
+    ...upcoming.map((task) => ({ task, group: 'upcoming' })),
+  ];
+
+  // A task can be both due today and upcoming; it appears once, in its first group.
+  const seen = new Set();
+  const unique = all.filter((entry) => {
+    if (seen.has(entry.task.id)) return false;
+    seen.add(entry.task.id);
+    return true;
+  });
+
+  const entries = unique.slice(0, limit);
+  return {
+    entries,
+    overdueCount: overdue.length,
+    hiddenCount: Math.max(0, unique.length - entries.length),
+    isEmpty: unique.length === 0,
+  };
+}
+
+/** A heading where the group changes; null inside a run of the same group. */
+function groupHeading(group, previous) {
+  if (group === previous) return null;
+  if (group === 'overdue') return 'Overdue';
+  if (group === 'today') return 'Today';
+  return 'Coming up';
+}
+
+/** Where "View all" goes, as the shell's route. Legacy maps it to a tab view. */
+function digestLink(digest) {
+  return digest.overdueCount > 0 ? '/tasks' : '/tasks?view=upcoming';
+}
+
 // ── js/ui/tasksTab.js ───────────────────────────────────────────
 // ── js/ui/tasksTab.js ─────────────────────────────────────────────────────────
 // The legacy calculator's Tasks tab, phase 1 (#767): Today / Upcoming / All,
@@ -32087,6 +32244,12 @@ function _renderTasksBody() {
   if (focusedId) document.getElementById(focusedId)?.focus();
 }
 
+/** Open the Tasks tab on a given view (the Calculator digest's "View all"). */
+function openTasksView(view) {
+  if (_TASKS_LIST_VIEWS.some((v) => v.key === view)) _tasks.view = view;
+  window.switchCalcTab?.('tasks');
+}
+
 /** Entry point from switchCalcTab and the auth listener. */
 function renderTasksTab() {
   const root = document.getElementById('tasksContent');
@@ -32529,6 +32692,137 @@ if (typeof window !== 'undefined') {
   window.addEventListener('shohoj:auth-changed', () => {
     if (_tasksPanelActive()) renderTasksTab();
   });
+}
+
+// ── js/ui/tasksDigest.js ────────────────────────────────────────
+// ── js/ui/tasksDigest.js ──────────────────────────────────────────────────────
+// Shohoj Tasks on the legacy Calculator tab (#767 phase 5): the legacy
+// rendering of the shell's TaskDigest. A few open tasks — overdue, today, then
+// coming up — below the results, as a reminder on the way past rather than the
+// headline. It renders NOTHING when there is nothing to show, when the student
+// is signed out, or when the load fails: someone who does not use Tasks sees
+// no change to the calculator.
+
+// A fresh read at most this often from tab switches; completing a task forces one.
+const _DIGEST_REFRESH_MS = 60_000;
+
+const _digest = { uid: null, digest: null, enrollments: [], lastAt: 0, seq: 0 };
+
+function _digestUid() {
+  return typeof window._shohoj_currentUid === 'function' ? window._shohoj_currentUid() : null;
+}
+
+function _digestBox() {
+  return document.getElementById('tasksDigestBox');
+}
+
+function _hideDigest() {
+  const box = _digestBox();
+  if (box) box.hidden = true;
+}
+
+function _digestHTML(digest) {
+  let previous = null;
+  const items = digest.entries.map((entry) => {
+    const heading = groupHeading(entry.group, previous);
+    previous = entry.group;
+    const course = courseLabel(entry.task, _digest.enrollments);
+    return `
+      <li class="tasks-digest-item" data-testid="tasks-digest-item">
+        ${heading !== null ? `<p class="tasks-digest-group tasks-digest-group-${entry.group}">${escHtml(heading)}</p>` : ''}
+        <div class="tasks-digest-row">
+          <label class="tasks-check">
+            <input type="checkbox" data-action="tasks:digestComplete" data-id="${escHtml(entry.task.id)}" aria-label="${escHtml(`Mark ${entry.task.title} as done`)}">
+            <span class="tasks-check-box" aria-hidden="true"></span>
+          </label>
+          <div class="tasks-digest-body">
+            <p class="tasks-digest-item-title">${escHtml(entry.task.title)}</p>
+            <p class="tasks-digest-meta">
+              ${course !== null ? `<span class="tasks-course">${escHtml(course)}</span>` : ''}
+              <span class="tasks-type">${escHtml(typeLabel(entry.task))}</span>
+              <span class="tasks-due ${toneClass(entry.task)}">${escHtml(dueLabel(entry.task))}</span>
+            </p>
+          </div>
+        </div>
+      </li>`;
+  }).join('');
+  const view = digestLink(digest) === '/tasks' ? 'today' : 'upcoming';
+  return `
+    <section class="tasks-digest lg-panel lg-surface" data-testid="tasks-digest" aria-label="Your tasks">
+      <div class="lg-shine"></div>
+      <header class="tasks-digest-head">
+        <h3 class="tasks-digest-title">Coming up</h3>
+        ${digest.overdueCount > 0 ? `<span class="tasks-digest-overdue" data-testid="tasks-digest-overdue">${digest.overdueCount} overdue</span>` : ''}
+      </header>
+      <ul class="tasks-digest-list">${items}</ul>
+      <button type="button" class="tasks-digest-link" data-action="tasks:digestOpen" data-view="${view}">${digest.hiddenCount > 0 ? `View all tasks (${digest.hiddenCount} more)` : 'View all tasks'}</button>
+    </section>`;
+}
+
+function _paintDigest() {
+  const box = _digestBox();
+  if (!box) return;
+  const d = _digest.digest;
+  if (d === null || d.isEmpty || _digest.uid !== _digestUid()) {
+    box.hidden = true;
+    return;
+  }
+  // Every interpolation is escaped (escHtml) or a count we produced.
+  // nosemgrep: javascript.browser.security.insecure-document-method.insecure-document-method
+  // nosemgrep: javascript.browser.security.insecure-innerhtml.insecure-innerhtml
+  box.innerHTML = _digestHTML(d);
+  box.hidden = false;
+}
+
+/** Refresh the digest; called when the Calculator tab shows and on sign-in changes. */
+async function renderTasksDigest(force = false) {
+  const uid = _digestUid();
+  if (!uid || tasksWorkerUrl() === null) {
+    _digest.uid = null;
+    _digest.digest = null;
+    _hideDigest();
+    return;
+  }
+  if (uid !== _digest.uid) {
+    _digest.uid = uid;
+    _digest.digest = null;
+    _digest.enrollments = [];
+    _digest.lastAt = 0;
+    _hideDigest();
+  }
+  if (!force && Date.now() - _digest.lastAt < _DIGEST_REFRESH_MS) {
+    _paintDigest();
+    return;
+  }
+  _digest.lastAt = Date.now();
+  const seq = ++_digest.seq;
+  const [today, upcoming, enrollments] = await Promise.all([fetchToday(), fetchUpcoming(), listEnrollments()]);
+  if (seq !== _digest.seq || uid !== _digestUid()) return;
+  // Enrolments only label rows; without them the digest still stands.
+  _digest.enrollments = enrollments.ok ? enrollments.value : [];
+  // A failure is silence, as on the shell: the calculator is what they came for.
+  _digest.digest = today.ok && upcoming.ok
+    ? buildDigest({ overdue: today.value.overdue, dueToday: today.value.dueToday, upcoming: upcoming.value })
+    : null;
+  _paintDigest();
+}
+
+registerAction('tasks:digestComplete', async (el, event) => {
+  if (event?.type !== 'change') return;
+  const id = el.dataset.id;
+  // The row leaving is the confirmation.
+  if (_digest.digest) {
+    _digest.digest = { ..._digest.digest, entries: _digest.digest.entries.filter((e) => e.task.id !== id) };
+    _paintDigest();
+  }
+  await setTaskCompleted(id, true);
+  renderTasksDigest(true);
+});
+
+registerAction('tasks:digestOpen', (el) => openTasksView(el.dataset.view));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:auth-changed', () => renderTasksDigest(true));
 }
 
 // ── js/ui/signinPortal.js ───────────────────────────────────────
@@ -39243,6 +39537,9 @@ function switchCalcTab(tabId) {
     renderTasksTab();
   }
   if (tabId === 'calculator') {
+    renderTasksDigest();
+  }
+  if (tabId === 'calculator') {
     // Re-draw trend chart since canvas may have been hidden
     setTimeout(() => {
       const trendCanvas = document.getElementById('trendCanvas');
@@ -39566,6 +39863,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore active tab from session/URL hash
   const savedTab = restoreCalcTab();
   if (savedTab !== 'calculator') switchCalcTab(savedTab);
+  // The Calculator tab is already showing, so switchCalcTab did not run for
+  // it; the digest also refreshes on auth changes (signed out → it stays hidden).
+  else renderTasksDigest();
   // Position slider on the initial active tab after layout settles
   requestAnimationFrame(() => _moveTabSlider(_activeCalcTab));
 
