@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-k+UO+DP+MCU/+P+3ErXVikR6qIhYYxN5CSW8S1ut7ZA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-d9AvwAWSMqx++toZNpZg56jfBOuZEuoQDThkq5FzS1Y='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30064,8 +30064,8 @@ function _genericMessageFor(status) {
   return 'That request could not be completed.';
 }
 
-function _fail(userMessage) {
-  return { ok: false, error: { userMessage } };
+function _fail(userMessage, apiCode) {
+  return { ok: false, error: apiCode ? { userMessage, apiCode } : { userMessage } };
 }
 
 /** The Worker base URL, from the runtime config, or null when unconfigured. */
@@ -30136,9 +30136,14 @@ async function _call(method, path, { body, query, read } = {}, deps = {}) {
   if (timer) clearTimeout(timer);
 
   if (!response.ok) {
-    // The Worker's error envelope carries a message written for students.
+    // The Worker's error envelope carries a message written for students, and
+    // a code callers branch on (the reader's 'unavailable' / 'quota_exceeded').
     const message = payload?.error?.message;
-    return _fail(typeof message === 'string' && message ? message : _genericMessageFor(response.status));
+    const code = payload?.error?.code;
+    return _fail(
+      typeof message === 'string' && message ? message : _genericMessageFor(response.status),
+      typeof code === 'string' ? code : undefined,
+    );
   }
   const value = read(payload);
   return value === null ? _fail(_MALFORMED) : { ok: true, value };
@@ -30226,6 +30231,42 @@ function addReminder(taskId, input, deps) {
 function removeReminder(taskId, reminderId, deps) {
   return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/reminders/${encodeURIComponent(reminderId)}`, {
     read: (p) => (typeof p?.deleted?.id === 'string' ? { id: p.deleted.id } : null),
+  }, deps);
+}
+
+const _EXTRACT_CONFIDENCES = ['high', 'medium', 'low'];
+
+function _readExtracted(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.title !== 'string' || !TASK_TYPES.includes(raw.type)) return null;
+  if (!_EXTRACT_CONFIDENCES.includes(raw.confidence)) return null;
+  for (const key of ['dueAt', 'courseCode', 'syllabus', 'evidence']) {
+    if (!_isStringOrNull(raw[key])) return null;
+  }
+  return {
+    title: raw.title,
+    type: raw.type,
+    dueAt: raw.dueAt,
+    courseCode: raw.courseCode,
+    syllabus: raw.syllabus,
+    confidence: raw.confidence,
+    evidence: raw.evidence,
+  };
+}
+
+/** The server-side reader (#741). The student is the token's; the body is only text. */
+function extractTasks(text, courseCodes = [], deps) {
+  return _call('POST', '/tasks/extract', {
+    body: { text, courseCodes: [...courseCodes] },
+    read: (p) => {
+      const tasks = _readList(p?.detected, _readExtracted);
+      if (tasks === null) return null;
+      const q = p?.quota;
+      const quota = q && typeof q.remaining === 'number' && typeof q.limit === 'number' && typeof q.resetsAt === 'string'
+        ? { remaining: q.remaining, limit: q.limit, resetsAt: q.resetsAt }
+        : null;
+      return { tasks, quota };
+    },
   }, deps);
 }
 
@@ -30653,6 +30694,474 @@ function paceText(view) {
   return `On pace for ${view.projectedLetter}, if the rest goes like the marked work`;
 }
 
+// ── js/core/announcementDetector.js ─────────────────────────────
+// Twin of src/features/tasks/detection/announcementDetector.ts — hand-maintained, not generated.
+// src/features/tasks/detection/announcementDetector.ts is the source of truth:
+// change it there first, then mirror the change here. tests/twinParity.test.js
+// fails if the two drift.
+//
+// Finding academic work in a pasted announcement (#735), for the legacy Tasks
+// tab (#767). Deterministic, no clock and no network: `now` arrives in the
+// context. THE RULE: an invented deadline is worse than an absent one, so every
+// field stays null unless the text actually said it.
+//
+// Private names carry an _ann prefix against the flattened bundle scope.
+
+// The shell's isKnownCourseCode (calculator/catalog.ts) is membership in its
+// validated catalogue, which it builds from this same ALL_COURSES: an entry
+// counts only with a code, a name and finite credits.
+const _ANN_KNOWN_CODES = new Set(
+  ALL_COURSES
+    .filter((c) => c && typeof c.code === 'string' && c.code.trim() && typeof c.name === 'string' && c.name
+      && typeof c.credits === 'number' && Number.isFinite(c.credits))
+    .map((c) => c.code.trim().toUpperCase()),
+);
+
+function _annIsKnownCourse(code) {
+  return _ANN_KNOWN_CODES.has(String(code ?? '').trim().toUpperCase());
+}
+
+/**
+ * Words that name a kind of work, longest-first so "lab report" beats "lab".
+ *
+ * Ordering matters more than it looks: matching "lab" first would type a lab
+ * REPORT as a LAB — a three-hour session rather than a document — which is the
+ * wrong deadline shape entirely.
+ */
+const _ANN_TYPE_WORDS = [
+  [/\blab\s+report\b/i, 'ASSIGNMENT'],
+  [/\bterm\s+paper\b/i, 'PROJECT'],
+  [/\bfinal\s+exam(?:ination)?\b/i, 'EXAM'],
+  [/\bmid(?:-|\s)?term\b/i, 'EXAM'],
+  [/\bexam(?:ination)?\b/i, 'EXAM'],
+  [/\bquiz\b/i, 'QUIZ'],
+  [/\bassignment\b/i, 'ASSIGNMENT'],
+  [/\bproject\b/i, 'PROJECT'],
+  [/\bpresentation\b/i, 'PROJECT'],
+  [/\blab\b/i, 'LAB'],
+  [/\breading\b/i, 'READING'],
+  [/\bviva\b/i, 'EXAM'],
+];
+
+/** BRACU-style course codes. Matched anywhere, validated against enrolment when we can. */
+const _ANN_COURSE_RE = /\b([A-Z]{2,4})\s?-?\s?(\d{3}[A-Z]?)\b/g;
+
+const _ANN_MONTHS = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
+
+const _ANN_MONTH_ALTS = Object.keys(_ANN_MONTHS).join('|');
+
+/** "25 September" / "25 Sep 2026" / "25th of September" */
+const _ANN_DAY_MONTH = new RegExp(
+  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${_ANN_MONTH_ALTS})\\.?(?:\\s+(\\d{4}))?\\b`,
+  'i',
+);
+/** "September 25" / "Sep 25, 2026" */
+const _ANN_MONTH_DAY = new RegExp(
+  `\\b(${_ANN_MONTH_ALTS})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`,
+  'i',
+);
+/** "25/09/2026" or "25-09-26" — day first, which is how Bangladesh writes it. */
+const _ANN_NUMERIC_DATE = /\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/;
+/** "at 9:30 pm" / "9 am" / "14:00" */
+const _ANN_TIME_RE = /\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
+/** "chapters 4-6", "ch 4 to 6", "topics 1-3" */
+const _ANN_SYLLABUS_RE = /\b((?:chapters?|ch|topics?|units?|lectures?)\.?\s*\d+\s*(?:[-–—]|to)\s*\d+)/i;
+/** A single chapter: "chapter 7" */
+const _ANN_SYLLABUS_ONE_RE = /\b((?:chapters?|ch|topics?|units?|lectures?)\.?\s*\d+)/i;
+
+function _annEvidence(text, index) {
+  return { text: text.trim(), index };
+}
+
+/**
+ * Resolve a bare day and month against `now`.
+ *
+ * A date with no year is the common case in an announcement, and the naive
+ * reading — "this year" — puts a January exam mentioned in December into the
+ * past. So: this year, unless that is more than a month behind, in which case
+ * next year. A deadline in the recent past is plausible (a student pasting an
+ * old email); one six months back is not.
+ */
+function _annResolveYear(month, day, now) {
+  const thisYear = now.getFullYear();
+  const candidate = new Date(thisYear, month, day);
+  const monthAgo = new Date(now);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  return candidate < monthAgo ? thisYear + 1 : thisYear;
+}
+
+
+function _annFindDate(text, now) {
+  let day = null;
+  let month = null;
+  let year = null;
+  let source = null;
+
+  const dayMonth = _ANN_DAY_MONTH.exec(text);
+  const monthDay = _ANN_MONTH_DAY.exec(text);
+  const numeric = _ANN_NUMERIC_DATE.exec(text);
+
+  if (dayMonth) {
+    day = Number(dayMonth[1]);
+    month = _ANN_MONTHS[(dayMonth[2] ?? '').toLowerCase()] ?? null;
+    year = dayMonth[3] ? Number(dayMonth[3]) : null;
+    source = { text: dayMonth[0], index: dayMonth.index };
+  } else if (monthDay) {
+    month = _ANN_MONTHS[(monthDay[1] ?? '').toLowerCase()] ?? null;
+    day = Number(monthDay[2]);
+    year = monthDay[3] ? Number(monthDay[3]) : null;
+    source = { text: monthDay[0], index: monthDay.index };
+  } else if (numeric) {
+    // Day-first. Bangladesh writes 25/09; reading it month-first would make
+    // most dates invalid and silently mangle the ones that are not.
+    day = Number(numeric[1]);
+    month = Number(numeric[2]) - 1;
+    const raw = numeric[3];
+    year = raw === undefined ? null : Number(raw.length === 2 ? `20${raw}` : raw);
+    source = { text: numeric[0], index: numeric.index };
+  }
+
+  if (day === null || month === null || source === null) return null;
+  if (month < 0 || month > 11 || day < 1 || day > 31) return null;
+
+  const resolvedYear = year ?? _annResolveYear(month, day, now);
+
+  // Reject a date that does not exist — 31 September rolls into October, and a
+  // deadline on a day that is not real is worse than none.
+  const probe = new Date(resolvedYear, month, day);
+  if (probe.getMonth() !== month || probe.getDate() !== day) return null;
+
+  // After the date text, not from its start — otherwise the day number
+  // itself ("25 September") is read as the time.
+  const time = _annFindTime(text, source.index + source.text.length);
+  const due = new Date(resolvedYear, month, day, time?.hour ?? 23, time?.minute ?? 59, 0, 0);
+
+  return {
+    iso: due.toISOString(),
+    evidence: _annEvidence(source.text, source.index),
+    hadTime: time !== null,
+  };
+}
+
+/** A time of day, searched near the date so "Quiz 3" is not read as 3 o'clock. */
+function _annFindTime(text, dateIndex) {
+  const window = text.slice(dateIndex, dateIndex + 60);
+  const match = _ANN_TIME_RE.exec(window);
+  if (!match) return null;
+
+  const meridiem = match[3]?.toLowerCase();
+  const rawHour = Number(match[1]);
+  const minute = match[2] ? Number(match[2]) : 0;
+
+  // Without am/pm, only a colon or a 24-hour value is a time. A bare number is
+  // far more likely to be a quiz number, a chapter or a room.
+  if (meridiem === undefined && match[2] === undefined && rawHour <= 12) return null;
+  if (rawHour > 23 || minute > 59) return null;
+
+  let hour = rawHour;
+  if (meridiem === 'pm' && hour < 12) hour += 12;
+  if (meridiem === 'am' && hour === 12) hour = 0;
+  return { hour, minute };
+}
+
+function _annFindCourse(text, known) {
+  const upper = text.toUpperCase();
+  const seen = [];
+  _ANN_COURSE_RE.lastIndex = 0;
+  let match;
+  while ((match = _ANN_COURSE_RE.exec(upper)) !== null) {
+    seen.push({ code: `${match[1]}${match[2]}`, index: match.index });
+  }
+  if (seen.length === 0) return null;
+
+  // A code the student is actually enrolled in beats one that merely looks like
+  // a code — "ROOM 301" and "CSE220" match the same shape.
+  const enrolled = seen.find((c) => known.includes(c.code));
+  const real = seen.find((c) => _annIsKnownCourse(c.code));
+  const chosen = enrolled ?? real;
+  if (chosen === undefined) return null;
+  return { code: chosen.code, evidence: _annEvidence(chosen.code, chosen.index) };
+}
+
+/**
+ * A title for the work, taken from the text rather than invented.
+ *
+ * Prefers a numbered item — "Quiz 3", "Assignment 2" — because that is what a
+ * student calls it. Falls back to the type word alone, capitalised. It never
+ * uses a whole sentence: a task called "Quiz 3 will be held on 25 September and
+ * covers chapters 4-6" is unreadable in a list.
+ */
+function _annBuildTitle(text, type, typeMatch) {
+  // The trailing lookahead keeps a date's day number out of the title:
+  // "Final exam 25/12/2026" is a final exam, not "Final Exam 25".
+  const numbered = new RegExp(
+    `\\b${_annEscapeRegex(typeMatch)}\\s*(?:no\\.?\\s*)?(\\d{1,2})\\b` +
+      `(?![/-]\\d|\\s*(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:${_ANN_MONTH_ALTS}))`,
+    'i',
+  ).exec(text);
+  const base = typeMatch
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  if (numbered) return `${base} ${numbered[1]}`;
+  return base === '' ? type.charAt(0) + type.slice(1).toLowerCase() : base;
+}
+
+function _annEscapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Confidence, from how much the text actually pinned down.
+ *
+ * A date is the thing that makes a detection useful, so it dominates: without
+ * one this is at best a note that something exists.
+ */
+function _annRateConfidence(hasDate, hasCourse, hadTime) {
+  if (hasDate && hasCourse && hadTime) return 'high';
+  if (hasDate && (hasCourse || hadTime)) return 'high';
+  if (hasDate) return 'medium';
+  return 'low';
+}
+
+/**
+ * Split a paste into candidate announcements.
+ *
+ * Blank-line-separated blocks first, since that is how emails and notices are
+ * written; a block with several sentences is then split on sentence ends so
+ * "Quiz 3 is on the 25th. Assignment 2 is due the 30th." yields two.
+ */
+function _annCandidates(input) {
+  return input
+    .split(/\n\s*\n/)
+    .flatMap((block) => block.split(/(?<=[.!?])\s+(?=[A-Z])/))
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter((line) => line.length > 0);
+}
+
+/** Detect academic work in one candidate line, or null when there is none. */
+function _annDetectOne(line, context) {
+  const typeHit = _ANN_TYPE_WORDS.find(([pattern]) => pattern.test(line));
+  // No word naming a kind of work: this is prose, not an announcement. Refusing
+  // here is what stops a paste of someone's whole inbox becoming forty tasks.
+  if (typeHit === undefined) return null;
+
+  const [pattern, type] = typeHit;
+  const matched = pattern.exec(line);
+  const typeWord = matched?.[0] ?? '';
+
+  const date = _annFindDate(line, context.now);
+  const course = _annFindCourse(line, context.knownCourseCodes ?? []);
+  const syllabusMatch = _ANN_SYLLABUS_RE.exec(line) ?? _ANN_SYLLABUS_ONE_RE.exec(line);
+
+  const ev = {};
+  if (typeWord !== '') ev['type'] = _annEvidence(typeWord, matched?.index ?? 0);
+  if (date !== null) ev['dueAt'] = date.evidence;
+  if (course !== null) ev['courseCode'] = course.evidence;
+  if (syllabusMatch?.[1] !== undefined) {
+    ev['syllabus'] = _annEvidence(syllabusMatch[1], syllabusMatch.index);
+  }
+
+  return {
+    title: _annBuildTitle(line, type, typeWord),
+    type,
+    dueAt: date?.iso ?? null,
+    courseCode: course?.code ?? null,
+    syllabus: syllabusMatch?.[1]?.trim() ?? null,
+    confidence: _annRateConfidence(date !== null, course !== null, date?.hadTime ?? false),
+    evidence: ev,
+  };
+}
+
+/** The pasted-announcement detector. */
+const announcementDetector = {
+  source: 'PASTE',
+  detect(input, context) {
+    const lines = _annCandidates(input);
+    const detected = [];
+    const unrecognised = [];
+
+    for (const line of lines) {
+      const found = _annDetectOne(line, context);
+      if (found === null) unrecognised.push(line);
+      else detected.push(found);
+    }
+
+    return { source: 'PASTE', detected, unrecognised };
+  },
+};
+
+/** Convenience for callers that just want the detections. */
+function detectFromText(input, context) {
+  return announcementDetector.detect(input, context);
+}
+
+// ── js/core/proposalDraft.js ────────────────────────────────────
+// Twin of src/features/tasks/detection/proposalDraft.ts — hand-maintained, not generated.
+// src/features/tasks/detection/proposalDraft.ts is the source of truth: change
+// it there first, then mirror the change here. tests/twinParity.test.js fails
+// if the two drift.
+//
+// Detected work as editable proposals (#735), for the legacy Tasks tab (#767).
+// Nothing becomes a task until the student confirms it; an undated proposal
+// starts unticked, because a deadline is what makes one worth adding.
+
+const _DRAFT_MAX_SOURCE_REFERENCE = 512;
+
+function toDrafts(detected, enrollments = [], source = 'PASTE') {
+  const byCourse = new Map(enrollments.map((e) => [e.courseCode.toUpperCase(), e.id]));
+
+  return detected.map((task, index) => ({
+    key: `proposal-${index}`,
+    selected: task.dueAt !== null,
+    title: task.title,
+    type: task.type,
+    dueLocal: instantToLocalInput(task.dueAt),
+    enrollmentId: task.courseCode === null ? '' : (byCourse.get(task.courseCode) ?? ''),
+    courseCode: task.courseCode,
+    syllabus: task.syllabus,
+    confidence: task.confidence,
+    sourceText: _draftSourceTextOf(task),
+    source,
+  }));
+}
+
+function _draftSourceTextOf(task) {
+  const spans = Object.values(task.evidence).filter((e) => e !== undefined);
+  if (spans.length === 0) return '';
+  const joined = spans.map((span) => span.text).join(' · ');
+  return joined.length > _DRAFT_MAX_SOURCE_REFERENCE ? joined.slice(0, _DRAFT_MAX_SOURCE_REFERENCE) : joined;
+}
+
+function patchDraft(draft, patch) {
+  return { ...draft, ...patch };
+}
+
+function draftToInput(draft) {
+  return {
+    title: draft.title.trim(),
+    type: draft.type,
+    dueAt: localInputToInstant(draft.dueLocal),
+    enrollmentId: draft.enrollmentId === '' ? null : draft.enrollmentId,
+    source: draft.source,
+    sourceReference: draft.sourceText === '' ? null : draft.sourceText,
+    ...(draft.syllabus === null ? {} : { description: draft.syllabus }),
+  };
+}
+
+function creatable(drafts) {
+  return drafts.filter((draft) => draft.selected && draft.title.trim() !== '');
+}
+
+function confirmLabel(drafts) {
+  const count = creatable(drafts).length;
+  if (count === 0) return 'Nothing selected';
+  return count === 1 ? 'Add 1 task' : `Add ${count} tasks`;
+}
+
+function confidenceNote(draft) {
+  if (draft.dueLocal === '') return 'No date found — add one, or add it undated.';
+  if (draft.confidence === 'high') return 'Date and time read from the text.';
+  if (draft.confidence === 'medium') return 'Date read from the text; the time is a guess.';
+  return 'Low confidence — check this one before adding it.';
+}
+
+// ── js/core/aiDetector.js ───────────────────────────────────────
+// Twin of src/features/tasks/detection/aiDetector.ts — hand-maintained, not generated.
+// src/features/tasks/detection/aiDetector.ts is the source of truth: change it
+// there first, then mirror the change here. tests/twinParity.test.js fails if
+// the two drift.
+//
+// The model as another detector (#741), for the legacy Tasks tab (#767). It
+// runs only when a student asks (shouldOfferAi is the whole policy), and every
+// failure returns no proposals plus a reason to show — the deterministic
+// reading the student already has is never discarded.
+//
+// One deliberate difference: the shell passes its ApiClient; legacy has none,
+// so createAiDetector takes the optional transport deps tasksApi.js accepts
+// (tests inject a fake fetch through them; the page passes nothing).
+
+const _AI_NOTES = {
+  unavailable: 'Shohoj can’t read announcements right now — your own reading still works.',
+  quota_exhausted:
+    'You’ve used today’s free readings — your own reading still works. More open up tomorrow.',
+  failed: 'That didn’t work. You can try again, or add the task yourself.',
+};
+
+/** Offer the model only when the free reading found nothing dated. */
+function shouldOfferAi(proposals) {
+  if (proposals.length === 0) return true;
+  return proposals.every((task) => task.dueAt === null);
+}
+
+function createAiDetector(deps) {
+  return {
+    source: 'AI_SUGGESTION',
+    async detect(input, context) {
+      const result = await extractTasks(input, context.knownCourseCodes ?? [], deps);
+
+      if (!result.ok) {
+        const outcome =
+          result.error.apiCode === 'unavailable'
+            ? 'unavailable'
+            : result.error.apiCode === 'quota_exceeded'
+              ? 'quota_exhausted'
+              : 'failed';
+        return {
+          source: 'AI_SUGGESTION',
+          detected: [],
+          unrecognised: [],
+          outcome,
+          note: result.error.userMessage || _AI_NOTES[outcome],
+        };
+      }
+
+      return {
+        source: 'AI_SUGGESTION',
+        detected: result.value.tasks.map((task) => ({
+          title: task.title,
+          type: task.type,
+          dueAt: task.dueAt,
+          courseCode: task.courseCode,
+          syllabus: task.syllabus,
+          confidence: task.confidence,
+          // The model quotes the sentence it read; there is no real offset to
+          // point into, so it rides at index 0 rather than a fabricated one.
+          evidence: task.evidence === null ? {} : { dueAt: { text: task.evidence, index: 0 } },
+        })),
+        unrecognised: [],
+        outcome: 'ok',
+        note: '',
+      };
+    },
+  };
+}
+
 // ── js/ui/tasksTab.js ───────────────────────────────────────────
 // ── js/ui/tasksTab.js ─────────────────────────────────────────────────────────
 // The legacy calculator's Tasks tab, phase 1 (#767): Today / Upcoming / All,
@@ -30662,7 +31171,9 @@ function paceText(view) {
 // markup classes so both are styled by the one set of rules in style.css.
 // Phase 2 adds a task's details (why it ranks there, reminders, what it is
 // worth) and the course grade picture (TaskDetails, TaskReminders,
-// GradeImpactPanel). Calendar, digest and paste/AI import are later phases.
+// GradeImpactPanel). Phase 3 adds pasting an announcement to find deadlines
+// in it, with the server-side reader as an opt-in second opinion (TaskImport).
+// Calendar and the digest are later phases.
 //
 // Every interpolation goes through escHtml. Wiring is data-action throughout:
 // the bundle's CSP blocks inline handlers.
@@ -30693,7 +31204,18 @@ const _tasks = {
   assessDraft: null,      // { taskId, weight, total, earned } across re-renders
   detailsError: { reminders: '', assessment: '' },
   detailsBusy: false,
+  // Phase 3: the paste-an-announcement panel (TaskImport on the shell).
+  importStage: 'closed', // 'closed' | 'paste' | 'review'
+  importText: '',
+  drafts: [],
+  unrecognised: [],
+  importError: '',
+  aiState: 'idle',       // 'idle' | 'reading' | 'done'
+  aiNote: '',
+  importBusy: false,
 };
+
+const _tasksAi = createAiDetector();
 
 function _tasksUid() {
   return typeof window._shohoj_currentUid === 'function' ? window._shohoj_currentUid() : null;
@@ -30831,6 +31353,86 @@ function _rowHTML(task) {
       <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
       ${expanded ? _detailsHTML(task) : ''}
     </li>`;
+}
+
+// ── Import from text (TaskImport on the shell) ─────────────────────────────
+
+function _importHTML(courses) {
+  if (_tasks.importStage === 'closed') {
+    return '<button type="button" class="tasks-import-open" data-testid="tasks-import-open" data-action="tasks:importOpen">Paste an announcement</button>';
+  }
+  if (_tasks.importStage === 'paste') {
+    return `
+      <section class="tasks-tasks-Import from text">
+        <label class="tasks-field tasks-field-grow" for="tasksImportText">
+          <span class="tasks-label">Announcement</span>
+          <textarea id="tasksImportText" class="tasks-input tasks-import-text" rows="5" maxlength="5000" placeholder="Quiz 3 will be held on 25 September and covers chapters 4-6." data-action="tasks:importText">${escHtml(_tasks.importText)}</textarea>
+        </label>
+        <p class="tasks-import-note">Nothing is added until you confirm it. Shohoj reads the text in your browser — it does not send it anywhere.</p>
+        <div class="tasks-import-actions">
+          <button type="button" class="tasks-import-submit" data-testid="tasks-import-detect" data-action="tasks:importDetect" ${_tasks.importText.trim() === '' ? 'disabled' : ''}>Find deadlines</button>
+          <button type="button" class="tasks-import-cancel" data-action="tasks:importCancel">Cancel</button>
+        </div>
+      </section>`;
+  }
+  const drafts = _tasks.drafts;
+  const opt = (value, label, selected) =>
+    `<option value="${escHtml(value)}"${value === selected ? ' selected' : ''}>${escHtml(label)}</option>`;
+  const items = drafts.map((d, i) => `
+    <li class="tasks-import-item">
+      <label class="tasks-import-pick">
+        <input type="checkbox" aria-label="Add this ${i + 1}" ${d.selected ? 'checked' : ''} data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="selected">
+        <span class="tasks-import-pick-label">Add this</span>
+      </label>
+      <div class="tasks-import-fields">
+        <label class="tasks-field tasks-field-grow">
+          <span class="tasks-label">Task</span>
+          <input class="tasks-input" aria-label="Task ${i + 1}" maxlength="200" value="${escHtml(d.title)}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="title">
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Type</span>
+          <select class="tasks-input" aria-label="Type ${i + 1}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="type">${TASK_TYPES.map((t) => opt(t, TASK_TYPE_LABELS[t], d.type)).join('')}</select>
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Due</span>
+          <input class="tasks-input" aria-label="Due ${i + 1}" type="datetime-local" value="${escHtml(d.dueLocal)}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="dueLocal">
+        </label>
+        <label class="tasks-field">
+          <span class="tasks-label">Course</span>
+          <select class="tasks-input" aria-label="Course ${i + 1}" data-action="tasks:draft" data-key="${escHtml(d.key)}" data-field="enrollmentId">
+            ${opt('', 'No course', d.enrollmentId)}
+            ${courses.filter((c) => c.value !== '').map((c) => opt(c.value, c.label, d.enrollmentId)).join('')}
+          </select>
+        </label>
+      </div>
+      <p class="tasks-import-why">
+        ${escHtml(confidenceNote(d))}
+        ${d.sourceText !== '' ? `<span class="tasks-import-source"> Read from: “${escHtml(d.sourceText)}”</span>` : ''}
+        ${d.courseCode !== null && d.enrollmentId === '' ? `<span class="tasks-import-source"> ${escHtml(d.courseCode)} is not one of your courses this semester.</span>` : ''}
+      </p>
+    </li>`).join('');
+  const offerAi = _tasks.aiState !== 'done'
+    && shouldOfferAi(drafts.map((d) => ({ dueAt: d.dueLocal === '' ? null : d.dueLocal })));
+  const count = _tasks.unrecognised.length;
+  return `
+    <section class="tasks-tasks-Import from text">
+      ${drafts.length === 0
+        ? '<p class="tasks-import-none" data-testid="tasks-import-none">No deadlines found in that text. You can edit it and look again, or add the task yourself.</p>'
+        : `<ul class="tasks-import-list" data-testid="tasks-import-list">${items}</ul>`}
+      ${count > 0 ? `<p class="tasks-import-skipped" data-testid="tasks-import-skipped">${count === 1 ? '1 line had no deadline in it and was skipped.' : `${count} lines had no deadline in them and were skipped.`}</p>` : ''}
+      ${offerAi ? `
+        <div class="tasks-import-ai">
+          <button type="button" class="tasks-import-ai-ask" data-testid="tasks-import-ai" data-action="tasks:importAi" ${_tasks.aiState === 'reading' ? 'disabled' : ''}>${_tasks.aiState === 'reading' ? 'Reading…' : 'Ask Shohoj to read it'}</button>
+          <span class="tasks-import-ai-hint">Sends this text to Shohoj’s reader. Nothing is added without you.</span>
+        </div>` : ''}
+      ${_tasks.aiNote ? `<p class="tasks-import-ai-note" data-testid="tasks-import-ai-note">${escHtml(_tasks.aiNote)}</p>` : ''}
+      ${_tasks.importError ? `<p class="tasks-import-error" role="alert">${escHtml(_tasks.importError)}</p>` : ''}
+      <div class="tasks-import-actions">
+        <button type="button" class="tasks-import-submit" data-testid="tasks-import-confirm" data-action="tasks:importConfirm" ${_tasks.importBusy || creatable(drafts).length === 0 ? 'disabled' : ''}>${escHtml(confirmLabel(drafts))}</button>
+        <button type="button" class="tasks-import-back" data-action="tasks:importBack">Back to the text</button>
+        <button type="button" class="tasks-import-cancel" data-action="tasks:importCancel">Cancel</button>
+      </div>
+    </section>`;
 }
 
 // ── Details (TaskDetails / TaskReminders / AssessmentEditor on the shell) ───
@@ -31096,7 +31698,7 @@ function _tasksMainHTML() {
           </label>` : ''}
       </div>
 
-      <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}</div>
+      <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}${_importHTML(courses)}</div>
 
       ${_tasks.status !== 'error' ? _gradeHTML(courses) : ''}
 
@@ -31176,6 +31778,8 @@ function renderTasksTab() {
       composerOpen: false, draft: null, composerError: '',
       assessments: new Map(), openTaskId: null, reminders: { taskId: null, items: [], status: 'idle' },
       reminderCustomOpen: false, assessDraft: null, detailsError: { reminders: '', assessment: '' },
+      importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
+      aiState: 'idle', aiNote: '', importBusy: false,
     });
   }
   _renderTasksBody();
@@ -31300,6 +31904,113 @@ registerAction('tasks:delete', async (el) => {
     _tasksToast(result.error.userMessage);
     return;
   }
+  _loadTasks();
+});
+
+// ── Import actions ──────────────────────────────────────────────────────────
+
+function _importContext() {
+  return { now: new Date(), knownCourseCodes: _activeEnrollments().map((e) => e.courseCode) };
+}
+
+function _resetImport() {
+  Object.assign(_tasks, {
+    importStage: 'closed', importText: '', drafts: [], unrecognised: [], importError: '',
+    aiState: 'idle', aiNote: '', importBusy: false,
+  });
+}
+
+registerAction('tasks:importOpen', () => {
+  _tasks.importStage = 'paste';
+  _renderTasksBody();
+  document.getElementById('tasksImportText')?.focus();
+});
+
+// Typing updates state without a re-render, so the caret never jumps; only
+// the Find button's enabled state follows along.
+registerAction('tasks:importText', (el) => {
+  _tasks.importText = el.value;
+  const find = document.querySelector('[data-testid="tasks-import-detect"]');
+  if (find) find.disabled = el.value.trim() === '';
+});
+
+registerAction('tasks:importDetect', () => {
+  const result = detectFromText(_tasks.importText, _importContext());
+  _tasks.drafts = toDrafts(result.detected, _activeEnrollments());
+  _tasks.unrecognised = result.unrecognised;
+  _tasks.importError = '';
+  _tasks.aiState = 'idle';
+  _tasks.aiNote = '';
+  _tasks.importStage = 'review';
+  _renderTasksBody();
+});
+
+registerAction('tasks:importBack', () => {
+  _tasks.importError = '';
+  _tasks.importStage = 'paste';
+  _renderTasksBody();
+});
+
+registerAction('tasks:importCancel', () => {
+  _resetImport();
+  _renderTasksBody();
+});
+
+registerAction('tasks:draft', (el, event) => {
+  const { key, field } = el.dataset;
+  const value = field === 'selected' ? !!el.checked : el.value;
+  _tasks.drafts = _tasks.drafts.map((d) => (d.key === key ? patchDraft(d, { [field]: value }) : d));
+  // Text fires `input` per keystroke: keep the caret by not re-rendering until
+  // the field commits (`change`), which is also when the confirm count moves.
+  if (event?.type === 'change') _renderTasksBody();
+});
+
+registerAction('tasks:importAi', async () => {
+  if (_tasks.aiState === 'reading') return;
+  _tasks.aiState = 'reading';
+  _tasks.aiNote = '';
+  _renderTasksBody();
+  const result = await _tasksAi.detect(_tasks.importText, _importContext());
+  _tasks.aiState = 'done';
+  if (result.outcome !== 'ok') {
+    _tasks.aiNote = result.note;
+  } else if (result.detected.length === 0) {
+    _tasks.aiNote = 'Shohoj read it too and found nothing more.';
+  } else {
+    _tasks.drafts = toDrafts(result.detected, _activeEnrollments(), 'AI_SUGGESTION');
+    _tasks.aiNote = result.detected.length === 1
+      ? 'Shohoj read it and found 1 more thing. Check it before adding.'
+      : `Shohoj read it and found ${result.detected.length} things. Check them before adding.`;
+  }
+  _renderTasksBody();
+});
+
+registerAction('tasks:importConfirm', async () => {
+  const queue = creatable(_tasks.drafts);
+  if (queue.length === 0 || _tasks.importBusy) return;
+  _tasks.importBusy = true;
+  _tasks.importError = '';
+  _renderTasksBody();
+
+  let added = 0;
+  for (const draft of queue) {
+    const result = await createTask(draftToInput(draft));
+    if (!result.ok) {
+      // Keep what was not added, so nothing already created is offered twice.
+      const done = new Set(queue.slice(0, added).map((d) => d.key));
+      _tasks.drafts = _tasks.drafts.filter((d) => !done.has(d.key));
+      _tasks.importError = added === 0
+        ? result.error.userMessage
+        : `Added ${added} of ${queue.length}. The rest are still here — ${result.error.userMessage}`;
+      _tasks.importBusy = false;
+      _renderTasksBody();
+      if (added > 0) _loadTasks();
+      return;
+    }
+    added += 1;
+  }
+  _resetImport();
+  _tasksToast(added === 1 ? 'Task added.' : `${added} tasks added.`);
   _loadTasks();
 });
 
