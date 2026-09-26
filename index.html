@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-n8lC9sPHuSsaAde9JygUCQ7kuId8PoZf56gH/GYRmAc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-k+UO+DP+MCU/+P+3ErXVikR6qIhYYxN5CSW8S1ut7ZA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8736,8 +8736,8 @@ body[data-page="admin"] .orb { display: none !important; }
  * Colour comes from the shell's --c-* tokens (css/shell-routes.css). The legacy
  * page does not load that sheet, so its Tasks panel aliases the five tokens
  * used here to its own palette — which already follows the light/dark switch.
- * The later Tasks sections (dashboard, grade impact, reminders, calendar) stay
- * in shell-routes.css until their phases reach legacy.
+ * The dashboard and calendar sections stay in shell-routes.css until their
+ * phases reach legacy.
  */
 
 #tabTasks {
@@ -8746,6 +8746,31 @@ body[data-page="admin"] .orb { display: none !important; }
   --c-surface: var(--chip-hover);
   --c-surface-2: var(--glass2);
   --c-border: var(--border);
+}
+
+/* The landing page styles every <section> as a centred 900px block with 5rem
+   of padding (see the rule near the top, and its breakpoints). The Tasks
+   markup uses <section> for the route, each group and each details block, so
+   inside the panel that rule is undone. :where() keeps this at element
+   specificity: it beats the landing rule by coming later, and every tasks-*
+   class rule still beats it. */
+:where(#tabTasks) section {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: auto;
+  z-index: auto;
+}
+
+/* The lines the shell greys with its .shell-muted utility, which legacy does
+   not carry. Scoped to the panel so nothing on the shell changes. */
+#tabTasks .tasks-semester,
+#tabTasks .tasks-signin,
+#tabTasks .tasks-empty-detail,
+#tabTasks .tasks-assessment-hint,
+#tabTasks .tasks-grade-partial,
+#tabTasks .tasks-grade-pace {
+  color: var(--c-text-muted);
 }
 
 .tasks-route {
@@ -9181,6 +9206,9 @@ body[data-page="admin"] .orb { display: none !important; }
 
 .tasks-row {
   display: flex;
+  /* Wraps so an open .tasks-details (flex-basis: 100%) takes its own full-width
+     line; without it the panel shared the row and got half its width. */
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
@@ -9197,7 +9225,7 @@ body[data-page="admin"] .orb { display: none !important; }
   color: var(--c-text-muted);
 }
 
-.tasks-row-body { flex: 1 1 auto; min-width: 0; }
+.tasks-row-body { flex: 1 1 0%; min-width: 0; } /* 0% basis: a long title shrinks, never wraps the buttons */
 
 .tasks-row-title {
   margin: 0;
@@ -9313,6 +9341,205 @@ body[data-page="admin"] .orb { display: none !important; }
   .tasks-field-grow,
   .tasks-field-narrow { flex: 1 1 100%; }
   .tasks-summary { font-size: 0.78rem; }
+}
+
+/* ── Priority explanations, marks and grade impact (#723) ──────────────────── */
+
+.tasks-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.tasks-disclose {
+  border: 0;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 0.9rem;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* The details panel spans the whole row, below the three columns above it. */
+.tasks-details {
+  flex-basis: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border, rgba(0, 0, 0, 0.1));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tasks-why-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-text-muted);
+}
+
+.tasks-band {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.14));
+}
+
+.tasks-band-urgent { color: #d9534f; border-color: #d9534f; }
+.tasks-band-high { color: #c05621; border-color: #c05621; }
+
+.tasks-why-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tasks-why-item {
+  position: relative;
+  font-size: 0.8rem;
+  padding: 3px 0;
+}
+
+/* A proportion bar behind the text. Decoration for a number already stated in
+ * words, which is why it is aria-hidden in the markup. */
+.tasks-why-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--green, #2f855a);
+  opacity: 0.45;
+  border-radius: 2px;
+}
+
+.tasks-assessment-hint {
+  margin: 4px 0 0;
+  font-size: 0.74rem;
+}
+
+/* ── Grade impact ─────────────────────────────────────────────────────────── */
+
+.tasks-grade {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.tasks-grade-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tasks-grade-title { margin: 0; font-size: 0.98rem; }
+
+.tasks-grade-inhand {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green, #2f855a);
+}
+
+.tasks-grade-partial,
+.tasks-grade-pace {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+
+.tasks-grade-floor {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.tasks-grade-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.tasks-grade-secured { color: var(--green, #2f855a); }
+.tasks-grade-unreachable { color: var(--c-text-muted); text-decoration: line-through; }
+
+@media (max-width: 560px) {
+  .tasks-details .tasks-composer-row .tasks-field-narrow { flex: 1 1 30%; }
+}
+
+/* ── Reminders and the calendar (#729) ─────────────────────────────────────── */
+
+.tasks-reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tasks-reminder-offsets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tasks-reminder-chip,
+.tasks-reminder-more {
+  font: inherit;
+  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  border: 1px solid var(--c-border, rgba(0, 0, 0, 0.16));
+  background: var(--c-surface, #fff);
+  color: var(--c-text);
+}
+
+/* The chip IS the setting, so a set one reads as pressed rather than needing a
+ * separate remove control beside it. */
+.tasks-reminder-chip.is-set {
+  border-color: transparent;
+  background: var(--green, #2f855a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.tasks-reminder-chip[disabled],
+.tasks-reminder-more[disabled] { opacity: 0.6; cursor: default; }
+
+.tasks-reminder-more { border-style: dashed; }
+
+.tasks-reminder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: var(--c-text-muted);
+}
+
+.tasks-reminder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 </style>
@@ -29647,6 +29874,43 @@ function dueTone(task, now = new Date()) {
   return 'later';
 }
 
+/** The factors that moved the score, largest first; zero-point ones dropped. */
+function explainPriority(task) {
+  return [...(task.priorityFactors ?? [])]
+    .filter((factor) => factor.points > 0)
+    .sort((a, b) => b.points - a.points);
+}
+
+function assessmentsByTask(assessments) {
+  return new Map(assessments.map((assessment) => [assessment.taskId, assessment]));
+}
+
+const REMINDER_CHANNELS = ['WEB', 'EMAIL', 'PUSH'];
+const REMINDER_STATUSES = ['PENDING', 'SENT', 'FAILED', 'CANCELLED'];
+
+const COMMON_REMINDER_OFFSETS = [
+  { minutes: 24 * 60, label: 'A day before' },
+  { minutes: 3 * 60, label: 'Three hours before' },
+  { minutes: 30, label: 'Thirty minutes before' },
+];
+
+/** "A day before · sent", "90 minutes before", … */
+function reminderLabel(reminder) {
+  const offset = COMMON_REMINDER_OFFSETS.find((o) => o.minutes === reminder.offsetMinutes);
+  const when =
+    offset?.label ??
+    (reminder.offsetMinutes === 0
+      ? 'At the deadline'
+      : reminder.offsetMinutes % 60 === 0
+        ? `${reminder.offsetMinutes / 60} hours before`
+        : `${reminder.offsetMinutes} minutes before`);
+
+  if (reminder.status === 'SENT') return `${when} · sent`;
+  if (reminder.status === 'CANCELLED') return `${when} · missed`;
+  if (reminder.scheduledFor === null) return `${when} · waiting for a deadline`;
+  return when;
+}
+
 /** Highest automatic score first; then earliest deadline; then id, for stability. */
 function byPriority(a, b) {
   const aScore = a.priorityScore ?? -1;
@@ -29661,6 +29925,8 @@ function byPriority(a, b) {
 // ── Response checks ─────────────────────────────────────────────────────────
 
 const _TASK_ID_RE = /^tsk_[0-9a-f]{32}$/;
+const _REMINDER_ID_RE = /^rem_[0-9a-f]{32}$/;
+const _PRIORITY_FACTOR_NAMES = ['urgency', 'weight', 'workload', 'importance'];
 
 function _isStringOrNull(v) {
   return v === null || typeof v === 'string';
@@ -29679,6 +29945,18 @@ function _readTask(raw) {
   }
   if (raw.priorityScore !== null && typeof raw.priorityScore !== 'number') return null;
   if (raw.estimatedMinutes !== null && !Number.isInteger(raw.estimatedMinutes)) return null;
+  // Optional, as in the shell's schema: an older backend omits it. When
+  // present, every factor must be well formed.
+  let priorityFactors;
+  if (raw.priorityFactors !== undefined) {
+    if (!Array.isArray(raw.priorityFactors)) return null;
+    priorityFactors = [];
+    for (const f of raw.priorityFactors) {
+      if (!f || !_PRIORITY_FACTOR_NAMES.includes(f.name)) return null;
+      if (![f.value, f.weight, f.points].every((n) => typeof n === 'number')) return null;
+      priorityFactors.push({ name: f.name, value: f.value, weight: f.weight, points: f.points });
+    }
+  }
   return {
     id: raw.id,
     enrollmentId: raw.enrollmentId,
@@ -29692,6 +29970,49 @@ function _readTask(raw) {
     startAt: raw.startAt,
     estimatedMinutes: raw.estimatedMinutes,
     completedAt: raw.completedAt,
+    ...(priorityFactors ? { priorityFactors } : {}),
+  };
+}
+
+function _isNumberOrNull(v) {
+  return v === null || typeof v === 'number';
+}
+
+function _readAssessment(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.taskId !== 'string' || !_TASK_ID_RE.test(raw.taskId)) return null;
+  if (typeof raw.totalMarks !== 'number' || typeof raw.weightPercent !== 'number') return null;
+  // Null means NOT MARKED YET, which is not zero; the distinction is kept.
+  if (!_isNumberOrNull(raw.earnedMarks)) return null;
+  for (const key of ['syllabus', 'location', 'notes']) {
+    if (!_isStringOrNull(raw[key])) return null;
+  }
+  return {
+    taskId: raw.taskId,
+    totalMarks: raw.totalMarks,
+    earnedMarks: raw.earnedMarks,
+    weightPercent: raw.weightPercent,
+    syllabus: raw.syllabus,
+    location: raw.location,
+    notes: raw.notes,
+  };
+}
+
+function _readReminder(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (typeof raw.id !== 'string' || !_REMINDER_ID_RE.test(raw.id)) return null;
+  if (typeof raw.taskId !== 'string' || !_TASK_ID_RE.test(raw.taskId)) return null;
+  if (!Number.isInteger(raw.offsetMinutes)) return null;
+  if (!REMINDER_CHANNELS.includes(raw.channel) || !REMINDER_STATUSES.includes(raw.status)) return null;
+  if (!_isStringOrNull(raw.scheduledFor) || !_isStringOrNull(raw.sentAt)) return null;
+  return {
+    id: raw.id,
+    taskId: raw.taskId,
+    offsetMinutes: raw.offsetMinutes,
+    channel: raw.channel,
+    scheduledFor: raw.scheduledFor,
+    status: raw.status,
+    sentAt: raw.sentAt,
   };
 }
 
@@ -29870,6 +30191,42 @@ function listSemesters(deps) {
 
 function listEnrollments(deps) {
   return _call('GET', '/enrollments', { read: (p) => _readList(p?.items, _readEnrollment) }, deps);
+}
+
+function listAssessments(deps) {
+  return _call('GET', '/assessments', { read: (p) => _readList(p?.items, _readAssessment) }, deps);
+}
+
+function putAssessment(taskId, input, deps) {
+  return _call('PUT', `/tasks/${encodeURIComponent(taskId)}/assessment`, {
+    body: input,
+    read: (p) => _readAssessment(p?.assessment),
+  }, deps);
+}
+
+function deleteAssessment(taskId, deps) {
+  return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/assessment`, {
+    read: (p) => (typeof p?.deleted?.taskId === 'string' ? { taskId: p.deleted.taskId } : null),
+  }, deps);
+}
+
+function listReminders(taskId, deps) {
+  return _call('GET', `/tasks/${encodeURIComponent(taskId)}/reminders`, {
+    read: (p) => _readList(p?.items, _readReminder),
+  }, deps);
+}
+
+function addReminder(taskId, input, deps) {
+  return _call('POST', `/tasks/${encodeURIComponent(taskId)}/reminders`, {
+    body: input,
+    read: (p) => _readReminder(p?.reminder),
+  }, deps);
+}
+
+function removeReminder(taskId, reminderId, deps) {
+  return _call('DELETE', `/tasks/${encodeURIComponent(taskId)}/reminders/${encodeURIComponent(reminderId)}`, {
+    read: (p) => (typeof p?.deleted?.id === 'string' ? { id: p.deleted.id } : null),
+  }, deps);
 }
 
 /** The student's active semester, or null. The list arrives newest-first. */
@@ -30077,6 +30434,225 @@ function toneClass(task, now = new Date()) {
   return `tasks-due-${dueTone(task, now)}`;
 }
 
+// ── js/core/priorityExplainer.js ────────────────────────────────
+// Twin of src/features/tasks/priorityExplainer.ts — hand-maintained, not generated.
+// src/features/tasks/priorityExplainer.ts is the source of truth: change it
+// there first, then mirror the change here. tests/twinParity.test.js fails if
+// the two drift.
+//
+// Why a task ranks where it does, in words (#723), for the legacy Tasks tab
+// (#767). The tone rule: describe the TASK, never the student.
+
+function _prioHoursUntil(task, now) {
+  if (task.dueAt === null) return null;
+  const due = Date.parse(task.dueAt);
+  if (Number.isNaN(due)) return null;
+  return (due - now.getTime()) / 3_600_000;
+}
+
+function _prioUrgencyText(task, now) {
+  const hours = _prioHoursUntil(task, now);
+  if (hours === null) return 'No deadline';
+  if (hours <= 0) return 'Already overdue';
+  if (hours < 1) return 'Due within the hour';
+  if (hours < 48) {
+    const whole = Math.round(hours);
+    return `Due in ${whole} hour${whole === 1 ? '' : 's'}`;
+  }
+  const days = Math.round(hours / 24);
+  return `Due in ${days} days`;
+}
+
+function _prioFactorText(factor, task, assessmentWeight, now) {
+  if (factor.name === 'urgency') return _prioUrgencyText(task, now);
+  if (factor.name === 'weight') {
+    return assessmentWeight === null
+      ? 'Counts toward your grade'
+      : `Worth ${_prioFormatPercent(assessmentWeight)} of the course`;
+  }
+  if (factor.name === 'workload') {
+    const minutes = task.estimatedMinutes ?? 0;
+    const hours = minutes / 60;
+    return hours < 2
+      ? `You estimated ${minutes} minutes`
+      : `You estimated about ${Math.round(hours)} hours`;
+  }
+  return `You marked it ${task.priority.toLowerCase()}`;
+}
+
+function _prioFormatPercent(value) {
+  return `${Number.isInteger(value) ? value : Number(value.toFixed(1))}%`;
+}
+
+/** The factors that moved the score, as sentences, largest first. */
+function priorityReasons(task, options = {}) {
+  const now = options.now ?? new Date();
+  const weight = options.assessmentWeight ?? null;
+  const factors = explainPriority(task);
+  const total = factors.reduce((sum, factor) => sum + factor.points, 0);
+  if (total <= 0) return [];
+
+  return factors.map((factor) => ({
+    name: factor.name,
+    text: _prioFactorText(factor, task, weight, now),
+    points: factor.points,
+    share: factor.points / total,
+  }));
+}
+
+/** One line for a row: the top reason, plus the second when it mattered. */
+function prioritySummary(reasons) {
+  const first = reasons[0];
+  if (first === undefined) return null;
+  const second = reasons[1];
+  if (second !== undefined && second.share >= 0.2) {
+    return `${first.text} · ${second.text}`;
+  }
+  return first.text;
+}
+
+function priorityBand(score) {
+  if (score === null) return null;
+  if (score >= 60) return 'urgent';
+  if (score >= 40) return 'high';
+  if (score >= 20) return 'normal';
+  return 'low';
+}
+
+const PRIORITY_BAND_LABELS = {
+  urgent: 'Needs attention',
+  high: 'Coming up',
+  normal: 'On the list',
+  low: 'No rush',
+};
+
+// ── js/core/gradeImpact.js ──────────────────────────────────────
+// Twin of src/features/tasks/gradeImpact.ts — hand-maintained, not generated.
+// src/features/tasks/gradeImpact.ts is the source of truth: change it there
+// first, then mirror the change here. tests/twinParity.test.js fails if the two
+// drift.
+//
+// What a task is worth to a grade (#721), for the legacy Tasks tab (#767).
+// A BRIDGE, not an implementation: task assessments become the MarkComponent[]
+// that computeCourseMarks (js/core/courseMarks.js) already evaluates, so there
+// is still exactly one definition of the grade arithmetic.
+
+function toMarkComponents(assessed) {
+  return assessed.map(({ task, assessment }) => ({
+    name: task.title,
+    weight: assessment.weightPercent,
+    score: assessment.earnedMarks,
+    outOf: assessment.totalMarks,
+  }));
+}
+
+function gradeImpactFor(assessed, marks) {
+  const components = toMarkComponents(assessed);
+  return marks === undefined
+    ? computeCourseMarks(components)
+    : computeCourseMarks(components, marks);
+}
+
+/** Percent needed on one unmarked task for a target letter, or null. */
+function neededOnTask(assessed, taskId, target, marks) {
+  const impact = gradeImpactFor(assessed, marks);
+  if (impact === null) return null;
+
+  const entry = assessed.find(({ task }) => task.id === taskId);
+  if (entry === undefined) return null;
+  if (entry.assessment.earnedMarks !== null) return null;
+
+  const tier = impact.targets.find((t) => t.letter === target);
+  if (tier === undefined || tier.state !== 'reachable') return null;
+  return tier.neededOnRemaining;
+}
+
+function gradeWindow(assessed, marks) {
+  const impact = gradeImpactFor(assessed, marks);
+  if (impact === null) return null;
+  return {
+    best: impact.bestLetter,
+    worst: impact.worstLetter,
+    projected: impact.projectedLetter,
+    weightsComplete: impact.weightsComplete,
+  };
+}
+
+// ── js/core/gradeImpactView.js ──────────────────────────────────
+// Twin of src/features/tasks/gradeImpactView.ts — hand-maintained, not generated.
+// src/features/tasks/gradeImpactView.ts is the source of truth: change it there
+// first, then mirror the change here. tests/twinParity.test.js fails if the two
+// drift.
+//
+// The grade picture, in words (#723), for the legacy Tasks tab (#767). Never
+// imply certainty the model does not have; never editorialise about the student.
+
+/** Up to `limit` target lines around the best still-reachable letter. */
+function targetLines(impact, limit = 3) {
+  const reachable = impact.targets.filter((target) => target.state === 'reachable');
+  const best = reachable[0];
+
+  const chosen =
+    best === undefined
+      ? impact.targets.filter((target) => target.state === 'secured').slice(0, 1)
+      : impact.targets.slice(
+          Math.max(0, impact.targets.indexOf(best) - 1),
+          Math.max(0, impact.targets.indexOf(best) - 1) + limit,
+        );
+
+  return chosen.map((target) => {
+    if (target.state === 'secured') {
+      return {
+        letter: target.letter,
+        state: 'secured',
+        neededPercent: null,
+        text: `${target.letter} is already secured`,
+      };
+    }
+    if (target.state === 'unreachable') {
+      return {
+        letter: target.letter,
+        state: 'unreachable',
+        neededPercent: null,
+        text: `${target.letter} is no longer reachable`,
+      };
+    }
+    const needed = Math.ceil(target.neededOnRemaining ?? 0);
+    return {
+      letter: target.letter,
+      state: 'reachable',
+      neededPercent: target.neededOnRemaining,
+      text: `${target.letter} needs ${needed}% on what is left`,
+    };
+  });
+}
+
+function gradeImpactView(assessed, limit) {
+  const impact = gradeImpactFor(assessed);
+  if (impact === null) return null;
+
+  return {
+    inHandPercent: impact.inHandPercent,
+    remainingWeight: impact.remainingWeight,
+    bestLetter: impact.bestLetter,
+    worstLetter: impact.worstLetter,
+    projectedLetter: impact.projectedLetter,
+    targets: targetLines(impact, limit),
+    partial: !impact.weightsComplete,
+    floorText:
+      impact.remainingWeight <= 0
+        ? `Final result: ${impact.worstLetter}`
+        : `Even with nothing more, this course lands on ${impact.worstLetter}`,
+  };
+}
+
+/** "On pace for B+" — only when there is marked work and something left. */
+function paceText(view) {
+  if (view.projectedLetter === null) return null;
+  if (view.remainingWeight <= 0) return null;
+  return `On pace for ${view.projectedLetter}, if the rest goes like the marked work`;
+}
+
 // ── js/ui/tasksTab.js ───────────────────────────────────────────
 // ── js/ui/tasksTab.js ─────────────────────────────────────────────────────────
 // The legacy calculator's Tasks tab, phase 1 (#767): Today / Upcoming / All,
@@ -30084,8 +30660,9 @@ function toneClass(task, now = new Date()) {
 // the legacy rendering of the shell's /tasks (TasksRoute, TaskRow,
 // TaskComposer) on the same Worker API and the same sign-in, with the same
 // markup classes so both are styled by the one set of rules in style.css.
-// Calendar, digest, reminders, paste/AI import and grade impact are later
-// phases.
+// Phase 2 adds a task's details (why it ranks there, reminders, what it is
+// worth) and the course grade picture (TaskDetails, TaskReminders,
+// GradeImpactPanel). Calendar, digest and paste/AI import are later phases.
 //
 // Every interpolation goes through escHtml. Wiring is data-action throughout:
 // the bundle's CSP blocks inline handlers.
@@ -30108,6 +30685,14 @@ const _tasks = {
   draft: null,         // composer field values, kept across re-renders
   composerError: '',
   busy: false,
+  // Phase 2: one task's details open at a time, as on the shell.
+  assessments: new Map(), // taskId -> assessment
+  openTaskId: null,
+  reminders: { taskId: null, items: [], status: 'idle' },
+  reminderCustomOpen: false,
+  assessDraft: null,      // { taskId, weight, total, earned } across re-renders
+  detailsError: { reminders: '', assessment: '' },
+  detailsBusy: false,
 };
 
 function _tasksUid() {
@@ -30174,6 +30759,25 @@ async function _loadAcademic() {
   _renderTasksBody();
 }
 
+// Assessments are listed once for every task, as the shell's useAssessments
+// does: rows need them for the "why" wording, and a course filter needs them
+// for the grade picture.
+async function _loadAssessments() {
+  const r = await listAssessments();
+  _tasks.assessments = r.ok ? assessmentsByTask(r.value) : new Map();
+  _renderTasksBody();
+}
+
+async function _loadReminders(taskId) {
+  _tasks.reminders = { taskId, items: [], status: 'loading' };
+  _renderTasksBody();
+  const r = await listReminders(taskId);
+  if (_tasks.openTaskId !== taskId) return;
+  _tasks.reminders = { taskId, items: r.ok ? r.value : [], status: r.ok ? 'ready' : 'error' };
+  if (!r.ok) _tasks.detailsError.reminders = r.error.userMessage;
+  _renderTasksBody();
+}
+
 function _activeEnrollments() {
   const { active, enrollments } = _tasks.academic;
   return active ? enrollments.filter((e) => e.semesterId === active.id) : [];
@@ -30206,6 +30810,7 @@ function _rowHTML(task) {
   const workload = workloadLabel(task.estimatedMinutes);
   const tone = toneClass(task);
   const label = done ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`;
+  const expanded = _tasks.openTaskId === task.id;
   return `
     <li class="tasks-row ${done ? 'tasks-row-done' : ''} ${tone}" data-testid="tasks-row" data-task-id="${escHtml(task.id)}">
       <label class="tasks-check">
@@ -30222,8 +30827,141 @@ function _rowHTML(task) {
           <span class="tasks-priority ${priorityClass(task.priority)}">${escHtml(task.priority.toLowerCase())}</span>
         </p>
       </div>
+      <button type="button" class="tasks-disclose" data-action="tasks:details" data-id="${escHtml(task.id)}" aria-expanded="${expanded}" aria-label="${escHtml(`${expanded ? 'Hide' : 'Show'} details for ${task.title}`)}">${expanded ? '▴' : '▾'}</button>
       <button type="button" class="tasks-delete" data-action="tasks:delete" data-id="${escHtml(task.id)}" aria-label="${escHtml(`Delete ${task.title}`)}" title="Delete">×</button>
+      ${expanded ? _detailsHTML(task) : ''}
     </li>`;
+}
+
+// ── Details (TaskDetails / TaskReminders / AssessmentEditor on the shell) ───
+
+function _whyHTML(task) {
+  const assessment = _tasks.assessments.get(task.id) ?? null;
+  const reasons = priorityReasons(task, { assessmentWeight: assessment?.weightPercent ?? null });
+  if (reasons.length === 0) return '';
+  const band = priorityBand(task.priorityScore);
+  return `
+    <section class="tasks-why">
+      <h4 class="tasks-why-title">
+        Why this is here
+        ${band !== null ? `<span class="tasks-band tasks-band-${band}">${escHtml(PRIORITY_BAND_LABELS[band])}</span>` : ''}
+      </h4>
+      <ul class="tasks-why-list" data-testid="tasks-why-list">
+        ${reasons.map((r) => `
+          <li class="tasks-why-item">
+            <span class="tasks-why-text">${escHtml(r.text)}</span>
+            <span class="tasks-why-bar" aria-hidden="true" style="width: ${Math.round(r.share * 100)}%"></span>
+          </li>`).join('')}
+      </ul>
+    </section>`;
+}
+
+function _remindersHTML(task) {
+  const loaded = _tasks.reminders.taskId === task.id ? _tasks.reminders : { items: [], status: 'loading' };
+  const set = new Set(loaded.items.map((r) => r.offsetMinutes));
+  const busy = _tasks.detailsBusy || loaded.status === 'loading' ? 'disabled' : '';
+  return `
+    <section class="tasks-reminders" data-testid="tasks-reminders">
+      <h4 class="tasks-why-title">Remind me</h4>
+      ${task.dueAt === null ? `
+        <p class="tasks-assessment-hint" data-testid="tasks-reminders-nodeadline">
+          Reminders count back from the deadline. Add one and they will start working.
+        </p>` : ''}
+      <div class="tasks-reminder-offsets">
+        ${COMMON_REMINDER_OFFSETS.map((o) => {
+          const already = set.has(o.minutes);
+          return `<button type="button" class="tasks-reminder-chip ${already ? 'is-set' : ''}" aria-pressed="${already}" data-action="tasks:reminderChip" data-minutes="${o.minutes}" ${busy}>${escHtml(o.label)}</button>`;
+        }).join('')}
+        ${_tasks.reminderCustomOpen ? '' : '<button type="button" class="tasks-reminder-more" data-action="tasks:reminderCustom">Custom…</button>'}
+      </div>
+      ${_tasks.reminderCustomOpen ? `
+        <div class="tasks-composer-row">
+          <label class="tasks-field tasks-field-narrow" for="tasksReminderMinutes">
+            <span class="tasks-label">Minutes before</span>
+            <input id="tasksReminderMinutes" class="tasks-input" type="number" min="0" step="5" data-enter-action="tasks:reminderAdd">
+          </label>
+          <button type="button" class="tasks-save magnetic" data-action="tasks:reminderAdd" ${busy}>Add</button>
+        </div>` : ''}
+      ${loaded.items.length > 0 ? `
+        <ul class="tasks-reminder-list" data-testid="tasks-reminder-list">
+          ${loaded.items.map((r) => `
+            <li class="tasks-reminder-item">
+              <span>${escHtml(reminderLabel(r))}</span>
+              <button type="button" class="tasks-delete" data-action="tasks:reminderRemove" data-rid="${escHtml(r.id)}" aria-label="${escHtml(`Remove reminder ${reminderLabel(r)}`)}" ${busy}>×</button>
+            </li>`).join('')}
+        </ul>` : ''}
+      ${_tasks.detailsError.reminders ? `<p class="tasks-error" role="alert">${escHtml(_tasks.detailsError.reminders)}</p>` : ''}
+    </section>`;
+}
+
+function _assessmentHTML(task) {
+  const saved = _tasks.assessments.get(task.id) ?? null;
+  const d = _tasks.assessDraft?.taskId === task.id ? _tasks.assessDraft : {
+    weight: saved === null ? '' : String(saved.weightPercent),
+    total: saved === null ? '' : String(saved.totalMarks),
+    earned: saved === null || saved.earnedMarks === null ? '' : String(saved.earnedMarks),
+  };
+  const busy = _tasks.detailsBusy ? 'disabled' : '';
+  const field = (id, label, value, attrs) => `
+    <label class="tasks-field tasks-field-narrow" for="${id}">
+      <span class="tasks-label">${label}</span>
+      <input id="${id}" class="tasks-input" type="number" step="any" ${attrs} value="${escHtml(value)}" data-enter-action="tasks:assessSave">
+    </label>`;
+  return `
+    <div class="tasks-assessment" data-testid="tasks-assessment" data-task-id="${escHtml(task.id)}">
+      <h4 class="tasks-why-title">What it is worth</h4>
+      <div class="tasks-composer-row">
+        ${field('tasksAssessWeight', '% of course', d.weight, 'min="0" max="100" placeholder="40"')}
+        ${field('tasksAssessTotal', 'Out of', d.total, 'min="1" placeholder="40"')}
+        ${field('tasksAssessEarned', 'You scored', d.earned, 'min="0" placeholder="—"')}
+      </div>
+      <p class="tasks-assessment-hint">Leave “You scored” blank until it is marked — blank is not the same as zero.</p>
+      ${_tasks.detailsError.assessment ? `<p class="tasks-error" role="alert">${escHtml(_tasks.detailsError.assessment)}</p>` : ''}
+      <div class="tasks-composer-actions">
+        <button type="button" class="tasks-save magnetic" data-testid="tasks-assessment-save" data-action="tasks:assessSave" ${busy}>${_tasks.detailsBusy ? 'Saving…' : 'Save'}</button>
+        ${saved !== null ? `<button type="button" class="tasks-cancel" data-action="tasks:assessRemove" ${busy}>Remove</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function _detailsHTML(task) {
+  return `
+    <div class="tasks-details" data-testid="tasks-details">
+      ${_whyHTML(task)}
+      ${_remindersHTML(task)}
+      ${_assessmentHTML(task)}
+    </div>`;
+}
+
+// ── Grade picture for the filtered course (GradeImpactPanel on the shell) ────
+
+function _gradeHTML(courses) {
+  const filter = _tasks.courseFilter;
+  if (filter === '') return '';
+  const assessed = [..._tasks.items, ..._tasks.overdue]
+    .filter((t) => t.enrollmentId === filter)
+    .map((task) => ({ task, assessment: _tasks.assessments.get(task.id) }))
+    .filter((e) => e.assessment !== undefined);
+  if (assessed.length === 0) return '';
+  const view = gradeImpactView(assessed);
+  if (view === null) return '';
+  const label = courses.find((c) => c.value === filter)?.label ?? 'This course';
+  const pace = paceText(view);
+  return `
+    <section class="tasks-grade lg-panel lg-surface" data-testid="tasks-grade" aria-label="${escHtml(`${label} grade impact`)}">
+      <div class="lg-shine"></div>
+      <header class="tasks-grade-head">
+        <h3 class="tasks-grade-title">${escHtml(label)}</h3>
+        ${view.inHandPercent !== null ? `<span class="tasks-grade-inhand" data-testid="tasks-grade-inhand">${view.inHandPercent.toFixed(0)}% in hand</span>` : ''}
+      </header>
+      ${view.partial ? '<p class="tasks-grade-partial" data-testid="tasks-grade-partial">Based on the components you have entered, which do not add up to 100% of the course yet.</p>' : ''}
+      <p class="tasks-grade-floor" data-testid="tasks-grade-floor">${escHtml(view.floorText)}</p>
+      ${pace !== null ? `<p class="tasks-grade-pace">${escHtml(pace)}</p>` : ''}
+      ${view.targets.length > 0 ? `
+        <ul class="tasks-grade-targets" data-testid="tasks-grade-targets">
+          ${view.targets.map((t) => `<li class="tasks-grade-target tasks-grade-${t.state}">${escHtml(t.text)}</li>`).join('')}
+        </ul>` : ''}
+    </section>`;
 }
 
 function _composerHTML(courses) {
@@ -30360,12 +31098,25 @@ function _tasksMainHTML() {
 
       <div class="tasks-create" id="tasksCreate">${_composerHTML(courses)}</div>
 
+      ${_tasks.status !== 'error' ? _gradeHTML(courses) : ''}
+
       <div id="tasksBody">${body}</div>
     </section>`;
 }
 
 // Keep what the student typed when a response lands mid-composition.
 function _captureDraft() {
+  // Only the form that belongs to the open task: while a different task's
+  // details are opening, the previous form is still on screen.
+  const form = document.querySelector('[data-testid="tasks-assessment"]');
+  if (_tasks.openTaskId !== null && form?.dataset.taskId === _tasks.openTaskId) {
+    _tasks.assessDraft = {
+      taskId: _tasks.openTaskId,
+      weight: document.getElementById('tasksAssessWeight').value,
+      total: document.getElementById('tasksAssessTotal').value,
+      earned: document.getElementById('tasksAssessEarned').value,
+    };
+  }
   if (!_tasks.composerOpen) return;
   const val = (id) => document.getElementById(id)?.value;
   if (document.getElementById('tasksTitle') === null) return;
@@ -30423,12 +31174,15 @@ function renderTasksTab() {
       uid, status: 'idle', items: [], overdue: [], error: '', courseFilter: '',
       academic: { status: 'idle', active: null, enrollments: [] },
       composerOpen: false, draft: null, composerError: '',
+      assessments: new Map(), openTaskId: null, reminders: { taskId: null, items: [], status: 'idle' },
+      reminderCustomOpen: false, assessDraft: null, detailsError: { reminders: '', assessment: '' },
     });
   }
   _renderTasksBody();
   if (_tasks.academic.status === 'idle') _loadAcademic();
   // Opening the tab always re-reads: another device may have changed things.
   _loadTasks();
+  _loadAssessments();
 }
 
 // ── Actions ─────────────────────────────────────────────────────────────────
@@ -30547,6 +31301,127 @@ registerAction('tasks:delete', async (el) => {
     return;
   }
   _loadTasks();
+});
+
+// ── Details actions ─────────────────────────────────────────────────────────
+
+registerAction('tasks:details', (el) => {
+  const id = el.dataset.id;
+  const opening = _tasks.openTaskId !== id;
+  _tasks.openTaskId = opening ? id : null;
+  _tasks.reminderCustomOpen = false;
+  _tasks.assessDraft = null;
+  _tasks.detailsError = { reminders: '', assessment: '' };
+  if (opening) _loadReminders(id);
+  else _renderTasksBody();
+});
+
+async function _reminderChange(work) {
+  const taskId = _tasks.openTaskId;
+  if (taskId === null || _tasks.detailsBusy) return;
+  _tasks.detailsBusy = true;
+  _tasks.detailsError.reminders = '';
+  _renderTasksBody();
+  const failure = await work(taskId);
+  _tasks.detailsBusy = false;
+  if (failure) {
+    _tasks.detailsError.reminders = failure;
+    _renderTasksBody();
+    return true;
+  }
+  await _loadReminders(taskId);
+  return false;
+}
+
+registerAction('tasks:reminderChip', (el) => {
+  const minutes = Number(el.dataset.minutes);
+  // The chip IS the setting: tapping a set one removes it.
+  _reminderChange(async (taskId) => {
+    const existing = _tasks.reminders.items.find((r) => r.offsetMinutes === minutes);
+    const r = existing ? await removeReminder(taskId, existing.id) : await addReminder(taskId, { offsetMinutes: minutes });
+    return r.ok ? '' : r.error.userMessage;
+  });
+});
+
+registerAction('tasks:reminderCustom', () => {
+  _tasks.reminderCustomOpen = true;
+  _renderTasksBody();
+  document.getElementById('tasksReminderMinutes')?.focus();
+});
+
+registerAction('tasks:reminderAdd', (_el, event) => {
+  event?.preventDefault?.();
+  const raw = document.getElementById('tasksReminderMinutes')?.value ?? '';
+  const minutes = Number(raw);
+  if (raw.trim() === '' || !Number.isInteger(minutes) || minutes < 0) {
+    _tasks.detailsError.reminders = 'Give a whole number of minutes.';
+    _renderTasksBody();
+    return;
+  }
+  _reminderChange(async (taskId) => {
+    const r = await addReminder(taskId, { offsetMinutes: minutes });
+    if (r.ok) _tasks.reminderCustomOpen = false;
+    return r.ok ? '' : r.error.userMessage;
+  });
+});
+
+registerAction('tasks:reminderRemove', (el) => {
+  const rid = el.dataset.rid;
+  _reminderChange(async (taskId) => {
+    const r = await removeReminder(taskId, rid);
+    return r.ok ? '' : r.error.userMessage;
+  });
+});
+
+async function _assessmentChange(work) {
+  const taskId = _tasks.openTaskId;
+  if (taskId === null || _tasks.detailsBusy) return;
+  _tasks.detailsBusy = true;
+  _tasks.detailsError.assessment = '';
+  _renderTasksBody();
+  const failure = await work(taskId);
+  _tasks.detailsBusy = false;
+  if (failure) {
+    _tasks.detailsError.assessment = failure;
+    _renderTasksBody();
+    return;
+  }
+  _tasks.assessDraft = null;
+  // What a task is worth feeds its priority score, so the list re-reads too.
+  await _loadAssessments();
+  _loadTasks();
+}
+
+registerAction('tasks:assessSave', (_el, event) => {
+  event?.preventDefault?.();
+  _captureDraft();
+  const d = _tasks.assessDraft;
+  if (!d) return;
+  const weightPercent = Number(d.weight);
+  const totalMarks = Number(d.total);
+  let problem = '';
+  if (!Number.isFinite(weightPercent) || d.weight.trim() === '') problem = 'How much of the course is this worth?';
+  else if (!Number.isFinite(totalMarks) || d.total.trim() === '' || totalMarks <= 0) problem = 'What is it marked out of?';
+  const earnedMarks = d.earned.trim() === '' ? null : Number(d.earned);
+  if (!problem && earnedMarks !== null && !Number.isFinite(earnedMarks)) {
+    problem = 'Marks earned should be a number, or blank if it is not marked yet.';
+  }
+  if (problem) {
+    _tasks.detailsError.assessment = problem;
+    _renderTasksBody();
+    return;
+  }
+  _assessmentChange(async (taskId) => {
+    const r = await putAssessment(taskId, { totalMarks, weightPercent, earnedMarks });
+    return r.ok ? '' : r.error.userMessage;
+  });
+});
+
+registerAction('tasks:assessRemove', () => {
+  _assessmentChange(async (taskId) => {
+    const r = await deleteAssessment(taskId);
+    return r.ok ? '' : r.error.userMessage;
+  });
 });
 
 // Sign-in, sign-out and a switch of account all re-render an open tab.
