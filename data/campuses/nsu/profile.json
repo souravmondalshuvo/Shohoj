@@ -1,0 +1,124 @@
+{
+  "id": "nsu",
+  "name": "North South University",
+  "shortName": "NSU",
+  "identity": {
+    "source": "nsu-email-form",
+    "emailDomains": ["northsouth.edu"],
+    "note": "Students and faculty/staff share the domain and the firstname.lastname format, so an address alone cannot tell a student from a lecturer."
+  },
+  "grading": {
+    "source": "nsu-grading-policy",
+    "scale": [
+      {"letter": "A", "points": 4.0, "minMark": 93},
+      {"letter": "A-", "points": 3.7, "minMark": 90},
+      {"letter": "B+", "points": 3.3, "minMark": 87},
+      {"letter": "B", "points": 3.0, "minMark": 83},
+      {"letter": "B-", "points": 2.7, "minMark": 80},
+      {"letter": "C+", "points": 2.3, "minMark": 77},
+      {"letter": "C", "points": 2.0, "minMark": 73},
+      {"letter": "C-", "points": 1.7, "minMark": 70},
+      {"letter": "D+", "points": 1.3, "minMark": 67},
+      {"letter": "D", "points": 1.0, "minMark": 60},
+      {"letter": "F", "points": 0.0, "minMark": 0}
+    ],
+    "nonGpaGrades": [
+      {"letter": "I", "meaning": "Incomplete; must be replaced within one semester of being given"},
+      {"letter": "W", "meaning": "Withdrawal; does not affect the GPA"}
+    ],
+    "unknown": [
+      "Whether a P grade exists (neither the grading page nor the 2026 policy book mentions one)",
+      "Whether a W uses up one of the retake attempts"
+    ]
+  },
+  "retake": {
+    "source": "nsu-policies-2026",
+    "eligibleAtOrBelow": "B",
+    "counts": "best",
+    "maxRetakes": 3,
+    "beyondMax": "A fourth retake needs the Vice-Chancellor's approval"
+  },
+  "standing": {
+    "source": "nsu-policies-2026",
+    "goodStandingMinCgpa": 2.0,
+    "probation": {"belowCgpa": 2.0, "termsToRecover": 3, "then": "Dismissed ('excluded') in the fourth term; no readmission and no fresh start"}
+  },
+  "classDivisions": {
+    "source": "nsu-grading-policy",
+    "records": [
+      {"label": "First Class", "minCgpa": 3.0},
+      {"label": "Second Class", "minCgpa": 2.5},
+      {"label": "Third Class", "minCgpa": 2.0}
+    ]
+  },
+  "honours": {
+    "source": "calculator-sites",
+    "note": "Also used by the RDS extension (rds-cgpa-extension). No NSU page states these; confirm with the registrar before showing them as official.",
+    "records": [
+      {"label": "Summa Cum Laude", "minCgpa": 3.8},
+      {"label": "Magna Cum Laude", "minCgpa": 3.65},
+      {"label": "Cum Laude", "minCgpa": 3.5}
+    ]
+  },
+  "classStanding": {
+    "source": "nsu-policies-2026",
+    "records": [
+      {"label": "Freshman", "minCredits": 0},
+      {"label": "Sophomore", "minCredits": 31},
+      {"label": "Junior", "minCredits": 61},
+      {"label": "Senior", "minCredits": 91}
+    ]
+  },
+  "creditLoad": {
+    "source": "nsu-policies-2026",
+    "fullTimeMin": {"trimester": 12, "bisemester": 15},
+    "max": null,
+    "note": "An overload needs written permission, but no numeric maximum is published."
+  },
+  "academicRules": {
+    "source": "nsu-policies-2026",
+    "records": [
+      {"id": "pass-100-level-by-term-3", "rule": "All required 100-level courses must be passed by the third term, or no higher-level registration (English excepted)."},
+      {"id": "fail-100-level-twice", "rule": "A required 100-level course failed in two attempts blocks registration in every other course except English until it is passed."},
+      {"id": "eng105-by-term-4", "rule": "ENG105 must be passed by the fourth term."},
+      {"id": "course-exclusion", "rule": "After completing 80% of required credits, non-core courses may be excluded from the record, but not to avoid probation, change department or get financial aid."},
+      {"id": "change-of-program", "rule": "Normally needs a CGPA of 3.00 within three terms and 27 credits completed in the current program."},
+      {"id": "internship-eligibility", "rule": "At least 100 credits completed."},
+      {"id": "degree-deadline", "rule": "An undergraduate degree must be completed within six years of enrolment."},
+      {"id": "credit-transfer", "rule": "Up to 50% of credits, only grades of C or above, and transferred grades do not count in the NSU CGPA."}
+    ]
+  },
+  "termSystems": {
+    "source": "nsu-policies-2026",
+    "records": [
+      {"id": "trimester", "terms": [{"season": "Spring", "months": "Jan-Apr"}, {"season": "Summer", "months": "May-Aug"}, {"season": "Fall", "months": "Sep-Dec"}]},
+      {"id": "bisemester", "terms": [{"season": "Spring", "months": "Jan-Jun"}, {"season": "Summer", "months": "Jul-Dec"}], "note": "BPharm, MPharm, LLB and LLM (nsu-calendar-bisemester-261). Their GED courses follow the trimester calendar."}
+    ]
+  },
+  "termCodes": {
+    "source": "nsu-offered-252",
+    "pattern": "two-digit year followed by 1 (Spring), 2 (Summer) or 3 (Fall): 252 is Summer 2025, 263 is Fall 2026"
+  },
+  "days": {
+    "source": "nsu-calendar-263",
+    "records": [
+      {"code": "S", "day": "Sunday"},
+      {"code": "M", "day": "Monday"},
+      {"code": "T", "day": "Tuesday"},
+      {"code": "W", "day": "Wednesday"},
+      {"code": "R", "day": "Thursday"},
+      {"code": "F", "day": "Friday"},
+      {"code": "A", "day": "Saturday"}
+    ],
+    "note": "Section day strings concatenate these codes: ST is Sunday and Tuesday, MW Monday and Wednesday, RA Thursday and Saturday."
+  },
+  "buildings": {
+    "source": "nsu-facts",
+    "records": [
+      {"code": "NAC", "name": "North Academic Building"},
+      {"code": "SAC", "name": "South Academic Building"},
+      {"code": "LIB", "name": "Library"},
+      {"code": "OAT", "name": "Lecture hall and Open Air Theatre building"}
+    ]
+  }
+}
