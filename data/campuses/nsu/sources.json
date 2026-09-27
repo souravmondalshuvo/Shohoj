@@ -1,0 +1,18 @@
+{
+  "note": "Every other file in this campus cites one of these ids. status: official = NSU's own site or PDF; third-party = a student tool or calculator site, unverified; derived = computed by us from an official source.",
+  "records": [
+    {"id": "nsu-policies-2026", "status": "official", "title": "Academic Information and Policies 2026 (updated 19 Jul 2026)", "url": "https://www.northsouth.edu/newassets/images/Registrs%20Office/updated-19-07-2026-academic-information-and-policies.pdf", "retrieved": "2026-09-27"},
+    {"id": "nsu-grading-policy", "status": "official", "title": "Grading Policy", "url": "https://www.northsouth.edu/academic/grading-policy.html", "retrieved": "2026-09-27"},
+    {"id": "nsu-ug-programs", "status": "official", "title": "Undergraduate Programs", "url": "https://www.northsouth.edu/undergraduate-programs.html", "retrieved": "2026-09-27"},
+    {"id": "nsu-cse-program", "status": "official", "title": "BS in Computer Science & Engineering (program page)", "url": "https://www.northsouth.edu/academic/programs-18022021/bachelor/bs-cse.html", "retrieved": "2026-09-27"},
+    {"id": "nsu-offered-252", "status": "official", "title": "Offered Course List, Summer 2025 (the last term NSU published as a PDF)", "url": "https://www.northsouth.edu/newassets/images/IT/252-offered-courses-list-120525.pdf", "retrieved": "2026-09-27"},
+    {"id": "nsu-ece-courses", "status": "official", "title": "Department of ECE course pages", "url": "https://ece.northsouth.edu/courses-sitemap.xml", "retrieved": "2026-09-27"},
+    {"id": "nsu-calendar-263", "status": "official", "title": "Academic Calendar, Fall 2026 (16 Sep 2026)", "url": "https://www.northsouth.edu/newassets/images/Registrs%20Office/academic-calendar-fall-2026-16-sep-2026-1.pdf", "retrieved": "2026-09-27"},
+    {"id": "nsu-calendar-bisemester-261", "status": "official", "title": "Academic Calendar for BPharm, MPharm, LL.B. and LL.M., Spring 2026", "url": "https://www.northsouth.edu/newassets/images/law/bi-semester-spring-2026.pdf", "retrieved": "2026-09-27"},
+    {"id": "nsu-email-form", "status": "official", "title": "Student NSU Email Request Form", "url": "https://www.northsouth.edu/assets/files/ISD/Student--New-Email-Form.pdf", "retrieved": "2026-09-27"},
+    {"id": "nsu-bus-service", "status": "official", "title": "Student Bus Service registration notice (Fall 2025 service period)", "url": "https://www.northsouth.edu/nsu-announcements/nsu-bus-service.html", "retrieved": "2026-09-27"},
+    {"id": "nsu-facts", "status": "official", "title": "Facts About NSU", "url": "https://www.northsouth.edu/about/facts.html", "retrieved": "2026-09-27"},
+    {"id": "rds-cgpa-extension", "status": "third-party", "title": "What-if CGPA Planner (MIT-licensed Chrome extension for the RDS grade history page)", "url": "https://github.com/Shadhin-f/what-if-cgpa-planner", "retrieved": "2026-09-27"},
+    {"id": "calculator-sites", "status": "third-party", "title": "NSU CGPA calculator sites (students.bd, cgpacalculatoronline.net)", "url": "https://students.bd/calculator/nsu-cgpa", "retrieved": "2026-09-27"}
+  ]
+}
