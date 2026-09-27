@@ -23,6 +23,10 @@ test-results/
 dist/
 dist-shell/
 dist-pages/
+
+# Campus database compiled from data/campuses/ by `npm run db:build` (#784).
+# The JSON is the source of truth; the .db and its D1 .sql dump are rebuilt.
+dist-data/
 .vite/
 
 # Scraped CONNECT section data — input artifact, re-fetched as needed.
