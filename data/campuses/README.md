@@ -14,10 +14,38 @@ data/campuses/<campus>/
   prerequisites.json           prerequisite rules, per source and optionally per program
   requirements.json            degree requirement groups (all of / choose n of / free credits)
   plans.json                   suggested semester-by-semester sequence per program
+  departments.json             departments and the course subjects each owns
+  minors.json                  minor programs (core requirements + elective pool)
+  faculty.json                 faculty directory
+  reviews.json                 seed faculty reviews
   sections/<term>-<system>.json  one term's sections (course, section, faculty, days, time, room, capacity)
   calendar/<term>-<system>.json  one term's academic calendar
   bus.json                     bus routes, stops, times to and from campus, days off
+  cafeteria.json               food outlets and opening hours
+  places.json                  named places on campus, by floor
 ```
+
+Three campuses today: `nsu/` and `diu/` (researched from each university's own
+documents — see [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md)
+and [`docs/campuses/diu-research.md`](../../docs/campuses/diu-research.md)) and
+`bracu/` (exported from the BRACU literals in Shohoj's own code — see
+[`docs/campuses/bracu-data.md`](../../docs/campuses/bracu-data.md)).
+
+### BRACU is exported, not hand-edited (yet)
+
+Until the legacy code reads from this database, BRACU's facts live twice: in
+the code and here. `tests/bracuCampusParity.test.js` rebuilds every BRACU
+runtime structure from these files and fails if any differs from the code. When
+it does, change the code as usual and re-export:
+
+```bash
+node scripts/export_bracu_campus_data.mjs \
+  --feed 20263=<connect.json> --feed 20262=<semester-20262.json>
+```
+
+The `--feed` files are CONNECT snapshots (the live feed at
+`https://usis-cdn.eniamza.com/connect.json` carries one semester; older ones
+come from the semester archive).
 
 Only `sources.json` and `profile.json` are required; a campus carries whatever
 it has data for. Term files are named by term code and calendar system:
@@ -46,6 +74,8 @@ campus's `sources.json`. Each source has a `status`:
 | `official` | the university's own site or PDF |
 | `third-party` | a student tool or calculator site — unverified, don't present as official |
 | `derived` | computed by us from an official source |
+| `inherited` | carried over from Shohoj's own hand-kept code; the original source was never recorded |
+| `placeholder` | a template the code itself marks as unconfirmed (BRACU's cafeteria hours) — never show as fact |
 
 When sources disagree, keep the official value and record the other one under
 `conflicts` (see CSE in `nsu/programs.json`). Don't guess a number nobody
