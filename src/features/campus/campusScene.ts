@@ -159,7 +159,6 @@ const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
 // Below this, an eased value is visually settled and stops asking for frames.
 const SETTLE_EPSILON = 1e-3;
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
-const IDLE_ORBIT_AFTER_MS = 9000;   // idle time before the camera starts drifting
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
 const MODEL_FOCUSED_OPACITY = 0.04;    // exterior model opacity while a floor is open
 const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
@@ -328,8 +327,7 @@ export function createCampusScene(
     const scene = new Scene();
 
     // One flag drives every animation decision: under prefers-reduced-motion
-    // all transitions snap, rooms appear at full size, nothing pulses, and the
-    // camera never drifts on its own.
+    // all transitions snap, rooms appear at full size, and nothing pulses.
     const reducedMotion =
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -1217,17 +1215,12 @@ export function createCampusScene(
     controls.maxPolarAngle = Math.PI * 0.52;
     controls.minDistance = 18;
     controls.maxDistance = 190;
-
-    // Idle drift: after a quiet spell the camera orbits slowly so the scene
-    // feels alive; any user touch (or a floor/room selection) parks it again.
-    controls.autoRotateSpeed = 0.5;
-    let lastInteraction = performance.now();
-    const markActive = () => { lastInteraction = performance.now(); };
-    controls.addEventListener('start', markActive);
+    // No idle auto-orbit (#781): an untouched page stays still and costs
+    // nothing. The camera moves only when the viewer moves it.
 
     // Aspect-aware framing: until the viewer orbits or zooms themselves, keep
     // the camera at the default distance scaled for the canvas shape, along
-    // whatever bearing it currently has (idle drift included).
+    // whatever bearing it currently has.
     const defaultCameraDistance = camera.position.distanceTo(controls.target);
     let cameraTouched = false;
     controls.addEventListener('start', () => {
@@ -1338,10 +1331,8 @@ export function createCampusScene(
             }
         }
 
-        controls.autoRotate =
-            !reducedMotion && time - lastInteraction > IDLE_ORBIT_AFTER_MS;
-        // update() reports whether the camera moved: a drag, damping settling
-        // after one, or the idle orbit.
+        // update() reports whether the camera moved: a drag, or damping
+        // settling after one.
         const cameraMoved = controls.update() || cameraChanged;
         cameraChanged = false;
         if (!needsRender && !moving && !cameraMoved) return;
@@ -1431,7 +1422,6 @@ export function createCampusScene(
     return {
         setFloor(floor) {
             focusedFloor = floor !== null && dataFloors.has(floor) ? floor : null;
-            markActive();
             applyFloorFocus();
             invalidate();
         },
@@ -1461,7 +1451,6 @@ export function createCampusScene(
         },
         setHighlight(code) {
             highlightCode = code ? code.trim().toUpperCase() : null;
-            markActive();
             refreshRoomColors();
             invalidate();
         },
