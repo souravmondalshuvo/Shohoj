@@ -1,0 +1,19 @@
+{
+  "term": "263",
+  "termSystem": "bisemester",
+  "source": "diu-registrar-calendars",
+  "note": "Fall-2026 (BI), July-December. Term code 263 assumed for the bi-semester Fall; DIU does not publish it.",
+  "records": [
+    {"date": "2026-07-01", "endDate": "2026-07-09", "kind": "registration", "event": "Advising & Registration"},
+    {"date": "2026-07-09", "kind": "orientation", "event": "Orientation Program (Newly Admitted Students)"},
+    {"date": "2026-07-11", "kind": "classes-begin", "event": "Classes Start"},
+    {"date": "2026-09-08", "endDate": "2026-09-21", "kind": "midterm", "event": "Mid-Examination"},
+    {"date": "2026-12-07", "endDate": "2026-12-09", "kind": "no-classes", "event": "Preparatory Leave"},
+    {"date": "2026-12-10", "endDate": "2026-12-24", "kind": "finals", "event": "Final Examination"},
+    {"date": "2026-12-28", "kind": "grades", "event": "Last Date of Grade Submission"},
+    {"date": "2026-12-29", "kind": "results", "event": "Publication of Semester Results"},
+    {"date": "2026-12-29", "endDate": "2026-12-31", "kind": "no-classes", "event": "Semester Break"},
+    {"date": "2027-01-01", "endDate": "2027-01-09", "kind": "next-term", "event": "Advising & Registration of Next Semester"},
+    {"date": "2027-01-10", "kind": "next-term", "event": "Classes Start of Next Semester"}
+  ]
+}
