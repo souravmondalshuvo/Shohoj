@@ -1,0 +1,22 @@
+{
+  "term": "261",
+  "termSystem": "bisemester",
+  "source": "diu-registrar-calendars",
+  "note": "Spring-2026 (BI), January-June.",
+  "notices": ["Eid vacation dates depend on moon sighting."],
+  "records": [
+    {"date": "2026-01-01", "endDate": "2026-01-07", "kind": "registration", "event": "Advising & Registration"},
+    {"date": "2026-01-08", "kind": "orientation", "event": "Orientation Program (Newly Admitted Students)"},
+    {"date": "2026-01-10", "kind": "classes-begin", "event": "Classes Start"},
+    {"date": "2026-03-19", "endDate": "2026-03-23", "kind": "holiday", "event": "Eid-Al-Fitr Vacation"},
+    {"date": "2026-03-28", "endDate": "2026-04-10", "kind": "midterm", "event": "Mid-Examination"},
+    {"date": "2026-05-26", "endDate": "2026-05-31", "kind": "holiday", "event": "Eid-Al-Adha Vacation"},
+    {"date": "2026-06-05", "endDate": "2026-06-07", "kind": "no-classes", "event": "Preparatory Leave"},
+    {"date": "2026-06-08", "endDate": "2026-06-23", "kind": "finals", "event": "Final Examination"},
+    {"date": "2026-06-27", "kind": "grades", "event": "Last Date of Grade Submission"},
+    {"date": "2026-06-28", "kind": "results", "event": "Publication of Semester Results"},
+    {"date": "2026-06-28", "endDate": "2026-06-30", "kind": "no-classes", "event": "Semester Break"},
+    {"date": "2026-07-01", "endDate": "2026-07-09", "kind": "next-term", "event": "Advising & Registration of Next Semester"},
+    {"date": "2026-07-11", "kind": "next-term", "event": "Classes Start of Next Semester"}
+  ]
+}
