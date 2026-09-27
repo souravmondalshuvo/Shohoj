@@ -162,6 +162,8 @@ const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
 // The sun's shadow map is drawn only when the scene changes (#781), never for
 // a camera move, so it can afford the resolution the façade detail deserves.
 const SHADOW_MAP_SIZE = 2048;
+const MAX_PIXEL_RATIO = 2;      // a settled frame: full sharpness up to 2x
+const MOTION_PIXEL_RATIO = 1.5; // while the camera moves, where motion hides it
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
 const MODEL_FOCUSED_OPACITY = 0.04;    // exterior model opacity while a floor is open
 const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
@@ -1178,7 +1180,11 @@ export function createCampusScene(
     }
 
     // --- Renderer / camera / controls ---------------------------------------
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // Adaptive sharpness (#781): full resolution whenever the view is still,
+    // a little less while the camera moves. On a 1x screen both are 1.
+    const fullPixelRatio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
+    const motionPixelRatio = Math.min(fullPixelRatio, MOTION_PIXEL_RATIO);
+    renderer.setPixelRatio(fullPixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
     // The sun and the building never move, so a camera move leaves the shadow
@@ -1231,8 +1237,14 @@ export function createCampusScene(
     // whatever bearing it currently has.
     const defaultCameraDistance = camera.position.distanceTo(controls.target);
     let cameraTouched = false;
+    // A drag or wheel gesture is in progress (between 'start' and 'end').
+    let gesturing = false;
     controls.addEventListener('start', () => {
         cameraTouched = true;
+        gesturing = true;
+    });
+    controls.addEventListener('end', () => {
+        gesturing = false;
     });
 
     // Render on demand (#769). A settled scene redrawn every frame cost the
@@ -1350,6 +1362,15 @@ export function createCampusScene(
         // settling after one.
         const cameraMoved = controls.update() || cameraChanged;
         cameraChanged = false;
+
+        // Drop sharpness while the camera moves; restore it — and draw a sharp
+        // frame — as soon as it comes to rest.
+        const pixelRatio = gesturing || cameraMoved ? motionPixelRatio : fullPixelRatio;
+        if (renderer.getPixelRatio() !== pixelRatio) {
+            renderer.setPixelRatio(pixelRatio);
+            needsRender = true;
+        }
+
         if (!needsRender && !moving && !pulsed && !cameraMoved) return;
         renderer.shadowMap.needsUpdate = shadowsStale || moving;
         needsRender = false;
