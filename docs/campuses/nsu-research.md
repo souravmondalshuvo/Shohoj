@@ -87,8 +87,10 @@ Good 3.00 / Satisfactory 2.50 / Needs Improvement 2.00). NSU's are different:
 - **Full-time = at least 12 credits per trimester** (15 per semester for bi-semester
   programs) [official].
 - A normal 120-credit program is designed for 4 years at that load [official].
-- **Overload** needs written permission, but **no numeric maximum is published**
-  [unknown]. Keep `creditLoad` absent, as `university.ts` does today.
+- **Overload** needs written permission, but **no university-wide maximum is
+  published** [unknown]. Keep `creditLoad` absent, as `university.ts` does today.
+- **BBA only:** 2 to 5 courses (6 to 15 credits) per term, from the December 2025
+  BBA handbook [official]. Stored on the BBA program, not the campus.
 
 ## 5. Other academic rules that affect planning
 
@@ -125,7 +127,7 @@ From the official undergraduate-programs index [official]:
 |---|---|---|
 | Engineering & Physical Sciences | Architecture (BArch) | 170 |
 | | Civil & Environmental Eng. (CEE) | 149 |
-| | Computer Science & Eng. (CSE) | 130 ⚠ |
+| | Computer Science & Eng. (CSE) | 130 |
 | | Electrical & Electronic Eng. (EEE) | 130 |
 | | Electronic & Telecom Eng. (ETE) | 130 |
 | Health & Life Sciences | Biochemistry & Biotechnology | 120 |
@@ -133,48 +135,62 @@ From the official undergraduate-programs index [official]:
 | | Microbiology | 120 |
 | | Public Health | 130 |
 | | BPharm Professional | 160 |
-| Business & Economics | BBA (General + 10 majors: ACT, ECO, ENT, FIN, HRM, INB, MGT, MIS, MKT, SCM) | 120 each |
+| Business & Economics | BBA (General + majors) | 130 ⚠ (index: 120) |
 | | BS Economics | 120 |
 | Humanities & Social Sciences | BA English | 123 |
 | | LLB (Hons) | 130 |
 | | BSS Media, Communication & Journalism | 129 |
 
-⚠ **CSE conflict:** the index says 130; the CSE program page and ECE department
-site say **134** (core 101 + GED 18 + trail electives 9 + open 6). Ask ECE which
-curriculum is current. BBA also has published 130/127/124 variants depending on
-admission waivers.
+**CSE — resolved, 130.** The university's CSE page still shows the September 2012
+flowchart for a 134-credit curriculum; the ECE department's own program page
+describes the 130-credit curriculum (UGC-approved March 2015, effective Spring
+2018), matching the index. The 134 is kept as a recorded conflict.
 
-**Semester-by-semester presets** (what `departments.js` `presets` holds for BRACU)
-are not published as text for any NSU program — the CSE page only has a flowchart
-image [unknown].
+⚠ **BBA — 130, not 120.** The December 2025 BBA handbook requires 130 credits (127
+or 124 when ENG102/BUS112 were waived at admission; 139 for a dual major) and
+lists nine majors — ACT, ECO, FIN, HRM, INB, MGT, MIS, MKT, SCM. The index's 120
+and its Entrepreneurship major are kept as recorded conflicts. Graduation also
+needs a GPA of 2.0 in the School and BBA cores and 2.5 in the major [official].
+
+**Semester-by-semester plans** (what `departments.js` `presets` holds for BRACU)
+are now loaded for **CSE, EEE, CEE, BPharm and LLB** — each one totals its
+program's published credits exactly [official]. See §16 for the rest.
 
 **Minors:** CSE's trail list names minors in BBA, Economics, English, Environmental
 Studies and Mathematics; their requirements are not published [unknown].
 
 ## 8. Course catalogue and prerequisites (`catalog.js`, `prereq.js`)
 
-- `data/campuses/nsu/courses.json` — **624 courses** with title and credits: the 586
-  undergraduate courses on the Summer 2025 offered list, plus 38 ECE-department
-  courses that term did not run [derived]. No code appears with two different
-  titles or credit values. It is courses *offered or documented*, not yet the full
-  catalogue.
+- `data/campuses/nsu/courses.json` — **1,018 courses** with title and credits, from
+  the Summer and Fall 2025 offered lists, the bi-semester list, the BBA handbook,
+  the BPharm, LLB, CSE and CEE curricula and the ECE course pages; the newest
+  offered list wins, and each record cites its source [derived]. Fall 2025 also
+  names the offering department, stored when only one department offers a course.
+  It is courses *offered or documented*, not yet the full catalogue.
 - Codes fit legacy's `/^[A-Z]{2,4}\d{3}[A-Z]?$/`; labs use an `L` suffix
   (`CSE115L`), two-part projects use `A`/`B` (`CSE499A`). Graduate codes can have
   four digits (`CE6207`) and don't match, which is fine for undergrads.
 - **Credit values the calculator must accept:** 0, 1, 1.5, 2, 3, 4, 4.5, 6. Several
   labs are **0 credits** (credit bundled into the lecture, e.g. `CSE311L`) and
   architecture studios are 4.5 / 6.
-- There is **no remedial 0-credit course like BRACU's MAT092**: ENG102 and MAT116
-  are 3 credits; students with good admission scores get them waived.
-- `data/campuses/nsu/prerequisites.json` — **80 prerequisite rules** from the 106
-  CSE/EEE/ETE-side course pages that state one [official, ECE site]. Some are credit-count rules
-  ("Completion of 60 credits", "100 credits"), "or consent of instructor", or
-  alternatives (`EEE 141/ETE 141`). Check whether `prereq.js` can express these.
-  The ECE site's credits are partly stale (PHY107/108 and CHE101 listed as 4, offered
-  as 3 + a separate 1-credit lab).
-- **No prerequisites found for other departments.** The only university catalogue is
-  2015–16 (Google Drive, linked from https://www.northsouth.edu/newsletter/nsu-catalog.html)
-  — too old to use.
+- **Credits depend on the program for a few courses.** MAT116 is 3 credits on the
+  offered lists but non-credit in the CSE, EEE and CEE curricula (like BRACU's
+  MAT092); CEE also takes CEE100 and ENG102 non-credit; CSE225L, EEE312L and
+  EEE362L are "integrated" 0-credit labs in their curricula but 1 credit on the
+  Fall 2025 list. The plans record each with a note [official].
+- `data/campuses/nsu/prerequisites.json` — **318 rules** from four sources: the ECE
+  course pages (CSE/EEE/ETE side), the BBA handbook, the BPharm curriculum and the
+  CEE course mapping [official]. A course can have rules from several sources,
+  and curricula scope theirs to their program; nothing is merged. Rules include
+  credit thresholds ("Completion of 100 credits"), a CGPA threshold (BUS499 needs
+  3.30), "or consent of instructor" and alternatives (`EEE 141/ETE 141`). Check
+  whether `prereq.js` can express these. The ECE site's credits are partly stale
+  (PHY107/108 and CHE101 listed as 4, offered as 3 + a separate 1-credit lab).
+- **Degree requirement groups** (`requirements.json`) for BBA (shared core plus
+  each of nine majors), LLB, CSE and BPharm total their programs exactly; CEE has
+  only its elective group [official].
+- The only university-wide catalogue is 2015–16 (Google Drive, linked from
+  https://www.northsouth.edu/newsletter/nsu-catalog.html) — too old to use.
 
 ## 9. Sign-in and identity (`js/auth/firebase.js`)
 
@@ -228,22 +244,28 @@ the only public source of which initials teach which course.
   challenge** (`403 Just a moment…` to non-browser clients), so a Worker cron
   **cannot** read it, and bypassing bot protection is off the table.
 - The old public `rds2…/showofferedcourses` now just redirects to a notice.
-- NSU published the list as a **PDF each term up to Summer 2025**; since Spring 2026
-  the notice pages only link to `rds4`.
+- NSU published the list as a **PDF each term up to Fall 2025** (the Fall 2025 file
+  is misleadingly named `252-offered-courses-list-100925.pdf`; every row says term
+  253). Since Spring 2026 the notice pages only link to `rds4`.
 - So: no public feed today. Options, in order of realism:
   1. **Student paste** of the rds4 page, as CONNECT paste works for BRACU.
   2. Ask NSU IT for an official feed or permission.
   3. A static per-term snapshot — timetables and free rooms work, **live seat counts don't**.
 - **Format** (from the PDF, same columns rds4 shows):
   `Course Code | Title | Credit | Section | Faculty | Time | Room | Seat Capacity`
-  → `data/campuses/nsu/sections/252.json` (2,845 undergraduate sections) [derived].
+  → `sections/252-trimester.json` (Summer 2025, 2,845 undergraduate sections),
+  `sections/253-trimester.json` (Fall 2025, 3,212, with the offering department per
+  row; 262 internships and theses have no fixed schedule) and
+  `sections/252-bisemester.json` (BPharm, LLB and LLM, 363) [derived]. One Fall 2025
+  row had an impossible time (ARC273 section 2, "11:40 AM - 01:40 AM"); it is
+  corrected to 13:40 with a note saying what was printed.
 - **Day codes** [official, printed on every calendar]: `ST` = Sun+Tue, `MW` = Mon+Wed,
   `RA` = Thu+Sat; singles `S M T W R A F` (F = Friday, grad/evening only).
   Combos `STR`, `STWR` exist. Legacy's week (Sat…Fri) already covers it.
 - **Standard slots:** 08:00–09:30, 09:40–11:10, 11:20–12:50, 13:00–14:30,
   14:40–16:10, 16:20–17:50, 18:00–19:30; labs/studios run 3-hour blocks; evening
   grad classes 19:00–22:10 [derived].
-- **Rooms:** 206 in Summer 2025 — the `rooms` view in the campus database. Buildings:
+- **Rooms:** 206 in Summer 2025 and 196 in Fall 2025 — the `rooms` view in the campus database. Buildings:
   **NAC** (North Academic, business/arts), **SAC** (South Academic,
   engineering/life sciences), **LIB** (library), **OAT** (lecture hall / Open Air
   Theatre block), plus named rooms (`TV STUDIO`, `Upper Plaza`) [official + derived].
@@ -271,8 +293,42 @@ the only public source of which initials teach which course.
 ## 15. Questions for the NSU registrar / ECE
 
 1. Is there a **P** grade? Does a **W** use up one of the 3 retake attempts?
-2. Maximum credits per trimester before an overload is needed?
-3. CSE: is the current curriculum **130 or 134** credits?
+2. Maximum credits per trimester before an overload is needed (outside BBA's 15)?
+3. BBA: is the programs index's **120 credits** and **Entrepreneurship major** out of
+   date, as the December 2025 handbook suggests?
 4. Official **Latin honours** thresholds and **Dean's list** criteria?
 5. Can Shohoj get **read access to the offered-course data** (or permission to use it)?
 6. Is there an official **initials → faculty name** list?
+7. Current curricula for ARC, ETE, BBT, ESM, MIC, PBH, ECO, ENG and MCJ (see §16)?
+
+## 16. Coverage of the campus database (updated 2026-09-28)
+
+**Loaded** (each from a current, official source):
+
+| Data | What |
+|---|---|
+| Sections | Summer 2025, Fall 2025, bi-semester Summer 2025 |
+| Calendars | Spring, Summer and Fall 2026 (trimester); Spring and Summer 2026 (bi-semester) |
+| Semester plans | CSE, EEE (130, effective Spring 2018), CEE (149), BPharm (160), LLB (130, from Spring 2025) |
+| Requirement groups | BBA + nine majors (Dec 2025 handbook), LLB, CSE, BPharm; CEE electives only |
+| Prerequisites | ECE course pages, BBA handbook, BPharm curriculum, CEE course mapping |
+
+**Found but left out on purpose** — each is undated or predates the current
+curriculum, and loading it as a plan would steer students wrong:
+
+| Source | Why not |
+|---|---|
+| BS Economics sequence (`BS_ECO_Sequence-of-Courses.pdf`) | Undated; totals 125 credits against the index's 120 and uses retired codes (MIS105 "Int. to Computers") |
+| BA English flow chart (`BA-ENG-Flow-chart.pdf`) | Undated; totals 120 against the index's 123 |
+| Environmental Management major map (`DESM_-Course-sequence_BS_ENV_Mgt..pdf`) | Undated major map for the older "Environmental Management" degree |
+| Biochemistry & Biotechnology sequences (`BS-in-Biochemistry-and-Biotechnology(1).pdf`, `BBT ONLY V2 .pdf`) | Undated / 2012–2017; retired codes (STA172, MIS105) |
+| BS Microbiology curriculum (`BS_MIC_.pdf`) | Undated course descriptions; only five prerequisite statements |
+| EEE and ETE 2015 curriculum PDFs | Superseded by the ECE department's Spring 2018 plans |
+| CEE curriculum approved in 2004 (`CEED-Course-Mapping.pdf`) | Superseded by the 149-credit mapping |
+| BSCSE September 2012 flowchart (134 credits) | Superseded; kept only as the recorded CSE conflict |
+| MPharm courses (`PHR5001`…) on the bi-semester list | Graduate, four-digit codes |
+
+**Still missing, and no public source found:** plans and requirement groups for
+ARC, ETE, BBT, ESM, MIC, PBH, ECO, ENG and MCJ; prerequisites outside ECE, BBA,
+BPharm and CEE; minors; any Spring 2026 or later section list (rds4 only); live
+seat counts; faculty names for initials.
