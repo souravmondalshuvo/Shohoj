@@ -124,14 +124,31 @@ const profileSchema = z
   })
   .strict();
 
+const programCode = z.string().regex(/^[A-Z]+(-[A-Z]+)?$/);
+
 const programsSchema = citedRecords(
   z
     .object({
-      code: z.string().regex(/^[A-Z]+(-[A-Z]+)?$/),
+      code: programCode,
       name: z.string().min(1),
       school: z.string().min(1),
       totalCredits: z.number().int().positive(),
       termSystem: z.string(),
+      source: sourceId.optional(),
+      // Inherit the requirement groups of another program (every BBA major
+      // extends BBA's shared core).
+      extends: programCode.optional(),
+      creditLoad: z
+        .object({
+          minCredits: z.number().int().min(0),
+          maxCredits: z.number().int().positive(),
+          source: sourceId,
+        })
+        .strict()
+        .optional(),
+      rules: z
+        .array(z.object({ id: z.string(), rule: z.string(), source: sourceId }).strict())
+        .optional(),
       conflicts: z
         .array(
           z
@@ -149,20 +166,66 @@ const coursesSchema = citedRecords(
       code: courseCode,
       title: z.string().min(1),
       credits,
+      department: z
+        .string()
+        .regex(/^[A-Z]{2,4}$/)
+        .optional(),
       source: sourceId.optional(),
     })
     .strict(),
 );
 
+// A course can carry rules from several documents, and a curriculum can state
+// a rule for its own program only, so a rule is keyed by course + program +
+// source rather than by course alone.
 const prerequisitesSchema = citedRecords(
   z
     .object({
       course: courseCode,
+      program: programCode.optional(),
       allOf: z.array(z.array(courseCode).min(1)).optional(),
       minCredits: z.number().int().positive().optional(),
+      minCgpa: z.number().min(0).max(5).optional(),
       orConsent: z.literal(true).optional(),
       unparsed: z.literal(true).optional(),
       raw: z.string().min(1),
+      source: sourceId.optional(),
+    })
+    .strict(),
+);
+
+const plansSchema = citedRecords(
+  z
+    .object({
+      program: programCode,
+      year: z.number().int().min(1).max(8),
+      // null when the document places a course by year only.
+      term: z.number().int().min(1).max(24).nullable(),
+      // null for a slot (an elective, a GED choice) the title describes.
+      code: courseCode.nullable(),
+      title: z.string().min(1),
+      credits,
+      alternatives: z.array(courseCode).min(1).optional(),
+      category: z.string().optional(),
+      // Explains a credit value this curriculum sets differently from the
+      // catalogue (a non-credit remedial, an integrated 0-credit lab).
+      note: z.string().min(1).optional(),
+      source: sourceId,
+    })
+    .strict(),
+);
+
+const requirementsSchema = citedRecords(
+  z
+    .object({
+      program: programCode,
+      group: z.string().min(1),
+      rule: z.enum(['all', 'choose', 'free']),
+      choose: z.number().int().positive().optional(),
+      credits: z.number().min(0).optional(),
+      options: z.array(z.array(courseCode).min(1)),
+      note: z.string().optional(),
+      source: sourceId,
     })
     .strict(),
 );
@@ -170,6 +233,7 @@ const prerequisitesSchema = citedRecords(
 const sectionsSchema = z
   .object({
     term: z.string().regex(TERM_CODE),
+    termSystem: z.string(),
     source: sourceId,
     note: z.string().optional(),
     records: z
@@ -179,11 +243,20 @@ const sectionsSchema = z
             course: courseCode,
             section: z.number().int().positive(),
             faculty: z.string().min(1).nullable(),
-            days: z.string().min(1),
-            start: time,
-            end: time,
+            // All three null for a section with no fixed schedule (an internship,
+            // a thesis); never some without the others.
+            days: z.string().min(1).nullable(),
+            start: time.nullable(),
+            end: time.nullable(),
             room: z.string().min(1).nullable(),
             capacity: z.number().int().min(0),
+            department: z
+              .string()
+              .regex(/^[A-Z]{2,4}$/)
+              .optional(),
+            // Set when a value was corrected from an obvious printing error;
+            // says what was printed and why it was read differently.
+            note: z.string().min(1).optional(),
           })
           .strict(),
       )
@@ -197,11 +270,13 @@ const calendarSchema = z
     termSystem: z.string(),
     source: sourceId,
     note: z.string().optional(),
+    notices: z.array(z.string().min(1)).optional(),
     records: z
       .array(
         z
           .object({
             date: z.string().regex(ISO_DATE),
+            endDate: z.string().regex(ISO_DATE).optional(),
             kind: z.string().regex(/^[a-z-]+$/),
             event: z.string().min(1),
           })
@@ -238,6 +313,8 @@ const FILES = {
   programs: { file: 'programs.json', schema: programsSchema },
   courses: { file: 'courses.json', schema: coursesSchema },
   prerequisites: { file: 'prerequisites.json', schema: prerequisitesSchema },
+  plans: { file: 'plans.json', schema: plansSchema },
+  requirements: { file: 'requirements.json', schema: requirementsSchema },
   bus: { file: 'bus.json', schema: busSchema },
 };
 const TERM_DIRS = {
@@ -285,9 +362,12 @@ function loadCampus(dir, id, problems) {
       const raw = readJson(path.join(full, name), problems);
       const data = raw === undefined ? undefined : parseWith(schema, raw, label, problems);
       if (!data) continue;
-      if (`${data.term}.json` !== name)
-        problems.errors.push(`${label}: file name does not match term ${data.term}`);
-      campus[key][data.term] = data;
+      // Named <term>-<termSystem>.json: NSU runs a trimester and a bi-semester
+      // calendar side by side, so one term code can have two files.
+      const expected = `${data.term}-${data.termSystem}`;
+      if (`${expected}.json` !== name)
+        problems.errors.push(`${label}: file name does not match ${expected}`);
+      campus[key][expected] = data;
     }
   }
   return campus;
@@ -332,29 +412,45 @@ function checkCampus(campus, problems) {
   const dayCodes = new Set(profile?.days.records.map((d) => d.code) ?? []);
   const termSystems = new Set(profile?.termSystems.records.map((t) => t.id) ?? []);
 
-  for (const key of ['programs', 'courses', 'prerequisites', 'bus']) {
+  for (const key of ['programs', 'courses', 'prerequisites', 'plans', 'requirements', 'bus']) {
     if (campus[key]) cite(key, campus[key].source);
   }
-  const programCodes = new Set();
+  const programs = new Map();
   for (const p of campus.programs?.records ?? []) {
-    if (programCodes.has(p.code)) err(`programs: duplicate code ${p.code}`);
-    programCodes.add(p.code);
+    if (programs.has(p.code)) err(`programs: duplicate code ${p.code}`);
+    programs.set(p.code, p);
     if (!termSystems.has(p.termSystem))
       err(`programs: ${p.code} uses unknown term system "${p.termSystem}"`);
+    cite(`programs.${p.code}`, p.source);
+    cite(`programs.${p.code}.creditLoad`, p.creditLoad?.source);
+    if (p.creditLoad && p.creditLoad.minCredits > p.creditLoad.maxCredits)
+      err(`programs: ${p.code} credit load minimum exceeds its maximum`);
+    for (const r of p.rules ?? []) cite(`programs.${p.code}.rules`, r.source);
     for (const c of p.conflicts ?? []) cite(`programs.${p.code}.conflicts`, c.source);
   }
+  for (const p of programs.values()) {
+    if (p.extends && !programs.has(p.extends))
+      err(`programs: ${p.code} extends unknown program ${p.extends}`);
+  }
+  const knownProgram = (where, code) => {
+    if (!programs.has(code)) err(`${where}: unknown program ${code}`);
+  };
 
-  const courses = new Set();
+  const courses = new Map();
   for (const c of campus.courses?.records ?? []) {
     if (courses.has(c.code)) err(`courses: duplicate code ${c.code}`);
-    courses.add(c.code);
+    courses.set(c.code, c);
     cite(`courses.${c.code}`, c.source);
   }
 
-  const prereqCourses = new Set();
+  const ruleKeys = new Set();
   for (const p of campus.prerequisites?.records ?? []) {
-    if (prereqCourses.has(p.course)) err(`prerequisites: duplicate entry for ${p.course}`);
-    prereqCourses.add(p.course);
+    const key = `${p.course}|${p.program ?? ''}|${p.source ?? ''}`;
+    if (ruleKeys.has(key))
+      err(`prerequisites: duplicate rule for ${p.course} from the same source and program`);
+    ruleKeys.add(key);
+    cite(`prerequisites.${p.course}`, p.source);
+    if (p.program) knownProgram(`prerequisites.${p.course}`, p.program);
     if (!courses.has(p.course)) err(`prerequisites: ${p.course} is not in courses.json`);
     if (!p.unparsed && !p.allOf && !p.minCredits)
       err(`prerequisites: ${p.course} states no requirement; mark it unparsed`);
@@ -364,8 +460,60 @@ function checkCampus(campus, problems) {
     }
   }
 
+  // Plans: every slot names a real course or describes itself, and a
+  // program's plan adds up to the program's total. A total that doesn't is a
+  // transcription slip more often than a real curriculum quirk, so it warns.
+  const planTotals = new Map();
+  for (const item of campus.plans?.records ?? []) {
+    const where = `plans.${item.program}${item.term ? ` term ${item.term}` : ` year ${item.year}`}`;
+    knownProgram(where, item.program);
+    cite(where, item.source);
+    planTotals.set(item.program, (planTotals.get(item.program) ?? 0) + item.credits);
+    for (const code of [item.code, ...(item.alternatives ?? [])]) {
+      if (code && !courses.has(code)) warn(`${where}: ${code} is not in courses.json yet`);
+    }
+    const listed = item.code && courses.get(item.code);
+    if (listed && listed.credits !== item.credits && !item.note)
+      warn(
+        `${where}: ${item.code} is planned at ${item.credits} credits but catalogued at ${listed.credits}`,
+      );
+  }
+  for (const [program, total] of planTotals) {
+    const expected = programs.get(program)?.totalCredits;
+    if (expected !== undefined && total !== expected)
+      warn(`plans.${program}: plan totals ${total} credits, the program requires ${expected}`);
+  }
+
+  // Requirement groups, with a program's inherited groups counted toward it.
+  const groupCredits = new Map();
+  for (const g of campus.requirements?.records ?? []) {
+    const where = `requirements.${g.program} "${g.group}"`;
+    knownProgram(where, g.program);
+    cite(where, g.source);
+    if (g.rule === 'free' && g.options.length) err(`${where}: a free group lists no options`);
+    if (g.rule !== 'free' && !g.options.length) err(`${where}: needs at least one option`);
+    if (g.rule === 'choose' && !(g.choose && g.choose <= g.options.length))
+      err(`${where}: must choose between 1 and ${g.options.length}`);
+    if (g.rule !== 'choose' && g.choose !== undefined)
+      err(`${where}: only a "choose" group sets choose`);
+    for (const code of g.options.flat()) {
+      if (!courses.has(code)) warn(`${where}: ${code} is not in courses.json yet`);
+    }
+    groupCredits.set(g.program, (groupCredits.get(g.program) ?? 0) + (g.credits ?? 0));
+  }
+  for (const [code, p] of programs) {
+    if (!groupCredits.has(code)) continue;
+    const total = groupCredits.get(code) + (p.extends ? (groupCredits.get(p.extends) ?? 0) : 0);
+    if (total !== p.totalCredits)
+      warn(
+        `requirements.${code}: groups cover ${total} of the program's ${p.totalCredits} credits`,
+      );
+  }
+
   for (const [term, file] of Object.entries(campus.sections)) {
     cite(`sections/${term}`, file.source);
+    if (!termSystems.has(file.termSystem))
+      err(`sections/${term}: unknown term system "${file.termSystem}"`);
     const keys = new Set();
     for (const s of file.records) {
       const label = `sections/${term} ${s.course}.${s.section}`;
@@ -373,6 +521,12 @@ function checkCampus(campus, problems) {
       if (keys.has(key)) err(`${label}: duplicate section`);
       keys.add(key);
       if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
+      const scheduled = [s.days, s.start, s.end].filter((v) => v !== null).length;
+      if (scheduled === 0) continue;
+      if (scheduled !== 3) {
+        err(`${label}: days, start and end must be all set or all null`);
+        continue;
+      }
       const days = [...s.days];
       if (days.some((d) => !dayCodes.has(d)) || new Set(days).size !== days.length)
         err(`${label}: bad day string "${s.days}"`);
@@ -387,6 +541,8 @@ function checkCampus(campus, problems) {
     for (const e of file.records) {
       if (Number.isNaN(Date.parse(`${e.date}T00:00:00Z`)))
         err(`calendar/${term}: bad date ${e.date}`);
+      if (e.endDate && e.endDate < e.date)
+        err(`calendar/${term}: ${e.date} ends before it starts (${e.endDate})`);
     }
   }
 }
@@ -415,7 +571,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const sections = Object.values(c.sections).reduce((n, f) => n + f.records.length, 0);
     console.log(
       `${c.id}: ${c.programs?.records.length ?? 0} programs, ${c.courses?.records.length ?? 0} courses, ` +
-        `${c.prerequisites?.records.length ?? 0} prerequisite rules, ${sections} sections`,
+        `${c.prerequisites?.records.length ?? 0} prerequisite rules, ${c.requirements?.records.length ?? 0} requirement groups, ` +
+        `${c.plans?.records.length ?? 0} plan items, ${sections} sections in ${Object.keys(c.sections).length} term files, ` +
+        `${Object.keys(c.calendars).length} calendars`,
     );
   }
   for (const w of warnings) console.warn(`warning  ${w}`);
