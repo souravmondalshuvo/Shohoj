@@ -1,0 +1,131 @@
+{
+  "id": "bracu",
+  "name": "BRAC University",
+  "shortName": "BRACU",
+  "identity": {
+    "source": "bracu-registry",
+    "note": "Students only; faculty and staff on the bare bracu.ac.bd domain are not admitted.",
+    "emailDomains": ["g.bracu.ac.bd"]
+  },
+  "grading": {
+    "source": "bracu-grading",
+    "note": "Two letters share 4.0 (A+ and A); F(NT) scores 0 but no mark earns it directly. The mark cutoffs are not sourced from a university document — verify before relying on them.",
+    "scale": [
+      {"letter":"A+","points":4,"minMark":97},
+      {"letter":"A","points":4,"minMark":90},
+      {"letter":"A-","points":3.7,"minMark":85},
+      {"letter":"B+","points":3.3,"minMark":80},
+      {"letter":"B","points":3,"minMark":75},
+      {"letter":"B-","points":2.7,"minMark":70},
+      {"letter":"C+","points":2.3,"minMark":65},
+      {"letter":"C","points":2,"minMark":60},
+      {"letter":"C-","points":1.7,"minMark":57},
+      {"letter":"D+","points":1.3,"minMark":55},
+      {"letter":"D","points":1,"minMark":52},
+      {"letter":"D-","points":0.7,"minMark":50},
+      {"letter":"F","points":0,"minMark":0},
+      {"letter":"F(NT)","points":0,"minMark":null}
+    ],
+    "pointsToGrade": [[4,"A"],[3.7,"A-"],[3.3,"B+"],[3,"B"],[2.7,"B-"],[2.3,"C+"],[2,"C"],[1.7,"C-"],[1.3,"D+"],[1,"D"],[0.7,"D-"],[0,"F"]],
+    "nonGpaGrades": [
+      {"letter":"P","meaning":"Pass; no grade point"},
+      {"letter":"I","meaning":"Incomplete; no grade point"},
+      {"letter":"W","meaning":"Withdrawal; no grade point, but it still consumed an attempt"}
+    ]
+  },
+  "retake": {
+    "source": "bracu-registry",
+    "note": "Students who started before Fall 2024 keep their best attempt; from Fall 2024 on, the latest attempt counts.",
+    "eligibleAtOrBelow": "B-",
+    "counts": "best-before",
+    "cutoff": {
+      "season": "Fall",
+      "year": 2024
+    },
+    "maxRetakes": null
+  },
+  "standingTiers": {
+    "source": "bracu-standing",
+    "records": [
+      {"id":"perfect","standingLabel":"Perfect Standing","goalLabel":"Perfect Standing","minCgpa":3.97},
+      {"id":"higher-distinction","standingLabel":"Higher Distinction","goalLabel":"Higher Distinction","minCgpa":3.65},
+      {"id":"distinction","standingLabel":"Distinction","goalLabel":"Distinction","minCgpa":3.5},
+      {"id":"good","standingLabel":"Good Standing","goalLabel":"Good Standing","minCgpa":3},
+      {"id":"satisfactory","standingLabel":"Satisfactory","goalLabel":"Satisfactory","minCgpa":2.5},
+      {"id":"needs-improvement","standingLabel":"Needs Improvement","goalLabel":"Off academic probation","minCgpa":2},
+      {"id":"probation","standingLabel":"Academic Probation","goalLabel":"","minCgpa":0}
+    ]
+  },
+  "meterBands": {
+    "source": "bracu-meter",
+    "note": "Shohoj's own encouragement messages on the CGPA meter; not a BRACU policy.",
+    "records": [
+      {"label":"Outstanding!","minCgpa":3.75},
+      {"label":"Excellent.","minCgpa":3.5},
+      {"label":"Good standing.","minCgpa":3},
+      {"label":"Keep pushing.","minCgpa":2.5},
+      {"label":"Recovery mode.","minCgpa":0}
+    ]
+  },
+  "creditLoad": {
+    "source": "bracu-registry",
+    "min": 9,
+    "warnAbove": 12,
+    "max": 15
+  },
+  "termSystems": {
+    "source": "bracu-departments",
+    "note": "Most programs run three terms a year; some presets use only two of the seasons.",
+    "records": [
+      {"id":"trimester","terms":[{"season":"Spring"},{"season":"Summer"},{"season":"Fall"}]},
+      {"id":"spring-summer","terms":[{"season":"Spring"},{"season":"Summer"}]},
+      {"id":"spring-fall","terms":[{"season":"Spring"},{"season":"Fall"}]}
+    ]
+  },
+  "termCodes": {
+    "source": "bracu-terms",
+    "pattern": "CONNECT session id: four-digit year followed by 1 (Spring), 2 (Summer) or 3 (Fall); 20263 is Fall 2026"
+  },
+  "days": {
+    "source": "bracu-terms",
+    "note": "Week order starts on Saturday. CONNECT writes days in full (SATURDAY); these letters are ours.",
+    "records": [
+      {"code":"A","day":"Saturday"},
+      {"code":"S","day":"Sunday"},
+      {"code":"M","day":"Monday"},
+      {"code":"T","day":"Tuesday"},
+      {"code":"W","day":"Wednesday"},
+      {"code":"R","day":"Thursday"},
+      {"code":"F","day":"Friday"}
+    ]
+  },
+  "roomCodes": {
+    "source": "bracu-campus-location",
+    "note": "Tower rooms only; venues such as AN1-01C or FT11-02L do not follow the pattern.",
+    "pattern": "FFZ-NNK: two-digit floor, zone letter, room number, kind letter (e.g. 09G-31T)",
+    "regex": "^(\\d{2})([A-Z])-(\\d{2,3})([A-Z])$",
+    "kinds": {
+      "C": "classroom",
+      "L": "lab",
+      "T": "theater"
+    }
+  },
+  "location": {
+    "source": "bracu-campus-location",
+    "lat": 23.7733146,
+    "lng": 90.424371,
+    "radiusM": 250,
+    "utcOffsetMinutes": 360,
+    "dayStart": "08:00",
+    "dayEnd": "22:00"
+  },
+  "features": {
+    "source": "bracu-registry",
+    "records": ["bus","cafeteria","calculator","campus","degree","difficulty","feedback","groups","lostFound","papers","playground","planner","profile","reviews","rooms","routine","seats","tasks","transcript"]
+  },
+  "transcript": {
+    "source": "bracu-transcript-parser",
+    "note": "Header words of the BRACU grade sheet (issuer and its Kha 224, Merul Badda address) that the transcript parser skips.",
+    "headerMarkers": ["BRAC University","Kha 224","Merul","GRADE SHEET","UNOFFICIAL"]
+  }
+}
