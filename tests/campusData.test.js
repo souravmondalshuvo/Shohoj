@@ -56,13 +56,35 @@ for (const major of ['ACT', 'ECO', 'FIN', 'HRM', 'INB', 'MGT', 'MIS', 'MKT', 'SC
   assert.equal(credits(groupsOf('BBA')) + credits(groupsOf(`BBA-${major}`)), 130, `BBA-${major} totals 130`);
 }
 
+// DIU: what it publishes is loaded; what it doesn't is empty or null with a
+// note, never guessed.
+const diu = real.campuses.find((c) => c.id === 'diu');
+assert.ok(diu, 'DIU is registered');
+assert.deepEqual(diu.profile.identity.emailDomains, [], 'the student domain stays unconfirmed, not guessed');
+assert.deepEqual(
+  diu.profile.grading.scale.map((g) => [g.letter, g.points, g.minMark]).slice(0, 3),
+  [['A+', 4.0, 80], ['A', 3.75, 75], ['A-', 3.5, 70]],
+  'the UGC uniform scale',
+);
+assert.equal(diu.profile.retake.counts, 'latest');
+assert.equal(diu.programs.records.length, 33);
+assert.equal(diu.programs.records.find((p) => p.code === 'CSE').totalCredits, 154.5, 'half credits load');
+assert.ok(diu.programs.records.some((p) => p.termSystem === null), 'unknown calendars stay null');
+for (const key of ['261-trimester', '262-trimester', '263-trimester', '261-bisemester', '263-bisemester']) {
+  assert.ok(diu.calendars[key], `DIU ${key} calendar is loaded`);
+}
+assert.equal(diu.bus.records.length, 20);
+const friday = diu.bus.records.find((r) => r.route.startsWith('Friday Schedule : Dhanmondi'));
+assert.deepEqual(friday.departCampus, ['14:20', '18:30'], 'the 12-hour Friday times are read as afternoon');
+assert.match(friday.note, /Printed as 02:20, 06:30/);
+
 // ── Each rule catches the mistake it is for ─────────────────────────────────
 
-function withBrokenCopy(mutate) {
+function withBrokenCopy(mutate, campus = 'nsu') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'campus-data-'));
   try {
     fs.cpSync(CAMPUS_DATA_DIR, dir, { recursive: true });
-    mutate(path.join(dir, 'nsu'));
+    mutate(path.join(dir, campus));
     return loadCampuses(dir);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -75,8 +97,8 @@ function editJson(file, change) {
   fs.writeFileSync(file, JSON.stringify(data));
 }
 
-function expectError(label, mutate, pattern) {
-  const { errors } = withBrokenCopy(mutate);
+function expectError(label, mutate, pattern, campus) {
+  const { errors } = withBrokenCopy(mutate, campus);
   assert.ok(errors.some((e) => pattern.test(e)), `${label}: expected an error matching ${pattern}, got:\n${errors.join('\n') || '(none)'}`);
 }
 
@@ -189,6 +211,37 @@ expectError('an unknown field (typo)', (dir) => editJson(path.join(dir, 'program
 expectError('a campus without sources.json', (dir) => {
   fs.rmSync(path.join(dir, 'sources.json'));
 }, /nsu: missing sources\.json/);
+
+// "Not published" is allowed only when a note says so.
+expectError('no email domain and no note', (dir) => editJson(path.join(dir, 'profile.json'), (d) => {
+  delete d.identity.note;
+}), /diu: identity: no email domains and no note/, 'diu');
+
+expectError('an empty honours list with no note', (dir) => editJson(path.join(dir, 'profile.json'), (d) => {
+  d.honours.records = [];
+  delete d.honours.note;
+}), /profile\.honours: empty with no note/);
+
+expectError('a program with no term system and no note', (dir) => editJson(path.join(dir, 'programs.json'), (d) => {
+  const p = d.records.find((r) => r.termSystem === null);
+  delete p.note;
+}), /has no term system and no note/, 'diu');
+
+expectError('program credits off the half-credit grid', (dir) => editJson(path.join(dir, 'programs.json'), (d) => {
+  d.records[0].totalCredits = 154.3;
+}), /multiple of 0\.5/, 'diu');
+
+expectError('an academic rule citing an unknown source', (dir) => editJson(path.join(dir, 'profile.json'), (d) => {
+  d.academicRules.records[0].source = 'made-up-source';
+}), /academicRules\..* cites unknown source "made-up-source"/);
+
+expectError('a bus without dates or fares and no note', (dir) => editJson(path.join(dir, 'bus.json'), (d) => {
+  delete d.note;
+}), /bus: servicePeriod or fares is null with no note/, 'diu');
+
+expectError('a bus route off on an unknown day', (dir) => editJson(path.join(dir, 'bus.json'), (d) => {
+  d.records[0].daysOff = 'X';
+}), /bad daysOff string "X"/, 'diu');
 
 // A prerequisite that names a course we have no record of is incomplete data,
 // not wrong data: a warning, never an error.
