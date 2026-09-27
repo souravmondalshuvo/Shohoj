@@ -1,0 +1,22 @@
+{
+  "source": "bracu-departments",
+  "note": "Programs as the calculator offers them; termSystem says which seasons the presets use.",
+  "records": [
+    {"code":"CSE","name":"B.Sc. in Computer Science and Engineering (CSE)","totalCredits":136,"termSystem":"trimester"},
+    {"code":"EEE","name":"BSc EEE — Electrical & Electronic Engineering","totalCredits":136,"termSystem":"trimester"},
+    {"code":"BBA","name":"Bachelor of Business Administration (BBA)","totalCredits":130,"termSystem":"trimester"},
+    {"code":"ECO","name":"B.S.S. in Economics (ECO)","totalCredits":120,"termSystem":"trimester"},
+    {"code":"ENG","name":"B.A. in English (ENG)","totalCredits":120,"termSystem":"trimester"},
+    {"code":"ARC","name":"B.Arch. in Architecture (ARC)","totalCredits":207,"termSystem":"trimester"},
+    {"code":"PHR","name":"B.Sc. in Pharmacy (PHR)","totalCredits":164,"termSystem":"spring-summer"},
+    {"code":"LAW","name":"Bachelor of Laws (LLB)","totalCredits":135,"termSystem":"spring-fall"},
+    {"code":"CS","name":"B.Sc. in Computer Science (CS)","totalCredits":124,"termSystem":"trimester"},
+    {"code":"ECE","name":"B.Sc. in Electronic & Communication Engineering (ECE)","totalCredits":136,"termSystem":"trimester"},
+    {"code":"ANT","name":"B.S.S. in Anthropology (ANT)","totalCredits":120,"termSystem":"trimester"},
+    {"code":"PHY","name":"B.Sc. in Physics (PHY)","totalCredits":132,"termSystem":"trimester"},
+    {"code":"APE","name":"B.Sc. in Applied Physics & Electronics (APE)","totalCredits":130,"termSystem":"trimester"},
+    {"code":"MAT","name":"B.Sc. in Mathematics (MAT)","totalCredits":127,"termSystem":"trimester"},
+    {"code":"MIC","name":"B.Sc. in Microbiology (MIC)","totalCredits":136,"termSystem":"trimester"},
+    {"code":"BIO","name":"B.Sc. in Biotechnology (BIO)","totalCredits":136,"termSystem":"trimester"}
+  ]
+}
