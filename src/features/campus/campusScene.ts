@@ -1178,6 +1178,11 @@ export function createCampusScene(
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = PCFSoftShadowMap;
+    // The sun and the building never move, so a camera move leaves the shadow
+    // map exactly as it was. It is redrawn only when the scene itself changes;
+    // before this, every orbit frame drew the whole model twice.
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
@@ -1233,8 +1238,12 @@ export function createCampusScene(
     // loop still runs every frame (it is where easing lives), but draws only
     // when something moved or something outside the loop asked for a frame.
     let needsRender = true;
+    // Whether that frame must also redraw the shadow map: true for any change
+    // to the scene, false when only the camera (or a room's glow) changed.
+    let shadowsStale = true;
     const invalidate = (): void => {
         needsRender = true;
+        shadowsStale = true;
     };
     // Without damping (reduced motion) OrbitControls moves the camera inside
     // its own pointer handlers, so the loop's controls.update() never sees the
@@ -1316,6 +1325,9 @@ export function createCampusScene(
         const fresnelOpacity = fresnelMaterial.uniforms['uOpacity'] as { value: number };
         fresnelOpacity.value = step(fresnelOpacity.value, fresnelTargetOpacity);
 
+        // The pulse only changes a glow, never what casts a shadow, so it asks
+        // for a frame without asking for a shadow pass.
+        let pulsed = false;
         if (!reducedMotion) {
             for (const entry of roomEntries) {
                 const age = (time - entry.spawnAt) / 1000 - entry.stagger;
@@ -1324,7 +1336,7 @@ export function createCampusScene(
                 if (age < ROOM_POP_SECONDS) moving = true;
                 if (entry.pulsing) {
                     // The pulse is the one deliberate perpetual animation.
-                    moving = true;
+                    pulsed = true;
                     entry.mesh.material.emissiveIntensity =
                         0.1 + 0.08 * (0.5 + 0.5 * Math.sin(time / 420 + entry.phase));
                 }
@@ -1335,8 +1347,10 @@ export function createCampusScene(
         // settling after one.
         const cameraMoved = controls.update() || cameraChanged;
         cameraChanged = false;
-        if (!needsRender && !moving && !cameraMoved) return;
+        if (!needsRender && !moving && !pulsed && !cameraMoved) return;
+        renderer.shadowMap.needsUpdate = shadowsStale || moving;
         needsRender = false;
+        shadowsStale = false;
         renderer.render(scene, camera);
     });
 
