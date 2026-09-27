@@ -1,0 +1,6 @@
+{
+  "source": "bracu-math-minor",
+  "records": [
+    {"code":"MATH","label":"Minor in Mathematics","shortLabel":"Mathematics","department":"Department of Mathematics and Physical Sciences","totalCredits":27,"core":[{"id":"mat111","title":"Principles of Mathematics","codes":["MAT111"],"credits":3},{"id":"mat123","title":"Calculus I","codes":["MAT123"],"credits":3},{"id":"mat221","title":"Real Analysis I","codes":["MAT221"],"credits":3},{"id":"mat222","title":"Differential Equations I","codes":["MAT222"],"credits":3},{"id":"mat223","title":"Numerical Analysis I","codes":["MAT223","CSE330"],"credits":3},{"id":"mat311","title":"Abstract Algebra","codes":["MAT311"],"credits":3},{"id":"mat316","title":"Operations Research I","codes":["MAT316"],"credits":3}],"electives":{"credits":6,"codes":["STA301","CSE402","CSE490","CSE490C"],"patterns":[{"subject":"MAT","levels":[3,4]}],"options":[{"label":"Any MAT 3XX or MAT 4XX level course listed on the website"},{"label":"STA 301: Modern Probability Theory & Stochastic Processes"},{"label":"CSE 402: Optimization"},{"label":"CSE 490: Special Topics (Quantum Computing)"}]},"document":"Course Guide for Math Minor Students — Department of Mathematics and Physical Sciences"}
+  ]
+}
