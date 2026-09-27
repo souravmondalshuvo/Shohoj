@@ -1,7 +1,8 @@
 {
   "term": "252",
+  "termSystem": "trimester",
   "source": "nsu-offered-252",
-  "note": "Capacity is the section size, not live availability. A null faculty or room was TBA.",
+  "note": "Summer 2025 (trimester), as published at registration on 12 May 2025.",
   "records": [
     {"course": "ACT201", "section": 1, "faculty": "AhU", "days": "RA", "start": "11:20", "end": "12:50", "room": "NAC206", "capacity": 35},
     {"course": "ACT201", "section": 2, "faculty": "ARm", "days": "ST", "start": "16:20", "end": "17:50", "room": "NAC309", "capacity": 35},
