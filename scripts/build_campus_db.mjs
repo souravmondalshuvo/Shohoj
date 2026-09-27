@@ -58,9 +58,9 @@ CREATE TABLE days (
 CREATE TABLE buildings (
   campus TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (campus, code));
 CREATE TABLE programs (
-  campus TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL, school TEXT NOT NULL,
-  total_credits INTEGER NOT NULL, term_system TEXT NOT NULL, extends TEXT,
-  credit_load_min INTEGER, credit_load_max INTEGER, source TEXT NOT NULL,
+  campus TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL, school TEXT,
+  total_credits REAL NOT NULL, term_system TEXT, extends TEXT,
+  credit_load_min INTEGER, credit_load_max INTEGER, note TEXT, source TEXT NOT NULL,
   PRIMARY KEY (campus, code));
 CREATE TABLE program_conflicts (
   campus TEXT NOT NULL, program TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL,
@@ -112,8 +112,9 @@ CREATE TABLE calendar_events (
 CREATE TABLE calendar_notices (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, notice TEXT NOT NULL);
 CREATE TABLE bus_routes (
-  campus TEXT NOT NULL, route TEXT NOT NULL, stops TEXT NOT NULL, service_from TEXT NOT NULL,
-  service_to TEXT NOT NULL, source TEXT NOT NULL, PRIMARY KEY (campus, route));
+  campus TEXT NOT NULL, route TEXT NOT NULL, service TEXT, stops TEXT NOT NULL,
+  service_from TEXT, service_to TEXT, days_off TEXT, note TEXT, source TEXT NOT NULL,
+  PRIMARY KEY (campus, route));
 CREATE TABLE bus_times (
   campus TEXT NOT NULL, route TEXT NOT NULL, direction TEXT NOT NULL, time TEXT NOT NULL,
   PRIMARY KEY (campus, route, direction, time));
@@ -258,7 +259,7 @@ function campusStatements(c) {
     ...insert(
       'academic_rules',
       ['campus', 'id', 'rule', 'source'],
-      p.academicRules.records.map((r) => [id, r.id, r.rule, p.academicRules.source]),
+      p.academicRules.records.map((r) => [id, r.id, r.rule, r.source ?? p.academicRules.source]),
     ),
   );
   out.push(
@@ -300,18 +301,20 @@ function campusStatements(c) {
           'extends',
           'credit_load_min',
           'credit_load_max',
+          'note',
           'source',
         ],
         programs.map((r) => [
           id,
           r.code,
           r.name,
-          r.school,
+          r.school ?? null,
           r.totalCredits,
           r.termSystem,
           r.extends ?? null,
           r.creditLoad?.minCredits ?? null,
           r.creditLoad?.maxCredits ?? null,
+          r.note ?? null,
           r.source ?? c.programs.source,
         ]),
       ),
@@ -580,13 +583,26 @@ function campusStatements(c) {
     out.push(
       ...insert(
         'bus_routes',
-        ['campus', 'route', 'stops', 'service_from', 'service_to', 'source'],
+        [
+          'campus',
+          'route',
+          'service',
+          'stops',
+          'service_from',
+          'service_to',
+          'days_off',
+          'note',
+          'source',
+        ],
         routes.map((r) => [
           id,
           r.route,
+          r.service ?? null,
           JSON.stringify(r.stops),
-          c.bus.servicePeriod.from,
-          c.bus.servicePeriod.to,
+          c.bus.servicePeriod?.from ?? null,
+          c.bus.servicePeriod?.to ?? null,
+          r.daysOff ?? null,
+          r.note ?? null,
           c.bus.source,
         ]),
       ),
@@ -596,8 +612,8 @@ function campusStatements(c) {
         'bus_times',
         ['campus', 'route', 'direction', 'time'],
         routes.flatMap((r) => [
-          ...r.arriveNsu.map((t) => [id, r.route, 'arrive', t]),
-          ...r.departNsu.map((t) => [id, r.route, 'depart', t]),
+          ...r.arriveCampus.map((t) => [id, r.route, 'arrive', t]),
+          ...r.departCampus.map((t) => [id, r.route, 'depart', t]),
         ]),
       ),
     );
