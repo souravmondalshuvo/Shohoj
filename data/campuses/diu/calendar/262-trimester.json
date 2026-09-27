@@ -1,0 +1,20 @@
+{
+  "term": "262",
+  "termSystem": "trimester",
+  "source": "diu-registrar-calendars",
+  "note": "Summer-2026 (TRI), May-August.",
+  "notices": ["Eid vacation dates depend on moon sighting."],
+  "records": [
+    {"date": "2026-05-09", "endDate": "2026-05-15", "kind": "registration", "event": "Advising & Registration"},
+    {"date": "2026-05-11", "kind": "orientation", "event": "Orientation Program"},
+    {"date": "2026-05-12", "kind": "classes-begin", "event": "Classes Start"},
+    {"date": "2026-05-26", "endDate": "2026-05-31", "kind": "holiday", "event": "Eid-Ul-Adha Vacation"},
+    {"date": "2026-06-27", "endDate": "2026-07-04", "kind": "midterm", "event": "Mid-Examination"},
+    {"date": "2026-08-19", "endDate": "2026-08-27", "kind": "finals", "event": "Final Examination"},
+    {"date": "2026-08-30", "kind": "grades", "event": "Last Date of Grade Submission"},
+    {"date": "2026-08-31", "kind": "results", "event": "Publication of Semester Results"},
+    {"date": "2026-08-31", "endDate": "2026-09-02", "kind": "no-classes", "event": "Semester Break"},
+    {"date": "2026-09-03", "endDate": "2026-09-10", "kind": "next-term", "event": "Advising & Registration of Next Semester"},
+    {"date": "2026-09-09", "kind": "next-term", "event": "Classes Start of Next Semester"}
+  ]
+}
