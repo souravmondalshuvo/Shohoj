@@ -1243,6 +1243,13 @@ export function createCampusScene(
     const invalidate = (): void => {
         needsRender = true;
     };
+    // Without damping (reduced motion) OrbitControls moves the camera inside
+    // its own pointer handlers, so the loop's controls.update() never sees the
+    // change; 'change' catches both paths.
+    let cameraChanged = false;
+    controls.addEventListener('change', () => {
+        cameraChanged = true;
+    });
 
     function resize(): void {
         const width = Math.max(container.clientWidth, 1);
@@ -1335,7 +1342,8 @@ export function createCampusScene(
             !reducedMotion && time - lastInteraction > IDLE_ORBIT_AFTER_MS;
         // update() reports whether the camera moved: a drag, damping settling
         // after one, or the idle orbit.
-        const cameraMoved = controls.update();
+        const cameraMoved = controls.update() || cameraChanged;
+        cameraChanged = false;
         if (!needsRender && !moving && !cameraMoved) return;
         needsRender = false;
         renderer.render(scene, camera);
