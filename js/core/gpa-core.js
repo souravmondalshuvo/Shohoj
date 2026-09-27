@@ -1,19 +1,22 @@
 // Twin of src/core/gpa.ts — hand-maintained, not generated.
 // src/core/gpa.ts is the source of truth: change it there first, then mirror the
 // change here. tests/twinParity.test.js fails if the two drift.
-import { GRADES } from './grades.js';
+import { isRepeatableGrade, UNIVERSITIES } from './university.js';
 const GPA_SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
-function isGradeLetter(grade) {
-    return Object.prototype.hasOwnProperty.call(GRADES, grade);
+// Every campus rule defaults to BRACU's, so a caller that passes no profile
+// gets exactly the pre-tenancy behaviour.
+const GPA_DEFAULT_CAMPUS = UNIVERSITIES.bracu;
+function isGradeLetter(grade, scale) {
+    return Object.prototype.hasOwnProperty.call(scale.points, grade);
 }
-function gradePointFor(grade) {
-    return isGradeLetter(grade) ? GRADES[grade] : undefined;
+function gradePointFor(grade, scale = GPA_DEFAULT_CAMPUS.grades) {
+    return isGradeLetter(grade, scale) ? scale.points[grade] : undefined;
 }
-function gpaCoreCalcSemesterGpaImpl(semester) {
+function gpaCoreCalcSemesterGpaImpl(semester, scale = GPA_DEFAULT_CAMPUS.grades) {
     let points = 0;
     let credits = 0;
     for (const course of semester.courses) {
-        const gp = gradePointFor(course.grade);
+        const gp = gradePointFor(course.grade, scale);
         if (gp === undefined || !course.credits)
             continue;
         if (course.grade === 'P' || course.grade === 'I')
@@ -30,22 +33,26 @@ function gpaCoreCalcSemesterGpaImpl(semester) {
     return credits > 0 ? points / credits : null;
 }
 function gpaCoreUsesBestGradePolicyImpl(options = {}) {
+    const policy = options.retake ?? GPA_DEFAULT_CAMPUS.retake;
+    if (policy.kind === 'best')
+        return true;
+    if (policy.kind === 'latest')
+        return false;
     const season = options.startSeason || 'Fall';
     const year = typeof options.startYear === 'number'
         ? options.startYear
         : Number.parseInt(options.startYear || '2024', 10);
     if (!season || Number.isNaN(year))
         return false;
-    const seasonIndex = GPA_SEASON_ORDER.indexOf(season);
-    if (year < 2024)
+    if (year < policy.cutoff.year)
         return true;
-    if (year === 2024 && seasonIndex === 0)
-        return true;
-    if (year === 2024 && seasonIndex === 1)
-        return true;
-    if (year === 2024 && seasonIndex === 2)
+    if (year > policy.cutoff.year)
         return false;
-    return false;
+    const seasonIndex = GPA_SEASON_ORDER.indexOf(season);
+    const cutoffIndex = GPA_SEASON_ORDER.indexOf(policy.cutoff.season);
+    if (seasonIndex < 0 || cutoffIndex < 0)
+        return false;
+    return seasonIndex < cutoffIndex;
 }
 export function getCourseCode(courseName) {
     const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
@@ -58,6 +65,7 @@ export function getCourseIdentity(courseName) {
     return courseName.replace(/\s*\([^)]+\)$/, '').trim().toLowerCase();
 }
 function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
+    const scale = options.scale ?? GPA_DEFAULT_CAMPUS.grades;
     const bestGrade = typeof options.bestGrade === 'boolean'
         ? options.bestGrade
         : gpaCoreUsesBestGradePolicyImpl(options);
@@ -75,7 +83,7 @@ function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
             if (course.grade === 'W')
                 return;
             const gp = course.grade && course.grade !== 'F(NT)'
-                ? gradePointFor(course.grade) ?? -1
+                ? gradePointFor(course.grade, scale) ?? -1
                 : -1;
             attempts.push({
                 semId: semester.id,
@@ -113,6 +121,7 @@ function gpaCoreGetRetakenKeysImpl(semesters, options = {}) {
 export function calculateCgpaTotals(semesters, options = {}) {
     const includeRunning = options.includeRunning ?? true;
     const includeSummary = options.includeSummary ?? true;
+    const scale = options.scale ?? GPA_DEFAULT_CAMPUS.grades;
     const retakenKeys = gpaCoreGetRetakenKeysImpl(semesters, options);
     let points = 0;
     let attemptedCredits = 0;
@@ -133,7 +142,7 @@ export function calculateCgpaTotals(semesters, options = {}) {
         if (semester.running && !includeRunning)
             continue;
         semester.courses.forEach((course, index) => {
-            const gp = gradePointFor(course.grade);
+            const gp = gradePointFor(course.grade, scale);
             if (gp === undefined || !course.credits)
                 return;
             if (course.grade === 'P' || course.grade === 'I')
@@ -158,7 +167,12 @@ export function calculateCgpaTotals(semesters, options = {}) {
         cgpa: cgpaCredits > 0 ? points / cgpaCredits : null,
     };
 }
-function gpaCoreGetSemesterCreditWarningImpl(semester) {
+// Takes the whole profile, not its creditLoad: a campus with no published
+// limits has none, and a defaulted parameter would fill BRACU's in.
+function gpaCoreGetSemesterCreditWarningImpl(semester, profile = GPA_DEFAULT_CAMPUS) {
+    const rules = profile.creditLoad;
+    if (!rules)
+        return null;
     const total = semester.courses.reduce((sum, course) => {
         if (!course.name.trim() || !course.credits)
             return sum;
@@ -168,28 +182,28 @@ function gpaCoreGetSemesterCreditWarningImpl(semester) {
     }, 0);
     if (total === 0)
         return null;
-    if (total < 9)
-        return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below 9-credit minimum` };
-    if (total > 15)
-        return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds 15-credit maximum` };
-    if (total > 12)
+    if (total < rules.min)
+        return { type: 'error', msg: `\u26a0 ${total} credits \u2014 below ${rules.min}-credit minimum` };
+    if (total > rules.max)
+        return { type: 'error', msg: `\u26d4 ${total} credits \u2014 exceeds ${rules.max}-credit maximum` };
+    if (total > rules.warnAbove)
         return { type: 'warn', msg: `\u26a0 ${total} credits \u2014 requires chairman's permission` };
     return null;
 }
-function gpaCoreIsRepeatEligibleImpl(grade) {
+function gpaCoreIsRepeatEligibleImpl(grade, scale = GPA_DEFAULT_CAMPUS.grades, eligibility = GPA_DEFAULT_CAMPUS.repeat) {
     if (grade === 'F' || grade === 'F(NT)')
         return false;
     if (grade === 'P' || grade === 'I' || !grade)
         return false;
-    const gp = gradePointFor(grade);
+    const gp = gradePointFor(grade, scale);
     if (gp === undefined || gp === null)
         return false;
-    return gp < 3.0;
+    return isRepeatableGrade(gp, eligibility);
 }
-function gpaCoreGetImprovementStrategyImpl(grade) {
+function gpaCoreGetImprovementStrategyImpl(grade, scale = GPA_DEFAULT_CAMPUS.grades, eligibility = GPA_DEFAULT_CAMPUS.repeat) {
     if (grade === 'F' || grade === 'F(NT)')
         return 'retake';
-    if (gpaCoreIsRepeatEligibleImpl(grade))
+    if (gpaCoreIsRepeatEligibleImpl(grade, scale, eligibility))
         return 'repeat';
     return null;
 }
@@ -205,12 +219,12 @@ function gpaCoreNormalizeGradePointImpl(raw, mode) {
         return `${trimmed}.0`;
     return trimmed;
 }
-function gpaCoreClampGradePointImpl(value) {
+function gpaCoreClampGradePointImpl(value, scale = GPA_DEFAULT_CAMPUS.grades) {
     const n = Number.parseFloat(value);
     if (Number.isNaN(n))
         return value;
-    if (n > 4.0)
-        return '4.0';
+    if (n > scale.max)
+        return scale.max.toFixed(1);
     if (n < 0)
         return '0.0';
     return value;
