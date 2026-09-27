@@ -12,6 +12,8 @@
 // returned a value versus threw, so a twin cannot look covered on nothing but
 // mutual TypeErrors.
 
+import { UNIVERSITIES } from '../../js/core/university.js';
+
 /** A frozen clock for any export that takes an injectable `now`. */
 const FIXED_NOW = 1_767_225_600_000; // 2026-01-01T00:00:00Z
 
@@ -194,6 +196,32 @@ const SEMESTER_RETAKE = {
   courses: [{ name: 'Physics (PHY111)', grade: 'A', credits: 3 }],
 };
 const SEMESTERS = [SEMESTER, SEMESTER_RETAKE];
+
+// Campus-rule fixtures (#790). NSU disagrees with BRACU exactly where these
+// probe: a retake that scores worse (best vs latest attempt), a B (repeatable
+// at NSU only), an A+ and a D- (not awarded at NSU), and a load NSU sets no
+// limit on.
+const { bracu: BRACU, nsu: NSU } = UNIVERSITIES;
+const SEMESTER_WORSE_RETAKE = {
+  id: 3,
+  name: 'Summer 2025',
+  running: false,
+  summary: false,
+  courses: [
+    { name: 'Physics (PHY111)', grade: 'D', credits: 3 },
+    { name: 'Statistics (MAT361)', grade: 'B', credits: 3 },
+    { name: 'Writing (ENG102)', grade: 'A+', credits: 3 },
+    { name: 'Ethics (HUM103)', grade: 'D-', credits: 3 },
+  ],
+};
+const SEMESTERS_WORSE_RETAKE = [SEMESTER, SEMESTER_RETAKE, SEMESTER_WORSE_RETAKE];
+const SEMESTER_HEAVY = {
+  id: 4,
+  name: 'Fall 2025',
+  running: false,
+  summary: false,
+  courses: [1, 2, 3, 4, 5, 6].map((n) => ({ name: `Course ${n} (CSE10${n})`, grade: 'B', credits: 3 })),
+};
 
 const TRANSCRIPT = [
   'BRAC UNIVERSITY',
@@ -740,28 +768,71 @@ export const FIXTURES = {
   },
 
   'gpa-core': {
-    calcSemesterGpa: [[SEMESTER], [{ courses: [] }]],
+    calcSemesterGpa: [
+      [SEMESTER],
+      [{ courses: [] }],
+      [SEMESTER_WORSE_RETAKE],
+      [SEMESTER_WORSE_RETAKE, NSU.grades],
+    ],
     calculateCgpaTotals: [
       [SEMESTERS, {}],
       [SEMESTERS, { bestGrade: true }],
       [SEMESTERS, { includeRunning: true, includeSummary: true }],
       [[], {}],
+      [SEMESTERS_WORSE_RETAKE, {}],
+      [SEMESTERS_WORSE_RETAKE, { scale: NSU.grades, retake: NSU.retake }],
+      [SEMESTERS_WORSE_RETAKE, { scale: BRACU.grades, retake: BRACU.retake, startYear: 2025 }],
     ],
     getRetakenKeys: [
       [SEMESTERS, { bestGrade: false }],
       [SEMESTERS, { bestGrade: true }],
+      [SEMESTERS_WORSE_RETAKE, { retake: NSU.retake }],
+      [SEMESTERS_WORSE_RETAKE, { retake: BRACU.retake, startYear: 2025 }],
+      [SEMESTERS_WORSE_RETAKE, { scale: NSU.grades, retake: NSU.retake }],
     ],
     getCourseCode: [['Physics (PHY111)'], ['No code here'], ['']],
     getCourseIdentity: [['Physics (PHY111)'], ['Independent Study']],
-    clampGradePoint: [[5], [-1], [2.7], [NaN]],
+    clampGradePoint: [[5], [-1], [2.7], [NaN], ['4.3', NSU.grades]],
     normalizeGradePoint: [
       ['3.7', 3],
       ['abc', 3],
       ['4.5', 3],
     ],
-    getImprovementStrategy: [['F'], ['C'], ['A'], ['F(NT)'], ['W']],
-    isRepeatEligible: [['F'], ['C'], ['B'], ['A']],
-    getSemesterCreditWarning: [[SEMESTER], [{ courses: [] }]],
+    getImprovementStrategy: [
+      ['F'],
+      ['C'],
+      ['A'],
+      ['F(NT)'],
+      ['W'],
+      ['B', NSU.grades, NSU.repeat],
+      ['B', BRACU.grades, BRACU.repeat],
+      ['A+', NSU.grades, NSU.repeat],
+    ],
+    isRepeatEligible: [
+      ['F'],
+      ['C'],
+      ['B'],
+      ['A'],
+      ['B', NSU.grades, NSU.repeat],
+      ['B-', NSU.grades, NSU.repeat],
+      ['D-', NSU.grades, NSU.repeat],
+    ],
+    getSemesterCreditWarning: [
+      [SEMESTER],
+      [{ courses: [] }],
+      [SEMESTER_HEAVY],
+      [SEMESTER_HEAVY, BRACU],
+      [SEMESTER_HEAVY, NSU],
+    ],
+    usesBestGradePolicy: [
+      [{}],
+      [{ startSeason: 'Summer', startYear: 2024 }],
+      [{ startSeason: 'Fall', startYear: 2024 }],
+      [{ startSeason: 'Spring', startYear: '2023' }],
+      [{ startSeason: 'Winter', startYear: 2024 }],
+      [{ retake: NSU.retake, startSeason: 'Fall', startYear: 2025 }],
+      [{ retake: { kind: 'latest' }, startSeason: 'Spring', startYear: 2020 }],
+    ],
   },
 
   milestones: {
@@ -1097,5 +1168,40 @@ export const FIXTURES = {
     detectStudentIdentity: [[TRANSCRIPT], ['']],
     parseTranscriptText: [[TRANSCRIPT], ['']],
     parseBlobFallback: [[TRANSCRIPT], ['']],
+  },
+
+  university: {
+    // A whole profile out of each side: the strongest check that the legacy
+    // copy of every campus rule matches the registry the shell reads.
+    getUniversity: [['bracu'], ['nsu'], ['mit'], [''], [null], ['constructor']],
+    isUniversityId: [['nsu'], ['NSU'], ['toString'], [42]],
+    universityForEmail: [
+      ['first.last@northsouth.edu'],
+      ['21301234@G.BRACU.AC.BD'],
+      ['a@g.bracu.ac.bd.attacker.com'],
+      ['a@b@northsouth.edu'],
+      ['@northsouth.edu'],
+      ['nobody@gmail.com'],
+      [42],
+    ],
+    allUniversityDomains: [[]],
+    isRepeatableGrade: [
+      [3.0, NSU.repeat],
+      [3.0, BRACU.repeat],
+      [2.7, BRACU.repeat],
+    ],
+    hasFeature: [
+      [NSU, 'routine'],
+      [NSU, 'calculator'],
+      [BRACU, 'routine'],
+      [null, 'calculator'],
+    ],
+    gradePointOn: [
+      [NSU.grades, 'A+'],
+      [NSU.grades, 'A'],
+      [NSU.grades, 'W'],
+      [BRACU.grades, 'D-'],
+      [BRACU.grades, 'P'],
+    ],
   },
 };
