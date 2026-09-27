@@ -7,19 +7,34 @@ Worker — is compiled from these files. Edit here, never downstream.
 
 ```
 data/campuses/<campus>/
-  sources.json          where every fact came from (required)
-  profile.json          grading, retakes, standing, terms, days, buildings (required)
-  programs.json         degree programs and total credits
-  courses.json          course catalogue
-  prerequisites.json    prerequisite rules
-  sections/<term>.json  one term's sections (course, section, faculty, days, time, room, capacity)
-  calendar/<term>.json  one term's academic calendar
-  bus.json              bus routes, stops and times
+  sources.json                 where every fact came from (required)
+  profile.json                 grading, retakes, standing, terms, days, buildings (required)
+  programs.json                degree programs, total credits, program rules
+  courses.json                 course catalogue
+  prerequisites.json           prerequisite rules, per source and optionally per program
+  requirements.json            degree requirement groups (all of / choose n of / free credits)
+  plans.json                   suggested semester-by-semester sequence per program
+  sections/<term>-<system>.json  one term's sections (course, section, faculty, days, time, room, capacity)
+  calendar/<term>-<system>.json  one term's academic calendar
+  bus.json                     bus routes, stops and times
 ```
 
 Only `sources.json` and `profile.json` are required; a campus carries whatever
-it has data for. Term files are named by term code (`252` is Summer 2025 — see
-`profile.json` → `termCodes`).
+it has data for. Term files are named by term code and calendar system:
+`252-trimester.json` is Summer 2025 on the central calendar, and
+`252-bisemester.json` the same term for NSU's bi-semester programs (BPharm,
+LLB), which run their own calendar alongside it. See `profile.json` →
+`termCodes` and `termSystems`.
+
+A course can carry prerequisite rules from several documents (the ECE course
+pages and the BBA handbook both state ENG103's), and a curriculum can scope a
+rule to its own program, so rules are never merged: each keeps its `source` and
+optional `program`. A program with `extends` inherits the requirement groups of
+the program it names — every BBA major extends BBA's shared core.
+
+When a source has an obvious printing error, correct it on the record and say
+so in its `note` (see ARC273 section 2 in `sections/253-trimester.json`);
+never correct silently.
 
 ## Provenance
 
@@ -63,19 +78,31 @@ D1 with `wrangler d1 execute <db> --file dist-data/campus.sql`.
 Some questions it answers:
 
 ```sql
--- Rooms free on Sunday 11:20–12:50 in Summer 2025
-SELECT room FROM rooms WHERE campus='nsu' AND term='252'
-  AND room NOT IN (SELECT room FROM meetings WHERE campus='nsu' AND term='252'
-                   AND day='S' AND start < '12:50' AND "end" > '11:20' AND room IS NOT NULL);
+-- Rooms free on Sunday 11:20–12:50 in Fall 2025
+SELECT room FROM rooms WHERE campus='nsu' AND term='253' AND term_system='trimester'
+  AND room NOT IN (SELECT room FROM meetings WHERE campus='nsu' AND term='253'
+                   AND term_system='trimester' AND day='S'
+                   AND start < '12:50' AND "end" > '11:20' AND room IS NOT NULL);
 
 -- What a faculty member taught, by initials (case matters at NSU: SHA1 ≠ Sha1)
-SELECT course, section, days, start, room FROM sections
-  WHERE campus='nsu' AND term='252' AND faculty = 'NNh';
+SELECT term, course, section, days, start, room FROM sections
+  WHERE campus='nsu' AND faculty = 'NNh' ORDER BY term, course;
 
--- Everything CSE373 needs, with titles
-SELECT o.requirement, o.requires, c.title FROM prerequisite_options o
+-- Everything CSE373 needs, per source, with titles
+SELECT p.source, o.requirement, o.requires, c.title FROM prerequisites p
+  JOIN prerequisite_options o ON o.campus = p.campus AND o.rule = p.id
   LEFT JOIN courses c ON c.campus = o.campus AND c.code = o.requires
-  WHERE o.campus='nsu' AND o.course='CSE373';
+  WHERE p.campus='nsu' AND p.course='CSE373';
+
+-- A CSE student's second year, as the curriculum suggests it
+SELECT term, code, title, credits FROM plans
+  WHERE campus='nsu' AND program='CSE' AND year=2 ORDER BY position;
+
+-- Everything a BBA Finance major must satisfy (its own groups plus BBA's)
+SELECT g.program, g.name, g.rule, g.choose, g.credits,
+       group_concat(o.code, ' | ') AS options
+  FROM requirement_groups g LEFT JOIN requirement_options o ON o.campus = g.campus AND o.grp = g.id
+  WHERE g.campus='nsu' AND g.program IN ('BBA', 'BBA-FIN') GROUP BY g.id;
 
 -- Which facts are not yet official
 SELECT b.kind, b.label, b.min_cgpa, s.title FROM cgpa_bands b
