@@ -60,7 +60,7 @@ import {
     MeshStandardMaterial,
     NeutralToneMapping,
     Object3D,
-    PCFSoftShadowMap,
+    PCFShadowMap,
     PerspectiveCamera,
     Raycaster,
     RingGeometry,
@@ -1004,6 +1004,53 @@ export function createCampusScene(
         }
     }
 
+    // See-through twins of the model's opaque materials, kept alive only so
+    // the shader programs compiled for them stay cached (disposing a material
+    // releases its program). Their geometry is the model's own.
+    const modelProbeMaterials: Material[] = [];
+
+    /**
+     * Compile every shader the model will need before it is shown (#781). The
+     * focus fade flips each opaque material to `transparent`, and `opaque` is
+     * part of a three.js program's key — without this, opening the first floor
+     * compiled the see-through programs synchronously on the fade's first
+     * frame. The adopted model renders under NeutralToneMapping, which is also
+     * part of the key, so compilation runs under it; nothing draws in between,
+     * since compile() is synchronous and frames only come from the animation
+     * loop.
+     */
+    function precompileModel(root: Object3D): Promise<unknown> {
+        const probes = new Group();
+        root.updateMatrixWorld(true);
+        root.traverse((object) => {
+            if (!(object instanceof Mesh)) return;
+            const list: Material[] = Array.isArray(object.material)
+                ? object.material
+                : [object.material];
+            if (list.every((material) => material.transparent)) return;
+            const twins = list.map((material) => {
+                const twin = material.clone();
+                twin.transparent = true;
+                twin.depthWrite = false;
+                modelProbeMaterials.push(twin);
+                return twin;
+            });
+            const probe = object.clone(false) as Mesh;
+            probe.material = Array.isArray(object.material) ? twins : twins[0]!;
+            probes.add(probe);
+        });
+        const toneMapping = renderer.toneMapping;
+        renderer.toneMapping = NeutralToneMapping;
+        const ready = Promise.all([
+            renderer.compileAsync(root, camera, scene),
+            renderer.compileAsync(probes, camera, scene),
+            // The slabs and labels switch tone mapping along with the model.
+            renderer.compileAsync(floorGroup, camera, scene),
+        ]);
+        renderer.toneMapping = toneMapping;
+        return ready;
+    }
+
     function loadExteriorModel(url: string): void {
         const report = (state: ExteriorModelState) => options.onModelState?.(state);
         if (!canDecompressGzip()) {
@@ -1013,6 +1060,7 @@ export function createCampusScene(
         report('loading');
         fetchExteriorGlb(url, modelAbort.signal)
             .then((glb) => new GLTFLoader().parseAsync(glb, ''))
+            .then((gltf) => (disposed ? gltf : precompileModel(gltf.scene).then(() => gltf)))
             .then((gltf) => {
                 if (disposed) {
                     disposeObjectTree(gltf.scene);
@@ -1186,7 +1234,10 @@ export function createCampusScene(
     const motionPixelRatio = Math.min(fullPixelRatio, MOTION_PIXEL_RATIO);
     renderer.setPixelRatio(fullPixelRatio);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFSoftShadowMap;
+    // PCF, not PCFSoft: three r185 deprecated PCFSoftShadowMap and swaps it for
+    // PCF at the first shadow render. Naming it up front keeps the shaders the
+    // model precompiles (#781) keyed like the ones that will draw it.
+    renderer.shadowMap.type = PCFShadowMap;
     // The sun and the building never move, so a camera move leaves the shadow
     // map exactly as it was. It is redrawn only when the scene itself changes;
     // before this, every orbit frame drew the whole model twice.
@@ -1518,6 +1569,7 @@ export function createCampusScene(
             });
             for (const entry of architectureMaterials) entry.material.dispose();
             disposeObjectTree(modelGroup);
+            for (const material of modelProbeMaterials) material.dispose();
             modelSlabGeometry?.dispose();
             slabGeometry.dispose();
             roomGeometry.dispose();
