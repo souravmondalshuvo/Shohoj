@@ -249,6 +249,6 @@ const missingTarget = withBrokenCopy((dir) => editJson(path.join(dir, 'prerequis
   d.records[0].allOf = [['ZZZ997']];
 }));
 assert.deepEqual(missingTarget.errors, []);
-assert.ok(missingTarget.warnings.some((w) => /requires ZZZ997/.test(w)));
+assert.ok(missingTarget.warnings.some((w) => /not in courses\.json yet: .*ZZZ997/.test(w)));
 
 console.log(`campusData: data/campuses is valid (${real.warnings.length} warning(s)); every validation rule fires`);
