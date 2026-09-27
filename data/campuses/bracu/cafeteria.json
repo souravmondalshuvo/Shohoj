@@ -1,0 +1,12 @@
+{
+  "source": "bracu-cafeteria-placeholder",
+  "note": "Placeholder outlets and hours: every outlet is unverified in the code itself.",
+  "lastReviewed": "Pending first review",
+  "disclaimer": "Outlets set their own hours and can change or close them at any time — especially during exams, semester breaks and holidays. Confirm on the day when it matters. This guide never lists daily menus or prices.",
+  "records": [
+    {"id":"main-cafeteria","name":"Main Cafeteria","kind":"cafeteria","floor":2,"zone":null,"locationNote":"Level 2 — main student dining hall.","payment":["bKash","Cash"],"hours":[[{"open":"8:00 AM","close":"8:00 PM"}],[{"open":"8:00 AM","close":"8:00 PM"}],[{"open":"8:00 AM","close":"8:00 PM"}],[{"open":"8:00 AM","close":"8:00 PM"}],[{"open":"8:00 AM","close":"8:00 PM"}],[],[]],"verified":false,"note":"Largest seating capacity; busiest around midday."},
+    {"id":"ground-cafe","name":"Ground-floor Café","kind":"cafe","floor":1,"zone":null,"locationNote":"Ground-floor lobby, near the main entrance.","payment":["bKash","Cash","Card"],"hours":[[{"open":"8:00 AM","close":"9:00 PM"}],[{"open":"8:00 AM","close":"9:00 PM"}],[{"open":"8:00 AM","close":"9:00 PM"}],[{"open":"8:00 AM","close":"9:00 PM"}],[{"open":"8:00 AM","close":"9:00 PM"}],[],[{"open":"8:00 AM","close":"9:00 PM"}]],"verified":false,"note":"Coffee, snacks and quick bites."},
+    {"id":"rooftop-canteen","name":"Rooftop Canteen","kind":"canteen","floor":10,"zone":null,"locationNote":"Top-floor open-air seating.","payment":["bKash","Cash"],"hours":[[{"open":"10:00 AM","close":"6:00 PM"}],[{"open":"10:00 AM","close":"6:00 PM"}],[{"open":"10:00 AM","close":"6:00 PM"}],[{"open":"10:00 AM","close":"6:00 PM"}],[{"open":"10:00 AM","close":"6:00 PM"}],[],[]],"verified":false},
+    {"id":"library-kiosk","name":"Library Kiosk","kind":"kiosk","floor":6,"zone":"A","locationNote":"Beside the library entrance, Block A.","payment":["bKash","Cash"],"hours":[[{"open":"9:00 AM","close":"5:00 PM"}],[{"open":"9:00 AM","close":"5:00 PM"}],[{"open":"9:00 AM","close":"5:00 PM"}],[{"open":"9:00 AM","close":"5:00 PM"}],[{"open":"9:00 AM","close":"5:00 PM"}],[],[{"open":"9:00 AM","close":"5:00 PM"}]],"verified":false,"note":"Grab-and-go only; no seating."}
+  ]
+}
