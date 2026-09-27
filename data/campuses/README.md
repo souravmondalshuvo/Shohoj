@@ -16,7 +16,7 @@ data/campuses/<campus>/
   plans.json                   suggested semester-by-semester sequence per program
   sections/<term>-<system>.json  one term's sections (course, section, faculty, days, time, room, capacity)
   calendar/<term>-<system>.json  one term's academic calendar
-  bus.json                     bus routes, stops and times
+  bus.json                     bus routes, stops, times to and from campus, days off
 ```
 
 Only `sources.json` and `profile.json` are required; a campus carries whatever
@@ -49,7 +49,10 @@ campus's `sources.json`. Each source has a `status`:
 
 When sources disagree, keep the official value and record the other one under
 `conflicts` (see CSE in `nsu/programs.json`). Don't guess a number nobody
-publishes — leave it `null` and say why in a `note`.
+publishes — leave it `null` and say why in a `note`. The same goes for lists a
+university doesn't publish (DIU has no class divisions) and for a student email
+domain nobody has confirmed: empty, with a note. The validator rejects an empty
+or null value that has no note.
 
 ## Validating
 
@@ -111,5 +114,6 @@ SELECT b.kind, b.label, b.min_cgpa, s.title FROM cgpa_bands b
 
 ## Research notes
 
-How each NSU dataset was gathered, what is still unknown, and the questions
-for the registrar: [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md).
+How each dataset was gathered, what is still unknown, and the questions for
+each registrar: [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md)
+and [`docs/campuses/diu-research.md`](../../docs/campuses/diu-research.md).
