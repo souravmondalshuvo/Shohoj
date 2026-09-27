@@ -65,13 +65,17 @@ const sourcesSchema = z
 const cited = (shape) =>
   z.object({ source: sourceId, note: z.string().optional(), ...shape }).strict();
 const citedRecords = (record) => cited({ records: z.array(record).min(1) });
+// For facts a university may simply not publish (DIU has no class divisions):
+// empty is allowed, but checkCampus then demands a note saying so.
+const citedList = (record) => cited({ records: z.array(record) });
 
 const profileSchema = z
   .object({
     id: z.string().regex(/^[a-z]+$/),
     name: z.string().min(1),
     shortName: z.string().min(1),
-    identity: cited({ emailDomains: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]+$/)).min(1) }),
+    // Empty only while unconfirmed, with a note — never a guessed domain.
+    identity: cited({ emailDomains: z.array(z.string().regex(/^[a-z0-9.-]+\.[a-z]+$/)) }),
     grading: cited({
       scale: z
         .array(
@@ -99,16 +103,20 @@ const profileSchema = z
         .object({ belowCgpa: z.number(), termsToRecover: z.number().int(), then: z.string() })
         .strict(),
     }),
-    classDivisions: citedRecords(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
-    honours: citedRecords(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
-    classStanding: citedRecords(
+    classDivisions: citedList(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
+    honours: citedList(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
+    classStanding: citedList(
       z.object({ label: z.string(), minCredits: z.number().int().min(0) }).strict(),
     ),
     creditLoad: cited({
       fullTimeMin: z.record(z.string(), z.number().int().positive()),
       max: z.number().int().positive().nullable(),
     }),
-    academicRules: citedRecords(z.object({ id: z.string(), rule: z.string() }).strict()),
+    // A rule may cite its own source when it comes from a different document
+    // than the block's (DIU's graduation CGPA is in its FAQ, not its rules).
+    academicRules: citedRecords(
+      z.object({ id: z.string(), rule: z.string(), source: sourceId.optional() }).strict(),
+    ),
     termSystems: citedRecords(
       z
         .object({
@@ -120,7 +128,7 @@ const profileSchema = z
     ),
     termCodes: cited({ pattern: z.string() }),
     days: citedRecords(z.object({ code: z.string().length(1), day: z.string() }).strict()),
-    buildings: citedRecords(z.object({ code: z.string(), name: z.string() }).strict()),
+    buildings: citedList(z.object({ code: z.string(), name: z.string() }).strict()),
   })
   .strict();
 
@@ -131,9 +139,16 @@ const programsSchema = citedRecords(
     .object({
       code: programCode,
       name: z.string().min(1),
-      school: z.string().min(1),
-      totalCredits: z.number().int().positive(),
-      termSystem: z.string(),
+      school: z.string().min(1).optional(),
+      // Half credits exist: DIU's CSE is 154.5.
+      totalCredits: z
+        .number()
+        .positive()
+        .refine((n) => Number.isInteger(n * 2), 'credits must be a multiple of 0.5'),
+      // null when the university doesn't say which calendar a program runs on;
+      // checkCampus then requires a note.
+      termSystem: z.string().nullable(),
+      note: z.string().min(1).optional(),
       source: sourceId.optional(),
       // Inherit the requirement groups of another program (every BBA major
       // extends BBA's shared core).
@@ -286,19 +301,32 @@ const calendarSchema = z
   })
   .strict();
 
+// servicePeriod and fares are null when the operator doesn't publish them (DIU's
+// feed names a semester, not dates, and lists no fare); checkCampus requires a
+// note then.
 const busSchema = cited({
   servicePeriod: z
     .object({ from: z.string().regex(ISO_DATE), to: z.string().regex(ISO_DATE) })
-    .strict(),
-  fares: z.object({ oneWay: z.number(), roundTrip: z.number(), currency: z.string() }).strict(),
+    .strict()
+    .nullable(),
+  fares: z
+    .object({ oneWay: z.number(), roundTrip: z.number(), currency: z.string() })
+    .strict()
+    .nullable(),
   records: z
     .array(
       z
         .object({
           route: z.string(),
+          // "regular", "shuttle", "friday"… when the operator runs several.
+          service: z.string().min(1).optional(),
           stops: z.array(z.string()).min(1),
-          arriveNsu: z.array(time),
-          departNsu: z.array(time),
+          arriveCampus: z.array(time),
+          departCampus: z.array(time),
+          // Day codes from profile.days on which the route does not run.
+          daysOff: z.string().min(1).optional(),
+          // Required when a printed time was corrected, as for sections.
+          note: z.string().min(1).optional(),
         })
         .strict(),
     )
@@ -396,6 +424,13 @@ function checkCampus(campus, problems) {
       if (block && typeof block === 'object' && 'source' in block)
         cite(`profile.${key}`, block.source);
     }
+    if (!profile.identity.emailDomains.length && !profile.identity.note)
+      err('identity: no email domains and no note saying why');
+    for (const key of ['classDivisions', 'honours', 'classStanding', 'buildings']) {
+      if (!profile[key].records.length && !profile[key].note)
+        err(`profile.${key}: empty with no note saying why`);
+    }
+    for (const r of profile.academicRules.records) cite(`profile.academicRules.${r.id}`, r.source);
     const letters = profile.grading.scale.map((g) => g.letter);
     if (new Set(letters).size !== letters.length) err('grading: duplicate letter');
     if (!letters.includes(profile.retake.eligibleAtOrBelow))
@@ -419,7 +454,9 @@ function checkCampus(campus, problems) {
   for (const p of campus.programs?.records ?? []) {
     if (programs.has(p.code)) err(`programs: duplicate code ${p.code}`);
     programs.set(p.code, p);
-    if (!termSystems.has(p.termSystem))
+    if (p.termSystem === null) {
+      if (!p.note) err(`programs: ${p.code} has no term system and no note saying why`);
+    } else if (!termSystems.has(p.termSystem))
       err(`programs: ${p.code} uses unknown term system "${p.termSystem}"`);
     cite(`programs.${p.code}`, p.source);
     cite(`programs.${p.code}.creditLoad`, p.creditLoad?.source);
@@ -531,6 +568,20 @@ function checkCampus(campus, problems) {
       if (days.some((d) => !dayCodes.has(d)) || new Set(days).size !== days.length)
         err(`${label}: bad day string "${s.days}"`);
       if (s.start >= s.end) err(`${label}: starts at ${s.start} but ends at ${s.end}`);
+    }
+  }
+
+  if (campus.bus) {
+    const { bus } = campus;
+    if ((bus.servicePeriod === null || bus.fares === null) && !bus.note)
+      err('bus: servicePeriod or fares is null with no note saying why');
+    const routes = new Set();
+    for (const r of bus.records) {
+      if (routes.has(r.route)) err(`bus: duplicate route ${r.route}`);
+      routes.add(r.route);
+      const off = [...(r.daysOff ?? '')];
+      if (off.some((d) => !dayCodes.has(d)) || new Set(off).size !== off.length)
+        err(`bus: ${r.route} has a bad daysOff string "${r.daysOff}"`);
     }
   }
 
