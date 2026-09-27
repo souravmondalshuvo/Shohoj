@@ -1,0 +1,21 @@
+{
+  "source": "bracu-catalog",
+  "note": "Which department owns each course subject (a subject has exactly one owner).",
+  "records": [
+    {"code":"CSE","label":"Computer Science & Engineering","school":"SDS","prefixes":["CSE"]},
+    {"code":"EEE","label":"Electrical & Electronic Engineering","school":"SDS","prefixes":["EEE"]},
+    {"code":"ECE","label":"Electronic & Communication Engineering","school":"SDS","prefixes":["ECE"]},
+    {"code":"MPS","label":"Mathematics & Physical Sciences","school":"SDS","prefixes":["MAT","PHY","STA","ENV","MIC","BCH","BTE","BIO","APE","CHE","GEO"]},
+    {"code":"BBA","label":"Business","school":"BBS","prefixes":["ACT","BUS","FIN","MGT","MKT","MIS","MSC"]},
+    {"code":"ENG","label":"English & Humanities","school":"ENH","prefixes":["ENG","HST"]},
+    {"code":"ECO","label":"Economics & Social Sciences","school":"ESS","prefixes":["ECO","SOC"]},
+    {"code":"ANT","label":"Anthropology","school":"ESS","prefixes":["ANT"]},
+    {"code":"ARC","label":"Architecture","school":"SAD","prefixes":["ARC","CEE","MEE","PHI"]},
+    {"code":"PHR","label":"Pharmacy","school":"Pharmacy","prefixes":["PHB","PHR"]},
+    {"code":"LLB","label":"Bachelor of Laws","school":"Law","prefixes":["LAW"]},
+    {"code":"GENED","label":"General Education","school":"GENED","displayCode":"GenEd","prefixes":["BNG","EMB","CST","FRN","DEV","POL","PSY","HUM","CHN","JPN","SPN"]}
+  ],
+  "overrides": [
+    {"course":"CST333","department":"BBA"}
+  ]
+}
