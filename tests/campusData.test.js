@@ -28,9 +28,33 @@ assert.deepEqual(nsu.profile.identity.emailDomains, ['northsouth.edu']);
 assert.equal(nsu.profile.retake.maxRetakes, 3, 'the 2026 policy book caps retakes at three');
 assert.ok(!nsu.profile.grading.scale.some((g) => g.letter === 'A+' || g.letter === 'D-'), 'NSU awards no A+ or D-');
 assert.equal(nsu.programs.records.length, 25);
-assert.ok(nsu.courses.records.length >= 600, 'the Summer 2025 catalogue is loaded');
-assert.ok(nsu.sections['252'].records.length >= 2800, 'the Summer 2025 sections are loaded');
-assert.ok(nsu.calendars['263'], 'the Fall 2026 calendar is loaded');
+assert.ok(nsu.courses.records.length >= 1000, 'the catalogue spans every loaded source');
+assert.ok(nsu.sections['252-trimester'].records.length >= 2800, 'the Summer 2025 sections are loaded');
+assert.ok(nsu.sections['253-trimester'].records.length >= 3200, 'the Fall 2025 sections are loaded');
+assert.ok(nsu.sections['252-bisemester'], 'the bi-semester sections are loaded');
+for (const key of ['261-trimester', '262-trimester', '263-trimester', '261-bisemester', '262-bisemester']) {
+  assert.ok(nsu.calendars[key], `the ${key} calendar is loaded`);
+}
+const bba = nsu.programs.records.find((p) => p.code === 'BBA-FIN');
+assert.equal(bba.totalCredits, 130, 'BBA follows the December 2025 handbook');
+assert.equal(bba.extends, 'BBA');
+
+// Every plan, and every program whose requirement groups are complete, adds up
+// to the program's published total. These are the transcription checks: a
+// dropped row or a misread credit breaks one of these sums.
+const credits = (items) => items.reduce((n, i) => n + (i.credits ?? 0), 0);
+for (const program of ['CSE', 'EEE', 'CEE', 'PHR', 'LLB']) {
+  const total = nsu.programs.records.find((p) => p.code === program).totalCredits;
+  assert.equal(credits(nsu.plans.records.filter((p) => p.program === program)), total, `${program} plan totals ${total}`);
+}
+const groupsOf = (code) => nsu.requirements.records.filter((g) => g.program === code);
+for (const program of ['CSE', 'PHR', 'LLB']) {
+  const total = nsu.programs.records.find((p) => p.code === program).totalCredits;
+  assert.equal(credits(groupsOf(program)), total, `${program} requirement groups total ${total}`);
+}
+for (const major of ['ACT', 'ECO', 'FIN', 'HRM', 'INB', 'MGT', 'MIS', 'MKT', 'SCM']) {
+  assert.equal(credits(groupsOf('BBA')) + credits(groupsOf(`BBA-${major}`)), 130, `BBA-${major} totals 130`);
+}
 
 // ── Each rule catches the mistake it is for ─────────────────────────────────
 
@@ -68,26 +92,79 @@ expectError('duplicate course', (dir) => editJson(path.join(dir, 'courses.json')
   d.records.push({ ...d.records[0] });
 }), /courses: duplicate code/);
 
-expectError('unknown day code', (dir) => editJson(path.join(dir, 'sections', '252.json'), (d) => {
+const SUMMER = ['sections', '252-trimester.json'];
+
+expectError('unknown day code', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
   d.records[0].days = 'SX';
 }), /bad day string "SX"/);
 
-expectError('repeated day', (dir) => editJson(path.join(dir, 'sections', '252.json'), (d) => {
+expectError('repeated day', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
   d.records[0].days = 'SS';
 }), /bad day string "SS"/);
 
-expectError('section for a course the catalogue lacks', (dir) => editJson(path.join(dir, 'sections', '252.json'), (d) => {
+expectError('section for a course the catalogue lacks', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
   d.records[0].course = 'ZZZ999';
 }), /ZZZ999\.\d+: course is not in courses\.json/);
 
-expectError('section that ends before it starts', (dir) => editJson(path.join(dir, 'sections', '252.json'), (d) => {
+expectError('section that ends before it starts', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
   d.records[0].start = '15:00';
   d.records[0].end = '14:00';
 }), /starts at 15:00 but ends at 14:00/);
 
+expectError('a half-scheduled section', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
+  d.records[0].days = null;
+}), /days, start and end must be all set or all null/);
+
 expectError('term file named for the wrong term', (dir) => {
-  fs.renameSync(path.join(dir, 'sections', '252.json'), path.join(dir, 'sections', '253.json'));
-}, /sections\/253\.json: file name does not match term 252/);
+  fs.renameSync(path.join(dir, ...SUMMER), path.join(dir, 'sections', '251-trimester.json'));
+}, /sections\/251-trimester\.json: file name does not match 252-trimester/);
+
+expectError('term file named for the wrong calendar system', (dir) => {
+  fs.renameSync(path.join(dir, ...SUMMER), path.join(dir, 'sections', '252-semester.json'));
+}, /file name does not match 252-trimester/);
+
+expectError('the same prerequisite rule twice from one source', (dir) => editJson(path.join(dir, 'prerequisites.json'), (d) => {
+  d.records.push({ ...d.records[0] });
+}), /duplicate rule for .* from the same source and program/);
+
+expectError('a prerequisite scoped to an unknown program', (dir) => editJson(path.join(dir, 'prerequisites.json'), (d) => {
+  d.records[0].program = 'XYZ';
+}), /unknown program XYZ/);
+
+expectError('a plan for an unknown program', (dir) => editJson(path.join(dir, 'plans.json'), (d) => {
+  d.records[0].program = 'XYZ';
+}), /plans\.XYZ .*unknown program XYZ/);
+
+expectError('a program extending one that does not exist', (dir) => editJson(path.join(dir, 'programs.json'), (d) => {
+  d.records.find((p) => p.extends).extends = 'NOPE';
+}), /extends unknown program NOPE/);
+
+expectError('a choose group asking for more than it offers', (dir) => editJson(path.join(dir, 'requirements.json'), (d) => {
+  const group = d.records.find((g) => g.rule === 'choose');
+  group.choose = group.options.length + 1;
+}), /must choose between 1 and/);
+
+expectError('a free group that lists options', (dir) => editJson(path.join(dir, 'requirements.json'), (d) => {
+  d.records.find((g) => g.rule === 'free').options = [['ENG102']];
+}), /a free group lists no options/);
+
+expectError('a calendar range that ends before it starts', (dir) => editJson(path.join(dir, 'calendar', '262-bisemester.json'), (d) => {
+  const range = d.records.find((e) => e.endDate);
+  range.endDate = '2000-01-01';
+}), /ends before it starts/);
+
+// Sums that stop matching are warnings: a dropped plan row shows up here.
+const shortPlan = withBrokenCopy((dir) => editJson(path.join(dir, 'plans.json'), (d) => {
+  d.records.splice(d.records.findIndex((p) => p.program === 'CSE' && p.code === 'CSE173'), 1);
+}));
+assert.deepEqual(shortPlan.errors, []);
+assert.ok(shortPlan.warnings.some((w) => /plans\.CSE: plan totals 127 credits, the program requires 130/.test(w)));
+
+// A plan credit that differs from the catalogue warns unless the plan says why.
+const unexplained = withBrokenCopy((dir) => editJson(path.join(dir, 'plans.json'), (d) => {
+  delete d.records.find((p) => p.program === 'CSE' && p.code === 'MAT116').note;
+}));
+assert.ok(unexplained.warnings.some((w) => /MAT116 is planned at 0 credits but catalogued at 3/.test(w)));
 
 expectError('citing a source that is not registered', (dir) => editJson(path.join(dir, 'programs.json'), (d) => {
   d.source = 'made-up-source';
