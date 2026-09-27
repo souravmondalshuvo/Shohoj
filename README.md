@@ -75,6 +75,13 @@ shipping versus in progress:
   the campus map's room status) that are third-party and best-effort.
 - **No claim of a user base.** This is a portfolio-grade project built for
   BRACU students; adoption numbers are not tracked or advertised.
+- **Two features shipped outside the phase roadmap this cycle.** Shohoj Tasks
+  (an academic task-management layer — deadlines, priority, grade impact, a
+  subscribable calendar feed) and a Minor Program Tracker are both live on
+  both frontends. Tasks has its own decision record ([ADR
+  0002](docs/architecture/decisions/0002-shohoj-tasks-on-the-existing-stack.md))
+  and isn't part of the vanilla→shell migration; see [Shipped outside this
+  table](#shipped-outside-this-table).
 
 See [Features — What's Live Today](#features--whats-live-today) and the [Roadmap](#roadmap) below for the per-feature breakdown.
 
@@ -175,6 +182,20 @@ Ask a question in plain language and get an answer computed from **your own save
 - **Signed-out users see no launcher at all**, and neither does anyone when no provider is configured
 
 Available from the launcher on the main site and as a drawer on the React Router shell.
+
+### 📝 Shohoj Tasks (New)
+
+An academic task-management layer — assignments, quizzes, exams, projects, labs, readings and personal work — built on the same account, courses, semesters and enrolments as the calculator, planner and degree tracker, on both the shell and the vanilla app.
+
+- **Today / Upcoming, and a dashboard digest** — `/tasks` groups what's overdue and due today; the dashboard card shows a capped, ordered slice of the same data and renders nothing at all for a student who doesn't use Tasks — silence is the deliberate default, not a bug
+- **Priority you set, and a score the app explains** — `priority` is always your own call; a computed `priorityScore` is opt-in to sort by, and `/tasks` never shows the raw number — it shows the sentence behind it, banded rather than a false-precision decimal
+- **Grade impact reuses the calculator's own arithmetic** — an assessment's weight feeds the same marks-tracker engine that already answers "what do I need on the final", so a task's stakes are computed once, not re-derived
+- **Paste your syllabus or an announcement and it proposes tasks** — a deterministic parser reads dates, titles and course codes out of pasted text for free and instantly, in the page, before anything is sent anywhere; only dated proposals are pre-checked, an undated one is one checkbox away, and nothing it detects ever guesses a priority
+- **AI extraction is a fallback, never a first resort** — spent only when the deterministic parser comes up empty or dateless, against the same monthly spend ceiling as the Shohoj Assistant; every failure — no key, no budget, an unreadable reply — leaves Tasks exactly as useful as before rather than surfacing an error where a paste-parsed task would have been
+- **A subscribable calendar feed** — a random, revocable per-student URL any calendar app can subscribe to over `.ics`; the one deliberately unauthenticated read in the Worker, because a calendar app has no way to prompt for a login
+- **Ownership is structural** — every task, semester and enrolment lives under the caller's own verified Firebase UID; a handler has no way to name another owner
+
+Reachable at `/tasks` and as a dashboard card on the shell, and as a Tasks tab on the vanilla calculator. See [ADR 0002](docs/architecture/decisions/0002-shohoj-tasks-on-the-existing-stack.md) and the [domain model](docs/architecture/TASKS_DOMAIN_MODEL.md).
 
 ### 🗓️ Routine Builder
 
@@ -453,6 +474,18 @@ Visual timeline of your degree journey — credits earned vs total required, sem
   <img src="assets/screenshots/degree-progress.png" alt="Degree Progress Tracker" width="700" />
 </p>
 
+### 🎓 Minor Program Tracker (New)
+
+Tracks progress toward a minor the way BRACU actually structures one — named requirements (some satisfiable by one of several alternative courses) plus an elective pool given by pattern and code list, not a single credit total.
+
+- **Ships with Mathematics** — the one minor currently defined (27 credits: 7 core courses plus a 6-credit elective pool), with the structure built to hold more without a rewrite
+- **Reuses the degree tracker's own passing-grade rule** — a course in a running semester counts as in progress; a completed course counts only on a passing grade that isn't P, I or F(NT)
+- **Alternatives resolve to whichever one you actually took** — a requirement published as "MAT223 or CSE330" shows the general form until you take one of them, then names the one that counted
+- **Malformed data draws nothing** — a program whose core-plus-elective credits don't sum to its published total is dropped rather than shown as a progress bar that can never fill
+- **One picker, one field** — the minor you pick is stored once (`currentMinor`) and read by both the classic calculator and the shell, so picking it on either surface is the one the other shows
+
+Under the Degree Progress Tracker on both the classic calculator and the React Router shell.
+
 ### 🔍 Course Autocomplete
 
 Start typing a course code or name and get instant suggestions from a complete BRACU course catalog with **857 courses** across all **16 departments**. Credits auto-fill when you pick a course.
@@ -550,7 +583,7 @@ Shohoj is built to feel like a real product, not a student project.
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
 | PDF Export  | [jsPDF](https://github.com/parallax/jsPDF)            | Generating grade report PDFs                            |
 | Charts      | [Chart.js](https://www.chartjs.org/)                  | Admin dashboard and analytics visualizations           |
-| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, the Assistant relay, the semester archive, and the seat-alert / lost-&-found cron |
+| Files/API   | Cloudflare Worker + R2                                | Auth-gated past-paper upload/download/delete, server-mediated review writes, the Assistant relay, the semester archive, the seat-alert / lost-&-found cron, and the Shohoj Tasks API (`/api/v1/*`) with its subscribable calendar feed |
 | Assistant   | Google Gemini (free tier) via the Worker, with OpenAI and Anthropic Claude as fallbacks | In-app assistant; every key lives only on the Worker, never in the client, behind a monthly spend ceiling |
 | Build       | Python (`build3.py`) + Vite                           | `build3.py` bundles the shipping app; Vite builds the React shell and the standalone pages |
 | Hosting     | GitHub Pages                                          | Static hosting for the shipping app, the standalone pages, and the `/app/` beta |
@@ -616,7 +649,12 @@ Firestore (rules-enforced for browser clients; campus-partitioned)
   ├── lostFoundClaims/{id}   — claims, relayed to posters by the cron
   ├── seatAlertWatches/{uid} — per-user watched sections
   ├── seatAlertState/{...}   — cron-side full→open transition state
-  └── adminLogs/{id}         — admin action audit trail
+  ├── adminLogs/{id}         — admin action audit trail
+  ├── shohojUsers/{uid}      — Shohoj Tasks' own record: semesters/,
+  │                            enrollments/, tasks/ (+ assessment/current),
+  │                            reminders/ subcollections; deny-all to every
+  │                            client, read/written only through /api/v1
+  └── calendarFeeds/{token}  — reverse index for the unauthenticated .ics read
 
 Cloudflare Worker (auth-proxy, BRACU email + admin claim)
   ├── GET  /health          — liveness + request-id
@@ -625,6 +663,14 @@ Cloudflare Worker (auth-proxy, BRACU email + admin claim)
   ├── POST /reviews         — service-account review writes
   ├── POST /api/assistant   — Assistant relay (Gemini → OpenAI → Claude)
   ├── GET  /api/semesters   — archived semesters the CONNECT feed has dropped
+  ├── /api/v1/{me,semesters,enrollments,tasks,assessments}
+  │                         — Shohoj Tasks, verified-uid scoped
+  ├── POST /api/v1/tasks/extract — AI-assisted deadline extraction (shares the
+  │                         Assistant's monthly spend ceiling)
+  ├── /api/v1/tasks/feed    — issue / read / revoke a calendar feed token
+  ├── GET  /feeds/tasks/{token} — the one unauthenticated read in the Worker:
+  │                         a random, revocable per-student .ics URL, because a
+  │                         calendar app has no way to present a login
   └── scheduled()           — seat-drop alerts, lost & found claim emails,
                               and the semester snapshot into R2
 
@@ -701,6 +747,18 @@ Shohoj has been through a self-directed security review (no external audit is cl
 | Bus routes & timings (`/bus/`)      | ✅ Live    |
 | Cafeteria guide                     | 🔶 Live — outlet directory only; hours unverified until confirmed, no menus or prices |
 | Routine builder / seat status / free rooms | ✅ Live |
+
+### Shipped outside this table
+
+Not everything live came out of a numbered phase. Two things shipped this cycle
+that don't belong in any row above:
+
+| Feature | Status |
+| --- | --- |
+| [Shohoj Tasks](#-shohoj-tasks-new) — assignments/exams/deadlines, priority, grade impact, paste + AI-assisted extraction, subscribable calendar feed | ✅ Live — both frontends |
+| [Minor Program Tracker](#-minor-program-tracker-new) — BRACU minor progress under the degree tracker | ✅ Live — both frontends |
+
+Tasks is deliberate, scoped work with its own decision record — see [ADR 0002](docs/architecture/decisions/0002-shohoj-tasks-on-the-existing-stack.md) — not scope creep into the migration. It is tracked in [docs/architecture/](docs/architecture/) rather than in the phase table above because it isn't part of the vanilla→shell migration this table exists to measure; the migration's own remaining work is the [production cutover](#current-status), which these two features do not block and are not blocked by.
 
 ### Phase 4 — Career & Opportunities
 
