@@ -4,11 +4,11 @@
   "note": "Fall 2025 service. Re-check the transport portal (https://transport.northsouth.edu/) for the current term before showing these as live.",
   "fares": {"oneWay": 100, "roundTrip": 200, "currency": "BDT"},
   "records": [
-    {"route": "Uttara", "stops": ["Abdullahpur", "House Building", "Azampur", "Jashimuddin", "Airport"], "arriveNsu": ["07:40", "14:20", "17:45"], "departNsu": ["10:00", "14:40", "18:30"]},
-    {"route": "Mirpur", "stops": ["Bangla College", "Mirpur 1-12", "ECB Square"], "arriveNsu": ["07:40", "14:20", "17:45"], "departNsu": ["10:00", "14:40", "18:30", "22:20"]},
-    {"route": "Mohammadpur", "stops": ["Japan Garden City", "Suchana Community Center", "Syamoli Bus Stand", "Agargaon", "BAF Shaheen College", "Banani Rail"], "arriveNsu": ["07:40", "14:20", "17:45"], "departNsu": ["10:00", "14:40", "18:30", "22:20"]},
-    {"route": "Dhanmondi", "stops": ["Jigatola Bus Stand", "Dhanmondi 27", "Khamarbari Mor", "Mohakhali Flyover"], "arriveNsu": ["07:40", "14:20", "17:45"], "departNsu": ["10:00", "14:40", "18:30"]},
-    {"route": "Azimpur", "stops": ["Azimpur", "Katabon", "Bangla Motor", "Mogbazar", "Gulshan Niketon", "Gate-1"], "arriveNsu": ["07:40", "14:20", "18:45"], "departNsu": ["10:00", "14:40"]},
-    {"route": "Khilgaon", "stops": ["Notre Dame College", "Rajarbag", "Khilgaon Bagicha", "Malibagh Rail Gate", "Malibagh Abul Hotel", "Rampura Bridge"], "arriveNsu": ["07:40", "14:20", "18:45"], "departNsu": ["10:00", "14:40"]}
+    {"route": "Uttara", "stops": ["Abdullahpur", "House Building", "Azampur", "Jashimuddin", "Airport"], "arriveCampus": ["07:40", "14:20", "17:45"], "departCampus": ["10:00", "14:40", "18:30"]},
+    {"route": "Mirpur", "stops": ["Bangla College", "Mirpur 1-12", "ECB Square"], "arriveCampus": ["07:40", "14:20", "17:45"], "departCampus": ["10:00", "14:40", "18:30", "22:20"]},
+    {"route": "Mohammadpur", "stops": ["Japan Garden City", "Suchana Community Center", "Syamoli Bus Stand", "Agargaon", "BAF Shaheen College", "Banani Rail"], "arriveCampus": ["07:40", "14:20", "17:45"], "departCampus": ["10:00", "14:40", "18:30", "22:20"]},
+    {"route": "Dhanmondi", "stops": ["Jigatola Bus Stand", "Dhanmondi 27", "Khamarbari Mor", "Mohakhali Flyover"], "arriveCampus": ["07:40", "14:20", "17:45"], "departCampus": ["10:00", "14:40", "18:30"]},
+    {"route": "Azimpur", "stops": ["Azimpur", "Katabon", "Bangla Motor", "Mogbazar", "Gulshan Niketon", "Gate-1"], "arriveCampus": ["07:40", "14:20", "18:45"], "departCampus": ["10:00", "14:40"]},
+    {"route": "Khilgaon", "stops": ["Notre Dame College", "Rajarbag", "Khilgaon Bagicha", "Malibagh Rail Gate", "Malibagh Abul Hotel", "Rampura Bridge"], "arriveCampus": ["07:40", "14:20", "18:45"], "departCampus": ["10:00", "14:40"]}
   ]
 }
