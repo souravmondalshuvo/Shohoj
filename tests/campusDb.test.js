@@ -84,7 +84,9 @@ try {
   assert.deepEqual({ ...bus499 }, { min_credits: 112, min_cgpa: 3.3 });
 
   // Plans and requirement groups add up to the programs they describe.
-  for (const row of all("SELECT p.program, SUM(p.credits) AS total, g.total_credits AS expected FROM plans p JOIN programs g ON g.campus=p.campus AND g.code=p.program GROUP BY p.program")) {
+  // NSU's plans are full curricula; BRACU's are starter presets (plans.json is
+  // marked partial), so only NSU's are held to program totals.
+  for (const row of all("SELECT p.program, SUM(p.credits) AS total, g.total_credits AS expected FROM plans p JOIN programs g ON g.campus=p.campus AND g.code=p.program WHERE p.campus='nsu' GROUP BY p.program")) {
     assert.equal(row.total, row.expected, `${row.program} plan`);
   }
   const finMajor = one(`SELECT SUM(credits) AS total FROM requirement_groups
@@ -94,6 +96,17 @@ try {
                         JOIN requirement_options o ON o.campus=g.campus AND o.grp=g.id
                        WHERE g.campus='nsu' AND g.program='BBA' AND g.name LIKE 'GED: science%'`);
   assert.deepEqual({ ...science }, { choose: 4, options: 14 });
+
+  // BRACU: section names stay text, labs become lab meetings, and CONNECT's
+  // "(A AND B) OR (C AND D)" prerequisites keep their paths.
+  const bracuSections = one("SELECT COUNT(*) AS n FROM sections WHERE campus='bracu' AND term='20263'").n;
+  assert.ok(bracuSections > 2000, 'Fall 2026 BRACU sections are loaded');
+  assert.equal(typeof one("SELECT section FROM sections WHERE campus='bracu' AND section='04' LIMIT 1")?.section, 'string', '"04" stays "04"');
+  assert.ok(one("SELECT COUNT(*) AS n FROM meetings WHERE campus='bracu' AND kind='lab'").n > 0, 'lab meetings are expanded');
+  const paths = all(`SELECT DISTINCT pp.path FROM prerequisite_paths pp JOIN prerequisites p ON p.campus=pp.campus AND p.id=pp.rule
+                      WHERE p.campus='bracu' AND p.course='MSC221' AND p.source='bracu-connect-20263'`);
+  assert.equal(paths.length, 4, 'MSC221 keeps all four prerequisite paths');
+  assert.equal(one("SELECT retake_cutoff FROM campuses WHERE id='bracu'").retake_cutoff, 'Fall 2024');
 
   // Provenance travels with the data: every row can say where it came from.
   const unsourced = one(`SELECT COUNT(*) AS n FROM courses c LEFT JOIN sources s
