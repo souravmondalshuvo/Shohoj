@@ -25,10 +25,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const CAMPUS_DATA_DIR = path.join(ROOT, 'data', 'campuses');
 
 // Undergraduate and graduate codes as NSU and BRACU print them: CSE115,
-// CSE115L, CSE499A, BBA-level EMB601. Four-digit graduate codes (CE6207) are
-// deliberately out of scope for now.
-export const COURSE_CODE = /^[A-Z]{2,4}\d{3}[A-Z]?$/;
-const TERM_CODE = /^\d{2}[123]$/;
+// CSE115L, CSE499A, BBA-level EMB601, and BRACU's two-letter lab suffix
+// (CSE490BL). Four-digit graduate codes (CE6207) are deliberately out of scope.
+export const COURSE_CODE = /^[A-Z]{2,4}\d{3}[A-Z]{0,2}$/;
+// Term codes are the campus's own: NSU prints a two-digit year and a term digit
+// (252 = Summer 2025); BRACU's CONNECT session ids use the full year (20263 =
+// Fall 2026). Either way the last digit is 1 Spring, 2 Summer, 3 Fall.
+const TERM_CODE = /^(\d{2}|\d{4})[123]$/;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -51,7 +54,10 @@ const sourcesSchema = z
         z
           .object({
             id: sourceId,
-            status: z.enum(['official', 'third-party', 'derived']),
+            // inherited: carried over from Shohoj's own hand-kept code, whose
+            // original source was never recorded. placeholder: a template the
+            // code itself marks as unconfirmed; never present it as fact.
+            status: z.enum(['official', 'third-party', 'derived', 'inherited', 'placeholder']),
             title: z.string().min(1),
             url: z.url(),
             retrieved: z.string().regex(ISO_DATE),
@@ -83,17 +89,27 @@ const profileSchema = z
             .object({
               letter: z.string(),
               points: z.number().min(0).max(5),
-              minMark: z.number().min(0).max(100),
+              // null for a letter no mark earns directly (BRACU's F(NT)).
+              minMark: z.number().min(0).max(100).nullable(),
             })
             .strict(),
         )
         .min(2),
+      // Grade point → the letter shown for it, when a campus has two letters on
+      // one point (BRACU's A+ and A are both 4.0; 4.0 displays as A).
+      pointsToGrade: z
+        .array(z.tuple([z.number(), z.string()]))
+        .min(1)
+        .optional(),
       nonGpaGrades: z.array(z.object({ letter: z.string(), meaning: z.string() }).strict()),
       unknown: z.array(z.string()).optional(),
     }),
     retake: cited({
       eligibleAtOrBelow: z.string(),
-      counts: z.enum(['best', 'latest']),
+      // best-before: the best attempt counts for students who started before
+      // `cutoff`, the latest for everyone after (BRACU from Fall 2024).
+      counts: z.enum(['best', 'latest', 'best-before']),
+      cutoff: z.object({ season: z.string(), year: z.number().int() }).strict().optional(),
       maxRetakes: z.number().int().positive().nullable(),
       beyondMax: z.string().optional(),
     }),
@@ -102,26 +118,48 @@ const profileSchema = z
       probation: z
         .object({ belowCgpa: z.number(), termsToRecover: z.number().int(), then: z.string() })
         .strict(),
-    }),
+    }).optional(),
+    // Named CGPA tiers a campus's calculator shows (BRACU's Perfect Standing …
+    // Academic Probation), highest first; the last is the floor.
+    standingTiers: citedRecords(
+      z
+        .object({
+          id: z.string(),
+          standingLabel: z.string(),
+          goalLabel: z.string(),
+          minCgpa: z.number().min(0),
+        })
+        .strict(),
+    ).optional(),
+    // Shohoj's own progress-meter bands. Messaging, not university policy.
+    meterBands: citedRecords(
+      z.object({ label: z.string(), minCgpa: z.number().min(0) }).strict(),
+    ).optional(),
+    // Required, but may be empty with a note when the campus doesn't publish
+    // them (DIU) or Shohoj never recorded them (BRACU).
     classDivisions: citedList(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
     honours: citedList(z.object({ label: z.string(), minCgpa: z.number() }).strict()),
     classStanding: citedList(
       z.object({ label: z.string(), minCredits: z.number().int().min(0) }).strict(),
     ),
     creditLoad: cited({
-      fullTimeMin: z.record(z.string(), z.number().int().positive()),
+      fullTimeMin: z.record(z.string(), z.number().int().positive()).optional(),
+      min: z.number().int().positive().optional(),
+      warnAbove: z.number().int().positive().optional(),
       max: z.number().int().positive().nullable(),
-    }),
+    }).optional(),
     // A rule may cite its own source when it comes from a different document
     // than the block's (DIU's graduation CGPA is in its FAQ, not its rules).
-    academicRules: citedRecords(
+    academicRules: citedList(
       z.object({ id: z.string(), rule: z.string(), source: sourceId.optional() }).strict(),
     ),
     termSystems: citedRecords(
       z
         .object({
           id: z.string(),
-          terms: z.array(z.object({ season: z.string(), months: z.string() }).strict()).min(1),
+          terms: z
+            .array(z.object({ season: z.string(), months: z.string().optional() }).strict())
+            .min(1),
           note: z.string().optional(),
         })
         .strict(),
@@ -129,6 +167,26 @@ const profileSchema = z
     termCodes: cited({ pattern: z.string() }),
     days: citedRecords(z.object({ code: z.string().length(1), day: z.string() }).strict()),
     buildings: citedList(z.object({ code: z.string(), name: z.string() }).strict()),
+    // How the campus writes a room: a pattern, its regex, and what the kind
+    // letter means (BRACU's tower codes, FFZ-NNK).
+    roomCodes: cited({
+      pattern: z.string(),
+      regex: z.string(),
+      kinds: z.record(z.string(), z.string()),
+    }).optional(),
+    location: cited({
+      lat: z.number(),
+      lng: z.number(),
+      radiusM: z.number().positive(),
+      utcOffsetMinutes: z.number().int(),
+      dayStart: time,
+      dayEnd: time,
+    }).optional(),
+    // Shohoj features the campus has data for (src/core/university.ts).
+    features: cited({ records: z.array(z.string()).min(1) }).optional(),
+    // Header words on the campus's grade sheet, which a transcript parser
+    // recognises and skips (BRACU's issuer name and address).
+    transcript: cited({ headerMarkers: z.array(z.string().min(1)).min(1) }).optional(),
   })
   .strict();
 
@@ -185,10 +243,167 @@ const coursesSchema = citedRecords(
         .string()
         .regex(/^[A-Z]{2,4}$/)
         .optional(),
+      // The catalogue section a hand-kept list files the course under
+      // ("GED / Common"); kept so the list can be regenerated as written.
+      group: z.string().min(1).optional(),
       source: sourceId.optional(),
     })
     .strict(),
 );
+
+// Academic departments and which course subjects each one owns.
+const departmentsSchema = cited({
+  records: z
+    .array(
+      z
+        .object({
+          code: z.string().regex(/^[A-Z]{2,6}$/),
+          label: z.string().min(1),
+          school: z.string().min(1),
+          displayCode: z.string().min(1).optional(),
+          prefixes: z.array(z.string().regex(/^[A-Z]{2,4}$/)),
+        })
+        .strict(),
+    )
+    .min(1),
+  // Single courses owned by a department other than their subject's.
+  overrides: z.array(z.object({ course: courseCode, department: z.string() }).strict()).optional(),
+});
+
+// A minor: named core requirements (each satisfiable by one of several codes)
+// plus an elective pool given by codes and subject/level patterns.
+const minorsSchema = citedRecords(
+  z
+    .object({
+      code: z.string().regex(/^[A-Z]+$/),
+      label: z.string().min(1),
+      shortLabel: z.string().min(1),
+      department: z.string().min(1),
+      totalCredits: z.number().int().positive(),
+      core: z
+        .array(
+          z
+            .object({
+              id: z.string(),
+              title: z.string(),
+              codes: z.array(courseCode).min(1),
+              credits,
+            })
+            .strict(),
+        )
+        .min(1),
+      electives: z
+        .object({
+          credits,
+          codes: z.array(courseCode),
+          patterns: z.array(
+            z
+              .object({
+                subject: z.string().regex(/^[A-Z]{2,4}$/),
+                levels: z.array(z.number().int().min(1).max(9)),
+              })
+              .strict(),
+          ),
+          options: z.array(z.object({ label: z.string() }).strict()),
+        })
+        .strict(),
+      // The published document the requirements come from, as the code names it.
+      document: z.string().min(1),
+    })
+    .strict(),
+);
+
+const initials = z.string().regex(/^[A-Za-z0-9]{1,10}$/);
+const facultySchema = citedRecords(
+  z
+    .object({
+      initials,
+      name: z.string().min(1),
+      // "" when the directory has no address for them.
+      email: z.union([z.literal(''), z.email()]),
+      dept: z.string().min(1),
+      courses: z.array(courseCode),
+    })
+    .strict(),
+);
+
+const rating = z.number().int().min(1).max(5);
+const reviewsSchema = citedRecords(
+  z
+    .object({
+      facultyInitials: initials,
+      courseCode,
+      semester: z.string(),
+      ratings: z
+        .object({
+          teaching: rating,
+          marking: rating,
+          behavior: rating,
+          difficulty: rating,
+          workload: rating,
+        })
+        .strict(),
+      text: z.string(),
+      // "" when the import did not record where the review came from.
+      sourceUrl: z.union([z.literal(''), z.url()]),
+    })
+    .strict(),
+);
+
+const clock12 = z.string().regex(/^\d{1,2}:\d{2} (AM|PM)$/, 'not an "H:MM AM/PM" time');
+const cafeteriaSchema = cited({
+  lastReviewed: z.string().min(1),
+  disclaimer: z.string().min(1),
+  records: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1),
+          kind: z.enum(['cafeteria', 'cafe', 'canteen', 'kiosk']),
+          floor: z.number().int(),
+          zone: z.string().nullable(),
+          locationNote: z.string(),
+          payment: z.array(z.string()),
+          // Indexed by day of week, 0 = Sunday; [] = closed that day.
+          hours: z.array(z.array(z.object({ open: clock12, close: clock12 }).strict())).length(7),
+          verified: z.boolean(),
+          note: z.string().optional(),
+        })
+        .strict(),
+    )
+    .min(1),
+});
+
+const placesSchema = cited({
+  // Floor numbers the place list uses for levels that are not plain floors.
+  levels: z
+    .object({ basement: z.number().int(), ground: z.number().int(), upperRoof: z.number().int() })
+    .strict(),
+  records: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1),
+          name: z.string().min(1),
+          floor: z.number().int(),
+          kind: z.enum([
+            'office',
+            'department',
+            'study',
+            'lab',
+            'food',
+            'health',
+            'venue',
+            'recreation',
+            'service',
+          ]),
+          aliases: z.array(z.string()),
+        })
+        .strict(),
+    )
+    .min(1),
+});
 
 // A course can carry rules from several documents, and a curriculum can state
 // a rule for its own program only, so a rule is keyed by course + program +
@@ -199,6 +414,11 @@ const prerequisitesSchema = citedRecords(
       course: courseCode,
       program: programCode.optional(),
       allOf: z.array(z.array(courseCode).min(1)).optional(),
+      // Any one of these course sets satisfies the rule — the shape of the
+      // CONNECT feed's "(A AND B) OR (C AND D)". Never set with allOf.
+      anyOf: z.array(z.array(courseCode).min(1)).min(1).optional(),
+      // Recommended, not enforced (the hand-kept catalogue's "soft" prereqs).
+      recommended: z.array(courseCode).min(1).optional(),
       minCredits: z.number().int().positive().optional(),
       minCgpa: z.number().min(0).max(5).optional(),
       orConsent: z.literal(true).optional(),
@@ -209,26 +429,33 @@ const prerequisitesSchema = citedRecords(
     .strict(),
 );
 
-const plansSchema = citedRecords(
-  z
-    .object({
-      program: programCode,
-      year: z.number().int().min(1).max(8),
-      // null when the document places a course by year only.
-      term: z.number().int().min(1).max(24).nullable(),
-      // null for a slot (an elective, a GED choice) the title describes.
-      code: courseCode.nullable(),
-      title: z.string().min(1),
-      credits,
-      alternatives: z.array(courseCode).min(1).optional(),
-      category: z.string().optional(),
-      // Explains a credit value this curriculum sets differently from the
-      // catalogue (a non-credit remedial, an integrated 0-credit lab).
-      note: z.string().min(1).optional(),
-      source: sourceId,
-    })
-    .strict(),
-);
+const planRecord = z
+  .object({
+    program: programCode,
+    year: z.number().int().min(1).max(8),
+    // null when the document places a course by year only.
+    term: z.number().int().min(1).max(24).nullable(),
+    // The plan's own name for the term, when it has one ("Fall — Semester 1").
+    termLabel: z.string().min(1).optional(),
+    // null for a slot (an elective, a GED choice) the title describes.
+    code: courseCode.nullable(),
+    title: z.string().min(1),
+    credits,
+    alternatives: z.array(courseCode).min(1).optional(),
+    category: z.string().optional(),
+    // Explains a credit value this curriculum sets differently from the
+    // catalogue (a non-credit remedial, an integrated 0-credit lab).
+    note: z.string().min(1).optional(),
+    source: sourceId,
+  })
+  .strict();
+
+const plansSchema = cited({
+  // true when the plans are starter presets covering only the first terms (as
+  // BRACU's are), so they are not expected to reach a program's total.
+  partial: z.boolean().optional(),
+  records: z.array(planRecord).min(1),
+});
 
 const requirementsSchema = citedRecords(
   z
@@ -245,6 +472,18 @@ const requirementsSchema = citedRecords(
     .strict(),
 );
 
+const meetings = z.array(
+  z
+    .object({
+      day: z.string().length(1),
+      start: time,
+      end: time,
+      room: z.string().min(1).nullable(),
+    })
+    .strict(),
+);
+const exam = z.object({ date: z.string().regex(ISO_DATE), start: time, end: time }).strict();
+
 const sectionsSchema = z
   .object({
     term: z.string().regex(TERM_CODE),
@@ -256,7 +495,9 @@ const sectionsSchema = z
         z
           .object({
             course: courseCode,
-            section: z.number().int().positive(),
+            // NSU numbers its sections; BRACU names them ("04", "07A",
+            // "04-CLOSED"), and the name is kept exactly as printed.
+            section: z.union([z.number().int().positive(), z.string().min(1)]),
             faculty: z.string().min(1).nullable(),
             // All three null for a section with no fixed schedule (an internship,
             // a thesis); never some without the others.
@@ -272,6 +513,33 @@ const sectionsSchema = z
             // Set when a value was corrected from an obvious printing error;
             // says what was printed and why it was read differently.
             note: z.string().min(1).optional(),
+            // ── Fields a richer feed (BRACU's CONNECT) supplies ──
+            // Per-day meetings when a section's days don't share one time slot;
+            // days/start/end are then null.
+            meetings: meetings.optional(),
+            sectionId: z.number().int().positive().optional(),
+            type: z.string().min(1).optional(),
+            title: z.string().min(1).optional(),
+            seatsTaken: z.number().int().min(0).optional(),
+            lab: z
+              .object({
+                course: courseCode,
+                sectionId: z.number().int().positive().nullable(),
+                title: z.string().nullable(),
+                faculty: z.string().min(1).nullable(),
+                room: z.string().min(1).nullable(),
+                meetings,
+              })
+              .strict()
+              .optional(),
+            exams: z.object({ mid: exam.nullable(), final: exam.nullable() }).strict().optional(),
+            classDates: z
+              .object({
+                start: z.string().regex(ISO_DATE).nullable(),
+                end: z.string().regex(ISO_DATE).nullable(),
+              })
+              .strict()
+              .optional(),
           })
           .strict(),
       )
@@ -301,10 +569,14 @@ const calendarSchema = z
   })
   .strict();
 
+// Two published shapes. NSU's and DIU's notices list stops and a few campus
+// arrival and departure times per route; BRACU's brochure times every stop on
+// up to two inbound trips.
+//
 // servicePeriod and fares are null when the operator doesn't publish them (DIU's
 // feed names a semester, not dates, and lists no fare); checkCampus requires a
 // note then.
-const busSchema = cited({
+const campusTimesBusSchema = cited({
   servicePeriod: z
     .object({ from: z.string().regex(ISO_DATE), to: z.string().regex(ISO_DATE) })
     .strict()
@@ -332,6 +604,42 @@ const busSchema = cited({
     )
     .min(1),
 });
+const bracuBusSchema = cited({
+  effectiveFrom: z.string().min(1),
+  availability: z.string().min(1),
+  fareNote: z.string().min(1),
+  contacts: z.array(
+    z.object({ name: z.string(), title: z.string(), email: z.string().email() }).strict(),
+  ),
+  instructions: z.array(z.string().min(1)),
+  records: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1),
+          routeNo: z.number().int().positive(),
+          name: z.string().min(1),
+          inbound: z
+            .array(
+              z
+                .object({
+                  name: z.string().min(1),
+                  firstTrip: clock12.nullable(),
+                  secondTrip: clock12.nullable(),
+                })
+                .strict(),
+            )
+            .min(1),
+          outbound: z.object({ first: clock12.nullable(), second: clock12.nullable() }).strict(),
+          attendantPhone: z.string().min(1),
+          fareOneWay: z.number().positive(),
+          fareRoundTrip: z.number().positive(),
+        })
+        .strict(),
+    )
+    .min(1),
+});
+const busSchema = z.union([campusTimesBusSchema, bracuBusSchema]);
 
 // File name → schema. Optional files may be absent; a campus is its profile
 // plus whatever it has data for.
@@ -343,7 +651,13 @@ const FILES = {
   prerequisites: { file: 'prerequisites.json', schema: prerequisitesSchema },
   plans: { file: 'plans.json', schema: plansSchema },
   requirements: { file: 'requirements.json', schema: requirementsSchema },
+  departments: { file: 'departments.json', schema: departmentsSchema },
+  minors: { file: 'minors.json', schema: minorsSchema },
+  faculty: { file: 'faculty.json', schema: facultySchema },
+  reviews: { file: 'reviews.json', schema: reviewsSchema },
   bus: { file: 'bus.json', schema: busSchema },
+  cafeteria: { file: 'cafeteria.json', schema: cafeteriaSchema },
+  places: { file: 'places.json', schema: placesSchema },
 };
 const TERM_DIRS = {
   sections: { dir: 'sections', schema: sectionsSchema },
@@ -426,7 +740,13 @@ function checkCampus(campus, problems) {
     }
     if (!profile.identity.emailDomains.length && !profile.identity.note)
       err('identity: no email domains and no note saying why');
-    for (const key of ['classDivisions', 'honours', 'classStanding', 'buildings']) {
+    for (const key of [
+      'classDivisions',
+      'honours',
+      'classStanding',
+      'academicRules',
+      'buildings',
+    ]) {
       if (!profile[key].records.length && !profile[key].note)
         err(`profile.${key}: empty with no note saying why`);
     }
@@ -435,8 +755,13 @@ function checkCampus(campus, problems) {
     if (new Set(letters).size !== letters.length) err('grading: duplicate letter');
     if (!letters.includes(profile.retake.eligibleAtOrBelow))
       err(`retake: "${profile.retake.eligibleAtOrBelow}" is not on the scale`);
+    if (profile.retake.counts === 'best-before' && !profile.retake.cutoff)
+      err('retake: "best-before" needs a cutoff term');
+    const tiers = profile.standingTiers?.records ?? [];
+    if (tiers.some((t, i) => i && t.minCgpa >= tiers[i - 1].minCgpa))
+      err('standingTiers: tiers must run from the highest CGPA down');
     const points = profile.grading.scale.map((g) => g.points);
-    const marks = profile.grading.scale.map((g) => g.minMark);
+    const marks = profile.grading.scale.map((g) => g.minMark).filter((m) => m !== null);
     if (
       points.some((p, i) => i && p > points[i - 1]) ||
       marks.some((m, i) => i && m >= marks[i - 1])
@@ -447,7 +772,20 @@ function checkCampus(campus, problems) {
   const dayCodes = new Set(profile?.days.records.map((d) => d.code) ?? []);
   const termSystems = new Set(profile?.termSystems.records.map((t) => t.id) ?? []);
 
-  for (const key of ['programs', 'courses', 'prerequisites', 'plans', 'requirements', 'bus']) {
+  for (const key of [
+    'programs',
+    'courses',
+    'prerequisites',
+    'plans',
+    'requirements',
+    'departments',
+    'minors',
+    'faculty',
+    'reviews',
+    'bus',
+    'cafeteria',
+    'places',
+  ]) {
     if (campus[key]) cite(key, campus[key].source);
   }
   const programs = new Map();
@@ -480,6 +818,9 @@ function checkCampus(campus, problems) {
     cite(`courses.${c.code}`, c.source);
   }
 
+  // Codes a rule names that nothing lists yet, grouped per source: one line
+  // per source keeps a real problem visible among hundreds of feed rules.
+  const unlisted = new Map();
   const ruleKeys = new Set();
   for (const p of campus.prerequisites?.records ?? []) {
     const key = `${p.course}|${p.program ?? ''}|${p.source ?? ''}`;
@@ -489,12 +830,85 @@ function checkCampus(campus, problems) {
     cite(`prerequisites.${p.course}`, p.source);
     if (p.program) knownProgram(`prerequisites.${p.course}`, p.program);
     if (!courses.has(p.course)) err(`prerequisites: ${p.course} is not in courses.json`);
-    if (!p.unparsed && !p.allOf && !p.minCredits)
+    if (p.allOf && p.anyOf) err(`prerequisites: ${p.course} sets both allOf and anyOf`);
+    if (!p.unparsed && !p.allOf && !p.anyOf && !p.minCredits && !p.recommended)
       err(`prerequisites: ${p.course} states no requirement; mark it unparsed`);
-    for (const code of (p.allOf ?? []).flat()) {
-      if (!courses.has(code))
-        warn(`prerequisites: ${p.course} requires ${code}, which is not in courses.json yet`);
+    for (const code of [
+      ...(p.allOf ?? []).flat(),
+      ...(p.anyOf ?? []).flat(),
+      ...(p.recommended ?? []),
+    ]) {
+      if (courses.has(code)) continue;
+      const key = p.source ?? campus.prerequisites.source;
+      if (!unlisted.has(key)) unlisted.set(key, new Set());
+      unlisted.get(key).add(code);
     }
+  }
+  for (const [source, codes] of unlisted) {
+    const list = [...codes].sort();
+    warn(
+      `prerequisites (${source}): rules require ${list.length} course(s) not in courses.json yet: ${list.join(', ')}`,
+    );
+  }
+
+  // Departments own subjects; a subject has one owner.
+  const owner = new Map();
+  for (const d of campus.departments?.records ?? []) {
+    for (const prefix of d.prefixes) {
+      if (owner.has(prefix))
+        err(`departments: ${prefix} is owned by both ${owner.get(prefix)} and ${d.code}`);
+      owner.set(prefix, d.code);
+    }
+  }
+  const deptCodes = new Set((campus.departments?.records ?? []).map((d) => d.code));
+  for (const o of campus.departments?.overrides ?? []) {
+    if (!deptCodes.has(o.department))
+      err(`departments: override for ${o.course} names unknown department ${o.department}`);
+  }
+
+  for (const m of campus.minors?.records ?? []) {
+    const total = m.core.reduce((n, r) => n + r.credits, 0) + m.electives.credits;
+    if (total !== m.totalCredits)
+      err(`minors.${m.code}: core and electives make ${total} credits, not ${m.totalCredits}`);
+    for (const code of [...m.core.flatMap((r) => r.codes), ...m.electives.codes]) {
+      if (!courses.has(code)) warn(`minors.${m.code}: ${code} is not in courses.json yet`);
+    }
+  }
+
+  const facultyInitials = new Set();
+  for (const f of campus.faculty?.records ?? []) {
+    if (facultyInitials.has(f.initials)) err(`faculty: duplicate initials ${f.initials}`);
+    facultyInitials.add(f.initials);
+    for (const code of f.courses) {
+      if (!courses.has(code)) warn(`faculty.${f.initials}: ${code} is not in courses.json yet`);
+    }
+  }
+  for (const r of campus.reviews?.records ?? []) {
+    if (campus.faculty && !facultyInitials.has(r.facultyInitials))
+      warn(`reviews: a review names faculty ${r.facultyInitials}, who is not in faculty.json`);
+    if (!courses.has(r.courseCode))
+      warn(`reviews: a review names ${r.courseCode}, which is not in courses.json yet`);
+  }
+
+  const toMinutes = (t) => {
+    const [, h, m, ap] = t.match(/^(\d{1,2}):(\d{2}) (AM|PM)$/);
+    return ((Number(h) % 12) + (ap === 'PM' ? 12 : 0)) * 60 + Number(m);
+  };
+  const outletIds = new Set();
+  for (const o of campus.cafeteria?.records ?? []) {
+    if (outletIds.has(o.id)) err(`cafeteria: duplicate outlet id ${o.id}`);
+    outletIds.add(o.id);
+    for (const day of o.hours) {
+      for (const span of day) {
+        if (toMinutes(span.close) <= toMinutes(span.open))
+          err(`cafeteria.${o.id}: closes at ${span.close}, before opening at ${span.open}`);
+      }
+    }
+  }
+  const placeIds = new Set();
+  for (const p of campus.places?.records ?? []) {
+    if (placeIds.has(p.id)) err(`places: duplicate id ${p.id}`);
+    placeIds.add(p.id);
   }
 
   // Plans: every slot names a real course or describes itself, and a
@@ -517,6 +931,7 @@ function checkCampus(campus, problems) {
   }
   for (const [program, total] of planTotals) {
     const expected = programs.get(program)?.totalCredits;
+    if (campus.plans?.partial) break;
     if (expected !== undefined && total !== expected)
       warn(`plans.${program}: plan totals ${total} credits, the program requires ${expected}`);
   }
@@ -552,13 +967,29 @@ function checkCampus(campus, problems) {
     if (!termSystems.has(file.termSystem))
       err(`sections/${term}: unknown term system "${file.termSystem}"`);
     const keys = new Set();
+    const unlistedLabs = new Set();
     for (const s of file.records) {
       const label = `sections/${term} ${s.course}.${s.section}`;
       const key = `${s.course}#${s.section}`;
       if (keys.has(key)) err(`${label}: duplicate section`);
       keys.add(key);
       if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
+      const checkMeetings = (list, where) => {
+        for (const mt of list) {
+          if (!dayCodes.has(mt.day)) err(`${where}: unknown day code "${mt.day}"`);
+          if (mt.start >= mt.end) err(`${where}: meets ${mt.start}-${mt.end}`);
+        }
+      };
+      if (s.lab) {
+        if (!courses.has(s.lab.course)) unlistedLabs.add(s.lab.course);
+        checkMeetings(s.lab.meetings, `${label} lab`);
+      }
       const scheduled = [s.days, s.start, s.end].filter((v) => v !== null).length;
+      if (s.meetings) {
+        if (scheduled !== 0) err(`${label}: set per-day meetings or days/start/end, not both`);
+        checkMeetings(s.meetings, label);
+        continue;
+      }
       if (scheduled === 0) continue;
       if (scheduled !== 3) {
         err(`${label}: days, start and end must be all set or all null`);
@@ -569,9 +1000,17 @@ function checkCampus(campus, problems) {
         err(`${label}: bad day string "${s.days}"`);
       if (s.start >= s.end) err(`${label}: starts at ${s.start} but ends at ${s.end}`);
     }
+    if (unlistedLabs.size) {
+      const list = [...unlistedLabs].sort();
+      warn(
+        `sections/${term}: ${list.length} lab course(s) not in courses.json yet: ${list.join(', ')}`,
+      );
+    }
   }
 
-  if (campus.bus) {
+  // The stops-and-campus-times shape (NSU, DIU); BRACU's timed-stops shape has
+  // no service period, fares object or day codes to check.
+  if (campus.bus && !('effectiveFrom' in campus.bus)) {
     const { bus } = campus;
     if ((bus.servicePeriod === null || bus.fares === null) && !bus.note)
       err('bus: servicePeriod or fares is null with no note saying why');
