@@ -1,0 +1,274 @@
+{
+  "id": "diu",
+  "name": "Daffodil International University",
+  "shortName": "DIU",
+  "identity": {
+    "source": "diu-it-section",
+    "emailDomains": [],
+    "note": "DIU runs Google Workspace for Education and says every student has an address in a university domain, but no public DIU page names the student domain. diu.edu.bd, student.diu.edu.bd and s.diu.edu.bd all have Google MX records; one student project treats diu.edu.bd as staff and student.diu.edu.bd as students. Left empty until DIU or a current student confirms it, because a wrong domain locks students out and a staff domain lets lecturers sign in as students."
+  },
+  "grading": {
+    "source": "diu-rules",
+    "note": "The UGC uniform grading system. No C-, D+ or D-. Each minMark is inclusive (\"80% and above\", \"75% to less than 80%\").",
+    "scale": [
+      {
+        "letter": "A+",
+        "points": 4.0,
+        "minMark": 80
+      },
+      {
+        "letter": "A",
+        "points": 3.75,
+        "minMark": 75
+      },
+      {
+        "letter": "A-",
+        "points": 3.5,
+        "minMark": 70
+      },
+      {
+        "letter": "B+",
+        "points": 3.25,
+        "minMark": 65
+      },
+      {
+        "letter": "B",
+        "points": 3.0,
+        "minMark": 60
+      },
+      {
+        "letter": "B-",
+        "points": 2.75,
+        "minMark": 55
+      },
+      {
+        "letter": "C+",
+        "points": 2.5,
+        "minMark": 50
+      },
+      {
+        "letter": "C",
+        "points": 2.25,
+        "minMark": 45
+      },
+      {
+        "letter": "D",
+        "points": 2.0,
+        "minMark": 40
+      },
+      {
+        "letter": "F",
+        "points": 0.0,
+        "minMark": 0
+      }
+    ],
+    "nonGpaGrades": [
+      {
+        "letter": "I",
+        "meaning": "Incomplete: only when everything but the final is done; becomes F automatically if not made up within three weeks of the next semester"
+      }
+    ],
+    "unknown": [
+      "W",
+      "P"
+    ]
+  },
+  "retake": {
+    "source": "diu-rules",
+    "eligibleAtOrBelow": "B-",
+    "counts": "latest",
+    "maxRetakes": null,
+    "note": "\"A course passed with a grade less than B may be repeated\"; \"GPA and CGPA will be calculated on the basis of the grades obtained at the last attempt\". A failed course may be repeated \"twice at the most\" - a cap stated for failed courses only, so maxRetakes stays null. Conflicts to confirm with the registrar: the FAQ allows improvement for \"Grade B or less\", and third-party calculators assume the better grade counts; the Rules page is undated."
+  },
+  "standing": {
+    "source": "diu-rules",
+    "goodStandingMinCgpa": 2.0,
+    "probation": {
+      "belowCgpa": 2.0,
+      "termsToRecover": 3,
+      "then": "Dropped from the program; re-admission only on appeal with strong evidence"
+    },
+    "note": "The same page's \"Student Dismissal\" section says two consecutive semesters below 2.0, not three. Unresolved."
+  },
+  "classDivisions": {
+    "source": "diu-rules",
+    "records": [],
+    "note": "DIU publishes no class divisions."
+  },
+  "honours": {
+    "source": "diu-rules",
+    "records": [
+      {
+        "label": "VC's Honor List",
+        "minCgpa": 3.75
+      },
+      {
+        "label": "Chancellor award",
+        "minCgpa": 3.9
+      }
+    ],
+    "note": "VC's Honor List needs CGPA 3.75 in successive 3rd and 4th semesters. The Chancellor award is stated as \"Students with 3.9\", without saying GPA or CGPA. The Dean's Honor List is by semester GPA, so it is an academic rule, not a CGPA band."
+  },
+  "classStanding": {
+    "source": "diu-rules",
+    "records": [],
+    "note": "DIU publishes no freshman/sophomore-style standing by credits."
+  },
+  "creditLoad": {
+    "source": "diu-rules",
+    "fullTimeMin": {
+      "bisemester": 9,
+      "trimester": 9
+    },
+    "max": null,
+    "note": "More than 15 credits needs the academic advisor's prior written consent; no absolute maximum is published."
+  },
+  "academicRules": {
+    "source": "diu-rules",
+    "records": [
+      {
+        "id": "deans-honor-list",
+        "rule": "A full-time student with GPA 3.75 at the end of a regular semester is placed on the Dean's Honor List."
+      },
+      {
+        "id": "credits-attempted",
+        "rule": "Only courses graded A+ to F count toward credits attempted."
+      },
+      {
+        "id": "assessment-weights",
+        "rule": "Final grade: class attendance 7, assignment 5, presentation 8, three quizzes 15, midterm 25, final examination 40 (out of 100)."
+      },
+      {
+        "id": "attendance",
+        "rule": "Expected attendance is 90 percent; below 75 percent a student may be debarred from the final examination."
+      },
+      {
+        "id": "failed-course-repeats",
+        "rule": "A failed course may be repeated twice at the most, on payment of the course fee."
+      },
+      {
+        "id": "drop-add-first-week",
+        "rule": "Courses may be dropped or added during the first week of the semester."
+      },
+      {
+        "id": "choose-major",
+        "rule": "Choose a major no later than the second semester of the third year."
+      },
+      {
+        "id": "grade-appeal",
+        "rule": "A grade appeal must be made within two weeks of the grade being published."
+      },
+      {
+        "id": "min-cgpa-to-graduate",
+        "rule": "The minimum CGPA to get the degree certificate is 2.50.",
+        "source": "diu-faq"
+      },
+      {
+        "id": "internship-cgpa",
+        "rule": "All courses must be completed, with CGPA at least 2.50, to start an internship.",
+        "source": "diu-faq"
+      },
+      {
+        "id": "improvement-exams",
+        "rule": "A student with grade B or less may sit a mid-term or final improvement exam, paying 40% (mid-term) or 60% (final) of the course fee; free when two exams clash.",
+        "source": "diu-faq"
+      },
+      {
+        "id": "attendance-faq",
+        "rule": "The FAQ states a minimum attendance of 60 percent to sit examinations, which conflicts with the Rules page's 75 percent.",
+        "source": "diu-faq"
+      },
+      {
+        "id": "registration-by-coordinator",
+        "rule": "After paying, the student's batch coordinator completes course registration; add/drop/change is possible within 7 days after the last date of registration.",
+        "source": "diu-faq"
+      },
+      {
+        "id": "six-year-limit",
+        "rule": "Extending registration beyond six years needs the Registrar's approval.",
+        "source": "diu-faq"
+      }
+    ]
+  },
+  "termSystems": {
+    "source": "diu-registrar-calendars",
+    "records": [
+      {
+        "id": "trimester",
+        "terms": [
+          {
+            "season": "Spring",
+            "months": "Jan-May"
+          },
+          {
+            "season": "Summer",
+            "months": "May-Aug"
+          },
+          {
+            "season": "Fall",
+            "months": "Sep-Dec"
+          }
+        ],
+        "note": "Science & IT, Business & Entrepreneurship, Humanities & Social Sciences and Health & Life Sciences (diu-semester-schedule); EEE and Civil Engineering too, by their Fall 2026 course offers."
+      },
+      {
+        "id": "bisemester",
+        "terms": [
+          {
+            "season": "Spring",
+            "months": "Jan-Jun"
+          },
+          {
+            "season": "Fall",
+            "months": "Jul-Dec"
+          }
+        ],
+        "note": "Which programs run it is not published."
+      }
+    ]
+  },
+  "termCodes": {
+    "source": "diu-eee-offer-263",
+    "pattern": "two-digit year followed by 1 (Spring), 2 (Summer) or 3 (Fall): the EEE Fall 2026 offer lists batches 263, 262 and 261 as the three newest intakes",
+    "note": "Which digit a bi-semester Fall gets is not published; the bi-semester calendar files here use 3."
+  },
+  "days": {
+    "source": "diu-cse-routine-263",
+    "records": [
+      {
+        "code": "S",
+        "day": "Sunday"
+      },
+      {
+        "code": "M",
+        "day": "Monday"
+      },
+      {
+        "code": "T",
+        "day": "Tuesday"
+      },
+      {
+        "code": "W",
+        "day": "Wednesday"
+      },
+      {
+        "code": "R",
+        "day": "Thursday"
+      },
+      {
+        "code": "F",
+        "day": "Friday"
+      },
+      {
+        "code": "A",
+        "day": "Saturday"
+      }
+    ],
+    "note": "Codes are Shohoj's own, matching NSU's; DIU routines print full day names. CSE day classes run Saturday to Thursday."
+  },
+  "buildings": {
+    "source": "diu-cse-routine-263",
+    "records": [],
+    "note": "Routines use building codes (KT, G1, ANX1, SH) but no DIU page gives their names."
+  }
+}
