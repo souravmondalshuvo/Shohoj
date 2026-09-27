@@ -159,6 +159,9 @@ const ROOM_POP_SECONDS = 0.35;  // per-room pop-in duration
 // Below this, an eased value is visually settled and stops asking for frames.
 const SETTLE_EPSILON = 1e-3;
 const ROOM_STAGGER_SECONDS = 0.018; // spawn delay between successive rooms
+// The sun's shadow map is drawn only when the scene changes (#781), never for
+// a camera move, so it can afford the resolution the façade detail deserves.
+const SHADOW_MAP_SIZE = 2048;
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
 const MODEL_FOCUSED_OPACITY = 0.04;    // exterior model opacity while a floor is open
 const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
@@ -348,7 +351,7 @@ export function createCampusScene(
     const sun = new DirectionalLight(new Color(mood.sunColor), mood.sunIntensity);
     sun.position.set(40, 70, 25);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
     sun.shadow.camera.left = -48;
     sun.shadow.camera.right = 48;
     sun.shadow.camera.top = 64;
