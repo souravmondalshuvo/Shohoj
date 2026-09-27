@@ -59,49 +59,73 @@ CREATE TABLE buildings (
   campus TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (campus, code));
 CREATE TABLE programs (
   campus TEXT NOT NULL, code TEXT NOT NULL, name TEXT NOT NULL, school TEXT NOT NULL,
-  total_credits INTEGER NOT NULL, term_system TEXT NOT NULL, source TEXT NOT NULL,
+  total_credits INTEGER NOT NULL, term_system TEXT NOT NULL, extends TEXT,
+  credit_load_min INTEGER, credit_load_max INTEGER, source TEXT NOT NULL,
   PRIMARY KEY (campus, code));
 CREATE TABLE program_conflicts (
   campus TEXT NOT NULL, program TEXT NOT NULL, field TEXT NOT NULL, value TEXT NOT NULL,
   source TEXT NOT NULL, note TEXT NOT NULL);
+CREATE TABLE program_rules (
+  campus TEXT NOT NULL, program TEXT NOT NULL, id TEXT NOT NULL, rule TEXT NOT NULL,
+  source TEXT NOT NULL, PRIMARY KEY (campus, program, id));
 CREATE TABLE courses (
   campus TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL, credits REAL NOT NULL,
-  subject TEXT NOT NULL, level INTEGER NOT NULL, is_lab INTEGER NOT NULL, source TEXT NOT NULL,
-  PRIMARY KEY (campus, code));
+  subject TEXT NOT NULL, level INTEGER NOT NULL, is_lab INTEGER NOT NULL, department TEXT,
+  source TEXT NOT NULL, PRIMARY KEY (campus, code));
+-- A course can carry rules from several documents, some scoped to one program,
+-- so each rule has its own id.
 CREATE TABLE prerequisites (
-  campus TEXT NOT NULL, course TEXT NOT NULL, min_credits INTEGER, or_consent INTEGER NOT NULL,
-  unparsed INTEGER NOT NULL, raw TEXT NOT NULL, source TEXT NOT NULL, PRIMARY KEY (campus, course));
--- One row per acceptable course for each requirement: a course needs, for every
--- requirement number, at least one of that requirement's rows satisfied.
+  campus TEXT NOT NULL, id INTEGER NOT NULL, course TEXT NOT NULL, program TEXT,
+  min_credits INTEGER, min_cgpa REAL, or_consent INTEGER NOT NULL, unparsed INTEGER NOT NULL,
+  raw TEXT NOT NULL, source TEXT NOT NULL, PRIMARY KEY (campus, id));
+-- One row per acceptable course for each requirement of a rule: the rule holds
+-- when, for every requirement number, at least one of its rows is satisfied.
 CREATE TABLE prerequisite_options (
-  campus TEXT NOT NULL, course TEXT NOT NULL, requirement INTEGER NOT NULL, requires TEXT NOT NULL,
-  PRIMARY KEY (campus, course, requirement, requires));
+  campus TEXT NOT NULL, rule INTEGER NOT NULL, course TEXT NOT NULL, requirement INTEGER NOT NULL,
+  requires TEXT NOT NULL, PRIMARY KEY (campus, rule, requirement, requires));
+CREATE TABLE plans (
+  campus TEXT NOT NULL, program TEXT NOT NULL, position INTEGER NOT NULL, year INTEGER NOT NULL,
+  term INTEGER, code TEXT, title TEXT NOT NULL, credits REAL NOT NULL, alternatives TEXT,
+  category TEXT, note TEXT, source TEXT NOT NULL, PRIMARY KEY (campus, program, position));
+CREATE TABLE requirement_groups (
+  campus TEXT NOT NULL, id INTEGER NOT NULL, program TEXT NOT NULL, name TEXT NOT NULL,
+  rule TEXT NOT NULL, choose INTEGER, credits REAL, note TEXT, source TEXT NOT NULL,
+  PRIMARY KEY (campus, id));
+-- Each option of a group is a set of alternatives; one row per alternative.
+CREATE TABLE requirement_options (
+  campus TEXT NOT NULL, grp INTEGER NOT NULL, option INTEGER NOT NULL, code TEXT NOT NULL,
+  PRIMARY KEY (campus, grp, option, code));
 CREATE TABLE sections (
-  campus TEXT NOT NULL, term TEXT NOT NULL, course TEXT NOT NULL, section INTEGER NOT NULL,
-  faculty TEXT, days TEXT NOT NULL, start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
-  capacity INTEGER NOT NULL, source TEXT NOT NULL, PRIMARY KEY (campus, term, course, section));
+  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, course TEXT NOT NULL,
+  section INTEGER NOT NULL, faculty TEXT, days TEXT, start TEXT, "end" TEXT, room TEXT,
+  capacity INTEGER NOT NULL, department TEXT, note TEXT, source TEXT NOT NULL,
+  PRIMARY KEY (campus, term, term_system, course, section));
 -- A section's days expanded to one row per weekday, which is what free-room
--- and clash queries actually join on.
+-- and clash queries actually join on. Sections with no fixed schedule have none.
 CREATE TABLE meetings (
-  campus TEXT NOT NULL, term TEXT NOT NULL, course TEXT NOT NULL, section INTEGER NOT NULL,
-  day TEXT NOT NULL, start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
-  PRIMARY KEY (campus, term, course, section, day));
+  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, course TEXT NOT NULL,
+  section INTEGER NOT NULL, day TEXT NOT NULL, start TEXT NOT NULL, "end" TEXT NOT NULL, room TEXT,
+  PRIMARY KEY (campus, term, term_system, course, section, day));
 CREATE TABLE calendar_events (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, date TEXT NOT NULL,
-  kind TEXT NOT NULL, event TEXT NOT NULL, source TEXT NOT NULL);
+  end_date TEXT, kind TEXT NOT NULL, event TEXT NOT NULL, source TEXT NOT NULL);
+CREATE TABLE calendar_notices (
+  campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, notice TEXT NOT NULL);
 CREATE TABLE bus_routes (
   campus TEXT NOT NULL, route TEXT NOT NULL, stops TEXT NOT NULL, service_from TEXT NOT NULL,
   service_to TEXT NOT NULL, source TEXT NOT NULL, PRIMARY KEY (campus, route));
 CREATE TABLE bus_times (
   campus TEXT NOT NULL, route TEXT NOT NULL, direction TEXT NOT NULL, time TEXT NOT NULL,
   PRIMARY KEY (campus, route, direction, time));
-CREATE INDEX meetings_room ON meetings (campus, term, room, day);
+CREATE INDEX meetings_room ON meetings (campus, term, term_system, room, day);
 CREATE INDEX sections_faculty ON sections (campus, term, faculty);
+CREATE INDEX prerequisites_course ON prerequisites (campus, course);
+CREATE INDEX requirement_options_code ON requirement_options (campus, code);
 CREATE VIEW rooms AS
-  SELECT campus, term, room,
+  SELECT campus, term, term_system, room,
          CASE WHEN room GLOB '[A-Z]*[0-9]*' THEN rtrim(room, '0123456789') ELSE NULL END AS building,
          COUNT(*) AS sections, MAX(capacity) AS largest_section
-  FROM sections WHERE room IS NOT NULL GROUP BY campus, term, room;
+  FROM sections WHERE room IS NOT NULL GROUP BY campus, term, term_system, room;
 `;
 
 function sqlValue(value) {
@@ -266,7 +290,18 @@ function campusStatements(c) {
     out.push(
       ...insert(
         'programs',
-        ['campus', 'code', 'name', 'school', 'total_credits', 'term_system', 'source'],
+        [
+          'campus',
+          'code',
+          'name',
+          'school',
+          'total_credits',
+          'term_system',
+          'extends',
+          'credit_load_min',
+          'credit_load_max',
+          'source',
+        ],
         programs.map((r) => [
           id,
           r.code,
@@ -274,8 +309,18 @@ function campusStatements(c) {
           r.school,
           r.totalCredits,
           r.termSystem,
-          c.programs.source,
+          r.extends ?? null,
+          r.creditLoad?.minCredits ?? null,
+          r.creditLoad?.maxCredits ?? null,
+          r.source ?? c.programs.source,
         ]),
+      ),
+    );
+    out.push(
+      ...insert(
+        'program_rules',
+        ['campus', 'program', 'id', 'rule', 'source'],
+        programs.flatMap((r) => (r.rules ?? []).map((x) => [id, r.code, x.id, x.rule, x.source])),
       ),
     );
     out.push(
@@ -300,7 +345,17 @@ function campusStatements(c) {
     out.push(
       ...insert(
         'courses',
-        ['campus', 'code', 'title', 'credits', 'subject', 'level', 'is_lab', 'source'],
+        [
+          'campus',
+          'code',
+          'title',
+          'credits',
+          'subject',
+          'level',
+          'is_lab',
+          'department',
+          'source',
+        ],
         [...c.courses.records].sort(byKey('code')).map((r) => {
           const [, subject, digits, suffix] = r.code.match(/^([A-Z]+)(\d{3})([A-Z]?)$/);
           return [
@@ -311,6 +366,7 @@ function campusStatements(c) {
             subject,
             Number(digits[0]) * 100,
             suffix === 'L',
+            r.department ?? null,
             r.source ?? c.courses.source,
           ];
         }),
@@ -319,35 +375,118 @@ function campusStatements(c) {
   }
 
   if (c.prerequisites) {
-    const rules = [...c.prerequisites.records].sort(byKey('course'));
+    // Rule ids follow file order, which the validator keeps free of duplicates.
+    const rules = c.prerequisites.records.map((r, i) => ({ ...r, ruleId: i + 1 }));
     out.push(
       ...insert(
         'prerequisites',
-        ['campus', 'course', 'min_credits', 'or_consent', 'unparsed', 'raw', 'source'],
+        [
+          'campus',
+          'id',
+          'course',
+          'program',
+          'min_credits',
+          'min_cgpa',
+          'or_consent',
+          'unparsed',
+          'raw',
+          'source',
+        ],
         rules.map((r) => [
           id,
+          r.ruleId,
           r.course,
+          r.program ?? null,
           r.minCredits ?? null,
+          r.minCgpa ?? null,
           !!r.orConsent,
           !!r.unparsed,
           r.raw,
-          c.prerequisites.source,
+          r.source ?? c.prerequisites.source,
         ]),
       ),
     );
     out.push(
       ...insert(
         'prerequisite_options',
-        ['campus', 'course', 'requirement', 'requires'],
+        ['campus', 'rule', 'course', 'requirement', 'requires'],
         rules.flatMap((r) =>
-          (r.allOf ?? []).flatMap((group, i) => group.map((code) => [id, r.course, i + 1, code])),
+          (r.allOf ?? []).flatMap((group, i) =>
+            group.map((code) => [id, r.ruleId, r.course, i + 1, code]),
+          ),
         ),
       ),
     );
   }
 
-  for (const term of Object.keys(c.sections).sort()) {
-    const file = c.sections[term];
+  if (c.plans) {
+    out.push(
+      ...insert(
+        'plans',
+        [
+          'campus',
+          'program',
+          'position',
+          'year',
+          'term',
+          'code',
+          'title',
+          'credits',
+          'alternatives',
+          'category',
+          'note',
+          'source',
+        ],
+        c.plans.records.map((p, i) => [
+          id,
+          p.program,
+          i + 1,
+          p.year,
+          p.term,
+          p.code,
+          p.title,
+          p.credits,
+          p.alternatives ? p.alternatives.join(',') : null,
+          p.category ?? null,
+          p.note ?? null,
+          p.source,
+        ]),
+      ),
+    );
+  }
+
+  if (c.requirements) {
+    const groups = c.requirements.records.map((g, i) => ({ ...g, groupId: i + 1 }));
+    out.push(
+      ...insert(
+        'requirement_groups',
+        ['campus', 'id', 'program', 'name', 'rule', 'choose', 'credits', 'note', 'source'],
+        groups.map((g) => [
+          id,
+          g.groupId,
+          g.program,
+          g.group,
+          g.rule,
+          g.choose ?? null,
+          g.credits ?? null,
+          g.note ?? null,
+          g.source,
+        ]),
+      ),
+    );
+    out.push(
+      ...insert(
+        'requirement_options',
+        ['campus', 'grp', 'option', 'code'],
+        groups.flatMap((g) =>
+          g.options.flatMap((alts, i) => alts.map((code) => [id, g.groupId, i + 1, code])),
+        ),
+      ),
+    );
+  }
+
+  for (const key of Object.keys(c.sections).sort()) {
+    const file = c.sections[key];
     const rows = [...file.records].sort(byKey('course', 'section'));
     out.push(
       ...insert(
@@ -355,6 +494,7 @@ function campusStatements(c) {
         [
           'campus',
           'term',
+          'term_system',
           'course',
           'section',
           'faculty',
@@ -363,11 +503,14 @@ function campusStatements(c) {
           'end',
           'room',
           'capacity',
+          'department',
+          'note',
           'source',
         ],
         rows.map((s) => [
           id,
-          term,
+          file.term,
+          file.termSystem,
           s.course,
           s.section,
           s.faculty,
@@ -376,6 +519,8 @@ function campusStatements(c) {
           s.end,
           s.room,
           s.capacity,
+          s.department ?? null,
+          s.note ?? null,
           file.source,
         ]),
       ),
@@ -383,21 +528,49 @@ function campusStatements(c) {
     out.push(
       ...insert(
         'meetings',
-        ['campus', 'term', 'course', 'section', 'day', 'start', 'end', 'room'],
-        rows.flatMap((s) =>
-          [...s.days].map((day) => [id, term, s.course, s.section, day, s.start, s.end, s.room]),
-        ),
+        ['campus', 'term', 'term_system', 'course', 'section', 'day', 'start', 'end', 'room'],
+        rows
+          .filter((s) => s.days !== null)
+          .flatMap((s) =>
+            [...s.days].map((day) => [
+              id,
+              file.term,
+              file.termSystem,
+              s.course,
+              s.section,
+              day,
+              s.start,
+              s.end,
+              s.room,
+            ]),
+          ),
       ),
     );
   }
 
-  for (const term of Object.keys(c.calendars).sort()) {
-    const file = c.calendars[term];
+  for (const key of Object.keys(c.calendars).sort()) {
+    const file = c.calendars[key];
     out.push(
       ...insert(
         'calendar_events',
-        ['campus', 'term', 'term_system', 'date', 'kind', 'event', 'source'],
-        file.records.map((e) => [id, term, file.termSystem, e.date, e.kind, e.event, file.source]),
+        ['campus', 'term', 'term_system', 'date', 'end_date', 'kind', 'event', 'source'],
+        file.records.map((e) => [
+          id,
+          file.term,
+          file.termSystem,
+          e.date,
+          e.endDate ?? null,
+          e.kind,
+          e.event,
+          file.source,
+        ]),
+      ),
+    );
+    out.push(
+      ...insert(
+        'calendar_notices',
+        ['campus', 'term', 'term_system', 'notice'],
+        (file.notices ?? []).map((n) => [id, file.term, file.termSystem, n]),
       ),
     );
   }
