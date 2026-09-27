@@ -30,9 +30,18 @@ try {
   // Every record made it in.
   assert.equal(one("SELECT COUNT(*) AS n FROM courses WHERE campus='nsu'").n, nsu.courses.records.length);
   assert.equal(one("SELECT COUNT(*) AS n FROM programs WHERE campus='nsu'").n, nsu.programs.records.length);
-  assert.equal(one("SELECT COUNT(*) AS n FROM sections WHERE campus='nsu' AND term='252'").n, nsu.sections['252'].records.length);
-  const expectedMeetings = nsu.sections['252'].records.reduce((n, s) => n + s.days.length, 0);
-  assert.equal(one("SELECT COUNT(*) AS n FROM meetings WHERE campus='nsu' AND term='252'").n, expectedMeetings);
+  for (const [key, file] of Object.entries(nsu.sections)) {
+    const [term, system] = key.split('-');
+    const where = `campus='nsu' AND term='${term}' AND term_system='${system}'`;
+    assert.equal(one(`SELECT COUNT(*) AS n FROM sections WHERE ${where}`).n, file.records.length, key);
+    // Only scheduled sections expand into meetings; an internship has none.
+    const expected = file.records.reduce((n, s) => n + (s.days ? s.days.length : 0), 0);
+    assert.equal(one(`SELECT COUNT(*) AS n FROM meetings WHERE ${where}`).n, expected, `${key} meetings`);
+  }
+  assert.ok(one("SELECT COUNT(*) AS n FROM sections WHERE campus='nsu' AND days IS NULL").n > 0, 'unscheduled sections are kept');
+  const corrected = one("SELECT \"end\", note FROM sections WHERE campus='nsu' AND term='253' AND course='ARC273' AND section=2");
+  assert.equal(corrected.end, '13:40');
+  assert.match(corrected.note, /Printed as/, 'a corrected value says what was printed');
 
   // Campus rules come through as columns you can filter on.
   const profile = one("SELECT * FROM campuses WHERE id='nsu'");
@@ -44,25 +53,47 @@ try {
 
   // Free rooms: take a real meeting, then ask which rooms are busy in that
   // slot. Its room must be among them, and a room free all day must not be.
-  const sample = one("SELECT room, day, start, \"end\" FROM meetings WHERE campus='nsu' AND term='252' AND room IS NOT NULL ORDER BY course, section LIMIT 1");
+  const TERM = "campus='nsu' AND term='253' AND term_system='trimester'";
+  const sample = one(`SELECT room, day, start, "end" FROM meetings WHERE ${TERM} AND room IS NOT NULL ORDER BY course, section LIMIT 1`);
   const busy = new Set(all(
     `SELECT DISTINCT room FROM meetings
-      WHERE campus='nsu' AND term='252' AND day=? AND start < ? AND "end" > ? AND room IS NOT NULL`,
+      WHERE ${TERM} AND day=? AND start < ? AND "end" > ? AND room IS NOT NULL`,
     sample.day, sample.end, sample.start,
   ).map((r) => r.room));
   assert.ok(busy.has(sample.room), 'a room is busy during its own class');
   const free = all(
-    `SELECT room FROM rooms WHERE campus='nsu' AND term='252'
-      AND room NOT IN (SELECT room FROM meetings WHERE campus='nsu' AND term='252' AND day=? AND start < ? AND "end" > ? AND room IS NOT NULL)`,
+    `SELECT room FROM rooms WHERE ${TERM}
+      AND room NOT IN (SELECT room FROM meetings WHERE ${TERM} AND day=? AND start < ? AND "end" > ? AND room IS NOT NULL)`,
     sample.day, sample.end, sample.start,
   ).map((r) => r.room);
   assert.ok(free.length > 0 && !free.includes(sample.room), 'free rooms exclude the occupied one');
 
-  // Prerequisites join back to titles; alternatives share a requirement number.
-  const cse225 = all("SELECT requires FROM prerequisite_options WHERE campus='nsu' AND course='CSE225'");
-  assert.deepEqual(cse225.map((r) => r.requires), ['CSE215']);
-  const eee111 = all("SELECT requirement, requires FROM prerequisite_options WHERE campus='nsu' AND course='EEE111' ORDER BY requires");
-  assert.deepEqual(eee111, [{ requirement: 1, requires: 'EEE141' }, { requirement: 1, requires: 'ETE141' }]);
+  // Prerequisites: each rule keeps its own source, and alternatives share a
+  // requirement number within that rule.
+  const optionsOf = (course, source) => all(
+    `SELECT o.requirement, o.requires FROM prerequisite_options o
+       JOIN prerequisites p ON p.campus = o.campus AND p.id = o.rule
+      WHERE p.campus='nsu' AND p.course=? AND p.source=? ORDER BY o.requirement, o.requires`,
+    course, source,
+  );
+  assert.deepEqual(optionsOf('CSE225', 'nsu-ece-courses'), [{ requirement: 1, requires: 'CSE215' }]);
+  assert.deepEqual(optionsOf('EEE111', 'nsu-ece-courses'), [{ requirement: 1, requires: 'EEE141' }, { requirement: 1, requires: 'ETE141' }]);
+  const eng103 = all("SELECT source FROM prerequisites WHERE campus='nsu' AND course='ENG103' ORDER BY source").map((r) => r.source);
+  assert.ok(eng103.length >= 2, 'the same course can carry rules from several documents');
+  const bus499 = one("SELECT min_credits, min_cgpa FROM prerequisites WHERE campus='nsu' AND course='BUS499'");
+  assert.deepEqual({ ...bus499 }, { min_credits: 112, min_cgpa: 3.3 });
+
+  // Plans and requirement groups add up to the programs they describe.
+  for (const row of all("SELECT p.program, SUM(p.credits) AS total, g.total_credits AS expected FROM plans p JOIN programs g ON g.campus=p.campus AND g.code=p.program GROUP BY p.program")) {
+    assert.equal(row.total, row.expected, `${row.program} plan`);
+  }
+  const finMajor = one(`SELECT SUM(credits) AS total FROM requirement_groups
+                         WHERE campus='nsu' AND program IN ('BBA-FIN', (SELECT extends FROM programs WHERE campus='nsu' AND code='BBA-FIN'))`);
+  assert.equal(finMajor.total, 130, 'a BBA major inherits BBA\'s shared groups');
+  const science = one(`SELECT g.choose, COUNT(DISTINCT o.option) AS options FROM requirement_groups g
+                        JOIN requirement_options o ON o.campus=g.campus AND o.grp=g.id
+                       WHERE g.campus='nsu' AND g.program='BBA' AND g.name LIKE 'GED: science%'`);
+  assert.deepEqual({ ...science }, { choose: 4, options: 14 });
 
   // Provenance travels with the data: every row can say where it came from.
   const unsourced = one(`SELECT COUNT(*) AS n FROM courses c LEFT JOIN sources s
