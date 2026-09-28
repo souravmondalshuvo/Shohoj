@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { gradeImpactView, paceText } from '../src/features/tasks/gradeImpactView.ts';
+import { gradeImpactView as legacyGradeImpactView } from '../js/core/gradeImpactView.js';
+import { UNIVERSITIES } from '../js/core/university.js';
 
 const task = (id, title) => ({
   id: `tsk_${String(id).padStart(32, '0')}`,
@@ -125,7 +127,10 @@ test('the target list is short — the useful band, not all eleven letters', () 
   // into a wall.
   const view = gradeImpactView(MAT215);
   assert.ok(view.targets.length <= 3, `expected a short list, got ${view.targets.length}`);
-  assert.ok(view.targets.some((t) => t.state === 'reachable'), 'and it includes what is still on');
+  assert.ok(
+    view.targets.some((t) => t.state === 'reachable'),
+    'and it includes what is still on',
+  );
 });
 
 test('a partial syllabus is flagged rather than presented as the whole picture', () => {
@@ -141,4 +146,19 @@ test('a partial syllabus is flagged rather than presented as the whole picture',
 
 test('nothing to say returns null, so the panel renders nothing', () => {
   assert.equal(gradeImpactView([]), null);
+});
+
+test('the campus mark table decides the letter, in both twins (#796)', () => {
+  // A finished course at 87%: an A- on BRACU's tiers, a B+ on NSU's.
+  const done = [
+    {
+      task: task(1, 'Everything'),
+      assessment: assessment({ weightPercent: 100, totalMarks: 100, earnedMarks: 87 }),
+    },
+  ];
+  const nsuMarks = UNIVERSITIES.nsu.grades.marks;
+  assert.equal(gradeImpactView(done).projectedLetter, 'A-');
+  assert.equal(gradeImpactView(done, undefined, nsuMarks).projectedLetter, 'B+');
+  assert.equal(legacyGradeImpactView(done).projectedLetter, 'A-');
+  assert.equal(legacyGradeImpactView(done, undefined, nsuMarks).projectedLetter, 'B+');
 });
