@@ -118,6 +118,26 @@ assert.throws(() => convertRows([row({ Time: 'Sun 11:20-12:50' })]), /unreadable
   assert.throws(() => rowsFromHtml('<p>Just a moment...</p>'), /no offered-course table/);
 }
 
+// Markup never survives into a value: nested tags are stripped to nothing,
+// entities decode once (`&amp;lt;` is the text "&lt;", not "<"), and a faculty
+// or room that isn't plain initials/room text stops the import.
+{
+  const html = (faculty, room) =>
+    `<table><tr><th>Course</th><th>Section</th><th>Faculty</th><th>Time</th><th>Room</th>
+    <th>Seats Available</th></tr><tr><td>CSE115</td><td>3</td><td>${faculty}</td>
+    <td>ST 11:20 AM - 12:50 PM</td><td>${room}</td><td>4</td></tr></table>`;
+  const [nested] = rowsFromHtml(html('N<scr<b>ipt>vA', 'SAC313'));
+  assert.ok(!nested.Faculty.includes('<'), 'no tag opener survives stripping');
+  assert.throws(() => convertRows([nested]), /CSE115\.3 faculty: unexpected characters/);
+  const [escaped] = rowsFromHtml(html('NvA', 'SAC&amp;lt;313'));
+  assert.equal(escaped.Room, 'SAC&lt;313');
+  assert.throws(() => convertRows([escaped]), /CSE115\.3 room: unexpected characters/);
+  assert.throws(
+    () => convertRows([row({ Faculty: '<img src=x onerror=alert(1)>' })]),
+    /CSE115\.3 faculty: unexpected characters/,
+  );
+}
+
 // ── Catalogue stubs ─────────────────────────────────────────────────────────
 
 {
