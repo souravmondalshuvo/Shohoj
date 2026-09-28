@@ -35,9 +35,16 @@ function to24h(hours, minutes, meridiem) {
   return `${String(h).padStart(2, '0')}:${minutes}`;
 }
 
-const blankToNull = (value) => {
+// Faculty initials and room codes: letters, digits and the few separators RDS
+// uses (`SAC415B_V`, `NAC201-v1`, `TV LAB`). Anything else — markup above all —
+// is not a value RDS would show, and these end up rendered in the app.
+const PLAIN_TEXT = /^[A-Za-z0-9 _./()-]+$/;
+
+const blankToNull = (value, label) => {
   const v = String(value ?? '').trim();
-  return v === '' || v.toUpperCase() === 'TBA' ? null : v;
+  if (v === '' || v.toUpperCase() === 'TBA') return null;
+  if (!PLAIN_TEXT.test(v)) throw new Error(`${label}: unexpected characters in "${v}"`);
+  return v;
 };
 
 /**
@@ -63,11 +70,11 @@ export function convertRows(rows) {
     records.push({
       course,
       section: Number(row.Section),
-      faculty: blankToNull(row.Faculty),
+      faculty: blankToNull(row.Faculty, `${course}.${row.Section} faculty`),
       days: m ? m[1] : null,
       start: m ? to24h(m[2], m[3], m[4]) : null,
       end: m ? to24h(m[5], m[6], m[7]) : null,
-      room: m ? blankToNull(row.Room) : null,
+      room: m ? blankToNull(row.Room, `${course}.${row.Section} room`) : null,
       capacity: null,
       seatsAvailable: seats,
     });
@@ -78,14 +85,22 @@ export function convertRows(rows) {
   return { records, skipped, tba };
 }
 
-const decode = (s) =>
-  s
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim();
+const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", nbsp: ' ' };
+
+/**
+ * A cell's text. Tags are stripped until none are left (one pass leaves
+ * `<script` behind from `<scr<b>ipt>`), and entities are decoded in a single
+ * pass, so `&amp;lt;` is the text `&lt;`, never a `<`.
+ */
+function decode(html) {
+  let text = html;
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<[^>]*>/g, '');
+  } while (text !== previous);
+  return text.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_m, name) => ENTITIES[name]).trim();
+}
 
 /** Read the offered-course table out of an RDS page's HTML. */
 export function rowsFromHtml(html) {
