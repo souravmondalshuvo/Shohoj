@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-PnztrP1zWfYplvZ7jQQZfvypGmcYXx5TdqdBVwWPQvo='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-J41szkwLwthOmhXHiM/wx52oVtHQ4QVETMeW3mP0UKk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -13063,14 +13063,16 @@ const POINTS_TO_GRADE = [
   [0.00, 'F'],
 ];
 
-function detectGrade(val) {
+// `pointsToGrade` mirrors src/core/grades.ts: the caller passes its campus's
+// table (getActiveCampus().grades.pointsToGrade); BRACU's is the default.
+function detectGrade(val, pointsToGrade = POINTS_TO_GRADE) {
   const n = parseFloat(val);
   if (isNaN(n)) return '';
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     if (Math.abs(n - pt) < 0.01) return letter;
   }
   let closest = null, minDiff = Infinity;
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     const diff = Math.abs(n - pt);
     if (diff < minDiff) { minDiff = diff; closest = letter; }
   }
@@ -13281,6 +13283,87 @@ function gradePointOn(scale, letter) {
     return Object.prototype.hasOwnProperty.call(scale.points, letter)
         ? scale.points[letter]
         : undefined;
+}
+
+// ── js/core/activeCampus.js ─────────────────────────────────────
+// ── ACTIVE CAMPUS (legacy bundle) ────────────────────────────────────────────
+//
+// Which campus's rules the calculator is running on right now: the grading
+// scale, the retake policy, repeat eligibility, credit-load limits and the
+// mark → letter tiers. The legacy twin of the shell's useUniversity()
+// (src/app/providers/AuthProvider.tsx).
+//
+// The signed-in student's verified email decides it, exactly as in the shell.
+// Everyone else is on BRACU: a signed-out visitor, a demo session (demo data is
+// BRACU-shaped, see signinPortal.js) and pre-tenancy saved work, which is
+// BRACU's by definition — the app served nobody else.
+//
+// WHY AN EVENT AND NOT AN IMPORT. In the deployed page firebase.js is its own
+// <script type="module"> and this file is inlined into the main bundle
+// (build3.py), so the two do not share module state. The auth side already
+// publishes identity through window._shohoj_userProfile and the
+// shohoj:auth-changed event; this reads those, and announces its own change as
+// shohoj:campus-changed so the calculator repaints on the new scale.
+
+let _activeCampusId = DEFAULT_UNIVERSITY_ID;
+let _activeCampusListening = false;
+
+/** The campus profile every grade calculation should use. Never null. */
+function getActiveCampus() {
+  return UNIVERSITIES[_activeCampusId];
+}
+
+/** Shorthand for the active campus's grading scale. */
+function activeGradeScale() {
+  return getActiveCampus().grades;
+}
+
+/**
+ * Grade point for a letter on the active campus: `undefined` when the campus
+ * does not award the letter (an A+ at NSU), `null` when it does but it carries
+ * no point (P/I/W). The same contract as indexing the old BRACU GRADES table,
+ * which every call site this replaces was written against.
+ */
+function activeGradePoint(letter) {
+  const points = activeGradeScale().points;
+  return Object.prototype.hasOwnProperty.call(points, letter) ? points[letter] : undefined;
+}
+
+/**
+ * Resolve the campus from an email and switch to it. Returns whether anything
+ * changed. An address no campus claims falls back to BRACU rather than to null:
+ * the auth guard is what turns such accounts away, and this module's one job is
+ * never to leave the calculator without a scale.
+ */
+function setActiveCampusForEmail(email) {
+  const next = universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID;
+  if (next === _activeCampusId) return false;
+  _activeCampusId = next;
+  try {
+    window.dispatchEvent(new CustomEvent('shohoj:campus-changed', {
+      detail: { campus: next },
+    }));
+  } catch (_e) { /* no window (node tests) */ }
+  return true;
+}
+
+function syncActiveCampusFromAuth() {
+  const profile = window._shohoj_userProfile?.();
+  setActiveCampusForEmail(profile?.signedIn ? profile.email : null);
+}
+
+/**
+ * Follow the auth state. Idempotent — both the main and the profile bundle call
+ * it at boot.
+ *
+ * Seeds from the current state first: firebase.js loads as an earlier module
+ * script and may already have announced a warm session by the time this runs.
+ */
+function initActiveCampus() {
+  if (_activeCampusListening) return;
+  _activeCampusListening = true;
+  syncActiveCampusFromAuth();
+  window.addEventListener('shohoj:auth-changed', syncActiveCampusFromAuth);
 }
 
 // ── js/core/gpa-core.js ─────────────────────────────────────────
@@ -13814,7 +13897,7 @@ function pfSemesterGpaSeries(semesters) {
   const list = Array.isArray(semesters) ? semesters : [];
   return list.map(s => {
     const courses = Array.isArray(s.courses) ? s.courses : [];
-    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }) : null;
+    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }, activeGradeScale()) : null;
     return {
       name: String(s.name || ''),
       courseCount: courses.length,
@@ -16830,7 +16913,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursor();
   _pentry_route();
 });
+// Before the route listener: listeners run in registration order, and the
+// academic card must be scored on the campus this auth change resolves to.
+initActiveCampus();
 window.addEventListener('shohoj:auth-changed', _pentry_route);
+window.addEventListener('shohoj:campus-changed', _pentry_route);
 
 </script>
 </body>

@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-9L0KbA9zOVdsjKYYZvujUNrp2CPhI8soAfpFJY/u8I8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-clK3n1bK2BAl02g6G8gFXc19UrDR9yPD50lIP8jM/w0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13486,14 +13486,16 @@ const POINTS_TO_GRADE = [
   [0.00, 'F'],
 ];
 
-function detectGrade(val) {
+// `pointsToGrade` mirrors src/core/grades.ts: the caller passes its campus's
+// table (getActiveCampus().grades.pointsToGrade); BRACU's is the default.
+function detectGrade(val, pointsToGrade = POINTS_TO_GRADE) {
   const n = parseFloat(val);
   if (isNaN(n)) return '';
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     if (Math.abs(n - pt) < 0.01) return letter;
   }
   let closest = null, minDiff = Infinity;
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     const diff = Math.abs(n - pt);
     if (diff < minDiff) { minDiff = diff; closest = letter; }
   }
@@ -16518,6 +16520,87 @@ function gradePointOn(scale, letter) {
         : undefined;
 }
 
+// ── js/core/activeCampus.js ─────────────────────────────────────
+// ── ACTIVE CAMPUS (legacy bundle) ────────────────────────────────────────────
+//
+// Which campus's rules the calculator is running on right now: the grading
+// scale, the retake policy, repeat eligibility, credit-load limits and the
+// mark → letter tiers. The legacy twin of the shell's useUniversity()
+// (src/app/providers/AuthProvider.tsx).
+//
+// The signed-in student's verified email decides it, exactly as in the shell.
+// Everyone else is on BRACU: a signed-out visitor, a demo session (demo data is
+// BRACU-shaped, see signinPortal.js) and pre-tenancy saved work, which is
+// BRACU's by definition — the app served nobody else.
+//
+// WHY AN EVENT AND NOT AN IMPORT. In the deployed page firebase.js is its own
+// <script type="module"> and this file is inlined into the main bundle
+// (build3.py), so the two do not share module state. The auth side already
+// publishes identity through window._shohoj_userProfile and the
+// shohoj:auth-changed event; this reads those, and announces its own change as
+// shohoj:campus-changed so the calculator repaints on the new scale.
+
+let _activeCampusId = DEFAULT_UNIVERSITY_ID;
+let _activeCampusListening = false;
+
+/** The campus profile every grade calculation should use. Never null. */
+function getActiveCampus() {
+  return UNIVERSITIES[_activeCampusId];
+}
+
+/** Shorthand for the active campus's grading scale. */
+function activeGradeScale() {
+  return getActiveCampus().grades;
+}
+
+/**
+ * Grade point for a letter on the active campus: `undefined` when the campus
+ * does not award the letter (an A+ at NSU), `null` when it does but it carries
+ * no point (P/I/W). The same contract as indexing the old BRACU GRADES table,
+ * which every call site this replaces was written against.
+ */
+function activeGradePoint(letter) {
+  const points = activeGradeScale().points;
+  return Object.prototype.hasOwnProperty.call(points, letter) ? points[letter] : undefined;
+}
+
+/**
+ * Resolve the campus from an email and switch to it. Returns whether anything
+ * changed. An address no campus claims falls back to BRACU rather than to null:
+ * the auth guard is what turns such accounts away, and this module's one job is
+ * never to leave the calculator without a scale.
+ */
+function setActiveCampusForEmail(email) {
+  const next = universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID;
+  if (next === _activeCampusId) return false;
+  _activeCampusId = next;
+  try {
+    window.dispatchEvent(new CustomEvent('shohoj:campus-changed', {
+      detail: { campus: next },
+    }));
+  } catch (_e) { /* no window (node tests) */ }
+  return true;
+}
+
+function syncActiveCampusFromAuth() {
+  const profile = window._shohoj_userProfile?.();
+  setActiveCampusForEmail(profile?.signedIn ? profile.email : null);
+}
+
+/**
+ * Follow the auth state. Idempotent — both the main and the profile bundle call
+ * it at boot.
+ *
+ * Seeds from the current state first: firebase.js loads as an earlier module
+ * script and may already have announced a warm session by the time this runs.
+ */
+function initActiveCampus() {
+  if (_activeCampusListening) return;
+  _activeCampusListening = true;
+  syncActiveCampusFromAuth();
+  window.addEventListener('shohoj:auth-changed', syncActiveCampusFromAuth);
+}
+
 // ── js/core/gpa-core.js ─────────────────────────────────────────
 // Twin of src/core/gpa.ts — hand-maintained, not generated.
 // src/core/gpa.ts is the source of truth: change it there first, then mirror the
@@ -16759,19 +16842,37 @@ const gpaCoreNormalizeGradePoint = gpaCoreNormalizeGradePointImpl;
 const gpaCoreClampGradePoint = gpaCoreClampGradePointImpl;
 
 // ── js/core/calculator.js ───────────────────────────────────────
+// Every wrapper below hands gpa-core the active campus's rules (see
+// activeCampus.js). gpa-core defaults each one to BRACU, so the explicit pass
+// is what lets an NSU student be scored on NSU's scale.
+
 function calcSemGPA(sem) {
-  return gpaCoreCalcSemesterGpa(sem);
+  return gpaCoreCalcSemesterGpa(sem, getActiveCampus().grades);
 }
 
 function usesBestGradePolicy() {
   return gpaCoreUsesBestGradePolicy({
+    retake: getActiveCampus().retake,
     startSeason: getStartSeason(),
     startYear: getStartYear(),
   });
 }
 
+/** The scale + retake options every calculateCgpaTotals caller should pass. */
+function activeCgpaOptions(extra) {
+  const campus = getActiveCampus();
+  return {
+    scale: campus.grades,
+    retake: campus.retake,
+    startSeason: getStartSeason(),
+    startYear: getStartYear(),
+    ...(extra || {}),
+  };
+}
+
 function getRetakenKeys(semList, opts) {
-  const options = { ...(opts || {}) };
+  const campus = getActiveCampus();
+  const options = { scale: campus.grades, retake: campus.retake, ...(opts || {}) };
   if (typeof options.bestGrade !== 'boolean') {
     options.startSeason = getStartSeason();
     options.startYear = getStartYear();
@@ -16780,15 +16881,17 @@ function getRetakenKeys(semList, opts) {
 }
 
 function getSemCreditWarning(sem) {
-  return gpaCoreGetSemesterCreditWarning(sem);
+  return gpaCoreGetSemesterCreditWarning(sem, getActiveCampus());
 }
 
 function isRepeatEligible(grade) {
-  return gpaCoreIsRepeatEligible(grade);
+  const campus = getActiveCampus();
+  return gpaCoreIsRepeatEligible(grade, campus.grades, campus.repeat);
 }
 
 function getImprovementStrategy(grade) {
-  return gpaCoreGetImprovementStrategy(grade);
+  const campus = getActiveCampus();
+  return gpaCoreGetImprovementStrategy(grade, campus.grades, campus.repeat);
 }
 
 function normalizeGradePoint(raw, mode) {
@@ -16814,13 +16917,13 @@ function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 
   // Clamp to 0.0–4.0 range
-  const clamped = gpaCoreClampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val, getActiveCampus().grades);
   if (clamped !== val) {
     inputEl.value = clamped;
     val = clamped;
   }
 
-  const letter = detectGrade(val);
+  const letter = detectGrade(val, getActiveCampus().grades.pointsToGrade);
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem) return;
   sem.courses[cIdx].grade = letter;
@@ -16851,14 +16954,14 @@ function onGradePointBlur(semId, cIdx, inputEl) {
   let val = original;
   const normalized = normalizeGradePoint(val, 'blur');
   if (normalized !== val) val = normalized;
-  const clamped = gpaCoreClampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val, getActiveCampus().grades);
   if (clamped !== val) val = clamped;
   if (val !== original) {
     inputEl.value = val;
     const sem = state.semesters.find(s => s.id === semId);
     if (sem) {
       sem.courses[cIdx].gradePoint = val;
-      const letter = detectGrade(val);
+      const letter = detectGrade(val, getActiveCampus().grades.pointsToGrade);
       if (letter) sem.courses[cIdx].grade = letter;
       window._shohoj_renderAndRecalc();
     }
@@ -18556,7 +18659,7 @@ function renderDegreeTracker(totalEarned) {
 
   const gradedSemesters = state.semesters.filter(sem =>
     !sem.running && !sem.summary && sem.courses.some(c =>
-      c.name.trim() && c.grade && c.grade !== 'W' && GRADES[c.grade] !== undefined
+      c.name.trim() && c.grade && c.grade !== 'W' && activeGradePoint(c.grade) !== undefined
     )
   );
 
@@ -18588,7 +18691,7 @@ function renderDegreeTracker(totalEarned) {
       if (!c.name.trim() || !c.credits) return sum;
       if (sem.running) return sum + c.credits;
       if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || gp <= 0) return sum;
       return sum + c.credits;
     }, 0);
@@ -31100,8 +31203,9 @@ function targetLines(impact, limit = 3) {
   });
 }
 
-function gradeImpactView(assessed, limit) {
-  const impact = gradeImpactFor(assessed);
+// `marks` is the campus's mark → letter table; omitted, it is BRACU's.
+function gradeImpactView(assessed, limit, marks) {
+  const impact = gradeImpactFor(assessed, marks);
   if (impact === null) return null;
 
   return {
@@ -32251,7 +32355,7 @@ function _gradeHTML(courses) {
     .map((task) => ({ task, assessment: _tasks.assessments.get(task.id) }))
     .filter((e) => e.assessment !== undefined);
   if (assessed.length === 0) return '';
-  const view = gradeImpactView(assessed);
+  const view = gradeImpactView(assessed, undefined, getActiveCampus().grades.marks);
   if (view === null) return '';
   const label = courses.find((c) => c.value === filter)?.label ?? 'This course';
   const pace = paceText(view);
@@ -33553,7 +33657,7 @@ function applyProjectedLetter(semId, idx, letter) {
   const course = courseAt(semId, idx);
   if (!course || !letter) return;
   course.grade = letter;
-  course.gradePoint = GRADES[letter] ?? '';
+  course.gradePoint = activeGradePoint(letter) ?? '';
   saveState();
   window._shohoj_renderAndRecalc();
 }
@@ -33567,7 +33671,7 @@ function markPct(n) {
 /** Mirrors CourseMarksPanel.tsx. */
 function marksPanelHtml(sem, c, i) {
   const rows = marksOf(c).length ? marksOf(c) : [blankMarkComponent()];
-  const r = computeCourseMarks(rows);
+  const r = computeCourseMarks(rows, getActiveCampus().grades.marks);
   const d = `data-sem-id="${sem.id}" data-idx="${i}"`;
   const name = (c.name || '').trim();
 
@@ -34158,7 +34262,7 @@ function renderSemesters() {
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
-                value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')))}"
+                value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && activeGradePoint(c.grade) != null ? activeGradePoint(c.grade) : '')))}"
                 data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
                 style="text-align:center;" />`
           }
@@ -34934,12 +35038,15 @@ function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, target)
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
       const isWithdrawal = c.grade === 'W';
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       // W is the one null-grade-point row that belongs here: a course still
       // owed, not a settled outcome like P or I (#499).
       if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (!isWithdrawal && gp >= 3.0) return; // B and above — no improvement mechanism available
+      // Anything the campus won't let you repeat has no improvement mechanism:
+      // BRACU stops strictly below 3.0, NSU includes the B. Mirrors
+      // computeRetakeCandidates in src/features/calculator/simulator.ts.
+      if (!isWithdrawal && !isRepeatableGrade(gp, getActiveCampus().repeat)) return;
       if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
@@ -35173,7 +35280,9 @@ function persistAcademicProfile(data) {
   try {
     if (typeof localStorage === 'undefined') return;
     const semesters = Array.isArray(data.semesters) ? data.semesters : [];
-    const totals = calculateCgpaTotals(semesters, { includeRunning: false });
+    // Scale and retake policy only — no start term, same as before tenancy.
+    const { grades: scale, retake } = getActiveCampus();
+    const totals = calculateCgpaTotals(semesters, { includeRunning: false, scale, retake });
     const snapshot = {
       sid:           data.studentId   || null,
       name:          data.studentName || null,
@@ -35624,7 +35733,7 @@ function exportPDF() {
   state.semesters.forEach(sem => {
     if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
       totalAttempted += c.credits;
       if (!rk.has(sem.id + '-' + i)) {
@@ -35772,7 +35881,7 @@ function exportPDF() {
       setTxt(TEXT2); doc.setFont('helvetica', 'normal');
       doc.text(c.credits !== undefined && c.credits !== null ? c.credits.toString() : '--', COL.cr, y + 4.5, { align: 'right' });
 
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       const gpDisplay = c.grade === 'F(NT)' ? '0.00' : (gp !== undefined && gp !== null ? gp.toFixed(2) : '--');
       doc.text(gpDisplay, COL.gp, y + 4.5, { align: 'right' });
 
@@ -35801,7 +35910,7 @@ function exportPDF() {
       }, 0);
       const semFailed = sem.courses.reduce((s, c) => {
         if (!c.name.trim() || !c.credits) return s;
-        const gp = GRADES[c.grade];
+        const gp = activeGradePoint(c.grade);
         if (gp === undefined || gp === null) return s;
         if (gp === 0) return s + c.credits;
         return s;
@@ -35858,7 +35967,12 @@ const pg = {
 // ── Grade list (exclude special grades) ─────────────────────────────────────
 // W is excluded alongside P/I/F(NT): the playground asks "what if this grade
 // were X", and a withdrawal is not a grade you can change a course *to*.
-const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
+// A function, not a constant: the letters are the active campus's (no A+ or D-
+// at NSU), and the campus can change after this module loads.
+function playgroundGradeList() {
+  return Object.keys(activeGradeScale().points)
+    .filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function gradeColor(g) {
@@ -35913,7 +36027,7 @@ function getGradedCourses() {
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.grade) return;
       if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)' || c.grade === 'W') return;
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined) return;
       if (rk.has(`${sem.id}-${i}`)) return;
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
@@ -35944,7 +36058,7 @@ function getCurrentTotals() {
   state.semesters.forEach(sem => {
     if (sem.summary) return;
     sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || gp === null || !c.credits) return;
       if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
       if (rk.has(`${sem.id}-${i}`)) return;
@@ -36007,7 +36121,7 @@ function renderGradeChanger(courses, totals) {
   for (const [key, newGrade] of Object.entries(pg.changes)) {
     const c = courses.find(x => x.key === key);
     if (!c) continue;
-    const newGp = GRADES[newGrade];
+    const newGp = activeGradePoint(newGrade);
     if (newGp === undefined) continue;
     const delta = c.credits * (newGp - c.gp);
     newPts += delta;
@@ -36065,7 +36179,7 @@ function renderGradeChanger(courses, totals) {
 
   // Course picker — show all graded courses not yet changed
   const available = courses.filter(c => !pg.changes[c.key]);
-  const gradeOpts = GRADE_LIST.map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
+  const gradeOpts = playgroundGradeList().map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
   const courseOpts = available.map(c =>
     `<option value="${escAttr(c.key)}">${escHtml(_pgCourseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
@@ -36134,8 +36248,8 @@ function computeSolverResult(courses, totals) {
 
   const neededGp = (target * totals.cr - totals.pts + c.credits * c.gp) / c.credits;
 
-  const sortedGrades = GRADE_LIST
-    .map(g => ({ grade: g, gp: GRADES[g] }))
+  const sortedGrades = playgroundGradeList()
+    .map(g => ({ grade: g, gp: activeGradePoint(g) }))
     .filter(x => x.gp !== null && x.gp !== undefined)
     .sort((a, b) => a.gp - b.gp);
 
@@ -39093,6 +39207,8 @@ function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
+// Every grade point on screen was computed on the previous campus's scale.
+window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
 // Bridge for the React CGPA island (Vite build): hands the shared state +
@@ -39821,20 +39937,14 @@ window._shohoj_startDemo = startDemoMode;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
-  const gpaOptions = {
-    startSeason: getStartSeason(),
-    startYear: getStartYear(),
-  };
-  const projectedTotals = calculateCgpaTotals(state.semesters, {
-    ...gpaOptions,
+  const projectedTotals = calculateCgpaTotals(state.semesters, activeCgpaOptions({
     includeRunning: true,
     includeSummary: true,
-  });
-  const completedTotals = calculateCgpaTotals(state.semesters, {
-    ...gpaOptions,
+  }));
+  const completedTotals = calculateCgpaTotals(state.semesters, activeCgpaOptions({
     includeRunning: false,
     includeSummary: true,
-  });
+  }));
   const totalPts = projectedTotals.points;
   const totalAttempted = projectedTotals.attemptedCredits;
   const totalEarned = projectedTotals.earnedCredits;
@@ -39897,7 +40007,7 @@ function recalc() {
 
   const standingBox = document.getElementById('standingBox');
   const cgpaNum = cgpaCompleted;
-  const semCount = state.semesters.filter(s => !s.summary && s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
+  const semCount = state.semesters.filter(s => !s.summary && s.courses.some(c => c.grade && activeGradePoint(c.grade) !== undefined && activeGradePoint(c.grade) !== null && c.credits > 0)).length;
 
   if (cgpaNum !== null) {
     standingBox.style.display = '';
@@ -40096,6 +40206,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Assistant launcher — mounts itself only once auth resolves and the Worker
   // reports the assistant configured, so this call is safe before either.
   initAssistantFab();
+
+  // Which campus's grading rules apply. Before the portal, so a warm session
+  // unlocks the calculator already on its own scale.
+  initActiveCampus();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
