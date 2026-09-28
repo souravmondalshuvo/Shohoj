@@ -171,6 +171,38 @@ nav.lg-surface .shell-auth-btn svg { flex-shrink: 0; opacity: 0.7; }
 /* The signed-in email chip is not part of legacy's pill; keep it legible but
    let the pill own the visual weight. */
 nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
+/* Admin "view as" campus picker (#798). Admin-only, so it takes the admin
+   link's amber pill (style.css #adminNavBtn) — it reads as part of the admin
+   toolkit, not as a student control. Ink from --ink-amber so light theme keeps
+   contrast; the native arrow is kept for an obvious affordance.
+   Selectors carry a parent on purpose: style.css restyles every
+   `[data-theme="dark"] select` (0,1,1), which would otherwise beat a lone
+   class and paint this as a form field. */
+nav.lg-surface select.admin-campus-switcher,
+.admin-campus-bar select.admin-campus-switcher {
+  width: auto; height: 36px; padding: 0 10px 0 12px; flex-shrink: 0;
+  border-radius: 100px; border: 1px solid rgba(245,185,66,0.45);
+  background: rgba(245,185,66,0.14); color: var(--ink-amber);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+nav.lg-surface select.admin-campus-switcher:hover,
+.admin-campus-bar select.admin-campus-switcher:hover { background: rgba(245,185,66,0.22); }
+nav.lg-surface select.admin-campus-switcher:focus-visible,
+.admin-campus-bar select.admin-campus-switcher:focus-visible { outline: 2px solid var(--ink-amber); outline-offset: 2px; }
+.admin-campus-switcher option { color: initial; background: initial; }
+/* Phones get the row instead of the pill: at 375px the nav is already full
+   with Admin, the email, Sign out and the theme toggle. See
+   AdminCampusSwitcher.tsx. */
+.admin-campus-bar { display: none; }
+@media (max-width: 480px) {
+  nav.lg-surface select.admin-campus-switcher { display: none; }
+  .admin-campus-bar {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--ink-amber);
+  }
+  .admin-campus-bar select.admin-campus-switcher { height: 32px; font-size: 12px; }
+}
 .shell-main:focus { outline: none; }
 /* No padding or max-width: the width now comes from the shared `section` rule
    (style.css:366, 900px) via the surface RootLayout wraps routes in, exactly as
