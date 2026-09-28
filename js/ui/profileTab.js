@@ -11,6 +11,7 @@
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { gpaCoreCalcSemesterGpa } from '../core/gpa-core.js';
+import { activeGradeScale } from '../core/activeCampus.js';
 
 // Read identity through the global installed by review-service.js. Kept behind
 // typeof guards so the module is import-safe in a bare Node test (no window).
@@ -292,7 +293,7 @@ export function pfSemesterGpaSeries(semesters) {
   const list = Array.isArray(semesters) ? semesters : [];
   return list.map(s => {
     const courses = Array.isArray(s.courses) ? s.courses : [];
-    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }) : null;
+    const gpa = courses.length > 0 ? gpaCoreCalcSemesterGpa({ courses }, activeGradeScale()) : null;
     return {
       name: String(s.name || ''),
       courseCount: courses.length,
