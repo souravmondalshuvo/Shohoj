@@ -1,4 +1,4 @@
-import { GRADES } from '../core/grades.js';
+import { activeGradePoint, activeGradeScale } from '../core/activeCampus.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
@@ -25,7 +25,12 @@ const pg = {
 // ── Grade list (exclude special grades) ─────────────────────────────────────
 // W is excluded alongside P/I/F(NT): the playground asks "what if this grade
 // were X", and a withdrawal is not a grade you can change a course *to*.
-const GRADE_LIST = Object.keys(GRADES).filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
+// A function, not a constant: the letters are the active campus's (no A+ or D-
+// at NSU), and the campus can change after this module loads.
+function playgroundGradeList() {
+  return Object.keys(activeGradeScale().points)
+    .filter(g => g !== 'P' && g !== 'I' && g !== 'F(NT)' && g !== 'W');
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function gradeColor(g) {
@@ -80,7 +85,7 @@ function getGradedCourses() {
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.grade) return;
       if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)' || c.grade === 'W') return;
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined) return;
       if (rk.has(`${sem.id}-${i}`)) return;
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
@@ -111,7 +116,7 @@ export function getCurrentTotals() {
   state.semesters.forEach(sem => {
     if (sem.summary) return;
     sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || gp === null || !c.credits) return;
       if (c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return;
       if (rk.has(`${sem.id}-${i}`)) return;
@@ -174,7 +179,7 @@ function renderGradeChanger(courses, totals) {
   for (const [key, newGrade] of Object.entries(pg.changes)) {
     const c = courses.find(x => x.key === key);
     if (!c) continue;
-    const newGp = GRADES[newGrade];
+    const newGp = activeGradePoint(newGrade);
     if (newGp === undefined) continue;
     const delta = c.credits * (newGp - c.gp);
     newPts += delta;
@@ -232,7 +237,7 @@ function renderGradeChanger(courses, totals) {
 
   // Course picker — show all graded courses not yet changed
   const available = courses.filter(c => !pg.changes[c.key]);
-  const gradeOpts = GRADE_LIST.map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
+  const gradeOpts = playgroundGradeList().map(g => `<option value="${escAttr(g)}">${escHtml(g)}</option>`).join('');
   const courseOpts = available.map(c =>
     `<option value="${escAttr(c.key)}">${escHtml(_pgCourseLabel(c.name))} (${escHtml(c.grade)}) — ${escHtml(c.sem)}</option>`
   ).join('');
@@ -301,8 +306,8 @@ function computeSolverResult(courses, totals) {
 
   const neededGp = (target * totals.cr - totals.pts + c.credits * c.gp) / c.credits;
 
-  const sortedGrades = GRADE_LIST
-    .map(g => ({ grade: g, gp: GRADES[g] }))
+  const sortedGrades = playgroundGradeList()
+    .map(g => ({ grade: g, gp: activeGradePoint(g) }))
     .filter(x => x.gp !== null && x.gp !== undefined)
     .sort((a, b) => a.gp - b.gp);
 
