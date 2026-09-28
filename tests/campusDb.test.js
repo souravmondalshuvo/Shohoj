@@ -39,6 +39,12 @@ try {
     assert.equal(one(`SELECT COUNT(*) AS n FROM meetings WHERE ${where}`).n, expected, `${key} meetings`);
   }
   assert.ok(one("SELECT COUNT(*) AS n FROM sections WHERE campus='nsu' AND days IS NULL").n > 0, 'unscheduled sections are kept');
+  // A snapshot term carries seats left, not a section size.
+  const fall = one("SELECT COUNT(capacity) AS sized, COUNT(seats_available) AS counted, COUNT(*) AS n FROM sections WHERE campus='nsu' AND term='263' AND term_system='trimester'");
+  assert.equal(fall.sized, 0);
+  assert.equal(fall.counted, fall.n);
+  // Catalogue stubs keep their null title rather than inventing one.
+  assert.ok(one("SELECT COUNT(*) AS n FROM courses WHERE campus='nsu' AND title IS NULL").n > 0);
   const corrected = one("SELECT \"end\", note FROM sections WHERE campus='nsu' AND term='253' AND course='ARC273' AND section=2");
   assert.equal(corrected.end, '13:40');
   assert.match(corrected.note, /Printed as/, 'a corrected value says what was printed');
