@@ -251,6 +251,19 @@ the only public source of which initials teach which course.
   1. **Student paste** of the rds4 page, as CONNECT paste works for BRACU.
   2. Ask NSU IT for an official feed or permission.
   3. A static per-term snapshot — timetables and free rooms work, **live seat counts don't**.
+     **Done for Fall 2026:** `sections/263-trimester.json`, 3,787 sections from RDS4+'s
+     copy of rds4 (23 Sep 2026) [3rd-party].
+- **Third-party copies of rds4** (checked 28 Sep 2026) [3rd-party]:
+  - [RDS4+](https://github.com/Aminul-Islam7/rds4plus) (MIT) commits the table as
+    `data/response.json`. It got past the challenge with a headless browser, later a
+    home-PC daemon, and **paused its sync on 23 Sep 2026** when advising closed.
+  - [nsuer.pro](https://nsuer.pro/) serves the page verbatim at `/api/fetch-courses`
+    (CORS open, Fall 2026, 3,835 sections). It is an undocumented route of someone
+    else's site with no terms, so using it needs the owner's permission. A 28 Sep copy
+    already differed from RDS4+'s in 453 sections (99 added, 78 gone, 169 faculty
+    back to TBA, 45 faculty swapped, 67 rooms moved; no time changed).
+  - Both carry the same columns: `Course | Section | Faculty | Time | Room | Seats Available`.
+    No title, credits, capacity or department; faculty initials come uppercase.
 - **Format** (from the PDF, same columns rds4 shows):
   `Course Code | Title | Credit | Section | Faculty | Time | Room | Seat Capacity`
   → `sections/252-trimester.json` (Summer 2025, 2,845 undergraduate sections),
