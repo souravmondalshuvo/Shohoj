@@ -1,4 +1,4 @@
-import { GRADES } from '../core/grades.js';
+import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
@@ -24,7 +24,9 @@ function persistAcademicProfile(data) {
   try {
     if (typeof localStorage === 'undefined') return;
     const semesters = Array.isArray(data.semesters) ? data.semesters : [];
-    const totals = calculateCgpaTotals(semesters, { includeRunning: false });
+    // Scale and retake policy only — no start term, same as before tenancy.
+    const { grades: scale, retake } = getActiveCampus();
+    const totals = calculateCgpaTotals(semesters, { includeRunning: false, scale, retake });
     const snapshot = {
       sid:           data.studentId   || null,
       name:          data.studentName || null,
@@ -475,7 +477,7 @@ export function exportPDF() {
   state.semesters.forEach(sem => {
     if (sem.running || sem.summary) return;
     sem.courses.forEach((c, i) => {
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || !c.credits || c.grade === 'P' || c.grade === 'I') return;
       totalAttempted += c.credits;
       if (!rk.has(sem.id + '-' + i)) {
@@ -623,7 +625,7 @@ export function exportPDF() {
       setTxt(TEXT2); doc.setFont('helvetica', 'normal');
       doc.text(c.credits !== undefined && c.credits !== null ? c.credits.toString() : '--', COL.cr, y + 4.5, { align: 'right' });
 
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       const gpDisplay = c.grade === 'F(NT)' ? '0.00' : (gp !== undefined && gp !== null ? gp.toFixed(2) : '--');
       doc.text(gpDisplay, COL.gp, y + 4.5, { align: 'right' });
 
@@ -652,7 +654,7 @@ export function exportPDF() {
       }, 0);
       const semFailed = sem.courses.reduce((s, c) => {
         if (!c.name.trim() || !c.credits) return s;
-        const gp = GRADES[c.grade];
+        const gp = activeGradePoint(c.grade);
         if (gp === undefined || gp === null) return s;
         if (gp === 0) return s + c.credits;
         return s;
