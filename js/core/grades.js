@@ -18,14 +18,16 @@ export const POINTS_TO_GRADE = [
   [0.00, 'F'],
 ];
 
-export function detectGrade(val) {
+// `pointsToGrade` mirrors src/core/grades.ts: the caller passes its campus's
+// table (getActiveCampus().grades.pointsToGrade); BRACU's is the default.
+export function detectGrade(val, pointsToGrade = POINTS_TO_GRADE) {
   const n = parseFloat(val);
   if (isNaN(n)) return '';
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     if (Math.abs(n - pt) < 0.01) return letter;
   }
   let closest = null, minDiff = Infinity;
-  for (const [pt, letter] of POINTS_TO_GRADE) {
+  for (const [pt, letter] of pointsToGrade) {
     const diff = Math.abs(n - pt);
     if (diff < minDiff) { minDiff = diff; closest = letter; }
   }
