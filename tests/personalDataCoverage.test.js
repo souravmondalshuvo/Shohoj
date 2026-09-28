@@ -47,6 +47,9 @@ const NOT_PERSONAL = {
     'cache of an archived public semester feed, keyed by session id — the same '
     + 'bytes for every student, exactly like shohoj_connect_feed_v1',
   shohoj_pdfjs_preview: 'developer flag for the pdf.js preview path',
+  shohoj_admin_campus:
+    'which campus an admin is viewing the shell as (#798) — a view preference, '
+    + 'and one useUniversity ignores for anyone without the admin claim',
   shohoj_assistant:
     'IndexedDB database, not a storage key — the transcript is cleared through '
     + 'clearStoredHistory() on sign-out, since removeItem cannot reach it',
