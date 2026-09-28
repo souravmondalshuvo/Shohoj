@@ -48,6 +48,7 @@ import {
 } from '../core/tasksApi.js';
 import { PRIORITY_BAND_LABELS, priorityBand, priorityReasons } from '../core/priorityExplainer.js';
 import { gradeImpactView, paceText } from '../core/gradeImpactView.js';
+import { getActiveCampus } from '../core/activeCampus.js';
 import { detectFromText } from '../core/announcementDetector.js';
 import { confidenceNote, confirmLabel, creatable, draftToInput, patchDraft, toDrafts } from '../core/proposalDraft.js';
 import { createAiDetector, shouldOfferAi } from '../core/aiDetector.js';
@@ -510,7 +511,7 @@ function _gradeHTML(courses) {
     .map((task) => ({ task, assessment: _tasks.assessments.get(task.id) }))
     .filter((e) => e.assessment !== undefined);
   if (assessed.length === 0) return '';
-  const view = gradeImpactView(assessed);
+  const view = gradeImpactView(assessed, undefined, getActiveCampus().grades.marks);
   if (view === null) return '';
   const label = courses.find((c) => c.value === filter)?.label ?? 'This course';
   const pace = paceText(view);
