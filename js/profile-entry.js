@@ -14,6 +14,7 @@
 // module-level repaint listener inside profileTab.js stays a no-op on this page.
 
 import { renderProfileTab } from './ui/profileTab.js';
+import { initActiveCampus } from './core/activeCampus.js';
 import { initCursor } from './animations/cursor.js';
 import {
   renderSemesterBriefing,
@@ -161,4 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initCursor();
   _pentry_route();
 });
+// Before the route listener: listeners run in registration order, and the
+// academic card must be scored on the campus this auth change resolves to.
+initActiveCampus();
 window.addEventListener('shohoj:auth-changed', _pentry_route);
+window.addEventListener('shohoj:campus-changed', _pentry_route);
