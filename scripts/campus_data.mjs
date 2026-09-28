@@ -237,8 +237,11 @@ const coursesSchema = citedRecords(
   z
     .object({
       code: courseCode,
-      title: z.string().min(1),
-      credits,
+      // Null for a stub: a code a term file offers whose title and credits no
+      // source we have publishes (RDS lists codes only). A stub must cite the
+      // source it came from.
+      title: z.string().min(1).nullable(),
+      credits: credits.nullable(),
       department: z
         .string()
         .regex(/^[A-Z]{2,4}$/)
@@ -248,7 +251,10 @@ const coursesSchema = citedRecords(
       group: z.string().min(1).optional(),
       source: sourceId.optional(),
     })
-    .strict(),
+    .strict()
+    .refine((c) => c.title !== null || c.source !== undefined, {
+      message: 'a course with no title must cite its own source',
+    }),
 );
 
 // Academic departments and which course subjects each one owns.
@@ -505,7 +511,11 @@ const sectionsSchema = z
             start: time.nullable(),
             end: time.nullable(),
             room: z.string().min(1).nullable(),
-            capacity: z.number().int().min(0),
+            // The section size. Null when the source doesn't publish it: RDS
+            // shows only the seats left, recorded as seatsAvailable.
+            capacity: z.number().int().min(0).nullable(),
+            // Seats left when the source was captured — a snapshot, never live.
+            seatsAvailable: z.number().int().min(0).optional(),
             department: z
               .string()
               .regex(/^[A-Z]{2,4}$/)
@@ -974,6 +984,8 @@ function checkCampus(campus, problems) {
       if (keys.has(key)) err(`${label}: duplicate section`);
       keys.add(key);
       if (!courses.has(s.course)) err(`${label}: course is not in courses.json`);
+      if (s.capacity === null && s.seatsAvailable === undefined)
+        err(`${label}: has neither a capacity nor a seat count`);
       const checkMeetings = (list, where) => {
         for (const mt of list) {
           if (!dayCodes.has(mt.day)) err(`${where}: unknown day code "${mt.day}"`);
