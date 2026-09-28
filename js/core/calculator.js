@@ -1,6 +1,7 @@
 import { detectGrade } from './grades.js';
 import { getStartSeason, getStartYear } from './helpers.js';
 import { state } from './state.js';
+import { getActiveCampus } from './activeCampus.js';
 import {
   gpaCoreCalcSemesterGpa,
   gpaCoreClampGradePoint,
@@ -12,19 +13,37 @@ import {
   gpaCoreUsesBestGradePolicy,
 } from './gpa-core.js';
 
+// Every wrapper below hands gpa-core the active campus's rules (see
+// activeCampus.js). gpa-core defaults each one to BRACU, so the explicit pass
+// is what lets an NSU student be scored on NSU's scale.
+
 export function calcSemGPA(sem) {
-  return gpaCoreCalcSemesterGpa(sem);
+  return gpaCoreCalcSemesterGpa(sem, getActiveCampus().grades);
 }
 
 export function usesBestGradePolicy() {
   return gpaCoreUsesBestGradePolicy({
+    retake: getActiveCampus().retake,
     startSeason: getStartSeason(),
     startYear: getStartYear(),
   });
 }
 
+/** The scale + retake options every calculateCgpaTotals caller should pass. */
+export function activeCgpaOptions(extra) {
+  const campus = getActiveCampus();
+  return {
+    scale: campus.grades,
+    retake: campus.retake,
+    startSeason: getStartSeason(),
+    startYear: getStartYear(),
+    ...(extra || {}),
+  };
+}
+
 export function getRetakenKeys(semList, opts) {
-  const options = { ...(opts || {}) };
+  const campus = getActiveCampus();
+  const options = { scale: campus.grades, retake: campus.retake, ...(opts || {}) };
   if (typeof options.bestGrade !== 'boolean') {
     options.startSeason = getStartSeason();
     options.startYear = getStartYear();
@@ -33,15 +52,17 @@ export function getRetakenKeys(semList, opts) {
 }
 
 export function getSemCreditWarning(sem) {
-  return gpaCoreGetSemesterCreditWarning(sem);
+  return gpaCoreGetSemesterCreditWarning(sem, getActiveCampus());
 }
 
 export function isRepeatEligible(grade) {
-  return gpaCoreIsRepeatEligible(grade);
+  const campus = getActiveCampus();
+  return gpaCoreIsRepeatEligible(grade, campus.grades, campus.repeat);
 }
 
 export function getImprovementStrategy(grade) {
-  return gpaCoreGetImprovementStrategy(grade);
+  const campus = getActiveCampus();
+  return gpaCoreGetImprovementStrategy(grade, campus.grades, campus.repeat);
 }
 
 export function normalizeGradePoint(raw, mode) {
@@ -67,13 +88,13 @@ export function autoDetectGrade(semId, cIdx, val, inputEl) {
   }
 
   // Clamp to 0.0–4.0 range
-  const clamped = gpaCoreClampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val, getActiveCampus().grades);
   if (clamped !== val) {
     inputEl.value = clamped;
     val = clamped;
   }
 
-  const letter = detectGrade(val);
+  const letter = detectGrade(val, getActiveCampus().grades.pointsToGrade);
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem) return;
   sem.courses[cIdx].grade = letter;
@@ -104,14 +125,14 @@ export function onGradePointBlur(semId, cIdx, inputEl) {
   let val = original;
   const normalized = normalizeGradePoint(val, 'blur');
   if (normalized !== val) val = normalized;
-  const clamped = gpaCoreClampGradePoint(val);
+  const clamped = gpaCoreClampGradePoint(val, getActiveCampus().grades);
   if (clamped !== val) val = clamped;
   if (val !== original) {
     inputEl.value = val;
     const sem = state.semesters.find(s => s.id === semId);
     if (sem) {
       sem.courses[cIdx].gradePoint = val;
-      const letter = detectGrade(val);
+      const letter = detectGrade(val, getActiveCampus().grades.pointsToGrade);
       if (letter) sem.courses[cIdx].grade = letter;
       window._shohoj_renderAndRecalc();
     }
