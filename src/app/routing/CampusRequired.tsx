@@ -12,8 +12,27 @@
 // Kept in one place because the alternative is each route inventing its own
 // copy for the same condition, and the temptation at every one of those sites
 // is to skip the notice and reach for `?? UNIVERSITIES.bracu` instead.
+//
+// An admin has a way out a student does not: the campus switcher in the nav
+// (#798). Signing out and back in cannot help an admin whose address belongs to
+// no campus, so they are pointed at the switcher instead.
+
+import { useAuth } from '../providers/AuthProvider';
 
 export function CampusRequired() {
+  const { isAdmin } = useAuth();
+  if (isAdmin) {
+    return (
+      <section className="shell-page" role="alert" data-testid="campus-required">
+        <h1>Choose a campus to view</h1>
+        <p className="shell-muted">
+          This screen works from a university&rsquo;s own grading rules, and your admin account
+          isn&rsquo;t tied to one. Pick a campus from the switcher at the top of the page to see
+          Shohoj the way its students do.
+        </p>
+      </section>
+    );
+  }
   return (
     <section className="shell-page" role="alert" data-testid="campus-required">
       <h1>We don&rsquo;t know your campus</h1>
