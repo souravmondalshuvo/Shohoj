@@ -35,6 +35,7 @@ import * as places from '../src/core/campusPlaces.ts';
 import { CAMPUS_LAT, CAMPUS_LNG, CAMPUS_RADIUS_M } from '../src/core/campusRooms.ts';
 import { DEPARTMENT_LABELS } from '../src/core/transcript.ts';
 import { UNIVERSITIES } from '../src/core/university.ts';
+import { UNIVERSITIES as LEGACY_UNIVERSITIES } from '../js/core/university.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -122,27 +123,33 @@ for (const band of p.meterBands.records) {
   if (band.minCgpa > 0) assert.ok(mainJs.includes(`cgpaCompleted >= ${band.minCgpa}`), `main.js meter threshold ${band.minCgpa}`);
 }
 
-// ── The BRACU profile in the registry ───────────────────────────────────────
-const registry = UNIVERSITIES.bracu;
-assert.equal(p.name, registry.name);
-assert.equal(p.shortName, registry.shortName);
-assert.deepEqual(p.identity.emailDomains, plain(registry.emailDomains));
-assert.deepEqual(grades, plain(registry.grades.points), 'registry grade points');
-assert.deepEqual(marks, plain(registry.grades.marks), 'registry mark cutoffs');
-assert.equal(p.retake.counts, registry.retake.kind);
-assert.deepEqual(p.retake.cutoff, plain(registry.retake.cutoff));
-assert.equal(p.retake.maxRetakes, registry.maxRetakes ?? null);
-// "Repeatable at or below B-" must pick exactly the letters the registry's
-// "strictly below 3.0" rule does.
-const eligible = (points) => (registry.repeat.inclusive ? points <= registry.repeat.threshold : points < registry.repeat.threshold);
-const ceiling = p.grading.scale.find((g) => g.letter === p.retake.eligibleAtOrBelow).points;
-for (const g of p.grading.scale) assert.equal(g.points <= ceiling, eligible(g.points), `repeat rule for ${g.letter}`);
-assert.deepEqual(
-  { min: p.creditLoad.min, max: p.creditLoad.max, warnAbove: p.creditLoad.warnAbove },
-  plain(registry.creditLoad),
-  'credit load',
-);
-assert.deepEqual(p.features.records, plain(registry.features), 'features');
+// ── The BRACU profile, in both registries ───────────────────────────────────
+// src/core/university.ts (the shell) and its legacy twin js/core/university.js
+// each hold a copy; the database must match both.
+for (const [where, registry] of [
+  ['src/core/university.ts', UNIVERSITIES.bracu],
+  ['js/core/university.js', LEGACY_UNIVERSITIES.bracu],
+]) {
+  assert.equal(p.name, registry.name, `${where} name`);
+  assert.equal(p.shortName, registry.shortName, `${where} shortName`);
+  assert.deepEqual(p.identity.emailDomains, plain(registry.emailDomains), `${where} email domains`);
+  assert.deepEqual(grades, plain(registry.grades.points), `${where} grade points`);
+  assert.deepEqual(marks, plain(registry.grades.marks), `${where} mark cutoffs`);
+  assert.equal(p.retake.counts, registry.retake.kind, `${where} retake kind`);
+  assert.deepEqual(p.retake.cutoff, plain(registry.retake.cutoff), `${where} retake cutoff`);
+  assert.equal(p.retake.maxRetakes, registry.maxRetakes ?? null, `${where} max retakes`);
+  // "Repeatable at or below B-" must pick exactly the letters the registry's
+  // "strictly below 3.0" rule does.
+  const eligible = (points) => (registry.repeat.inclusive ? points <= registry.repeat.threshold : points < registry.repeat.threshold);
+  const ceiling = p.grading.scale.find((g) => g.letter === p.retake.eligibleAtOrBelow).points;
+  for (const g of p.grading.scale) assert.equal(g.points <= ceiling, eligible(g.points), `${where} repeat rule for ${g.letter}`);
+  assert.deepEqual(
+    { min: p.creditLoad.min, max: p.creditLoad.max, warnAbove: p.creditLoad.warnAbove },
+    plain(registry.creditLoad),
+    `${where} credit load`,
+  );
+  assert.deepEqual(p.features.records, plain(registry.features), `${where} features`);
+}
 
 // ── Terms, days, location, rooms ────────────────────────────────────────────
 assert.deepEqual(
