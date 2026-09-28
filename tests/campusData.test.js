@@ -32,6 +32,15 @@ assert.ok(nsu.courses.records.length >= 1000, 'the catalogue spans every loaded 
 assert.ok(nsu.sections['252-trimester'].records.length >= 2800, 'the Summer 2025 sections are loaded');
 assert.ok(nsu.sections['253-trimester'].records.length >= 3200, 'the Fall 2025 sections are loaded');
 assert.ok(nsu.sections['252-bisemester'], 'the bi-semester sections are loaded');
+assert.ok(nsu.sections['263-trimester'].records.length >= 3700, 'the Fall 2026 snapshot is loaded');
+assert.ok(
+  nsu.sections['263-trimester'].records.every((s) => s.capacity === null && Number.isInteger(s.seatsAvailable)),
+  'RDS gives seats left, never a section size',
+);
+assert.ok(
+  nsu.courses.records.filter((c) => c.title === null).every((c) => c.source === 'rds4plus-263'),
+  'every untitled catalogue stub says it came from the RDS snapshot',
+);
 for (const key of ['261-trimester', '262-trimester', '263-trimester', '261-bisemester', '262-bisemester']) {
   assert.ok(nsu.calendars[key], `the ${key} calendar is loaded`);
 }
@@ -136,6 +145,15 @@ expectError('section that ends before it starts', (dir) => editJson(path.join(di
 expectError('a half-scheduled section', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
   d.records[0].days = null;
 }), /days, start and end must be all set or all null/);
+
+expectError('section with neither a capacity nor a seat count', (dir) => editJson(path.join(dir, ...SUMMER), (d) => {
+  d.records[0].capacity = null;
+}), /has neither a capacity nor a seat count/);
+
+expectError('an untitled course that cites no source of its own', (dir) => editJson(path.join(dir, 'courses.json'), (d) => {
+  d.records[0].title = null;
+  delete d.records[0].source;
+}), /a course with no title must cite its own source/);
 
 expectError('term file named for the wrong term', (dir) => {
   fs.renameSync(path.join(dir, ...SUMMER), path.join(dir, 'sections', '251-trimester.json'));
