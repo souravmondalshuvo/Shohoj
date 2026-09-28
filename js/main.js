@@ -1,5 +1,4 @@
 // ── IMPORTS ──────────────────────────────────────────────────────────────────
-import { GRADES, detectGrade } from './core/grades.js';
 import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
 import {
@@ -11,9 +10,10 @@ import {
 import { registerAction } from './core/dispatch.js'; // also installs the delegated listeners
 import {
   calcSemGPA, autoDetectGrade,
-  onPFChange, getSemCreditWarning, onGradePointBlur
+  onPFChange, getSemCreditWarning, onGradePointBlur, activeCgpaOptions
 } from './core/calculator.js';
 import { calculateCgpaTotals } from './core/gpa-core.js';
+import { activeGradePoint, initActiveCampus } from './core/activeCampus.js';
 import { MILESTONE_TIERS, standingTierFor } from './core/milestones.js';
 
 // Thresholds and labels come from js/core/milestones.js so the standing box and
@@ -104,6 +104,8 @@ function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
+// Every grade point on screen was computed on the previous campus's scale.
+window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
 // Bridge for the React CGPA island (Vite build): hands the shared state +
@@ -832,20 +834,14 @@ window._shohoj_startDemo = startDemoMode;
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
 function recalc() {
-  const gpaOptions = {
-    startSeason: getStartSeason(),
-    startYear: getStartYear(),
-  };
-  const projectedTotals = calculateCgpaTotals(state.semesters, {
-    ...gpaOptions,
+  const projectedTotals = calculateCgpaTotals(state.semesters, activeCgpaOptions({
     includeRunning: true,
     includeSummary: true,
-  });
-  const completedTotals = calculateCgpaTotals(state.semesters, {
-    ...gpaOptions,
+  }));
+  const completedTotals = calculateCgpaTotals(state.semesters, activeCgpaOptions({
     includeRunning: false,
     includeSummary: true,
-  });
+  }));
   const totalPts = projectedTotals.points;
   const totalAttempted = projectedTotals.attemptedCredits;
   const totalEarned = projectedTotals.earnedCredits;
@@ -908,7 +904,7 @@ function recalc() {
 
   const standingBox = document.getElementById('standingBox');
   const cgpaNum = cgpaCompleted;
-  const semCount = state.semesters.filter(s => !s.summary && s.courses.some(c => c.grade && GRADES[c.grade] !== undefined && GRADES[c.grade] !== null && c.credits > 0)).length;
+  const semCount = state.semesters.filter(s => !s.summary && s.courses.some(c => c.grade && activeGradePoint(c.grade) !== undefined && activeGradePoint(c.grade) !== null && c.credits > 0)).length;
 
   if (cgpaNum !== null) {
     standingBox.style.display = '';
@@ -1107,6 +1103,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Assistant launcher — mounts itself only once auth resolves and the Worker
   // reports the assistant configured, so this call is safe before either.
   initAssistantFab();
+
+  // Which campus's grading rules apply. Before the portal, so a warm session
+  // unlocks the calculator already on its own scale.
+  initActiveCampus();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
