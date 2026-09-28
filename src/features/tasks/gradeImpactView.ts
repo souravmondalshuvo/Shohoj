@@ -19,6 +19,7 @@
 
 import type { CourseMarks } from '../calculator/courseMarks.ts';
 import type { GradeLetter } from '../../core/grades.ts';
+import type { MarkTier } from '../../core/university.ts';
 import { type AssessedTask, gradeImpactFor } from './gradeImpact.ts';
 
 /** How a target reads on screen. */
@@ -107,12 +108,16 @@ export interface GradeImpactView {
  * The floor line is the one most worth having and the least likely to be
  * worked out under pressure: "even with zero on everything left, this is still
  * a D-" is the sentence that stops a student writing a course off.
+ *
+ * `marks` is the campus's mark → letter table, passed straight to
+ * gradeImpactFor; omitted, it is BRACU's.
  */
 export function gradeImpactView(
   assessed: readonly AssessedTask[],
   limit?: number,
+  marks?: readonly MarkTier[],
 ): GradeImpactView | null {
-  const impact = gradeImpactFor(assessed);
+  const impact = gradeImpactFor(assessed, marks);
   if (impact === null) return null;
 
   return {
