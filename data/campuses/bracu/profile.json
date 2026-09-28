@@ -67,6 +67,31 @@
       {"label":"Recovery mode.","minCgpa":0}
     ]
   },
+  "classDivisions": {
+    "source": "bracu-registry",
+    "note": "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+    "records": []
+  },
+  "honours": {
+    "source": "bracu-registry",
+    "note": "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+    "records": []
+  },
+  "classStanding": {
+    "source": "bracu-registry",
+    "note": "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+    "records": []
+  },
+  "academicRules": {
+    "source": "bracu-registry",
+    "note": "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+    "records": []
+  },
+  "buildings": {
+    "source": "bracu-registry",
+    "note": "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+    "records": []
+  },
   "creditLoad": {
     "source": "bracu-registry",
     "min": 9,
