@@ -258,6 +258,18 @@ const profile = {
       { label: 'Recovery mode.', minCgpa: 0 },
     ],
   },
+  // Required blocks Shohoj's code has never recorded for BRACU: empty, and
+  // saying so, rather than guessed.
+  ...Object.fromEntries(
+    ['classDivisions', 'honours', 'classStanding', 'academicRules', 'buildings'].map((key) => [
+      key,
+      {
+        source: 'bracu-registry',
+        note: "Not recorded anywhere in Shohoj's code for BRACU; to be sourced from the university.",
+        records: [],
+      },
+    ]),
+  ),
   creditLoad: {
     source: 'bracu-registry',
     min: registry.creditLoad.min,
