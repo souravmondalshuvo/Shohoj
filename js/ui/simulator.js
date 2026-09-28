@@ -1,4 +1,5 @@
-import { GRADES } from '../core/grades.js';
+import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
+import { isRepeatableGrade } from '../core/university.js';
 import { state } from '../core/state.js';
 import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
@@ -325,12 +326,15 @@ export function buildRetakeSuggestions(currentCgpa, currentCredits, currentPts, 
     sem.courses.forEach((c, i) => {
       if (!c.name.trim() || !c.credits) return;
       const isWithdrawal = c.grade === 'W';
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       // W is the one null-grade-point row that belongs here: a course still
       // owed, not a settled outcome like P or I (#499).
       if (!isWithdrawal && (gp === undefined || gp === null)) return;
       if (retakenKeys.has(`${sem.id}-${i}`)) return;
-      if (!isWithdrawal && gp >= 3.0) return; // B and above — no improvement mechanism available
+      // Anything the campus won't let you repeat has no improvement mechanism:
+      // BRACU stops strictly below 3.0, NSU includes the B. Mirrors
+      // computeRetakeCandidates in src/features/calculator/simulator.ts.
+      if (!isWithdrawal && !isRepeatableGrade(gp, getActiveCampus().repeat)) return;
       if (isWithdrawal && !stillOwed(c.name)) return;
 
       const semLabel = sem.name.replace(/\s*\(.*\)$/, '');
