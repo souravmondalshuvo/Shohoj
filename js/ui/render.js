@@ -1,4 +1,4 @@
-import { GRADES } from '../core/grades.js';
+import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
@@ -113,7 +113,7 @@ function applyProjectedLetter(semId, idx, letter) {
   const course = courseAt(semId, idx);
   if (!course || !letter) return;
   course.grade = letter;
-  course.gradePoint = GRADES[letter] ?? '';
+  course.gradePoint = activeGradePoint(letter) ?? '';
   saveState();
   window._shohoj_renderAndRecalc();
 }
@@ -127,7 +127,7 @@ function markPct(n) {
 /** Mirrors CourseMarksPanel.tsx. */
 function marksPanelHtml(sem, c, i) {
   const rows = marksOf(c).length ? marksOf(c) : [blankMarkComponent()];
-  const r = computeCourseMarks(rows);
+  const r = computeCourseMarks(rows, getActiveCampus().grades.marks);
   const d = `data-sem-id="${sem.id}" data-idx="${i}"`;
   const name = (c.name || '').trim();
 
@@ -718,7 +718,7 @@ export function renderSemesters() {
                 <option value="F" ${c.grade === 'F' ? 'selected' : ''}>F - Fail</option>
               </select>`
             : `<input type="text" inputmode="decimal" placeholder="0.0 – 4.0"
-                value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && GRADES[c.grade] !== null ? GRADES[c.grade] : '')))}"
+                value="${escAttr(c.grade === 'F(NT)' ? 'NT' : (c.gradePoint !== undefined ? c.gradePoint : (c.grade && activeGradePoint(c.grade) != null ? activeGradePoint(c.grade) : '')))}"
                 data-action="render:autoDetectGrade" data-sem-id="${sem.id}" data-idx="${i}"
                 style="text-align:center;" />`
           }
