@@ -24,6 +24,7 @@
     {"id": "nsu-bus-service", "status": "official", "title": "Student Bus Service registration notice (Fall 2025 service period)", "url": "https://www.northsouth.edu/nsu-announcements/nsu-bus-service.html", "retrieved": "2026-09-27"},
     {"id": "nsu-facts", "status": "official", "title": "Facts About NSU", "url": "https://www.northsouth.edu/about/facts.html", "retrieved": "2026-09-27"},
     {"id": "rds-cgpa-extension", "status": "third-party", "title": "What-if CGPA Planner (MIT-licensed Chrome extension for the RDS grade history page)", "url": "https://github.com/Shadhin-f/what-if-cgpa-planner", "retrieved": "2026-09-27"},
+    {"id": "rds4plus-263", "status": "third-party", "title": "RDS4+ (MIT-licensed advising planner): its copy of RDS's Offered Courses page for Fall 2026, scraped 23 Sep 2026 10:48 UTC, after which its sync was paused", "url": "https://github.com/Aminul-Islam7/rds4plus/blob/main/data/response.json", "retrieved": "2026-09-28"},
     {"id": "calculator-sites", "status": "third-party", "title": "NSU CGPA calculator sites (students.bd, cgpacalculatoronline.net)", "url": "https://students.bd/calculator/nsu-cgpa", "retrieved": "2026-09-27"}
   ]
 }
