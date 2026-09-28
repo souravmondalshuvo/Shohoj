@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 
+import { AdminCampusSwitcher } from '../AdminCampusSwitcher';
 import { AppProviders } from '../AppProviders';
 import { AuthControls } from '../AuthControls';
 import { NotificationViewport } from '../NotificationViewport';
@@ -250,6 +251,8 @@ function GatedMain({ source }: { readonly source: FirebaseAuthSource | null }) {
           behind its own gate for the same reason. */}
       {authed ? (
         <>
+          {/* Phones only — the nav has no room for the admin's campus pill. */}
+          <AdminCampusSwitcher placement="bar" />
           <CalcHeader />
           <ShellTabs />
         </>
@@ -344,6 +347,7 @@ function ShellChrome() {
           </NavLink>
           <TasksNavLink />
           <AdminNavLink />
+          <AdminCampusSwitcher />
           <AuthControls source={firebaseSource} />
           <ThemeToggle />
         </div>
