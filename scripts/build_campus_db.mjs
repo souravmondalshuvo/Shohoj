@@ -92,7 +92,7 @@ CREATE TABLE department_overrides (
   campus TEXT NOT NULL, course TEXT NOT NULL, department TEXT NOT NULL,
   PRIMARY KEY (campus, course));
 CREATE TABLE courses (
-  campus TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL, credits REAL NOT NULL,
+  campus TEXT NOT NULL, code TEXT NOT NULL, title TEXT, credits REAL,
   subject TEXT NOT NULL, level INTEGER NOT NULL, is_lab INTEGER NOT NULL, department TEXT,
   catalogue_group TEXT, position INTEGER NOT NULL, source TEXT NOT NULL,
   PRIMARY KEY (campus, code));
@@ -157,7 +157,7 @@ CREATE TABLE requirement_options (
 CREATE TABLE sections (
   campus TEXT NOT NULL, term TEXT NOT NULL, term_system TEXT NOT NULL, course TEXT NOT NULL,
   section NOT NULL, faculty TEXT, days TEXT, start TEXT, "end" TEXT, room TEXT,
-  capacity INTEGER NOT NULL, seats_taken INTEGER, department TEXT, section_id INTEGER, type TEXT,
+  capacity INTEGER, seats_taken INTEGER, seats_available INTEGER, department TEXT, section_id INTEGER, type TEXT,
   title TEXT, lab_course TEXT, lab_section_id INTEGER, lab_title TEXT, lab_faculty TEXT,
   lab_room TEXT, mid_exam_date TEXT, mid_exam_start TEXT, mid_exam_end TEXT,
   final_exam_date TEXT, final_exam_start TEXT, final_exam_end TEXT, class_start TEXT,
@@ -784,6 +784,7 @@ function campusStatements(c) {
         'room',
         'capacity',
         'seats_taken',
+        'seats_available',
         'department',
         'section_id',
         'type',
@@ -817,6 +818,7 @@ function campusStatements(c) {
         s.room,
         s.capacity,
         s.seatsTaken ?? null,
+        s.seatsAvailable ?? null,
         s.department ?? null,
         s.sectionId ?? null,
         s.type ?? null,
