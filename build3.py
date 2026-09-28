@@ -51,6 +51,8 @@ MAIN_JS_FILES = [
     'js/core/catalog.js',
     # Campus registry (twin of src/core/university.ts); gpa-core reads its rules
     'js/core/university.js',
+    # Which campus the signed-in student is on; every grade call reads its rules
+    'js/core/activeCampus.js',
     'js/core/gpa-core.js',
     'js/core/calculator.js',
     'js/core/faculty.js',
@@ -185,6 +187,8 @@ PROFILE_JS_FILES = [
     # grade table rather than a second copy of the policy.
     'js/core/grades.js',
     'js/core/university.js',
+    # Which campus the signed-in student is on; profileTab scores on its scale
+    'js/core/activeCampus.js',
     'js/core/gpa-core.js',
     'js/ui/profileTab.js',
     # "This semester" briefing: the student's picks joined against the live
