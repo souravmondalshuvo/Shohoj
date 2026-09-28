@@ -18,7 +18,7 @@ data/campuses/<campus>/
   minors.json                  minor programs (core requirements + elective pool)
   faculty.json                 faculty directory
   reviews.json                 seed faculty reviews
-  sections/<term>-<system>.json  one term's sections (course, section, faculty, days, time, room, capacity)
+  sections/<term>-<system>.json  one term's sections (course, section, faculty, days, time, room, capacity or seats left)
   calendar/<term>-<system>.json  one term's academic calendar
   bus.json                     bus routes, stops, times to and from campus, days off
   cafeteria.json               food outlets and opening hours
@@ -83,6 +83,17 @@ publishes — leave it `null` and say why in a `note`. The same goes for lists a
 university doesn't publish (DIU has no class divisions) and for a student email
 domain nobody has confirmed: empty, with a note. The validator rejects an empty
 or null value that has no note.
+
+## Importing a term from RDS
+
+NSU's live offered-course page is behind a Cloudflare challenge, so Shohoj
+never reads it; `scripts/import_rds4_sections.mjs` converts a copy someone else
+made (a JSON array of the table's rows, or the page's HTML) into a term file,
+and adds a catalogue stub (`title` and `credits` null) for each code the
+catalogue lacks. RDS shows seats left, not the section size, so a term imported
+this way has `capacity: null` and a `seatsAvailable` snapshot — never live.
+A TBA time becomes an unscheduled section (days, start, end and room null).
+`sections/263-trimester.json` came from RDS4+'s copy (source `rds4plus-263`).
 
 ## Validating
 
