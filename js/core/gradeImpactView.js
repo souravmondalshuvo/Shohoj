@@ -48,8 +48,9 @@ export function targetLines(impact, limit = 3) {
   });
 }
 
-export function gradeImpactView(assessed, limit) {
-  const impact = gradeImpactFor(assessed);
+// `marks` is the campus's mark → letter table; omitted, it is BRACU's.
+export function gradeImpactView(assessed, limit, marks) {
+  const impact = gradeImpactFor(assessed, marks);
   if (impact === null) return null;
 
   return {
