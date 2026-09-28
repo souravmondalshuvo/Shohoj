@@ -57,7 +57,11 @@ export const TARGETS = [
     file: 'profile.html',
     build: 'python3 build3.py',
     measured: { gzip: 125 },
-    budget: { gzip: 135 },
+    // Raised from 135 for the active-campus switch (#796): the profile page
+    // now bundles js/core/activeCampus.js so its semester-GPA chart scores on
+    // the signed-in student's campus. CI measured 135.2 with it; 139 keeps the
+    // ~2.5% headroom the other budgets hold.
+    budget: { gzip: 139 },
   },
   // Vite islands entry — not deployed today, but it is what Phase 10 tracked.
   {
