@@ -1,4 +1,4 @@
-import { GRADES } from '../core/grades.js';
+import { activeGradePoint } from '../core/activeCampus.js';
 import { DEPARTMENTS } from '../core/departments.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
@@ -94,7 +94,7 @@ export function renderDegreeTracker(totalEarned) {
 
   const gradedSemesters = state.semesters.filter(sem =>
     !sem.running && !sem.summary && sem.courses.some(c =>
-      c.name.trim() && c.grade && c.grade !== 'W' && GRADES[c.grade] !== undefined
+      c.name.trim() && c.grade && c.grade !== 'W' && activeGradePoint(c.grade) !== undefined
     )
   );
 
@@ -126,7 +126,7 @@ export function renderDegreeTracker(totalEarned) {
       if (!c.name.trim() || !c.credits) return sum;
       if (sem.running) return sum + c.credits;
       if (!c.grade || c.grade === 'P' || c.grade === 'I' || c.grade === 'F(NT)') return sum;
-      const gp = GRADES[c.grade];
+      const gp = activeGradePoint(c.grade);
       if (gp === undefined || gp <= 0) return sum;
       return sum + c.credits;
     }, 0);
