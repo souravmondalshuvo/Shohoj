@@ -3,7 +3,8 @@
 // all seeded and user-submitted reviews, grouped by course.
 
 import { fetchRecentReviews, aggregateRatings } from '../core/reviews.js';
-import { COURSE_DB, getCourseDept, getCoursePrefix } from '../core/catalog.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
+import { getCoursePrefix } from '../core/catalog.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
@@ -29,8 +30,8 @@ async function _buildIndex() {
   for (const [code, revs] of byCourse) {
     const agg = aggregateRatings(revs);
     if (!agg) continue;
-    const info = COURSE_DB[code] || { code, name: code, credits: null };
-    const dept  = getCourseDept(code) || getCoursePrefix(code) || '?';
+    const info = getActiveCatalog().courses[code] || { code, name: code, credits: null };
+    const dept  = getActiveCatalog().departmentOf(code) || getCoursePrefix(code) || '?';
     entries.push({
       code,
       name:       info.name || code,
