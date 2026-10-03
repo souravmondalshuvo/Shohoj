@@ -145,19 +145,32 @@ async function _renderDeptList(root, token) {
         </div>
         <div id="_rvt_suggestions" class="rv-tab-suggestions-dropdown" hidden></div>
       </div>
-      <div class="rv-tab-deptgrid">
-        ${DEPT_ORDER.map((code, i) => {
-          const meta = getActiveCatalog().departmentMeta[code];
-          if (!meta) return '';
-          return `
-            <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0" style="--i:${Math.min(i, 24)}">
-              <div class="rv-tab-deptcard-code">${escHtml(meta.displayCode || code)}</div>
-              <div class="rv-tab-deptcard-label">${escHtml(meta.label)}</div>
-            </div>`;
-        }).join('')}
-      </div>
+      <div class="rv-tab-deptgrid" id="_rvt_deptgrid"></div>
     </div>
   `;
+
+  // The department tiles are built as elements, not as markup: their labels
+  // come from the catalogue, and nothing from data belongs in innerHTML.
+  const { departmentMeta } = getActiveCatalog();
+  const grid = root.querySelector('#_rvt_deptgrid');
+  DEPT_ORDER.forEach((code, i) => {
+    const meta = departmentMeta[code];
+    if (!meta) return;
+    const card = document.createElement('div');
+    card.className = 'rv-tab-deptcard';
+    card.dataset.dept = code;
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.style.setProperty('--i', String(Math.min(i, 24)));
+    const codeEl = document.createElement('div');
+    codeEl.className = 'rv-tab-deptcard-code';
+    codeEl.textContent = meta.displayCode || code;
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rv-tab-deptcard-label';
+    labelEl.textContent = meta.label;
+    card.append(codeEl, labelEl);
+    grid.append(card);
+  });
 
   const input   = root.querySelector('#_rvt_q');
   const go      = root.querySelector('#_rvt_go');
