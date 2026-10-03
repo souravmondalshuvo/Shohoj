@@ -94,6 +94,7 @@ import { renderTasksDigest } from './ui/tasksDigest.js';
 import { openFeedbackModal, closeFeedbackModal } from './ui/feedback.js';
 import { initAssistantFab } from './ui/assistantFab.js';
 import { initSignInPortal, unlockForDemo } from './ui/signinPortal.js';
+import { initAdminCampusSwitcher } from './ui/adminCampusSwitcher.js';
 
 import { initReveal }     from './animations/reveal.js';
 import { initCursor }     from './animations/cursor.js';
@@ -1107,6 +1108,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Which campus's grading rules apply. Before the portal, so a warm session
   // unlocks the calculator already on its own scale.
   initActiveCampus();
+  // After initActiveCampus on purpose: both listen for shohoj:auth-changed, and
+  // the switcher has to read the campus the line above has already settled.
+  initAdminCampusSwitcher();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
