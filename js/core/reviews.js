@@ -4,7 +4,7 @@
 // submit and read reviews without knowing about Firebase.
 
 import { normalizeInitials, upsertFacultyProfile } from './faculty.js';
-import { COURSE_DB } from './catalog.js';
+import { findCourse } from './courseLookup.js';
 
 const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 const REVIEW_ID_RE = /^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
@@ -17,7 +17,7 @@ export function normalizeCourseCode(raw) {
 
 export function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 export function isValidReviewId(reviewId) {
@@ -38,7 +38,7 @@ export function validateReview(payload) {
   if (!initials || initials.length < 2) return 'Faculty initials required';
   if (!courseCode) return 'Course code required';
   if (!COURSE_CODE_RE.test(courseCode)) return 'Invalid course code';
-  if (!COURSE_DB[courseCode]) return 'Unknown course code';
+  if (!findCourse(courseCode)) return 'Unknown course code';
   const r = payload.ratings || {};
   for (const key of RATING_KEYS) {
     const v = r[key];
