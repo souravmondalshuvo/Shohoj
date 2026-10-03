@@ -14,9 +14,11 @@ import {
   aggregateByFaculty, aggregateRatings, isKnownCourseCode, buildReviewOverview,
 } from '../core/reviews.js';
 import { normalizeInitials, getFacultyProfile, hasFacultyProfile, upsertFacultyProfile, suggestFaculty, listKnownFaculty } from '../core/faculty.js';
-import { DEPARTMENTS } from '../core/departments.js';
-import { COURSE_DB, PREFIX_DEPT_MAP, DEPT_META, getCourseDept, getCoursePrefix } from '../core/catalog.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
+import { getCoursePrefix } from '../core/catalog.js';
 
+// BRACU's departments, in the order its tiles are shown. A campus whose
+// catalogue has no department table gets no tiles, and browses by search.
 const DEPT_ORDER = ['CSE','EEE','ECE','MPS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GENED'];
 import { escHtml, escAttr } from '../core/helpers.js';
 import { openReviewModal, openReportModal } from './reviews.js';
@@ -145,7 +147,7 @@ async function _renderDeptList(root, token) {
       </div>
       <div class="rv-tab-deptgrid">
         ${DEPT_ORDER.map((code, i) => {
-          const meta = DEPT_META[code];
+          const meta = getActiveCatalog().departmentMeta[code];
           if (!meta) return '';
           return `
             <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0" style="--i:${Math.min(i, 24)}">
@@ -293,10 +295,10 @@ async function _renderDeptList(root, token) {
   });
 }
 
-// Course autocomplete — searches COURSE_DB by code prefix, code contains, name substring
+// Course autocomplete — searches the active catalogue by code prefix, code contains, name substring
 function _suggestCourses(q, limit = 6) {
   const prefix = [], codeHit = [], nameHit = [];
-  for (const [code, info] of Object.entries(COURSE_DB)) {
+  for (const [code, info] of Object.entries(getActiveCatalog().courses)) {
     if (code.startsWith(q))               prefix.push({ code, name: info.name });
     else if (code.includes(q))            codeHit.push({ code, name: info.name });
     else if (info.name.toUpperCase().includes(q)) nameHit.push({ code, name: info.name });
@@ -321,16 +323,16 @@ function _extractCode(name) {
   return m ? m[1] : null;
 }
 
-// All course codes in COURSE_DB that belong to the given department
+// All course codes in the active catalogue that belong to the given department
 function _getDeptCourses(deptCode) {
-  return Object.keys(COURSE_DB)
-    .filter(code => getCourseDept(code) === deptCode)
+  return Object.keys(getActiveCatalog().courses)
+    .filter(code => getActiveCatalog().departmentOf(code) === deptCode)
     .sort();
 }
 
 // ── COURSE LIST FOR DEPT ──────────────────────────────────────────────────────
 async function _renderCourseList(root, dept) {
-  const meta      = DEPT_META[dept];
+  const meta      = getActiveCatalog().departmentMeta[dept];
   const deptLabel = meta ? meta.label : dept;
   const skeletonCount = meta ? Math.min(Math.max(_getDeptCourses(dept).length, 10), 24) : 12;
 
@@ -381,7 +383,7 @@ async function _renderCourseList(root, dept) {
   const isMultiPrefix = prefixes.length > 1;
 
   const courseCardHtml = (code, i) => {
-    const info       = COURSE_DB[code];
+    const info       = getActiveCatalog().courses[code];
     const name       = info ? info.name : code;
     const count      = reviewCounts[code] || 0;
     const facCount   = facultySets[code] ? facultySets[code].size : 0;
@@ -426,10 +428,10 @@ function _courseGridSkeletonHtml(count = 12) {
 
 // ── COURSE PAGE (faculty for a course) ───────────────────────────────────────
 async function _renderCoursePage(root, courseCode) {
-  const info      = COURSE_DB[courseCode];
+  const info      = getActiveCatalog().courses[courseCode];
   const courseName = info ? info.name : courseCode;
-  const deptCode  = getCourseDept(courseCode);
-  const deptMeta  = deptCode ? DEPT_META[deptCode] : null;
+  const deptCode  = getActiveCatalog().departmentOf(courseCode);
+  const deptMeta  = deptCode ? getActiveCatalog().departmentMeta[deptCode] : null;
 
   root.innerHTML = `
     <div class="rv-tab">
@@ -659,8 +661,8 @@ async function _renderFacultyPage(root, initials, courseFilter, token) {
     ? reviews.filter(r => String(r.courseCode || '').toUpperCase() === courseFilter)
     : reviews;
   const heroCourseCode = courseFilter || (courses.length === 1 ? courses[0] : '');
-  const heroCourseName = heroCourseCode && COURSE_DB[heroCourseCode]
-    ? COURSE_DB[heroCourseCode].name
+  const heroCourseName = heroCourseCode && getActiveCatalog().courses[heroCourseCode]
+    ? getActiveCatalog().courses[heroCourseCode].name
     : '';
 
   const agg = aggregateRatings(scoped);
