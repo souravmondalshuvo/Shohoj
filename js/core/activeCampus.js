@@ -16,8 +16,22 @@
 // publishes identity through window._shohoj_userProfile and the
 // shohoj:auth-changed event; this reads those, and announces its own change as
 // shohoj:campus-changed so the calculator repaints on the new scale.
+//
+// ADMINS CHOOSE (#807). An admin moderates every campus, and one on an address
+// no campus claims would otherwise be pinned to BRACU's rules here. Their
+// choice — the same stored one the shell's switcher writes (#798) — overrides
+// the email, but only while window._shohoj_isAdmin says admin: a student who
+// plants the key changes nothing.
 
-import { DEFAULT_UNIVERSITY_ID, UNIVERSITIES, universityForEmail } from './university.js';
+import {
+  DEFAULT_UNIVERSITY_ID,
+  UNIVERSITIES,
+  isUniversityId,
+  universityForEmail,
+} from './university.js';
+
+/** Shared with the shell: src/app/providers/AuthProvider.tsx ADMIN_CAMPUS_KEY. */
+export const ADMIN_CAMPUS_STORAGE_KEY = 'shohoj_admin_campus';
 
 let _activeCampusId = DEFAULT_UNIVERSITY_ID;
 let _activeCampusListening = false;
@@ -50,7 +64,10 @@ export function activeGradePoint(letter) {
  * never to leave the calculator without a scale.
  */
 export function setActiveCampusForEmail(email) {
-  const next = universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID;
+  return _applyActiveCampus(universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID);
+}
+
+function _applyActiveCampus(next) {
   if (next === _activeCampusId) return false;
   _activeCampusId = next;
   try {
@@ -61,7 +78,36 @@ export function setActiveCampusForEmail(email) {
   return true;
 }
 
+/** Whether the signed-in user carries the admin claim (per firebase.js). */
+export function isAdminCampusViewer() {
+  return window._shohoj_userProfile?.()?.signedIn === true
+    && window._shohoj_isAdmin?.() === true;
+}
+
+function _readAdminCampusChoice() {
+  let stored = null;
+  try { stored = localStorage.getItem(ADMIN_CAMPUS_STORAGE_KEY); } catch { /* private mode */ }
+  // A campus dropped from the registry since it was chosen reads as no choice.
+  return isUniversityId(stored) ? stored : null;
+}
+
+/**
+ * Store an admin's campus choice and switch to it. Refused — returns false —
+ * for anyone who is not an admin, or for an id the registry does not know.
+ */
+export function setAdminCampusChoice(id) {
+  if (!isAdminCampusViewer() || !isUniversityId(id)) return false;
+  try { localStorage.setItem(ADMIN_CAMPUS_STORAGE_KEY, id); } catch { /* private mode */ }
+  _applyActiveCampus(id);
+  return true;
+}
+
 function syncActiveCampusFromAuth() {
+  const choice = isAdminCampusViewer() ? _readAdminCampusChoice() : null;
+  if (choice !== null) {
+    _applyActiveCampus(choice);
+    return;
+  }
   const profile = window._shohoj_userProfile?.();
   setActiveCampusForEmail(profile?.signedIn ? profile.email : null);
 }
