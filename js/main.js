@@ -1,5 +1,4 @@
 // ── IMPORTS ──────────────────────────────────────────────────────────────────
-import { DEPARTMENTS } from './core/departments.js';
 import { state, saveState, clearState, STORAGE_KEY } from './core/state.js';
 import {
   clearAllShohojData,
@@ -13,7 +12,10 @@ import {
   onPFChange, getSemCreditWarning, onGradePointBlur, activeCgpaOptions
 } from './core/calculator.js';
 import { calculateCgpaTotals } from './core/gpa-core.js';
-import { activeGradePoint, initActiveCampus } from './core/activeCampus.js';
+import { activeGradePoint, getActiveCampus, initActiveCampus } from './core/activeCampus.js';
+import { getActiveCatalog } from './core/activeCatalog.js';
+import { setCourseLookup } from './core/courseLookup.js';
+import { DEFAULT_UNIVERSITY_ID } from './core/university.js';
 import { MILESTONE_TIERS, standingTierFor } from './core/milestones.js';
 
 // Thresholds and labels come from js/core/milestones.js so the standing box and
@@ -39,7 +41,6 @@ import {
   generateSemesterNames, getStartSeason, getStartYear,
   sanitizeRestoredState
 } from './core/helpers.js';
-import { COURSE_DB, ALL_COURSES } from './core/catalog.js';
 
 import {
   renderSemesters, addSemester, addRunningSemester,
@@ -105,6 +106,9 @@ function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
+// The program picker listed the previous campus's programs. First, so the
+// repaint below never sees a program the new campus doesn't have.
+window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
 window._shohoj_updateSetupWizard = updateSetupWizard;
@@ -134,11 +138,66 @@ window._shohoj_setSemesters = function(semesters) {
 // it calls through here when it writes something that belongs in the
 // cloud snapshot (a review receipt) without touching calculator state.
 window._shohoj_saveState = saveState;
-window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
+// Reviews, papers and study groups validate a course code before writing it;
+// on this page that means a course of the student's own campus.
+setCourseLookup(code => getActiveCatalog().courses[code]);
+window._shohoj_isKnownCourse = (code) => !!getActiveCatalog().courses[code];
 // The catalog list (code/name/full/credits) for the island's autocomplete. The
 // data stays in JS; the island reads it through this bridge and matches with the
-// typed searchCourses helper.
-window._shohoj_courseCatalog = ALL_COURSES;
+// typed searchCourses helper. A getter, so it is the active campus's list.
+Object.defineProperty(window, '_shohoj_courseCatalog', {
+  configurable: true,
+  get: () => getActiveCatalog().allCourses,
+});
+
+// ── PROGRAM PICKER ────────────────────────────────────────────────────────────
+// index.html ships BRACU's programs in #deptSelect, with its two "coming soon"
+// entries, and BRACU keeps that markup as written. Any other campus gets a
+// list built from its catalogue. A program chosen on the previous campus that
+// this one doesn't have is dropped: every lookup below reads
+// programs[state.currentDept] and would otherwise find nothing.
+let _bracuProgramOptions = null;
+
+function syncProgramPicker() {
+  const sel = document.getElementById('deptSelect');
+  if (!sel) return;
+  if (_bracuProgramOptions === null) {
+    _bracuProgramOptions = Array.from(sel.options, option => option.cloneNode(true));
+  }
+  const campusId = getActiveCampus().id;
+  const { programs } = getActiveCatalog();
+
+  if ((sel.dataset.campus || DEFAULT_UNIVERSITY_ID) !== campusId) {
+    if (campusId === DEFAULT_UNIVERSITY_ID) {
+      sel.replaceChildren(..._bracuProgramOptions.map(option => option.cloneNode(true)));
+    } else {
+      const placeholder = _bracuProgramOptions[0].cloneNode(true);
+      const options = Object.entries(programs)
+        .sort(([, a], [, b]) => a.label.localeCompare(b.label))
+        .map(([code, program]) => {
+          const option = document.createElement('option');
+          option.value = code;
+          option.textContent = program.label;
+          return option;
+        });
+      sel.replaceChildren(placeholder, ...options);
+    }
+    sel.dataset.campus = campusId;
+  }
+
+  const program = state.currentDept ? programs[state.currentDept] : null;
+  if (state.currentDept && !program) {
+    state.currentDept = '';
+    const credits = document.getElementById('deptCredits');
+    if (credits) credits.style.display = 'none';
+    updateSetupWizard();
+  }
+  // Two campuses can share a program code (both have a CSE) and still differ
+  // on its total, so the badge is rewritten rather than trusted.
+  const creditsText = document.getElementById('deptCreditsText');
+  if (program && creditsText) creditsText.textContent = program.totalCredits + ' Total Credits';
+  sel.value = state.currentDept || '';
+}
 
 // ── "Saved on this device" notice ────────────────────────────────────────────
 // Sign-out clears the device, but that never helped the student who NEVER
@@ -522,7 +581,7 @@ function loadState() {
     state.semesterCounter = saved.semesterCounter || saved.semesters.length;
     setPlanCourses(saved.planCourses);
 
-    const dept = DEPARTMENTS[state.currentDept];
+    const dept = getActiveCatalog().programs[state.currentDept];
     if (dept) {
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       document.getElementById('deptCredits').style.display = '';
@@ -564,7 +623,7 @@ window._shohoj_applyState = function(saved) {
     setPlanCourses(clean.planCourses);
     state._restoredFromStorage = true;
  
-    const dept = DEPARTMENTS[state.currentDept];
+    const dept = getActiveCatalog().programs[state.currentDept];
     if (dept) {
       const credTxt   = document.getElementById('deptCreditsText');
       const credBadge = document.getElementById('deptCredits');
@@ -887,7 +946,7 @@ function recalc() {
     document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
   }
 
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
 
   const crRemEl = document.getElementById('creditsRemaining');
@@ -1111,6 +1170,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // After initActiveCampus on purpose: both listen for shohoj:auth-changed, and
   // the switcher has to read the campus the line above has already settled.
   initAdminCampusSwitcher();
+  syncProgramPicker();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
