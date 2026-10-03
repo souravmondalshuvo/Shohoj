@@ -161,15 +161,20 @@ function _render(root, entries) {
   </div>`;
 }
 
-// ── Auth-change cache invalidation ────────────────────────────────────────────
+// ── Cache invalidation ────────────────────────────────────────────────────────
+// The index holds what the signed-in student may read, and the course names
+// and departments of the campus's catalogue — so it is stale after either
+// changes.
 
-window.addEventListener('shohoj:auth-changed', () => {
+function _dmInvalidate() {
   _cache = null;
   const root = document.getElementById('difficultyMapContent');
   if (root && root.closest('[style*="display: none"]') === null && root.offsetParent !== null) {
     renderDifficultyMapTab();
   }
-});
+}
+window.addEventListener('shohoj:auth-changed', _dmInvalidate);
+window.addEventListener('shohoj:campus-changed', _dmInvalidate);
 
 // ── Public entry ──────────────────────────────────────────────────────────────
 
