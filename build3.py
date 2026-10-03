@@ -133,6 +133,8 @@ MAIN_JS_FILES = [
     # Campus gate — the signed-out stand-in for the calculator. Ahead of
     # render.js/main.js, which drive it.
     'js/ui/signinPortal.js',
+    # Admin "view as" campus picker (#807); main.js initialises it
+    'js/ui/adminCampusSwitcher.js',
     # Running-course mark projection, read by render.js (#764)
     'js/core/courseMarks.js',
     'js/ui/render.js',
