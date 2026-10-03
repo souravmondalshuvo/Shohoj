@@ -12,13 +12,29 @@ globalThis.document = { getElementById: () => null };
 globalThis.window = globalThis;
 globalThis.CustomEvent = class { constructor(type, init) { this.type = type; this.detail = init?.detail; } };
 globalThis.dispatchEvent = e => { _events.push(e); return true; };
-globalThis.addEventListener = () => {};
+// Captured so the admin tests (#807) can replay shohoj:auth-changed.
+const _listeners = {};
+globalThis.addEventListener = (type, fn) => { (_listeners[type] ||= []).push(fn); };
+// Node's own localStorage needs a backing file; a Map-backed one is enough.
+const _store = new Map();
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: k => (_store.has(k) ? _store.get(k) : null),
+    setItem: (k, v) => { _store.set(k, String(v)); },
+    removeItem: k => { _store.delete(k); },
+  },
+});
 
 const {
+  ADMIN_CAMPUS_STORAGE_KEY,
   activeGradePoint,
   activeGradeScale,
   getActiveCampus,
+  initActiveCampus,
+  isAdminCampusViewer,
   setActiveCampusForEmail,
+  setAdminCampusChoice,
 } = await import('../js/core/activeCampus.js');
 const {
   activeCgpaOptions,
@@ -171,6 +187,77 @@ test('a null email returns to BRACU', () => {
   eq(isRepeatEligible('B'), false);
   const r = computeCourseMarks([{ weight: 100, score: 87, outOf: 100 }], getActiveCampus().grades.marks);
   eq(r.projectedLetter, 'A-');
+});
+
+console.log('\nAdmin campus choice (#807)');
+
+// The two globals firebase.js publishes, driven by hand.
+function signIn(email, { admin = false } = {}) {
+  window._shohoj_userProfile = () => ({ signedIn: email !== null, email });
+  window._shohoj_isAdmin = () => admin;
+  for (const fn of _listeners['shohoj:auth-changed'] || []) fn();
+}
+
+initActiveCampus();
+
+test('a student cannot set a choice, and a planted one is ignored', () => {
+  signIn('student@g.bracu.ac.bd');
+  eq(isAdminCampusViewer(), false);
+  eq(setAdminCampusChoice('nsu'), false);
+  eq(_store.has(ADMIN_CAMPUS_STORAGE_KEY), false);
+  _store.set(ADMIN_CAMPUS_STORAGE_KEY, 'nsu');
+  signIn('student@g.bracu.ac.bd');
+  eq(getActiveCampus().id, 'bracu');
+  _store.clear();
+});
+
+test('an admin on a non-campus address starts on BRACU', () => {
+  signIn('admin@gmail.com', { admin: true });
+  eq(isAdminCampusViewer(), true);
+  eq(getActiveCampus().id, 'bracu');
+});
+
+test('an admin choice switches campus, announces it and is stored', () => {
+  const before = _events.length;
+  eq(setAdminCampusChoice('nsu'), true);
+  eq(getActiveCampus().id, 'nsu');
+  eq(_events.length, before + 1);
+  eq(_events.at(-1).detail.campus, 'nsu');
+  eq(_store.get(ADMIN_CAMPUS_STORAGE_KEY), 'nsu');
+  // The rules really moved: a B is repeatable at NSU and not at BRACU.
+  eq(isRepeatEligible('B'), true);
+});
+
+test('an unregistered campus id is refused', () => {
+  eq(setAdminCampusChoice('harvard'), false);
+  eq(getActiveCampus().id, 'nsu');
+});
+
+test('the stored choice is restored when the admin session returns', () => {
+  signIn(null);
+  eq(getActiveCampus().id, 'bracu');
+  signIn('admin@gmail.com', { admin: true });
+  eq(getActiveCampus().id, 'nsu');
+});
+
+test('the choice outranks an admin\'s own campus email', () => {
+  signIn('admin@g.bracu.ac.bd', { admin: true });
+  eq(getActiveCampus().id, 'nsu');
+});
+
+test('a stored id the registry no longer knows falls back to the email', () => {
+  _store.set(ADMIN_CAMPUS_STORAGE_KEY, 'gone');
+  signIn('admin@g.bracu.ac.bd', { admin: true });
+  eq(getActiveCampus().id, 'bracu');
+});
+
+test('signing out drops the admin view', () => {
+  _store.set(ADMIN_CAMPUS_STORAGE_KEY, 'nsu');
+  signIn('admin@gmail.com', { admin: true });
+  eq(getActiveCampus().id, 'nsu');
+  signIn(null);
+  eq(isAdminCampusViewer(), false);
+  eq(getActiveCampus().id, 'bracu');
 });
 
 // ── SUMMARY ──────────────────────────────────────────────────────────────────
