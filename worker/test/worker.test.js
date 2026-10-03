@@ -17,6 +17,7 @@ import worker, {
   corsHeaders,
   isAllowedFirebasePayload,
   campusOfEmail,
+  catalogCampusFor,
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
@@ -3324,6 +3325,103 @@ async function makeServiceAccountJson() {
     const body = await res.json();
     assertEq(body.status, 'ok');
     assert(!('capabilities' in body), 'liveness must not take on readiness semantics');
+  });
+
+  console.log('\nCourse codes are checked against the caller\'s campus:');
+
+  // CSE110 is BRACU's first programming course and CSE115 is NSU's; neither
+  // exists at the other campus.
+  await test('a code is valid only on the campus that offers it', () => {
+    assert(isValidCourseCode('CSE110'), 'BRACU is the default');
+    assert(isValidCourseCode('CSE110', 'bracu'));
+    assert(!isValidCourseCode('CSE115'));
+    assert(isValidCourseCode('CSE115', 'nsu'));
+    assert(isValidCourseCode('CSE115L', 'nsu'), 'NSU labs');
+    assert(!isValidCourseCode('CSE110', 'nsu'));
+    assert(!isValidCourseCode('ZZZ999', 'nsu'));
+  });
+
+  await test('a campus with no catalogue has no valid codes', () => {
+    assert(!isValidCourseCode('CSE110', 'diu'));
+    assert(!isValidCourseCode('CSE110', ''));
+    assert(!isValidCourseCode('CSE110', null));
+    // Names every object inherits must not pass for a campus or a course.
+    assert(!isValidCourseCode('CSE110', 'constructor'));
+    assert(!isValidCourseCode('CSE110', '__proto__'));
+  });
+
+  await test('validateReviewPayload checks the reviewer\'s campus', () => {
+    assert(!validateReviewPayload(basePayload({ courseCode: 'CSE115' }), 'nsu').error);
+    assertEq(validateReviewPayload(basePayload({ courseCode: 'CSE115' })).error, 'Unknown course code');
+    assertEq(validateReviewPayload(basePayload({ courseCode: 'CSE110' }), 'nsu').error, 'Unknown course code');
+  });
+
+  await test('catalogCampusFor follows the verified address, and is BRACU for none', () => {
+    assertEq(catalogCampusFor({ email: 'student@northsouth.edu' }), 'nsu');
+    assertEq(catalogCampusFor({ email: 'student@g.bracu.ac.bd' }), 'bracu');
+    assertEq(catalogCampusFor({ email: 'admin@example.com', admin: true }), 'bracu');
+    assertEq(catalogCampusFor(undefined), 'bracu');
+  });
+
+  const campusClaims = (email) => ({
+    user_id: `uid_${email.split('@')[1]}`,
+    email,
+    email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  });
+
+  /** POST /reviews for a course, as a student with this address. */
+  async function reviewAs(email, courseCode) {
+    const { token, jwk } = await makeFirebaseToken(campusClaims(email));
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await worker.fetch(req('POST', '/reviews', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(basePayload({ courseCode })),
+      }), { ...ENV }, {});
+      return { status: res.status, body: await res.json() };
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  }
+
+  /** POST /upload for a course with no filename, as a student with this address. */
+  async function uploadAs(email, courseCode) {
+    const { token, jwk } = await makeFirebaseToken(campusClaims(email));
+    __setTestJwksForTests({ keys: [jwk] });
+    try {
+      const res = await worker.fetch(req('POST', `/upload?courseCode=${courseCode}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      }), { ...ENV }, {});
+      return { status: res.status, body: await res.json() };
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  }
+
+  await test('POST /reviews refuses another campus\'s course, in both directions', async () => {
+    const nsuOnBracu = await reviewAs('student@northsouth.edu', 'CSE110');
+    assertEq(nsuOnBracu.status, 400);
+    assertEq(nsuOnBracu.body.error, 'Unknown course code');
+    const bracuOnNsu = await reviewAs('student@g.bracu.ac.bd', 'CSE115');
+    assertEq(bracuOnNsu.status, 400);
+    assertEq(bracuOnNsu.body.error, 'Unknown course code');
+  });
+
+  await test('POST /upload checks the course against the uploader\'s campus', async () => {
+    // With no filename the request fails either way; which check refuses it
+    // says whether the course code got through.
+    const refused = await uploadAs('student@northsouth.edu', 'CSE110');
+    assertEq(refused.status, 400);
+    assertEq(refused.body.error, 'Invalid course code');
+    const refusedBack = await uploadAs('student@g.bracu.ac.bd', 'CSE115');
+    assertEq(refusedBack.body.error, 'Invalid course code');
+
+    const nsuOwn = await uploadAs('student@northsouth.edu', 'CSE115');
+    assertEq(nsuOwn.status, 400);
+    assert(nsuOwn.body.error !== 'Invalid course code', `NSU's own course was refused: ${nsuOwn.body.error}`);
+    const bracuOwn = await uploadAs('student@g.bracu.ac.bd', 'CSE110');
+    assert(bracuOwn.body.error !== 'Invalid course code', `BRACU's own course was refused: ${bracuOwn.body.error}`);
   });
 
   console.log('\nRate-limit failure policy:');
