@@ -8386,6 +8386,14 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   display: none !important;
 }
 
+/* Tabs and links a campus has no data for (applyCampusFeatures, js/main.js).
+   Same reason as above: .calc-tab-group, .calc-tab-menu-item and .nav-link all
+   set their own display. */
+#calcTabs [hidden],
+.nav-link[hidden] {
+  display: none !important;
+}
+
 .signin-portal {
   position: relative;
   max-width: 620px;
