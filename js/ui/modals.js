@@ -1,10 +1,9 @@
 import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
-import { DEPARTMENTS } from '../core/departments.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { getRetakenKeys, calcSemGPA } from '../core/calculator.js';
 import { parseTranscriptText, parseBlobFallback, detectStudentIdentity } from '../import/parser.js';
 import { calculateCgpaTotals } from '../core/gpa-core.js';
-import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, stripTags } from '../core/helpers.js';
 import { resetPlayground } from './playground.js';
 import { resetPlanner } from './planner.js';
@@ -249,7 +248,7 @@ export async function importTranscriptPDF(inputEl) {
         const code = codeMatch ? codeMatch[1] : null;
         if (!code) return;
 
-        const cat = COURSE_DB[code];
+        const cat = getActiveCatalog().courses[code];
         if (cat) {
           c.name = cat.full;
           if (!c.credits && cat.credits) c.credits = cat.credits;
@@ -360,12 +359,13 @@ export function applyImport() {
   setSeasonOptions(['Spring', 'Summer', 'Fall']);
 
   if (data.detectedDept) {
-    const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === data.detectedDept);
+    const { programs } = getActiveCatalog();
+    const deptKey = Object.keys(programs).find(k => programs[k].label === data.detectedDept);
     if (deptKey) {
       state.currentDept = deptKey;
       const sel = document.getElementById('deptSelect');
       if (sel) sel.value = deptKey;
-      const dept = DEPARTMENTS[deptKey];
+      const dept = programs[deptKey];
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       const credEl = document.getElementById('deptCredits');
       if (credEl) credEl.style.display = 'inline-flex';
@@ -492,8 +492,8 @@ export function exportPDF() {
       hasSummary: !!summaryBlock,
       startSeason: document.getElementById('startSeason')?.value,
       startYear: document.getElementById('startYear')?.value,
-      deptSeasons: state.currentDept && DEPARTMENTS[state.currentDept]
-        ? (DEPARTMENTS[state.currentDept].seasons || ['Spring', 'Summer', 'Fall'])
+      deptSeasons: state.currentDept && getActiveCatalog().programs[state.currentDept]
+        ? (getActiveCatalog().programs[state.currentDept].seasons || ['Spring', 'Summer', 'Fall'])
         : ['Spring', 'Summer', 'Fall'],
       completedSemCount: 0,
     });
@@ -512,8 +512,8 @@ export function exportPDF() {
 
   doc.setFontSize(15); setTxt(TEXT1); doc.setFont('helvetica', 'bold');
   doc.text('CGPA Report', ML + 22, y + 10);
-  const deptLabel = state.currentDept && DEPARTMENTS[state.currentDept]
-    ? DEPARTMENTS[state.currentDept].label : 'BRAC University';
+  const deptLabel = state.currentDept && getActiveCatalog().programs[state.currentDept]
+    ? getActiveCatalog().programs[state.currentDept].label : getActiveCampus().name;
   doc.setFontSize(7.5); setTxt(TEXT2); doc.setFont('helvetica', 'normal');
   doc.text(deptLabel, ML + 22, y + 15);
   doc.setFontSize(7); setTxt(TEXT3);
