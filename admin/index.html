@@ -5624,6 +5624,47 @@ body[data-page="admin"] .orb { display: none !important; }
 #adminNavBtn:hover { background: rgba(245,185,66,0.22); }
 #adminNavBtn.is-admin { display: inline-flex; }
 
+/* Admin "view as" campus picker (#798 shell, #807 legacy). Admin-only, so it takes the admin
+   link's amber pill (style.css #adminNavBtn) — it reads as part of the admin
+   toolkit, not as a student control. Ink from --ink-amber so light theme keeps
+   contrast; the native arrow is kept for an obvious affordance.
+   Defined once, here, for both builds: the shell renders it from
+   src/app/AdminCampusSwitcher.tsx, legacy from index.html +
+   js/ui/adminCampusSwitcher.js.
+   Selectors carry a parent on purpose: `[data-theme="dark"] select` (0,1,1)
+   restyles every select and would otherwise beat a lone class, painting this
+   as a form field. */
+nav.lg-surface select.admin-campus-switcher,
+.admin-campus-bar select.admin-campus-switcher {
+  width: auto; height: 36px; padding: 0 10px 0 12px; flex-shrink: 0;
+  border-radius: 100px; border: 1px solid rgba(245,185,66,0.45);
+  background: rgba(245,185,66,0.14); color: var(--ink-amber);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+nav.lg-surface select.admin-campus-switcher:hover,
+.admin-campus-bar select.admin-campus-switcher:hover { background: rgba(245,185,66,0.22); }
+nav.lg-surface select.admin-campus-switcher:focus-visible,
+.admin-campus-bar select.admin-campus-switcher:focus-visible { outline: 2px solid var(--ink-amber); outline-offset: 2px; }
+.admin-campus-switcher option { color: initial; background: initial; }
+/* Phones get the row instead of the pill: at 375px the nav is already full
+   with Admin, the email, Sign out and the theme toggle. */
+.admin-campus-bar { display: none; }
+/* Legacy ships the row with `hidden` until an admin signs in; the phone rule
+   below sets display and would otherwise override the attribute. */
+.admin-campus-bar[hidden] { display: none; }
+@media (max-width: 480px) {
+  nav.lg-surface select.admin-campus-switcher { display: none; }
+  .admin-campus-bar:not([hidden]) {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    /* Inset from the panel's rounded corner: the row is the first child of
+       .calc-wrapper, which has no padding of its own. */
+    padding: 10px 14px 0; margin: 0 0 10px;
+    font-size: 12px; font-weight: 600; color: var(--ink-amber);
+  }
+  .admin-campus-bar select.admin-campus-switcher { height: 32px; font-size: 12px; }
+}
+
 /* Admin page bootstrap (auth-resolving) state */
 .admin-bootstrap {
   min-height: 80vh;

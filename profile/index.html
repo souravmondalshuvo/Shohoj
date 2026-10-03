@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-J41szkwLwthOmhXHiM/wx52oVtHQ4QVETMeW3mP0UKk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-kWKd2Mc+dMxRUXqeus+lfpjHB2cHf+QOioQdGPVoqBs='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -5623,6 +5623,47 @@ body[data-page="admin"] .orb { display: none !important; }
 }
 #adminNavBtn:hover { background: rgba(245,185,66,0.22); }
 #adminNavBtn.is-admin { display: inline-flex; }
+
+/* Admin "view as" campus picker (#798 shell, #807 legacy). Admin-only, so it takes the admin
+   link's amber pill (style.css #adminNavBtn) — it reads as part of the admin
+   toolkit, not as a student control. Ink from --ink-amber so light theme keeps
+   contrast; the native arrow is kept for an obvious affordance.
+   Defined once, here, for both builds: the shell renders it from
+   src/app/AdminCampusSwitcher.tsx, legacy from index.html +
+   js/ui/adminCampusSwitcher.js.
+   Selectors carry a parent on purpose: `[data-theme="dark"] select` (0,1,1)
+   restyles every select and would otherwise beat a lone class, painting this
+   as a form field. */
+nav.lg-surface select.admin-campus-switcher,
+.admin-campus-bar select.admin-campus-switcher {
+  width: auto; height: 36px; padding: 0 10px 0 12px; flex-shrink: 0;
+  border-radius: 100px; border: 1px solid rgba(245,185,66,0.45);
+  background: rgba(245,185,66,0.14); color: var(--ink-amber);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+nav.lg-surface select.admin-campus-switcher:hover,
+.admin-campus-bar select.admin-campus-switcher:hover { background: rgba(245,185,66,0.22); }
+nav.lg-surface select.admin-campus-switcher:focus-visible,
+.admin-campus-bar select.admin-campus-switcher:focus-visible { outline: 2px solid var(--ink-amber); outline-offset: 2px; }
+.admin-campus-switcher option { color: initial; background: initial; }
+/* Phones get the row instead of the pill: at 375px the nav is already full
+   with Admin, the email, Sign out and the theme toggle. */
+.admin-campus-bar { display: none; }
+/* Legacy ships the row with `hidden` until an admin signs in; the phone rule
+   below sets display and would otherwise override the attribute. */
+.admin-campus-bar[hidden] { display: none; }
+@media (max-width: 480px) {
+  nav.lg-surface select.admin-campus-switcher { display: none; }
+  .admin-campus-bar:not([hidden]) {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    /* Inset from the panel's rounded corner: the row is the first child of
+       .calc-wrapper, which has no padding of its own. */
+    padding: 10px 14px 0; margin: 0 0 10px;
+    font-size: 12px; font-weight: 600; color: var(--ink-amber);
+  }
+  .admin-campus-bar select.admin-campus-switcher { height: 32px; font-size: 12px; }
+}
 
 /* Admin page bootstrap (auth-resolving) state */
 .admin-bootstrap {
@@ -13304,6 +13345,15 @@ function gradePointOn(scale, letter) {
 // publishes identity through window._shohoj_userProfile and the
 // shohoj:auth-changed event; this reads those, and announces its own change as
 // shohoj:campus-changed so the calculator repaints on the new scale.
+//
+// ADMINS CHOOSE (#807). An admin moderates every campus, and one on an address
+// no campus claims would otherwise be pinned to BRACU's rules here. Their
+// choice — the same stored one the shell's switcher writes (#798) — overrides
+// the email, but only while window._shohoj_isAdmin says admin: a student who
+// plants the key changes nothing.
+
+/** Shared with the shell: src/app/providers/AuthProvider.tsx ADMIN_CAMPUS_KEY. */
+const ADMIN_CAMPUS_STORAGE_KEY = 'shohoj_admin_campus';
 
 let _activeCampusId = DEFAULT_UNIVERSITY_ID;
 let _activeCampusListening = false;
@@ -13336,7 +13386,10 @@ function activeGradePoint(letter) {
  * never to leave the calculator without a scale.
  */
 function setActiveCampusForEmail(email) {
-  const next = universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID;
+  return _applyActiveCampus(universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID);
+}
+
+function _applyActiveCampus(next) {
   if (next === _activeCampusId) return false;
   _activeCampusId = next;
   try {
@@ -13347,7 +13400,36 @@ function setActiveCampusForEmail(email) {
   return true;
 }
 
+/** Whether the signed-in user carries the admin claim (per firebase.js). */
+function isAdminCampusViewer() {
+  return window._shohoj_userProfile?.()?.signedIn === true
+    && window._shohoj_isAdmin?.() === true;
+}
+
+function _readAdminCampusChoice() {
+  let stored = null;
+  try { stored = localStorage.getItem(ADMIN_CAMPUS_STORAGE_KEY); } catch { /* private mode */ }
+  // A campus dropped from the registry since it was chosen reads as no choice.
+  return isUniversityId(stored) ? stored : null;
+}
+
+/**
+ * Store an admin's campus choice and switch to it. Refused — returns false —
+ * for anyone who is not an admin, or for an id the registry does not know.
+ */
+function setAdminCampusChoice(id) {
+  if (!isAdminCampusViewer() || !isUniversityId(id)) return false;
+  try { localStorage.setItem(ADMIN_CAMPUS_STORAGE_KEY, id); } catch { /* private mode */ }
+  _applyActiveCampus(id);
+  return true;
+}
+
 function syncActiveCampusFromAuth() {
+  const choice = isAdminCampusViewer() ? _readAdminCampusChoice() : null;
+  if (choice !== null) {
+    _applyActiveCampus(choice);
+    return;
+  }
   const profile = window._shohoj_userProfile?.();
   setActiveCampusForEmail(profile?.signedIn ? profile.email : null);
 }

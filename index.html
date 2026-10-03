@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-clK3n1bK2BAl02g6G8gFXc19UrDR9yPD50lIP8jM/w0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-1s5+dSSvPNas+kqu7MKvhcFF9lyHjrpeZNAsb6f/K1c='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5642,6 +5642,47 @@ body[data-page="admin"] .orb { display: none !important; }
 #adminNavBtn:hover { background: rgba(245,185,66,0.22); }
 #adminNavBtn.is-admin { display: inline-flex; }
 
+/* Admin "view as" campus picker (#798 shell, #807 legacy). Admin-only, so it takes the admin
+   link's amber pill (style.css #adminNavBtn) — it reads as part of the admin
+   toolkit, not as a student control. Ink from --ink-amber so light theme keeps
+   contrast; the native arrow is kept for an obvious affordance.
+   Defined once, here, for both builds: the shell renders it from
+   src/app/AdminCampusSwitcher.tsx, legacy from index.html +
+   js/ui/adminCampusSwitcher.js.
+   Selectors carry a parent on purpose: `[data-theme="dark"] select` (0,1,1)
+   restyles every select and would otherwise beat a lone class, painting this
+   as a form field. */
+nav.lg-surface select.admin-campus-switcher,
+.admin-campus-bar select.admin-campus-switcher {
+  width: auto; height: 36px; padding: 0 10px 0 12px; flex-shrink: 0;
+  border-radius: 100px; border: 1px solid rgba(245,185,66,0.45);
+  background: rgba(245,185,66,0.14); color: var(--ink-amber);
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+nav.lg-surface select.admin-campus-switcher:hover,
+.admin-campus-bar select.admin-campus-switcher:hover { background: rgba(245,185,66,0.22); }
+nav.lg-surface select.admin-campus-switcher:focus-visible,
+.admin-campus-bar select.admin-campus-switcher:focus-visible { outline: 2px solid var(--ink-amber); outline-offset: 2px; }
+.admin-campus-switcher option { color: initial; background: initial; }
+/* Phones get the row instead of the pill: at 375px the nav is already full
+   with Admin, the email, Sign out and the theme toggle. */
+.admin-campus-bar { display: none; }
+/* Legacy ships the row with `hidden` until an admin signs in; the phone rule
+   below sets display and would otherwise override the attribute. */
+.admin-campus-bar[hidden] { display: none; }
+@media (max-width: 480px) {
+  nav.lg-surface select.admin-campus-switcher { display: none; }
+  .admin-campus-bar:not([hidden]) {
+    display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    /* Inset from the panel's rounded corner: the row is the first child of
+       .calc-wrapper, which has no padding of its own. */
+    padding: 10px 14px 0; margin: 0 0 10px;
+    font-size: 12px; font-weight: 600; color: var(--ink-amber);
+  }
+  .admin-campus-bar select.admin-campus-switcher { height: 32px; font-size: 12px; }
+}
+
 /* Admin page bootstrap (auth-resolving) state */
 .admin-bootstrap {
   min-height: 80vh;
@@ -9815,6 +9856,9 @@ body[data-page="admin"] .orb { display: none !important; }
       <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
+      <!-- Admin "view as" campus picker (#807) — filled and revealed by
+           js/ui/adminCampusSwitcher.js when the user is an admin -->
+      <select id="adminCampusSwitcher" class="admin-campus-switcher" aria-label="View Shohoj as campus" title="View Shohoj as this campus's students see it" data-testid="admin-campus-switcher" hidden></select>
       <!-- Auth button -->
       <button id="authBtn" class="magnetic" aria-label="Sign in with Google" title="Sign in to sync your data" style="
         display:flex;align-items:center;gap:7px;
@@ -9946,6 +9990,11 @@ body[data-page="admin"] .orb { display: none !important; }
     <div id="signinPortal" class="signin-portal lg-surface" data-testid="signin-portal" hidden></div>
 
     <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc hidden><div class="lg-shine"></div><div class="lg-bloom"></div>
+      <!-- Phones only: the nav has no room for the admin's campus pill (#807) -->
+      <div class="admin-campus-bar" hidden>
+        <label for="adminCampusSwitcherBar">Viewing as</label>
+        <select id="adminCampusSwitcherBar" class="admin-campus-switcher" title="View Shohoj as this campus's students see it" data-testid="admin-campus-switcher-bar"></select>
+      </div>
       <!-- Header (global — above tabs) -->
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
@@ -16539,6 +16588,15 @@ function gradePointOn(scale, letter) {
 // publishes identity through window._shohoj_userProfile and the
 // shohoj:auth-changed event; this reads those, and announces its own change as
 // shohoj:campus-changed so the calculator repaints on the new scale.
+//
+// ADMINS CHOOSE (#807). An admin moderates every campus, and one on an address
+// no campus claims would otherwise be pinned to BRACU's rules here. Their
+// choice — the same stored one the shell's switcher writes (#798) — overrides
+// the email, but only while window._shohoj_isAdmin says admin: a student who
+// plants the key changes nothing.
+
+/** Shared with the shell: src/app/providers/AuthProvider.tsx ADMIN_CAMPUS_KEY. */
+const ADMIN_CAMPUS_STORAGE_KEY = 'shohoj_admin_campus';
 
 let _activeCampusId = DEFAULT_UNIVERSITY_ID;
 let _activeCampusListening = false;
@@ -16571,7 +16629,10 @@ function activeGradePoint(letter) {
  * never to leave the calculator without a scale.
  */
 function setActiveCampusForEmail(email) {
-  const next = universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID;
+  return _applyActiveCampus(universityForEmail(email)?.id ?? DEFAULT_UNIVERSITY_ID);
+}
+
+function _applyActiveCampus(next) {
   if (next === _activeCampusId) return false;
   _activeCampusId = next;
   try {
@@ -16582,7 +16643,36 @@ function setActiveCampusForEmail(email) {
   return true;
 }
 
+/** Whether the signed-in user carries the admin claim (per firebase.js). */
+function isAdminCampusViewer() {
+  return window._shohoj_userProfile?.()?.signedIn === true
+    && window._shohoj_isAdmin?.() === true;
+}
+
+function _readAdminCampusChoice() {
+  let stored = null;
+  try { stored = localStorage.getItem(ADMIN_CAMPUS_STORAGE_KEY); } catch { /* private mode */ }
+  // A campus dropped from the registry since it was chosen reads as no choice.
+  return isUniversityId(stored) ? stored : null;
+}
+
+/**
+ * Store an admin's campus choice and switch to it. Refused — returns false —
+ * for anyone who is not an admin, or for an id the registry does not know.
+ */
+function setAdminCampusChoice(id) {
+  if (!isAdminCampusViewer() || !isUniversityId(id)) return false;
+  try { localStorage.setItem(ADMIN_CAMPUS_STORAGE_KEY, id); } catch { /* private mode */ }
+  _applyActiveCampus(id);
+  return true;
+}
+
 function syncActiveCampusFromAuth() {
+  const choice = isAdminCampusViewer() ? _readAdminCampusChoice() : null;
+  if (choice !== null) {
+    _applyActiveCampus(choice);
+    return;
+  }
   const profile = window._shohoj_userProfile?.();
   setActiveCampusForEmail(profile?.signedIn ? profile.email : null);
 }
@@ -33442,6 +33532,76 @@ function initSignInPortal() {
   renderSignInPortal();
 }
 
+// ── js/ui/adminCampusSwitcher.js ────────────────────────────────
+// ── ADMIN CAMPUS SWITCHER (legacy bundle) ────────────────────────────────────
+//
+// The admin's "view as" control (#807): which campus's rules the calculator
+// runs on. The legacy twin of src/app/AdminCampusSwitcher.tsx (#798), and it
+// writes the same stored choice, so picking NSU here is picking it in /app/.
+//
+// A student's campus is their email's and never moves; these controls stay
+// hidden for them, and setAdminCampusChoice refuses a non-admin anyway.
+//
+// View only. What follows the choice is everything js/core/activeCampus.js
+// feeds — grading scale, retake policy, repeat eligibility, credit-load limits,
+// mark tiers. The BRACU-only data in this bundle (seats, routine, the course
+// catalogue) does not change, and neither does anything server-side.
+//
+// Two controls, one visible per viewport (css/style.css): a pill in the nav,
+// and a labelled row above the calculator header on phones, where the nav is
+// already full. Both ship in index.html with `hidden`; this module fills and
+// reveals them. Wired with addEventListener — the production CSP drops inline
+// handlers.
+
+const ADMIN_CAMPUS_SELECT_IDS = ['adminCampusSwitcher', 'adminCampusSwitcherBar'];
+
+let _adminCampusSwitcherReady = false;
+
+function _adminCampusSelects() {
+  return ADMIN_CAMPUS_SELECT_IDS
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+}
+
+function _fillAdminCampusOptions(select) {
+  if (select.options.length > 0) return;
+  for (const campus of Object.values(UNIVERSITIES)) {
+    const option = document.createElement('option');
+    option.value = campus.id;
+    option.textContent = campus.shortName;
+    select.appendChild(option);
+  }
+}
+
+function _syncAdminCampusSwitcher() {
+  const show = isAdminCampusViewer();
+  const active = getActiveCampus().id;
+  for (const select of _adminCampusSelects()) {
+    _fillAdminCampusOptions(select);
+    select.value = active;
+    // The phone row's `hidden` sits on its wrapper so the label goes with it.
+    (select.closest('.admin-campus-bar') || select).hidden = !show;
+  }
+}
+
+/** Idempotent. Call once the nav and calculator markup exist. */
+function initAdminCampusSwitcher() {
+  if (_adminCampusSwitcherReady) return;
+  _adminCampusSwitcherReady = true;
+  for (const select of _adminCampusSelects()) {
+    select.addEventListener('change', () => {
+      // A refused choice (signed out in another tab) snaps back on the resync.
+      setAdminCampusChoice(select.value);
+      _syncAdminCampusSwitcher();
+    });
+  }
+  // auth-changed: admin status arrives with the session. campus-changed: keep
+  // the two selects, and a choice made in /app/, in step.
+  window.addEventListener('shohoj:auth-changed', _syncAdminCampusSwitcher);
+  window.addEventListener('shohoj:campus-changed', _syncAdminCampusSwitcher);
+  _syncAdminCampusSwitcher();
+}
+
 // ── js/core/courseMarks.js ──────────────────────────────────────
 // Twin of src/features/calculator/courseMarks.ts — hand-maintained, not generated.
 // src/features/calculator/courseMarks.ts is the source of truth: change it there first, then mirror the
@@ -40210,6 +40370,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Which campus's grading rules apply. Before the portal, so a warm session
   // unlocks the calculator already on its own scale.
   initActiveCampus();
+  // After initActiveCampus on purpose: both listen for shohoj:auth-changed, and
+  // the switcher has to read the campus the line above has already settled.
+  initAdminCampusSwitcher();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
