@@ -10,12 +10,23 @@
 // data/campuses/nsu/ (scripts/generate_legacy_catalog.mjs) and expanded into
 // the same shapes on first use.
 //
+// Each catalogue also answers `departmentOf(code)` — the department that owns
+// a course, or null — because the rule is the campus's, not just its table.
+//
 // A campus with no catalogue gets an empty one, never BRACU's: another
 // university's courses offered as a student's own is the failure this exists
 // to prevent.
 
 import { getActiveCampus } from './activeCampus.js';
-import { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS } from './catalog.js';
+import {
+  ALL_COURSES,
+  COURSE_DB,
+  DEPT_META,
+  PREFIX_DEPT_MAP,
+  PREREQS,
+  getCourseDept,
+  getCoursePrefix,
+} from './catalog.js';
 import {
   NSU_CATALOG_ROWS,
   NSU_DEPARTMENT_META,
@@ -34,6 +45,8 @@ const BRACU_CATALOG = {
   prefixDepartments: PREFIX_DEPT_MAP,
   departmentMeta: DEPT_META,
   programs: DEPARTMENTS,
+  // catalog.js's own lookup, which also knows BRACU's one cross-listed course.
+  departmentOf: getCourseDept,
   untitled: [],
   unexpressed: [],
 };
@@ -45,6 +58,7 @@ const EMPTY_CATALOG = {
   prefixDepartments: {},
   departmentMeta: {},
   programs: {},
+  departmentOf: () => null,
   untitled: [],
   unexpressed: [],
 };
@@ -77,6 +91,7 @@ function expandNsuCatalog() {
     prefixDepartments: NSU_PREFIX_DEPARTMENTS,
     departmentMeta: NSU_DEPARTMENT_META,
     programs,
+    departmentOf: code => NSU_PREFIX_DEPARTMENTS[getCoursePrefix(String(code).toUpperCase())] ?? null,
     untitled: NSU_UNTITLED_CODES,
     unexpressed: NSU_UNEXPRESSED_PREREQS,
   };
