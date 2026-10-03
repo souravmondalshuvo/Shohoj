@@ -1,5 +1,5 @@
 import { activeGradePoint } from '../core/activeCampus.js';
-import { DEPARTMENTS } from '../core/departments.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
 import { state } from '../core/state.js';
 import { calcSemGPA } from '../core/calculator.js';
 import {
@@ -85,7 +85,7 @@ export function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
   if (!box) return;
 
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
   const deptSeasons = dept ? (dept.seasons || ['Spring', 'Summer', 'Fall']) : ['Spring', 'Summer', 'Fall'];
 
