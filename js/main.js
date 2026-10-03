@@ -15,7 +15,8 @@ import { calculateCgpaTotals } from './core/gpa-core.js';
 import { activeGradePoint, getActiveCampus, initActiveCampus } from './core/activeCampus.js';
 import { getActiveCatalog } from './core/activeCatalog.js';
 import { setCourseLookup } from './core/courseLookup.js';
-import { DEFAULT_UNIVERSITY_ID } from './core/university.js';
+import { campusAllowsTab } from './core/campusFeatures.js';
+import { DEFAULT_UNIVERSITY_ID, hasFeature } from './core/university.js';
 import { MILESTONE_TIERS, standingTierFor } from './core/milestones.js';
 
 // Thresholds and labels come from js/core/milestones.js so the standing box and
@@ -111,6 +112,10 @@ window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// The tab bar was built for the previous campus's features. Before the redraw
+// below: if the open tab is one the new campus does not get, this moves the
+// student to the calculator, and the redraw then re-enters that instead.
+window.addEventListener('shohoj:campus-changed', () => applyCampusFeatures());
 // ...and the open tab (reviews, planner, the difficulty map) was drawn from
 // the previous campus's catalogue. Re-entering it redraws it.
 window.addEventListener('shohoj:campus-changed', () => switchCalcTab(_activeCalcTab));
@@ -785,8 +790,35 @@ function _moveTabSlider(tabId) {
   slider.dataset.active = 'true';
 }
 
+// Hide every tab and link the active campus has no data for — the legacy twin
+// of the shell's tabsFor(). Three kinds of node carry a feature: a tab
+// ([data-tab], mapped through CALC_TAB_FEATURES), a standalone-page link or the
+// nav's Tasks link ([data-feature]), and a dropdown group, which goes when all
+// of its items have.
+function applyCampusFeatures() {
+  const campus = getActiveCampus();
+  document.querySelectorAll('#calcTabs [data-tab]').forEach(btn => {
+    btn.hidden = !campusAllowsTab(campus, btn.dataset.tab);
+  });
+  document.querySelectorAll('[data-feature]').forEach(el => {
+    el.hidden = !hasFeature(campus, el.dataset.feature);
+  });
+  document.querySelectorAll('#calcTabs .calc-tab-group').forEach(group => {
+    const items = Array.from(group.querySelectorAll('.calc-tab-menu-item'));
+    group.hidden = items.length > 0 && items.every(item => item.hidden);
+  });
+  // A student who was on a tab their campus does not get (a saved tab, a
+  // shared link, or a campus change mid-session) lands on the calculator.
+  if (!campusAllowsTab(campus, _activeCalcTab)) switchCalcTab('calculator');
+  else _moveTabSlider(_activeCalcTab); // hiding a neighbour moves the pill
+}
+
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
+  // Every route in — a click, a #calculator/<tab> link, the saved tab, the
+  // nav's Tasks link — comes through here, so this is the one place the campus
+  // check has to hold.
+  if (!campusAllowsTab(getActiveCampus(), tabId)) tabId = 'calculator';
   _activeCalcTab = tabId;
 
   // Update tab buttons — single tabs and menu items both carry data-tab.
@@ -1171,6 +1203,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSemesters();
     recalc();
   }
+
+  // The campus is still the BRACU default here — initActiveCampus() runs
+  // further down — so this is a no-op on the markup as shipped. It is here so
+  // the bar is never left in a state nothing applied; shohoj:campus-changed
+  // re-applies it once the student's campus is known, in the same tick on a
+  // warm session, and behind the sign-in gate on a cold one.
+  applyCampusFeatures();
 
   // Restore active tab from session/URL hash
   const savedTab = restoreCalcTab();
