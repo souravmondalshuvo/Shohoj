@@ -1132,6 +1132,8 @@ export function onStartSemConfirm() {
   if (!state.currentDept) return;
   if (!getStartSeason() || !getStartYear()) return;
   const dept = getActiveCatalog().programs[state.currentDept];
+  // A program saved on another campus, before sign-in has resolved this one.
+  if (!dept) return;
   const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear   = parseInt(getStartYear());
