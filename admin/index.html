@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-EbK+MzSkRppfo/zXP3IVqKO3VCEcb0EmMBxDadpnbNA='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-2yaiyz3n+jq4lRllg3HoSSSkJ2+IK1oHhJoQvEnzzSk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -14989,6 +14989,30 @@ function getCourseDept(code) {
   return PREFIX_DEPT_MAP[getCoursePrefix(upper)] ?? null;
 }
 
+// ── js/core/courseLookup.js ─────────────────────────────────────
+// ── COURSE LOOKUP (legacy bundle) ────────────────────────────────────────────
+//
+// "Is this a real course, and what is it?" for the data layers — reviews,
+// papers, study groups — that validate a course code before writing it.
+//
+// Those modules ship in more than one bundle. On the calculator page main.js
+// points this at the active campus's catalogue (activeCatalog.js), so an NSU
+// student's codes are checked against NSU's courses. The admin page carries no
+// campus catalogue and leaves it alone, which keeps it on BRACU's — what it
+// has always validated against.
+
+let _courseLookup = code => COURSE_DB[code];
+
+/** The catalogue entry for a course code, or undefined if there is none. */
+function findCourse(code) {
+  return _courseLookup(code);
+}
+
+/** Answer findCourse from another catalogue. `lookup` maps a code to its entry. */
+function setCourseLookup(lookup) {
+  _courseLookup = lookup;
+}
+
 // ── js/core/papers.js ───────────────────────────────────────────
 // ── js/core/papers.js ─────────────────────────────────────────────────────────
 // Pure data layer for the past papers & notes library. Wraps the Firestore +
@@ -15017,7 +15041,7 @@ function normalizeCourseCode(raw) {
 
 function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return PAPERS_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return PAPERS_COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 function isValidPaperType(t) {

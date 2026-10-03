@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-1s5+dSSvPNas+kqu7MKvhcFF9lyHjrpeZNAsb6f/K1c='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-9X8cnU3JhF6QdvXr0Od4Tr2XfRvka2KRzvoenjrdQ6E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16691,6 +16691,1561 @@ function initActiveCampus() {
   window.addEventListener('shohoj:auth-changed', syncActiveCampusFromAuth);
 }
 
+// ── js/core/catalogNsu.generated.js ─────────────────────────────
+// js/core/catalogNsu.generated.js
+//
+// GENERATED FILE — DO NOT EDIT BY HAND.
+// Regenerate with: npm run generate:legacy-catalog
+// Source of truth: data/campuses/nsu/ (courses, prerequisites, programs, plans)
+//
+// NSU's catalogue for the legacy bundle, read through js/core/activeCatalog.js.
+// 1018 courses, 285 prerequisite rules, 25 programs.
+//
+// Left out because the data does not state them in a form these shapes hold
+// (scripts/legacy_catalog.mjs says why): 109 courses with no published title,
+// listed in NSU_UNTITLED_CODES, and the prerequisites of 27 courses, listed in
+// NSU_UNEXPRESSED_PREREQS.
+
+/** [code, title, credits], in code order. */
+const NSU_CATALOG_ROWS = [
+  ["ACT201","Introduction to Financial Accounting",3],
+  ["ACT202","Introduction to Managerial Accounting",3],
+  ["ACT310","Intermediate Accounting – I",3],
+  ["ACT320","Intermediate Accounting II",3],
+  ["ACT360","Advanced Managerial Accounting",3],
+  ["ACT370","Taxation",3],
+  ["ACT380","Audit and Assurance",3],
+  ["ACT410","Financial Statement Analysis",3],
+  ["ACT430","Accounting Information Systems",3],
+  ["ACT460","Advanced Financial Accounting",3],
+  ["AMCS501","Computational Linear Algebra",3],
+  ["AMCS501L","Computational Linear Algebra Lab",1],
+  ["AMCS502","High Performance Parallel Computing",3],
+  ["AMCS503","Partial Differential Equations: Modeling and Numeric",3],
+  ["AMCS504","Advanced Numerical Methods and Computation",3],
+  ["AMCS505","Advanced Control Theory and Application",3],
+  ["AMCS509","Mathematics for Data Science and Machine Learning",3],
+  ["AMCS517","Research Methodology in Mathematics Education /Special Topic",3],
+  ["AMCS517L","Labs on Mathematical Research Tools",1],
+  ["ANT101","Introduction to Anthropology",3],
+  ["ARC111","Foundation Design Studio I- Artistic Development",4.5],
+  ["ARC112","Foundation Design Studio II-Form and Composition",4.5],
+  ["ARC121","Graphics I-Basic Drawing",3],
+  ["ARC122","Graphics II-Rendering",3],
+  ["ARC123","Graphics III-Digital Presentation",3],
+  ["ARC131","Sources in Architecture I-Artistic Appreciation",3],
+  ["ARC133","Parameters in Design I-Aesthetics and Design",1.5],
+  ["ARC200","Art, Craft and Design-Observation and Documentation",1],
+  ["ARC213","Allied Design Studio-Dimension and Product",4.5],
+  ["ARC214","Architecture Design Studio I-Function and Analysis",4.5],
+  ["ARC215","Architecture Design Studio II-Simple Function",4.5],
+  ["ARC241","Architectural Heritage I-World I",3],
+  ["ARC242","Architectural Heritage II-World II",3],
+  ["ARC251","Introduction To Urban Design And Environmental Planning",3],
+  ["ARC261","Environment And Building System I-Climate And Design",3],
+  ["ARC262","Environment And Building System II-Building Physics",3],
+  ["ARC263","Environment And Building System III-Building Services",3],
+  ["ARC264","Environment and Building System IV-Design Integration",1],
+  ["ARC271","Construction I-Materials",3],
+  ["ARC272","Construction II-Technology",3],
+  ["ARC273","Construction III-Workshop",1],
+  ["ARC281","Building Structures I",2],
+  ["ARC282","Building Structures II",2],
+  ["ARC283","Buliding Structures III",2],
+  ["ARC293","Design-Related-Media",3],
+  ["ARC310","Interior Design Studio",3],
+  ["ARC316","Professional Studies Studio I-Form And Function",4.5],
+  ["ARC317","Professional Studies Studio II-Complex Function",6],
+  ["ARC318","Professional Studies Studio III-Complex Function",6],
+  ["ARC324","Graphics IV-Working Details",3],
+  ["ARC334","Parameters in Design II-Theory And Methods",1.5],
+  ["ARC343","Architectural Heritage III- India",3],
+  ["ARC344","Architectural Heritage IV- Bengal",2],
+  ["ARC348","Built Heritage and Conservation",3],
+  ["ARC384","Building Structures IV",3],
+  ["ARC410","Landscape Design Laboratory",3],
+  ["ARC418","Design And Allied Studies Studio I",6],
+  ["ARC419","Design and Allied Studies Studio II",6],
+  ["ARC437","Professional Practice-Ethics and Society",1.5],
+  ["ARC438","Environmental Psychology",3],
+  ["ARC445","Contemporary Design Precedents and Analysis",2],
+  ["ARC453","Human Settlement-Policy and Planning",3],
+  ["ARC455","Advance Urban Design and Planning Applications",3],
+  ["ARC456","Rural Studies",3],
+  ["ARC474","Construction IV-Documents and Management",3],
+  ["ARC492","Independent Study",1.5],
+  ["ARC500","Professional Internship (Supervised Training)",1],
+  ["ARC510","Advanced Studies Studio I",4.5],
+  ["ARC519","Advanced Studies Studio III-Thesis Project",4.5],
+  ["ARC535","Parameters in Design III - Pedagogy and Discourse",1.5],
+  ["ARC576","Building Automation and Hi-tech Architecture",3],
+  ["ARC596","Thesis Documentation - Research and Development",4.5],
+  ["ARC598","Seminar on Art, Architecture, Society and Culture",1.5],
+  ["BAN205","Bangla Language",3],
+  ["BBT203","Introduction to Bio-statistics",3],
+  ["BBT221","Human Physiology",3],
+  ["BBT230","Biostatistics",3],
+  ["BBT312","Molecular Biology",3],
+  ["BBT312L","Molecular Biology Lab",1],
+  ["BBT314","Protein & Enzyme Chemistry",3],
+  ["BBT314L","Protein & Enzyme Chemistry Lab",1],
+  ["BBT315","Metabolism",3],
+  ["BBT316","Immunology",3],
+  ["BBT316L","Immunology Lab",1],
+  ["BBT317","Molecular Genetics",3],
+  ["BBT318","Cell Biology",3],
+  ["BBT335","Integrated Metabolism",3],
+  ["BBT413","Plant Biochemistry & Biotechnology",3],
+  ["BBT413L","Plant Biochemistry & Biotechnology Lab",1],
+  ["BBT415","Molecular Biotechnology",3],
+  ["BBT415L","Molecular Biotechnology Lab",1],
+  ["BBT416","Bioinformatics",3],
+  ["BBT417","Endocrinology",3],
+  ["BBT418","Pharmaceutical Biotechnology",3],
+  ["BBT419","Clinical Biochemistry & Xenobiotics",3],
+  ["BBT421","Applied Immunology & Immunogenetics",3],
+  ["BBT423","Nutritional Biochemistry",3],
+  ["BBT424","Virology & Oncology",3],
+  ["BBT425","Neurochemistry",3],
+  ["BBT427","Environmental Biotechnology",3],
+  ["BBT601","Biochemistry",3],
+  ["BBT608","Advanced Biochemistry and Molecular Biology",3],
+  ["BBT615","Advanced Cell Biology I",3],
+  ["BBT622","Microbiology",3],
+  ["BBT631","Immuno-Biotechnology",3],
+  ["BBT638","Virology",3],
+  ["BBT654","Industrial Biotechnology",3],
+  ["BBT659","Genes and Disease",3],
+  ["BBT671","Bioinformatics",3],
+  ["BBT685","Biostatistics",3],
+  ["BBT792","Genomics & Proteomics",3],
+  ["BEN205","Bengali language and Literature",3],
+  ["BIO103","Biology I",3],
+  ["BIO103L","Biology I Lab",1],
+  ["BIO201","Introduction to Biochemistry & Biotechnology",3],
+  ["BIO201L","Introduction to Biochemistry and Biotechnology Lab",1],
+  ["BIO202","Basic Microbiology",3],
+  ["BIO202L","Basic Microbiology Lab",1],
+  ["BSC201","Basic Science Support- Math & Physics",3],
+  ["BUS112","Introduction to Business Mathematics",3],
+  ["BUS135","Applied Business Mathematics",3],
+  ["BUS172","Introduction to Statistics",3],
+  ["BUS173","Applied Statistics",3],
+  ["BUS251","Business Communication",3],
+  ["BUS498","Internship",4],
+  ["BUS499","Research Project",4],
+  ["BUS500","Communication Skills for Manager",3],
+  ["BUS501","Business Mathematics",3],
+  ["BUS505","Accounting Principles",3],
+  ["BUS511","Business Statistics",3],
+  ["BUS516","Computer Information Systems",3],
+  ["BUS518","Business Law and Ethics",3],
+  ["BUS520","Management and Organizational Behavior",3],
+  ["BUS525","Managerial Economics",3],
+  ["BUS530","Economic Conditions Analysis",3],
+  ["BUS535","Business Research Methods",3],
+  ["BUS601","Human Resource Management",3],
+  ["BUS620","Marketing Management",3],
+  ["BUS635","Managerial Finance",3],
+  ["BUS650","Operations Management",3],
+  ["BUS685","International Business",3],
+  ["BUS690","Strategic Management",3],
+  ["BUS698","Field Study",1],
+  ["BUS699","Internship",3],
+  ["BUS700","Seminar",2],
+  ["CEE100","Introduction to Civil and Environmental Engineering",3],
+  ["CEE110","Computer Aided drawing (CAD) for Engineers",3],
+  ["CEE209","Environmental Chemistry",3],
+  ["CEE209L","Environmental Chemistry Lab",1],
+  ["CEE210","Engineering Machanics",3],
+  ["CEE211","Fluid Mechanics",3],
+  ["CEE211L","Fluid Mechanics Lab",1],
+  ["CEE212","Solid Mechanics",3],
+  ["CEE212L","Solid Mechanics Lab",1],
+  ["CEE213","Surveying & Introduction to GIS",3],
+  ["CEE213L","Surveying & Introduction to GIS Lab",1],
+  ["CEE214","Engineering Materials",3],
+  ["CEE214L","Engineering Materials Lab",1],
+  ["CEE215","Numerical Analysis & Computer Programming",3],
+  ["CEE240","Introduction to Soil Mechanics and Foundation Engineering",3],
+  ["CEE240L","Introduction to Soil Mechanics and Foundation Engineering Lab",1],
+  ["CEE250","Introduction to Transportation Engineering",3],
+  ["CEE250L","Introduction to Transportation Engineering Lab",1],
+  ["CEE260","Hydrology",3],
+  ["CEE271L","Environmental Engineering Lab. I",1],
+  ["CEE310","Quantity Survey and Cost Analysis",3],
+  ["CEE330","Structural Analysis and Design-I",3],
+  ["CEE330L","Structural Analysis and Design-I Lab",1],
+  ["CEE331","Structural Analysis and Design-II",3],
+  ["CEE331L","Structural Analysis and Design Lab",1],
+  ["CEE335","Reinforced Concrete Design I",3],
+  ["CEE335L","Reinforced Concrete Design I Lab",1],
+  ["CEE340","Advanced Foundation Engineering",3],
+  ["CEE350","Traffic Analysis and Design",3],
+  ["CEE360","Open-Channel Hydraulics",3],
+  ["CEE360L","Open-Channel Hydraulics Lab",1],
+  ["CEE370","Water Supply and Treatment",3],
+  ["CEE370L","Water Supply and Treatment Lab",1],
+  ["CEE371L","Environmental Engineering Lab. II",1],
+  ["CEE373","Sanitation and Wastewater Engineering",3],
+  ["CEE373L","Sanitation and Wastewater Engineering Lab",1],
+  ["CEE410","Construction Engineering",3],
+  ["CEE415","Socio-economic Aspects of Development Projects",3],
+  ["CEE430","Reinforced Concrete Design, II",3],
+  ["CEE431","Introduction to Structural Dynamics",3],
+  ["CEE433","Finite Element Methods",3],
+  ["CEE435","Prestressed Concrete",3],
+  ["CEE437","Behavior and Design of Metal Structures",3],
+  ["CEE439","Earthquake-resistant Design",3],
+  ["CEE450","Road and Traffic Safety Engineering",3],
+  ["CEE460","Groundwater Hydraulics",3],
+  ["CEE465","River Engineering",3],
+  ["CEE467","Irrigation and Drainage Engineering",3],
+  ["CEE470","Solid & Hazardous Waste Management",3],
+  ["CEE472","Climate Change and Disaster management",3],
+  ["CEE473","Coastal and Estuarine Analysis",3],
+  ["CEE475","Water Resources and Environmental Modeling",3],
+  ["CEE477","Ecological Engineering",3],
+  ["CEE479","Air Quality Engineering",3],
+  ["CEE490","Special Topic",3],
+  ["CEE498","Internship",0],
+  ["CEE499","Engineering Project",3],
+  ["CHE101","General Chemistry",3],
+  ["CHE101L","General Chemistry Lab",1],
+  ["CHE120","Inorganic and Organic Chemistry",4],
+  ["CHE201","Biophysical Chemistry",3],
+  ["CHE202","Bio-Organic Chemistry",3],
+  ["CHE202L","Bio-Organic Chemistry Lab",1],
+  ["CHE203","Chemistry of Biomolecules",3],
+  ["CHE203L","Chemistry of Biomolecules Lab",1],
+  ["CHN101","Introduction to Chinese Language & Culture",3],
+  ["CHN201","Intermediate Chinese",3],
+  ["CSE101","Introduction to Python Programming",3],
+  ["CSE115","Programming Language I",3],
+  ["CSE115L","Programming Language I Lab",1],
+  ["CSE145","Introduction to Artificial Intelligence",3],
+  ["CSE173","Discrete Mathematics",3],
+  ["CSE215","Programming Language II",3],
+  ["CSE215L","Programming Language II Lab",1],
+  ["CSE225","Data Structure & Algorithm",3],
+  ["CSE225L","Data Structure & Algorithm Lab",1],
+  ["CSE226","Fundamentals of Vibe Coding",3],
+  ["CSE231","Digital Logic",3],
+  ["CSE231L","Digital Logic Lab",0],
+  ["CSE273","Introduction to Theory of Computation",3],
+  ["CSE299","Junior Design",1],
+  ["CSE311","Database Management System",3],
+  ["CSE311L","Database Management System Lab",0],
+  ["CSE323","Operating Systems Design",3],
+  ["CSE325","Programming Languages Principles",3],
+  ["CSE327","Software Engineering",3],
+  ["CSE331","Microprocessor Interfacing & Embedded System",3],
+  ["CSE331L","Microprocessor Interfacing & Embedded System Lab",0],
+  ["CSE332","Computer Organization and Architecture",3],
+  ["CSE332L","Computer Organization and Architecture Lab",0],
+  ["CSE338","Computer Networks",3],
+  ["CSE338L","Computer Networks Lab",0],
+  ["CSE373","Design and Analysis of Algorithms",3],
+  ["CSE401","Advanced Programming Techniques",3],
+  ["CSE411","Advanced Database",3],
+  ["CSE413","Verilog HDL: Modeling, Simulation and Synthesis",3],
+  ["CSE413L","Verilog HDL: Modeling, Simulation and Synthesis Lab",0],
+  ["CSE414","Advanced Chip Design Methodology and Optimization using HDL",3],
+  ["CSE415","VLSI Chip Testing",3],
+  ["CSE417","Numerical Methods",3],
+  ["CSE418","Computer Graphics",3],
+  ["CSE419","Data Mining",3],
+  ["CSE422","Modeling and Simulation",3],
+  ["CSE424","Object-Oriented Software Developments",3],
+  ["CSE425","Concepts of Programming Language",3],
+  ["CSE426","Compiler Constructions",3],
+  ["CSE427","Software Quality Assurance & Testing",3],
+  ["CSE428","Software Process Management",3],
+  ["CSE429","Software System Architecture",3],
+  ["CSE433","Computer Architecture",3],
+  ["CSE435","Introduction to VLSI Design",3],
+  ["CSE435L","Introduction to VLSI Design Lab",0],
+  ["CSE438","CSE 438 Data Communication & Network",3],
+  ["CSE440","Artificial Intelligence",3],
+  ["CSE442","Micro Array Bioinformatics",3],
+  ["CSE445","Machine Learning",3],
+  ["CSE446","Introductions to Bioinformatics",3],
+  ["CSE447","Molecular Biology",3],
+  ["CSE448","Genome Sequence & Analysis",3],
+  ["CSE449","Structural Bioinformatics",3],
+  ["CSE465","Pattern Recognition",3],
+  ["CSE467","Digital Image Processing",3],
+  ["CSE468","Computer Vision",3],
+  ["CSE470","Theory of Fuzzy Systems",3],
+  ["CSE473","Theory of Computation",3],
+  ["CSE482","Internet and Web Technology",3],
+  ["CSE482L","Internet and Web Technology Lab",0],
+  ["CSE485","Digital Signal Processing",3],
+  ["CSE486","Mobile and Wireless Application Development",3],
+  ["CSE491","Special Topic",3],
+  ["CSE492","Special Topics",3],
+  ["CSE493","Special Topics",3],
+  ["CSE494","Special Topics",3],
+  ["CSE495A","Special Topics",3],
+  ["CSE495B","Special Topic - Natural Language Processing",3],
+  ["CSE496","Special Topics",3],
+  ["CSE498","/EEE 498/ETE 498 Internship/Co-op/Directed Research",0],
+  ["CSE498R","Intern/Co-op/Directed Research",1],
+  ["CSE499A","Senior Design Project I",1.5],
+  ["CSE499B","Senior Design Project II",1.5],
+  ["CSE511","Advanced Algorithms",3],
+  ["CSE512","Distributed Database Systems",3],
+  ["CSE533","Machine Learning",3],
+  ["CSE542","Advanced VLSI Design",3],
+  ["CSE552","Advanced Computer Networks",3],
+  ["CSE562","Modeling and Simulation",3],
+  ["CSE564","Advanced Topics on Management of Technology",3],
+  ["CSE596","Recent Advances in Computer Science",3],
+  ["DEV501","Basic Economics",3],
+  ["DEV502","Basic Sociology and Social Anthropology",3],
+  ["DEV504","Research Methodology in Social Science",3],
+  ["DEV563","Economic Development",3],
+  ["DEV564","Dynamics of Rural Development",3],
+  ["DEV565","Issues in Sustainable Development",3],
+  ["DEV567","Program & Project Analysis",3],
+  ["DEV569","Development Organization Management",3],
+  ["DEV571","Gender and Development",3],
+  ["DEV577","Corruption and Governance",3],
+  ["DEV595","Research Paper",3],
+  ["DEV596","Internship",3],
+  ["ECO101","Introduction to Microeconomics",3],
+  ["ECO103","Introduction to Economics",3],
+  ["ECO104","Introduction to Macroeconomics",3],
+  ["ECO135","Applied Mathematics for Economics I",3],
+  ["ECO172","Introduction to Statistics",3],
+  ["ECO173","Applied Statistics",3],
+  ["ECO201","Intermediate Microeconomic Theory I",3],
+  ["ECO203","Intermediate Microeconomic Theory",3],
+  ["ECO204","Intermediate Macroeconomic Theory I",3],
+  ["ECO244","Applied Mathematics II",3],
+  ["ECO245","Applied Mathematics for Economics II",3],
+  ["ECO301","Intermediate Microeconomic Theory II",3],
+  ["ECO303","Intermediate Microeconomic Theory II",3],
+  ["ECO304","Intermediate Macroeconomic Theory-II",3],
+  ["ECO309","Urban Economics",3],
+  ["ECO315","Agricultural Economics",3],
+  ["ECO317","Money, Banking and Financial Markets",3],
+  ["ECO328","International Trade Theory and Policy",3],
+  ["ECO329","Contemporary Issues in Global Economy",3],
+  ["ECO348","Economy of Bangladesh",3],
+  ["ECO349","Economy of Bangladesh",3],
+  ["ECO350","Economic Development",3],
+  ["ECO354","Environmental & Natural Resources Economics",3],
+  ["ECO360","Regional Economics",3],
+  ["ECO372","Introduction to Econometrics",3],
+  ["ECO380","Industrial Organization",3],
+  ["ECO406","History of Economic Thought",3],
+  ["ECO414","Public Finance",3],
+  ["ECO415","Economic Development",3],
+  ["ECO417","Financial Economics",3],
+  ["ECO430","International Finance",3],
+  ["ECO436","The WTO and Globalisation",3],
+  ["ECO441","Labour Economics",3],
+  ["ECO443","Health Economics",3],
+  ["ECO451","Welfare Economics",3],
+  ["ECO460","Mathematical Statistics",3],
+  ["ECO472","Applied Time Series Forecasting",3],
+  ["ECO474","Mathematical Economics",3],
+  ["ECO475","Game Theory with Applications in Economics",3],
+  ["ECO484","Project Analysis and Evaluation",3],
+  ["ECO485","Mathematical Programming",3],
+  ["ECO486","Energy Economics and Policy",3],
+  ["ECO490","Senior Seminar (Capstone)",3],
+  ["ECO492","Special Topics in Economics",3],
+  ["ECO501","Mathematical Economics",3],
+  ["ECO502","Econometric Methods",3],
+  ["ECO503","Microeconomic Theory",3],
+  ["ECO504","Macroeconomic Theory",3],
+  ["ECO511","Microeconomic Analyses",3],
+  ["ECO514","Quantitative Techniques for Economic Analysis",3],
+  ["ECO613","International Trade Theory and Policy",3],
+  ["ECO631","Development Economics",3],
+  ["ECO650","Environmental Economics",3],
+  ["ECO653","Time Series Analysis and Forecasting",3],
+  ["ECO682","Contemporary Economic Ideas",3],
+  ["ECO684","Monetary Economics",3],
+  ["ECO687","Agricultural Economics",3],
+  ["ECO689","Project Analysis and Evaluation",3],
+  ["ECO695","Research Based Term Paper",3],
+  ["ECO699","Thesis",6],
+  ["EEE111","Analog Electronics",3],
+  ["EEE111L","Analog Electronics Lab",1],
+  ["EEE141","Electrical Circuits",3],
+  ["EEE141L","Electrical Circuits Lab",1],
+  ["EEE154","Engineering Drawing",1],
+  ["EEE211","Digital Electronics",3],
+  ["EEE211L","Digital Logic Design Lab",0],
+  ["EEE221","Signals and Systems",3],
+  ["EEE241","Electrical Circuits II",3],
+  ["EEE241L","Electrical Circuits II-Lab",1],
+  ["EEE299","Junior Design",1],
+  ["EEE311","Analog Electronics II",3],
+  ["EEE311L","Analog Electronics II Lab",1],
+  ["EEE312","Power Electronics",3],
+  ["EEE312L","Power Electronics Lab",1],
+  ["EEE321","Introduction to Communication Systems",3],
+  ["EEE321L","Introduction to Communications Systems Lab",0],
+  ["EEE342","Control Engineering",3],
+  ["EEE342L","Control Engineering Lab",1],
+  ["EEE361","Theory of Electromagnetic Field",3],
+  ["EEE362","Power Systems",3],
+  ["EEE362L","Power Systems Lab",1],
+  ["EEE363","Electrical Machines",3],
+  ["EEE363L","Electrical Machines-Lab",1],
+  ["EEE410","Semiconductor Devices and Technology",3],
+  ["EEE411","Introduction to VLSI Design",3],
+  ["EEE413","Verilog HDL: Modeling, Simulation and Synthesis",3],
+  ["EEE415","CMOS Analog Circuit Design",3],
+  ["EEE452","Engineering Economics and Management",3],
+  ["EEE453L","Microprocessor Interface and Embedded System Lab",0],
+  ["EEE461","Power System Operation & Reliability",3],
+  ["EEE462","Switchgear and Protection",3],
+  ["EEE464","Energy Resource for Power Generation",3],
+  ["EEE465","High Voltage Engineering",3],
+  ["EEE494","Special Topics",3],
+  ["EEE498","Internship/Co-op",0],
+  ["EEE498R","Intern/Co-op/Directed Research",1],
+  ["EEE499A","Senior Design Project I",1.5],
+  ["EEE499B","Senior Design II",1.5],
+  ["EEE512","Solid State Electronics",3],
+  ["EEE534","Mobile and wireless communication",3],
+  ["EEE551","Electric Machines and Transients",3],
+  ["EEE556","Smart Grid Design and Operation",3],
+  ["EMB501","Quantitative tools in Business",3],
+  ["EMB502","Business Economics",3],
+  ["EMB510","Principles of Accounting and Finance",3],
+  ["EMB520","Principles of Management and Marketing",3],
+  ["EMB601","Organizationl Behavior",3],
+  ["EMB602","Human Resource Management",3],
+  ["EMB620","Strategic Marketing",3],
+  ["EMB650","Operations Management",3],
+  ["EMB660","Corporate Finance",3],
+  ["EMB670","International Business",3],
+  ["EMB690","Strategic Management",3],
+  ["EMPG500","Public Policy",3],
+  ["EMPG505","Governance: Theories and Practices",3],
+  ["EMPG510","Organizational Behavior",3],
+  ["EMPG515","Negotiation: Tools and Techniques",3],
+  ["EMPG520","Policy Analysis: Tools and Techniques",3],
+  ["EMPG525","Case Study Analysis",3],
+  ["EMPG530","Global Policy Regimes",3],
+  ["EMPG555","Project Management: Monitoring and Evaluation",3],
+  ["EMPG560","E-Governance and ICT",3],
+  ["EMPG570","Basis of Social Research and Practicum",3],
+  ["EMPH601","Introduction to Public Health & Professional Practice",3],
+  ["EMPH605","Internship",3],
+  ["EMPH609","International Health",3],
+  ["EMPH611","Fundamentals of Bio-Statistics",3],
+  ["EMPH631","Population & Environmental Health",3],
+  ["EMPH642","Epidemiology I",3],
+  ["EMPH644","Epidemilogy of Communicable & Non Communicable Diseases",3],
+  ["EMPH653","Health Economics & Financing",3],
+  ["EMPH663","Public Health Information, Education & Communication",3],
+  ["EMPH671","Reproductive Health",3],
+  ["EMPH672","Maternal & Child Health",3],
+  ["EMPH678","Health Policy Planning & Law",3],
+  ["EMPH681","Clinical Aspect of Public Health Nutrition",3],
+  ["EMPH704","Health Service & Hospital Managment",3],
+  ["EMPH706","Human Resource Development & Management",3],
+  ["EMPH711","Data Management & Analysis",3],
+  ["EMPH712","Research Methodology",3],
+  ["EMPH713","Research Methodology II",3],
+  ["EMPH742","Epidemilogy II",3],
+  ["EMPH745","Non-Communicable Disease Control",3],
+  ["EMPH771","Adolescent Health",3],
+  ["EMPH781","Clinical Nutrition",3],
+  ["EMPH805","Dissertation",5],
+  ["EMPH806","Final Dissertation",5],
+  ["EMPH842","Clinical Epidemiology",3],
+  ["ENG102","Introduction to Composition",3],
+  ["ENG103","Intermediate Composition",3],
+  ["ENG105","Advanced Composition",3],
+  ["ENG111","Public Speaking",3],
+  ["ENG115","Introduction to Literature",3],
+  ["ENG210","Introduction to Linguistics",3],
+  ["ENG216","Research Methodology for Humanities",3],
+  ["ENG220","Introduction to Fiction",3],
+  ["ENG230","Introduction to Poetry",3],
+  ["ENG260","Introduction to Literary Theory",3],
+  ["ENG302","Phonetics & Phonology",3],
+  ["ENG307","Semantics & Pragmatics",3],
+  ["ENG312","Morphology & Syntax",3],
+  ["ENG334","Sociolinguistics",3],
+  ["ENG336","17th Century Poetry and Prose",3],
+  ["ENG337","Psycholinguistics",3],
+  ["ENG338","Elizabethan and Jacobean Drama",3],
+  ["ENG341","The Rise and Growth of the Novel",3],
+  ["ENG346","19th Century Poetry and Fiction",3],
+  ["ENG351","Modernism and Postmodernism",3],
+  ["ENG361","Introduction to Applied Linguistics",3],
+  ["ENG366","Theories of Second Language Acquisition",3],
+  ["ENG371","Principles of Syllabus Design & Material Development",3],
+  ["ENG381","Teaching Techniques & Practicum",3],
+  ["ENG401","Contrastive Grammer",3],
+  ["ENG406","Discourse Analysis",3],
+  ["ENG416","Stylistics",3],
+  ["ENG417","Fundamentals of Language Acquisition  & DevelopmenT",3],
+  ["ENG427","Language Acquisition and Development",3],
+  ["ENG429","Modern English Transformational & Generative Grammar",3],
+  ["ENG431","European Classics in Translation",3],
+  ["ENG436","South Asian Literature in English",3],
+  ["ENG446","Post Colonialism and 20th Century Criticism",3],
+  ["ENG457","An Introduction to Journalism",3],
+  ["ENG458","Twentieth-Century American Literature",3],
+  ["ENG476","Teaching Composition",3],
+  ["ENG481","Teaching Listening and Speaking",3],
+  ["ENG501","Introduction to Graduate Studies and Research",3],
+  ["ENG506","Early Seventeenth Century Poetry",3],
+  ["ENG511","Nineteenth Century British Fiction",3],
+  ["ENG517","Twentieth-Century Drama in English",3],
+  ["ENG520","Contemporary Literary Theory",3],
+  ["ENG522","Classical Literature in Translation",3],
+  ["ENG525","South Asian Novels in English",3],
+  ["ENG527","Studies in African Literature",3],
+  ["ENG552","Advanced Study of Phonetics and Contrastive Phonology",3],
+  ["ENG555","Advanced Psycholinguistics",3],
+  ["ENG557","English as a Global Language",3],
+  ["ENG558","English Language in Bangladesh",3],
+  ["ENG560","English in Business Communication",3],
+  ["ENG570","History of the English Language",3],
+  ["ENG573","Research Methods in TESOL",3],
+  ["ENG574","Topics, Issues and Trends in TESOL I",3],
+  ["ENG575","Second Language Development",3],
+  ["ENG576","Approaches to Teaching Grammar",3],
+  ["ENG578","Measurement and Evaluation for TESOL",3],
+  ["ENG580","Foundations in Linguistics",3],
+  ["ENG581","Sociolinguistics",3],
+  ["ENG582","ELT Syllabus design",3],
+  ["ENG602","Shakespeare Studies",3],
+  ["ENG603","Milton",3],
+  ["ENG604","Postcolonialism-Theories and Texts",3],
+  ["ENG606","Thesis",6],
+  ["ENG611","Advanced Stylistics",3],
+  ["ENG613","Translation Studies",3],
+  ["ENG616","Comparative Linguistics",3],
+  ["ENG618","Thesis",6],
+  ["ENG631","Practicum for Teaching English to Speakers of Other Languages",3],
+  ["ENG632","Topics, Issues and Trends in TESOL II",3],
+  ["ENG634","Teaching English to Speakers of Other Languages at the Secondary and Tertiary Levels",3],
+  ["ENG636","Seminar on Language Education Research",3],
+  ["ENG637","Thesis",6],
+  ["ENV102","Environmental Biology",3],
+  ["ENV107","Introduction to Environmental Science",3],
+  ["ENV107L","Introduction to Environmental Science",1],
+  ["ENV172","Introduction to Statistics",3],
+  ["ENV203","Introduction to Geography",3],
+  ["ENV204","Soil Science",3],
+  ["ENV205","Climate Change",3],
+  ["ENV207","Environment and Health",3],
+  ["ENV208","Environmental Hazards and Disaster Management",3],
+  ["ENV209","Environmental Chemistry",3],
+  ["ENV209L","Environmental Chemistry Lab.",1],
+  ["ENV214","Environmental Management",3],
+  ["ENV215","Ecology",3],
+  ["ENV260","Introduction to Environmental & Natural Resource Economics",3],
+  ["ENV307","Urban Environmental Management",3],
+  ["ENV309","Environmental Toxicology",3],
+  ["ENV311","Geology and Geomorphology",3],
+  ["ENV313","Biodiversity and the Preservation of Species",3],
+  ["ENV315","Environmental Ethics",3],
+  ["ENV316","Geographical Information Systems",3],
+  ["ENV321","Environmental Organizations",3],
+  ["ENV373","Environmental Impact Assessment and Monitoring",3],
+  ["ENV375","Biostatistics",3],
+  ["ENV403","Global Environmental Issues and Politics",3],
+  ["ENV405","Population, Poverty and Environment",3],
+  ["ENV408","Environmental Pollution Control",3],
+  ["ENV409","Environmental Policy, Planning and Politics",3],
+  ["ENV410","Integrated Water Resource Planning and Management",3],
+  ["ENV418","Conservation and Sustainable Development",3],
+  ["ENV419","Forest Management",3],
+  ["ENV421","Energy Economics and Policy",3],
+  ["ENV430","Environmental Law and Regulations",3],
+  ["ENV436","Toxicology and Xenobiotics",3],
+  ["ENV455","Research Methods in Environmental Studies",3],
+  ["ENV498","Internship",3],
+  ["ENV501","Fundamentals of Environmental Science & Management",3],
+  ["ENV502","Economics of Environmental Management",3],
+  ["ENV602","Resource and Ecological Economics",3],
+  ["ENV606","Environmental and Social Impact Assessment",3],
+  ["ENV609","Integrated Resource Management",3],
+  ["ENV624","Ecological Systems and Biodiversity",3],
+  ["ENV627","Pollution Control",3],
+  ["ENV630","Urban Environmental Management",3],
+  ["ENV632","Wastewater Treatment and Management",3],
+  ["ENV635","Project Development, Monitoring and Evaluation",3],
+  ["ENV649","Climate Change",3],
+  ["ENV652","Geographic Information System",3],
+  ["ENV667","Remote Sensing of Environment",3],
+  ["ETE111","Analog Electronics I",3],
+  ["ETE111L","Analog Electronics I Lab",1],
+  ["ETE141","Electrical Circuit I",3],
+  ["ETE211L","Introduction to Digital Electronics Lab",1],
+  ["ETE221","Signals and Systems",3],
+  ["ETE221L","Signals and Systems Lab",0],
+  ["ETE241L","Electrical Circuit II Lab",1],
+  ["ETE299","Junior Design Project I",1],
+  ["ETE311L","Analog Electronics II Lab",1],
+  ["ETE312L","Power Electronics Lab",0],
+  ["ETE321","Introduction to Communication Systems",3],
+  ["ETE321L","Introduction to Communications Systems Lab",0],
+  ["ETE331","Data Communications & Networks",3],
+  ["ETE331L","Data Communications & Networks Lab",0],
+  ["ETE412","Introduction to VLSI",3],
+  ["ETE418L","Control Engineering Lab",0],
+  ["ETE424","Mobile and Wireless Communication System",3],
+  ["ETE424L","Mobile and Wireless Communication System Lab",1],
+  ["ETE426","Fiber Optic Communication Systems",3],
+  ["ETE426L","Fiber Optic Communication Systems Lab",1],
+  ["ETE471","Digital Signal Processing",3],
+  ["ETE471L","Digital Signal Processing Lab",0],
+  ["ETE498","Internship /Co-op/ Directed Research",0],
+  ["ETE499A","Senior Design Project I",1.5],
+  ["ETE499B","Senior Design Project II",1.5],
+  ["ETH201","Ethical Theories",3],
+  ["FIN254","Introduction to Financial Management",3],
+  ["FIN340","Working Capital Management",3],
+  ["FIN410","Financial Statement Analysis",3],
+  ["FIN433","Financial Markets and Institutions",3],
+  ["FIN435","Investment Theory",3],
+  ["FIN440","Corporate Finance",3],
+  ["FIN444","International Financial Management",3],
+  ["FIN455","Financial Modelling Using Excel",3],
+  ["FIN464","Bank Management",3],
+  ["FIN470","Insurance and Risk Management",3],
+  ["FIN480","Derivative Securities",3],
+  ["FIN635","Financial Analysis and Control",3],
+  ["FIN637","Investment Theory",3],
+  ["FIN639","Corporate Finance",3],
+  ["FIN642","Financial Markets and Institutions",3],
+  ["FIN643","Capital Investment Decisions",3],
+  ["FIN644","Commercial Bank Management",3],
+  ["FIN645","International  Financial Management",3],
+  ["FIN647","Financial Derivatives",3],
+  ["FIN650","Project Appraisal",3],
+  ["GEO205","Introduction to Bangladesh Geography",3],
+  ["HAS501","Pre-Modern History of South Asia",3],
+  ["HAS502","Contemporary South Asia",3],
+  ["HAS504","Urbanization in Modern Asia",3],
+  ["HAS505","History of Independent Bangladesh",3],
+  ["HAS507","Heritage, Museology & Archival Studies",3],
+  ["HAS509","Contemporary Middle East",3],
+  ["HAS512","Modern China, Japan, and Malaysia",3],
+  ["HAS514","Development in South Asia",3],
+  ["HIS101","Bangladesh History and Culture",3],
+  ["HIS102","Introduction to World Civilization",3],
+  ["HIS103","Emergence of Bangladesh",3],
+  ["HIS203","Islamic History",3],
+  ["HIS205","World History",3],
+  ["HRM340","Training and Development",3],
+  ["HRM360","Human Resource Planning",3],
+  ["HRM370","Managerial Skills Development",3],
+  ["HRM380","Compensation Theory and Practice",3],
+  ["HRM410","Industrial Relations",3],
+  ["HRM420","Human Resource Analytics",3],
+  ["HRM450","Labor Management Relations",3],
+  ["HRM460","International Human Resource Management",3],
+  ["HRM470","Negotiations",3],
+  ["HRM499","Special topics in Human Resource Management",3],
+  ["HRM602","Human Resource Planning and Staffing",3],
+  ["HRM603","Training and Development",3],
+  ["HRM604","Performance Appraisal and Compensation Systems",3],
+  ["HRM610","Employment and Labor Laws in Bangladesh",3],
+  ["HRM631","Managerial Skills Development",3],
+  ["HRM660","Strategic Human Resource Management",3],
+  ["HRM680","Comparative Perspectives on Human Resource Management",3],
+  ["HRM690","Special Topics in Human Resource Management",3],
+  ["INB350","International Business Negotiations",3],
+  ["INB355","Country Risk Analysis",3],
+  ["INB372","International Business",3],
+  ["INB400","International Trade and Finance",3],
+  ["INB410","International Competitiveness",3],
+  ["INB415","Global Fashion Buying and Merchandising",3],
+  ["INB450","Emerging Economies",3],
+  ["INB480","Global Business Strategy",3],
+  ["INB490","Cross-Cultural Management",3],
+  ["INB495","International Trade Law",3],
+  ["LAW101","Introduction to the Legal System & Legal Processes",3],
+  ["LAW107","Law of Contract and Restitution",4],
+  ["LAW200","Legal Environment of Business",3],
+  ["LAW201","Constitutional Law of Bangladesh",4],
+  ["LAW211","Family and Property Law",4],
+  ["LAW213","Law of Crimes",4],
+  ["LAW301","Law of Evidence and Medical Jurisprudence",4],
+  ["LAW303","Corporate Law",3],
+  ["LAW305","Law of Civil Procedure",4],
+  ["LAW313","Law of Criminal Procedure",4],
+  ["LAW314","Legal Ethics",3],
+  ["LAW405","Labor and Employment Law",3],
+  ["LAW412","Alternative Dispute Resolution",3],
+  ["LAW415","Law of Public Demands & Loans Recovery",3],
+  ["LAW416","Jurisprudence & Legal Theory",3],
+  ["LAW417","Property Law and Transfers",4],
+  ["LAW418","Legal Drafting (Civil and criminal) and conveyance",4],
+  ["LAW419","Fiscal & Taxation Law",3],
+  ["LAW420","Clinical Legal Education and Community Legal Service",4],
+  ["LAW421","Public International Law",3],
+  ["LAW423","Land Laws of Bangladesh",3],
+  ["LAW424","Cyber, Media, and Telecommunications Law",3],
+  ["LAW426","Law of Torts",3],
+  ["LAW427","Administrative and Regulatory Law",3],
+  ["LBA101","Bangladesh Culture and Heritage",3],
+  ["LBA102","Introduction to World Civilization",3],
+  ["LBA104","Introduction to Dramatics",3],
+  ["LLB101","Introduction to the Legal System and Legal Process",3],
+  ["LLB102","Constitutional Laws of Bangladesh",3],
+  ["LLB103","The Law of Contract",3],
+  ["LLB104","The Law of Torts",3],
+  ["LLB201","Muslim Family and Property Law",3],
+  ["LLB202","Law of Crime",3],
+  ["LLB203","Law of Equity, Trust & Specific Relief",3],
+  ["LLB204","Company Law",3],
+  ["LLB205","Laws regarding Transfer of Property",3],
+  ["LLB206","Administrative Law",3],
+  ["LLB207","Law of Registration & Limitation",3],
+  ["LLB208","Jurisprudence and Legal Theory",3],
+  ["LLB209","Legal Professional Ethics",3],
+  ["LLB301","Law of Evidence",3],
+  ["LLB302","Law of Criminal Procedure (Part 1)",3],
+  ["LLB303","Law of Criminal Procedure (Part 2)",3],
+  ["LLB304","Law of Civil Procedure (Part 1)",3],
+  ["LLB305","Law of Civil Procedure (Part 2)",3],
+  ["LLB306","Law of Labour and Employment",3],
+  ["LLB307","Land Law of Bangladesh",3],
+  ["LLB401","Alternative Dispute Resolution Methods",3],
+  ["LLB402","Legal Drafting (Civil and Criminal) & Conveyance",3],
+  ["LLB403","Public International Laws",3],
+  ["LLB404","Legal Research",3],
+  ["LLB405","Trial and Advocacy",3],
+  ["LLB406","Hindu and Christian Family Law",3],
+  ["LLB407","Law Dissertation",3],
+  ["LLB411","Clinical Legal Education and Community Legal Services",3],
+  ["LLB412","Fiscal & Taxation Law",3],
+  ["LLB413","Environmental Law",3],
+  ["LLB414","Cyber, Media & Telecommunication Law",3],
+  ["LLB415","Special Penal Laws",3],
+  ["LLB416","The Intellectual Property Law",3],
+  ["LLB417","Banking and Foreign Exchange Law",3],
+  ["LLB418","Criminology and Penology",3],
+  ["LLB419","International Criminal Law",3],
+  ["LLB420","Medical Jurisprudence and Forensic Law",3],
+  ["LLB421","Corporate Insolvency Law",3],
+  ["LLB422","Election Laws",3],
+  ["LLB423","Law and Globalization",3],
+  ["LLB424","Maritime, Oceans, and Coastal Law",3],
+  ["LLB425","Anti-corruption and Anti-money Laundering Law",3],
+  ["LLB426","Mercantile Law",3],
+  ["LLB427","Foreign Investment Law",3],
+  ["LLB428","Public Demands Recovery and Financial Institutions’ Loan Recovery Law",3],
+  ["LLB429","Public Private Partnership Law",3],
+  ["LLM502","International Human Rights Law",3],
+  ["LLM503","International Refugee Law",3],
+  ["LLM504","International Trade Law",3],
+  ["LLM505","Principles of Constitutional Litigation",3],
+  ["LLM508","International Commercial Arbitration",3],
+  ["LLM509","Independent Research Project (IRP)",3],
+  ["LLM510","Energy Law",3],
+  ["LLM513","Intellectual Property Law in an International Context",3],
+  ["LLM514","Law of Banking and Financial Institutions",3],
+  ["LLM515","Maritime and Shipping Laws",3],
+  ["LLM516","Securities Law & Competition Law",3],
+  ["LLM522","Marine Isurance Law",3],
+  ["LLM524","Food and Other Consumer Laws",3],
+  ["MAT112","Elementary Mathematics",3],
+  ["MAT116","Pre-Calculus",3],
+  ["MAT120","Calculus and Analytic Geometry-I",3],
+  ["MAT125","Introduction to Linear Algebra",3],
+  ["MAT130","Calculus and Analytic Geometry-II",3],
+  ["MAT140","Probability and Statistics for Scientists and Engineers",3],
+  ["MAT230","Linear and Vector Algebra for Engineers",3],
+  ["MAT250","Calculus and Analytic Geometry IV",3],
+  ["MAT260","Differential Equations and Orthogonal Functions",3],
+  ["MAT350","Engineering Mathematics",3],
+  ["MAT361","Probability and Statistics",3],
+  ["MAT480","Differential Equations",3],
+  ["MAT481","Numerical  Methods",3],
+  ["MAT482","Complex Variables and Its Applications",3],
+  ["MCJ101","Introduction to Media and Communication",3],
+  ["MCJ102","Basic Journalism: Principles and Practices",3],
+  ["MCJ103","Interpersonal, Group and Organizational Communication",3],
+  ["MCJ104","Photojournalism",3],
+  ["MCJ104L","Photojournalism Lab",1],
+  ["MCJ201","Theories in Media and Communication",3],
+  ["MCJ202","Media and Communication Research Methods",3],
+  ["MCJ203","Video Production and Editing",3],
+  ["MCJ203L","Video Production and Editing Lab",1],
+  ["MCJ204","Social Media and Contemporary Society",3],
+  ["MCJ205","Media History of Bangladesh",3],
+  ["MCJ302","Media Law & Ethics",3],
+  ["MCJ303","Critical Thinking and Public Speaking",3],
+  ["MCJ304","Strategic Communication",3],
+  ["MCJ305","Online Journalism",3],
+  ["MCJ305L","Online Journalism Lab",1],
+  ["MCJ405","Introduction to Film Studies",3],
+  ["MGT210","Organisational Management",3],
+  ["MGT212","Organizational Management",3],
+  ["MGT314","Production Management",3],
+  ["MGT321","Organizational Behaviour",3],
+  ["MGT330","Designing Effective Organizations",3],
+  ["MGT350","Managing Quality",3],
+  ["MGT351","Human Resource Management",3],
+  ["MGT360","Services Management",3],
+  ["MGT368","Entrepreneurship",3],
+  ["MGT372","International Business",3],
+  ["MGT390","Green Supply Chain Management",3],
+  ["MGT410","Organizational Development and Change Management",3],
+  ["MGT460","Six Sigma and Lean Manufacturing",3],
+  ["MGT470","Business Intelligence",3],
+  ["MGT489","Strategic Management",3],
+  ["MGT490","Project Management",3],
+  ["MGT607","Entreprenuership",3],
+  ["MGT610","Management of  Innovation and Technology",3],
+  ["MGT656","Leadership Theory and Practice",3],
+  ["MGT675","Total Quality Management (TQM)",3],
+  ["MGT680","Supply Chain Management",3],
+  ["MIC201","Microbial Ecology",3],
+  ["MIC202","Basic Techniques in Microbiology",3],
+  ["MIC203","Chemistry of Microorganisms",3],
+  ["MIC206","Microbial Taxonomy & Diversity",3],
+  ["MIC207","Microbial Physiology & Metabolism",3],
+  ["MIC307","Microbial Genetics",3],
+  ["MIC309","Enzymology",3],
+  ["MIC314","Environmental Microbiology &Bioremediation",3],
+  ["MIC315","Infectious Diseases & Diagnostic Microbiology",3],
+  ["MIC315L","Infectious Diseases & Diagnostic Microbiology Lab",1],
+  ["MIC316","Molecular Biology",3],
+  ["MIC316L","Molecular Biology Lab",1],
+  ["MIC317","Immunology",3],
+  ["MIC317L","Immunology Lab",1],
+  ["MIC318","Agricultural microbiology & Plant pathology",3],
+  ["MIC401","Microbial Biotechnology",3],
+  ["MIC412","Bacterial Pathogenesis",3],
+  ["MIC413","Virology",3],
+  ["MIC413L","Virology Lab",1],
+  ["MIC414","Food Microbiology and Quality Control",3],
+  ["MIC414L","Food Microbiology and Quality Control Lab",1],
+  ["MIC415","Mycology",3],
+  ["MIC415L","Mycology Lab",1],
+  ["MIS105","Information Systems & Computer",3],
+  ["MIS107","Information System & Computing",3],
+  ["MIS205","E-Business",3],
+  ["MIS207","E-Business",3],
+  ["MIS210","Concepts of Computer Programming",3],
+  ["MIS310","Database Systems for Business",3],
+  ["MIS320","Digital Enterprise Management",3],
+  ["MIS330","Digital Marketing",3],
+  ["MIS410","Business Intelligence",3],
+  ["MIS450","Data Communication and Networking for Business",3],
+  ["MIS460","Decision Support System",3],
+  ["MIS470","Systems Analysis and Design",3],
+  ["MIS499","Special Topic in MIS",3],
+  ["MIS651","System Design and Development",3],
+  ["MIS652","Management  Information Systems",3],
+  ["MIS654","Database Management",3],
+  ["MIS657","Business Analytics and Data Science",3],
+  ["MIS666","IT Project Management",3],
+  ["MKT202","Introduction to Marketing",3],
+  ["MKT330","Digital Marketing",3],
+  ["MKT337","Promotional Management",3],
+  ["MKT344","Consumer Behavior",3],
+  ["MKT355","Agricultural Marketing",3],
+  ["MKT382","International Marketing",3],
+  ["MKT412","Services Marketing",3],
+  ["MKT417","Export-Import Management",3],
+  ["MKT445","Sales Management",3],
+  ["MKT450","Marketing Channels",3],
+  ["MKT460","Strategic Marketing",3],
+  ["MKT465","Brand Management",3],
+  ["MKT470","Marketing Research",3],
+  ["MKT475","Marketing Analytics",3],
+  ["MKT621","Buyer Behavior",3],
+  ["MKT623","Promotional Management",3],
+  ["MKT624","Brand Management",3],
+  ["MKT625","Distribution Management",3],
+  ["MKT627","Services Marketing",3],
+  ["MKT628","Digital Marketing",3],
+  ["MKT629","Product Planning and Development",3],
+  ["MKT630","Business-to-Business Marketing",3],
+  ["MKT633","Global Marketing",3],
+  ["MKT634","Marketing Strategy",3],
+  ["MKT636","Marketing Analytics",3],
+  ["PAD201","Introduction to Public Administration",3],
+  ["PBH101","Introduction to Public Health",3],
+  ["PBH101L","Introduction to Public Health Lab",1],
+  ["PBH602","Masters Level Seminar",3],
+  ["PBH605","Practicum or internship(with health development agency-posting or home)",3],
+  ["PBH609","International Health",3],
+  ["PBH611","Fundamentals of Biostatistics",3],
+  ["PBH631","Environmental Health",3],
+  ["PBH642","Fundamentals of Epidemiology",3],
+  ["PBH644","Epidemiology of Non Communicable Diseases",3],
+  ["PBH653","Health Economics and Financing",3],
+  ["PBH663","Public Health Information, Education & Communication (IEC)",3],
+  ["PBH671","Reproductive Health",3],
+  ["PBH672","Maternal & Child Health",3],
+  ["PBH678","Health Policy & Planning",3],
+  ["PBH681","Public Health Nutrition",3],
+  ["PBH701","Health Service Management",3],
+  ["PBH704","Hospital Management",3],
+  ["PBH706","Human Resource Deveopment & Management for Health Services",3],
+  ["PBH711","Data Management and Analysis",3],
+  ["PBH712","Research Methodology",3],
+  ["PBH713","Research Methodology II",3],
+  ["PBH714","Application of Computer Software in Public Health",3],
+  ["PBH742","Epidemiology II",3],
+  ["PBH745","Non-Communicable Disease Control",3],
+  ["PBH761","Mental Health",3],
+  ["PBH771","Adolescent Health",3],
+  ["PBH781","Clinical Nutrition",3],
+  ["PBH782","Public Health aspects of Nutritional deficiency",3],
+  ["PBH805","Dissertation",5],
+  ["PBH806","Dissertation",5],
+  ["PBH842","Clinical Epidemiology",3],
+  ["PHI101","Introduction to Philosophy",3],
+  ["PHI104","Introduction to Ethics",3],
+  ["PHI401","Business Ethics",3],
+  ["PHR100","Viva Voce",1],
+  ["PHR110","Introduction to Pharmacy",2],
+  ["PHR112","Statistics in Pharmaceutical Sciences",3],
+  ["PHR113","Pharmacognosy",3],
+  ["PHR113L","Pharmacognosy Lab",1],
+  ["PHR114","Organic Pharmacy-I",3],
+  ["PHR114L","Organic Pharmacy Lab-I",1],
+  ["PHR116","Mathematics and Statistics",3],
+  ["PHR120","Inorganic Pharmacy",3],
+  ["PHR120L","Inorganic Pharmacy-Lab",1],
+  ["PHR121","Human Physiology-I",3],
+  ["PHR122","Organic Pharmacy -II",3],
+  ["PHR122L","Organic Pharmacy Lab-II",1],
+  ["PHR123","Physical Pharmacy-I",3],
+  ["PHR124","Pharmaceutical Microbiology-I",3],
+  ["PHR124L","Pharmaceutical Microbiology-Lab-I",1],
+  ["PHR200","Viva Voce",1],
+  ["PHR210","Physical Pharmacy-II",3],
+  ["PHR210L","Physical Pharmacy-Lab",1],
+  ["PHR211","Human Physiology-II",3],
+  ["PHR211L","Human Physiology Lab",1],
+  ["PHR212","Pharmaceutical Technology-I",3],
+  ["PHR212L","Pharmaceutical Technology Lab-I",1],
+  ["PHR213","Biochemistry & Cell Biology",3],
+  ["PHR214","Pharmacology & Clinical Pharmacy-I",3],
+  ["PHR215","Medicinal Chemistry-I",3],
+  ["PHR215L","Medicinal Chemisty Lab-I",1],
+  ["PHR221","Pharmaceutical Technology-II",3],
+  ["PHR221L","Pharmaceutical Technology Lab-II",1],
+  ["PHR222","Medicinal Chemisty-II",3],
+  ["PHR222L","Medicinal Chemistry Lab-II",1],
+  ["PHR223","Pharmaceutical Microbiology-II",3],
+  ["PHR223L","Pharmaceutical Microbiology Lab-II",1],
+  ["PHR224","Pharmaceutical Analysis-I",3],
+  ["PHR224L","Pharmaceutical Analysis-Lab-I",1],
+  ["PHR225","Basic Pathology & Toxicology",3],
+  ["PHR226","Pharmaceutical Dispensing",3],
+  ["PHR227","Human Anatomy",2],
+  ["PHR231","Pharmaceutical Microbiology",3],
+  ["PHR231L","Pharmaceutical Microbiology Lab",1],
+  ["PHR300","Viva Voce",1],
+  ["PHR310","Pharmaceutical Technology-|||",3],
+  ["PHR310L","Pharmaceutical Technology Lab-III",1],
+  ["PHR312","Pharmaceutical Analysis-II",3],
+  ["PHR312L","Pharmaceutical Analysis-Lab-II",1],
+  ["PHR313","Pharmacology & Clinical Pharmacy-II",3],
+  ["PHR313L","Pharmacology Lab-I",1],
+  ["PHR314","Biopharmaceutics & Pharmacokinetics-I",3],
+  ["PHR314L","Biopharmaceutics & Pharmacokinetics-Lab I",1],
+  ["PHR322","Cosmetology",2],
+  ["PHR322L","Cosmetology Lab",1],
+  ["PHR324","Pharmacology & Clinical Pharmacy-III",3],
+  ["PHR325","Pharmaceutical Biotechnology",3],
+  ["PHR326","Pharmacotherapy I",3],
+  ["PHR327","Principles of Diagnosis & Monitoring",2],
+  ["PHR328","Principles of Pharmacotherapy",3],
+  ["PHR332","Biopharmaceutics & Pharmacokinetics",3],
+  ["PHR332L","Biopharmaceutics & Pharmacokinetics-Lab I",1],
+  ["PHR400","Viva Voce",1],
+  ["PHR410","Advanced Pharmaceutical Analysis",3],
+  ["PHR411","Pharmacology & Clinical Pharmacy-IV",3],
+  ["PHR411L","Pharmacology Lab-II",1],
+  ["PHR415","Pharmaceutical Technology-IV",3],
+  ["PHR418","Pharmacotherapy II",3],
+  ["PHR424","Molecular Diagnostics",2],
+  ["PHR425","Pharmaceutical Marketing  and Management",3],
+  ["PHR426","Clinical Pharmacokinetics",3],
+  ["PHR427","Pharmacotherapy III",3],
+  ["PHR428","Quality Assurance & Quality Control",3],
+  ["PHR431","CGMP & Pharmaceutical Industrial Practices",3],
+  ["PHR433","Pharmaceutical Biotechnology- II",3],
+  ["PHR433L","Pharmaceutical Biotechnology Lab",1],
+  ["PHR442","Pharmaceutical Engineering",3],
+  ["PHR444","Pharmacy Law and Regulatory Affairs",3],
+  ["PHR445","Hospital and Community Pharmacy",3],
+  ["PHR450","Project",5],
+  ["PHR451","Pharmacy Practice Experience",1],
+  ["PHR452","Internship",2],
+  ["PHR510","Functional Foods and Nutraceuticals",2],
+  ["PHR511","Pharmacotherapy IV",3],
+  ["PHR512","Pharmaceutical Engineering",3],
+  ["PHR513","Drug Information",2],
+  ["PHR514","Pharmacy Law and Regulatory Affairs",3],
+  ["PHR515","Hospital and Community Pharmacy",3],
+  ["PHR516","Pharmacovigilance & Patients Safety",3],
+  ["PHR522","Advance Pharmacy Practice Experiences (APPE)",3],
+  ["PHY107","General Physics-I",3],
+  ["PHY107L","Physics I Lab",1],
+  ["PHY108","General Physics-II",3],
+  ["PHY108L","General Physics-II Lab",1],
+  ["PHY240","Wave and Oscillations",3],
+  ["PHY250","Modern Physics I",3],
+  ["POL101","Political Science",3],
+  ["POL104","Introduction to Governance",3],
+  ["POL202","Introduction to International Relations",3],
+  ["PPG510","Research Methodology",3],
+  ["PPG515","Public Policy Analysis",3],
+  ["PPG525","Development Management",3],
+  ["PPG540","Globalization and International Organizations",3],
+  ["PPG565","Research Design Seminar",3],
+  ["PSY101","Introduction to Psychology",3],
+  ["PSY101L","Introduction to Psychology Lab",1],
+  ["SCM310","Logistics and Transportation",3],
+  ["SCM320","Demand Planning and Fulfilment",3],
+  ["SCM360","Services Management",3],
+  ["SCM450","Global Procurement and Sourcing",3],
+  ["SCM602","Managing Global Supply Chain",3],
+  ["SCM603","Procurement and Sourcing",3],
+  ["SCM604","Supply Chain Management Strategies",3],
+  ["SCM605","Supply Chain Analytics",3],
+  ["SCM607","Demand Planning and Inventory Management",3],
+  ["SCM608","Green Supply Chain Management",3],
+  ["SOC101","Introduction to Sociology",3],
+  ["SOC103","Criminology",3],
+  ["SOC201","Contemporary Issues in Gender Relationship",3],
+  ["TNM201","Television and New Media",3],
+  ["WMS201","Gender and Development",3],
+];
+
+/** course → { hp: required courses }. */
+const NSU_PREREQS = {
+  "ACT202": {"hp":["ACT201"]},
+  "ACT310": {"hp":["FIN254"]},
+  "ACT320": {"hp":["ACT310"]},
+  "ACT360": {"hp":["ACT202","FIN254"]},
+  "ACT370": {"hp":["ACT201","ACT202"]},
+  "ACT380": {"hp":["ACT201","ACT202"]},
+  "ACT410": {"hp":["ACT202","FIN254"]},
+  "ACT430": {"hp":["ACT201","ACT202"]},
+  "ACT460": {"hp":["ACT320"]},
+  "BIO103L": {"hp":["BIO103"]},
+  "BUS135": {"hp":["BUS112"]},
+  "BUS173": {"hp":["BUS172"]},
+  "BUS251": {"hp":["ENG103"]},
+  "CEE210": {"hp":["MAT120"]},
+  "CEE211": {"hp":["CEE210"]},
+  "CEE211L": {"hp":["CEE210"]},
+  "CEE212": {"hp":["CEE210","CEE214"]},
+  "CEE212L": {"hp":["CEE210","CEE214"]},
+  "CEE213": {"hp":["CEE110"]},
+  "CEE213L": {"hp":["CEE110"]},
+  "CEE214": {"hp":["CHE120"]},
+  "CEE215": {"hp":["MAT260","MAT125"]},
+  "CEE240": {"hp":["CEE212"]},
+  "CEE240L": {"hp":["CEE212"]},
+  "CEE250": {"hp":["CEE210","CEE214"]},
+  "CEE250L": {"hp":["CEE250"]},
+  "CEE260": {"hp":["CEE211"]},
+  "CEE310": {"hp":["CEE110","CEE214"]},
+  "CEE330": {"hp":["CEE212"]},
+  "CEE331": {"hp":["CEE330"]},
+  "CEE331L": {"hp":["CEE330"]},
+  "CEE335": {"hp":["CEE330"]},
+  "CEE335L": {"hp":["CEE330"]},
+  "CEE340": {"hp":["CEE240"]},
+  "CEE350": {"hp":["CEE250"]},
+  "CEE360": {"hp":["CEE260"]},
+  "CEE360L": {"hp":["CEE260"]},
+  "CEE370": {"hp":["CEE209","CEE211"]},
+  "CEE370L": {"hp":["CEE209","CEE211"]},
+  "CEE373": {"hp":["CEE370"]},
+  "CEE373L": {"hp":["CEE370"]},
+  "CEE415": {"hp":["CEE250"]},
+  "CEE430": {"hp":["CEE335"]},
+  "CEE431": {"hp":["CEE331"]},
+  "CEE433": {"hp":["CEE331"]},
+  "CEE435": {"hp":["CEE430"]},
+  "CEE437": {"hp":["CEE212"]},
+  "CEE439": {"hp":["CEE340"]},
+  "CEE460": {"hp":["CEE360"]},
+  "CEE465": {"hp":["CEE360"]},
+  "CEE467": {"hp":["CEE360"]},
+  "CEE470": {"hp":["ENV209"]},
+  "CEE473": {"hp":["CEE360"]},
+  "CEE477": {"hp":["CEE260"]},
+  "CEE479": {"hp":["ENV209"]},
+  "CHE101L": {"hp":["CHE101"]},
+  "CSE173": {"hp":["CSE115","CSE115L"]},
+  "CSE215": {"hp":["CSE173"]},
+  "CSE215L": {"hp":["CSE173"]},
+  "CSE225": {"hp":["CSE215"]},
+  "CSE225L": {"hp":["CSE215"]},
+  "CSE231": {"hp":["CSE173"]},
+  "CSE231L": {"hp":["CSE173"]},
+  "CSE311": {"hp":["CSE225"]},
+  "CSE311L": {"hp":["CSE225"]},
+  "CSE323": {"hp":["CSE332"]},
+  "CSE325": {"hp":["CSE327"]},
+  "CSE327": {"hp":["CSE311"]},
+  "CSE331": {"hp":["CSE332"]},
+  "CSE331L": {"hp":["CSE332"]},
+  "CSE332": {"hp":["CSE231"]},
+  "CSE373": {"hp":["CSE225","MAT361"]},
+  "CSE411": {"hp":["CSE311"]},
+  "CSE417": {"hp":["CSE225","MAT125","MAT240"]},
+  "CSE418": {"hp":["CSE225","CSE332"]},
+  "CSE424": {"hp":["CSE225"]},
+  "CSE426": {"hp":["CSE332"]},
+  "CSE433": {"hp":["CSE331"]},
+  "CSE438": {"hp":["CSE215"]},
+  "CSE465": {"hp":["CSE373"]},
+  "CSE468": {"hp":["CSE440"]},
+  "CSE473": {"hp":["CSE173","CSE225"]},
+  "CSE482": {"hp":["CSE338"]},
+  "ECO104": {"hp":["ECO101"]},
+  "ECO201": {"hp":["ECO101","BUS135"]},
+  "ECO204": {"hp":["ECO104","BUS135"]},
+  "ECO244": {"hp":["ECO101","ECO104","BUS135"]},
+  "ECO301": {"hp":["ECO201","BUS135"]},
+  "ECO304": {"hp":["ECO204","BUS135"]},
+  "ECO309": {"hp":["ECO101","ECO104"]},
+  "ECO315": {"hp":["ECO101"]},
+  "ECO317": {"hp":["ECO101","ECO104"]},
+  "ECO328": {"hp":["ECO101","ECO104"]},
+  "ECO329": {"hp":["ECO328"]},
+  "ECO348": {"hp":["ECO328"]},
+  "ECO350": {"hp":["ECO101","ECO104"]},
+  "ECO354": {"hp":["ECO201"]},
+  "ECO360": {"hp":["ECO101","ECO328"]},
+  "ECO372": {"hp":["BUS135","BUS173"]},
+  "ECO380": {"hp":["ECO203"]},
+  "ECO406": {"hp":["ECO101","ECO104"]},
+  "ECO414": {"hp":["ECO201"]},
+  "ECO417": {"hp":["ECO244","ECO317"]},
+  "ECO430": {"hp":["ECO204"]},
+  "ECO441": {"hp":["ECO203"]},
+  "ECO443": {"hp":["ECO201"]},
+  "ECO451": {"hp":["ECO303","ECO304"]},
+  "ECO460": {"hp":["BUS173","BUS235"]},
+  "ECO472": {"hp":["ECO372"]},
+  "ECO474": {"hp":["ECO244"]},
+  "ECO475": {"hp":["ECO101","ECO104","ECO203"]},
+  "ECO484": {"hp":["ECO101","ECO104"]},
+  "ECO485": {"hp":["ECO244"]},
+  "ECO486": {"hp":["ECO204"]},
+  "EEE141": {"hp":["MAT120"]},
+  "EEE141L": {"hp":["MAT120"]},
+  "EEE211": {"hp":["CSE173"]},
+  "EEE211L": {"hp":["CSE173"]},
+  "EEE221": {"hp":["MAT350"]},
+  "EEE312": {"hp":["EEE211","MAT350"]},
+  "EEE312L": {"hp":["EEE211","MAT350"]},
+  "EEE321": {"hp":["EEE221","MAT361"]},
+  "EEE321L": {"hp":["EEE221","MAT361"]},
+  "EEE342": {"hp":["EEE221"]},
+  "EEE342L": {"hp":["EEE221"]},
+  "EEE361": {"hp":["PHY108","MAT350"]},
+  "EEE362": {"hp":["EEE241"]},
+  "EEE362L": {"hp":["EEE241"]},
+  "EEE363": {"hp":["EEE241"]},
+  "EEE363L": {"hp":["EEE241"]},
+  "ENG103": {"hp":["ENG102"]},
+  "ENG105": {"hp":["ENG103"]},
+  "ENG111": {"hp":["ENG103"]},
+  "ENG115": {"hp":["ENG103"]},
+  "ENV107L": {"hp":["ENV107"]},
+  "ENV209": {"hp":["ENV107"]},
+  "ENV209L": {"hp":["ENV107"]},
+  "ENV309": {"hp":["ENV209"]},
+  "ENV311": {"hp":["CEE214"]},
+  "ENV373": {"hp":["ENV107"]},
+  "ENV408": {"hp":["ENV209"]},
+  "ETE321": {"hp":["ETE221","MAT361"]},
+  "ETE331": {"hp":["CSE115","ETE221"]},
+  "ETE331L": {"hp":["CSE115","ETE221"]},
+  "ETE424": {"hp":["ETE422"]},
+  "ETE424L": {"hp":["ETE422"]},
+  "ETE426": {"hp":["ETE361"]},
+  "ETE426L": {"hp":["ETE361"]},
+  "ETE471": {"hp":["ETE221"]},
+  "ETE471L": {"hp":["ETE221"]},
+  "ETE499B": {"hp":["ETE499A"]},
+  "FIN254": {"hp":["ACT201","BUS172"]},
+  "FIN340": {"hp":["FIN254"]},
+  "FIN410": {"hp":["ACT202","FIN245"]},
+  "FIN433": {"hp":["FIN254"]},
+  "FIN435": {"hp":["FIN254"]},
+  "FIN440": {"hp":["FIN254"]},
+  "FIN444": {"hp":["FIN254","INB372"]},
+  "FIN455": {"hp":["FIN440"]},
+  "FIN464": {"hp":["FIN254"]},
+  "FIN470": {"hp":["FIN435","FIN440"]},
+  "FIN480": {"hp":["FIN435","FIN440"]},
+  "HRM340": {"hp":["MGT351"]},
+  "HRM360": {"hp":["MGT351"]},
+  "HRM370": {"hp":["MGT351"]},
+  "HRM380": {"hp":["MGT351"]},
+  "HRM410": {"hp":["MGT351"]},
+  "HRM420": {"hp":["MGT351"]},
+  "HRM450": {"hp":["MGT351"]},
+  "HRM460": {"hp":["MGT351"]},
+  "HRM470": {"hp":["MGT351"]},
+  "HRM499": {"hp":["MGT351"]},
+  "INB350": {"hp":["INB372"]},
+  "INB355": {"hp":["INB372"]},
+  "INB400": {"hp":["INB372"]},
+  "INB410": {"hp":["INB372"]},
+  "INB415": {"hp":["INB372"]},
+  "INB450": {"hp":["INB372"]},
+  "INB480": {"hp":["INB372"]},
+  "INB490": {"hp":["INB372"]},
+  "INB495": {"hp":["INB372"]},
+  "LAW200": {"hp":["ENG103"]},
+  "MAT120": {"hp":["MAT116"]},
+  "MAT125": {"hp":["MAT116"]},
+  "MAT130": {"hp":["MAT120"]},
+  "MAT140": {"hp":["MAT130"]},
+  "MAT230": {"hp":["MAT130"]},
+  "MAT250": {"hp":["MAT130"]},
+  "MAT260": {"hp":["MAT130"]},
+  "MAT350": {"hp":["MAT250"]},
+  "MAT361": {"hp":["MAT250"]},
+  "MGT314": {"hp":["BUS135","BUS172"]},
+  "MGT321": {"hp":["MGT212"]},
+  "MGT330": {"hp":["MGT212"]},
+  "MGT350": {"hp":["MGT314"]},
+  "MGT351": {"hp":["MGT212"]},
+  "MGT372": {"hp":["MKT202"]},
+  "MGT410": {"hp":["MGT212"]},
+  "MGT460": {"hp":["BUS173","MGT314"]},
+  "MGT470": {"hp":["MGT314"]},
+  "MGT490": {"hp":["MGT314"]},
+  "MIS320": {"hp":["MIS207"]},
+  "MIS330": {"hp":["MKT202"]},
+  "MIS410": {"hp":["BUS173","MIS210"]},
+  "MIS450": {"hp":["MIS207"]},
+  "MIS460": {"hp":["MIS310"]},
+  "MIS470": {"hp":["MIS310"]},
+  "MKT330": {"hp":["MKT202"]},
+  "MKT337": {"hp":["MKT202"]},
+  "MKT344": {"hp":["MKT202"]},
+  "MKT355": {"hp":["MKT202"]},
+  "MKT382": {"hp":["MKT202"]},
+  "MKT412": {"hp":["MKT202"]},
+  "MKT417": {"hp":["MKT202"]},
+  "MKT445": {"hp":["MKT202"]},
+  "MKT450": {"hp":["MKT202"]},
+  "MKT460": {"hp":["MKT202"]},
+  "MKT465": {"hp":["MKT202"]},
+  "MKT470": {"hp":["BUS173","MKT202"]},
+  "MKT475": {"hp":["MKT202"]},
+  "PBH101L": {"hp":["PBH101"]},
+  "PHR100": {"hp":["PHR110","PHR113","ENG102"]},
+  "PHR114": {"hp":["PHR110"]},
+  "PHR114L": {"hp":["PHR110"]},
+  "PHR121": {"hp":["PHR110"]},
+  "PHR122": {"hp":["PHR114"]},
+  "PHR122L": {"hp":["PHR114","PHR114L"]},
+  "PHR123": {"hp":["PHR110"]},
+  "PHR200": {"hp":["PHR110"]},
+  "PHR210": {"hp":["PHR123","PHR110"]},
+  "PHR210L": {"hp":["PHR123"]},
+  "PHR211": {"hp":["PHR121"]},
+  "PHR211L": {"hp":["PHR121"]},
+  "PHR212": {"hp":["PHR123","PHR110"]},
+  "PHR212L": {"hp":["PHR114L","PHR123"]},
+  "PHR213": {"hp":["PHR110","PHR121"]},
+  "PHR214": {"hp":["PHR121","PHR110"]},
+  "PHR215": {"hp":["PHR114"]},
+  "PHR215L": {"hp":["PHR114","PHR114L"]},
+  "PHR221": {"hp":["PHR123","PHR212","PHR210"]},
+  "PHR221L": {"hp":["PHR212","PHR212L"]},
+  "PHR222": {"hp":["PHR122","PHR215"]},
+  "PHR222L": {"hp":["PHR215","PHR215L"]},
+  "PHR224": {"hp":["PHR114","PHR120"]},
+  "PHR224L": {"hp":["PHR114","PHR120"]},
+  "PHR225": {"hp":["PHR121"]},
+  "PHR226": {"hp":["PHR110"]},
+  "PHR227": {"hp":["PHR110"]},
+  "PHR231L": {"hp":["PHR120"]},
+  "PHR300": {"hp":["PHR212","PHR214"]},
+  "PHR310": {"hp":["PHR210","PHR212","PHR221"]},
+  "PHR310L": {"hp":["PHR221","PHR221L","PHR310"]},
+  "PHR312": {"hp":["PHR224"]},
+  "PHR312L": {"hp":["PHR224","PHR224L"]},
+  "PHR313": {"hp":["PHR211","PHR214"]},
+  "PHR313L": {"hp":["PHR211L","PHR214"]},
+  "PHR324": {"hp":["PHR214","PHR313"]},
+  "PHR325": {"hp":["PHR124","PHR213"]},
+  "PHR328": {"hp":["PHR313","PHR324"]},
+  "PHR332": {"hp":["PHR121","PHR211","PHR214"]},
+  "PHR332L": {"hp":["PHR214","PHR121"]},
+  "PHR400": {"hp":["PHR310","PHR324"]},
+  "PHR410": {"hp":["PHR224","PHR312"]},
+  "PHR411": {"hp":["PHR313","PHR324"]},
+  "PHR411L": {"hp":["PHR313","PHR313L"]},
+  "PHR415": {"hp":["PHR212","PHR221","PHR310"]},
+  "PHR425": {"hp":["PHR310","PHR324"]},
+  "PHR426": {"hp":["PHR313","PHR314"]},
+  "PHR428": {"hp":["PHR221","PHR312"]},
+  "PHR433": {"hp":["PHR325"]},
+  "PHR433L": {"hp":["PHR325","PHR231L"]},
+  "PHR442": {"hp":["PHR212","PHR221"]},
+  "PHR444": {"hp":["PHR324"]},
+  "PHR445": {"hp":["PHR313"]},
+  "PHR450": {"hp":["PHR212","PHR221"]},
+  "PHR451": {"hp":["PHR212","PHR221"]},
+  "PHR452": {"hp":["PHR212","PHR221"]},
+  "PHY107": {"hp":["MAT120"]},
+  "PHY107L": {"hp":["PHY107"]},
+  "PHY108L": {"hp":["PHY107"]},
+  "PSY101L": {"hp":["PSY101"]},
+  "SCM310": {"hp":["BUS135","BUS173"]},
+  "SCM320": {"hp":["BUS135","BUS173"]},
+  "SCM360": {"hp":["MGT212","MKT202"]},
+  "SCM450": {"hp":["MGT314"]},
+};
+
+/** subject prefix → department. NSU's database has no department table yet. */
+const NSU_PREFIX_DEPARTMENTS = {};
+
+/** department → { label, school }. */
+const NSU_DEPARTMENT_META = {};
+
+/** program → { label, totalCredits, seasons, presets: [[name, [[course, credits]]]] }. */
+const NSU_PROGRAM_ROWS = {
+  "ARC": { label: "Bachelor of Architecture", totalCredits: 170, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "CEE": {
+    label: "BS in Civil & Environmental Engineering", totalCredits: 149, seasons: ["Spring","Summer","Fall"],
+    presets: [
+      ["Semester null",[["Structural Analysis and Design-II (CEE331)",3],["Reinforced Concrete Design-II (CEE430)",3],["Reinforced Concrete Design Lab (CEE335L)",1],["Structural Analysis and Design Lab (CEE331L)",1],["Groundwater Hydraulics (CEE460)",3],["Solid and Hazardous Waste Engineering (CEE470)",3],["Socio-economic Aspects of Development Projects (CEE415)",3],["Engineering Project (CEE499)",3],["Research Methodology (ENV455)",3],["Internship (CEE498)",0],["Four electives from the CEE elective list",12]]],
+      ["Semester 1",[["Introduction to Civil and Environmental Engineering (CEE100)",0],["Pre-calculus (MAT116)",0],["Introduction to Composition (Exempted based on English score in admission test) (ENG102)",0],["Computer Aided drawing (CAD) for Engineers (CEE110)",3],["Bangla Language (BAN205)",3]]],
+      ["Semester 2",[["General Physics I (PHY107)",3],["General Physics I Lab. (PHY107L)",1],["Inorganic and Organic Chemistry (CHE120)",4],["Intermediate Composition (ENG103)",3],["Calculus & Analytical Geometry I (MAT120)",3]]],
+      ["Semester 3",[["Engineering Mechanics (CEE210)",3],["Calculus & Analytical Geometry II (MAT130)",3],["General Physics II (PHY108)",3],["General Physics II Lab. (PHY108L)",1],["Environmental Science (ENV107)",3]]],
+      ["Semester 4",[["Advance Composition (ENG105)",3],["Surveying & Introduction to GIS (CEE213)",3],["Surveying & Introduction to GIS Lab (CEE213L)",1],["Engineering Materials (with lab) (CEE214)",3],["Differential Equations and Orthogonal Functions (MAT260)",3]]],
+      ["Semester 5",[["Emergence of Bangladesh (HIS103)",3],["Linear and Vector Algebra for Engineers (MAT230)",3],["Solid Mechanics (CEE212)",3],["Solid Mechanics Lab (CEE212L)",1],["Fluid Mechanics (CEE211)",3],["Fluid Mechanics Lab (CEE211L)",1]]],
+      ["Semester 6",[["Numerical Analysis & Computer Programming (CEE215)",3],["Probability and Statistics for Scientists and Engineers (MAT140)",3],["Environmental Chemistry (ENV209)",3],["Environmental Chemistry Lab. (ENV209L)",1],["Hydrology (CEE260)",3]]],
+      ["Semester 7",[["Geology and Geomorphology (ENV311)",3],["Quantity Survey and Cost Estimates (CEE310)",3],["Introduction to Soil Mechanics and Foundation Engineering (CEE240)",3],["Soil Mechanics Lab (CEE240L)",1],["Introduction to Transportation Engineering (CEE250)",3],["Transportation Engineering Lab (CEE250L)",1]]],
+      ["Semester 8",[["Structural Analysis and Design-I (CEE330)",3],["Water Supply and Treatment (CEE370)",3],["Water Supply and Treatment Lab (CEE370L)",1],["Traffic Analysis and Design (CEE350)",3],["Advance Foundation Engineering (CEE340)",3]]],
+      ["Semester 9",[["Open-Channel Hydraulics (CEE360)",3],["Open-Channel Hydraulics Lab (CEE360L)",1],["Reinforced Concrete Design-I (CEE335)",3],["Sanitation and Wastewater Engineering (CEE373)",3],["Sanitation and Wastewater Engineering Lab (CEE373L)",1],["Environmental Impact Assessment (ENV373)",3]]],
+    ],
+  },
+  "CSE": {
+    label: "BS in Computer Science & Engineering", totalCredits: 130, seasons: ["Spring","Summer","Fall"],
+    presets: [
+      ["Semester 1",[["Introduction to Composition (ENG102)",3],["Pre-Calculus (MAT116)",0],["Engineering Drawing (EEE154)",1],["Programming Language I (CSE115)",3],["Programming Language I Lab (CSE115L)",1]]],
+      ["Semester 2",[["Intermediate Composition (ENG103)",3],["Calculus and Analytic Geometry-I (MAT120)",3],["Introduction to Linear Algebra (MAT125)",3],["Discrete Mathematics (CSE173)",3]]],
+      ["Semester 3",[["Public Speaking (ENG111)",3],["Calculus and Analytic Geometry-II (MAT130)",3],["General Physics-I (PHY107)",3],["Physics I Lab (PHY107L)",1],["Programming Language II (CSE215)",3],["Programming Language II Lab (CSE215L)",1]]],
+      ["Semester 4",[["Introduction to Ethics (PHI104)",3],["Calculus and Analytic Geometry IV (MAT250)",3],["General Physics-II (PHY108)",3],["General Physics-II Lab (PHY108L)",1],["Data Structure & Algorithm (CSE225)",3],["Data Structure & Algorithm Lab (CSE225L)",0]]],
+      ["Semester 5",[["Bengali language and Literature (BEN205)",3],["Engineering Mathematics (MAT350)",3],["Digital Logic (CSE231)",3],["Digital Logic Lab (CSE231L)",0],["Electrical Circuits (EEE141)",3],["Electrical Circuits Lab (EEE141L)",1]]],
+      ["Semester 6",[["Introduction to World Civilization (HIS102)",3],["Probability and Statistics (MAT361)",3],["Junior Design (CSE299)",1]]],
+      ["Semester 7",[["Emergence of Bangladesh (HIS103)",3],["General Chemistry (CHE101)",3],["General Chemistry Lab (CHE101L)",1],["Analog Electronics (EEE111)",3],["Analog Electronics Lab (EEE111L)",1],["Computer Organization and Architecture (CSE332)",3]]],
+      ["Semester 8",[["Political Science (POL101)",3],["Database Management System (CSE311)",3],["Database Management System Lab (CSE311L)",0],["Operating Systems Design (CSE323)",3],["Design and Analysis of Algorithms (CSE373)",3]]],
+      ["Semester 9",[["Introduction to Microeconomics (ECO101)",3],["Biology I (BIO103)",3],["Biology I Lab (BIO103L)",1],["Software Engineering (CSE327)",3],["Microprocessor Interfacing & Embedded System (CSE331)",3],["Microprocessor Interfacing & Embedded System Lab (CSE331L)",0]]],
+      ["Semester 10",[["Introduction to Sociology (SOC101)",3],["Engineering Economics and Management (EEE452)",3],["Concepts of Programming Language (CSE425)",3]]],
+      ["Semester 11",[["CSE specialized elective 1",3],["CSE specialized elective 2",3],["Senior Design Project I (CSE499A)",1.5]]],
+      ["Semester 12",[["CSE specialized elective 3",3],["Open elective",3],["Senior Design Project II (CSE499B)",1.5]]],
+    ],
+  },
+  "EEE": {
+    label: "BS in Electrical & Electronic Engineering", totalCredits: 130, seasons: ["Spring","Summer","Fall"],
+    presets: [
+      ["Semester 1",[["Introduction to Composition (ENG102)",3],["Pre-Calculus (MAT116)",0],["Engineering Drawing (EEE154)",1],["Electrical Circuits (EEE141)",3],["Electrical Circuits Lab (EEE141L)",1]]],
+      ["Semester 2",[["Intermediate Composition (ENG103)",3],["Calculus and Analytic Geometry-I (MAT120)",3],["Introduction to Linear Algebra (MAT125)",3],["Electrical Circuits II (EEE241)",3],["Electrical Circuits II-Lab (EEE241L)",1]]],
+      ["Semester 3",[["Public Speaking (ENG111)",3],["Calculus and Analytic Geometry-II (MAT130)",3],["General Physics-I (PHY107)",3],["Physics I Lab (PHY107L)",1],["Programming Language I (CSE115)",3],["Programming Language I Lab (CSE115L)",1]]],
+      ["Semester 4",[["Introduction to Ethics (PHI104)",3],["Calculus and Analytic Geometry IV (MAT250)",3],["General Physics-II (PHY108)",3],["General Physics-II Lab (PHY108L)",1],["Analog Electronics (EEE111)",3],["Analog Electronics Lab (EEE111L)",1]]],
+      ["Semester 5",[["Bengali language and Literature (BEN205)",3],["Engineering Mathematics (MAT350)",3],["Digital Electronics (EEE211)",3],["EEE211L (EEE211L)",0],["Analog Electronics II (EEE311)",3],["Analog Electronics II Lab (EEE311L)",1]]],
+      ["Semester 6",[["Introduction to World Civilization (HIS102)",3],["Probability and Statistics (MAT361)",3],["Junior Design (EEE299)",1]]],
+      ["Semester 7",[["Emergence of Bangladesh (HIS103)",3],["General Chemistry (CHE101)",3],["General Chemistry Lab (CHE101L)",1],["Signals and Systems (EEE221)",3],["Theory of Electromagnetic Field (EEE361)",3]]],
+      ["Semester 8",[["Political Science (POL101)",3],["Control Engineering (EEE342)",3],["EEE342L (EEE342L)",1],["Electrical Machines (EEE363)",3],["Electrical Machines-Lab (EEE363L)",1]]],
+      ["Semester 9",[["Introduction to Microeconomics (ECO101)",3],["Biology I (BIO103)",3],["Biology I Lab (BIO103L)",1],["Power Electronics (EEE312)",3],["Power Electronics Lab (EEE312L)",0],["Power Systems (EEE362)",3],["Power Systems Lab (EEE362L)",0]]],
+      ["Semester 10",[["Introduction to Sociology (SOC101)",3],["Engineering Economics and Management (EEE452)",3],["Introduction to Communication Systems (EEE321)",3],["EEE321L (EEE321L)",0]]],
+      ["Semester 11",[["EEE elective 1",3],["EEE elective 2",3],["EEE499A (EEE499A)",1.5]]],
+      ["Semester 12",[["EEE elective 3",3],["Open elective",3],["Senior Design II (EEE499B)",1.5]]],
+    ],
+  },
+  "ETE": { label: "BS in Electronic & Telecom Engineering", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBT": { label: "BS in Biochemistry and Biotechnology", totalCredits: 120, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "ESM": { label: "BS in Environmental Science & Management", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "MIC": { label: "BS in Microbiology", totalCredits: 120, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "PBH": { label: "BS in Public Health", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "PHR": {
+    label: "BPharm Professional", totalCredits: 160, seasons: ["Spring","Summer"],
+    presets: [
+      ["Semester 1",[["Bengali Language and Literature (BEN205)",3],["Introduction to Composition (ENG102)",3],["Emergence of Bangladesh (HIS103)",3],["Introduction to Pharmacy (PHR110)",2],["Pharmacognosy (PHR113)",3],["Introduction to Sociology/Introduction to Anthropology (SOC101)",3]]],
+      ["Semester 2",[["Intermediate Composition (ENG103)",3],["Information System & Computing (MIS107)",3],["Viva Voce (PHR100)",1],["Pharmacognosy Lab (PHR113L)",1],["Organic Pharmacy-I/General Chemistry (PHR114)",3],["Organic Pharmacy Lab-I (PHR114L)",1],["Mathematics and Statistics (PHR116)",3],["Inorganic Pharmacy (PHR120)",3],["Inorganic Pharmacy-Lab (PHR120L)",1],["Human Physiology-I (PHR121)",3]]],
+      ["Semester 3",[["Physical Pharmacy- I/Biophysical Chemistry (PHR123)",3],["Human Physiology-II (PHR211)",3],["Human Physiology Lab (PHR211L)",1],["Pharmaceutical Technology-I (PHR212)",3],["Pharmaceutical Technology Lab-I (PHR212L)",1],["Biochemistry & Cell Biology/Introduction to Biochemistry & Biotechnology (PHR213)",3],["Pharmaceutical Analysis-I (PHR224)",3],["Pharmaceutical Analysis-Lab-I (PHR224L)",1],["Pharmaceutical Dispensing (PHR226)",3]]],
+      ["Semester 4",[["Organic Pharmacy - II/Bioorganic Chemistry (PHR122)",3],["Organic Pharmacy Lab-II (PHR122L)",1],["Viva Voce (PHR200)",1],["Physical Pharmacy-II (PHR210)",3],["Physical Pharmacy-Lab (PHR210L)",1],["Pharmacology & Clinical Pharmacy-I (PHR214)",3],["Medicinal Chemistry-I (PHR215)",3],["Human Anatomy (PHR227)",2],["Pharmaceutical Microbiology (PHR231)",3],["Pharmaceutical Microbiology Lab (PHR231L)",1]]],
+      ["Semester 5",[["Medicinal Chemistry Lab-I (PHR215L)",1],["Pharmaceutical Technology-II (PHR221)",3],["Pharmaceutical Technology Lab-II (PHR221L)",1],["Medicinal Chemistry-II (PHR222)",3],["Medicinal Chemistry Lab-II (PHR222L)",1],["Basic Pathology & Toxicology (PHR225)",3],["Pharmaceutical Analysis-II (PHR312)",3],["Pharmaceutical Analysis-Lab-II (PHR312L)",1],["Pharmaceutical Biotechnology-I (PHR325)",3],["Pharmaceutical Engineering (PHR442)",3]]],
+      ["Semester 6",[["Viva Voce (PHR300)",1],["Pharmaceutical Technology-III (PHR310)",3],["Pharmacology & Clinical Pharmacy-II (PHR313)",3],["Pharmacology Lab-I (PHR313L)",1],["Pharmacology & Clinical Pharmacy-III (PHR324)",3],["Biopharmaceutics & Pharmacokinetics (PHR332)",3],["Biopharmaceutics & Pharmacokinetics-Lab I (PHR332L)",1],["Quality Assurance & Quality Control (PHR428)",3],["Hospital and Community Pharmacy (PHR445)",3]]],
+      ["Semester 7",[["Pharmaceutical Technology Lab-III (PHR310L)",1],["Principles of Pharmacotherapy/Pharmacother apy I (PHR328)",3],["Pharmacology Lab-II (PHR411L)",1],["Clinical Pharmacokinetics (PHR426)",3],["Pharmaceutical Biotechnology- II (PHR433)",3],["Pharmaceutical Biotechnology Lab (PHR433L)",1],["Project (PHR450)",5],["Pharmacy Practice Experience (PHR451)",1],["Internship (PHR452)",2]]],
+      ["Semester 8",[["Viva Voce (PHR400)",1],["Advanced Pharmaceutical Analysis (PHR410)",3],["Pharmacology & Clinical Pharmacy-IV (PHR411)",3],["Pharmaceutical Technology-IV (PHR415)",3],["Pharmaceutical Marketing and Management (PHR425)",3],["Pharmacy Law and Regulatory Affairs (PHR444)",3]]],
+    ],
+  },
+  "BBA": { label: "BBA General", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-ACT": { label: "BBA Major in Accounting", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-ECO": { label: "BBA Major in Economics", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-ENT": { label: "BBA Major in Entrepreneurship", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-FIN": { label: "BBA Major in Finance", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-HRM": { label: "BBA Major in Human Resource Management", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-INB": { label: "BBA Major in International Business", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-MGT": { label: "BBA Major in Management", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-MIS": { label: "BBA Major in Management Information Systems", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-MKT": { label: "BBA Major in Marketing", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "BBA-SCM": { label: "BBA Major in Supply Chain Management", totalCredits: 130, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "ECO": { label: "BS in Economics", totalCredits: 120, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "ENG": { label: "BA in English", totalCredits: 123, seasons: ["Spring","Summer","Fall"], presets: [] },
+  "LLB": {
+    label: "Bachelor of Laws (LLB Hons)", totalCredits: 130, seasons: ["Spring","Summer"],
+    presets: [
+      ["Semester 1",[["Introduction to Composition (ENG102)",3],["GED group 2 course",3],["GED group 2 course",3],["Introduction to Public Health (PBH101)",3],["Introduction to the Legal System and Legal Process (LLB101)",3]]],
+      ["Semester 2",[["Intermediate Composition (ENG103)",3],["GED group 2 course",3],["Emergence of Bangladesh (HIS103)",3],["Bengali language and Literature (BEN205)",3],["Introduction to Public Health Lab (PBH101L)",1],["Constitutional Laws of Bangladesh (LLB102)",3]]],
+      ["Semester 3",[["The Law of Contract (LLB103)",3],["The Law of Torts (LLB104)",3],["Muslim Family and Property Law (LLB201)",3],["Law of Crime (LLB202)",3],["Law of Equity, Trust & Specific Relief (LLB203)",3]]],
+      ["Semester 4",[["Company Law (LLB204)",3],["Laws regarding Transfer of Property (LLB205)",3],["Administrative Law (LLB206)",3],["Law of Registration & Limitation (LLB207)",3],["Jurisprudence and Legal Theory (LLB208)",3],["Legal Professional Ethics (LLB209)",3]]],
+      ["Semester 5",[["Law of Evidence (LLB301)",3],["Law of Criminal Procedure (Part 1) (LLB302)",3],["Law of Civil Procedure (Part 1) (LLB304)",3],["Law of Labour and Employment (LLB306)",3],["LLB elective 1",3]]],
+      ["Semester 6",[["Law of Criminal Procedure (Part 2) (LLB303)",3],["Law of Civil Procedure (Part 2) (LLB305)",3],["Land Law of Bangladesh (LLB307)",3],["LLB elective 2",3],["LLB elective 3",3],["LLB elective 4",3]]],
+      ["Semester 7",[["Alternative Dispute Resolution Methods (LLB401)",3],["Legal Drafting (Civil and Criminal) & Conveyance (LLB402)",3],["Public International Laws (LLB403)",3],["Legal Research (LLB404)",3],["LLB elective 5",3],["LLB elective 6",3]]],
+      ["Semester 8",[["Trial and Advocacy (LLB405)",3],["Hindu and Christian Family Law (LLB406)",3],["Law Dissertation (LLB407)",3],["LLB elective 7",3],["LLB elective 8",3]]],
+    ],
+  },
+  "MCJ": { label: "BSS in Media, Communication, and Journalism", totalCredits: 129, seasons: ["Spring","Summer","Fall"], presets: [] },
+};
+
+/** Offered at NSU, but no source publishes a title or credits. */
+const NSU_UNTITLED_CODES = ["AMCS504L","AMCS506","AMCS507","AMCS510","AMCS511","AMCS515","AMCS516","ANT102","ANT103","ANT204","ARC454","BBT422","BBT695","BBT702","CEE452","CEE492","CEE499A","CEE499B","CEE499C","CSE146","CSE434","CSE438L","CSE534","CSE545","CSE553","CSE597","CSE598","DEV503","DEV573","ECO614","ECO686","EEE221L","EEE331","EEE331L","EEE332","EEE332L","EEE333","EEE336","EEE336L","EEE411L","EEE413L","EEE424","EEE453","EEE468","EEE528","EEE546","EEE552","EEE589","EEE597","EEE660","EMB500","EMPG540","ENG090","ENG092","ENG441","ENG461","ENG466","ENG515","ENG528","ENV304","ENV317","ENV402","ENV499","ENV685","ENV697","ETE141L","ETE241","ETE311","ETE312","ETE332","ETE332L","ETE333","ETE335","ETE335L","ETE361","ETE412L","ETE418","ETE419","ETE419L","ETE498R","ETE597","HAS503","HAS506","HAS510","HAS515","HRM645","MAT483","MAT485","MCJ404","MCJ406","MCJ407","MCJ420","MCJ420L","MGT604","MIC311","MIC404","MIC416","MIC498","MIS661","MIS662","PBH105","PBH123","PHY350","PPG500","PPG501","PPG520","SCM601","SCM606","SOC205"];
+
+/** Courses whose prerequisite the flat list above cannot express. */
+const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","CSE299","CSE440","CSE445","CSE498","CSE499A","ECO436","EEE111","EEE111L","EEE241","EEE241L","EEE299","EEE311","EEE498","EEE499A","ENV455","ETE299","ETE498","ETE499A","MGT390","MGT489","MIS499","PHY108"];
+
+// ── js/core/activeCatalog.js ────────────────────────────────────
+// ── ACTIVE CATALOGUE (legacy bundle) ─────────────────────────────────────────
+//
+// The course catalogue, prerequisites and programs of the campus the student
+// is on — the catalogue counterpart of activeCampus.js, which answers the same
+// question for grading rules.
+//
+// BRACU's catalogue is the hand-written constants in catalog.js and
+// departments.js, handed back as they are: the same objects, so nothing about
+// BRACU changes by reading them through here. NSU's is generated from
+// data/campuses/nsu/ (scripts/generate_legacy_catalog.mjs) and expanded into
+// the same shapes on first use.
+//
+// Each catalogue also answers `departmentOf(code)` — the department that owns
+// a course, or null — because the rule is the campus's, not just its table.
+//
+// A campus with no catalogue gets an empty one, never BRACU's: another
+// university's courses offered as a student's own is the failure this exists
+// to prevent.
+
+const BRACU_CATALOG = {
+  courses: COURSE_DB,
+  allCourses: ALL_COURSES,
+  prerequisites: PREREQS,
+  prefixDepartments: PREFIX_DEPT_MAP,
+  departmentMeta: DEPT_META,
+  programs: DEPARTMENTS,
+  // catalog.js's own lookup, which also knows BRACU's one cross-listed course.
+  departmentOf: getCourseDept,
+  untitled: [],
+  unexpressed: [],
+};
+
+const EMPTY_CATALOG = {
+  courses: {},
+  allCourses: [],
+  prerequisites: {},
+  prefixDepartments: {},
+  departmentMeta: {},
+  programs: {},
+  departmentOf: () => null,
+  untitled: [],
+  unexpressed: [],
+};
+
+let _nsuCatalog = null;
+
+// The generated module stores rows, not objects, to keep the download small.
+function expandNsuCatalog() {
+  const courses = {};
+  for (const [code, name, credits] of NSU_CATALOG_ROWS) {
+    courses[code] = { code, name, credits, full: `${name} (${code})` };
+  }
+  const programs = {};
+  for (const [code, p] of Object.entries(NSU_PROGRAM_ROWS)) {
+    programs[code] = {
+      label: p.label,
+      totalCredits: p.totalCredits,
+      seasons: p.seasons,
+      presets: p.presets.map(([name, rows]) => ({
+        name,
+        courses: rows.map(([course, credits]) => ({ name: course, credits, grade: '' })),
+      })),
+    };
+  }
+  return {
+    courses,
+    // Rows are generated in code order, so the values already are.
+    allCourses: Object.values(courses),
+    prerequisites: NSU_PREREQS,
+    prefixDepartments: NSU_PREFIX_DEPARTMENTS,
+    departmentMeta: NSU_DEPARTMENT_META,
+    programs,
+    departmentOf: code => NSU_PREFIX_DEPARTMENTS[getCoursePrefix(String(code).toUpperCase())] ?? null,
+    untitled: NSU_UNTITLED_CODES,
+    unexpressed: NSU_UNEXPRESSED_PREREQS,
+  };
+}
+
+/** The catalogue of one campus, by id. Unknown or data-less campuses get an empty one. */
+function getCatalogFor(campusId) {
+  if (campusId === 'bracu') return BRACU_CATALOG;
+  if (campusId === 'nsu') {
+    if (_nsuCatalog === null) _nsuCatalog = expandNsuCatalog();
+    return _nsuCatalog;
+  }
+  return EMPTY_CATALOG;
+}
+
+/** The catalogue every course lookup should use. Never null. */
+function getActiveCatalog() {
+  return getCatalogFor(getActiveCampus().id);
+}
+
+// ── js/core/courseLookup.js ─────────────────────────────────────
+// ── COURSE LOOKUP (legacy bundle) ────────────────────────────────────────────
+//
+// "Is this a real course, and what is it?" for the data layers — reviews,
+// papers, study groups — that validate a course code before writing it.
+//
+// Those modules ship in more than one bundle. On the calculator page main.js
+// points this at the active campus's catalogue (activeCatalog.js), so an NSU
+// student's codes are checked against NSU's courses. The admin page carries no
+// campus catalogue and leaves it alone, which keeps it on BRACU's — what it
+// has always validated against.
+
+let _courseLookup = code => COURSE_DB[code];
+
+/** The catalogue entry for a course code, or undefined if there is none. */
+function findCourse(code) {
+  return _courseLookup(code);
+}
+
+/** Answer findCourse from another catalogue. `lookup` maps a code to its entry. */
+function setCourseLookup(lookup) {
+  _courseLookup = lookup;
+}
+
 // ── js/core/gpa-core.js ─────────────────────────────────────────
 // Twin of src/core/gpa.ts — hand-maintained, not generated.
 // src/core/gpa.ts is the source of truth: change it there first, then mirror the
@@ -17148,7 +18703,7 @@ function normalizeCourseCode(raw) {
 
 function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 function isValidReviewId(reviewId) {
@@ -17169,7 +18724,7 @@ function validateReview(payload) {
   if (!initials || initials.length < 2) return 'Faculty initials required';
   if (!courseCode) return 'Course code required';
   if (!COURSE_CODE_RE.test(courseCode)) return 'Invalid course code';
-  if (!COURSE_DB[courseCode]) return 'Unknown course code';
+  if (!findCourse(courseCode)) return 'Unknown course code';
   const r = payload.ratings || {};
   for (const key of RATING_KEYS) {
     const v = r[key];
@@ -17537,7 +19092,7 @@ function normalizeCourseCode(raw) {
 
 function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return PAPERS_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return PAPERS_COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 function isValidPaperType(t) {
@@ -17676,7 +19231,7 @@ function normalizeCourseCode(raw) {
 
 function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return GROUP_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return GROUP_COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 function isValidMode(m) {
@@ -18488,8 +20043,8 @@ function onCourseBlur(e, semId, cIdx) {
   const val = e.target.value.trim();
   const course = sem.courses[cIdx];
   const prevName = course.name;
-  const exactMatch = COURSE_DB[val.toUpperCase()]
-    || ALL_COURSES.find(c =>
+  const exactMatch = getActiveCatalog().courses[val.toUpperCase()]
+    || getActiveCatalog().allCourses.find(c =>
       c.full.toLowerCase() === val.toLowerCase() ||
       c.name.toLowerCase() === val.toLowerCase()
     );
@@ -18544,11 +20099,12 @@ function onCourseInput(e, semId, cIdx) {
 
   if (!val) { getPortal().innerHTML = ''; return; }
 
-  const exactMatch = COURSE_DB[raw.toUpperCase()];
+  const { courses, allCourses } = getActiveCatalog();
+  const exactMatch = courses[raw.toUpperCase()];
   const t1 = exactMatch ? [exactMatch] : [];
-  const t2 = ALL_COURSES.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
-  const t3 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
-  const t4 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
+  const t2 = allCourses.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
+  const t3 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
+  const t4 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
 
   const matches = [...t1, ...t2, ...t3, ...t4].slice(0, 8);
   if (!matches.length) { getPortal().innerHTML = ''; return; }
@@ -18740,7 +20296,7 @@ function renderDegreeTracker(totalEarned) {
   const box = document.getElementById('degreeTrackerBox');
   if (!box) return;
 
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
   const deptSeasons = dept ? (dept.seasons || ['Spring', 'Summer', 'Fall']) : ['Spring', 'Summer', 'Fall'];
 
@@ -20137,6 +21693,8 @@ async function openReviewsDirectory() {
 //   #calculator/reviews/MAK                 → faculty page (all courses)
 //   #calculator/reviews/MAK/CSE220          → faculty page filtered to one course
 
+// BRACU's departments, in the order its tiles are shown. A campus whose
+// catalogue has no department table gets no tiles, and browses by search.
 const DEPT_ORDER = ['CSE','EEE','ECE','MPS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GENED'];
 const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
@@ -20260,19 +21818,32 @@ async function _renderDeptList(root, token) {
         </div>
         <div id="_rvt_suggestions" class="rv-tab-suggestions-dropdown" hidden></div>
       </div>
-      <div class="rv-tab-deptgrid">
-        ${DEPT_ORDER.map((code, i) => {
-          const meta = DEPT_META[code];
-          if (!meta) return '';
-          return `
-            <div class="rv-tab-deptcard" data-dept="${escAttr(code)}" role="button" tabindex="0" style="--i:${Math.min(i, 24)}">
-              <div class="rv-tab-deptcard-code">${escHtml(meta.displayCode || code)}</div>
-              <div class="rv-tab-deptcard-label">${escHtml(meta.label)}</div>
-            </div>`;
-        }).join('')}
-      </div>
+      <div class="rv-tab-deptgrid" id="_rvt_deptgrid"></div>
     </div>
   `;
+
+  // The department tiles are built as elements, not as markup: their labels
+  // come from the catalogue, and nothing from data belongs in innerHTML.
+  const { departmentMeta } = getActiveCatalog();
+  const grid = root.querySelector('#_rvt_deptgrid');
+  DEPT_ORDER.forEach((code, i) => {
+    const meta = departmentMeta[code];
+    if (!meta) return;
+    const card = document.createElement('div');
+    card.className = 'rv-tab-deptcard';
+    card.dataset.dept = code;
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.style.setProperty('--i', String(Math.min(i, 24)));
+    const codeEl = document.createElement('div');
+    codeEl.className = 'rv-tab-deptcard-code';
+    codeEl.textContent = meta.displayCode || code;
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rv-tab-deptcard-label';
+    labelEl.textContent = meta.label;
+    card.append(codeEl, labelEl);
+    grid.append(card);
+  });
 
   const input   = root.querySelector('#_rvt_q');
   const go      = root.querySelector('#_rvt_go');
@@ -20410,10 +21981,10 @@ async function _renderDeptList(root, token) {
   });
 }
 
-// Course autocomplete — searches COURSE_DB by code prefix, code contains, name substring
+// Course autocomplete — searches the active catalogue by code prefix, code contains, name substring
 function _suggestCourses(q, limit = 6) {
   const prefix = [], codeHit = [], nameHit = [];
-  for (const [code, info] of Object.entries(COURSE_DB)) {
+  for (const [code, info] of Object.entries(getActiveCatalog().courses)) {
     if (code.startsWith(q))               prefix.push({ code, name: info.name });
     else if (code.includes(q))            codeHit.push({ code, name: info.name });
     else if (info.name.toUpperCase().includes(q)) nameHit.push({ code, name: info.name });
@@ -20438,16 +22009,16 @@ function _extractCode(name) {
   return m ? m[1] : null;
 }
 
-// All course codes in COURSE_DB that belong to the given department
+// All course codes in the active catalogue that belong to the given department
 function _getDeptCourses(deptCode) {
-  return Object.keys(COURSE_DB)
-    .filter(code => getCourseDept(code) === deptCode)
+  return Object.keys(getActiveCatalog().courses)
+    .filter(code => getActiveCatalog().departmentOf(code) === deptCode)
     .sort();
 }
 
 // ── COURSE LIST FOR DEPT ──────────────────────────────────────────────────────
 async function _renderCourseList(root, dept) {
-  const meta      = DEPT_META[dept];
+  const meta      = getActiveCatalog().departmentMeta[dept];
   const deptLabel = meta ? meta.label : dept;
   const skeletonCount = meta ? Math.min(Math.max(_getDeptCourses(dept).length, 10), 24) : 12;
 
@@ -20498,7 +22069,7 @@ async function _renderCourseList(root, dept) {
   const isMultiPrefix = prefixes.length > 1;
 
   const courseCardHtml = (code, i) => {
-    const info       = COURSE_DB[code];
+    const info       = getActiveCatalog().courses[code];
     const name       = info ? info.name : code;
     const count      = reviewCounts[code] || 0;
     const facCount   = facultySets[code] ? facultySets[code].size : 0;
@@ -20543,10 +22114,10 @@ function _courseGridSkeletonHtml(count = 12) {
 
 // ── COURSE PAGE (faculty for a course) ───────────────────────────────────────
 async function _renderCoursePage(root, courseCode) {
-  const info      = COURSE_DB[courseCode];
+  const info      = getActiveCatalog().courses[courseCode];
   const courseName = info ? info.name : courseCode;
-  const deptCode  = getCourseDept(courseCode);
-  const deptMeta  = deptCode ? DEPT_META[deptCode] : null;
+  const deptCode  = getActiveCatalog().departmentOf(courseCode);
+  const deptMeta  = deptCode ? getActiveCatalog().departmentMeta[deptCode] : null;
 
   root.innerHTML = `
     <div class="rv-tab">
@@ -20776,8 +22347,8 @@ async function _renderFacultyPage(root, initials, courseFilter, token) {
     ? reviews.filter(r => String(r.courseCode || '').toUpperCase() === courseFilter)
     : reviews;
   const heroCourseCode = courseFilter || (courses.length === 1 ? courses[0] : '');
-  const heroCourseName = heroCourseCode && COURSE_DB[heroCourseCode]
-    ? COURSE_DB[heroCourseCode].name
+  const heroCourseName = heroCourseCode && getActiveCatalog().courses[heroCourseCode]
+    ? getActiveCatalog().courses[heroCourseCode].name
     : '';
 
   const agg = aggregateRatings(scoped);
@@ -21195,8 +22766,8 @@ async function _buildIndex() {
   for (const [code, revs] of byCourse) {
     const agg = aggregateRatings(revs);
     if (!agg) continue;
-    const info = COURSE_DB[code] || { code, name: code, credits: null };
-    const dept  = getCourseDept(code) || getCoursePrefix(code) || '?';
+    const info = getActiveCatalog().courses[code] || { code, name: code, credits: null };
+    const dept  = getActiveCatalog().departmentOf(code) || getCoursePrefix(code) || '?';
     entries.push({
       code,
       name:       info.name || code,
@@ -21326,15 +22897,20 @@ function _render(root, entries) {
   </div>`;
 }
 
-// ── Auth-change cache invalidation ────────────────────────────────────────────
+// ── Cache invalidation ────────────────────────────────────────────────────────
+// The index holds what the signed-in student may read, and the course names
+// and departments of the campus's catalogue — so it is stale after either
+// changes.
 
-window.addEventListener('shohoj:auth-changed', () => {
+function _dmInvalidate() {
   _cache = null;
   const root = document.getElementById('difficultyMapContent');
   if (root && root.closest('[style*="display: none"]') === null && root.offsetParent !== null) {
     renderDifficultyMapTab();
   }
-});
+}
+window.addEventListener('shohoj:auth-changed', _dmInvalidate);
+window.addEventListener('shohoj:campus-changed', _dmInvalidate);
 
 // ── Public entry ──────────────────────────────────────────────────────────────
 
@@ -34010,7 +35586,7 @@ function confirmSummaryForm() {
 
 // ── Helper: compute ordinal for a given season/year from start ────────────────
 function _computeOrdinal(season, year) {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
@@ -34080,14 +35656,14 @@ function findCurrentSemesterIdForSummaryView(semesters, currentSemester) {
 
 // ── Helper: get current real-world semester season + year ─────────────────────
 function _getCurrentSemester() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   return getCurrentSemesterForDeptSeasons(new Date(), deptSeasons);
 }
 
 // ── Helper: advance season/year by one step in dept calendar ─────────────────
 function _nextSemester(season, year) {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const idx = deptSeasons.indexOf(season);
   if (idx === -1 || idx === deptSeasons.length - 1) {
@@ -34105,7 +35681,7 @@ function getReviewableCourseCode(courseName) {
     || raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/i);
 
   const code = match ? match[1].toUpperCase() : '';
-  return code && COURSE_DB[code] ? code : '';
+  return code && getActiveCatalog().courses[code] ? code : '';
 }
 
 
@@ -34253,7 +35829,7 @@ function renderSummaryForm() {
 
 // ── Compute estimated semester count from summary block ──────────────────────
 function _estimatedSummarySemCount() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYearNum = parseInt(getStartYear());
@@ -34555,7 +36131,7 @@ function addSemester(prefill = null) {
   if (!hasSummary && (!state.currentDept || !getStartSeason() || !getStartYear())) return;
 
   const id = state.semesterCounter++;
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const existingNonSummary = state.semesters.filter(s => !s.running && !s.summary);
 
@@ -34646,7 +36222,7 @@ function addRunningSemester(prefill = null) {
 }
 
 function generateNextSemesterName() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const SEASONS = dept && dept.seasons ? dept.seasons : ['Spring','Summer','Fall'];
   const completedSems = state.semesters.filter(s => !s.running && !s.summary);
   if (!completedSems.length) return 'Current Semester';
@@ -34807,7 +36383,7 @@ function onDeptSelect() {
   resetPlanner();
   resetPlayground();
   window._shohoj_updateSetupWizard();
-  const dept = DEPARTMENTS[state.currentDept];
+  const dept = getActiveCatalog().programs[state.currentDept];
   const creditsEl = document.getElementById('deptCredits');
   if (creditsEl) creditsEl.style.display = 'inline-flex';
   document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
@@ -34836,7 +36412,9 @@ function onDeptSelect() {
 function onStartSemConfirm() {
   if (!state.currentDept) return;
   if (!getStartSeason() || !getStartYear()) return;
-  const dept = DEPARTMENTS[state.currentDept];
+  const dept = getActiveCatalog().programs[state.currentDept];
+  // A program saved on another campus, before sign-in has resolved this one.
+  if (!dept) return;
   const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear   = parseInt(getStartYear());
@@ -35665,7 +37243,7 @@ async function importTranscriptPDF(inputEl) {
         const code = codeMatch ? codeMatch[1] : null;
         if (!code) return;
 
-        const cat = COURSE_DB[code];
+        const cat = getActiveCatalog().courses[code];
         if (cat) {
           c.name = cat.full;
           if (!c.credits && cat.credits) c.credits = cat.credits;
@@ -35776,12 +37354,13 @@ function applyImport() {
   setSeasonOptions(['Spring', 'Summer', 'Fall']);
 
   if (data.detectedDept) {
-    const deptKey = Object.keys(DEPARTMENTS).find(k => DEPARTMENTS[k].label === data.detectedDept);
+    const { programs } = getActiveCatalog();
+    const deptKey = Object.keys(programs).find(k => programs[k].label === data.detectedDept);
     if (deptKey) {
       state.currentDept = deptKey;
       const sel = document.getElementById('deptSelect');
       if (sel) sel.value = deptKey;
-      const dept = DEPARTMENTS[deptKey];
+      const dept = programs[deptKey];
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       const credEl = document.getElementById('deptCredits');
       if (credEl) credEl.style.display = 'inline-flex';
@@ -35908,8 +37487,8 @@ function exportPDF() {
       hasSummary: !!summaryBlock,
       startSeason: document.getElementById('startSeason')?.value,
       startYear: document.getElementById('startYear')?.value,
-      deptSeasons: state.currentDept && DEPARTMENTS[state.currentDept]
-        ? (DEPARTMENTS[state.currentDept].seasons || ['Spring', 'Summer', 'Fall'])
+      deptSeasons: state.currentDept && getActiveCatalog().programs[state.currentDept]
+        ? (getActiveCatalog().programs[state.currentDept].seasons || ['Spring', 'Summer', 'Fall'])
         : ['Spring', 'Summer', 'Fall'],
       completedSemCount: 0,
     });
@@ -35928,8 +37507,8 @@ function exportPDF() {
 
   doc.setFontSize(15); setTxt(TEXT1); doc.setFont('helvetica', 'bold');
   doc.text('CGPA Report', ML + 22, y + 10);
-  const deptLabel = state.currentDept && DEPARTMENTS[state.currentDept]
-    ? DEPARTMENTS[state.currentDept].label : 'BRAC University';
+  const deptLabel = state.currentDept && getActiveCatalog().programs[state.currentDept]
+    ? getActiveCatalog().programs[state.currentDept].label : getActiveCampus().name;
   doc.setFontSize(7.5); setTxt(TEXT2); doc.setFont('helvetica', 'normal');
   doc.text(deptLabel, ML + 22, y + 15);
   doc.setFontSize(7); setTxt(TEXT3);
@@ -36853,9 +38432,9 @@ let _assumedGrade = 'A';
 function plannerEngineInput(retakenKeys = getRetakenKeys()) {
   return {
     semesters: state.semesters,
-    allCourses: ALL_COURSES,
-    courseCatalog: COURSE_DB,
-    prerequisites: PREREQS,
+    allCourses: getActiveCatalog().allCourses,
+    courseCatalog: getActiveCatalog().courses,
+    prerequisites: getActiveCatalog().prerequisites,
     planCourses: plan.courses,
     currentDept: state.currentDept,
     retakenKeys,
@@ -36867,7 +38446,7 @@ function getCompletedCodes() {
 }
 
 function checkPrereqs(code, completed) {
-  return plannerCoreCheckPrereqs(code, completed, PREREQS);
+  return plannerCoreCheckPrereqs(code, completed, getActiveCatalog().prerequisites);
 }
 
 function getAvailableCourses(completed, dept) {
@@ -36882,7 +38461,8 @@ function validatePlan(completed) {
 }
 
 function getPrereqChain(code, completed, depth = 0) {
-  return plannerCoreGetPrereqChain(code, completed, COURSE_DB, PREREQS, depth);
+  const { courses, prerequisites } = getActiveCatalog();
+  return plannerCoreGetPrereqChain(code, completed, courses, prerequisites, depth);
 }
 
 // ── Engine: project CGPA assuming a uniform grade across planned courses ────
@@ -36954,7 +38534,7 @@ function promoteToRunning() {
   }
 
   const prefill = plan.courses.map(code => {
-    const c = COURSE_DB[code];
+    const c = getActiveCatalog().courses[code];
     if (!c) return null;
     return {
       name: `${c.name} (${c.code})`,
@@ -37128,7 +38708,7 @@ function renderPlanner() {
   const completedCount = completed.size;
   const unlockedCount  = available.filter(c => c.canTake && c.isRelevant).length;
   const lockedCount    = available.filter(c => !c.canTake && c.isRelevant).length;
-  const prereqCoverage = Object.keys(PREREQS).length;
+  const prereqCoverage = Object.keys(getActiveCatalog().prerequisites).length;
 
   const statsHtml = `
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
@@ -37154,7 +38734,7 @@ function renderPlanner() {
   let planHtml = '';
   if (plan.courses.length > 0) {
     const planRows = plan.courses.map(code => {
-      const c = COURSE_DB[code];
+      const c = getActiveCatalog().courses[code];
       if (!c) return '';
       const check = checkPrereqs(code, completed);
       const statusIcon = check.canTake
@@ -37239,7 +38819,7 @@ function renderPlanner() {
   if (plan.viewingPrereqs) {
     const tree = getPrereqChain(plan.viewingPrereqs, completed);
     if (tree) {
-      const courseName = COURSE_DB[plan.viewingPrereqs]?.name || plan.viewingPrereqs;
+      const courseName = getActiveCatalog().courses[plan.viewingPrereqs]?.name || plan.viewingPrereqs;
       treeHtml = `
         <div style="padding:12px 14px;border-radius:10px;background:rgba(86,180,233,0.06);border:1px solid rgba(86,180,233,0.18);margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -39367,8 +40947,14 @@ function fmtCr(n) { return n % 1 === 0 ? String(n) : n.toFixed(1); }
 
 window._shohoj_recalc         = recalc;
 window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
+// The program picker listed the previous campus's programs. First, so the
+// repaint below never sees a program the new campus doesn't have.
+window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// ...and the open tab (reviews, planner, the difficulty map) was drawn from
+// the previous campus's catalogue. Re-entering it redraws it.
+window.addEventListener('shohoj:campus-changed', () => switchCalcTab(_activeCalcTab));
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
 // Bridge for the React CGPA island (Vite build): hands the shared state +
@@ -39396,11 +40982,88 @@ window._shohoj_setSemesters = function(semesters) {
 // it calls through here when it writes something that belongs in the
 // cloud snapshot (a review receipt) without touching calculator state.
 window._shohoj_saveState = saveState;
-window._shohoj_isKnownCourse = (code) => !!COURSE_DB[code];
+// Reviews, papers and study groups validate a course code before writing it;
+// on this page that means a course of the student's own campus.
+setCourseLookup(code => getActiveCatalog().courses[code]);
+window._shohoj_isKnownCourse = (code) => !!getActiveCatalog().courses[code];
 // The catalog list (code/name/full/credits) for the island's autocomplete. The
 // data stays in JS; the island reads it through this bridge and matches with the
-// typed searchCourses helper.
-window._shohoj_courseCatalog = ALL_COURSES;
+// typed searchCourses helper. A getter, so it is the active campus's list.
+Object.defineProperty(window, '_shohoj_courseCatalog', {
+  configurable: true,
+  get: () => getActiveCatalog().allCourses,
+});
+
+// ── PROGRAM PICKER ────────────────────────────────────────────────────────────
+// index.html ships BRACU's programs in #deptSelect, with its two "coming soon"
+// entries, and BRACU keeps that markup as written. Any other campus gets a
+// list built from its catalogue.
+//
+// state.currentDept is never changed here. The campus is only known once
+// sign-in resolves, and until then the page is on BRACU's: a student whose
+// saved program is another campus's (NSU's LLB) must find it still chosen a
+// moment later, not cleared by a list that didn't have it yet. A program the
+// active campus lacks is simply not shown as chosen.
+let _bracuProgramOptions = null;
+
+function syncProgramPicker() {
+  const sel = document.getElementById('deptSelect');
+  if (!sel) return;
+  if (_bracuProgramOptions === null) {
+    _bracuProgramOptions = Array.from(sel.options, option => option.cloneNode(true));
+  }
+  const campusId = getActiveCampus().id;
+  const { programs } = getActiveCatalog();
+
+  if ((sel.dataset.campus || DEFAULT_UNIVERSITY_ID) !== campusId) {
+    if (campusId === DEFAULT_UNIVERSITY_ID) {
+      sel.replaceChildren(..._bracuProgramOptions.map(option => option.cloneNode(true)));
+    } else {
+      const placeholder = _bracuProgramOptions[0].cloneNode(true);
+      const options = Object.entries(programs)
+        .sort(([, a], [, b]) => a.label.localeCompare(b.label))
+        .map(([code, program]) => {
+          const option = document.createElement('option');
+          option.value = code;
+          option.textContent = program.label;
+          return option;
+        });
+      sel.replaceChildren(placeholder, ...options);
+    }
+    sel.dataset.campus = campusId;
+  }
+
+  const program = state.currentDept ? programs[state.currentDept] : null;
+  sel.value = program ? state.currentDept : '';
+
+  // The badge and the season list belong to the program. Two campuses can
+  // share a code (both have a CSE) and differ on both, so they are rewritten
+  // rather than trusted.
+  const badge = document.getElementById('deptCredits');
+  if (badge && state.currentDept) badge.style.display = program ? 'inline-flex' : 'none';
+  if (!program) return;
+  const creditsText = document.getElementById('deptCreditsText');
+  if (creditsText) creditsText.textContent = program.totalCredits + ' Total Credits';
+  const seasonSel = document.getElementById('startSeason');
+  if (seasonSel) {
+    const seasons = program.seasons || ['Spring', 'Summer', 'Fall'];
+    const shown = Array.from(seasonSel.options, option => option.value).filter(Boolean);
+    if (shown.join() !== seasons.join()) {
+      const chosen = seasonSel.value;
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.disabled = true;
+      placeholder.textContent = '— Season —';
+      seasonSel.replaceChildren(placeholder, ...seasons.map(season => {
+        const option = document.createElement('option');
+        option.value = season;
+        option.textContent = season;
+        return option;
+      }));
+      seasonSel.value = seasons.includes(chosen) ? chosen : '';
+    }
+  }
+}
 
 // ── "Saved on this device" notice ────────────────────────────────────────────
 // Sign-out clears the device, but that never helped the student who NEVER
@@ -39784,7 +41447,7 @@ function loadState() {
     state.semesterCounter = saved.semesterCounter || saved.semesters.length;
     setPlanCourses(saved.planCourses);
 
-    const dept = DEPARTMENTS[state.currentDept];
+    const dept = getActiveCatalog().programs[state.currentDept];
     if (dept) {
       document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
       document.getElementById('deptCredits').style.display = '';
@@ -39826,7 +41489,7 @@ window._shohoj_applyState = function(saved) {
     setPlanCourses(clean.planCourses);
     state._restoredFromStorage = true;
  
-    const dept = DEPARTMENTS[state.currentDept];
+    const dept = getActiveCatalog().programs[state.currentDept];
     if (dept) {
       const credTxt   = document.getElementById('deptCreditsText');
       const credBadge = document.getElementById('deptCredits');
@@ -40149,7 +41812,7 @@ function recalc() {
     document.getElementById('totalEarned').textContent = fmtCr(totalEarned);
   }
 
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const totalRequired = dept ? dept.totalCredits : 0;
 
   const crRemEl = document.getElementById('creditsRemaining');
@@ -40373,6 +42036,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // After initActiveCampus on purpose: both listen for shohoj:auth-changed, and
   // the switcher has to read the campus the line above has already settled.
   initAdminCampusSwitcher();
+  syncProgramPicker();
 
   // Campus gate. Must run before the ?demo=1 check below, which unlocks it.
   initSignInPortal();
