@@ -58,6 +58,8 @@ MAIN_JS_FILES = [
     'js/core/catalogNsu.generated.js',
     'js/core/activeCatalog.js',
     'js/core/courseLookup.js',
+    # Which calculator tabs a campus gets (twin of the shell's tabsFor)
+    'js/core/campusFeatures.js',
     'js/core/gpa-core.js',
     'js/core/calculator.js',
     'js/core/faculty.js',
