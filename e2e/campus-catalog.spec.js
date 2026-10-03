@@ -8,6 +8,7 @@
 
 import { expect, test } from '@playwright/test';
 import { unlockCalculator } from './helpers/gate.js';
+import { selectCalcTab } from './helpers/tabs.js';
 
 async function boot(page) {
   await page.route('https://**/*', route => route.abort());
@@ -29,6 +30,8 @@ async function boot(page) {
 async function signInAs(page, email) {
   await page.evaluate(address => {
     window._shohoj_userProfile = () => ({ signedIn: address !== null, email: address });
+    // The Reviews tab asks for a uid, separately from the profile.
+    window._shohoj_currentUid = () => (address === null ? null : 'e2e-student');
     window.dispatchEvent(new Event('shohoj:auth-changed'));
   }, email);
 }
@@ -99,7 +102,7 @@ test('an NSU student searches NSU courses, and BRACU-only codes are not offered'
   await expect(page.locator('#deptCreditsText')).toHaveText('130 Total Credits');
 });
 
-test('the program list returns with the campus, and a program it lacks is dropped', async ({ page }) => {
+test('the program list returns with the campus, and a program it lacks is kept for later', async ({ page }) => {
   await boot(page);
   // Option for option, attributes included; the whitespace between them in
   // index.html is not part of the list.
@@ -111,11 +114,64 @@ test('the program list returns with the campus, and a program it lacks is droppe
   await page.locator('#deptSelect').selectOption('CS');
   await expect(page.locator('#deptCredits')).toBeVisible();
 
+  // On NSU it is not shown as chosen...
   await signInAs(page, 'first.last@northsouth.edu');
   await expect(page.locator('#deptSelect')).toHaveValue('');
   await expect(page.locator('#deptCredits')).toBeHidden();
 
+  // ...but it is not forgotten: back on BRACU the list and the choice return.
   await signInAs(page, null);
   expect(await options()).toEqual(shipped);
   expect(shipped).toHaveLength(19);
+  await expect(page.locator('#deptSelect')).toHaveValue('CS');
+  await expect(page.locator('#deptCreditsText')).toHaveText('124 Total Credits');
+  await expect(page.locator('#deptCredits')).toBeVisible();
+});
+
+test("an NSU-only program survives the moment before sign-in resolves", async ({ page }) => {
+  await boot(page);
+  const seasons = () =>
+    page.locator('#startSeason option').evaluateAll(list => list.map(o => o.value).filter(Boolean));
+
+  // An NSU student chooses LLB, which runs on NSU's two-term calendar.
+  await signInAs(page, 'first.last@northsouth.edu');
+  await page.locator('#deptSelect').selectOption('LLB');
+  await expect(page.locator('#deptCreditsText')).toHaveText('130 Total Credits');
+  expect(await seasons()).toEqual(['Spring', 'Summer']);
+
+  // Every page load starts on BRACU's catalogue until sign-in resolves, and
+  // BRACU has no LLB. The choice must not be cleared in that gap...
+  await signInAs(page, null);
+  await expect(page.locator('#deptSelect')).toHaveValue('');
+  await expect(page.locator('#deptCredits')).toBeHidden();
+  // ...and "Let's go" on a program this campus lacks does nothing, not crash.
+  const errors = [];
+  page.on('pageerror', error => errors.push(String(error)));
+  await page.evaluate(() => document.getElementById('startSemConfirmBtn')?.click());
+  expect(errors).toEqual([]);
+
+  // ...so that when it resolves, the program, its total and its calendar are back.
+  await signInAs(page, 'first.last@northsouth.edu');
+  await expect(page.locator('#deptSelect')).toHaveValue('LLB');
+  await expect(page.locator('#deptCreditsText')).toHaveText('130 Total Credits');
+  await expect(page.locator('#deptCredits')).toBeVisible();
+  expect(await seasons()).toEqual(['Spring', 'Summer']);
+});
+
+test('an admin switching campus redraws the tab that is open', async ({ page }) => {
+  await boot(page);
+  // The admin's switcher (#807) changes the campus without any auth event, so
+  // nothing but shohoj:campus-changed tells the open tab its content is stale.
+  await page.evaluate(() => { window._shohoj_isAdmin = () => true; });
+  await signInAs(page, 'admin@g.bracu.ac.bd');
+  await selectCalcTab(page, 'reviews');
+  await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(12);
+
+  // NSU's catalogue has no department table, so the same view has no tiles.
+  await page.getByTestId('admin-campus-switcher').selectOption('nsu');
+  await expect(page.locator('#tabReviews')).toHaveClass(/active/);
+  await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(0);
+
+  await page.getByTestId('admin-campus-switcher').selectOption('bracu');
+  await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(12);
 });
