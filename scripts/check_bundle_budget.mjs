@@ -43,7 +43,15 @@ export const TARGETS = [
     // with phase 2; phases 3-5 add ~54 kB locally (the announcement detector,
     // calendar and digest), projecting ~3594. Gzip is unchanged: the projected
     // ~1698 still sits under 1740.
-    budget: { raw: 3680, gzip: 1740 },
+    //
+    // Both raised (3680 -> 3780 raw, 1740 -> 1775 gzip) for NSU's catalogue
+    // (#815): 1,018 courses, their prerequisites and 25 programs, generated
+    // from data/campuses/nsu, cost 77 kB raw / 18 kB gzip and put the page at
+    // 3690 / 1731. Every student downloads every campus's catalogue — chosen
+    // over loading it on demand, which would put a network request behind
+    // course search. That cost grows with each campus: revisit on-demand
+    // loading when a third catalogue goes in rather than raising this again.
+    budget: { raw: 3780, gzip: 1775 },
   },
   {
     label: 'admin.html',
@@ -73,7 +81,11 @@ export const TARGETS = [
     // Raised from 995/288 for the same Tasks port (#767): the legacy modules
     // it adds are in this entry too. CI measured 993/288.4 with phase 2;
     // phases 3-5 add ~25/7 kB locally, projecting ~1019/296.
-    budget: { raw: 1045, gzip: 303 },
+    //
+    // Raised again (1045/303 -> 1105/326) for NSU's catalogue (#815), which
+    // this entry carries for the same reason shohoj.html does — see there.
+    // Measured 1077/310 locally; CI's gzip runs ~8 kB larger.
+    budget: { raw: 1105, gzip: 326 },
   },
   // The shell entry — what a student would download after the cutover.
   {
