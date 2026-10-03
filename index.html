@@ -145,7 +145,7 @@
            shell's own nav (src/app/routes/RootLayout.tsx): the visual-parity
            gate captures this nav signed-out and compares the two, so a link on
            one side only would fail it. -->
-      <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
+      <a href="#calculator" data-calc-tab="tasks" data-feature="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
       <!-- Admin "view as" campus picker (#807) — filled and revealed by
@@ -443,15 +443,18 @@
               <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
             </button>
             <!-- Standalone pages (#383), not tabs: no data-tab, so the tab
-                 machinery ignores them and the anchors navigate natively. -->
-            <a class="calc-tab-menu-item" href="campus/" role="menuitem">
+                 machinery ignores them and the anchors navigate natively.
+                 data-feature names the campus feature behind each, so
+                 applyCampusFeatures (js/main.js) can hide the ones the
+                 signed-in student's campus has no data for. -->
+            <a class="calc-tab-menu-item" href="campus/" data-feature="campus" role="menuitem">
               <span class="calc-tab-icon">📍</span><span>Campus Map</span>
               <span class="calc-tab-menu-tag">WIP</span>
             </a>
-            <a class="calc-tab-menu-item" href="bus/" role="menuitem">
+            <a class="calc-tab-menu-item" href="bus/" data-feature="bus" role="menuitem">
               <span class="calc-tab-icon">🚌</span><span>Bus</span>
             </a>
-            <a class="calc-tab-menu-item" href="lost-found/" role="menuitem">
+            <a class="calc-tab-menu-item" href="lost-found/" data-feature="lostFound" role="menuitem">
               <span class="calc-tab-icon">🎒</span><span>Lost &amp; Found</span>
             </a>
           </div>
