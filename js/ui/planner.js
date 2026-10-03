@@ -3,7 +3,7 @@
 // plan building, credit validation, and prereq tree visualization.
 
 import { state, saveState } from '../core/state.js';
-import { COURSE_DB, ALL_COURSES, PREREQS } from '../core/catalog.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
 import { getRetakenKeys } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { getCurrentTotals } from './playground.js';
@@ -46,9 +46,9 @@ let _assumedGrade = 'A';
 function plannerEngineInput(retakenKeys = getRetakenKeys()) {
   return {
     semesters: state.semesters,
-    allCourses: ALL_COURSES,
-    courseCatalog: COURSE_DB,
-    prerequisites: PREREQS,
+    allCourses: getActiveCatalog().allCourses,
+    courseCatalog: getActiveCatalog().courses,
+    prerequisites: getActiveCatalog().prerequisites,
     planCourses: plan.courses,
     currentDept: state.currentDept,
     retakenKeys,
@@ -60,7 +60,7 @@ function getCompletedCodes() {
 }
 
 function checkPrereqs(code, completed) {
-  return plannerCoreCheckPrereqs(code, completed, PREREQS);
+  return plannerCoreCheckPrereqs(code, completed, getActiveCatalog().prerequisites);
 }
 
 function getAvailableCourses(completed, dept) {
@@ -75,7 +75,8 @@ function validatePlan(completed) {
 }
 
 function getPrereqChain(code, completed, depth = 0) {
-  return plannerCoreGetPrereqChain(code, completed, COURSE_DB, PREREQS, depth);
+  const { courses, prerequisites } = getActiveCatalog();
+  return plannerCoreGetPrereqChain(code, completed, courses, prerequisites, depth);
 }
 
 // ── Engine: project CGPA assuming a uniform grade across planned courses ────
@@ -147,7 +148,7 @@ export function promoteToRunning() {
   }
 
   const prefill = plan.courses.map(code => {
-    const c = COURSE_DB[code];
+    const c = getActiveCatalog().courses[code];
     if (!c) return null;
     return {
       name: `${c.name} (${c.code})`,
@@ -321,7 +322,7 @@ export function renderPlanner() {
   const completedCount = completed.size;
   const unlockedCount  = available.filter(c => c.canTake && c.isRelevant).length;
   const lockedCount    = available.filter(c => !c.canTake && c.isRelevant).length;
-  const prereqCoverage = Object.keys(PREREQS).length;
+  const prereqCoverage = Object.keys(getActiveCatalog().prerequisites).length;
 
   const statsHtml = `
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
@@ -347,7 +348,7 @@ export function renderPlanner() {
   let planHtml = '';
   if (plan.courses.length > 0) {
     const planRows = plan.courses.map(code => {
-      const c = COURSE_DB[code];
+      const c = getActiveCatalog().courses[code];
       if (!c) return '';
       const check = checkPrereqs(code, completed);
       const statusIcon = check.canTake
@@ -432,7 +433,7 @@ export function renderPlanner() {
   if (plan.viewingPrereqs) {
     const tree = getPrereqChain(plan.viewingPrereqs, completed);
     if (tree) {
-      const courseName = COURSE_DB[plan.viewingPrereqs]?.name || plan.viewingPrereqs;
+      const courseName = getActiveCatalog().courses[plan.viewingPrereqs]?.name || plan.viewingPrereqs;
       treeHtml = `
         <div style="padding:12px 14px;border-radius:10px;background:rgba(86,180,233,0.06);border:1px solid rgba(86,180,233,0.18);margin-bottom:16px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
