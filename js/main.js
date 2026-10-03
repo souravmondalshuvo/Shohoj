@@ -111,6 +111,9 @@ window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// ...and the open tab (reviews, planner, the difficulty map) was drawn from
+// the previous campus's catalogue. Re-entering it redraws it.
+window.addEventListener('shohoj:campus-changed', () => switchCalcTab(_activeCalcTab));
 window._shohoj_updateSetupWizard = updateSetupWizard;
 window._shohoj_getPlanCourses = getPlanCourses;
 // Bridge for the React CGPA island (Vite build): hands the shared state +
@@ -153,9 +156,13 @@ Object.defineProperty(window, '_shohoj_courseCatalog', {
 // ── PROGRAM PICKER ────────────────────────────────────────────────────────────
 // index.html ships BRACU's programs in #deptSelect, with its two "coming soon"
 // entries, and BRACU keeps that markup as written. Any other campus gets a
-// list built from its catalogue. A program chosen on the previous campus that
-// this one doesn't have is dropped: every lookup below reads
-// programs[state.currentDept] and would otherwise find nothing.
+// list built from its catalogue.
+//
+// state.currentDept is never changed here. The campus is only known once
+// sign-in resolves, and until then the page is on BRACU's: a student whose
+// saved program is another campus's (NSU's LLB) must find it still chosen a
+// moment later, not cleared by a list that didn't have it yet. A program the
+// active campus lacks is simply not shown as chosen.
 let _bracuProgramOptions = null;
 
 function syncProgramPicker() {
@@ -186,17 +193,35 @@ function syncProgramPicker() {
   }
 
   const program = state.currentDept ? programs[state.currentDept] : null;
-  if (state.currentDept && !program) {
-    state.currentDept = '';
-    const credits = document.getElementById('deptCredits');
-    if (credits) credits.style.display = 'none';
-    updateSetupWizard();
-  }
-  // Two campuses can share a program code (both have a CSE) and still differ
-  // on its total, so the badge is rewritten rather than trusted.
+  sel.value = program ? state.currentDept : '';
+
+  // The badge and the season list belong to the program. Two campuses can
+  // share a code (both have a CSE) and differ on both, so they are rewritten
+  // rather than trusted.
+  const badge = document.getElementById('deptCredits');
+  if (badge && state.currentDept) badge.style.display = program ? 'inline-flex' : 'none';
+  if (!program) return;
   const creditsText = document.getElementById('deptCreditsText');
-  if (program && creditsText) creditsText.textContent = program.totalCredits + ' Total Credits';
-  sel.value = state.currentDept || '';
+  if (creditsText) creditsText.textContent = program.totalCredits + ' Total Credits';
+  const seasonSel = document.getElementById('startSeason');
+  if (seasonSel) {
+    const seasons = program.seasons || ['Spring', 'Summer', 'Fall'];
+    const shown = Array.from(seasonSel.options, option => option.value).filter(Boolean);
+    if (shown.join() !== seasons.join()) {
+      const chosen = seasonSel.value;
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.disabled = true;
+      placeholder.textContent = '— Season —';
+      seasonSel.replaceChildren(placeholder, ...seasons.map(season => {
+        const option = document.createElement('option');
+        option.value = season;
+        option.textContent = season;
+        return option;
+      }));
+      seasonSel.value = seasons.includes(chosen) ? chosen : '';
+    }
+  }
 }
 
 // ── "Saved on this device" notice ────────────────────────────────────────────
