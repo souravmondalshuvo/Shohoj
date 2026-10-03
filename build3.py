@@ -53,6 +53,11 @@ MAIN_JS_FILES = [
     'js/core/university.js',
     # Which campus the signed-in student is on; every grade call reads its rules
     'js/core/activeCampus.js',
+    # The active campus's catalogue: NSU's (generated from data/campuses/nsu)
+    # beside BRACU's catalog.js, and the lookup the data layers validate with
+    'js/core/catalogNsu.generated.js',
+    'js/core/activeCatalog.js',
+    'js/core/courseLookup.js',
     'js/core/gpa-core.js',
     'js/core/calculator.js',
     'js/core/faculty.js',
@@ -168,6 +173,8 @@ ADMIN_JS_FILES = [
     'js/core/dispatch.js',
     'js/core/departments.js',
     'js/core/catalog.js',
+    # papers.js validates course codes through this; admin leaves it on BRACU's
+    'js/core/courseLookup.js',
     'js/core/papers.js',
     'js/ui/previewModalPdfjs.js',
     'js/ui/previewModal.js',
