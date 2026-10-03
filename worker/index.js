@@ -238,13 +238,25 @@ export function isValidStoragePath(p) {
 // Course codes are validated for EXISTENCE, not merely shape. The regex alone
 // accepts "ZZZ999", which would let a caller mint review rows and R2 object
 // prefixes for courses that do not exist. `isKnownCourse` checks the generated
-// catalogue (worker/catalog.generated.js, from js/core/catalog.js) — a
-// server-controlled list the client cannot influence.
+// catalogue (worker/catalog.generated.js) — a server-controlled list the
+// client cannot influence — for the caller's own campus: a real BRACU code is
+// not a course at NSU, and the two catalogues share plenty of codes that name
+// different courses.
 //
 // The shape test is kept as a cheap pre-filter so a junk string never reaches
-// the Set lookup, and so the error stays the same for malformed input.
-export function isValidCourseCode(c) {
-  return typeof c === 'string' && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c) && isKnownCourse(c);
+// the lookup, and so the error stays the same for malformed input.
+export function isValidCourseCode(c, campus = 'bracu') {
+  return typeof c === 'string' && /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/.test(c) && isKnownCourse(c, campus);
+}
+
+/**
+ * The campus whose catalogue a caller's course codes are checked against: the
+ * one their verified address belongs to. An admin on an address no campus
+ * claims has none, and keeps BRACU's — what every caller was checked against
+ * before the catalogue was per-campus.
+ */
+export function catalogCampusFor(claims) {
+  return campusOfEmail(claims?.email) || 'bracu';
 }
 
 export function safeFilename(name) {
@@ -633,7 +645,7 @@ async function handleUpload(request, env, origin, ctx) {
   const url = new URL(request.url);
   const courseCode = url.searchParams.get('courseCode') || '';
   const rawName = url.searchParams.get('filename') || '';
-  if (!isValidCourseCode(courseCode)) {
+  if (!isValidCourseCode(courseCode, catalogCampusFor(claims))) {
     return jsonResponse({ error: 'Invalid course code' }, { status: 400 }, env, origin);
   }
   const filename = safeFilename(rawName);
@@ -1014,7 +1026,7 @@ async function handleReview(request, env, origin) {
     return jsonResponse({ error: 'Invalid JSON' }, { status: 400 }, env, origin);
   }
 
-  const validation = validateReviewPayload(payload);
+  const validation = validateReviewPayload(payload, catalogCampusFor(claims));
   if (validation.error) {
     return jsonResponse({ error: validation.error }, { status: 400 }, env, origin);
   }
@@ -1470,7 +1482,7 @@ async function dispatchAcademic(ctx, request, url) {
   return null;
 }
 
-export function validateReviewPayload(p) {
+export function validateReviewPayload(p, campus = 'bracu') {
   if (!p || typeof p !== 'object') return { error: 'Invalid payload' };
   const facultyInitials = String(p.facultyInitials || '')
     .toUpperCase()
@@ -1487,9 +1499,10 @@ export function validateReviewPayload(p) {
   // Tracked as a known limitation in docs/SECURITY.md rather than silently
   // presented as an existence check.
   if (!REVIEW_INITIALS_RE.test(facultyInitials)) return { error: 'Invalid faculty initials' };
-  // Course codes, by contrast, ARE checked against the authoritative catalogue.
+  // Course codes, by contrast, ARE checked against the authoritative catalogue
+  // — the reviewer's own campus's.
   if (!REVIEW_COURSE_RE.test(courseCode)) return { error: 'Invalid course code' };
-  if (!isKnownCourse(courseCode)) return { error: 'Unknown course code' };
+  if (!isKnownCourse(courseCode, campus)) return { error: 'Unknown course code' };
 
   const r = p.ratings;
   if (!r || typeof r !== 'object') return { error: 'Missing ratings' };
