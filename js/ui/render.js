@@ -1,8 +1,7 @@
 import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
-import { DEPARTMENTS } from '../core/departments.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
-import { COURSE_DB } from '../core/catalog.js';
 import {
   generateSemesterNames, getLastCompletedSemester,
   countSemesters, getStartSeason, getStartYear,
@@ -306,7 +305,7 @@ export function confirmSummaryForm() {
 
 // ── Helper: compute ordinal for a given season/year from start ────────────────
 function _computeOrdinal(season, year) {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear = parseInt(getStartYear());
@@ -376,14 +375,14 @@ export function findCurrentSemesterIdForSummaryView(semesters, currentSemester) 
 
 // ── Helper: get current real-world semester season + year ─────────────────────
 function _getCurrentSemester() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   return getCurrentSemesterForDeptSeasons(new Date(), deptSeasons);
 }
 
 // ── Helper: advance season/year by one step in dept calendar ─────────────────
 function _nextSemester(season, year) {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const idx = deptSeasons.indexOf(season);
   if (idx === -1 || idx === deptSeasons.length - 1) {
@@ -401,7 +400,7 @@ export function getReviewableCourseCode(courseName) {
     || raw.match(/^([A-Z]{2,4}\d{3}[A-Z]?)\b/i);
 
   const code = match ? match[1].toUpperCase() : '';
-  return code && COURSE_DB[code] ? code : '';
+  return code && getActiveCatalog().courses[code] ? code : '';
 }
 
 
@@ -549,7 +548,7 @@ function renderSummaryForm() {
 
 // ── Compute estimated semester count from summary block ──────────────────────
 function _estimatedSummarySemCount() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYearNum = parseInt(getStartYear());
@@ -851,7 +850,7 @@ export function addSemester(prefill = null) {
   if (!hasSummary && (!state.currentDept || !getStartSeason() || !getStartYear())) return;
 
   const id = state.semesterCounter++;
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const deptSeasons = dept && dept.seasons ? dept.seasons : ['Spring', 'Summer', 'Fall'];
   const existingNonSummary = state.semesters.filter(s => !s.running && !s.summary);
 
@@ -942,7 +941,7 @@ export function addRunningSemester(prefill = null) {
 }
 
 function generateNextSemesterName() {
-  const dept = state.currentDept ? DEPARTMENTS[state.currentDept] : null;
+  const dept = state.currentDept ? getActiveCatalog().programs[state.currentDept] : null;
   const SEASONS = dept && dept.seasons ? dept.seasons : ['Spring','Summer','Fall'];
   const completedSems = state.semesters.filter(s => !s.running && !s.summary);
   if (!completedSems.length) return 'Current Semester';
@@ -1103,7 +1102,7 @@ export function onDeptSelect() {
   resetPlanner();
   resetPlayground();
   window._shohoj_updateSetupWizard();
-  const dept = DEPARTMENTS[state.currentDept];
+  const dept = getActiveCatalog().programs[state.currentDept];
   const creditsEl = document.getElementById('deptCredits');
   if (creditsEl) creditsEl.style.display = 'inline-flex';
   document.getElementById('deptCreditsText').textContent = dept.totalCredits + ' Total Credits';
@@ -1132,7 +1131,7 @@ export function onDeptSelect() {
 export function onStartSemConfirm() {
   if (!state.currentDept) return;
   if (!getStartSeason() || !getStartYear()) return;
-  const dept = DEPARTMENTS[state.currentDept];
+  const dept = getActiveCatalog().programs[state.currentDept];
   const deptSeasons = dept.seasons || ['Spring', 'Summer', 'Fall'];
   const startSeason = getStartSeason();
   const startYear   = parseInt(getStartYear());
