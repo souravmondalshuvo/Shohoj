@@ -9,7 +9,6 @@ import {
   isPaperAdmin, fetchUnapprovedPapers, fetchPaperReports,
   approvePaper, deletePaper, deletePaperReport,
 } from '../core/papers.js';
-import { COURSE_DB } from '../core/catalog.js';
 import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { openPreviewModal } from './previewModal.js';
