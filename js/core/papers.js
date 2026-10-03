@@ -4,7 +4,7 @@
 // the bundled code can browse, upload, and report papers without touching
 // Firebase directly.
 
-import { COURSE_DB } from './catalog.js';
+import { findCourse } from './courseLookup.js';
 
 const PAPERS_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const PAPER_TYPES = ['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz'];
@@ -27,7 +27,7 @@ export function normalizeCourseCode(raw) {
 
 export function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return PAPERS_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return PAPERS_COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 export function isValidPaperType(t) {
