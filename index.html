@@ -148,6 +148,9 @@
       <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
+      <!-- Admin "view as" campus picker (#807) — filled and revealed by
+           js/ui/adminCampusSwitcher.js when the user is an admin -->
+      <select id="adminCampusSwitcher" class="admin-campus-switcher" aria-label="View Shohoj as campus" title="View Shohoj as this campus's students see it" data-testid="admin-campus-switcher" hidden></select>
       <!-- Auth button -->
       <button id="authBtn" class="magnetic" aria-label="Sign in with Google" title="Sign in to sync your data" style="
         display:flex;align-items:center;gap:7px;
@@ -279,6 +282,11 @@
     <div id="signinPortal" class="signin-portal lg-surface" data-testid="signin-portal" hidden></div>
 
     <div class="calc-wrapper lg-surface reveal from-bottom" data-reveal-calc hidden><div class="lg-shine"></div><div class="lg-bloom"></div>
+      <!-- Phones only: the nav has no room for the admin's campus pill (#807) -->
+      <div class="admin-campus-bar" hidden>
+        <label for="adminCampusSwitcherBar">Viewing as</label>
+        <select id="adminCampusSwitcherBar" class="admin-campus-switcher" title="View Shohoj as this campus's students see it" data-testid="admin-campus-switcher-bar"></select>
+      </div>
       <!-- Header (global — above tabs) -->
       <div class="calc-header lg-panel"><div class="lg-shine"></div>
         <div class="calc-header-left">
