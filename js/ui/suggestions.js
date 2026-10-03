@@ -1,4 +1,4 @@
-import { COURSE_DB, ALL_COURSES } from '../core/catalog.js';
+import { getActiveCatalog } from '../core/activeCatalog.js';
 import { state } from '../core/state.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
@@ -43,8 +43,8 @@ export function onCourseBlur(e, semId, cIdx) {
   const val = e.target.value.trim();
   const course = sem.courses[cIdx];
   const prevName = course.name;
-  const exactMatch = COURSE_DB[val.toUpperCase()]
-    || ALL_COURSES.find(c =>
+  const exactMatch = getActiveCatalog().courses[val.toUpperCase()]
+    || getActiveCatalog().allCourses.find(c =>
       c.full.toLowerCase() === val.toLowerCase() ||
       c.name.toLowerCase() === val.toLowerCase()
     );
@@ -99,11 +99,12 @@ export function onCourseInput(e, semId, cIdx) {
 
   if (!val) { getPortal().innerHTML = ''; return; }
 
-  const exactMatch = COURSE_DB[raw.toUpperCase()];
+  const { courses, allCourses } = getActiveCatalog();
+  const exactMatch = courses[raw.toUpperCase()];
   const t1 = exactMatch ? [exactMatch] : [];
-  const t2 = ALL_COURSES.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
-  const t3 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
-  const t4 = ALL_COURSES.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
+  const t2 = allCourses.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
+  const t3 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
+  const t4 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && !t3.includes(c) && c.name.toLowerCase().includes(val));
 
   const matches = [...t1, ...t2, ...t3, ...t4].slice(0, 8);
   if (!matches.length) { getPortal().innerHTML = ''; return; }
