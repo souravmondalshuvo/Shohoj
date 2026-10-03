@@ -12,6 +12,8 @@ import { fetchToday, fetchUpcoming, listEnrollments, setTaskCompleted, tasksWork
 import { buildDigest, digestLink, groupHeading } from '../core/taskDigest.js';
 import { courseLabel, dueLabel, toneClass, typeLabel } from '../core/taskView.js';
 import { openTasksView } from './tasksTab.js';
+import { getActiveCampus } from '../core/activeCampus.js';
+import { hasFeature } from '../core/university.js';
 
 // A fresh read at most this often from tab switches; completing a task forces one.
 const _DIGEST_REFRESH_MS = 60_000;
@@ -87,7 +89,8 @@ function _paintDigest() {
 /** Refresh the digest; called when the Calculator tab shows and on sign-in changes. */
 export async function renderTasksDigest(force = false) {
   const uid = _digestUid();
-  if (!uid || tasksWorkerUrl() === null) {
+  // No digest for a campus without Tasks: the tab it links to is hidden.
+  if (!uid || tasksWorkerUrl() === null || !hasFeature(getActiveCampus(), 'tasks')) {
     _digest.uid = null;
     _digest.digest = null;
     _hideDigest();
@@ -133,4 +136,5 @@ registerAction('tasks:digestOpen', (el) => openTasksView(el.dataset.view));
 
 if (typeof window !== 'undefined') {
   window.addEventListener('shohoj:auth-changed', () => renderTasksDigest(true));
+  window.addEventListener('shohoj:campus-changed', () => renderTasksDigest(true));
 }

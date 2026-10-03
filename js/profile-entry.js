@@ -14,7 +14,8 @@
 // module-level repaint listener inside profileTab.js stays a no-op on this page.
 
 import { renderProfileTab } from './ui/profileTab.js';
-import { initActiveCampus } from './core/activeCampus.js';
+import { getActiveCampus, initActiveCampus } from './core/activeCampus.js';
+import { hasFeature } from './core/university.js';
 import { initCursor } from './animations/cursor.js';
 import {
   renderSemesterBriefing,
@@ -152,7 +153,11 @@ function _pentry_mountShell() {
 function _pentry_route() {
   if (!_pentry_onProfilePage()) return;
   _pentry_mountShell();
-  renderProfileTab('profilePageContent', { includeSeatAlerts: false, includeBriefing: true });
+  // The briefing and the unlock map both join against BRACU's section feed, so
+  // a campus without Routine gets neither slot — and with no slot in the page
+  // the two loaders below return before making a request.
+  const includeBriefing = hasFeature(getActiveCampus(), 'routine');
+  renderProfileTab('profilePageContent', { includeSeatAlerts: false, includeBriefing });
   // Fire-and-forget: each zone fills its own slot when the feed lands.
   _pentry_loadBriefing();
   _pentry_loadUnlockMap();
