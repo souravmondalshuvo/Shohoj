@@ -5,7 +5,7 @@
 // directly. Mirrors js/core/papers.js. Keep this framework-free and testable —
 // validation here is a UX courtesy; firestore.rules is the real gate.
 
-import { COURSE_DB } from './catalog.js';
+import { findCourse } from './courseLookup.js';
 
 const GROUP_COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const HTTPS_LINK_RE = /^https:\/\/[^\s]+$/i;
@@ -31,7 +31,7 @@ export function normalizeCourseCode(raw) {
 
 export function isKnownCourseCode(raw) {
   const code = normalizeCourseCode(raw);
-  return GROUP_COURSE_CODE_RE.test(code) && !!COURSE_DB[code];
+  return GROUP_COURSE_CODE_RE.test(code) && !!findCourse(code);
 }
 
 export function isValidMode(m) {
