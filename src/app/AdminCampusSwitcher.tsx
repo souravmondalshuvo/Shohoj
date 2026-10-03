@@ -12,7 +12,7 @@
 // campus stamped on a document is still derived from the writer's email
 // (campusStamp.ts), not from here.
 //
-// Rendered in two places, one visible per viewport (css/shell-routes.css):
+// Rendered in two places, one visible per viewport (css/style.css):
 //   nav — a pill beside the Admin link, from 481px up;
 //   bar — a slim row above the tabs on phones, where the nav row is already
 //         full: Admin, the email, Sign out and the theme toggle take all of
