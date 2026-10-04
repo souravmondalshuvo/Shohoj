@@ -148,7 +148,7 @@ function _grpSignInPrompt() {
     <div style="text-align:center;padding:48px 16px;color:${t.text2};">
       <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:${t.text};margin-bottom:8px;">🧑‍🤝‍🧑 Study Group Finder</div>
       <p style="font-size:14px;line-height:1.6;margin:0 auto 18px;max-width:380px;">
-        Sign in with your BRACU email to post a study group, find classmates for a course, and join open groups.
+        Sign in with your university email to post a study group, find classmates for a course, and join open groups.
       </p>
       <button data-action="grp:signin" style="padding:10px 20px;border-radius:999px;border:none;background:${t.accent};color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Sign in with Google</button>
     </div>
