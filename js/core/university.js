@@ -129,6 +129,8 @@ const NSU = {
     retake: { kind: 'best' },
     // "B or lower" — a B is exactly 3.0, so the threshold includes it.
     repeat: { threshold: 3.0, inclusive: true },
+    // Initials can close with a number that tells lecturers apart (MMS1, MMS4).
+    numberedInitials: true,
     // No creditLoad: NSU publishes no per-semester maximum, and no warning
     // beats BRACU's limits shown to an NSU student.
     features: [
