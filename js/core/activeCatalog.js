@@ -11,7 +11,8 @@
 // the same shapes on first use.
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
-// a course, or null — because the rule is the campus's, not just its table.
+// a course, or null — because the rule is the campus's, not just its table,
+// and `departmentOrder`, the order its department tiles are shown in.
 //
 // A campus with no catalogue gets an empty one, never BRACU's: another
 // university's courses offered as a student's own is the failure this exists
@@ -30,6 +31,8 @@ import {
 import {
   NSU_CATALOG_ROWS,
   NSU_DEPARTMENT_META,
+  NSU_DEPARTMENT_ORDER,
+  NSU_DEPARTMENT_OVERRIDES,
   NSU_PREFIX_DEPARTMENTS,
   NSU_PREREQS,
   NSU_PROGRAM_ROWS,
@@ -44,6 +47,8 @@ const BRACU_CATALOG = {
   prerequisites: PREREQS,
   prefixDepartments: PREFIX_DEPT_MAP,
   departmentMeta: DEPT_META,
+  // catalog.js writes them in the order BRACU's tiles are shown.
+  departmentOrder: Object.keys(DEPT_META),
   programs: DEPARTMENTS,
   // catalog.js's own lookup, which also knows BRACU's one cross-listed course.
   departmentOf: getCourseDept,
@@ -57,6 +62,7 @@ const EMPTY_CATALOG = {
   prerequisites: {},
   prefixDepartments: {},
   departmentMeta: {},
+  departmentOrder: [],
   programs: {},
   departmentOf: () => null,
   untitled: [],
@@ -90,8 +96,15 @@ function expandNsuCatalog() {
     prerequisites: NSU_PREREQS,
     prefixDepartments: NSU_PREFIX_DEPARTMENTS,
     departmentMeta: NSU_DEPARTMENT_META,
+    departmentOrder: NSU_DEPARTMENT_ORDER,
+    departmentOverrides: NSU_DEPARTMENT_OVERRIDES,
     programs,
-    departmentOf: code => NSU_PREFIX_DEPARTMENTS[getCoursePrefix(String(code).toUpperCase())] ?? null,
+    // A course another department alone offers (BUS112 is Mathematics &
+    // Physics') is that department's; everything else is its subject's owner's.
+    departmentOf: code => {
+      const upper = String(code).toUpperCase();
+      return NSU_DEPARTMENT_OVERRIDES[upper] ?? NSU_PREFIX_DEPARTMENTS[getCoursePrefix(upper)] ?? null;
+    },
     untitled: NSU_UNTITLED_CODES,
     unexpressed: NSU_UNEXPRESSED_PREREQS,
   };
