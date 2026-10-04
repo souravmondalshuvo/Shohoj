@@ -1,40 +1,22 @@
 // ── UNIVERSITY DIRECTORY (legacy bundle) ─────────────────────────────────────
-// The campus list the sign-in portal shows a signed-out visitor: which
-// universities Shohoj serves, which email domain identifies a student at each
-// one, and — the part that only matters here — which of them THIS build can
-// actually sign in.
+// Which universities Shohoj serves and which email domain identifies a student
+// at each one. Three things read it:
+//   - the sign-in portal, to list the campuses a visitor can sign in from
+//   - js/auth/firebase.js, to decide whether an account is admitted at all
+//   - js/auth/campus-scope.js, to tag and filter Firestore documents by campus
 //
-// This is DISPLAY DATA ONLY. The authoritative registry — grading scales, mark
-// tiers, repeat rules, per-campus feature lists — is src/core/university.ts and
-// stays there. build3.py concatenates plain JS and cannot pull in a .ts module,
-// and the portal only ever needs names and domains, so copying the whole
-// profile here would be four hundred lines of grading policy kept in sync by
-// hope.
+// It is names and domains ONLY. The authoritative registry — grading scales,
+// mark tiers, repeat rules, per-campus feature lists — is src/core/university.ts
+// with its legacy twin js/core/university.js. This smaller file exists because
+// the auth module is inlined into every page as its own script (build3.py), and
+// it needs the domain map without carrying the grading policy along.
 //
-// The domain map is already hand-copied in three places (this file,
-// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This is a fourth
-// copy, so it does not get to drift silently: tests/universityDirectory.test.js
-// transpiles src/core/university.ts and asserts id, name, shortName and
-// emailDomains match entry for entry.
-
-/**
- * The one campus the legacy bundle is built for.
- *
- * Not a preference — a fact about this build. bracu-section.json, the course
- * catalog, the seat feed, the routine grid and the campus map are all BRACU,
- * and js/auth/firebase.js turns away any non-BRACU account for exactly that
- * reason: signing an NSU student in to a BRACU app wearing their name is worse
- * than turning them away.
- *
- * Multi-campus lives in the React shell at /app/, which has the registry wired
- * through to the grading scale. So the portal names the other campuses and
- * sends them there rather than pretending this build serves them and letting
- * the domain check reject them after the Google popup.
- *
- * tests/universityDirectory.test.js pins this to the domain literal in
- * js/auth/firebase.js — broaden one and the test makes you update the other.
- */
-export const LEGACY_CAMPUS_ID = 'bracu';
+// The domain map is hand-copied in more than one place (here, the registry,
+// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This copy does not
+// get to drift silently: tests/universityDirectory.test.js transpiles
+// src/core/university.ts and asserts id, name, shortName and emailDomains match
+// entry for entry — so a campus added to the registry is admitted here only
+// when someone adds it here on purpose.
 
 export const UNIVERSITY_DIRECTORY = [
   {
@@ -50,11 +32,6 @@ export const UNIVERSITY_DIRECTORY = [
     emailDomains: ['northsouth.edu'],
   },
 ];
-
-/** Can this build sign the campus in, or does it have to hand off to the shell? */
-export function servedByThisBuild(campusId) {
-  return campusId === LEGACY_CAMPUS_ID;
-}
 
 // Which campus an email address belongs to, or null for a domain we do not
 // serve at all. Case-insensitive: Google hands back whatever casing the student
