@@ -1872,6 +1872,32 @@ async function makeServiceAccountJson() {
     );
   });
 
+  await test('assistant: get_faculty_rating looks up a numbered NSU lecturer by their own initials', async () => {
+    // NSU's MMS1, MMS3 and MMS4 are three lecturers. Asked about one of them,
+    // the Assistant must query that one — not the letters they share.
+    const asked = [];
+    const ctxFor = (campus) => ({
+      campus,
+      loadFacultyReviews: async (initials) => { asked.push(`${campus}:${initials}`); return []; },
+    });
+    const nsu = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'mms 4' }, ctxFor('nsu'));
+    assertEq(nsu.faculty_initials, 'MMS4');
+    // At BRACU a digit is still a typo: "MUNR2" is MUNR.
+    const bracu = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'munr2' }, ctxFor('bracu'));
+    assertEq(bracu.faculty_initials, 'MUNR');
+    // No campus on the context is BRACU, as it was before campuses existed.
+    const none = await executeAssistantTool(
+      'get_faculty_rating',
+      { faculty_initials: 'MUNR2' },
+      { loadFacultyReviews: async (initials) => { asked.push(`none:${initials}`); return []; } },
+    );
+    assertEq(none.faculty_initials, 'MUNR');
+    assertEq(asked.join(' '), 'nsu:MMS4 bracu:MUNR none:MUNR');
+    // Two closing digits is nobody's initials, anywhere.
+    const bad = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MMS44X9' }, ctxFor('nsu'));
+    assertEq(bad.error, 'invalid_faculty_initials');
+  });
+
   await test('assistant: get_faculty_rating merges live reviews and dedupes by id', async () => {
     const seededOnly = await executeAssistantTool(
       'get_faculty_rating',
