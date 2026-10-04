@@ -24,10 +24,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 import {
-  LEGACY_CAMPUS_ID,
   UNIVERSITY_DIRECTORY,
   campusOfEmail,
-  servedByThisBuild,
 } from '../js/core/universityDirectory.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -110,41 +108,39 @@ assert.equal(campusOfEmail(undefined), null);
 assert.equal(campusOfEmail('a@sub.g.bracu.ac.bd'), null);
 assert.equal(campusOfEmail('a@g.bracu.ac.bd.attacker.com'), null);
 
-// ── The legacy campus matches what firebase.js actually admits ───────────────
+// ── The directory is what firebase.js actually admits ────────────────────────
 //
-// The portal tells a visitor which campuses this build can sign in. That claim
-// is only worth anything if it tracks the domain check that does the admitting:
-// if someone broadens legacy sign-in and the portal still sends NSU students to
-// /app/, the portal is lying. Reading the source is crude, but the alternative
-// is importing firebase.js, which pulls in the Firebase SDK over the network.
-
-const legacyProfile = UNIVERSITY_DIRECTORY.find(u => u.id === LEGACY_CAMPUS_ID);
-assert.ok(legacyProfile, `LEGACY_CAMPUS_ID '${LEGACY_CAMPUS_ID}' is not in the directory`);
-assert.ok(servedByThisBuild(LEGACY_CAMPUS_ID));
+// The portal tells a visitor which campuses can sign in on this page, and the
+// guard in js/auth/firebase.js does the admitting. Both read this directory, so
+// the claim and the decision cannot disagree — as long as the guard keeps
+// asking the directory rather than a domain literal of its own. Reading the
+// source is crude, but the alternative is importing firebase.js, which pulls in
+// the Firebase SDK over the network.
 
 const firebaseSource = fs.readFileSync(path.join(here, '..', 'js', 'auth', 'firebase.js'), 'utf8');
-for (const domain of legacyProfile.emailDomains) {
-  assert.ok(
-    firebaseSource.includes(`@${domain}`),
-    `js/auth/firebase.js no longer checks for @${domain} — the portal's claim `
-      + `that ${legacyProfile.shortName} can sign in here is now unverified.`,
-  );
-}
-
+assert.ok(
+  /const isCampusEmail = campusOfEmail\(user\.email\) !== null;/.test(firebaseSource),
+  'js/auth/firebase.js no longer decides admission with campusOfEmail(user.email)',
+);
+assert.ok(
+  /const isAllowedCampusUser = isCampusEmail && isVerifiedEmail && isGoogleProvider;/.test(firebaseSource),
+  'admission must still require a verified email and the Google provider',
+);
 for (const profile of typed) {
-  if (profile.id === LEGACY_CAMPUS_ID) continue;
-  assert.equal(
-    servedByThisBuild(profile.id),
-    false,
-    `${profile.shortName} is not the legacy campus and must be handed off to the shell`,
-  );
   for (const domain of profile.emailDomains) {
     assert.ok(
-      !firebaseSource.includes(`@${domain}`),
-      `js/auth/firebase.js now admits @${domain}, but the portal still tells `
-        + `${profile.shortName} students to use /app/. Update the portal.`,
+      !firebaseSource.includes(domain),
+      `js/auth/firebase.js hardcodes ${domain} — a domain literal there can admit or `
+        + 'refuse an account the directory says otherwise about.',
     );
   }
 }
+// One Tap's `hd` takes one hosted domain, so any value would hide every other
+// campus's accounts from the prompt.
+assert.ok(!/\bhd:\s/.test(firebaseSource), 'One Tap is restricted to a single hosted domain again');
 
-console.log('universityDirectory: legacy campus list matches src/core/university.ts');
+// Every campus in the directory signs in here: the portal has no hand-off left.
+const portalSource = fs.readFileSync(path.join(here, '..', 'js', 'ui', 'signinPortal.js'), 'utf8');
+assert.ok(!portalSource.includes('href="app/"'), 'the portal sends a campus to the shell again');
+
+console.log('universityDirectory: matches src/core/university.ts, and firebase.js admits by it');
