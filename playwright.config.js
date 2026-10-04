@@ -25,7 +25,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `python3 -m http.server ${PORT} --bind 127.0.0.1`,
+    command: `python3 scripts/e2e_static_server.py ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     // Never reuse a server this run did not start.
     //
