@@ -61,6 +61,10 @@ import { computeSimulation } from '../src/features/calculator/simulator.ts';
 import { computeMinorProgress } from '../src/features/calculator/minorProgress.ts';
 import { getMinorProgram } from '../src/features/calculator/minors.ts';
 import { seededFacultyName, seededReviewsForFaculty } from './reviews.generated.js';
+import { isKnownCourse } from './catalog.generated.js';
+
+/** The campus worker/reviews.generated.js was imported from. */
+const SEED_CAMPUS = 'bracu';
 
 // Transcript limits, mirrored by the client so a payload it builds is never
 // rejected as malformed (js/core/assistantClient.js).
@@ -723,7 +727,10 @@ function mergeReviewsById(seeded, live) {
 }
 
 async function runFacultyRating(input, ctx) {
-  const initials = normalizeFacultyInitials(input?.faculty_initials, ctx?.campus);
+  // No campus on the context is BRACU, as it was before campuses existed.
+  const campusId = ctx?.campus || SEED_CAMPUS;
+  const onSeedCampus = campusId === SEED_CAMPUS;
+  const initials = normalizeFacultyInitials(input?.faculty_initials, campusId);
   if (!initials) return { error: 'invalid_faculty_initials' };
 
   // A course filter is optional, but a malformed one must not be ignored:
@@ -733,10 +740,15 @@ async function runFacultyRating(input, ctx) {
   if (input?.course_code != null && String(input.course_code).trim() !== '') {
     scope = normalizeCourseCode(input.course_code);
     if (!scope) return { error: 'invalid_course_code' };
-    if (!COURSE_DB[scope]) return { error: 'unknown_course', course_code: scope };
+    // A course on the student's own campus: NSU's CSE115 is not in BRACU's
+    // catalogue, and BRACU's CSE110 is not a course at NSU.
+    if (!isKnownCourse(scope, campusId)) return { error: 'unknown_course', course_code: scope };
   }
 
-  const seeded = seededReviewsForFaculty(initials, scope);
+  // The bundled seed is BRACU's — an import of BRACU faculty reviews, with
+  // BRACU's lecturers' names. Initials are not unique across universities, so
+  // for anyone else it would answer about a stranger who shares them.
+  const seeded = onSeedCampus ? seededReviewsForFaculty(initials, scope) : [];
   // The live collection is best-effort. Firestore being slow or unhappy should
   // degrade the answer to the seeded corpus — the bulk of what the Routine
   // Builder shows anyway — not turn a question about a teacher into an error.
@@ -746,7 +758,7 @@ async function runFacultyRating(input, ctx) {
   }
 
   const reviews = mergeReviewsById(seeded, live);
-  const facultyName = seededFacultyName(initials);
+  const facultyName = onSeedCampus ? seededFacultyName(initials) : null;
   if (reviews.length === 0) {
     return {
       faculty_initials: initials,
@@ -766,7 +778,7 @@ async function runFacultyRating(input, ctx) {
   // disagree about the same faculty.
   // The shared review core reads initials by a campus's rule, and in the Worker
   // there is no "active campus" to default to — so it is the caller's, passed.
-  const campus = getUniversity(ctx?.campus) ?? undefined;
+  const campus = getUniversity(campusId) ?? undefined;
   const [agg] = aggregateByFaculty(reviews, campus);
   if (!agg)
     return { faculty_initials: initials, review_count: reviews.length, error: 'no_ratings' };
