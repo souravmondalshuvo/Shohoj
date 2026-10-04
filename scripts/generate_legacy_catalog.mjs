@@ -80,11 +80,17 @@ ${rows}
 /** course → { hp: required courses }. */
 export const NSU_PREREQS = ${block(Object.entries(catalog.prerequisites))};
 
-/** subject prefix → department. NSU's database has no department table yet. */
+/** subject prefix → the department that owns it. */
 export const NSU_PREFIX_DEPARTMENTS = ${block(Object.entries(catalog.prefixDepartments))};
+
+/** course → department, where it is not its subject's (graduate business courses, mostly). */
+export const NSU_DEPARTMENT_OVERRIDES = ${block(Object.entries(catalog.departmentOverrides))};
 
 /** department → { label, school }. */
 export const NSU_DEPARTMENT_META = ${block(Object.entries(catalog.departmentMeta))};
+
+/** Departments in the order their tiles are shown: by school, as NSU lists them. */
+export const NSU_DEPARTMENT_ORDER = ${JSON.stringify(catalog.departmentOrder)};
 
 /** program → { label, totalCredits, seasons, presets: [[name, [[course, credits]]]] }. */
 export const NSU_PROGRAM_ROWS = {
