@@ -58,7 +58,10 @@ export const TARGETS = [
     file: 'admin.html',
     build: 'python3 build3.py',
     measured: { gzip: 116 },
-    budget: { gzip: 125 },
+    // Raised from 125 for campus-scoped data access (#821): the auth module
+    // inlined into every page now carries js/auth/campus-scope.js and the
+    // domain map it reads. Measured 126.0 with it; 130 keeps ~3% headroom.
+    budget: { gzip: 130 },
   },
   {
     label: 'profile.html',
@@ -68,8 +71,10 @@ export const TARGETS = [
     // Raised from 135 for the active-campus switch (#796): the profile page
     // now bundles js/core/activeCampus.js so its semester-GPA chart scores on
     // the signed-in student's campus. CI measured 135.2 with it; 139 keeps the
-    // ~2.5% headroom the other budgets hold.
-    budget: { gzip: 139 },
+    // ~2.5% headroom the other budgets hold. Raised again from 139 for
+    // campus-scoped data access (#821), the same auth-module growth as
+    // admin.html above: measured 139.2 with it.
+    budget: { gzip: 143 },
   },
   // Vite islands entry — not deployed today, but it is what Phase 10 tracked.
   {
