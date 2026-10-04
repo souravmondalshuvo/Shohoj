@@ -32,6 +32,7 @@ import {
 import { installAdminAccessHooks } from './admin-service.js';
 import { installAssistantAuthHooks } from './assistant-service.js';
 import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
+import { campusReadPlan, campusWriteField } from './campus-scope.js';
 import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
 import { installReviewIdentityHooks } from './review-service.js';
 import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
@@ -69,6 +70,21 @@ const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
+}
+
+// ── Campus-scoped lists ───────────────────────────────────────────────────────
+// Every list of a collection firestore.rules scopes by campus goes through
+// this. It adds the campus filter where the rules need one (see
+// campus-scope.js for why BRACU gets none) and drops any row that is not the
+// signed-in student's — the same view the rules would grant document by
+// document. `constraints` are the query's own, in order.
+async function listForMyCampus(col, constraints) {
+  const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+  const scoped = plan.filter
+    ? [where('university', '==', plan.filter), ...constraints]
+    : constraints;
+  const snap = await getDocs(query(col, ...scoped));
+  return snap.docs.filter(d => plan.keep(d.data()));
 }
 
 function clearCloudAppliedFlag() {
@@ -1556,6 +1572,7 @@ window._shohoj_submitFeedback = async function({ type, text, context, anonymous,
       context: (context && typeof context === 'object') ? context : {},
       anonymous: !!anonymous,
       createdAt: serverTimestamp(),
+      ...campusWriteField(currentUser.email),
     };
     if (!anonymous && submitterUid === currentUser.uid) {
       data.uid = currentUser.uid;
@@ -1571,13 +1588,11 @@ window._shohoj_submitFeedback = async function({ type, text, context, anonymous,
 window._shohoj_fetchAllFeedback = async function() {
   if (!currentUser) return [];
   try {
-    const q = query(
-      collection(db, 'appFeedback'),
+    const docs = await listForMyCampus(collection(db, 'appFeedback'), [
       orderBy('createdAt', 'desc'),
       qLimit(200),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchAllFeedback failed:', e);
     return [];
@@ -1636,6 +1651,7 @@ window._shohoj_createStudyGroup = async function({ courseCode, title, descriptio
       capacity: Math.round(Number(capacity) || 0),
       creatorUid: currentUser.uid,
       createdAt: serverTimestamp(),
+      ...campusWriteField(currentUser.email),
     };
     const desc = String(description || '').trim();
     if (desc) data.description = desc.slice(0, 500);
@@ -1655,9 +1671,11 @@ window._shohoj_fetchStudyGroups = async function() {
     // The board is capped at 200 recent groups; course/mode filtering is done
     // client-side (substring match) in groupsTab, so no server-side course
     // filter (or its composite index) is needed.
-    const q = query(collection(db, 'studyGroups'), orderBy('createdAt', 'desc'), qLimit(200));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = await listForMyCampus(collection(db, 'studyGroups'), [
+      orderBy('createdAt', 'desc'),
+      qLimit(200),
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchStudyGroups failed:', e);
     return [];
@@ -1826,16 +1844,13 @@ window._shohoj_deleteStudyGroupByReport = async function(reportId, groupId) {
 window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 } = {}) {
   if (!currentUser || !courseCode) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(
-      col,
+    const docs = await listForMyCampus(collection(db, 'papers'), [
       where('courseCode', '==', String(courseCode).toUpperCase()),
       where('approved', '==', true),
       orderBy('createdAt', 'desc'),
       qLimit(pageSize),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     // Re-throw so the UI can show a load-error state instead of an empty
     // library: a missing composite index (courseCode + approved + createdAt)
@@ -1848,10 +1863,12 @@ window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 
 window._shohoj_fetchRecentPapers = async function(n = 30) {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(col, where('approved', '==', true), orderBy('createdAt', 'desc'), qLimit(n));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = await listForMyCampus(collection(db, 'papers'), [
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'),
+      qLimit(n),
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     // Re-throw so the UI can show a load-error state instead of an empty
     // library: a missing composite index (approved + createdAt) is otherwise
