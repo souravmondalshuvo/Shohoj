@@ -47,8 +47,10 @@ function _parseHash() {
   const courseM = hash.match(/^#calculator\/reviews\/course\/([A-Za-z]{2,4}\d{3}[A-Za-z]?)$/);
   if (courseM) return { view: 'course', course: courseM[1].toUpperCase() };
 
-  // Faculty route: #calculator/reviews/MAK[/CSE220]
-  const facM = hash.match(/^#calculator\/reviews(?:\/([A-Za-z]{2,6}))?(?:\/([A-Za-z]{2,4}\d{3}[A-Za-z]?))?$/);
+  // Faculty route: #calculator/reviews/MAK[/CSE220]. NSU numbers its faculty
+  // (MMS4), so the initials may close with one digit; a course code has three,
+  // and still falls through to the second group.
+  const facM = hash.match(/^#calculator\/reviews(?:\/([A-Za-z]{2,6}|[A-Za-z]{2,5}\d))?(?:\/([A-Za-z]{2,4}\d{3}[A-Za-z]?))?$/);
   if (facM) {
     const initials = facM[1] ? normalizeInitials(facM[1]) : '';
     const course   = facM[2] ? facM[2].toUpperCase() : '';
