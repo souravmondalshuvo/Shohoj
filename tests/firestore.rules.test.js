@@ -1133,6 +1133,49 @@ async function run() {
     assertEqual(ids(snap).length, 3);
   });
 
+  // Reviews and faculty profiles (#823): the same split, and the reason
+  // profiles are read one document at a time for a campus that must filter.
+  const REVIEW_BASE = { facultyInitials: 'MAK', courseCode: 'CSE220', ratings: {}, text: 'ok' };
+
+  await test('list: reviews by faculty, by course and recent need the NSU filter', async () => {
+    await seedCampusTrio('facultyReviews', REVIEW_BASE);
+    const db = nsuCtx().firestore();
+    const col = fsCollection(db, 'facultyReviews');
+    const byFaculty = [where('facultyInitials', '==', 'MAK')];
+    const byBoth = [...byFaculty, where('courseCode', '==', 'CSE220')];
+    const byCourse = [where('courseCode', '==', 'CSE220')];
+    for (const shape of [[], byFaculty, byBoth, byCourse]) {
+      await assertFails(getDocs(query(col, ...shape, ...newestFirst)));
+      const snap = await assertSucceeds(getDocs(query(
+        col, where('university', '==', 'nsu'), ...shape, ...newestFirst,
+      )));
+      assertEqual(ids(snap).join(','), 'nsu_stamped');
+    }
+  });
+
+  await test('list: a BRACU student keeps the unfiltered review list', async () => {
+    await seedCampusTrio('facultyReviews', REVIEW_BASE);
+    const db = bracuCtx().firestore();
+    const snap = await assertSucceeds(getDocs(query(
+      fsCollection(db, 'facultyReviews'), where('facultyInitials', '==', 'MAK'), ...newestFirst,
+    )));
+    assertEqual(ids(snap).length, 3);
+  });
+
+  await test('profiles: one read per id is judged by campus; a missing id reads as absent', async () => {
+    await seedRaw('facultyProfiles', 'MAK', { name: 'BRACU lecturer', university: 'bracu' });
+    await seedRaw('facultyProfiles', 'MMS4', { name: 'NSU lecturer', university: 'nsu' });
+    await seedRaw('facultyProfiles', 'OLD', { name: 'Pre-tenancy lecturer' });
+    const nsu = nsuCtx().firestore();
+    assertEqual((await assertSucceeds(getDoc(doc(nsu, 'facultyProfiles', 'MMS4')))).exists(), true);
+    await assertFails(getDoc(doc(nsu, 'facultyProfiles', 'MAK')));
+    await assertFails(getDoc(doc(nsu, 'facultyProfiles', 'OLD')));
+    assertEqual((await assertSucceeds(getDoc(doc(nsu, 'facultyProfiles', 'NOPE')))).exists(), false);
+    const bracu = bracuCtx().firestore();
+    assertEqual((await assertSucceeds(getDoc(doc(bracu, 'facultyProfiles', 'OLD')))).exists(), true);
+    await assertFails(getDoc(doc(bracu, 'facultyProfiles', 'MMS4')));
+  });
+
   // ── Server-owned collections (#710) ──────────────────────────────────────
   // The /api/v1 collections are written ONLY by the Worker, with a
   // service-account token that bypasses these rules. No client may touch them.
