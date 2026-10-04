@@ -23,10 +23,7 @@
 
 import { registerAction } from '../core/dispatch.js';
 import { escHtml } from '../core/helpers.js';
-import {
-  UNIVERSITY_DIRECTORY,
-  servedByThisBuild,
-} from '../core/universityDirectory.js';
+import { UNIVERSITY_DIRECTORY } from '../core/universityDirectory.js';
 
 // An unlock is per-tab, not persisted to localStorage: someone who tried the
 // demo once should still meet the gate on their next real visit, but a reload
@@ -99,18 +96,14 @@ function signInAvailable() {
 
 function campusRowHtml(campus) {
   const domains = campus.emailDomains.map(d => `@${escHtml(d)}`).join(' · ');
-  // A campus this build cannot sign in is still listed — a student should be
-  // able to find out that Shohoj serves them at all — but it is labelled with
-  // where to actually go, rather than inviting a sign-in the domain check in
-  // js/auth/firebase.js will bounce after the Google popup.
-  const handoff = servedByThisBuild(campus.id)
-    ? '<span class="signin-portal-campus-tag">Sign in here</span>'
-    : `<a class="signin-portal-campus-link" href="app/">Open the multi-campus build →</a>`;
+  // Every campus in the directory signs in on this page: the guard in
+  // js/auth/firebase.js admits exactly this list. (Until #827 the other
+  // campuses were handed off to the React shell at app/ from here.)
   return `
-    <li class="signin-portal-campus${servedByThisBuild(campus.id) ? ' is-served' : ''}">
+    <li class="signin-portal-campus is-served">
       <span class="signin-portal-campus-name">${escHtml(campus.shortName)}</span>
       <span class="signin-portal-campus-domain">${domains}</span>
-      ${handoff}
+      <span class="signin-portal-campus-tag">Sign in here</span>
     </li>
   `;
 }
@@ -218,7 +211,8 @@ export function renderSignInPortal() {
  * hero's "Try Demo Mode" CTA, and the portfolio site's live preview iframe,
  * which loads this page with ?demo=1 and has no one to sign in.
  *
- * The demo runs on BRACU's scale, same as the rest of this build.
+ * The demo runs on BRACU's scale, the default for anyone not signed in
+ * (js/core/activeCampus.js).
  */
 export function unlockForDemo() {
   _unlocked = true;
