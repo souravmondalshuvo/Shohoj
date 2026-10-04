@@ -33,6 +33,7 @@ import { installAdminAccessHooks } from './admin-service.js';
 import { installAssistantAuthHooks } from './assistant-service.js';
 import { firstDisplayName, isSafeAvatarUrl } from './auth-service.js';
 import { campusReadPlan, campusWriteField } from './campus-scope.js';
+import { UNIVERSITY_DIRECTORY, campusOfEmail } from '../core/universityDirectory.js';
 import { getCurrentUserIdToken, getPapersWorkerUrl } from './paper-service.js';
 import { installReviewIdentityHooks } from './review-service.js';
 import { getDataFingerprint, parseStoredState } from './user-sync-service.js';
@@ -66,6 +67,12 @@ let _activeCloudSave      = Promise.resolve(false);
 // Any snapshot arriving within LOCAL_WRITE_GRACE_MS of that write is ignored.
 let _localWriteAt = 0;
 const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
+
+// Every domain sign-in admits, "@a · @b", for the sign-in copy.
+const SUPPORTED_DOMAINS_LABEL = UNIVERSITY_DIRECTORY
+  .flatMap(u => u.emailDomains)
+  .map(d => `@${d}`)
+  .join(' · ');
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -470,7 +477,7 @@ function showSignInModal() {
           Sign in to Shohoj
         </div>
         <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:24px;max-width:280px;margin-left:auto;margin-right:auto;">
-          Use your BRACU G-Suite account to sync your data across all your devices.
+          Use your university Google account to sync your data across all your devices.
         </div>
 
         <button id="_siGoogle" class="shohoj-modal-btn" style="
@@ -491,7 +498,7 @@ function showSignInModal() {
         </button>
 
         <div style="font-size:11px;color:${text2};opacity:0.7;line-height:1.5;">
-          Only <strong>BRACU G-Suite</strong> (@g.bracu.ac.bd) accounts are supported
+          Only <strong>university accounts</strong> (${SUPPORTED_DOMAINS_LABEL}) are supported
         </div>
       </div>
     `;
@@ -736,9 +743,12 @@ async function runSignOut() {
 
 // ── Google One Tap ────────────────────────────────────────────────────────────
 // Surfaces Google's One Tap prompt to signed-out visitors so first-time users
-// can sign in without hunting for the button. Restricted to BRACU G-Suite via
-// the `hd` hint; the credential is exchanged for a Firebase session, after which
-// the existing onAuthStateChanged domain guard + sync flow take over unchanged.
+// can sign in without hunting for the button. No `hd` hint: it takes a single
+// hosted domain, and sign-in admits every campus in the directory, so the
+// prompt offers whatever Google accounts the visitor has and the
+// onAuthStateChanged domain guard turns away the ones no campus claims. The
+// credential is exchanged for a Firebase session, after which that guard and
+// the sync flow take over unchanged.
 // Fully disabled (no-op) when no client ID is configured. Closing the prompt
 // triggers Google's own cooldown, so it won't nag on every reload.
 let _oneTapReady    = null;   // Promise — resolves true once GIS is initialized
@@ -786,7 +796,6 @@ function _initOneTap() {
       auto_select:           false,            // never silently sign in
       cancel_on_tap_outside: true,
       context:               'signin',
-      hd:                    'g.bracu.ac.bd',  // only surface BRACU accounts
       use_fedcm_for_prompt:  true,             // required path on modern Chrome
     });
     return true;
@@ -830,28 +839,30 @@ export function initAuth() {
 
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
-    // Deliberately still BRACU-only, unlike the shell's registry-driven guard
-    // in src/platform/auth/firebaseAuthSource.ts.
+    // Any campus in the directory (js/core/universityDirectory.js) is admitted,
+    // as the shell's registry-driven guard does
+    // (src/platform/auth/firebaseAuthSource.ts). The directory is pinned to the
+    // registry by tests/universityDirectory.test.js, and firestore.rules makes
+    // the same decision from the same domains (`campusOfEmail`).
     //
-    // This is the legacy bundle, and it is BRACU all the way down: the baked-in
-    // bracu-section.json, the course catalog, seats, routine and the campus map
-    // have no notion of another campus. Admitting an NSU student here would
-    // sign them in to a BRACU app wearing their name, which is worse than
-    // turning them away. Multi-campus sign-in belongs to the shell, which is
-    // where the university registry is actually wired up.
+    // This guard was BRACU-only until the page behind it stopped being: the
+    // calculator scores on the student's campus (#796), the tab bar shows only
+    // what that campus has data for (#808), and every Firestore write and list
+    // is campus-scoped (#821, #823). Admitting a campus here before those held
+    // would have signed its students in to a BRACU app wearing their name.
     let tokenClaims = null;
     if (user) {
       const tokenResult = await user.getIdTokenResult(true).catch(() => null);
       tokenClaims = tokenResult?.claims || null;
-      const isBracuEmail = user.email?.toLowerCase().endsWith('@g.bracu.ac.bd');
+      const isCampusEmail = campusOfEmail(user.email) !== null;
       const isVerifiedEmail = user.emailVerified === true || tokenClaims?.email_verified === true;
       const signInProvider = tokenClaims?.firebase?.sign_in_provider || '';
       const isGoogleProvider = signInProvider === 'google.com';
-      const isAllowedBracuUser = isBracuEmail && isVerifiedEmail && isGoogleProvider;
-      if (!isAllowedBracuUser && tokenClaims?.admin !== true) {
+      const isAllowedCampusUser = isCampusEmail && isVerifiedEmail && isGoogleProvider;
+      if (!isAllowedCampusUser && tokenClaims?.admin !== true) {
         await signOut(auth);
         setAuthBtnLoading(false);
-        showToast('⚠ Only verified BRACU Google accounts are supported', true, true);
+        showToast('⚠ Only verified university Google accounts are supported', true, true);
         return;
       }
     }
@@ -1541,7 +1552,7 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-out magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = 'Sign in with your BRACU G-Suite account';
+    btn.title         = 'Sign in with your university Google account';
     btn.removeAttribute('aria-haspopup');
     btn.removeAttribute('aria-expanded');
     btn.onclick       = signInWithGoogle;
