@@ -17,9 +17,6 @@ import { normalizeInitials, getFacultyProfile, hasFacultyProfile, upsertFacultyP
 import { getActiveCatalog } from '../core/activeCatalog.js';
 import { getCoursePrefix } from '../core/catalog.js';
 
-// BRACU's departments, in the order its tiles are shown. A campus whose
-// catalogue has no department table gets no tiles, and browses by search.
-const DEPT_ORDER = ['CSE','EEE','ECE','MPS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GENED'];
 import { escHtml, escAttr } from '../core/helpers.js';
 import { openReviewModal, openReportModal } from './reviews.js';
 
@@ -153,9 +150,11 @@ async function _renderDeptList(root, token) {
 
   // The department tiles are built as elements, not as markup: their labels
   // come from the catalogue, and nothing from data belongs in innerHTML.
-  const { departmentMeta } = getActiveCatalog();
+  // A campus whose catalogue has no department table gets no tiles, and
+  // browses by search.
+  const { departmentMeta, departmentOrder } = getActiveCatalog();
   const grid = root.querySelector('#_rvt_deptgrid');
-  DEPT_ORDER.forEach((code, i) => {
+  departmentOrder.forEach((code, i) => {
     const meta = departmentMeta[code];
     if (!meta) return;
     const card = document.createElement('div');
