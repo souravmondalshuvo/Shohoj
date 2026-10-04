@@ -79,12 +79,23 @@ function userDocRef(uid) {
 // signed-in student's — the same view the rules would grant document by
 // document. `constraints` are the query's own, in order.
 async function listForMyCampus(col, constraints) {
+  return (await pageForMyCampus(col, constraints)).docs;
+}
+
+// The same, for a paged list. `fetched` and `last` describe the page as the
+// server returned it, before rows were dropped: whether there is a next page,
+// and where it starts, are facts about the query, not about what was kept.
+async function pageForMyCampus(col, constraints) {
   const plan = campusReadPlan(currentUser?.email, _isAdminCached);
   const scoped = plan.filter
     ? [where('university', '==', plan.filter), ...constraints]
     : constraints;
   const snap = await getDocs(query(col, ...scoped));
-  return snap.docs.filter(d => plan.keep(d.data()));
+  return {
+    docs: snap.docs.filter(d => plan.keep(d.data())),
+    fetched: snap.docs.length,
+    last: snap.docs[snap.docs.length - 1],
+  };
 }
 
 function clearCloudAppliedFlag() {
@@ -1192,11 +1203,9 @@ window._shohoj_fetchReviews = async function({ facultyInitials, courseCode, page
     constraints.push(orderBy('createdAt', 'desc'));
     if (after && after._cursor) constraints.push(startAfter(after._cursor));
     constraints.push(qLimit(Math.min(pageSize, 200)));
-    const q = query(col, ...constraints);
-    const snap = await getDocs(q);
-    const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const last = snap.docs[snap.docs.length - 1];
-    const nextCursor = snap.docs.length === pageSize && last ? { _cursor: last } : null;
+    const page = await pageForMyCampus(col, constraints);
+    const reviews = page.docs.map(d => ({ id: d.id, ...d.data() }));
+    const nextCursor = page.fetched === pageSize && page.last ? { _cursor: page.last } : null;
     return { reviews, nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviews failed:', e);
@@ -1214,11 +1223,9 @@ window._shohoj_fetchReviewsByCourse = async function(courseCode, { pageSize = 20
     ];
     if (after && after._cursor) constraints.push(startAfter(after._cursor));
     constraints.push(qLimit(Math.min(pageSize, 200)));
-    const q = query(col, ...constraints);
-    const snap = await getDocs(q);
-    const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const last = snap.docs[snap.docs.length - 1];
-    const nextCursor = snap.docs.length === pageSize && last ? { _cursor: last } : null;
+    const page = await pageForMyCampus(col, constraints);
+    const reviews = page.docs.map(d => ({ id: d.id, ...d.data() }));
+    const nextCursor = page.fetched === pageSize && page.last ? { _cursor: page.last } : null;
     return { reviews, nextCursor };
   } catch (e) {
     console.warn('[Shohoj] fetchReviewsByCourse failed:', e);
@@ -1229,10 +1236,11 @@ window._shohoj_fetchReviewsByCourse = async function(courseCode, { pageSize = 20
 window._shohoj_fetchRecentReviews = async function(n = 50) {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'facultyReviews');
-    const q = query(col, orderBy('createdAt', 'desc'), qLimit(Math.min(n, 1000)));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = await listForMyCampus(collection(db, 'facultyReviews'), [
+      orderBy('createdAt', 'desc'),
+      qLimit(Math.min(n, 1000)),
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchRecentReviews failed:', e);
     return [];
@@ -1243,13 +1251,31 @@ window._shohoj_fetchFacultyProfiles = async function(initialsArr) {
   if (!currentUser || !Array.isArray(initialsArr) || !initialsArr.length) return [];
   try {
     const normalized = [...new Set(initialsArr.map(i => String(i).toUpperCase().trim()).filter(Boolean))];
+    const plan = campusReadPlan(currentUser?.email, _isAdminCached);
     const results = [];
+    if (plan.filter) {
+      // A campus that must filter cannot use the `in` list below: the rules
+      // deny it without a campus filter, and a document id is the faculty's
+      // initials alone, so the same id may be another campus's lecturer. One
+      // read per id is judged document by document instead — a profile that
+      // is not this campus's is denied, and reads here as no profile.
+      const reads = await Promise.allSettled(
+        normalized.map(id => getDoc(doc(db, 'facultyProfiles', id))),
+      );
+      reads.forEach(r => {
+        if (r.status !== 'fulfilled' || !r.value.exists()) return;
+        if (plan.keep(r.value.data())) results.push({ initials: r.value.id, ...r.value.data() });
+      });
+      return results;
+    }
     for (let i = 0; i < normalized.length; i += 30) {
       const chunk = normalized.slice(i, i + 30);
       const col = collection(db, 'facultyProfiles');
       const q = query(col, where(documentId(), 'in', chunk));
       const snap = await getDocs(q);
-      snap.docs.forEach(d => results.push({ initials: d.id, ...d.data() }));
+      snap.docs.forEach(d => {
+        if (plan.keep(d.data())) results.push({ initials: d.id, ...d.data() });
+      });
     }
     return results;
   } catch (e) {
