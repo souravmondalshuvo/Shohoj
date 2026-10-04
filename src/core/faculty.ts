@@ -8,7 +8,7 @@
 // The runtime js/core/faculty.js keeps the same behavior; parity is guarded by
 // tests/typedCoreParity.test.js.
 
-import type { RatingKey } from './reviews';
+import type { InitialsCampus, RatingKey } from './reviews';
 
 export type FacultyRatings = Record<RatingKey, number>;
 
@@ -30,26 +30,43 @@ const _profiles = new Map<string, FacultyProfile>();
 // Injected by build3.py (and the Vite seed-injection plugin) at bundle time.
 const SEEDED_FACULTY_PROFILES: FacultyProfile[] = [];
 
-export function normalizeInitials(raw: unknown): string {
+/** Letters only — BRACU's shape, and the default wherever no campus is given. */
+const LETTERS_ONLY: InitialsCampus = {};
+
+/**
+ * Faculty initials as they are stored and compared: uppercase, at most six
+ * characters. Where the campus numbers its faculty (`numberedInitials` in the
+ * registry — NSU's MMS1, MMS3 and MMS4 are three lecturers) the closing number
+ * is kept; elsewhere a digit is a typo and is dropped. Case is folded on every
+ * campus. Mirrors js/core/faculty.js, which defaults to the active campus.
+ */
+export function normalizeInitials(raw: unknown, campus: InitialsCampus = LETTERS_ONLY): string {
   if (typeof raw !== 'string') return '';
   return raw
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z]/g, '')
+    .replace(campus.numberedInitials ? /[^A-Z0-9]/g : /[^A-Z]/g, '')
     .slice(0, 6);
 }
 
-export function isValidInitials(raw: unknown): boolean {
-  const norm = normalizeInitials(raw);
-  return norm.length >= 2 && norm.length <= 6;
+export function isValidInitials(raw: unknown, campus: InitialsCampus = LETTERS_ONLY): boolean {
+  // Letters, then at most one number at the end (which only a campus that
+  // numbers its faculty can still have by this point).
+  return /^[A-Z]{2,6}$|^[A-Z]{2,5}[0-9]$/.test(normalizeInitials(raw, campus));
 }
 
-export function getFacultyProfile(initials: unknown): FacultyProfile | null {
-  return _profiles.get(normalizeInitials(initials)) || null;
+export function getFacultyProfile(
+  initials: unknown,
+  campus: InitialsCampus = LETTERS_ONLY,
+): FacultyProfile | null {
+  return _profiles.get(normalizeInitials(initials, campus)) || null;
 }
 
-export function hasFacultyProfile(initials: unknown): boolean {
-  return _profiles.has(normalizeInitials(initials));
+export function hasFacultyProfile(
+  initials: unknown,
+  campus: InitialsCampus = LETTERS_ONLY,
+): boolean {
+  return _profiles.has(normalizeInitials(initials, campus));
 }
 
 export function listKnownFaculty(): FacultyProfile[] {
@@ -58,10 +75,13 @@ export function listKnownFaculty(): FacultyProfile[] {
 
 // Merge a profile into the cache. Called by reviews after fetching from
 // Firestore, or whenever a new review is submitted locally.
-export function upsertFacultyProfile(profile: unknown): void {
+export function upsertFacultyProfile(
+  profile: unknown,
+  campus: InitialsCampus = LETTERS_ONLY,
+): void {
   if (!profile || typeof profile !== 'object') return;
   const input = profile as Partial<FacultyProfile>;
-  const initials = normalizeInitials(input.initials);
+  const initials = normalizeInitials(input.initials, campus);
   if (!initials) return;
   const existing: FacultyProfile = _profiles.get(initials) || {
     initials,
@@ -92,4 +112,4 @@ export function suggestFaculty(query: unknown, limit = 6): FacultyProfile[] {
   return out;
 }
 
-SEEDED_FACULTY_PROFILES.forEach(upsertFacultyProfile);
+SEEDED_FACULTY_PROFILES.forEach((profile) => upsertFacultyProfile(profile));
