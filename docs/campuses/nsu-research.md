@@ -192,6 +192,36 @@ Studies and Mathematics; their requirements are not published [unknown].
 - The only university-wide catalogue is 2015–16 (Google Drive, linked from
   https://www.northsouth.edu/newsletter/nsu-catalog.html) — too old to use.
 
+### Departments and the subjects they own (`departments.json`, #833)
+
+Every row of the Fall 2025 offered list names the **offering department**, with 16
+codes [official]. `data/campuses/nsu/departments.json` is derived from those rows
+[derived], and `tests/nsuDepartments.test.js` re-derives it:
+
+- A subject belongs to the department that offers most of its sections. One code
+  offers all of a subject's sections for all but eight subjects.
+- The exceptions are the business subjects, whose graduate courses the MBA & EMBA
+  office runs, and `BUS`, the school's shared code, which four departments teach.
+  A course that one other department alone offers is an **override**: 55 of them,
+  53 to the MBA office, plus `BUS112` (Mathematics & Physics) and `ECO103`
+  (Environmental Science and Management).
+- `BUS498` (the internship) and `ECO104` are offered by more than one department
+  and stay with their subject's owner; they are the only rows the table does not
+  describe (62 of 3,212 sections).
+- Names and schools are from NSU's four school pages [official], matched to the
+  codes by what each code offers (`BMD` offers BBT, BIO, CHE and MIC).
+
+Not stated by the list, and said so in the file's note:
+
+- `PHR`, `LLB` and `LLM` appear only on the bi-semester list, which names no
+  department. They are placed by program: BPharm under Pharmaceutical Sciences
+  (the code `PHR` there is ours), LLB and LLM under Law.
+- The SHSS page lists a **Department of Media, Communication, and Journalism**; the
+  Fall 2025 list has `MCJ` courses offered by `PSS`. The list is followed. Re-check
+  on the next offered list that names departments.
+- `BAN` and `GEO` are in the catalogue but not on the Fall 2025 list, so they have
+  no owner.
+
 ## 9. Sign-in and identity (`js/auth/firebase.js`)
 
 - Domain is **`northsouth.edu`** for students **and** faculty/staff, both
