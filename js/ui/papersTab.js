@@ -50,7 +50,7 @@ function _papersSignInPrompt() {
   return `
     <div class="papers-empty">
       <h3>📚 Past Papers & Notes</h3>
-      <p>Sign in with your BRACU email to browse and share past papers, quizzes, and notes.</p>
+      <p>Sign in with your university email to browse and share past papers, quizzes, and notes.</p>
       <button class="btn-primary" data-action="papers:signin">Sign in with Google</button>
     </div>
   `;
