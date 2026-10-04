@@ -9,7 +9,7 @@
 // (no uid) simply skips the probe and the config/e2e repo drives the lookup.
 
 import { buildReviewDocId } from '../../core/reviews.ts';
-import type { ReviewLike } from '../../core/reviews.ts';
+import type { InitialsCampus, ReviewLike } from '../../core/reviews.ts';
 
 /** The environment the probe reads (legacy: window._shohoj_currentUid + fetch). */
 export interface ReviewProbeEnv {
@@ -17,6 +17,8 @@ export interface ReviewProbeEnv {
   readonly currentUid: () => string;
   /** Fetch a review doc by canonical id, or null (the typed repo's fetchById). */
   readonly fetchById: (id: string) => Promise<ReviewLike | null>;
+  /** The campus the initials belong to (NSU's keep their number). */
+  readonly campus?: InitialsCampus | undefined;
 }
 
 /**
@@ -33,7 +35,7 @@ export async function probeExistingReview(
   const uid = env.currentUid();
   if (!uid) return null;
   try {
-    const id = await buildReviewDocId(uid, initials, courseCode);
+    const id = await buildReviewDocId(uid, initials, courseCode, env.campus);
     return await env.fetchById(id);
   } catch {
     return null;
