@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-ww50ahn/fhjyC1lnWjKnNIxzqXwnVqm0jPrG8yoSeN0=' 'sha256-2yaiyz3n+jq4lRllg3HoSSSkJ2+IK1oHhJoQvEnzzSk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-2yaiyz3n+jq4lRllg3HoSSSkJ2+IK1oHhJoQvEnzzSk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -8534,23 +8534,6 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
-.signin-portal-campus-link {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-blue);
-  text-decoration: none;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--chip-border);
-  transition: background var(--transition), border-color var(--transition);
-}
-
-.signin-portal-campus-link:hover {
-  background: var(--chip-hover);
-  border-color: var(--ink-blue);
-}
-
 /* ── Notes ── */
 .signin-portal-note {
   font-size: 12px;
@@ -8600,8 +8583,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
     align-items: flex-start;
     flex-direction: column;
   }
-  .signin-portal-campus-tag,
-  .signin-portal-campus-link {
+  .signin-portal-campus-tag {
     margin-left: 0;
   }
 }
@@ -10344,42 +10326,24 @@ function firstDisplayName(displayName) {
 
 // ── js/core/universityDirectory.js ──────────────────────────────
 // ── UNIVERSITY DIRECTORY (legacy bundle) ─────────────────────────────────────
-// The campus list the sign-in portal shows a signed-out visitor: which
-// universities Shohoj serves, which email domain identifies a student at each
-// one, and — the part that only matters here — which of them THIS build can
-// actually sign in.
+// Which universities Shohoj serves and which email domain identifies a student
+// at each one. Three things read it:
+//   - the sign-in portal, to list the campuses a visitor can sign in from
+//   - js/auth/firebase.js, to decide whether an account is admitted at all
+//   - js/auth/campus-scope.js, to tag and filter Firestore documents by campus
 //
-// This is DISPLAY DATA ONLY. The authoritative registry — grading scales, mark
-// tiers, repeat rules, per-campus feature lists — is src/core/university.ts and
-// stays there. build3.py concatenates plain JS and cannot pull in a .ts module,
-// and the portal only ever needs names and domains, so copying the whole
-// profile here would be four hundred lines of grading policy kept in sync by
-// hope.
+// It is names and domains ONLY. The authoritative registry — grading scales,
+// mark tiers, repeat rules, per-campus feature lists — is src/core/university.ts
+// with its legacy twin js/core/university.js. This smaller file exists because
+// the auth module is inlined into every page as its own script (build3.py), and
+// it needs the domain map without carrying the grading policy along.
 //
-// The domain map is already hand-copied in three places (this file,
-// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This is a fourth
-// copy, so it does not get to drift silently: tests/universityDirectory.test.js
-// transpiles src/core/university.ts and asserts id, name, shortName and
-// emailDomains match entry for entry.
-
-/**
- * The one campus the legacy bundle is built for.
- *
- * Not a preference — a fact about this build. bracu-section.json, the course
- * catalog, the seat feed, the routine grid and the campus map are all BRACU,
- * and js/auth/firebase.js turns away any non-BRACU account for exactly that
- * reason: signing an NSU student in to a BRACU app wearing their name is worse
- * than turning them away.
- *
- * Multi-campus lives in the React shell at /app/, which has the registry wired
- * through to the grading scale. So the portal names the other campuses and
- * sends them there rather than pretending this build serves them and letting
- * the domain check reject them after the Google popup.
- *
- * tests/universityDirectory.test.js pins this to the domain literal in
- * js/auth/firebase.js — broaden one and the test makes you update the other.
- */
-const LEGACY_CAMPUS_ID = 'bracu';
+// The domain map is hand-copied in more than one place (here, the registry,
+// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This copy does not
+// get to drift silently: tests/universityDirectory.test.js transpiles
+// src/core/university.ts and asserts id, name, shortName and emailDomains match
+// entry for entry — so a campus added to the registry is admitted here only
+// when someone adds it here on purpose.
 
 const UNIVERSITY_DIRECTORY = [
   {
@@ -10395,11 +10359,6 @@ const UNIVERSITY_DIRECTORY = [
     emailDomains: ['northsouth.edu'],
   },
 ];
-
-/** Can this build sign the campus in, or does it have to hand off to the shell? */
-function servedByThisBuild(campusId) {
-  return campusId === LEGACY_CAMPUS_ID;
-}
 
 // Which campus an email address belongs to, or null for a domain we do not
 // serve at all. Case-insensitive: Google hands back whatever casing the student
@@ -10584,6 +10543,12 @@ let _activeCloudSave      = Promise.resolve(false);
 // Any snapshot arriving within LOCAL_WRITE_GRACE_MS of that write is ignored.
 let _localWriteAt = 0;
 const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
+
+// Every domain sign-in admits, "@a · @b", for the sign-in copy.
+const SUPPORTED_DOMAINS_LABEL = UNIVERSITY_DIRECTORY
+  .flatMap(u => u.emailDomains)
+  .map(d => `@${d}`)
+  .join(' · ');
 
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
@@ -10988,7 +10953,7 @@ function showSignInModal() {
           Sign in to Shohoj
         </div>
         <div style="font-size:13px;color:${text2};line-height:1.6;margin-bottom:24px;max-width:280px;margin-left:auto;margin-right:auto;">
-          Use your BRACU G-Suite account to sync your data across all your devices.
+          Use your university Google account to sync your data across all your devices.
         </div>
 
         <button id="_siGoogle" class="shohoj-modal-btn" style="
@@ -11009,7 +10974,7 @@ function showSignInModal() {
         </button>
 
         <div style="font-size:11px;color:${text2};opacity:0.7;line-height:1.5;">
-          Only <strong>BRACU G-Suite</strong> (@g.bracu.ac.bd) accounts are supported
+          Only <strong>university accounts</strong> (${SUPPORTED_DOMAINS_LABEL}) are supported
         </div>
       </div>
     `;
@@ -11254,9 +11219,12 @@ async function runSignOut() {
 
 // ── Google One Tap ────────────────────────────────────────────────────────────
 // Surfaces Google's One Tap prompt to signed-out visitors so first-time users
-// can sign in without hunting for the button. Restricted to BRACU G-Suite via
-// the `hd` hint; the credential is exchanged for a Firebase session, after which
-// the existing onAuthStateChanged domain guard + sync flow take over unchanged.
+// can sign in without hunting for the button. No `hd` hint: it takes a single
+// hosted domain, and sign-in admits every campus in the directory, so the
+// prompt offers whatever Google accounts the visitor has and the
+// onAuthStateChanged domain guard turns away the ones no campus claims. The
+// credential is exchanged for a Firebase session, after which that guard and
+// the sync flow take over unchanged.
 // Fully disabled (no-op) when no client ID is configured. Closing the prompt
 // triggers Google's own cooldown, so it won't nag on every reload.
 let _oneTapReady    = null;   // Promise — resolves true once GIS is initialized
@@ -11304,7 +11272,6 @@ function _initOneTap() {
       auto_select:           false,            // never silently sign in
       cancel_on_tap_outside: true,
       context:               'signin',
-      hd:                    'g.bracu.ac.bd',  // only surface BRACU accounts
       use_fedcm_for_prompt:  true,             // required path on modern Chrome
     });
     return true;
@@ -11348,28 +11315,30 @@ function initAuth() {
 
   onAuthStateChanged(auth, async user => {
     // ── Domain enforcement ─────────────────────────────────────────────────
-    // Deliberately still BRACU-only, unlike the shell's registry-driven guard
-    // in src/platform/auth/firebaseAuthSource.ts.
+    // Any campus in the directory (js/core/universityDirectory.js) is admitted,
+    // as the shell's registry-driven guard does
+    // (src/platform/auth/firebaseAuthSource.ts). The directory is pinned to the
+    // registry by tests/universityDirectory.test.js, and firestore.rules makes
+    // the same decision from the same domains (`campusOfEmail`).
     //
-    // This is the legacy bundle, and it is BRACU all the way down: the baked-in
-    // bracu-section.json, the course catalog, seats, routine and the campus map
-    // have no notion of another campus. Admitting an NSU student here would
-    // sign them in to a BRACU app wearing their name, which is worse than
-    // turning them away. Multi-campus sign-in belongs to the shell, which is
-    // where the university registry is actually wired up.
+    // This guard was BRACU-only until the page behind it stopped being: the
+    // calculator scores on the student's campus (#796), the tab bar shows only
+    // what that campus has data for (#808), and every Firestore write and list
+    // is campus-scoped (#821, #823). Admitting a campus here before those held
+    // would have signed its students in to a BRACU app wearing their name.
     let tokenClaims = null;
     if (user) {
       const tokenResult = await user.getIdTokenResult(true).catch(() => null);
       tokenClaims = tokenResult?.claims || null;
-      const isBracuEmail = user.email?.toLowerCase().endsWith('@g.bracu.ac.bd');
+      const isCampusEmail = campusOfEmail(user.email) !== null;
       const isVerifiedEmail = user.emailVerified === true || tokenClaims?.email_verified === true;
       const signInProvider = tokenClaims?.firebase?.sign_in_provider || '';
       const isGoogleProvider = signInProvider === 'google.com';
-      const isAllowedBracuUser = isBracuEmail && isVerifiedEmail && isGoogleProvider;
-      if (!isAllowedBracuUser && tokenClaims?.admin !== true) {
+      const isAllowedCampusUser = isCampusEmail && isVerifiedEmail && isGoogleProvider;
+      if (!isAllowedCampusUser && tokenClaims?.admin !== true) {
         await signOut(auth);
         setAuthBtnLoading(false);
-        showToast('⚠ Only verified BRACU Google accounts are supported', true, true);
+        showToast('⚠ Only verified university Google accounts are supported', true, true);
         return;
       }
     }
@@ -12059,7 +12028,7 @@ function updateAuthUI(user) {
     btn.className     = 'auth-btn-signed-out magnetic';
     btn.style.cssText = '';
     btn.disabled      = false;
-    btn.title         = 'Sign in with your BRACU G-Suite account';
+    btn.title         = 'Sign in with your university Google account';
     btn.removeAttribute('aria-haspopup');
     btn.removeAttribute('aria-expanded');
     btn.onclick       = signInWithGoogle;
