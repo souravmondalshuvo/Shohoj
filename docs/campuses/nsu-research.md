@@ -223,16 +223,29 @@ CONNECT: the student copies their own page and pastes it, and we never touch the
 credentials. Official transcripts are printed on security paper and aren't a
 student-downloadable PDF.
 
-## 11. Faculty initials (`js/core/faculty.js`, `reviews.js`) — ⚠ bug for NSU
+## 11. Faculty initials (`js/core/faculty.js`, `reviews.js`)
 
-NSU initials are **case-sensitive and can contain digits**: `NvA`, `MhMR`, `SHA1`,
-`MMS4`. Summer 2025 had 759 distinct initials [derived].
+NSU initials mix case and can end in a number: `NvA`, `MhMR`, `SHA1`, `MMS4`.
+Measured on the three whole terms in `sections/` (Summer 2025 and Fall 2025 PDFs,
+the Fall 2026 RDS snapshot) [derived]:
 
-Legacy `normalizeInitials` does `toUpperCase().replace(/[^A-Z]/g,'')`
-(`js/core/faculty.js:15`), and `reviews.js:15` uppercases too. Under that rule
-**72 groups / 152 different NSU faculty merge into one** — e.g. `MMS1`/`MMS3`/`MMS4`/`MMs1`,
-`HMM`/`HMM1`/`Hmm`, `SNE`/`Sne` [derived]. NSU needs case- and digit-preserving
-initials (or campus-prefixed keys) before reviews can go live.
+- **The number is identity.** 17 groups of initials differ only by a closing
+  number — `MMS1`/`MMS3`/`MMS4`, `SSA1`/`SSA2`, `HMM`/`HMM1` — the same groups in
+  every term, and their members share a subject in only 1–3 of the 17. They are
+  different lecturers.
+- **The case is noise.** 56–104 groups per term differ only by capitalisation,
+  and their members share a subject in 64–86% of them: `ABq1`, `Abq1` and `abq1`
+  all teach PSY in Fall 2025. RDS is no more consistent than the PDFs (340 of its
+  917 initials are mixed case, and 188 are cased differently than in the Fall
+  2025 PDF). The minority that teach different subjects cannot be told apart
+  from one lecturer teaching in two departments without an official list.
+
+So at NSU initials normalise to **uppercase with the number kept**
+(`normalizeInitials` in `js/core/faculty.js`, #819). Legacy's BRACU rule —
+uppercase, letters only — dropped the number, which filed about 20 lecturers a
+term under someone else's initials. An earlier version of this section said NSU
+needed case-preserving initials and counted "152 faculty merged"; most of those
+152 were one person spelled two ways.
 
 No public list maps NSU initials to names [unknown]. The per-term section list is
 the only public source of which initials teach which course.
@@ -263,7 +276,7 @@ the only public source of which initials teach which course.
     already differed from RDS4+'s in 453 sections (99 added, 78 gone, 169 faculty
     back to TBA, 45 faculty swapped, 67 rooms moved; no time changed).
   - Both carry the same columns: `Course | Section | Faculty | Time | Room | Seats Available`.
-    No title, credits, capacity or department; faculty initials come uppercase.
+    No title, credits, capacity or department; faculty initials are inconsistently cased (see §11).
 - **Format** (from the PDF, same columns rds4 shows):
   `Course Code | Title | Credit | Section | Faculty | Time | Room | Seat Capacity`
   → `sections/252-trimester.json` (Summer 2025, 2,845 undergraduate sections),
