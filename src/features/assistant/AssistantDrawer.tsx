@@ -18,7 +18,7 @@
 // anonymous FAB would only lead to a dead end — and their campus has the
 // `assistant` feature, which the Worker enforces as well.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import {
   ASSISTANT_MORPH_CLOSE_MS,
@@ -153,6 +153,19 @@ function AssistantDrawer({
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLElement>(null);
+  // This drawer is keyed by uid. A generation additionally invalidates work
+  // after Clear chat, including requests still waiting for an ID token.
+  const generationRef = useRef(0);
+  const activeRef = useRef(true);
+  const pendingRef = useRef(false);
+
+  useLayoutEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+      generationRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -165,8 +178,9 @@ function AssistantDrawer({
   useEffect(() => {
     if (!uid) return;
     let live = true;
+    const generation = generationRef.current;
     void loadStoredHistory(uid).then((stored: readonly AssistantMessage[]) => {
-      if (!live || stored.length === 0) return;
+      if (!live || generation !== generationRef.current || stored.length === 0) return;
       setTranscript((current) => (current.length === 0 ? stored : current));
     });
     return () => {
@@ -236,7 +250,10 @@ function AssistantDrawer({
 
   const ask = async (question: string) => {
     const content = question.trim();
-    if (!content || pending) return;
+    if (!content || pendingRef.current || !activeRef.current || !uid) return;
+    const generation = ++generationRef.current;
+    const isCurrent = () => activeRef.current && generationRef.current === generation;
+    pendingRef.current = true;
     const next = [...transcript, { role: 'user', content } as AssistantMessage];
     setTranscript(next);
     setDraft('');
@@ -245,9 +262,14 @@ function AssistantDrawer({
     try {
       const result = await sendAssistantTurn(next, {
         workerUrl,
-        getToken: getIdToken,
+        getToken: async () => {
+          if (!isCurrent()) return null;
+          const token = await getIdToken();
+          return isCurrent() ? token : null;
+        },
         routine: readRoutinePicks(),
       });
+      if (!isCurrent()) return;
       if (result.ok) {
         setTranscript([...next, { role: 'assistant', content: result.reply }]);
         if (result.quota) setQuota(result.quota);
@@ -262,7 +284,10 @@ function AssistantDrawer({
         }
       }
     } finally {
-      setPending(false);
+      if (isCurrent()) {
+        pendingRef.current = false;
+        setPending(false);
+      }
     }
   };
 
@@ -291,6 +316,10 @@ function AssistantDrawer({
           type="button"
           className="assistant-drawer-clear"
           onClick={() => {
+            generationRef.current += 1;
+            pendingRef.current = false;
+            setPending(false);
+            setDraft('');
             setTranscript([]);
             setError(null);
             void clearStoredHistory();
@@ -508,6 +537,7 @@ export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
       )}
       {phase !== 'idle' && (
         <AssistantDrawer
+          key={auth.uid}
           workerUrl={workerUrl}
           phase={phase}
           pillRect={pillRectRef.current}

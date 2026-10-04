@@ -23,6 +23,12 @@
 // carries a user identifier.
 
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  boundedModelPayload,
+  boundedModelObject,
+  completeUsage,
+  MAX_TOOL_ROUNDS,
+} from './aiLimits.js';
 
 import { ASSISTANT_SYSTEM, ASSISTANT_TOOLS, executeAssistantTool } from './assistant.js';
 
@@ -67,8 +73,6 @@ export const GEMINI_THINKING_LEVEL = 'low';
 // One frozen object shared by every payload so the three call sites below
 // cannot drift apart again.
 const GEMINI_GENERATION_CONFIG = Object.freeze({ thinking_level: GEMINI_THINKING_LEVEL });
-
-const MAX_TOOL_ROUNDS = 5;
 
 /**
  * Wall-clock accumulator for one turn (#734).
@@ -140,6 +144,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   let lastText = '';
   const usage = { inputTokens: 0, outputTokens: 0 };
+  let usageComplete = true;
   const timing = createTurnTiming();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -147,13 +152,15 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
     let response;
     try {
       response = await timed(timing, 'modelMs', () =>
-        anthropic.messages.create({
-          model: CLAUDE_MODEL,
-          max_tokens: CLAUDE_MAX_TOKENS,
-          system: ASSISTANT_SYSTEM,
-          tools: ASSISTANT_TOOLS,
-          messages: convo,
-        }),
+        anthropic.messages.create(
+          boundedModelObject({
+            model: CLAUDE_MODEL,
+            max_tokens: CLAUDE_MAX_TOKENS,
+            system: ASSISTANT_SYSTEM,
+            tools: ASSISTANT_TOOLS,
+            messages: convo,
+          }),
+        ),
       );
     } catch (e) {
       // Every throw out of the SDK is transport or API failure (it does not
@@ -161,11 +168,13 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
       throw new ProviderUnavailable('claude', e?.status ? `HTTP ${e.status}` : 'request failed', e);
     }
 
+    usageComplete &&= completeUsage(response?.usage);
     usage.inputTokens += Number(response?.usage?.input_tokens) || 0;
     usage.outputTokens += Number(response?.usage?.output_tokens) || 0;
 
     lastText = claudeText(response.content) || lastText;
-    if (response.stop_reason !== 'tool_use') return { text: lastText || NO_ANSWER, usage, timing };
+    if (response.stop_reason !== 'tool_use')
+      return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
 
     convo.push({ role: 'assistant', content: response.content });
     const results = [];
@@ -191,7 +200,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
     convo.push({ role: 'user', content: results });
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, usageComplete, timing };
 }
 
 // ── OpenAI ────────────────────────────────────────────────────────────────────
@@ -231,6 +240,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   const tools = openAiTools();
   let lastText = '';
   const usage = { inputTokens: 0, outputTokens: 0 };
+  let usageComplete = true;
   const timing = createTurnTiming();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -244,7 +254,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
+          body: boundedModelPayload({
             model: OPENAI_MODEL,
             input,
             tools,
@@ -267,6 +277,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
       throw new ProviderUnavailable('openai', 'unreadable response', e);
     }
 
+    usageComplete &&= completeUsage(body?.usage);
     usage.inputTokens += Number(body?.usage?.input_tokens) || 0;
     usage.outputTokens += Number(body?.usage?.output_tokens) || 0;
 
@@ -284,7 +295,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
           `incomplete: ${body?.incomplete_details?.reason || 'unknown'}`,
         );
       }
-      return { text: lastText || NO_ANSWER, usage, timing };
+      return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
     }
 
     // Echo the calls back verbatim, then answer each one. Both halves must
@@ -314,7 +325,7 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     }
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, usageComplete, timing };
 }
 
 // ── Gemini ────────────────────────────────────────────────────────────────────
@@ -399,6 +410,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   // wants, so there is one translation, not two.
   const tools = openAiTools();
   const usage = { inputTokens: 0, outputTokens: 0 };
+  let usageComplete = true;
   const timing = createTurnTiming();
   let payload = {
     model: GEMINI_MODEL,
@@ -421,7 +433,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
         fetchImpl(GEMINI_URL, {
           method: 'POST',
           headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: boundedModelPayload(payload),
         }),
       );
     } catch (e) {
@@ -486,7 +498,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     lastText = geminiText(body) || lastText;
 
     const calls = geminiSteps(body).filter((step) => step?.type === 'function_call');
-    if (calls.length === 0) return { text: lastText || NO_ANSWER, usage, timing };
+    if (calls.length === 0) return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
 
     const results = [];
     for (const call of calls) {
@@ -522,7 +534,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     };
   }
 
-  return { text: lastText || TOO_MANY_ROUNDS, usage, timing };
+  return { text: lastText || TOO_MANY_ROUNDS, usage, usageComplete, timing };
 }
 
 // ── Orchestration ─────────────────────────────────────────────────────────────
@@ -550,7 +562,7 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
       name: 'claude',
       run: ({ messages, ctx }) =>
         runClaudeTurn({
-          anthropic: new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 1 }),
+          anthropic: new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 0 }),
           messages,
           ctx,
         }),

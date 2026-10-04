@@ -35,10 +35,12 @@ const reply = (content) => ({ role: 'assistant', content });
 /** The slice of IndexedDB this module uses: open, get, put, delete. */
 function fakeIndexedDB(initial = {}) {
   const data = new Map(Object.entries(initial));
+  let transaction;
   const settle = (request, work) => {
     queueMicrotask(() => {
       request.result = work();
       request.onsuccess?.();
+      transaction?.oncomplete?.();
     });
     return request;
   };
@@ -56,7 +58,7 @@ function fakeIndexedDB(initial = {}) {
           objectStoreNames: { contains: () => true },
           createObjectStore() {},
           close() {},
-          transaction: () => ({ objectStore: () => store }),
+          transaction: () => (transaction = { objectStore: () => store }),
         };
         request.onsuccess?.();
       });
@@ -147,4 +149,56 @@ test('no IndexedDB, or a hostile one, is survivable', async () => {
   };
   assert.deepEqual(await loadStoredHistory('uid-a', failing), []);
   assert.equal(await saveStoredHistory('uid-a', [user('hi')], failing), false);
+});
+
+// Hold the first open. Without serializing opens, a later delete or B write
+// finishes first and the late A save puts the private record back afterward.
+function heldFirstOpen(idb) {
+  let release;
+  let started;
+  const ready = new Promise(resolve => { started = resolve; });
+  let calls = 0;
+  return {
+    ready,
+    release: () => release(),
+    factory: {
+      open(...args) {
+        const request = idb.open(...args);
+        if (++calls !== 1) return request;
+        const held = {};
+        request.onsuccess = () => {
+          release = () => {
+            held.result = request.result;
+            held.onsuccess?.();
+          };
+          started();
+        };
+        return held;
+      },
+    },
+  };
+}
+
+test('a late IndexedDB open cannot restore a transcript after Clear chat', async () => {
+  const idb = fakeIndexedDB();
+  const held = heldFirstOpen(idb);
+  const saving = saveStoredHistory('uid-a', [user('private A')], held.factory);
+  await held.ready;
+  const clearing = clearStoredHistory(held.factory);
+  held.release();
+  await Promise.all([saving, clearing]);
+  assert.equal(idb.data.has(ASSISTANT_HISTORY_RECORD), false);
+});
+
+test('a late save cannot overwrite the next account or its history load', async () => {
+  const idb = fakeIndexedDB();
+  const held = heldFirstOpen(idb);
+  const savingA = saveStoredHistory('uid-a', [user('private A')], held.factory);
+  await held.ready;
+  const savingB = saveStoredHistory('uid-b', [user('B only')], held.factory);
+  const readingB = loadStoredHistory('uid-b', held.factory);
+  held.release();
+  await Promise.all([savingA, savingB]);
+  assert.deepEqual(await readingB, [user('B only')]);
+  assert.equal(idb.data.get(ASSISTANT_HISTORY_RECORD).owner, 'uid-b');
 });

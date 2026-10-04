@@ -63,28 +63,31 @@ function openDb(factory) {
   });
 }
 
+// IndexedDB opens can resolve out of order. Serialize whole operations, not
+// just transactions, so an earlier save can never resurrect a cleared chat or
+// replace a newer account's record after its write has completed.
+let historyOperations = Promise.resolve();
+function inHistoryOrder(work) {
+  const result = historyOperations.then(work, work);
+  historyOperations = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 function runTransaction(db, mode, work) {
   return new Promise((resolve) => {
-    let store;
-    try {
-      store = db.transaction(ASSISTANT_HISTORY_STORE, mode).objectStore(ASSISTANT_HISTORY_STORE);
-    } catch {
-      resolve(null);
-      return;
-    }
+    let transaction;
     let request;
     try {
-      request = work(store);
+      transaction = db.transaction(ASSISTANT_HISTORY_STORE, mode);
+      request = work(transaction.objectStore(ASSISTANT_HISTORY_STORE));
     } catch {
-      resolve(null);
+      resolve({ ok: false, value: null });
       return;
     }
-    if (!request) {
-      resolve(null);
-      return;
-    }
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => resolve(null);
+    // A request's success precedes the transaction commit. Waiting for the
+    // commit also keeps a subsequent clear ordered after a durable save.
+    transaction.oncomplete = () => resolve({ ok: true, value: request?.result ?? null });
+    transaction.onabort = transaction.onerror = () => resolve({ ok: false, value: null });
   });
 }
 
@@ -98,11 +101,15 @@ function runTransaction(db, mode, work) {
  * @param {string|null|undefined} owner
  * @param {IDBFactory|null} [factory]  Injectable for tests.
  */
-export async function loadStoredHistory(owner, factory) {
+export function loadStoredHistory(owner, factory) {
+  return inHistoryOrder(() => readHistory(owner, factory));
+}
+
+async function readHistory(owner, factory) {
   if (!owner) return [];
   const db = await openDb(factory);
   if (!db) return [];
-  const record = await runTransaction(db, 'readonly', (store) =>
+  const { value: record } = await runTransaction(db, 'readonly', (store) =>
     store.get(ASSISTANT_HISTORY_RECORD),
   );
   try {
@@ -119,12 +126,16 @@ export async function loadStoredHistory(owner, factory) {
  * Persist `transcript` for `owner` on this device. An empty transcript, or no
  * owner, deletes the record rather than storing an empty one.
  */
-export async function saveStoredHistory(owner, transcript, factory) {
+export function saveStoredHistory(owner, transcript, factory) {
   const clamped = clampTranscript(transcript);
-  if (!owner || clamped.length === 0) return clearStoredHistory(factory);
+  return inHistoryOrder(() => writeHistory(owner, clamped, factory));
+}
+
+async function writeHistory(owner, clamped, factory) {
+  if (!owner || clamped.length === 0) return deleteHistory(factory);
   const db = await openDb(factory);
   if (!db) return false;
-  const ok = await runTransaction(db, 'readwrite', (store) =>
+  const { ok } = await runTransaction(db, 'readwrite', (store) =>
     store.put({ owner, messages: clamped, updatedAt: Date.now() }, ASSISTANT_HISTORY_RECORD),
   );
   try {
@@ -132,18 +143,22 @@ export async function saveStoredHistory(owner, transcript, factory) {
   } catch {
     /* already closing */
   }
-  return ok !== null;
+  return ok;
 }
 
 /** Delete the stored transcript, whoever owns it. Backs the drawer's control. */
-export async function clearStoredHistory(factory) {
+export function clearStoredHistory(factory) {
+  return inHistoryOrder(() => deleteHistory(factory));
+}
+
+async function deleteHistory(factory) {
   const db = await openDb(factory);
   if (!db) return false;
-  await runTransaction(db, 'readwrite', (store) => store.delete(ASSISTANT_HISTORY_RECORD));
+  const { ok } = await runTransaction(db, 'readwrite', (store) => store.delete(ASSISTANT_HISTORY_RECORD));
   try {
     db.close();
   } catch {
     /* already closing */
   }
-  return true;
+  return ok;
 }

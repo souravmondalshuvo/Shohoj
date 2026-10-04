@@ -257,3 +257,128 @@ test('getIdToken: a token-read error degrades to null, never throws', async () =
   await settle();
   assert.equal(await source.getIdToken(), null);
 });
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+function delayedClaimsUser(uid, claimsRead) {
+  return {
+    ...fakeUser({ uid, email: `${uid}@g.bracu.ac.bd`, idToken: `token-${uid}` }),
+    getIdTokenResult: () => claimsRead.promise,
+  };
+}
+
+test('a null auth event invalidates an earlier pending identity check', async () => {
+  const { source, backend } = await sourceWithBackend();
+  const claimsRead = deferred();
+  backend.fire(delayedClaimsUser('A', claimsRead));
+  backend.fire(null);
+  claimsRead.resolve({ claims: GOOGLE_CLAIMS });
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+  assert.equal(await source.getIdToken(), null);
+});
+
+test('explicit signOut immediately clears identity and invalidates pending checks', async () => {
+  const { source, backend } = await sourceWithBackend();
+  const claimsRead = deferred();
+  const signOut = deferred();
+  backend.fire(delayedClaimsUser('A', claimsRead));
+  backend.signOut = () => signOut.promise;
+  const signingOut = source.signOut();
+  assert.equal(source.get().status, 'anonymous', 'do not await the SDK to clear local identity');
+  claimsRead.resolve({ claims: GOOGLE_CLAIMS });
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+  assert.equal(await source.getIdToken(), null);
+  signOut.resolve();
+  await signingOut;
+});
+
+test('a delayed identity check cannot restore the previous account after switching', async () => {
+  const { source, backend } = await sourceWithBackend();
+  const oldClaims = deferred();
+  backend.fire(delayedClaimsUser('A', oldClaims));
+  backend.fire(fakeUser({ uid: 'B', email: 'B@northsouth.edu', idToken: 'token-B' }));
+  await settle();
+  assert.equal(source.get().uid, 'B');
+  oldClaims.resolve({ claims: GOOGLE_CLAIMS });
+  await settle();
+  assert.equal(source.get().uid, 'B');
+  assert.equal(source.get().university, 'nsu');
+  assert.equal(await source.getIdToken(), 'token-B');
+});
+
+test('account switching hides the previous identity while new claims are pending', async () => {
+  const { source, backend } = await sourceWithBackend();
+  backend.fire(fakeUser({ uid: 'A', email: 'A@g.bracu.ac.bd' }));
+  await settle();
+  const newClaims = deferred();
+  backend.fire(delayedClaimsUser('B', newClaims));
+  assert.equal(source.get().status, 'loading');
+  assert.equal(source.get().uid, null);
+  assert.equal(await source.getIdToken(), null);
+  newClaims.resolve({ claims: GOOGLE_CLAIMS });
+  await settle();
+  assert.equal(source.get().uid, 'B');
+});
+
+test('a stale rejected account cannot sign out or reject the newer account', async () => {
+  const { source, backend, calls, events } = await sourceWithBackend();
+  const oldClaims = deferred();
+  backend.fire({
+    ...delayedClaimsUser('outsider', oldClaims),
+    email: 'outsider@example.com',
+  });
+  backend.fire(fakeUser({ uid: 'B', email: 'B@g.bracu.ac.bd' }));
+  await settle();
+  oldClaims.resolve({ claims: GOOGLE_CLAIMS });
+  await settle();
+  assert.equal(source.get().uid, 'B');
+  assert.equal(calls.signOut, 0);
+  assert.deepEqual(events, []);
+});
+
+test('completion of a rejected account signOut cannot overwrite a newer account', async () => {
+  const { source, backend, events } = await sourceWithBackend();
+  const oldSignOut = deferred();
+  backend.signOut = () => oldSignOut.promise;
+  backend.fire(fakeUser({ email: 'outsider@example.com' }));
+  await settle();
+  assert.equal(source.get().status, 'anonymous');
+  assert.deepEqual(events, [{ type: 'rejected', message: REJECTED_MESSAGE }]);
+  backend.fire(fakeUser({ uid: 'B', email: 'B@g.bracu.ac.bd', idToken: 'token-B' }));
+  await settle();
+  oldSignOut.resolve();
+  await settle();
+  assert.equal(source.get().uid, 'B');
+  assert.equal(await source.getIdToken(), 'token-B');
+  assert.equal(events.length, 1);
+});
+
+for (const transition of ['null event', 'explicit sign-out', 'another account', 'same account signs back in']) {
+  test(`a pending ID token read returns null after ${transition}`, async () => {
+    const { source, backend } = await sourceWithBackend();
+    const tokenRead = deferred();
+    const user = {
+      ...fakeUser({ uid: 'A', email: 'A@g.bracu.ac.bd' }),
+      getIdToken: () => tokenRead.promise,
+    };
+    backend.fire(user);
+    await settle();
+    const reading = source.getIdToken();
+    if (transition === 'explicit sign-out') await source.signOut();
+    else if (transition === 'another account') {
+      backend.fire(fakeUser({ uid: 'B', email: 'B@g.bracu.ac.bd' }));
+    } else {
+      backend.fire(null);
+      if (transition === 'same account signs back in') backend.fire(user);
+    }
+    await settle();
+    tokenRead.resolve('stale-token-A');
+    assert.equal(await reading, null);
+  });
+}

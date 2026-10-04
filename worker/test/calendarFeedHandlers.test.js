@@ -2,10 +2,8 @@
 //
 // Minting, rotating and revoking a feed (#744).
 //
-// The failure here is asymmetric, and that is what most of these are about. A
-// forward pointer with no reverse doc is a dead link — annoying. A reverse doc
-// with no forward pointer is a LIVE URL the student can no longer see or
-// revoke, which is the one outcome this feature must never produce.
+// Exercise conditional atomic commits, including interleaved rotations and
+// revocation. Reverse documents alone are never credentials.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -15,34 +13,52 @@ import {
   deleteCalendarFeed,
   getCalendarFeed,
 } from '../calendarFeedHandlers.js';
+import { resolveCalendarFeedOwner } from '../calendarFeed.js';
 
 const UID = 'uid_alice';
 const ORIGIN = 'https://worker.example';
 
-/** An in-memory Firestore, recording the order writes happened in. */
+/** Firestore's atomic preconditions and field masks, without network I/O. */
 function fakeStore(seed = {}) {
   const docs = new Map(Object.entries(seed));
-  const writes = [];
+  const versions = new Map([...docs.keys()].map((path) => [path, 1]));
+  const commits = [];
+  let conflicts = 0;
   return {
     docs,
-    writes,
+    commits,
+    get conflicts() { return conflicts; },
     deps: {
       getDoc: async (path) => docs.get(path) ?? null,
-      patchDoc: async (path, fields) => {
-        writes.push({ op: 'patch', path });
-        docs.set(path, { ...(docs.get(path) ?? {}), ...fields });
+      getDocSnapshot: async (path) => {
+        if (!docs.has(path)) return null;
+        return { fields: structuredClone(docs.get(path)), updateTime: String(versions.get(path)) };
       },
-      deleteDoc: async (path) => {
-        writes.push({ op: 'delete', path });
-        docs.delete(path);
+      commitWrites: async (writes) => {
+        // Validate every precondition BEFORE applying any write.
+        for (const write of writes) {
+          if ((write.exists === false && docs.has(write.path)) ||
+              (write.updateTime && write.updateTime !== String(versions.get(write.path)))) {
+            conflicts++;
+            throw Object.assign(new Error('Firestore precondition failed'), { conflict: true });
+          }
+        }
+        commits.push(writes);
+        for (const write of writes) {
+          if (write.delete) {
+            docs.delete(write.path);
+          } else {
+            docs.set(write.path, { ...(docs.get(write.path) ?? {}), ...write.fields });
+          }
+          versions.set(write.path, (versions.get(write.path) ?? 0) + 1);
+        }
       },
     },
   };
 }
 
-let counter = 0;
 function ctxFor(store) {
-  counter = 0;
+  let counter = 0;
   return {
     deps: store.deps,
     firebaseUid: UID,
@@ -83,14 +99,19 @@ test('minting returns an absolute URL the student can paste', async () => {
   assert.equal(result.body.feed.createdAt, '2026-09-23T08:00:00.000Z');
 });
 
-test('minting writes both documents, reverse first', async () => {
-  // A failure between the two must leave a dead link, never a live orphan.
-  const store = fakeStore({ [userPath]: {} });
+test('minting commits both pointers atomically without replacing the profile', async () => {
+  const profile = { email: 'alice@example.edu', university: 'bracu', createdAt: 'old' };
+  const store = fakeStore({ [userPath]: profile });
   await createCalendarFeed(ctxFor(store));
 
-  assert.equal(store.writes.length, 2);
-  assert.match(store.writes[0].path, /^calendarFeeds\//);
-  assert.equal(store.writes[1].path, userPath);
+  assert.equal(store.commits.length, 1);
+  assert.equal(store.commits[0].length, 2);
+  const ownerWrite = store.commits[0].find((write) => write.path === userPath);
+  assert.equal(ownerWrite.updateTime, '1');
+  assert.deepEqual(Object.keys(ownerWrite.fields), ['calendarFeedToken']);
+  for (const [field, value] of Object.entries(profile)) {
+    assert.equal(store.docs.get(userPath)[field], value);
+  }
 });
 
 test('the reverse document records whose feed it is', async () => {
@@ -123,19 +144,17 @@ test('rotating replaces the URL and kills the old one', async () => {
   assert.equal(store.docs.has(feedPath(firstToken)), false, 'the old URL must stop resolving');
 });
 
-test('rotation deletes the old document LAST', async () => {
-  // The new feed has to be live before the old one dies, or a failure between
-  // them leaves the student with no working URL at all.
+test('rotation commits the new pointer and old deletion in the same operation', async () => {
   const store = fakeStore({ [userPath]: {} });
   const ctx = ctxFor(store);
 
   await createCalendarFeed(ctx);
-  store.writes.length = 0;
+  store.commits.length = 0;
   await createCalendarFeed(ctx);
 
-  assert.equal(store.writes.at(-1).op, 'delete');
-  assert.match(store.writes[0].path, /^calendarFeeds\//);
-  assert.equal(store.writes[0].op, 'patch');
+  assert.equal(store.commits.length, 1);
+  assert.equal(store.commits[0].length, 3);
+  assert.equal(store.commits[0].filter((write) => write.delete).length, 1);
 });
 
 test('only one feed is ever live for a student', async () => {
@@ -165,17 +184,18 @@ test('revoking kills the URL and clears the pointer', async () => {
   assert.equal(store.docs.get(userPath).calendarFeedToken, '');
 });
 
-test('revoking deletes the reverse document FIRST', async () => {
-  // That is what actually kills the URL; clearing the pointer is bookkeeping.
+test('revoking clears the pointer and deletes the reverse document atomically', async () => {
   const store = fakeStore({ [userPath]: {} });
   const ctx = ctxFor(store);
   await createCalendarFeed(ctx);
-  store.writes.length = 0;
+  store.commits.length = 0;
 
   await deleteCalendarFeed(ctx);
 
-  assert.equal(store.writes[0].op, 'delete');
-  assert.match(store.writes[0].path, /^calendarFeeds\//);
+  assert.equal(store.commits.length, 1);
+  assert.equal(store.commits[0].length, 2);
+  assert.equal(store.commits[0].filter((write) => write.delete).length, 1);
+  assert.deepEqual(store.commits[0][0].fields, { calendarFeedToken: '' });
 });
 
 test('revoking a feed that does not exist is a success, not a 404', async () => {
@@ -186,7 +206,7 @@ test('revoking a feed that does not exist is a success, not a 404', async () => 
 
   assert.equal(result.status, 200);
   assert.deepEqual(result.body, { feed: null });
-  assert.equal(store.writes.length, 0, 'and it writes nothing');
+  assert.equal(store.commits.length, 0, 'and it writes nothing');
 });
 
 test('revoking twice is still a success', async () => {
@@ -229,4 +249,97 @@ test('different randomness gives different feeds', async () => {
   const second = (await createCalendarFeed(ctx)).body.feed.url;
 
   assert.notEqual(first, second);
+});
+
+test('parallel rotations retry stale writes and leave exactly one live credential', async () => {
+  const store = fakeStore({ [userPath]: { email: 'alice@example.edu' } });
+  const ctx = ctxFor(store);
+  await createCalendarFeed(ctx);
+
+  const results = await Promise.all([createCalendarFeed(ctx), createCalendarFeed(ctx)]);
+  assert.ok(store.conflicts > 0, 'the test must force a stale snapshot');
+  const tokens = results.map(({ body }) => /tasks\/(cft_[0-9a-f]{32})\.ics/.exec(body.feed.url)[1]);
+  const owners = await Promise.all(tokens.map((token) => resolveCalendarFeedOwner(store.deps, token)));
+  assert.equal(owners.filter((owner) => owner === UID).length, 1);
+  assert.equal([...store.docs.keys()].filter((path) => path.startsWith('calendarFeeds/')).length, 1);
+  assert.equal(store.docs.get(userPath).email, 'alice@example.edu');
+});
+
+test('revocation racing with a rotation retries and revokes the latest credential', async () => {
+  const store = fakeStore({ [userPath]: {} });
+  const ctx = ctxFor(store);
+  await createCalendarFeed(ctx);
+
+  // Both read the old owner version. Rotation commits first; revocation must
+  // reread its new credential rather than clearing the pointer it read earlier.
+  await Promise.all([createCalendarFeed(ctx), deleteCalendarFeed(ctx)]);
+  assert.ok(store.conflicts > 0);
+  assert.equal(store.docs.get(userPath).calendarFeedToken, '');
+  assert.equal([...store.docs.keys()].filter((path) => path.startsWith('calendarFeeds/')).length, 0);
+});
+
+test('a failed rotation leaves the current feed and profile intact', async () => {
+  const store = fakeStore({ [userPath]: { email: 'alice@example.edu' } });
+  const ctx = ctxFor(store);
+  await createCalendarFeed(ctx);
+  const before = structuredClone([...store.docs]);
+  store.deps.commitWrites = async () => { throw new Error('storage unavailable'); };
+
+  await assert.rejects(createCalendarFeed(ctx), /storage unavailable/);
+  assert.deepEqual([...store.docs], before);
+});
+
+test('a failed revoke reports failure without a partial pointer update', async () => {
+  const store = fakeStore({ [userPath]: {} });
+  const ctx = ctxFor(store);
+  await createCalendarFeed(ctx);
+  const before = structuredClone([...store.docs]);
+  store.deps.commitWrites = async () => { throw new Error('storage unavailable'); };
+
+  await assert.rejects(deleteCalendarFeed(ctx), /storage unavailable/);
+  assert.deepEqual([...store.docs], before);
+});
+
+test('a random collision cannot overwrite a different student’s feed', async () => {
+  const collision = `cft_${'0'.repeat(31)}1`;
+  const store = fakeStore({
+    [userPath]: {},
+    [feedPath(collision)]: { firebaseUid: 'uid_bob' },
+  });
+  const { body } = await createCalendarFeed(ctxFor(store));
+
+  assert.equal(store.docs.get(feedPath(collision)).firebaseUid, 'uid_bob');
+  assert.ok(!body.feed.url.includes(collision));
+  assert.equal(store.conflicts, 1);
+});
+
+test('persistent contention is bounded and never reported as a successful revoke', async () => {
+  const store = fakeStore({ [userPath]: {} });
+  const ctx = ctxFor(store);
+  await createCalendarFeed(ctx);
+  let attempts = 0;
+  store.deps.commitWrites = async () => {
+    attempts++;
+    throw Object.assign(new Error('precondition failed'), { conflict: true });
+  };
+
+  await assert.rejects(deleteCalendarFeed(ctx), /precondition failed/);
+  assert.equal(attempts, 5);
+  assert.notEqual(store.docs.get(userPath).calendarFeedToken, '');
+});
+
+test('GET refuses a reverse document owned by someone else', async () => {
+  const token = `cft_${'a'.repeat(32)}`;
+  const store = fakeStore({
+    [userPath]: { calendarFeedToken: token },
+    [feedPath(token)]: { firebaseUid: 'uid_bob' },
+  });
+
+  assert.deepEqual((await getCalendarFeed(ctxFor(store))).body, { feed: null });
+});
+
+test('minting cannot recreate a missing owner as a token-only profile', async () => {
+  const store = fakeStore();
+  await assert.rejects(createCalendarFeed(ctxFor(store)), /owner is unavailable/);
+  assert.equal(store.commits.length, 0);
 });

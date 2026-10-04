@@ -1,5 +1,5 @@
 // ── js/ui/feedback.js ─────────────────────────────────────────────────────────
-import { escHtml, confirmDestructive } from '../core/helpers.js';
+import { escHtml, escAttr, confirmDestructive } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 
 registerAction('fb:close',      () => closeFeedbackModal());
@@ -303,14 +303,14 @@ function _renderBoardContent() {
     : sorted.map(item => {
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
-          ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
+          ? `<button data-action="fb:adminDel" data-id="${escAttr(item.id)}" title="Delete"
                style="background:none;border:none;cursor:pointer;color:rgba(231,76,60,0.45);
                       font-size:16px;padding:0 2px;line-height:1;transition:color 0.15s;
                       margin-left:4px;">×</button>`
           : '';
         return `
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid ${t.border};">
-            <div data-action="fb:upvote" data-id="${item.id}"
+            <div data-action="fb:upvote" data-id="${escAttr(item.id)}"
                  style="display:flex;flex-direction:column;align-items:center;gap:2px;
                         min-width:34px;cursor:pointer;
                         color:${voted ? t.accent : t.text3};
@@ -321,7 +321,7 @@ function _renderBoardContent() {
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
                 <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;
                              text-transform:uppercase;color:${typeColor[item.type]||t.text3};">
-                  ${item.type}
+                  ${escHtml(item.type)}
                 </span>
                 ${item.context?.tab ? `<span style="font-size:10px;color:${t.text3};">${escHtml(item.context.tab)}</span>` : ''}
                 <span style="font-size:10px;color:${t.text3};margin-left:auto;">${_timeAgo(item.createdAt)}</span>

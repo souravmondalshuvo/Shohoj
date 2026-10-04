@@ -410,6 +410,19 @@ test('typed HTML escaping matches current JS escHtml/escAttr', () => {
   }
 });
 
+test('HTML escaping covers non-string values after conversion in both implementations', () => {
+  for (const helper of [escHtml, escAttr, typedHelpers.escHtml, typedHelpers.escAttr]) {
+    const malicious = `<img src=x onerror="alert('x')"> &`;
+    const escaped = '&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt; &amp;';
+    assert.equal(helper([malicious]), escaped);
+    assert.equal(helper({ toString: () => malicious }), escaped);
+    assert.equal(helper(new String(malicious)), escaped);
+    assert.equal(helper(null), '');
+    assert.equal(helper(undefined), '');
+    assert.equal(helper(42), '42');
+  }
+});
+
 test('typed ordinalSup matches current JS ordinal suffixes', () => {
   for (const n of [0, 1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 100, 101, 111, 112, 113, 121]) {
     assert.equal(typedHelpers.ordinalSup(n), ordinalSup(n));

@@ -146,6 +146,10 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
   // The current allowed user, retained so getIdToken can mint a fresh token for
   // signed-in writes (the worker review relay). Cleared on sign-out/rejection.
   let currentUser: FirebaseUserLike | null = null;
+  // Every SDK event and explicit sign-out invalidates work for the previous
+  // identity, including token reads already in flight. A UID alone is not a
+  // session boundary: the same account can sign out and sign back in.
+  let authGeneration = 0;
 
   const setSnapshot = (next: AuthSnapshot) => {
     snapshot = next;
@@ -156,20 +160,27 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
   };
 
   const handleUser = async (user: FirebaseUserLike | null) => {
+    const generation = ++authGeneration;
+    currentUser = null;
     if (user === null) {
-      currentUser = null;
       setSnapshot(ANONYMOUS);
       return;
     }
+    // Stop exposing the previous identity while the new one is being checked.
+    setSnapshot(LOADING);
     // Legacy: a failed token read yields null claims and falls through to the
     // enforcement check (which then rejects unless the email checks pass).
     const token = await user.getIdTokenResult(true).catch(() => null);
+    if (generation !== authGeneration) return;
     const verdict = evaluateCampusAccess(user, token?.claims ?? null);
     if (!verdict.allowed) {
-      currentUser = null;
-      if (backend) await backend.signOut().catch(() => {});
-      emit({ type: 'rejected', message: REJECTED_MESSAGE });
       setSnapshot(ANONYMOUS);
+      if (generation !== authGeneration) return;
+      emit({ type: 'rejected', message: REJECTED_MESSAGE });
+      if (generation !== authGeneration) return;
+      // Publish rejection before awaiting the SDK. A newer auth event may
+      // arrive while signOut is pending; its state must remain authoritative.
+      if (backend) await backend.signOut().catch(() => {});
       return;
     }
     currentUser = user;
@@ -214,8 +225,11 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
     async getIdToken() {
       // Legacy getCurrentUserIdToken parity: no user → null; a token read error
       // (network, revoked session) degrades to null rather than throwing.
-      if (!currentUser) return null;
-      return currentUser.getIdToken().catch(() => null);
+      const user = currentUser;
+      const generation = authGeneration;
+      if (!user) return null;
+      const token = await user.getIdToken().catch(() => null);
+      return generation === authGeneration && currentUser === user ? token : null;
     },
     onEvent(listener) {
       eventListeners.add(listener);
@@ -242,7 +256,9 @@ export function createFirebaseAuthSource(options: FirebaseAuthSourceOptions): Fi
       }
     },
     async signOut() {
+      ++authGeneration;
       currentUser = null;
+      setSnapshot(ANONYMOUS);
       if (!backend) return;
       await backend.signOut().catch(() => {});
     },

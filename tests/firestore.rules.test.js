@@ -516,20 +516,35 @@ async function run() {
     await assertSucceeds(deleteDoc(doc(adminDb, 'appFeedback', 'fb5')));
   });
 
-  await test('Feedback with context map of 8 keys is accepted', async () => {
+  await test('Feedback accepts the bounded context used by both clients', async () => {
     const db = bracuCtx().firestore();
-    const context = {};
-    for (let i = 0; i < 8; i++) context[`k${i}`] = `v${i}`;
-    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb6'),
-      feedbackDoc({ context })));
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_context_empty'),
+      feedbackDoc({ context: {} })));
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_context_tab'),
+      feedbackDoc({ context: { tab: 'calculator' } })));
   });
 
-  await test('Feedback with context map of 9 keys is rejected', async () => {
+  await test('Feedback rejects arrays, nested objects, oversized and unknown context', async () => {
     const db = bracuCtx().firestore();
-    const context = {};
-    for (let i = 0; i < 9; i++) context[`k${i}`] = `v${i}`;
-    await assertFails(setDoc(doc(db, 'appFeedback', 'fb7'),
-      feedbackDoc({ context })));
+    const invalid = [
+      { tab: ['<img src=x onerror="alert(1)">'] },
+      { tab: { value: 'calculator' } },
+      { tab: 'x'.repeat(81) },
+      { tab: 1 },
+      { extra: 'unused' },
+      [],
+    ];
+    for (const [i, context] of invalid.entries()) {
+      await assertFails(setDoc(doc(db, 'appFeedback', `fb_bad_context_${i}`),
+        feedbackDoc({ context })));
+    }
+  });
+
+  await test('Feedback rejects document IDs that could break an HTML attribute', async () => {
+    const db = bracuCtx().firestore();
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb" data-injected="true'), feedbackDoc()));
+    await assertFails(setDoc(doc(db, 'appFeedback', "fb'><img src=x>"), feedbackDoc()));
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_valid-123'), feedbackDoc()));
   });
 
   await test('Anonymous feedback with uid:null succeeds', async () => {
@@ -727,6 +742,46 @@ async function run() {
       { groupId: 'grp1', uid: BRACU_UID, email: BRACU_EMAIL, joinedAt: serverTimestamp() }));
   });
 
+  await test('cross-campus membership is denied in both directions and for legacy groups', async () => {
+    await seedGroup('bracu_group');
+    await seedGroup('nsu_group', { university: 'nsu', creatorUid: NSU_UID });
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const legacy = groupDoc();
+      delete legacy.university;
+      await setDoc(doc(ctx.firestore(), 'studyGroups', 'legacy_group'), legacy);
+    });
+    const nsu = nsuCtx().firestore();
+    const bracu = bracuCtx().firestore();
+    const join = (db, groupId, uid, email) => setDoc(doc(db, 'studyGroupMembers', `${groupId}_${uid}`),
+      { groupId, uid, email, joinedAt: serverTimestamp() });
+    await assertFails(join(nsu, 'bracu_group', NSU_UID, NSU_EMAIL));
+    await assertFails(join(nsu, 'legacy_group', NSU_UID, NSU_EMAIL));
+    await assertFails(join(bracu, 'nsu_group', BRACU_UID, BRACU_EMAIL));
+    await assertSucceeds(join(nsu, 'nsu_group', NSU_UID, NSU_EMAIL));
+    await assertSucceeds(join(bracu, 'legacy_group', BRACU_UID, BRACU_EMAIL));
+  });
+
+  await test('preexisting foreign-campus membership cannot expose another member email', async () => {
+    await seedGroup('grp1');
+    await seedMember('grp1', BRACU_UID, BRACU_EMAIL);
+    await seedMember('grp1', NSU_UID, NSU_EMAIL);
+    const nsu = nsuCtx().firestore();
+    await assertFails(getDoc(doc(nsu, 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+    await assertFails(getDocs(query(fsCollection(nsu, 'studyGroupMembers'), where('groupId', '==', 'grp1'))));
+    // A stale foreign member may still see and delete their own record.
+    await assertSucceeds(getDoc(doc(nsu, 'studyGroupMembers', `grp1_${NSU_UID}`)));
+    await assertSucceeds(deleteDoc(doc(nsu, 'studyGroupMembers', `grp1_${NSU_UID}`)));
+    await assertSucceeds(getDoc(doc(adminCtx().firestore(), 'studyGroupMembers', `grp1_${BRACU_UID}`)));
+  });
+
+  await test('same-campus roster queries still work for joined members', async () => {
+    await seedGroup('grp1');
+    await seedMember('grp1', BRACU_UID, BRACU_EMAIL);
+    await seedMember('grp1', OTHER_BRACU_UID, OTHER_BRACU_EMAIL);
+    await assertSucceeds(getDocs(query(fsCollection(bracuCtx().firestore(), 'studyGroupMembers'),
+      where('groupId', '==', 'grp1'))));
+  });
+
   await test('joining with a foreign email is rejected', async () => {
     await seedGroup('grp1');
     const db = bracuCtx().firestore();
@@ -909,6 +964,81 @@ async function run() {
       await setDoc(doc(ctx.firestore(), collection, id), data);
     });
   };
+
+  function lostFoundClaim(postId, uid = OTHER_BRACU_UID, email = OTHER_BRACU_EMAIL) {
+    return { postId, fromUid: uid, fromEmail: email, createdAt: serverTimestamp() };
+  }
+
+  await test('lost&found: claims cannot cross campuses in either direction', async () => {
+    await seedLostFoundPost('lf_bracu');
+    await seedLostFoundPost('lf_nsu', NSU_UID, NSU_EMAIL, { university: 'nsu' });
+    const bracu = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    const nsu = nsuCtx().firestore();
+    await assertFails(setDoc(doc(nsu, 'lostFoundClaims', `lf_bracu_${NSU_UID}`),
+      lostFoundClaim('lf_bracu', NSU_UID, NSU_EMAIL)));
+    await assertFails(setDoc(doc(bracu, 'lostFoundClaims', `lf_nsu_${OTHER_BRACU_UID}`),
+      lostFoundClaim('lf_nsu')));
+    // Keep the normal open-post flow working at both campuses.
+    await assertSucceeds(setDoc(doc(bracu, 'lostFoundClaims', `lf_bracu_${OTHER_BRACU_UID}`),
+      lostFoundClaim('lf_bracu')));
+    const otherNsu = nsuCtx('nsu_other', 'other@northsouth.edu').firestore();
+    await assertSucceeds(setDoc(doc(otherNsu, 'lostFoundClaims', 'lf_nsu_nsu_other'),
+      lostFoundClaim('lf_nsu', 'nsu_other', 'other@northsouth.edu')));
+  });
+
+  await test('lost&found: legacy posts without a campus accept only BRACU claims', async () => {
+    const legacy = lostFoundPost({ createdAt: new Date() });
+    delete legacy.university;
+    await seedRaw('lostFoundPosts', 'lf_legacy', legacy);
+    const nsu = nsuCtx().firestore();
+    await assertFails(setDoc(doc(nsu, 'lostFoundClaims', `lf_legacy_${NSU_UID}`),
+      lostFoundClaim('lf_legacy', NSU_UID, NSU_EMAIL)));
+    const bracu = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertSucceeds(setDoc(doc(bracu, 'lostFoundClaims', `lf_legacy_${OTHER_BRACU_UID}`),
+      lostFoundClaim('lf_legacy')));
+  });
+
+  await test('lost&found: a resolved post rejects new claims from its own campus', async () => {
+    await seedLostFoundPost('lf_closed');
+    await assertSucceeds(updateDoc(doc(bracuCtx().firestore(), 'lostFoundPosts', 'lf_closed'),
+      { status: 'resolved' }));
+    const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+    await assertFails(setDoc(doc(other, 'lostFoundClaims', `lf_closed_${OTHER_BRACU_UID}`),
+      lostFoundClaim('lf_closed')));
+  });
+
+  for (const status of ['pending', 'delivered']) {
+    await test(`lost&found: a ${status} delivery receipt blocks claim recreation after queue deletion`, async () => {
+      await seedLostFoundPost('lf1');
+      const claimId = `lf1_${OTHER_BRACU_UID}`;
+      const other = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
+      await assertSucceeds(setDoc(doc(other, 'lostFoundClaims', claimId), lostFoundClaim('lf1')));
+      // Service-account delivery records survive removal of the queue entry.
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const batch = writeBatch(ctx.firestore());
+        batch.set(doc(ctx.firestore(), 'lostFoundDeliveries', claimId), {
+          status, payloadHash: 'delivery-payload-hash', firstAttemptAt: Date.now(),
+        });
+        batch.delete(doc(ctx.firestore(), 'lostFoundClaims', claimId));
+        await batch.commit();
+      });
+      await assertFails(setDoc(doc(other, 'lostFoundClaims', claimId), lostFoundClaim('lf1')));
+    });
+  }
+
+  await test('lost&found: delivery receipts are inaccessible to every client, including admins', async () => {
+    const claimId = `lf1_${OTHER_BRACU_UID}`;
+    await seedRaw('lostFoundDeliveries', claimId, { status: 'delivered', payloadHash: 'private-hash' });
+    for (const ctx of [bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL), nsuCtx(), adminCtx()]) {
+      const db = ctx.firestore();
+      const receipt = doc(db, 'lostFoundDeliveries', claimId);
+      await assertFails(getDoc(receipt));
+      await assertFails(getDocs(fsCollection(db, 'lostFoundDeliveries')));
+      await assertFails(setDoc(doc(db, 'lostFoundDeliveries', 'new_receipt'), { status: 'pending' }));
+      await assertFails(updateDoc(receipt, { status: 'pending' }));
+      await assertFails(deleteDoc(receipt));
+    }
+  });
 
   await test('campus isolation: NSU cannot read BRACU documents', async () => {
     await seedRaw('studyGroups', 'grp_bracu', {
@@ -1174,6 +1304,21 @@ async function run() {
     const bracu = bracuCtx().firestore();
     assertEqual((await assertSucceeds(getDoc(doc(bracu, 'facultyProfiles', 'OLD')))).exists(), true);
     await assertFails(getDoc(doc(bracu, 'facultyProfiles', 'MMS4')));
+  });
+
+  await test('NSU cannot omit campus to plant documents in BRACU collections', async () => {
+    const db = nsuCtx().firestore();
+    const cases = [
+      ['studyGroups', groupDoc({ creatorUid: NSU_UID })],
+      ['appFeedback', feedbackDoc({ uid: NSU_UID })],
+      ['lostFoundPosts', lostFoundPost({ creatorUid: NSU_UID })],
+    ];
+    for (const [name, payload] of cases) {
+      delete payload.university;
+      await assertFails(setDoc(doc(db, name, 'campus_omitted'), payload));
+      await assertSucceeds(setDoc(doc(db, name, 'own_campus'), { ...payload, university: 'nsu' }));
+      await assertFails(getDoc(doc(bracuCtx().firestore(), name, 'own_campus')));
+    }
   });
 
   // ── Server-owned collections (#710) ──────────────────────────────────────

@@ -85,13 +85,19 @@ function fakeGoogle(docs = new Map()) {
       });
     }
 
-    const docMatch = /\/documents\/(.+)$/.exec(url);
+    const docMatch = /\/documents\/([^?]+)/.exec(url);
     if (docMatch) {
       const path = decodeURIComponent(docMatch[1]);
       if (method === 'PATCH') {
         const body = JSON.parse(init.body);
         writes.push({ path, fields: body.fields });
-        docs.set(path, body.fields);
+        const mask = new URL(url).searchParams.getAll('updateMask.fieldPaths');
+        const fields = mask.length ? { ...docs.get(path) } : {};
+        for (const field of mask.length ? mask : Object.keys(body.fields)) {
+          if (Object.hasOwn(body.fields, field)) fields[field] = body.fields[field];
+          else delete fields[field];
+        }
+        docs.set(path, fields);
         return new Response(JSON.stringify(body), {
           headers: { 'Content-Type': 'application/json' },
         });
