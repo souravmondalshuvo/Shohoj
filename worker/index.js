@@ -128,6 +128,17 @@ const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+
 const LEGACY_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/;
 const PAPER_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
 const REVIEW_INITIALS_RE = /^[A-Z]{2,6}$/;
+// NSU tells faculty apart with a closing number — MMS1, MMS3 and MMS4 are three
+// lecturers — so there, and only there, initials may end in one digit. Mirrors
+// NUMBERED_INITIALS_CAMPUSES in js/core/faculty.js;
+// tests/facultyInitials.test.js holds the two together.
+const NUMBERED_INITIALS_CAMPUSES = ['nsu'];
+const NUMBERED_INITIALS_RE = /^[A-Z]{2,6}$|^[A-Z]{2,5}[0-9]$/;
+
+/** The shape faculty initials take on a campus. */
+export function facultyInitialsRe(campus) {
+  return NUMBERED_INITIALS_CAMPUSES.includes(campus) ? NUMBERED_INITIALS_RE : REVIEW_INITIALS_RE;
+}
 const REVIEW_COURSE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const REVIEW_TYPE_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 const PAPER_TYPES = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
@@ -316,12 +327,14 @@ function cleanOptionalSemester(value) {
     .slice(0, 40);
 }
 
-function cleanOptionalFacultyInitials(value) {
+export function cleanOptionalFacultyInitials(value, campus = 'bracu') {
   const initials = String(value || '')
     .toUpperCase()
     .trim()
     .slice(0, 40);
-  return /^[A-Z]{2,6}(, ?[A-Z]{2,6})*$/.test(initials) ? initials : '';
+  // A comma-separated list, each entry the campus's shape of initials.
+  const shape = facultyInitialsRe(campus);
+  return initials !== '' && initials.split(/, ?/).every((one) => shape.test(one)) ? initials : '';
 }
 
 // Strip control chars (incl. CR/LF) and clamp length. Used for any uploader-
@@ -681,7 +694,10 @@ async function handleUpload(request, env, origin, ctx) {
     return jsonResponse({ error: 'Invalid title' }, { status: 400 }, env, origin);
   }
   const semester = cleanOptionalSemester(url.searchParams.get('semester'));
-  const facultyInitials = cleanOptionalFacultyInitials(url.searchParams.get('facultyInitials'));
+  const facultyInitials = cleanOptionalFacultyInitials(
+    url.searchParams.get('facultyInitials'),
+    catalogCampusFor(claims),
+  );
 
   const body = await request.arrayBuffer();
   if (body.byteLength > MAX_UPLOAD_BYTES) {
@@ -1498,7 +1514,8 @@ export function validateReviewPayload(p, campus = 'bracu') {
   // feed would reject reviews of faculty who no longer teach the course.
   // Tracked as a known limitation in docs/SECURITY.md rather than silently
   // presented as an existence check.
-  if (!REVIEW_INITIALS_RE.test(facultyInitials)) return { error: 'Invalid faculty initials' };
+  if (!facultyInitialsRe(campus).test(facultyInitials))
+    return { error: 'Invalid faculty initials' };
   // Course codes, by contrast, ARE checked against the authoritative catalogue
   // — the reviewer's own campus's.
   if (!REVIEW_COURSE_RE.test(courseCode)) return { error: 'Invalid course code' };
