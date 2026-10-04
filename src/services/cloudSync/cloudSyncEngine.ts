@@ -72,6 +72,10 @@ export interface CloudSyncEngine {
   isCloudCurrent(): Promise<boolean>;
 }
 
+interface SyncSession {
+  readonly uid: string;
+}
+
 interface SemesterishSnapshot {
   semesters?: unknown[];
 }
@@ -86,12 +90,17 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
   const graceMs = ports.graceMs ?? LOCAL_WRITE_GRACE_MS;
   const remoteApplyDelayMs = ports.remoteApplyDelayMs ?? REMOTE_APPLY_DELAY_MS;
 
-  let uid: string | null = null;
+  // A new object invalidates every continuation, including a sign-out/sign-in
+  // to the same UID. A UID check alone cannot distinguish those sessions.
+  let session: SyncSession | null = null;
   let unsubscribe: (() => void) | null = null;
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let queuedSnapshot: string | null = null;
+  let remoteApplyTimer: ReturnType<typeof setTimeout> | null = null;
   let localWriteAt = 0;
   let activeSave: Promise<boolean> = Promise.resolve(true);
+
+  const isCurrent = (activeSession: SyncSession) => session === activeSession;
 
   const hasPendingLocalSave = () => saveTimer !== null || queuedSnapshot !== null;
 
@@ -101,33 +110,52 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
     queuedSnapshot = null;
   };
 
+  const cancelSession = () => {
+    session = null;
+    unsubscribe?.();
+    unsubscribe = null;
+    clearQueued();
+    if (remoteApplyTimer !== null) clearTimeout(remoteApplyTimer);
+    remoteApplyTimer = null;
+    localWriteAt = 0;
+    // In-flight I/O cannot be cancelled, but it must neither block the next
+    // account's saves nor mutate its bookkeeping when it eventually settles.
+    activeSave = Promise.resolve(true);
+  };
+
   // persistCloudState parity: offline skips the write (data stays local), the
   // own-write clock arms before the write and resets on failure.
-  const persist = async (snapshotJson: string): Promise<boolean> => {
-    if (uid === null) return false;
+  const persist = async (snapshotJson: string, activeSession: SyncSession): Promise<boolean> => {
+    if (!isCurrent(activeSession)) return false;
     if (!ports.isOnline()) return false;
     localWriteAt = ports.now();
     try {
-      await ports.repo.save(uid, snapshotJson);
+      await ports.repo.save(activeSession.uid, snapshotJson);
+      if (!isCurrent(activeSession)) return false;
       ports.local.setItem(LAST_SYNC_KEY, String(ports.now()));
       return true;
     } catch {
+      if (!isCurrent(activeSession)) return false;
       localWriteAt = 0;
       ports.notify('error', SAVE_FAILED_MESSAGE);
       return false;
     }
   };
 
-  const persistSerial = (snapshotJson: string): Promise<boolean> => {
-    activeSave = activeSave.then(() => persist(snapshotJson));
+  const persistSerial = (snapshotJson: string, activeSession: SyncSession): Promise<boolean> => {
+    if (!isCurrent(activeSession)) return Promise.resolve(false);
+    activeSave = activeSave.then(() => persist(snapshotJson, activeSession));
     return activeSave;
   };
 
   // startRealtimeSync parity, decisions via decideRealtimeSnapshot.
-  const subscribeRealtime = (activeUid: string) => {
+  const subscribeRealtime = (activeSession: SyncSession) => {
+    if (!isCurrent(activeSession)) return;
     unsubscribe?.();
     let isFirstSnapshot = true;
-    unsubscribe = ports.repo.subscribe(activeUid, (data, exists) => {
+    unsubscribe = ports.repo.subscribe(activeSession.uid, (data, exists) => {
+      // Unsubscribing does not retract an already queued callback.
+      if (!isCurrent(activeSession)) return;
       const action = decideRealtimeSnapshot({
         isFirstSnapshot,
         msSinceLocalWrite: ports.now() - localWriteAt,
@@ -147,26 +175,33 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
       // The routine, watchlist, review receipt and profile travel in the same
       // doc; fan them out to their own keys before applyRemote reloads, or the
       // routes that read those keys boot on the other device's copy (#627).
-      applyPersonalSlices(ports.local, parseStoredState(data), uid);
+      applyPersonalSlices(ports.local, parseStoredState(data), activeSession.uid);
       ports.notify('info', REMOTE_UPDATE_MESSAGE);
-      setTimeout(() => ports.applyRemote(), remoteApplyDelayMs);
+      if (remoteApplyTimer !== null) clearTimeout(remoteApplyTimer);
+      remoteApplyTimer = setTimeout(() => {
+        if (!isCurrent(activeSession)) return;
+        remoteApplyTimer = null;
+        ports.applyRemote();
+      }, remoteApplyDelayMs);
     });
   };
 
   // applyCloudData parity: flags, local write, then reload (the legacy
   // pre-boot fallback; the shell's routes rebuild from storage on boot).
-  const adoptCloud = (cloudParsed: unknown) => {
+  const adoptCloud = (cloudParsed: unknown, activeSession: SyncSession) => {
+    if (!isCurrent(activeSession)) return;
     ports.session.setItem(CLOUD_APPLIED_FLAG, '1');
     ports.session.setItem(SKIP_FIRST_SAVE_FLAG, '1');
     ports.local.setItem(STORAGE_KEY, JSON.stringify(cloudParsed));
     // Same fan-out as the realtime path — this is the sign-in branch where the
     // cloud copy wins, so it is the one that has to restore a new device.
-    applyPersonalSlices(ports.local, cloudParsed, uid);
+    applyPersonalSlices(ports.local, cloudParsed, activeSession.uid);
     ports.applyRemote();
   };
 
-  const runSignInFlow = async (activeUid: string) => {
-    const cloudRaw = await ports.repo.load(activeUid);
+  const runSignInFlow = async (activeSession: SyncSession) => {
+    const cloudRaw = await ports.repo.load(activeSession.uid);
+    if (!isCurrent(activeSession)) return;
     const cloudParsed = parseStoredState(cloudRaw);
     const localRaw = ports.local.getItem(STORAGE_KEY);
     const localParsed = parseStoredState(localRaw);
@@ -191,10 +226,12 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
         ports.session.setItem(SKIP_FIRST_SAVE_FLAG, '1');
         break;
       case 'apply-cloud':
-        adoptCloud(cloudParsed);
+        adoptCloud(cloudParsed, activeSession);
         return; // reloading — no listener this page
       case 'upload-local': {
-        await persistSerial(JSON.stringify(localParsed));
+        const saved = await persistSerial(JSON.stringify(localParsed), activeSession);
+        if (!isCurrent(activeSession)) return;
+        if (!saved) break;
         ports.session.setItem(CLOUD_APPLIED_FLAG, '1');
         ports.notify('success', UPLOADED_MESSAGE);
         break;
@@ -204,36 +241,47 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
           semesterCount(localParsed),
           semesterCount(cloudParsed),
         );
+        if (!isCurrent(activeSession)) return;
         if (resolveMigrationChoice(choice) === 'upload-local') {
-          await persistSerial(JSON.stringify(localParsed));
+          const saved = await persistSerial(JSON.stringify(localParsed), activeSession);
+          if (!isCurrent(activeSession)) return;
+          if (!saved) break;
           ports.session.setItem(CLOUD_APPLIED_FLAG, '1');
           ports.notify('success', MIGRATED_LOCAL_MESSAGE);
         } else {
-          adoptCloud(cloudParsed);
+          adoptCloud(cloudParsed, activeSession);
           return; // reloading
         }
         break;
       }
     }
-    subscribeRealtime(activeUid);
+    subscribeRealtime(activeSession);
   };
 
   return {
     async start(nextUid) {
-      uid = nextUid;
-      await runSignInFlow(nextUid);
+      const replacingSession = session !== null;
+      cancelSession();
+      // Preserve the initial reload flags, but do not inherit another active
+      // session's echo flags when start is called directly for a new account.
+      if (replacingSession) {
+        ports.session.removeItem(CLOUD_APPLIED_FLAG);
+        ports.session.removeItem(SKIP_FIRST_SAVE_FLAG);
+      }
+      const activeSession: SyncSession = { uid: nextUid };
+      session = activeSession;
+      await runSignInFlow(activeSession);
     },
     stop() {
-      // Legacy signed-out cleanup: listener, queued saves, the applied flag.
-      uid = null;
-      unsubscribe?.();
-      unsubscribe = null;
-      clearQueued();
+      cancelSession();
       ports.session.removeItem(CLOUD_APPLIED_FLAG);
+      ports.session.removeItem(SKIP_FIRST_SAVE_FLAG);
     },
     queueSave(snapshotJson) {
+      const activeSession = session;
+      if (activeSession === null) return;
       const action = decideCloudSave({
-        signedIn: uid !== null,
+        signedIn: true,
         immediate: false,
         skipFirstSaveFlag: ports.session.getItem(SKIP_FIRST_SAVE_FLAG) !== null,
       });
@@ -245,20 +293,23 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
       queuedSnapshot = snapshotJson;
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
+        if (!isCurrent(activeSession)) return;
         const snapshot = queuedSnapshot;
         clearQueued();
-        if (snapshot !== null) void persistSerial(snapshot);
+        if (snapshot !== null) void persistSerial(snapshot, activeSession);
       }, debounceMs);
     },
     async saveNow(snapshotJson) {
+      const activeSession = session;
+      if (activeSession === null) return false;
       const action = decideCloudSave({
-        signedIn: uid !== null,
+        signedIn: true,
         immediate: true,
         skipFirstSaveFlag: false,
       });
       if (action === 'noop-signed-out') return false;
       clearQueued();
-      return persistSerial(snapshotJson);
+      return persistSerial(snapshotJson, activeSession);
     },
     // Sign-out erases the device, so it first has to know the account is not
     // about to become the only copy of something older than what is on screen.
@@ -270,7 +321,8 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
     // uncertainty (offline, an unreadable doc, a save that never landed)
     // answers false, which the caller turns into a warning, never a quiet erase.
     async isCloudCurrent() {
-      if (uid === null) return false;
+      const activeSession = session;
+      if (activeSession === null) return false;
       const localRaw = ports.local.getItem(STORAGE_KEY);
       if (localRaw === null) return true; // nothing here to lose
       // Present but unreadable is not the same as absent: a snapshot truncated
@@ -281,16 +333,17 @@ export function createCloudSyncEngine(ports: CloudSyncPorts): CloudSyncEngine {
       const pending = queuedSnapshot;
       if (pending !== null) {
         clearQueued();
-        await persistSerial(pending);
+        await persistSerial(pending, activeSession);
+        if (!isCurrent(activeSession)) return false;
       }
       // Let an in-flight write settle, but do not read its result: a failed
       // save whose content the account already holds is not a reason to warn.
       // The fingerprint below is the only authority on what is actually there.
       await activeSave.catch(() => false);
-      if (!ports.isOnline()) return false;
+      if (!isCurrent(activeSession) || !ports.isOnline()) return false;
 
-      const cloudRaw = await ports.repo.load(uid);
-      if (cloudRaw === null) return false;
+      const cloudRaw = await ports.repo.load(activeSession.uid);
+      if (!isCurrent(activeSession) || cloudRaw === null) return false;
       return getDataFingerprint(localRaw ?? '') === getDataFingerprint(cloudRaw);
     },
   };

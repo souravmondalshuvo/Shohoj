@@ -4,8 +4,7 @@ export const SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
  * HTML-escape a string for safe insertion into innerHTML.
  */
 export function escHtml(s) {
-  if (typeof s !== 'string') return String(s ?? '');
-  return s
+  return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

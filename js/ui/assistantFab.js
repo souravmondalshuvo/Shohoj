@@ -78,6 +78,8 @@ let _probed = false;
 // — including a sign-out — has to drop the previous student's turns rather than
 // let them show up in the drawer, or be replayed as the next student's context.
 let _owner = null;
+// Invalidates history loads and replies across account changes and Clear chat.
+let _assistantGeneration = 0;
 
 // ── Environment ───────────────────────────────────────────────────────────────
 
@@ -249,9 +251,12 @@ function renderQuotaHint() {
 
 async function ask(question) {
   const content = String(question || '').trim();
-  if (!content || _pending) return;
-
-  _transcript = [..._transcript, { role: 'user', content }];
+  if (!content || _pending || !_owner || _owner !== currentUid()) return;
+  const owner = _owner;
+  const generation = ++_assistantGeneration;
+  const isCurrent = () => generation === _assistantGeneration && _owner === owner && currentUid() === owner;
+  const next = [..._transcript, { role: 'user', content }];
+  _transcript = next;
   if (_inputEl) _inputEl.value = '';
   _error = null;
   _pending = true;
@@ -267,13 +272,19 @@ async function ask(question) {
     if (typeof window._shohoj_flushCloudSave === 'function') {
       await window._shohoj_flushCloudSave();
     }
-    const result = await sendAssistantTurn(_transcript, {
+    if (!isCurrent()) return;
+    const result = await sendAssistantTurn(next, {
       workerUrl: workerUrl(),
-      getToken,
+      getToken: async () => {
+        if (!isCurrent()) return null;
+        const token = await getToken();
+        return isCurrent() ? token : null;
+      },
       routine: readRoutinePicks(),
     });
+    if (!isCurrent()) return;
     if (result.ok) {
-      _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
+      _transcript = [...next, { role: 'assistant', content: result.reply }];
       persist();
       if (result.quota) _quota = result.quota;
     } else {
@@ -283,9 +294,11 @@ async function ask(question) {
       }
     }
   } finally {
-    _pending = false;
-    renderLog();
-    _inputEl?.focus();
+    if (isCurrent()) {
+      _pending = false;
+      renderLog();
+      _inputEl?.focus();
+    }
   }
 }
 
@@ -311,6 +324,9 @@ function buildDrawer() {
   clear.setAttribute('aria-label', 'Clear chat history');
   clear.textContent = 'Clear chat';
   clear.addEventListener('click', () => {
+    _assistantGeneration += 1;
+    _pending = false;
+    if (_inputEl) _inputEl.value = '';
     _transcript = [];
     _error = null;
     clearStoredHistory();
@@ -396,8 +412,9 @@ function openDrawer() {
   // have the stored record dropped on top of what is on screen.
   _transcript = [];
   const hydratingFor = _owner;
+  const generation = ++_assistantGeneration;
   loadStoredHistory(hydratingFor).then((stored) => {
-    if (!_drawer || _owner !== hydratingFor || _transcript.length > 0) return;
+    if (!_drawer || generation !== _assistantGeneration || _owner !== hydratingFor || currentUid() !== hydratingFor || _transcript.length > 0) return;
     if (stored.length === 0) return;
     _transcript = stored;
     renderLog();
@@ -441,6 +458,8 @@ function openDrawer() {
 }
 
 function closeDrawer() {
+  _assistantGeneration += 1;
+  _pending = false;
   if (!_drawer) return;
   const node = _drawer;
   document.removeEventListener('keydown', onKeydown);
@@ -528,6 +547,11 @@ export function refreshLauncher() {
   const uid = currentUid();
   if (uid !== _owner) {
     const previous = _owner;
+    // Remove the old panel immediately, including any closing animation: even
+    // its draft and quota belong only to the previous student.
+    closeDrawer();
+    dropExiting();
+    _quota = null;
     _owner = uid;
     _transcript = [];
     _error = null;

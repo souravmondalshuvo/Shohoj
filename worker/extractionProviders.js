@@ -19,6 +19,7 @@
 // could not answer.
 
 import Anthropic from '@anthropic-ai/sdk';
+import { boundedModelPayload, boundedModelObject, completeUsage } from './aiLimits.js';
 
 import {
   CLAUDE_MODEL,
@@ -48,7 +49,7 @@ async function runGeminiExtraction({ apiKey, system, prompt, fetchImpl }) {
     res = await fetchImpl(GEMINI_URL, {
       method: 'POST',
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: boundedModelPayload({
         model: GEMINI_MODEL,
         system_instruction: system,
         input: prompt,
@@ -76,15 +77,17 @@ async function runGeminiExtraction({ apiKey, system, prompt, fetchImpl }) {
 }
 
 async function runClaudeExtraction({ apiKey, system, prompt }) {
-  const anthropic = new Anthropic({ apiKey, maxRetries: 1 });
+  const anthropic = new Anthropic({ apiKey, maxRetries: 0 });
   let response;
   try {
-    response = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: EXTRACTION_MAX_TOKENS,
-      system,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    response = await anthropic.messages.create(
+      boundedModelObject({
+        model: CLAUDE_MODEL,
+        max_tokens: EXTRACTION_MAX_TOKENS,
+        system,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    );
   } catch (e) {
     // The SDK does not throw on a refusal, so every throw is transport or API
     // failure — exactly the fallback signal.
@@ -92,6 +95,7 @@ async function runClaudeExtraction({ apiKey, system, prompt }) {
   }
   return {
     text: claudeText(response?.content),
+    usageComplete: completeUsage(response?.usage),
     usage: {
       inputTokens: Number(response?.usage?.input_tokens) || 0,
       outputTokens: Number(response?.usage?.output_tokens) || 0,
@@ -105,7 +109,7 @@ async function runOpenAiExtraction({ apiKey, system, prompt, fetchImpl }) {
     res = await fetchImpl(OPENAI_URL, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: boundedModelPayload({
         model: OPENAI_MODEL,
         input: [
           { role: 'system', content: system },
@@ -127,6 +131,7 @@ async function runOpenAiExtraction({ apiKey, system, prompt, fetchImpl }) {
   }
   return {
     text: openAiText(body?.output),
+    usageComplete: completeUsage(body?.usage),
     usage: {
       inputTokens: Number(body?.usage?.input_tokens) || 0,
       outputTokens: Number(body?.usage?.output_tokens) || 0,

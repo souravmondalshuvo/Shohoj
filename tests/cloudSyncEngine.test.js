@@ -53,7 +53,7 @@ function fakeRepo() {
   };
 }
 
-function harness({ local = {}, session = {}, cloud = null, online = true, migrationChoice = 'local' } = {}) {
+function harness({ local = {}, session = {}, cloud = null, online = true, migrationChoice = 'local', repoOverrides = {}, migrationPrompt } = {}) {
   const { repo, state, fire, hasListener } = fakeRepo();
   state.cloud = cloud;
   const localStore = memStore(local);
@@ -62,12 +62,12 @@ function harness({ local = {}, session = {}, cloud = null, online = true, migrat
   let clock = 10_000;
 
   const engine = createCloudSyncEngine({
-    repo,
+    repo: { ...repo, ...repoOverrides },
     local: localStore,
     session: sessionStore,
     promptMigration: async () => {
       events.prompts += 1;
-      return migrationChoice;
+      return migrationPrompt ? migrationPrompt() : migrationChoice;
     },
     notify: (kind, message) => events.notify.push([kind, message]),
     applyRemote: () => {
@@ -451,4 +451,235 @@ test('a doc written before these fields existed leaves the device alone', async 
   assert.deepEqual(JSON.parse(h.localStore.getItem('shohoj_routine_v1')), {
     picks: { CSE110: 1 },
   });
+});
+
+// A deferred port lets sign-out/account-switch happen at the actual I/O
+// boundary, rather than merely testing that stop() clears a timer.
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+test('a load finishing after stop cannot restore private data or start a listener', async () => {
+  const load = deferred();
+  const h = harness({ repoOverrides: { load: () => load.promise } });
+  const starting = h.engine.start('alice');
+  h.engine.stop();
+  load.resolve(FULL_SNAPSHOT);
+  await starting;
+  assert.equal(h.localStore._map.size, 0);
+  assert.equal(h.sessionStore._map.size, 0);
+  assert.equal(h.hasListener(), false);
+  assert.equal(h.events.applyRemote, 0);
+});
+
+test('a stale sign-in load cannot overwrite a new account or its subscription', async () => {
+  const load = deferred();
+  const h = harness({ repoOverrides: { load: (uid) => uid === 'alice' ? load.promise : null } });
+  const starting = h.engine.start('alice');
+  h.engine.stop();
+  await h.engine.start('bob');
+  const bobLocal = [...h.localStore._map];
+  const bobSession = [...h.sessionStore._map];
+  load.resolve(FULL_SNAPSHOT);
+  await starting;
+  assert.deepEqual([...h.localStore._map], bobLocal);
+  assert.deepEqual([...h.sessionStore._map], bobSession);
+  assert.deepEqual(h.events.notify, []);
+  assert.equal(h.events.applyRemote, 0);
+  assert.ok(h.hasListener());
+  h.fire(snap([]));
+  h.fire(snap([{ id: 2 }]));
+  assert.equal(h.localStore.getItem(STORAGE_KEY), snap([{ id: 2 }]));
+  h.engine.stop();
+});
+
+test('restarting the same UID invalidates the earlier sign-in generation', async () => {
+  const load = deferred();
+  let loads = 0;
+  const h = harness({ repoOverrides: { load: () => ++loads === 1 ? load.promise : null } });
+  const staleStart = h.engine.start('alice');
+  h.engine.stop();
+  await h.engine.start('alice');
+  load.resolve(FULL_SNAPSHOT);
+  await staleStart;
+  assert.equal(h.localStore._map.size, 0);
+  assert.equal(h.events.applyRemote, 0);
+  assert.ok(h.hasListener());
+  h.engine.stop();
+});
+
+for (const choice of ['local', 'cloud']) {
+  test(`a migration choice (${choice}) after account switch cannot copy the former account`, async () => {
+    const prompt = deferred();
+    const h = harness({
+      local: { [STORAGE_KEY]: snap([{ id: 1 }]) },
+      repoOverrides: { load: async (uid) => uid === 'alice' ? FULL_SNAPSHOT : null },
+      migrationPrompt: () => prompt.promise,
+    });
+    const starting = h.engine.start('alice');
+    await flush();
+    assert.equal(h.events.prompts, 1);
+    h.engine.stop();
+    h.localStore._map.clear(); // the sign-out flow wipes the former account
+    await h.engine.start('bob');
+    const bobLocal = [...h.localStore._map];
+    const bobSession = [...h.sessionStore._map];
+    prompt.resolve(choice);
+    await starting;
+    assert.deepEqual(h.state.saved, []);
+    assert.deepEqual([...h.localStore._map], bobLocal);
+    assert.deepEqual([...h.sessionStore._map], bobSession);
+    assert.deepEqual(h.events.notify, []);
+    assert.equal(h.events.applyRemote, 0);
+    assert.ok(h.hasListener());
+    h.engine.stop();
+  });
+}
+
+for (const fails of [false, true]) {
+  test(`an old ${fails ? 'failed' : 'successful'} write cannot drain its queue into the next account`, async () => {
+    const write = deferred();
+    const writes = [];
+    const h = harness({ repoOverrides: {
+      save: async (uid, data) => {
+        writes.push([uid, data]);
+        if (uid === 'alice') await write.promise;
+      },
+    } });
+    await h.engine.start('alice');
+    const firstData = snap([{ id: 1 }]);
+    const oldSave = h.engine.saveNow(firstData);
+    await flush(); // first write is in flight; the next one waits behind it
+    const queued = h.engine.saveNow(snap([{ id: 2 }]));
+    h.engine.stop();
+    await h.engine.start('bob');
+    h.advance(1000);
+    const bobData = snap([{ id: 3 }]);
+    // Bob's saves must not wait for Alice's unresolved request.
+    assert.equal(await h.engine.saveNow(bobData), true);
+    const bobSyncedAt = h.localStore.getItem(LAST_SYNC_KEY);
+    h.advance(1000);
+    if (fails) write.reject(new Error('old account write failed'));
+    else write.resolve();
+    assert.equal(await oldSave, false);
+    assert.equal(await queued, false);
+    assert.deepEqual(writes, [['alice', firstData], ['bob', bobData]]);
+    assert.equal(h.localStore.getItem(LAST_SYNC_KEY), bobSyncedAt);
+    assert.deepEqual(h.events.notify, []);
+    h.engine.stop();
+  });
+}
+
+test('a sign-in upload finishing after stop cannot set flags, notify or subscribe', async () => {
+  const write = deferred();
+  const h = harness({
+    local: { [STORAGE_KEY]: snap([{ id: 1 }]) },
+    repoOverrides: { save: () => write.promise },
+  });
+  const starting = h.engine.start('alice');
+  await flush();
+  h.engine.stop();
+  h.localStore._map.clear();
+  write.resolve();
+  await starting;
+  assert.equal(h.localStore._map.size, 0);
+  assert.equal(h.sessionStore._map.size, 0);
+  assert.deepEqual(h.events.notify, []);
+  assert.equal(h.hasListener(), false);
+});
+
+test('a callback queued before unsubscribe cannot restore the former account', async () => {
+  const callbacks = new Map();
+  const unsubscribed = [];
+  const h = harness({ repoOverrides: {
+    subscribe: (uid, callback) => {
+      callbacks.set(uid, callback);
+      return () => unsubscribed.push(uid);
+    },
+  } });
+  await h.engine.start('alice');
+  callbacks.get('alice')(null, false); // consume first-snapshot suppression
+  await h.engine.start('bob'); // direct account switch also cancels Alice
+  assert.deepEqual(unsubscribed, ['alice']);
+  const bobLocal = [...h.localStore._map];
+  const bobSession = [...h.sessionStore._map];
+  callbacks.get('alice')(FULL_SNAPSHOT, true);
+  await flush();
+  assert.deepEqual([...h.localStore._map], bobLocal);
+  assert.deepEqual([...h.sessionStore._map], bobSession);
+  assert.equal(h.events.applyRemote, 0);
+  assert.deepEqual(h.events.notify, []);
+  h.engine.stop();
+});
+
+test('stop cancels a remote reload already scheduled by the former account', async () => {
+  const h = harness();
+  await h.engine.start('alice');
+  h.fire(null, false);
+  h.fire(FULL_SNAPSHOT);
+  assert.equal(h.events.applyRemote, 0); // the timeout has not fired yet
+  h.engine.stop();
+  h.localStore._map.clear();
+  await h.engine.start('bob');
+  await flush();
+  assert.equal(h.events.applyRemote, 0);
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), null);
+  h.engine.stop();
+});
+
+test('a direct account switch drops a queued save and old echo flags', async () => {
+  const h = harness();
+  await h.engine.start('alice');
+  h.engine.queueSave(FULL_SNAPSHOT);
+  h.sessionStore.setItem(SKIP_FIRST_SAVE_FLAG, '1');
+  await h.engine.start('bob');
+  h.engine.queueSave(snap([{ id: 2 }]));
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(h.state.saved, [snap([{ id: 2 }])]);
+  assert.equal(h.sessionStore.getItem(SKIP_FIRST_SAVE_FLAG), null);
+  h.engine.stop();
+});
+
+test('isCloudCurrent cannot authorize a wipe using an earlier account load', async () => {
+  const load = deferred();
+  let loads = 0;
+  const same = snap([{ id: 1 }]);
+  const h = harness({
+    local: { [STORAGE_KEY]: same },
+    repoOverrides: { load: () => ++loads === 2 ? load.promise : same },
+  });
+  await h.engine.start('alice');
+  const checking = h.engine.isCloudCurrent();
+  await flush();
+  h.engine.stop();
+  await h.engine.start('bob');
+  load.resolve(same);
+  assert.equal(await checking, false);
+  h.engine.stop();
+});
+
+test('isCloudCurrent cannot read the next account after awaiting an old save', async () => {
+  const write = deferred();
+  const loads = [];
+  const same = snap([{ id: 1 }]);
+  const h = harness({
+    local: { [STORAGE_KEY]: same },
+    repoOverrides: {
+      load: async (uid) => { loads.push(uid); return same; },
+      save: () => write.promise,
+    },
+  });
+  await h.engine.start('alice');
+  h.engine.queueSave(same);
+  const checking = h.engine.isCloudCurrent();
+  await flush();
+  h.engine.stop();
+  await h.engine.start('bob');
+  write.resolve();
+  assert.equal(await checking, false);
+  assert.deepEqual(loads, ['alice', 'bob']);
+  h.engine.stop();
 });

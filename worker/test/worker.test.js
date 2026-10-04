@@ -8,6 +8,7 @@
  * calls so the test stays offline.
  */
 
+import { withAtomicLedger } from './helpers/atomicLedger.js';
 import { exportJWK, exportPKCS8, generateKeyPair, SignJWT } from 'jose';
 import worker, {
   __resetSeatIndexCacheForTests,
@@ -132,7 +133,7 @@ function json(data, init = {}) {
 
 async function withMockedFetch(handler, fn) {
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = handler;
+  globalThis.fetch = withAtomicLedger(handler);
   try {
     return await fn();
   } finally {
@@ -3113,8 +3114,8 @@ async function makeServiceAccountJson() {
       }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
 
       assertEq(res.status, 200);
-      assertEq(writes.length, 1, 'the turn is recorded');
-      const spent = writes[0].fields.spentUsd.doubleValue;
+      assertEq(writes.length, 2, 'budget is reserved before the call and settled afterwards');
+      const spent = writes.at(-1).fields.spentUsd.doubleValue;
       assert(spent > 0.25, `the ledger grew from 0.25, got ${spent}`);
       assert(spent < 0.26, `one turn must not cost a cent, got ${spent}`);
     } finally {
@@ -3181,9 +3182,8 @@ async function makeServiceAccountJson() {
       { waitUntil: (p) => deferred.push(p) }));
 
       assertEq(res.status, 200);
-      // Two ledgers, two deferred writes: the monthly spend ceiling and the
-      // daily per-uid quota, neither of which the student should wait on.
-      assertEq(deferred.length, 2, 'both ledger writes were deferred, not awaited');
+      // Admission was awaited before the provider. Settlement is one atomic commit.
+      assertEq(deferred.length, 1, 'atomic settlement was deferred');
       await Promise.all(deferred);
     } finally {
       __setTestJwksForTests(null);
@@ -3275,7 +3275,7 @@ async function makeServiceAccountJson() {
     }
   });
 
-  await test('quota under the limit increments only after a successful turn', async () => {
+  await test('quota under the limit is reserved before a successful turn', async () => {
     const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
     __setTestJwksForTests({ keys: [jwk] });
     const quotaWrites = [];
@@ -3318,6 +3318,7 @@ async function makeServiceAccountJson() {
   await test('a failed turn never costs the student part of their day', async () => {
     const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
     __setTestJwksForTests({ keys: [jwk] });
+    const quotaWrites = [];
     try {
       const res = await withMockedFetch(async (input, init = {}) => {
         const call = await readFetchCall(input, init);
@@ -3328,7 +3329,8 @@ async function makeServiceAccountJson() {
           if ((call.init.method || 'GET') === 'GET') {
             return json({ fields: { count: { integerValue: '3' } } });
           }
-          throw new Error('quota must not be written for a failed turn');
+          quotaWrites.push(Number(JSON.parse(call.body).fields.count.integerValue));
+          return json({});
         }
         if (/\/documents\/assistantBudget\//.test(call.url)) {
           if ((call.init.method || 'GET') === 'GET') return new Response('not found', { status: 404 });
@@ -3344,6 +3346,7 @@ async function makeServiceAccountJson() {
       }), { ...ENV, ANTHROPIC_API_KEY: 'sk-test' }, {}));
 
       assertEq(res.status, 502, 'every provider failed');
+      assertEq(JSON.stringify(quotaWrites), '[4,3]', 'failed turn refunds only its own reservation');
     } finally {
       __setTestJwksForTests(null);
     }

@@ -15,9 +15,9 @@
 //      inputs should name the same row. It is wrong for a credential. A derived
 //      token cannot be revoked without changing who the student is.
 //
-//   2. It is stored in its own collection keyed BY the token, so resolving one
-//      is a single keyed read with no index and no query — the same shape the
-//      derived ids buy elsewhere, reached a different way.
+//   2. It is stored in its own collection keyed BY the token. Resolving one
+//      checks that index AND the owner's current token, so an old orphan can
+//      never remain a credential after a rotation or a revoke.
 //
 //   3. It must never be logged. A token in a request path is written to disk on
 //      every poll by any logger that records paths, and this Worker's own error
@@ -31,8 +31,21 @@ const TOKEN_PATTERN = /^cft_[0-9a-f]{32}$/;
 const FEED_PREFIX = '/feeds/tasks/';
 const FEED_SUFFIX = '.ics';
 
-/** The collection keyed by token. One keyed read resolves a feed to a student. */
+/** The collection keyed by token. Ownership still requires the forward pointer. */
 export const CALENDAR_FEED_COLLECTION = 'calendarFeeds';
+
+/**
+ * Resolve only the owner's current credential. Legacy orphan reverse documents
+ * are intentionally inert, including ones left by previously failed writes.
+ */
+export async function resolveCalendarFeedOwner(deps, token) {
+  if (!isCalendarFeedToken(token)) return null;
+  const feed = await deps.getDoc(`${CALENDAR_FEED_COLLECTION}/${token}`);
+  const uid = feed?.firebaseUid;
+  if (typeof uid !== 'string' || uid === '' || uid.includes('/')) return null;
+  const owner = await deps.getDoc(`shohojUsers/${uid}`);
+  return owner?.calendarFeedToken === token ? uid : null;
+}
 
 /**
  * Mint a token from injected randomness.

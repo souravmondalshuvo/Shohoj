@@ -358,3 +358,16 @@ test('the transcript survives closing the drawer and switching tabs', async ({ p
   await expect(page.locator('.assistant-bubble--user')).toHaveText('what is my cgpa?');
   await expect(page.locator('.assistant-bubble--reply')).toHaveText('Your CGPA is 3.42.');
 });
+
+import { assistantPrivacyTests } from '../e2e-support/assistantPrivacy.js';
+assistantPrivacyTests(test, async page => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await boot(page);
+  await page.evaluate(() => {
+    window.__switchAssistantUser = uid => {
+      window.__uid = uid;
+      window.dispatchEvent(new CustomEvent('shohoj:auth-changed'));
+    };
+  });
+  await expect(fab(page)).toBeVisible();
+});

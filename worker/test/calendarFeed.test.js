@@ -16,10 +16,38 @@ import {
   isCalendarFeedToken,
   parseCalendarFeedPath,
   redactFeedPath,
+  resolveCalendarFeedOwner,
 } from '../calendarFeed.js';
 
 const HEX = 'a'.repeat(32);
 const TOKEN = `cft_${HEX}`;
+
+test('anonymous reads require the current owner pointer', async () => {
+  const uid = 'uid_alice';
+  const reverse = { firebaseUid: uid };
+  for (const owner of [null, {}, { calendarFeedToken: '' }, { calendarFeedToken: `cft_${'b'.repeat(32)}` }]) {
+    const deps = { getDoc: async (path) => path.startsWith('calendarFeeds/') ? reverse : owner };
+    assert.equal(await resolveCalendarFeedOwner(deps, TOKEN), null);
+  }
+  const deps = {
+    getDoc: async (path) => path.startsWith('calendarFeeds/') ? reverse : { calendarFeedToken: TOKEN },
+  };
+  assert.equal(await resolveCalendarFeedOwner(deps, TOKEN), uid);
+});
+
+test('anonymous reads reject an invalid reverse owner without reading a user', async () => {
+  for (const feed of [null, {}, { firebaseUid: '' }, { firebaseUid: 1 }, { firebaseUid: 'alice/other' }]) {
+    let reads = 0;
+    const deps = { getDoc: async () => { reads++; return feed; } };
+    assert.equal(await resolveCalendarFeedOwner(deps, TOKEN), null);
+    assert.equal(reads, 1);
+  }
+});
+
+test('anonymous reads reject malformed tokens without touching storage', async () => {
+  const deps = { getDoc: async () => { throw new Error('must not read'); } };
+  assert.equal(await resolveCalendarFeedOwner(deps, 'invalid'), null);
+});
 
 // ── Minting ─────────────────────────────────────────────────────────────────
 

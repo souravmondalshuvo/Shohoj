@@ -14,8 +14,7 @@ export const SEASON_ORDER: readonly SemesterSeason[] = ['Spring', 'Summer', 'Fal
  * HTML-escape a string for safe insertion into innerHTML.
  */
 export function escHtml(s: unknown): string {
-  if (typeof s !== 'string') return String(s ?? '');
-  return s
+  return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

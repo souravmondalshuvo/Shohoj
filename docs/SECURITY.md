@@ -20,6 +20,9 @@ Firestore rules in `firestore.rules` are the trust boundary. Important guarantee
 - Pending paper metadata is readable only by the uploader or an admin; other BRACU users see papers only after approval.
 - New paper files must use an owner-scoped storage path: `papers/{COURSE_CODE}/{UPLOADER_UID}/{filename}`.
 - Feedback upvote documents are readable only by the voter or an admin.
+- Study-group joins and peer roster reads require the group to belong to the caller's verified campus. An old membership cannot bypass that check.
+- Client-created groups, feedback, and lost-and-found posts must name the caller's campus. Only verified BRACU callers may omit the field for compatibility with the legacy client.
+- Worker paper downloads enforce the paper's campus before serving the file; legacy papers without a campus belong to BRACU. Administrators retain moderation access.
 - Admin status is granted via a Firebase custom claim (`admin: true`) and set out-of-band via `scripts/set_admin_claim.js`. UID and email are no longer trusted by rules.
 
 The rules suite (`tests/firestore.rules.test.js`) runs in CI against the Firestore emulator and asserts these guarantees.
@@ -64,8 +67,77 @@ rules plus the Worker's token verification — not App Check.
 ## XSS prevention
 
 - All user-sourced strings (course titles, semester labels, transcript-imported data, error messages) are escaped via `escHtml()` and `escAttr()` in `js/core/helpers.js` before any `innerHTML` insertion.
+- Escaping converts non-string values to text before escaping them. Feedback identifiers are attribute-escaped, and rules restrict new feedback context to a bounded string `tab` field.
 - The transcript import flow does not serialize parsed PDF data into `onclick` attributes; it stores it in a JS-side slot.
 - `sanitizeRestoredState()` strips legacy HTML from anything restored from localStorage on load.
+
+## Account switching and calendar links
+
+The authentication source invalidates stale identity checks and pending token
+reads on every auth event and explicit sign-out. Both assistant interfaces reset
+account-owned state on a UID change and discard late history loads and replies.
+Clearing chat also invalidates pending replies; IndexedDB operations are serialized
+so a delayed save cannot resurrect a cleared conversation.
+
+The React cloud-sync engine binds asynchronous work to a session object. Signing
+out or starting another session invalidates outstanding loads, migration choices,
+queued writes, realtime callbacks, and delayed reloads. An already submitted
+write retains its original UID; its completion cannot change the next session's
+local data or sync status.
+
+Calendar feed URLs are bearer credentials. Anonymous feed requests validate both
+the token index and the owner's current token. Rotation and revocation use an
+atomic Firestore commit with an owner-document version precondition; partial
+updates preserve the user's identity and profile fields. Old orphaned index
+records cannot authorize a feed. Successful responses use `private, no-store`;
+calendar applications may retain events they already downloaded.
+
+## Lost-and-found notifications
+
+Claims require an open post on the caller's campus. The Worker rechecks campus,
+post status, and the poster contact before processing queued claims. A private
+`lostFoundDeliveries` receipt is reserved before sending and retained after the
+queue entry is removed; rules reject recreating a claim with an existing receipt.
+Do not expire or routinely delete these receipts while their posts still exist.
+
+Retries carry the same provider idempotency key and require an identical payload.
+Resend retains these keys for [24 hours](https://resend.com/docs/dashboard/emails/idempotency-keys);
+the Worker stops retrying after 23 hours. An ambiguous older attempt or changed
+payload logs `lost_found_delivery_reconciliation_required` and needs operator
+reconciliation, rather than automatically sending another message. Existing
+receipts remain closed to every client, including admins; backend access is needed
+for deliberate reconciliation. No migration or destructive data cleanup is needed.
+
+## Request body limits
+
+The Worker counts actual streamed bytes and cancels at the application limit:
+32 KiB for reviews, 64 KiB for academic mutations, 128 KiB for chat, 56 KiB for
+extraction, and 10 MiB for uploads. Content-Length can reject early but cannot
+bypass the stream limit. Review and academic size failures return 413 before
+creating or updating database records. JSON shape validation still runs afterward.
+
+## AI request limits and accounting
+
+Chat and deadline extraction reserve their shared daily quota and monthly budget
+in one atomic Firestore commit before calling a model. Version preconditions
+serialize concurrent reservations. Settlement atomically releases the reservation,
+records cost, and refunds the daily quota when the provider fails to answer. A
+settled admission cannot charge or refund twice.
+
+Reservations cover the bounded model input, output token caps, permitted tool
+rounds, and configured fallback providers. Paid SDK retries are disabled so they
+cannot make unreserved attempts. Request bodies are bounded while streaming,
+including requests with missing or misleading Content-Length headers; extraction
+course codes also have count, length, and format limits.
+
+The ledger uses the configured estimates in `worker/assistantBudget.js`, including
+its free-tier Gemini assumption. Provider dashboards remain the source of billing
+truth. Failed or incomplete paid usage reporting retains a pessimistic charge;
+a failed or ambiguous settlement retains its reservation and can reduce available
+capacity. Operators should investigate `ai_settlement_failed` events and pending
+`assistantAdmissions` records before reconciling them against provider usage.
+Never clear pending holds solely because they are old. These records, the budget,
+and daily quota are Worker-only; the Firestore catch-all denies client access.
 
 ## CDN integrity
 

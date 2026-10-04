@@ -234,3 +234,30 @@ test('signed in: a failing endpoint surfaces the unavailable error state', async
     'The assistant is temporarily unavailable. Please try again in a bit.',
   );
 });
+
+// A live source is required here: signedIn() intentionally freezes identity
+// for the ordinary rendering tests above.
+import { assistantPrivacyTests } from '../e2e-support/assistantPrivacy.js';
+assistantPrivacyTests(test, async page => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(globals => {
+    Object.assign(window, globals);
+    let snapshot = {
+      status: 'authenticated', uid: 'privacy-a', email: 'a@g.bracu.ac.bd',
+      isAdmin: false, university: 'bracu',
+    };
+    const listeners = new Set();
+    window.__shohojAuthSource = {
+      get: () => snapshot,
+      subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener); },
+      getIdToken: async () => `token-${snapshot.uid}`,
+    };
+    window.__switchAssistantUser = uid => {
+      snapshot = { ...snapshot, uid, email: `${uid}@g.bracu.ac.bd` };
+      for (const listener of listeners) listener();
+    };
+  }, VALID_GLOBALS);
+  await readyReports(page, true);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toBeVisible();
+});

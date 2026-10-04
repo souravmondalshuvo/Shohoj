@@ -41,18 +41,23 @@ test('campusStamp returns empty rather than guessing a campus', () => {
     assert.equal(campusStamp({ currentUser: { email: 'x@g.bracu.ac.bd.attacker.com' } }), '');
 });
 
-test('rules accept the campus a repo stamps, and never demand it', () => {
+test('rules accept stamped campuses and allow omitted campus only for legacy BRACU', () => {
     // The invariant changed after the first fix shipped, and the reason is the
     // deploy boundary. Two clients write these collections and cannot be
     // upgraded together: the legacy bundle at the site root sends no campus,
     // the shell under /app/ does. So the rules must
     //
     //   ACCEPT the field  — or the shell's creates are denied, and
-    //   NOT REQUIRE it    — or legacy's creates are denied the moment the
-    //                       rules deploy, taking down the main production app.
+    //   ALLOW OMISSION for BRACU — the legacy client is BRACU-only.
     //
-    // Requiring it is the mistake this test exists to prevent a second time.
+    // Omission by another campus must fail, because legacy documents default
+    // to BRACU. Behavioral campus checks also run in the rules emulator suite.
     const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
+
+    const campusValidator = rules.slice(rules.indexOf('function validCreateCampus('));
+    const campusBody = campusValidator.slice(0, campusValidator.indexOf('\n    }'));
+    assert.ok(campusBody.includes('writingOwnCampus(data)'));
+    assert.ok(campusBody.includes("isVerifiedCampusUser() && userCampus() == 'bracu'"));
 
     const clientWritten = [
         ['src/platform/firebase/studyGroupsRepo.ts', 'validStudyGroupPayload'],
@@ -78,8 +83,8 @@ test('rules accept the campus a repo stamps, and never demand it', () => {
         );
         // Optional is not unchecked: a present field is still pinned to the writer.
         assert.ok(
-            body.includes("!('university' in d) || writingOwnCampus(d)"),
-            `${validator} must still pin a present university to the writer's own campus`,
+            body.includes('validCreateCampus(d)'),
+            `${validator} must use the campus validator that guards both stamped and legacy writes`,
         );
 
         const repo = fs.readFileSync(path.join(ROOT, repoPath), 'utf8');

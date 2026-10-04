@@ -76,7 +76,7 @@ import {
 } from './assistant.js';
 import { buildAssistantProviders, runAssistantTurn } from './assistantProviders.js';
 import { buildExtractionProviders, runExtractionTurn } from './extractionProviders.js';
-import { CALENDAR_FEED_COLLECTION, parseCalendarFeedPath, redactFeedPath } from './calendarFeed.js';
+import { resolveCalendarFeedOwner, parseCalendarFeedPath, redactFeedPath } from './calendarFeed.js';
 import { createCalendarFeed, deleteCalendarFeed, getCalendarFeed } from './calendarFeedHandlers.js';
 import {
   buildTasksICS as buildFeedICS,
@@ -88,13 +88,11 @@ import {
   buildExtractionPrompt,
   parseExtractionResponse,
 } from './taskExtraction.js';
-import {
-  estimateCostUsd,
-  isBudgetExhausted,
-  monthKey,
-  monthlyBudgetUsd,
-} from './assistantBudget.js';
-import { dailyLimit, dayKey, isQuotaExhausted, resetsAtIso } from './assistantQuota.js';
+import { monthKey, monthlyBudgetUsd } from './assistantBudget.js';
+import { dailyLimit, dayKey, resetsAtIso } from './assistantQuota.js';
+import { createFirestoreAtomicStore } from './firestoreAtomic.js';
+import { reserveAiAdmission, settleAiAdmission } from './aiAdmission.js';
+import { meterProviders, MAX_AI_BODY_BYTES, MAX_EXTRACTION_BODY_BYTES } from './aiLimits.js';
 import { isKnownCourse } from './catalog.generated.js';
 // The domain -> campus map, generated from src/core/university.ts so the
 // Worker, the Firestore rules and the registry cannot disagree about who
@@ -117,10 +115,14 @@ import * as academic from './academicHandlers.js';
 // tasks.js are pure, taskHandlers.js returns plain { status, body }.
 import * as tasks from './taskHandlers.js';
 import { buildReminderEmail, isStale, shouldSend } from './reminders.js';
+import { eligibleLostFoundClaim, deliverLostFoundClaim } from './lostFoundDelivery.js';
+import { BodyTooLarge, readBoundedBytes, readBoundedJson } from './requestBody.js';
 
 export { campusOfEmail };
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_REVIEW_BODY_BYTES = 32 * 1024;
+const MAX_ACADEMIC_BODY_BYTES = 64 * 1024;
 const ALLOWED_MIME_RE = /^application\/pdf$|^image\/(?:png|jpeg|webp|gif)$/;
 const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+$/;
 // Legacy paths (no uploader segment) still exist in R2 from earlier uploads.
@@ -701,9 +703,16 @@ async function handleUpload(request, env, origin, ctx) {
     catalogCampusFor(claims),
   );
 
-  const body = await request.arrayBuffer();
-  if (body.byteLength > MAX_UPLOAD_BYTES) {
-    return jsonResponse({ error: 'File larger than 10 MB' }, { status: 413 }, env, origin);
+  let body;
+  try {
+    body = await readBoundedBytes(request, MAX_UPLOAD_BYTES);
+  } catch (error) {
+    return jsonResponse(
+      { error: error instanceof BodyTooLarge ? 'File larger than 10 MB' : 'Invalid file body' },
+      { status: error instanceof BodyTooLarge ? 413 : 400 },
+      env,
+      origin,
+    );
   }
 
   // Magic-byte sniff: reject files whose declared MIME type doesn't match
@@ -949,6 +958,10 @@ async function handleDownload(request, env, origin) {
   const docJson = await docRes.json();
   const fields = fromFirestoreFields(docJson?.fields || {});
 
+  const paperCampus = fields.university ?? 'bracu';
+  if (!isAdmin && paperCampus !== campusOfEmail(claims?.email)) {
+    return jsonResponse({ error: 'Forbidden' }, { status: 403 }, env, origin);
+  }
   const approved = fields.approved === true;
   const uploaderUid = String(fields.uploaderUid || '');
   if (!isAdmin && !approved && uploaderUid !== callerUid) {
@@ -1039,9 +1052,14 @@ async function handleReview(request, env, origin) {
 
   let payload;
   try {
-    payload = await request.json();
-  } catch {
-    return jsonResponse({ error: 'Invalid JSON' }, { status: 400 }, env, origin);
+    payload = await readBoundedJson(request, MAX_REVIEW_BODY_BYTES);
+  } catch (error) {
+    return jsonResponse(
+      { error: error instanceof BodyTooLarge ? 'Request body too large' : 'Invalid JSON' },
+      { status: error instanceof BodyTooLarge ? 413 : 400 },
+      env,
+      origin,
+    );
   }
 
   const validation = validateReviewPayload(payload, catalogCampusFor(claims));
@@ -1178,7 +1196,7 @@ async function handleApiV1Me(request, env, origin) {
     resolved = await resolveShohojUser(
       {
         getDoc: (path) => firestoreGetFields(env, accessToken, path),
-        patchDoc: (path, obj) => firestorePatchFields(env, accessToken, path, obj),
+        patchDoc: (path, obj) => firestoreMergeFields(env, accessToken, path, obj),
         sha256Hex,
         now: () => new Date(),
       },
@@ -1222,8 +1240,18 @@ async function handleApiV1Me(request, env, origin) {
  * nothing the domain layer needs and its shape would leak Firestore's REST
  * response into pure code.
  */
+function atomicStore(env, token) {
+  return createFirestoreAtomicStore({
+    baseUrl: firestoreDocsBase(env),
+    token,
+    toFields: toFirestoreFields,
+    fromFields: fromFirestoreFields,
+  });
+}
+
 function academicDeps(env, token) {
   return {
+    ...atomicStore(env, token),
     getDoc: (path) => firestoreGetFields(env, token, path),
     patchDoc: (path, fields) => firestorePatchFields(env, token, path, fields),
     deleteDoc: (path) => firestoreDeleteDoc(env, token, path),
@@ -1234,8 +1262,9 @@ function academicDeps(env, token) {
 /** Parse the request body, or null when it is absent or not JSON. */
 async function readJsonBody(request) {
   try {
-    return await request.json();
-  } catch {
+    return await readBoundedJson(request, MAX_ACADEMIC_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof BodyTooLarge) throw error;
     return null;
   }
 }
@@ -1284,6 +1313,22 @@ async function handleAcademicApi(request, env, origin, url) {
     );
   }
 
+  let requestBody = null;
+  if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+    try {
+      requestBody = await readJsonBody(request);
+    } catch (error) {
+      if (!(error instanceof BodyTooLarge)) throw error;
+      return apiV1Error(
+        env,
+        origin,
+        413,
+        API_ERROR_CODES.INVALID_REQUEST,
+        'Request body too large.',
+      );
+    }
+  }
+
   let token;
   try {
     token = await getServiceAccountAccessToken(env);
@@ -1312,7 +1357,12 @@ async function handleAcademicApi(request, env, origin, url) {
     // It bootstraps on first sight, so a student's very first action can be
     // creating a semester rather than having to load their profile first.
     ({ user } = await resolveShohojUser(
-      { getDoc: deps.getDoc, patchDoc: deps.patchDoc, sha256Hex, now: () => new Date() },
+      {
+        getDoc: deps.getDoc,
+        patchDoc: (path, fields) => firestoreMergeFields(env, token, path, fields),
+        sha256Hex,
+        now: () => new Date(),
+      },
       claims,
     ));
   } catch (e) {
@@ -1362,7 +1412,7 @@ async function handleAcademicApi(request, env, origin, url) {
     feedOrigin: url.origin,
   };
 
-  const result = await dispatchAcademic(ctx, request, url);
+  const result = await dispatchAcademic(ctx, request, url, requestBody);
   if (result === null) {
     return apiV1Error(env, origin, 404, API_ERROR_CODES.NOT_FOUND, 'No such endpoint.');
   }
@@ -1373,13 +1423,13 @@ async function handleAcademicApi(request, env, origin, url) {
  * Method + path to handler. Returns null when nothing matches, so the caller
  * answers 404 in the one place that builds responses.
  */
-async function dispatchAcademic(ctx, request, url) {
+async function dispatchAcademic(ctx, request, url, requestBody) {
   const { method } = request;
   const path = url.pathname;
 
   if (path === '/api/v1/semesters') {
     if (method === 'GET') return academic.listSemesters(ctx);
-    if (method === 'POST') return academic.createSemester(ctx, await readJsonBody(request));
+    if (method === 'POST') return academic.createSemester(ctx, requestBody);
     return null;
   }
 
@@ -1387,7 +1437,7 @@ async function dispatchAcademic(ctx, request, url) {
   if (semesterMatch) {
     const id = semesterMatch[1];
     if (method === 'GET') return academic.getSemester(ctx, id);
-    if (method === 'PATCH') return academic.patchSemester(ctx, id, await readJsonBody(request));
+    if (method === 'PATCH') return academic.patchSemester(ctx, id, requestBody);
     if (method === 'DELETE') return academic.deleteSemester(ctx, id);
     return null;
   }
@@ -1396,7 +1446,7 @@ async function dispatchAcademic(ctx, request, url) {
     if (method === 'GET') {
       return academic.listEnrollments(ctx, { semesterId: url.searchParams.get('semesterId') });
     }
-    if (method === 'POST') return academic.createEnrollment(ctx, await readJsonBody(request));
+    if (method === 'POST') return academic.createEnrollment(ctx, requestBody);
     return null;
   }
 
@@ -1404,7 +1454,7 @@ async function dispatchAcademic(ctx, request, url) {
   if (enrollmentMatch) {
     const id = enrollmentMatch[1];
     if (method === 'GET') return academic.getEnrollment(ctx, id);
-    if (method === 'PATCH') return academic.patchEnrollment(ctx, id, await readJsonBody(request));
+    if (method === 'PATCH') return academic.patchEnrollment(ctx, id, requestBody);
     if (method === 'DELETE') return academic.deleteEnrollment(ctx, id);
     return null;
   }
@@ -1437,13 +1487,13 @@ async function dispatchAcademic(ctx, request, url) {
         status: url.searchParams.get('status'),
       });
     }
-    if (method === 'POST') return tasks.createTask(ctx, await readJsonBody(request));
+    if (method === 'POST') return tasks.createTask(ctx, requestBody);
     return null;
   }
 
   const completionMatch = /^\/api\/v1\/tasks\/([A-Za-z0-9_-]{1,64})\/completion$/.exec(path);
   if (completionMatch && method === 'PUT') {
-    const body = await readJsonBody(request);
+    const body = requestBody;
     if (body === null || typeof body !== 'object' || typeof body.completed !== 'boolean') {
       return {
         status: 400,
@@ -1469,7 +1519,7 @@ async function dispatchAcademic(ctx, request, url) {
   if (assessmentMatch) {
     const taskId = assessmentMatch[1];
     if (method === 'GET') return tasks.getAssessment(ctx, taskId);
-    if (method === 'PUT') return tasks.putAssessment(ctx, taskId, await readJsonBody(request));
+    if (method === 'PUT') return tasks.putAssessment(ctx, taskId, requestBody);
     if (method === 'DELETE') return tasks.deleteAssessment(ctx, taskId);
     return null;
   }
@@ -1478,7 +1528,7 @@ async function dispatchAcademic(ctx, request, url) {
   if (remindersMatch) {
     const taskId = remindersMatch[1];
     if (method === 'GET') return tasks.listReminders(ctx, taskId);
-    if (method === 'POST') return tasks.createReminder(ctx, taskId, await readJsonBody(request));
+    if (method === 'POST') return tasks.createReminder(ctx, taskId, requestBody);
     return null;
   }
 
@@ -1492,7 +1542,7 @@ async function dispatchAcademic(ctx, request, url) {
   if (taskMatch) {
     const id = taskMatch[1];
     if (method === 'GET') return tasks.getTask(ctx, id);
-    if (method === 'PATCH') return tasks.patchTask(ctx, id, await readJsonBody(request));
+    if (method === 'PATCH') return tasks.patchTask(ctx, id, requestBody);
     if (method === 'DELETE') return tasks.deleteTask(ctx, id);
     return null;
   }
@@ -1653,6 +1703,16 @@ export function seatAlertEmailConfig(env) {
 // the tool loaders below close over that uid — the model (and the client)
 // never supply a user identifier, so a prompt-injected tool call cannot be
 // redirected at another student's document.
+async function finishAiAdmission(store, admission, meter, answered, execCtx) {
+  const pending = settleAiAdmission(store, admission, { costUsd: meter.costUsd(), answered }).catch(
+    () => {
+      console.error(JSON.stringify({ level: 'error', event: 'ai_settlement_failed' }));
+    },
+  );
+  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(pending);
+  else await pending;
+}
+
 async function handleAssistant(request, env, origin, execCtx) {
   const originCheck = requireBrowserOriginAllowed(request, env, origin);
   if (originCheck) return originCheck;
@@ -1711,9 +1771,14 @@ async function handleAssistant(request, env, origin, execCtx) {
 
   let body;
   try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, { status: 400 }, env, origin);
+    body = await readBoundedJson(request, MAX_AI_BODY_BYTES);
+  } catch (error) {
+    return jsonResponse(
+      { error: error instanceof BodyTooLarge ? 'Request body too large' : 'Invalid JSON body' },
+      { status: error instanceof BodyTooLarge ? 413 : 400 },
+      env,
+      origin,
+    );
   }
   const messages = validateAssistantMessages(body?.messages);
   if (!messages) {
@@ -1726,36 +1791,26 @@ async function handleAssistant(request, env, origin, execCtx) {
   // tool to "nothing picked" rather than failing the turn.
   const routinePicks = validateRoutinePicks(body?.routine);
 
-  // Daily quota — one student's share of the shared monthly budget (#746).
-  // Same placement rationale as the spend ceiling below: it costs a Firestore
-  // read, so it sits behind the rate limiter and payload validation, and it is
-  // checked BEFORE the monthly ceiling because it is the more specific, more
-  // actionable failure for the student who tripped it.
-  //
-  // Fails CLOSED, same policy as the spend ceiling: a quota we cannot read is
-  // treated as exhausted risk, not as an all-clear.
   const day = dayKey();
   const quotaLimit = dailyLimit(env);
-  let quotaCount;
-  let quotaToken;
+  const meter = meterProviders(providers);
+  let store;
+  let admission;
   try {
-    quotaToken = await getServiceAccountAccessToken(env);
-    quotaCount = await readDailyQuotaCount(env, quotaToken, uid, day);
-  } catch (e) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'assistant_quota_read_failed',
-        day,
-        errorMessage: e?.message || String(e),
-      }),
-    );
+    store = atomicStore(env, await getServiceAccountAccessToken(env));
+    admission = await reserveAiAdmission(store, {
+      uid,
+      day,
+      month: monthKey(),
+      quotaLimit,
+      budgetUsd: monthlyBudgetUsd(env),
+      heldUsd: meter.heldUsd,
+    });
+  } catch {
+    console.error(JSON.stringify({ level: 'error', event: 'assistant_admission_failed' }));
     return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
   }
-  if (isQuotaExhausted(quotaCount, quotaLimit)) {
-    console.warn(
-      JSON.stringify({ level: 'warn', event: 'assistant_quota_exhausted', day, quotaLimit }),
-    );
+  if (admission.denied === 'quota') {
     return jsonResponse(
       { error: 'assistant_daily_quota_exhausted', resetsAt: resetsAtIso() },
       { status: 429 },
@@ -1763,40 +1818,10 @@ async function handleAssistant(request, env, origin, execCtx) {
       origin,
     );
   }
-
-  // Spend ceiling — checked last of the guards, immediately before any money is
-  // spent. It costs a Firestore read, so it deliberately sits behind the rate
-  // limiter and the payload validation: a flood of junk requests should be
-  // turned away by the cheap checks, not turned into reads on the ledger.
-  //
-  // Fails CLOSED. If the ledger cannot be read we do not know what has been
-  // spent, and guessing wrong runs up someone's personal card — the same policy
-  // the paid rate limiter already follows.
-  const month = monthKey();
-  const budgetUsd = monthlyBudgetUsd(env);
-  let spentUsd;
-  let budgetToken;
-  try {
-    budgetToken = await getServiceAccountAccessToken(env);
-    spentUsd = await readAssistantSpend(env, budgetToken, month);
-  } catch (e) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'assistant_budget_read_failed',
-        month,
-        errorMessage: e?.message || String(e),
-      }),
-    );
-    return jsonResponse({ error: 'assistant_unavailable' }, { status: 503 }, env, origin);
-  }
-  budgetAt = Date.now();
-  if (isBudgetExhausted(spentUsd, budgetUsd)) {
-    console.warn(
-      JSON.stringify({ level: 'warn', event: 'assistant_budget_exhausted', month, budgetUsd }),
-    );
+  if (admission.denied === 'budget') {
     return jsonResponse({ error: 'assistant_budget_exhausted' }, { status: 503 }, env, origin);
   }
+  budgetAt = Date.now();
 
   // Capability-style loaders: the uid is interpolated into the Firestore path
   // HERE, server-side. assistant.js never sees a uid at all.
@@ -1850,7 +1875,7 @@ async function handleAssistant(request, env, origin, execCtx) {
   const turnStartedAt = Date.now();
   try {
     const { reply, provider, usage, timing } = await runAssistantTurn({
-      providers,
+      providers: meter.providers,
       messages,
       ctx,
       // A fallback is a real operational event — the primary provider is
@@ -1887,58 +1912,12 @@ async function handleAssistant(request, env, origin, execCtx) {
         outputTokens: usage?.outputTokens ?? 0,
       }),
     );
-    // Record what the answer cost — but off the response path (#553): the
-    // student has no reason to wait on our bookkeeping. A write that fails must
-    // not lose them their answer either, so it is logged loudly instead,
-    // because a ceiling that silently stops counting is worse than no ceiling.
-    const record = recordAssistantSpend(
-      env,
-      budgetToken,
-      month,
-      spentUsd,
-      estimateCostUsd(provider, usage),
-    ).catch((e) => {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          event: 'assistant_budget_write_failed',
-          month,
-          errorMessage: e?.message || String(e),
-        }),
-      );
-    });
-    // waitUntil keeps the isolate alive for it; without one (tests, or a
-    // runtime that does not provide it) fall back to awaiting.
-    if (typeof execCtx?.waitUntil === 'function') {
-      execCtx.waitUntil(record);
-    } else {
-      await record;
-    }
-    // Quota counts only a turn that actually answered — a failed provider
-    // attempt (the catch block below) never costs the student part of their
-    // day. Same off-response-path treatment as the spend ledger above.
-    const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch(
-      (e) => {
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            event: 'assistant_quota_write_failed',
-            day,
-            errorMessage: e?.message || String(e),
-          }),
-        );
-      },
-    );
-    if (typeof execCtx?.waitUntil === 'function') {
-      execCtx.waitUntil(quotaRecord);
-    } else {
-      await quotaRecord;
-    }
+    await finishAiAdmission(store, admission, meter, true, execCtx);
     return jsonResponse(
       {
         reply,
         quota: {
-          remaining: Math.max(0, quotaLimit - quotaCount - 1),
+          remaining: Math.max(0, quotaLimit - admission.count),
           limit: quotaLimit,
           resetsAt: resetsAtIso(),
         },
@@ -1948,6 +1927,7 @@ async function handleAssistant(request, env, origin, execCtx) {
       origin,
     );
   } catch (e) {
+    await finishAiAdmission(store, admission, meter, false, execCtx);
     console.error(
       JSON.stringify({
         level: 'error',
@@ -2032,9 +2012,15 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
 
   let body;
   try {
-    body = await request.json();
-  } catch {
-    return apiV1Error(env, origin, 400, API_ERROR_CODES.INVALID_REQUEST, 'Invalid JSON body.');
+    body = await readBoundedJson(request, MAX_EXTRACTION_BODY_BYTES);
+  } catch (error) {
+    return apiV1Error(
+      env,
+      origin,
+      error instanceof BodyTooLarge ? 413 : 400,
+      API_ERROR_CODES.INVALID_REQUEST,
+      error instanceof BodyTooLarge ? 'Request body too large.' : 'Invalid JSON body.',
+    );
   }
   const text = typeof body?.text === 'string' ? body.text.trim() : '';
   if (text === '' || text.length > MAX_INPUT_CHARS) {
@@ -2048,30 +2034,32 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
   }
   // Course codes narrow what the model will call a course. They are about the
   // WORK, not the person — nothing identifying goes into the prompt.
-  const courseCodes = Array.isArray(body?.courseCodes)
-    ? body.courseCodes.filter((c) => typeof c === 'string').slice(0, 20)
-    : [];
-
-  // Daily quota — the SAME counter /api/assistant checks (#746), so a student
-  // cannot dodge it by switching features. Checked before the monthly ceiling
-  // for the same reason as there: it is the more specific, more actionable
-  // failure. Fails CLOSED, same policy as the ceiling below.
-  const day = dayKey();
+  const courseCodes = body?.courseCodes ?? [];
+  if (
+    !Array.isArray(courseCodes) ||
+    courseCodes.length > 20 ||
+    courseCodes.some(
+      (code) => typeof code !== 'string' || code.length > 8 || !REVIEW_COURSE_RE.test(code),
+    )
+  ) {
+    return apiV1Error(env, origin, 400, API_ERROR_CODES.INVALID_REQUEST, 'Invalid course codes.');
+  }
   const quotaLimit = dailyLimit(env);
-  let quotaCount;
-  let quotaToken;
+  const meter = meterProviders(providers, { extraction: true });
+  let store;
+  let admission;
   try {
-    quotaToken = await getServiceAccountAccessToken(env);
-    quotaCount = await readDailyQuotaCount(env, quotaToken, uid, day);
-  } catch (e) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'extract_quota_read_failed',
-        day,
-        errorMessage: e?.message || String(e),
-      }),
-    );
+    store = atomicStore(env, await getServiceAccountAccessToken(env));
+    admission = await reserveAiAdmission(store, {
+      uid,
+      day: dayKey(),
+      month: monthKey(),
+      quotaLimit,
+      budgetUsd: monthlyBudgetUsd(env),
+      heldUsd: meter.heldUsd,
+    });
+  } catch {
+    console.error(JSON.stringify({ level: 'error', event: 'extract_admission_failed' }));
     return apiV1Error(
       env,
       origin,
@@ -2080,10 +2068,7 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
       'Shohoj cannot read announcements for you right now. You can still add the task yourself.',
     );
   }
-  if (isQuotaExhausted(quotaCount, quotaLimit)) {
-    console.warn(
-      JSON.stringify({ level: 'warn', event: 'extract_quota_exhausted', day, quotaLimit }),
-    );
+  if (admission.denied === 'quota') {
     return apiV1Error(
       env,
       origin,
@@ -2092,37 +2077,7 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
       "You've used today's free readings. You can still add the task yourself — more open up tomorrow.",
     );
   }
-
-  const month = monthKey();
-  const budgetUsd = monthlyBudgetUsd(env);
-  let spentUsd;
-  let budgetToken;
-  try {
-    budgetToken = await getServiceAccountAccessToken(env);
-    spentUsd = await readAssistantSpend(env, budgetToken, month);
-  } catch (e) {
-    // Fails CLOSED: not knowing what has been spent and guessing wrong runs up
-    // someone's personal card.
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'extract_budget_read_failed',
-        month,
-        errorMessage: e?.message || String(e),
-      }),
-    );
-    return apiV1Error(
-      env,
-      origin,
-      503,
-      API_ERROR_CODES.UNAVAILABLE,
-      'Shohoj cannot read announcements for you right now. You can still add the task yourself.',
-    );
-  }
-  if (isBudgetExhausted(spentUsd, budgetUsd)) {
-    console.warn(
-      JSON.stringify({ level: 'warn', event: 'extract_budget_exhausted', month, budgetUsd }),
-    );
+  if (admission.denied === 'budget') {
     return apiV1Error(
       env,
       origin,
@@ -2134,14 +2089,9 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
 
   let reply;
   let provider;
-  let usage;
   try {
-    ({
-      text: reply,
-      provider,
-      usage,
-    } = await runExtractionTurn({
-      providers,
+    ({ text: reply, provider } = await runExtractionTurn({
+      providers: meter.providers,
       system: EXTRACTION_SYSTEM,
       prompt: buildExtractionPrompt(text, { now: new Date(), courseCodes }),
       onFallback: (e) =>
@@ -2155,6 +2105,7 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
         ),
     }));
   } catch (e) {
+    await finishAiAdmission(store, admission, meter, false, execCtx);
     console.error(
       JSON.stringify({
         level: 'error',
@@ -2171,44 +2122,7 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     );
   }
 
-  // Bookkeeping off the response path, as /api/assistant does: the student has
-  // no reason to wait on it, and a failed write must not cost them their
-  // result. Logged loudly, because a ceiling that silently stops counting is
-  // worse than no ceiling.
-  const record = recordAssistantSpend(
-    env,
-    budgetToken,
-    month,
-    spentUsd,
-    estimateCostUsd(provider, usage),
-  ).catch((e) => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'extract_budget_write_failed',
-        month,
-        errorMessage: e?.message || String(e),
-      }),
-    );
-  });
-  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(record);
-  else await record;
-
-  // Quota is charged at the same point as spend, for the same reason: the
-  // model call happened and cost money regardless of whether the reply turns
-  // out to be parseable below.
-  const quotaRecord = recordAssistantQuotaUse(env, quotaToken, uid, day, quotaCount).catch((e) => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        event: 'extract_quota_write_failed',
-        day,
-        errorMessage: e?.message || String(e),
-      }),
-    );
-  });
-  if (typeof execCtx?.waitUntil === 'function') execCtx.waitUntil(quotaRecord);
-  else await quotaRecord;
+  await finishAiAdmission(store, admission, meter, true, execCtx);
 
   const parsed = parseExtractionResponse(reply, { now: new Date() });
   if (parsed === null) {
@@ -2241,7 +2155,7 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     {
       detected: parsed.tasks,
       quota: {
-        remaining: Math.max(0, quotaLimit - quotaCount - 1),
+        remaining: Math.max(0, quotaLimit - admission.count),
         limit: quotaLimit,
         resetsAt: resetsAtIso(),
       },
@@ -2303,14 +2217,10 @@ async function handleCalendarFeed(request, env, url) {
   }
 
   const deps = academicDeps(env, saToken);
-  const feed = await deps.getDoc(`${CALENDAR_FEED_COLLECTION}/${token}`);
-  // Unknown and revoked are the same answer. Distinguishing them would confirm
-  // that a token once existed, which is information about a student.
-  if (!feed || typeof feed.firebaseUid !== 'string' || feed.firebaseUid === '') {
-    return notFoundFeed();
-  }
+  const firebaseUid = await resolveCalendarFeedOwner(deps, token);
+  if (firebaseUid === null) return notFoundFeed();
 
-  const repo = createAcademicRepo(deps, feed.firebaseUid);
+  const repo = createAcademicRepo(deps, firebaseUid);
   const [tasks, enrollments] = await Promise.all([repo.listTasks(), repo.listEnrollments()]);
   const ics = buildFeedICS(toFeedEvents(tasks, enrollments), { now: new Date() });
 
@@ -2318,10 +2228,9 @@ async function handleCalendarFeed(request, env, url) {
     status: 200,
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      // Calendar apps poll on their own schedule, which we do not control and
-      // cannot shorten. This is a hint about staleness, not a promise of
-      // freshness — the UI must not imply "instant".
-      'Cache-Control': 'private, max-age=900',
+      // Every poll must check the active credential. Calendar apps can retain
+      // events already downloaded, but HTTP caches must not bypass revocation.
+      'Cache-Control': 'private, no-store',
       // A feed is a credential in a URL. Keeping it out of referrers and search
       // indexes costs nothing and closes two ordinary ways URLs escape.
       'Referrer-Policy': 'no-referrer',
@@ -2336,12 +2245,16 @@ function notFoundFeed() {
   return new Response('Not found', { status: 404 });
 }
 
-async function resendSeatAlert(env, to, subject, html) {
+async function resendSeatAlert(env, to, subject, html, idempotencyKey) {
   const cfg = seatAlertEmailConfig(env);
   if (!cfg.ok) return false;
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    },
     body: JSON.stringify({ from: cfg.from, to: [to], subject, html }),
   });
   if (!res.ok) {
@@ -2474,17 +2387,16 @@ async function firestorePatchFields(env, token, path, obj) {
   if (!res.ok) throw new Error(`Firestore patch ${path} ${res.status}`);
 }
 
-// ── Assistant spend ledger (#544) ────────────────────────────────────────────
-// One document per calendar month at assistantBudget/{YYYY-MM}. Firestore
-// rather than a new KV namespace because the service account is already wired
-// here — a spend cap nobody can be bothered to configure protects nobody.
-//
-// Read-modify-write, so two turns landing in the same instant can lose an
-// update and undercount slightly. That is acceptable for a safety net measured
-// in dollars, and the alternative (transactional increments) buys precision
-// this does not need. It is never billing-grade accounting; the provider
-// dashboard is.
-const ASSISTANT_BUDGET_COLLECTION = 'assistantBudget';
+async function firestoreMergeFields(env, token, path, obj) {
+  const url = new URL(`${firestoreDocsBase(env)}/${path}`);
+  for (const field of Object.keys(obj)) url.searchParams.append('updateMask.fieldPaths', field);
+  const res = await fetch(url.toString(), {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: toFirestoreFields(obj) }),
+  });
+  if (!res.ok) throw new Error(`Firestore merge failed: ${res.status}`);
+}
 
 // The seat tool reads the whole CONNECT feed — 3.6 MB, ~0.8s, plus a parse —
 // and did so on every seat question (#553). Seat counts move on the order of
@@ -2517,45 +2429,6 @@ export async function loadSeatIndexCached(now = Date.now()) {
       throw e;
     });
   return _seatIndexCache.inFlight;
-}
-
-async function readAssistantSpend(env, token, month) {
-  const fields = await firestoreGetFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`);
-  const spent = Number(fields?.spentUsd);
-  return Number.isFinite(spent) && spent > 0 ? spent : 0;
-}
-
-async function recordAssistantSpend(env, token, month, spentUsd, costUsd) {
-  await firestorePatchFields(env, token, `${ASSISTANT_BUDGET_COLLECTION}/${month}`, {
-    spentUsd: spentUsd + costUsd,
-    updatedAt: new Date().toISOString(),
-  });
-}
-
-// ── Assistant daily quota (#746) ─────────────────────────────────────────────
-// One document per student per calendar day, at
-// assistantDailyQuota/{uid}_{YYYY-MM-DD}. Same read-modify-write tradeoff as
-// the budget ledger above, and the same reason: a lost update under a race
-// undercounts by at most one turn, which is not worth a transaction for a
-// cost backstop. Worker-only — no firestore.rules entry needed, the file's
-// catch-all match already denies every client read and write.
-const ASSISTANT_QUOTA_COLLECTION = 'assistantDailyQuota';
-
-async function readDailyQuotaCount(env, token, uid, day) {
-  const fields = await firestoreGetFields(
-    env,
-    token,
-    `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`,
-  );
-  const count = Number(fields?.count);
-  return Number.isFinite(count) && count > 0 ? count : 0;
-}
-
-async function recordAssistantQuotaUse(env, token, uid, day, count) {
-  await firestorePatchFields(env, token, `${ASSISTANT_QUOTA_COLLECTION}/${uid}_${day}`, {
-    count: count + 1,
-    updatedAt: new Date().toISOString(),
-  });
 }
 
 // Poll the feed once, fan out over every user's watchlist, email on drops, and
@@ -2780,9 +2653,9 @@ export async function runSeatAlertCron(env) {
 // this / this is mine") is a client-written doc in lostFoundClaims; this cron
 // joins it to the poster's client-unreadable contact doc and emails the
 // poster, sharing the claimer's (consenting) address so they can talk
-// directly. A claim doc is deleted only after Resend accepts the email —
-// a transient failure leaves it queued for the next tick, mirroring the
-// seat-alert retry semantics. Formatting is pure and exported for tests.
+// directly. A durable delivery receipt prevents replay after the queue item
+// is removed. Pending attempts reuse one provider idempotency key and payload;
+// attempts older than its safe retry window require reconciliation.
 
 const LOST_FOUND_POSTS = 'lostFoundPosts';
 const LOST_FOUND_CONTACTS = 'lostFoundContacts';
@@ -2800,7 +2673,7 @@ export function buildLostFoundClaimEmail(post, claim) {
   const html = `
     <div style="font-family:sans-serif;max-width:520px;">
       <h2 style="color:#1c7c45;">Your lost &amp; found post got a response</h2>
-      <p><strong>${escapeHtml(title)}</strong> — a fellow BRACU student ${verb}.</p>
+      <p><strong>${escapeHtml(title)}</strong> — a student from your university ${verb}.</p>
       ${note}
       <p>Reply to them directly at
         <a href="mailto:${escapeHtml(String(claim.fromEmail || ''))}">${escapeHtml(String(claim.fromEmail || ''))}</a>.
@@ -2831,34 +2704,56 @@ export async function runLostFoundCron(env) {
     return { configured: true, claims: 0, emailed: 0, failed: 0, dropped: 0 };
   }
 
+  const store = atomicStore(env, token);
   let emailed = 0; // claims delivered and dequeued this run
   let failed = 0; // Resend rejections — left queued for retry
   let dropped = 0; // malformed/orphaned claims removed without an email
   for (const { id, fields } of claimDocs) {
     const postId = typeof fields.postId === 'string' ? fields.postId : '';
-    const fromEmail = typeof fields.fromEmail === 'string' ? fields.fromEmail : '';
-    const post = postId
+    const safePostId = /^[A-Za-z0-9_-]{1,128}$/.test(postId);
+    const post = safePostId
       ? await firestoreGetFields(env, token, `${LOST_FOUND_POSTS}/${postId}`)
       : null;
-    const contact = postId
+    const contact = safePostId
       ? await firestoreGetFields(env, token, `${LOST_FOUND_CONTACTS}/${postId}`)
       : null;
 
     // Post deleted / contact missing / junk claim → nothing deliverable; drop
     // the queue doc so it can't loop forever.
-    if (!fromEmail || !post || !contact || typeof contact.email !== 'string' || !contact.email) {
+    if (!eligibleLostFoundClaim(id, fields, post, contact)) {
       await firestoreDeleteDoc(env, token, `${LOST_FOUND_CLAIMS}/${id}`);
       dropped += 1;
       continue;
     }
 
     const { subject, html } = buildLostFoundClaimEmail(post, fields);
-    const delivered = await resendSeatAlert(env, contact.email, subject, html);
-    if (delivered) {
-      await firestoreDeleteDoc(env, token, `${LOST_FOUND_CLAIMS}/${id}`);
-      emailed += 1;
-    } else {
+    const payloadHash = await sha256Hex(
+      JSON.stringify({ from: cfg.from, to: [contact.email], subject, html }),
+    );
+    const idempotencyKey = 'lost-found/' + (await sha256Hex(`${env.FIREBASE_PROJECT_ID}/${id}`));
+    try {
+      const outcome = await deliverLostFoundClaim({
+        store,
+        id,
+        payloadHash,
+        send: () => resendSeatAlert(env, contact.email, subject, html, idempotencyKey),
+      });
+      if (outcome === 'delivered') {
+        await firestoreDeleteDoc(env, token, `${LOST_FOUND_CLAIMS}/${id}`);
+        emailed += 1;
+      } else {
+        failed += 1;
+        if (outcome === 'reconcile')
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              event: 'lost_found_delivery_reconciliation_required',
+            }),
+          );
+      }
+    } catch {
       failed += 1;
+      console.error(JSON.stringify({ level: 'error', event: 'lost_found_delivery_failed' }));
     }
   }
   return { configured: true, claims: claimDocs.length, emailed, failed, dropped };

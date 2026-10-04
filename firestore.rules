@@ -46,9 +46,8 @@ service cloud.firestore {
 
     // A document written before tenancy existed has no `university` field, and
     // every one of those is BRACU's by definition — the app served nobody else.
-    // Reads therefore default a missing field to 'bracu'. Creates do NOT get
-    // that courtesy: every validator below requires the field explicitly, so a
-    // new document can never fall into another campus by omission.
+    // Reads default a missing field to 'bracu'. The legacy BRACU client may
+    // still omit this field on creation, but no other campus gets that exception.
     //
     // This default covers READS ONLY, and that limit matters. A query that
     // filters `where('university','==','bracu')` does not match a document
@@ -80,17 +79,18 @@ service cloud.firestore {
     // The caller's own campus, and only their own — a client cannot label a
     // document as belonging somewhere it is not.
     //
-    // Checked only when the field is PRESENT. It is deliberately optional on
-    // create, because two clients write these collections and they cannot be
-    // upgraded atomically: the legacy bundle at the site root sends no campus,
-    // the React shell under /app/ does. Requiring it would deny every legacy
-    // create the moment these rules deploy — and the legacy bundle is the main
-    // production app. A missing field reads back as 'bracu' via docCampus,
-    // which is correct: legacy admits BRACU accounts only.
+    // The legacy root client omits campus. Only a verified BRACU caller may
+    // use that format; a client from another campus must label its own writes.
     function writingOwnCampus(data) {
       return 'university' in data
         && validCampus(data.university)
         && data.university == userCampus();
+    }
+
+    function validCreateCampus(data) {
+      return 'university' in data
+        ? writingOwnCampus(data)
+        : (isVerifiedCampusUser() && userCampus() == 'bracu');
     }
 
     function isVerifiedCampusUser() {
@@ -188,17 +188,24 @@ service cloud.firestore {
       return t == 'bug' || t == 'feature' || t == 'general';
     }
 
+    function validFeedbackContext(context) {
+      return context is map
+        && context.keys().hasOnly(['tab'])
+        && (!('tab' in context)
+            || (context.tab is string && context.tab.size() <= 80));
+    }
+
     function validFeedbackPayload(d) {
       return d.keys().hasOnly(['type','text','context','anonymous','uid','university','createdAt'])
         && d.keys().hasAll(['type','text','anonymous','createdAt'])
-        && (!('university' in d) || writingOwnCampus(d))
+        && validCreateCampus(d)
         && validFeedbackType(d.type)
         && d.text is string
         && d.text.size() >= 3
         && d.text.size() <= 500
         && d.anonymous is bool
         && d.createdAt == request.time
-        && (!('context' in d) || (d.context is map && d.context.size() <= 8))
+        && (!('context' in d) || validFeedbackContext(d.context))
         // Tie uid to the anonymous flag: anonymous feedback must store no
         // identity (uid absent or null), and named feedback must carry the
         // caller's own uid. appFeedback is readable by every BRACU user, so a
@@ -210,7 +217,9 @@ service cloud.firestore {
 
     match /appFeedback/{feedbackId} {
       allow read:   if isCampusUser() && campusMatches(resource);
-      allow create: if isCampusUser() && validFeedbackPayload(request.resource.data);
+      allow create: if isCampusUser()
+        && feedbackId.matches('^[A-Za-z0-9_-]{1,128}$')
+        && validFeedbackPayload(request.resource.data);
       allow delete: if isAdmin();
       allow update: if false;
     }
@@ -353,7 +362,7 @@ service cloud.firestore {
     function validStudyGroupPayload(d) {
       return d.keys().hasOnly(['courseCode','title','description','mode','schedule','contactLink','capacity','creatorUid','university','createdAt'])
         && d.keys().hasAll(['courseCode','title','mode','contactLink','capacity','creatorUid','createdAt'])
-        && (!('university' in d) || writingOwnCampus(d))
+        && validCreateCampus(d)
         && d.courseCode is string
         && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
         && d.title is string
@@ -387,6 +396,11 @@ service cloud.firestore {
     // never publish someone else's address. A member doc is readable by the
     // owner, an admin, or a FELLOW MEMBER of the same group (the exists() check)
     // — non-members see only the join count-gated state, so emails stay opt-in.
+    function sameCampusGroup(groupId) {
+      return exists(/databases/$(database)/documents/studyGroups/$(groupId))
+        && docCampus(get(/databases/$(database)/documents/studyGroups/$(groupId)).data) == userCampus();
+    }
+
     function validStudyGroupMemberPayload(d, groupId) {
       return d.keys().hasOnly(['groupId','uid','email','joinedAt'])
         && d.keys().hasAll(['groupId','uid','email','joinedAt'])
@@ -396,7 +410,7 @@ service cloud.firestore {
         && d.uid == request.auth.uid
         && d.email is string
         && d.email == request.auth.token.email
-        && exists(/databases/$(database)/documents/studyGroups/$(groupId))
+        && sameCampusGroup(groupId)
         && d.joinedAt == request.time;
     }
 
@@ -404,6 +418,7 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (isVerifiedCampusUser() && resource.data.uid == request.auth.uid)
         || (isVerifiedCampusUser()
+            && sameCampusGroup(resource.data.groupId)
             && exists(/databases/$(database)/documents/studyGroupMembers/$(resource.data.groupId + '_' + request.auth.uid)));
       allow create: if isVerifiedCampusUser()
         && memberId == request.resource.data.groupId + '_' + request.auth.uid
@@ -451,7 +466,7 @@ service cloud.firestore {
     function validLostFoundPostPayload(d) {
       return d.keys().hasOnly(['type','title','description','locationHint','roomCode','status','creatorUid','university','createdAt'])
         && d.keys().hasAll(['type','title','status','creatorUid','createdAt'])
-        && (!('university' in d) || writingOwnCampus(d))
+        && validCreateCampus(d)
         && validLostFoundType(d.type)
         && d.title is string
         && d.title.size() >= 3
@@ -502,13 +517,18 @@ service cloud.firestore {
 
     // Claim queue ("I found this / this is mine"): write-only from clients,
     // one claim per user per post via the deterministic id. The Worker
-    // consumes the queue and emails the poster; fromEmail is pinned to the
+    // consumes the queue and keeps a private delivery receipt to prevent
+    // replay after delivery. The post must be open and on the caller's campus.
+    // fromEmail is pinned to the
     // claimer's verified token email so a claim can never spoof a sender.
     function validLostFoundClaimPayload(d) {
       return d.keys().hasOnly(['postId','fromUid','fromEmail','note','createdAt'])
         && d.keys().hasAll(['postId','fromUid','fromEmail','createdAt'])
         && d.postId is string
+        && d.postId.matches('^[A-Za-z0-9_-]{1,128}$')
         && exists(/databases/$(database)/documents/lostFoundPosts/$(d.postId))
+        && docCampus(get(/databases/$(database)/documents/lostFoundPosts/$(d.postId)).data) == userCampus()
+        && get(/databases/$(database)/documents/lostFoundPosts/$(d.postId)).data.status == 'open'
         && d.fromUid is string
         && d.fromUid == request.auth.uid
         && d.fromEmail is string
@@ -521,6 +541,7 @@ service cloud.firestore {
       allow read:   if isAdmin();
       allow create: if isVerifiedCampusUser()
         && validLostFoundClaimPayload(request.resource.data)
+        && !exists(/databases/$(database)/documents/lostFoundDeliveries/$(claimId))
         && claimId == request.resource.data.postId + '_' + request.auth.uid;
       allow update: if false;
       allow delete: if isAdmin();
