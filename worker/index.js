@@ -100,6 +100,7 @@ import { isKnownCourse } from './catalog.generated.js';
 // Worker, the Firestore rules and the registry cannot disagree about who
 // belongs where. Was a hand-maintained third copy (#571).
 import { campusOfEmail } from './campus.generated.js';
+import { facultyInitialsRe } from './facultyInitials.js';
 import { ARCHIVE_INDEX_KEY, archiveKeyFor, runSemesterArchiveCron } from './semesterArchive.js';
 // The /api/v1 namespace (#710). Its logic is pure and its I/O is injected, so
 // everything below is wiring: real Firestore reads/writes, the real hash, the
@@ -127,18 +128,9 @@ const OWNED_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9_-]+
 // explicitly), so this regex is read-only legacy support, not a write surface.
 const LEGACY_STORAGE_PATH_RE = /^papers\/[A-Z]{2,4}[0-9]{3}[A-Z]?\/[A-Za-z0-9._-]+$/;
 const PAPER_ID_RE = /^[A-Za-z0-9_-]{1,200}$/;
-const REVIEW_INITIALS_RE = /^[A-Z]{2,6}$/;
-// NSU tells faculty apart with a closing number — MMS1, MMS3 and MMS4 are three
-// lecturers — so there, and only there, initials may end in one digit. Mirrors
-// NUMBERED_INITIALS_CAMPUSES in js/core/faculty.js;
-// tests/facultyInitials.test.js holds the two together.
-const NUMBERED_INITIALS_CAMPUSES = ['nsu'];
-const NUMBERED_INITIALS_RE = /^[A-Z]{2,6}$|^[A-Z]{2,5}[0-9]$/;
-
-/** The shape faculty initials take on a campus. */
-export function facultyInitialsRe(campus) {
-  return NUMBERED_INITIALS_CAMPUSES.includes(campus) ? NUMBERED_INITIALS_RE : REVIEW_INITIALS_RE;
-}
+// Faculty initials: letters, or at NSU letters and a closing number — see
+// worker/facultyInitials.js.
+export { facultyInitialsRe };
 const REVIEW_COURSE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const REVIEW_TYPE_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 const PAPER_TYPES = new Set(['midterm', 'final', 'quiz', 'notes', 'assignment', 'lab', 'lab-quiz']);
@@ -1796,7 +1788,9 @@ async function handleAssistant(request, env, origin, execCtx) {
     routinePicks,
     // Campus comes from the verified token's email, never from the request or
     // the model — the same derivation /reviews uses when it stamps a new row,
-    // so a student reads back exactly the corpus they can write to.
+    // so a student reads back exactly the corpus they can write to. It also
+    // decides how faculty initials are read (NSU's keep their number).
+    campus: campusOfEmail(claims?.email) || 'bracu',
     loadFacultyReviews: async (initials, courseCode) => {
       try {
         const saToken = await getServiceAccountAccessToken(env);
