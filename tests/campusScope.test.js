@@ -58,39 +58,63 @@ test('an admin sees every campus, whatever their address', () => {
 
 test('the pre-tenancy default is the one firestore.rules uses', () => {
   const rules = read('firestore.rules');
-  const match = rules.match(/function docCampus\(data\) \{\s*return 'university' in data \? data\.university : '([a-z]+)';/);
+  const match = rules.match(
+    /function docCampus\(data\) \{\s*return 'university' in data \? data\.university : '([a-z]+)';/,
+  );
   assert.ok(match, 'found docCampus in firestore.rules');
   assert.equal(match[1], PRE_TENANCY_CAMPUS);
 });
 
-test('every unfiltered list of a campus-scoped collection goes through listForMyCampus', () => {
-  // The three collections this client lists and the rules scope by campus.
-  // A new `query(collection(db, '<one of these>'), …)` would be denied for NSU
-  // and unfiltered for BRACU, so it has to be a deliberate exception here.
+test('every hook that reads a campus-scoped collection is campus-scoped or a named exception', () => {
+  // The collections this client reads and the rules scope by campus. A hook
+  // that queries one without the campus helpers is denied for NSU and
+  // unfiltered for BRACU, so it has to be a deliberate exception here.
+  const SCOPED =
+    /collection\(db, '(studyGroups|appFeedback|papers|facultyReviews|facultyProfiles)'\)/;
+  const HELPERS = /listForMyCampus\(|pageForMyCampus\(|campusReadPlan\(/;
   const src = read('js/auth/firebase.js');
-  const direct = [...src.matchAll(/collection\(db, '(studyGroups|appFeedback|papers)'\)/g)].map((m) => {
-    const lineStart = src.lastIndexOf('\n', m.index) + 1;
-    return src.slice(lineStart, src.indexOf('\n', m.index)).trim();
-  });
-  const unscoped = direct.filter(
-    (line) => !line.includes('listForMyCampus(') && !line.includes('addDoc('),
+  const hooks = src.split(/^window\.(_shohoj_[A-Za-z]+) = /m);
+  const unscoped = [];
+  for (let i = 1; i < hooks.length; i += 2) {
+    const [name, body] = [hooks[i], hooks[i + 1]];
+    if (SCOPED.test(body) && !HELPERS.test(body)) unscoped.push(name);
+  }
+  assert.deepEqual(
+    unscoped.sort(),
+    [
+      // Creates, not reads: tagged by campusWriteField (next test).
+      '_shohoj_createStudyGroup',
+      '_shohoj_submitFeedback',
+      // The admin dashboard's stats and moderation queue: admins read every campus.
+      '_shohoj_fetchAdminStats',
+      '_shohoj_fetchUnapprovedPapers',
+      // The student's own uploads, which the rules allow by uploaderUid.
+      '_shohoj_fetchMyPapers',
+    ].sort(),
   );
-  // The exceptions, each allowed by the rules without a campus filter:
-  //   - _shohoj_fetchMyPapers: the student's own uploads
-  //   - _shohoj_fetchUnapprovedPapers: the admin's moderation queue
-  //   - the admin dashboard's stats, two samples each of papers and feedback
-  assert.deepEqual(unscoped.sort(), [
-    "const col = collection(db, 'papers');",
-    "const col = collection(db, 'papers');",
-    "getDocs(query(collection(db, 'appFeedback'),",
-    "getDocs(query(collection(db, 'appFeedback'),",
-    "getDocs(query(collection(db, 'papers'),",
-    "getDocs(query(collection(db, 'papers'),",
-  ]);
 });
 
 test('both client-created campus documents carry the write field', () => {
   const src = read('js/auth/firebase.js');
   const stamped = src.split('...campusWriteField(currentUser.email)').length - 1;
   assert.equal(stamped, 2, 'study groups and feedback');
+});
+
+test('the bundled BRACU review seed is only ever read through the campus check (#823)', () => {
+  // SEEDED_REVIEWS is empty in the source tree — build3.py injects it — so the
+  // behaviour cannot be exercised here; what can be pinned is that nothing
+  // reaches the array except the one function that asks which campus is showing.
+  const src = read('js/core/reviews.js');
+  const uses = src
+    .split('\n')
+    .filter((line) => line.includes('SEEDED_REVIEWS') && !line.trim().startsWith('//'));
+  assert.deepEqual(
+    uses.map((line) => line.trim()),
+    [
+      'const SEEDED_REVIEWS = []; // injected by build3.py',
+      'return getActiveCampus().id === DEFAULT_UNIVERSITY_ID ? SEEDED_REVIEWS : [];',
+    ],
+  );
+  // build3.py finds the declaration by this exact text.
+  assert.ok(read('build3.py').includes("'const SEEDED_REVIEWS = []; // injected by build3.py'"));
 });
