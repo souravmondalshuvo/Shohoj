@@ -24,7 +24,7 @@ globalThis.addEventListener = () => {};
 const { loadCampuses } = await import('../scripts/campus_data.mjs');
 const { BRACU_LITERAL_SOURCES, buildLegacyCatalog } = await import('../scripts/legacy_catalog.mjs');
 const { OUT_PATH, renderNsuCatalog } = await import('../scripts/generate_legacy_catalog.mjs');
-const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS } = await import('../js/core/catalog.js');
+const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS, getCourseDept } = await import('../js/core/catalog.js');
 const { DEPARTMENTS } = await import('../js/core/departments.js');
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
 const { getActiveCatalog, getCatalogFor } = await import('../js/core/activeCatalog.js');
@@ -44,6 +44,18 @@ assert.deepEqual(bracu.prefixDepartments, plain(PREFIX_DEPT_MAP), 'PREFIX_DEPT_M
 assert.deepEqual(bracu.departmentMeta, plain(DEPT_META), 'DEPT_META');
 assert.deepEqual(bracu.programs, plain(DEPARTMENTS), 'DEPARTMENTS');
 assert.deepEqual([bracu.untitled, bracu.unexpressed], [[], []], 'nothing of BRACU is left out');
+// The department tiles keep the order reviewsTab.js used to spell out itself,
+// and the one cross-listed course keeps the owner catalog.js hard-codes.
+assert.deepEqual(
+  bracu.departmentOrder,
+  ['CSE', 'EEE', 'ECE', 'MPS', 'BBA', 'ENG', 'ECO', 'ANT', 'ARC', 'PHR', 'LLB', 'GENED'],
+  "BRACU's tile order",
+);
+assert.deepEqual(bracu.departmentOrder, Object.keys(DEPT_META), 'which is the order catalog.js writes DEPT_META in');
+assert.deepEqual(bracu.departmentOverrides, { CST333: 'BBA' });
+for (const [course, department] of Object.entries(bracu.departmentOverrides)) {
+  assert.equal(getCourseDept(course), department, `getCourseDept(${course})`);
+}
 
 // ── It leaves out what the legacy shapes cannot say ─────────────────────────
 
@@ -136,6 +148,8 @@ assert.equal(b.prerequisites, PREREQS);
 assert.equal(b.prefixDepartments, PREFIX_DEPT_MAP);
 assert.equal(b.departmentMeta, DEPT_META);
 assert.equal(b.programs, DEPARTMENTS);
+assert.deepEqual(b.departmentOrder, bracu.departmentOrder);
+assert.equal(b.departmentOf('CST333'), 'BBA');
 
 // It follows the signed-in student's campus, and is BRACU's otherwise.
 assert.equal(getActiveCatalog(), getCatalogFor('bracu'), 'signed out');
