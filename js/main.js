@@ -285,7 +285,7 @@ function renderDeviceNotice(signedIn) {
   notice.innerHTML = `
     <span>📱 Saved on this device: <strong id="deviceNoticeSummary"></strong><br>
       ${canSignIn
-        ? 'Sign in with your BRACU G-Suite account to back it up and reach it from any device.'
+        ? 'Sign in with your university Google account to back it up and reach it from any device.'
         : 'It stays in this browser until you remove it.'}</span>
     <span style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
       <button data-action="device:forget" data-testid="device-notice-forget" style="
@@ -802,6 +802,10 @@ function applyCampusFeatures() {
   });
   document.querySelectorAll('[data-feature]').forEach(el => {
     el.hidden = !hasFeature(campus, el.dataset.feature);
+  });
+  // Copy that names the campus whose rules the calculator is applying.
+  document.querySelectorAll('[data-campus-name]').forEach(el => {
+    el.textContent = campus.shortName;
   });
   document.querySelectorAll('#calcTabs .calc-tab-group').forEach(group => {
     const items = Array.from(group.querySelectorAll('.calc-tab-menu-item'));
