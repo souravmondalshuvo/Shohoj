@@ -77,16 +77,17 @@ test('a build with Firebase configured offers the sign-in button', async ({ page
   await expect(button).toHaveAttribute('data-action', 'auth:signin');
 });
 
-test('the portal names every campus and hands the others to the shell', async ({ page }) => {
+test('the portal names every campus, and every one signs in here', async ({ page }) => {
   await bootSignedOut(page);
-  // BRACU is what this bundle is built for; NSU is real but lives in /app/,
-  // and saying so beats letting the domain check bounce them after the popup.
+  // Until #827 NSU was handed off to the React shell at app/ from this list,
+  // because the sign-in guard admitted BRACU only. It admits the directory now.
   const bracu = page.locator('.signin-portal-campus', { hasText: 'BRACU' });
   const nsu   = page.locator('.signin-portal-campus', { hasText: 'NSU' });
   await expect(bracu).toContainText('@g.bracu.ac.bd');
   await expect(bracu).toContainText('Sign in here');
   await expect(nsu).toContainText('@northsouth.edu');
-  await expect(nsu.locator('a')).toHaveAttribute('href', 'app/');
+  await expect(nsu).toContainText('Sign in here');
+  await expect(page.locator('#signinPortal a[href="app/"]')).toHaveCount(0);
 });
 
 test('the hero demo button opens the calculator without an account', async ({ page }) => {
