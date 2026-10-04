@@ -18,6 +18,8 @@ import worker, {
   isAllowedFirebasePayload,
   campusOfEmail,
   catalogCampusFor,
+  cleanOptionalFacultyInitials,
+  facultyInitialsRe,
   isValidCourseCode,
   isValidStoragePath,
   safeFilename,
@@ -3354,6 +3356,43 @@ async function makeServiceAccountJson() {
     assert(!validateReviewPayload(basePayload({ courseCode: 'CSE115' }), 'nsu').error);
     assertEq(validateReviewPayload(basePayload({ courseCode: 'CSE115' })).error, 'Unknown course code');
     assertEq(validateReviewPayload(basePayload({ courseCode: 'CSE110' }), 'nsu').error, 'Unknown course code');
+  });
+
+  // NSU numbers its faculty: MMS1, MMS3 and MMS4 are three lecturers.
+  await test('faculty initials may end in a number at NSU, and only there', () => {
+    assert(facultyInitialsRe('nsu').test('MMS4'));
+    assert(facultyInitialsRe('nsu').test('NVA'));
+    assert(!facultyInitialsRe('nsu').test('MMS44'));
+    assert(!facultyInitialsRe('nsu').test('4MMS'));
+    assert(!facultyInitialsRe('nsu').test('M4'));
+    assert(facultyInitialsRe('bracu').test('MAK'));
+    assert(!facultyInitialsRe('bracu').test('MMS4'));
+    assert(!facultyInitialsRe(undefined).test('MMS4'));
+  });
+
+  await test('validateReviewPayload takes a numbered NSU lecturer, uppercased', () => {
+    const ok = validateReviewPayload(basePayload({ facultyInitials: 'mms4', courseCode: 'CSE115' }), 'nsu');
+    assert(!ok.error, ok.error);
+    assertEq(ok.value.facultyInitials, 'MMS4');
+    assertEq(
+      validateReviewPayload(basePayload({ facultyInitials: 'MMS4' })).error,
+      'Invalid faculty initials',
+    );
+    assertEq(
+      validateReviewPayload(basePayload({ facultyInitials: 'MMS44', courseCode: 'CSE115' }), 'nsu').error,
+      'Invalid faculty initials',
+    );
+  });
+
+  await test('a paper\'s faculty list follows the uploader\'s campus', () => {
+    assertEq(cleanOptionalFacultyInitials('mak, sho'), 'MAK, SHO');
+    assertEq(cleanOptionalFacultyInitials('MAK,SHO'), 'MAK,SHO');
+    assertEq(cleanOptionalFacultyInitials('MMS4'), '', 'no numbers from a BRACU uploader');
+    assertEq(cleanOptionalFacultyInitials('mms4, abq1', 'nsu'), 'MMS4, ABQ1');
+    assertEq(cleanOptionalFacultyInitials('MMS44', 'nsu'), '');
+    assertEq(cleanOptionalFacultyInitials('MAK,,SHO'), '');
+    assertEq(cleanOptionalFacultyInitials(''), '');
+    assertEq(cleanOptionalFacultyInitials(null), '');
   });
 
   await test('catalogCampusFor follows the verified address, and is BRACU for none', () => {
