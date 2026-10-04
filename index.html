@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-ww50ahn/fhjyC1lnWjKnNIxzqXwnVqm0jPrG8yoSeN0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-xOFbdcP6D5XG7TYr56XUQYkyllZTPVjqxbpdaE85Rt0='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-ww50ahn/fhjyC1lnWjKnNIxzqXwnVqm0jPrG8yoSeN0=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-HHJEN7UA6jOMm1QJBobdIOuxLKd5F7aA0pxuuQ0YUoc='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18213,11 +18213,142 @@ const NSU_PREREQS = {
   "SCM450": {"hp":["MGT314"]},
 };
 
-/** subject prefix → department. NSU's database has no department table yet. */
-const NSU_PREFIX_DEPARTMENTS = {};
+/** subject prefix → the department that owns it. */
+const NSU_PREFIX_DEPARTMENTS = {
+  "ACT": "ACT",
+  "FIN": "ACT",
+  "DEV": "ECO",
+  "ECO": "ECO",
+  "BUS": "MGT",
+  "HRM": "MGT",
+  "MGT": "MGT",
+  "MIS": "MGT",
+  "SCM": "MGT",
+  "INB": "MKT",
+  "MKT": "MKT",
+  "EMB": "MBA",
+  "ARC": "ARC",
+  "CEE": "CEE",
+  "CSE": "ECE",
+  "EEE": "ECE",
+  "ETE": "ECE",
+  "AMCS": "MAT",
+  "BSC": "MAT",
+  "MAT": "MAT",
+  "PHY": "MAT",
+  "BBT": "BMD",
+  "BIO": "BMD",
+  "CHE": "BMD",
+  "MIC": "BMD",
+  "ENV": "ENV",
+  "PHR": "PHR",
+  "EMPH": "MPH",
+  "PBH": "MPH",
+  "BEN": "ENG",
+  "CHN": "ENG",
+  "ENG": "ENG",
+  "LBA": "ENG",
+  "ETH": "DHP",
+  "HAS": "DHP",
+  "HIS": "DHP",
+  "PHI": "DHP",
+  "PSY": "DHP",
+  "LAW": "LAW",
+  "LLB": "LAW",
+  "LLM": "LAW",
+  "ANT": "PSS",
+  "EMPG": "PSS",
+  "MCJ": "PSS",
+  "PAD": "PSS",
+  "POL": "PSS",
+  "PPG": "PSS",
+  "SOC": "PSS",
+  "TNM": "PSS",
+  "WMS": "PSS",
+};
+
+/** course → department, where it is not its subject's (graduate business courses, mostly). */
+const NSU_DEPARTMENT_OVERRIDES = {
+  "BUS112": "MAT",
+  "BUS500": "MBA",
+  "BUS501": "MBA",
+  "BUS505": "MBA",
+  "BUS511": "MBA",
+  "BUS516": "MBA",
+  "BUS518": "MBA",
+  "BUS520": "MBA",
+  "BUS525": "MBA",
+  "BUS530": "MBA",
+  "BUS535": "MBA",
+  "BUS601": "MBA",
+  "BUS620": "MBA",
+  "BUS635": "MBA",
+  "BUS650": "MBA",
+  "BUS685": "MBA",
+  "BUS690": "MBA",
+  "BUS698": "MBA",
+  "BUS699": "MBA",
+  "BUS700": "MBA",
+  "ECO103": "ENV",
+  "FIN635": "MBA",
+  "FIN637": "MBA",
+  "FIN639": "MBA",
+  "FIN642": "MBA",
+  "FIN644": "MBA",
+  "FIN645": "MBA",
+  "FIN647": "MBA",
+  "FIN650": "MBA",
+  "HRM602": "MBA",
+  "HRM604": "MBA",
+  "HRM610": "MBA",
+  "HRM660": "MBA",
+  "HRM680": "MBA",
+  "HRM690": "MBA",
+  "MGT607": "MBA",
+  "MGT675": "MBA",
+  "MGT680": "MBA",
+  "MIS651": "MBA",
+  "MIS652": "MBA",
+  "MIS657": "MBA",
+  "MIS666": "MBA",
+  "MKT621": "MBA",
+  "MKT623": "MBA",
+  "MKT624": "MBA",
+  "MKT625": "MBA",
+  "MKT627": "MBA",
+  "MKT628": "MBA",
+  "MKT630": "MBA",
+  "MKT633": "MBA",
+  "MKT634": "MBA",
+  "MKT636": "MBA",
+  "SCM602": "MBA",
+  "SCM604": "MBA",
+  "SCM605": "MBA",
+};
 
 /** department → { label, school }. */
-const NSU_DEPARTMENT_META = {};
+const NSU_DEPARTMENT_META = {
+  "ACT": {"label":"Accounting & Finance","school":"Business & Economics"},
+  "ECO": {"label":"Economics","school":"Business & Economics"},
+  "MGT": {"label":"Management","school":"Business & Economics"},
+  "MKT": {"label":"Marketing & International Business","school":"Business & Economics"},
+  "MBA": {"label":"MBA & EMBA Programs","school":"Business & Economics"},
+  "ARC": {"label":"Architecture","school":"Engineering & Physical Sciences"},
+  "CEE": {"label":"Civil and Environmental Engineering","school":"Engineering & Physical Sciences"},
+  "ECE": {"label":"Electrical and Computer Engineering","school":"Engineering & Physical Sciences"},
+  "MAT": {"label":"Mathematics & Physics","school":"Engineering & Physical Sciences"},
+  "BMD": {"label":"Biochemistry and Microbiology","school":"Health & Life Sciences"},
+  "ENV": {"label":"Environmental Science and Management","school":"Health & Life Sciences"},
+  "PHR": {"label":"Pharmaceutical Sciences","school":"Health & Life Sciences"},
+  "MPH": {"label":"Public Health","school":"Health & Life Sciences"},
+  "ENG": {"label":"English and Modern Languages","school":"Humanities & Social Sciences"},
+  "DHP": {"label":"History and Philosophy","school":"Humanities & Social Sciences"},
+  "LAW": {"label":"Law","school":"Humanities & Social Sciences"},
+  "PSS": {"label":"Political Science and Sociology","school":"Humanities & Social Sciences"},
+};
+
+/** Departments in the order their tiles are shown: by school, as NSU lists them. */
+const NSU_DEPARTMENT_ORDER = ["ACT","ECO","MGT","MKT","MBA","ARC","CEE","ECE","MAT","BMD","ENV","PHR","MPH","ENG","DHP","LAW","PSS"];
 
 /** program → { label, totalCredits, seasons, presets: [[name, [[course, credits]]]] }. */
 const NSU_PROGRAM_ROWS = {
@@ -18338,7 +18469,8 @@ const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","C
 // the same shapes on first use.
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
-// a course, or null — because the rule is the campus's, not just its table.
+// a course, or null — because the rule is the campus's, not just its table,
+// and `departmentOrder`, the order its department tiles are shown in.
 //
 // A campus with no catalogue gets an empty one, never BRACU's: another
 // university's courses offered as a student's own is the failure this exists
@@ -18350,6 +18482,8 @@ const BRACU_CATALOG = {
   prerequisites: PREREQS,
   prefixDepartments: PREFIX_DEPT_MAP,
   departmentMeta: DEPT_META,
+  // catalog.js writes them in the order BRACU's tiles are shown.
+  departmentOrder: Object.keys(DEPT_META),
   programs: DEPARTMENTS,
   // catalog.js's own lookup, which also knows BRACU's one cross-listed course.
   departmentOf: getCourseDept,
@@ -18363,6 +18497,7 @@ const EMPTY_CATALOG = {
   prerequisites: {},
   prefixDepartments: {},
   departmentMeta: {},
+  departmentOrder: [],
   programs: {},
   departmentOf: () => null,
   untitled: [],
@@ -18396,8 +18531,15 @@ function expandNsuCatalog() {
     prerequisites: NSU_PREREQS,
     prefixDepartments: NSU_PREFIX_DEPARTMENTS,
     departmentMeta: NSU_DEPARTMENT_META,
+    departmentOrder: NSU_DEPARTMENT_ORDER,
+    departmentOverrides: NSU_DEPARTMENT_OVERRIDES,
     programs,
-    departmentOf: code => NSU_PREFIX_DEPARTMENTS[getCoursePrefix(String(code).toUpperCase())] ?? null,
+    // A course another department alone offers (BUS112 is Mathematics &
+    // Physics') is that department's; everything else is its subject's owner's.
+    departmentOf: code => {
+      const upper = String(code).toUpperCase();
+      return NSU_DEPARTMENT_OVERRIDES[upper] ?? NSU_PREFIX_DEPARTMENTS[getCoursePrefix(upper)] ?? null;
+    },
     untitled: NSU_UNTITLED_CODES,
     unexpressed: NSU_UNEXPRESSED_PREREQS,
   };
@@ -21964,9 +22106,6 @@ async function openReviewsDirectory() {
 //   #calculator/reviews/MAK                 → faculty page (all courses)
 //   #calculator/reviews/MAK/CSE220          → faculty page filtered to one course
 
-// BRACU's departments, in the order its tiles are shown. A campus whose
-// catalogue has no department table gets no tiles, and browses by search.
-const DEPT_ORDER = ['CSE','EEE','ECE','MPS','BBA','ENG','ECO','ANT','ARC','PHR','LLB','GENED'];
 const LIMITED_DATA_THRESHOLD = 3;
 const HIDE_AGGREGATE_UNDER   = 3;
 const REVIEW_COUNT_SCAN_LIMIT = 1000;
@@ -22097,9 +22236,11 @@ async function _renderDeptList(root, token) {
 
   // The department tiles are built as elements, not as markup: their labels
   // come from the catalogue, and nothing from data belongs in innerHTML.
-  const { departmentMeta } = getActiveCatalog();
+  // A campus whose catalogue has no department table gets no tiles, and
+  // browses by search.
+  const { departmentMeta, departmentOrder } = getActiveCatalog();
   const grid = root.querySelector('#_rvt_deptgrid');
-  DEPT_ORDER.forEach((code, i) => {
+  departmentOrder.forEach((code, i) => {
     const meta = departmentMeta[code];
     if (!meta) return;
     const card = document.createElement('div');
