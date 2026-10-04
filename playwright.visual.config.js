@@ -30,7 +30,7 @@ const SHELL_PORT = portFor(4177, 'PLAYWRIGHT_VISUAL_SHELL_PORT');
 const LEGACY_ONLY = !!process.env.VISUAL_LEGACY_ONLY;
 
 const legacyServer = {
-  command: `python3 -m http.server ${LEGACY_PORT} --bind 127.0.0.1`,
+  command: `python3 scripts/e2e_static_server.py ${LEGACY_PORT}`,
   url: `http://127.0.0.1:${LEGACY_PORT}/index.html`,
   // Never reuse a server this run did not start — see the note in
   // playwright.shell.config.js. Adopting a stray preview from another worktree
