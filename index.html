@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-9X8cnU3JhF6QdvXr0Od4Tr2XfRvka2KRzvoenjrdQ6E='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-C5JfbFpMpdy+aL/y09Q962k08WBzUy/pUvUrcPo1W34='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8444,6 +8444,14 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   display: none !important;
 }
 
+/* Tabs and links a campus has no data for (applyCampusFeatures, js/main.js).
+   Same reason as above: .calc-tab-group, .calc-tab-menu-item and .nav-link all
+   set their own display. */
+#calcTabs [hidden],
+.nav-link[hidden] {
+  display: none !important;
+}
+
 .signin-portal {
   position: relative;
   max-width: 620px;
@@ -9853,7 +9861,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
            shell's own nav (src/app/routes/RootLayout.tsx): the visual-parity
            gate captures this nav signed-out and compares the two, so a link on
            one side only would fail it. -->
-      <a href="#calculator" data-calc-tab="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
+      <a href="#calculator" data-calc-tab="tasks" data-feature="tasks" class="nav-link magnetic" title="Assignments, quizzes and deadlines">Tasks</a>
       <!-- Admin link — toggled visible by firebase.js when user is admin -->
       <a id="adminNavBtn" class="magnetic" href="admin/" aria-label="Open admin dashboard" title="Moderation dashboard"><svg class="admin-nav-badge" width="22" height="22" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#f5b942"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" font-family="'Noto Sans Bengali','Hind Siliguri','SolaimanLipi',serif" font-size="44" font-weight="900" fill="#2a1c00">স</text></svg> Admin</a>
       <!-- Admin "view as" campus picker (#807) — filled and revealed by
@@ -10151,15 +10159,18 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
               <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
             </button>
             <!-- Standalone pages (#383), not tabs: no data-tab, so the tab
-                 machinery ignores them and the anchors navigate natively. -->
-            <a class="calc-tab-menu-item" href="campus/" role="menuitem">
+                 machinery ignores them and the anchors navigate natively.
+                 data-feature names the campus feature behind each, so
+                 applyCampusFeatures (js/main.js) can hide the ones the
+                 signed-in student's campus has no data for. -->
+            <a class="calc-tab-menu-item" href="campus/" data-feature="campus" role="menuitem">
               <span class="calc-tab-icon">📍</span><span>Campus Map</span>
               <span class="calc-tab-menu-tag">WIP</span>
             </a>
-            <a class="calc-tab-menu-item" href="bus/" role="menuitem">
+            <a class="calc-tab-menu-item" href="bus/" data-feature="bus" role="menuitem">
               <span class="calc-tab-icon">🚌</span><span>Bus</span>
             </a>
-            <a class="calc-tab-menu-item" href="lost-found/" role="menuitem">
+            <a class="calc-tab-menu-item" href="lost-found/" data-feature="lostFound" role="menuitem">
               <span class="calc-tab-icon">🎒</span><span>Lost &amp; Found</span>
             </a>
           </div>
@@ -18244,6 +18255,53 @@ function findCourse(code) {
 /** Answer findCourse from another catalogue. `lookup` maps a code to its entry. */
 function setCourseLookup(lookup) {
   _courseLookup = lookup;
+}
+
+// ── js/core/campusFeatures.js ───────────────────────────────────
+// ── CAMPUS FEATURES (legacy bundle) ──────────────────────────────────────────
+//
+// Which calculator tabs a campus gets. The legacy twin of the shell's
+// tabsFor() (src/app/shellTabModel.ts): a tab is shown only when the campus's
+// profile in js/core/university.js lists the feature behind it.
+//
+// A tab is hidden when Shohoj has no data for that campus, not as a matter of
+// access: Routine, Seats and Free Rooms read BRACU's section feed, Difficulty
+// and Tasks read BRACU's catalogue. Showing them to an NSU student would be a
+// BRACU tool wearing their name. firestore.rules is the authorization
+// boundary; nothing here is.
+
+/**
+ * Legacy tab id → the registry feature that backs it. The ids differ in one
+ * place: the tab is `freerooms`, the feature is `rooms`.
+ */
+const CALC_TAB_FEATURES = {
+  calculator: 'calculator',
+  planner:    'planner',
+  playground: 'playground',
+  routine:    'routine',
+  tasks:      'tasks',
+  reviews:    'reviews',
+  difficulty: 'difficulty',
+  papers:     'papers',
+  seats:      'seats',
+  freerooms:  'rooms',
+  groups:     'groups',
+};
+
+/**
+ * Whether a campus gets a calculator tab. An unknown tab id is refused rather
+ * than waved through — a tab added to the page without a feature here should
+ * fail closed for every campus that did not opt in, and tests/campusFeatures
+ * pins this map against the page so that cannot happen silently.
+ */
+function campusAllowsTab(profile, tabId) {
+  const feature = CALC_TAB_FEATURES[tabId];
+  return feature !== undefined && hasFeature(profile, feature);
+}
+
+/** The tab ids a campus gets, in bar order. */
+function campusTabIds(profile) {
+  return Object.keys(CALC_TAB_FEATURES).filter(tabId => campusAllowsTab(profile, tabId));
 }
 
 // ── js/core/gpa-core.js ─────────────────────────────────────────
@@ -34767,7 +34825,8 @@ function _paintDigest() {
 /** Refresh the digest; called when the Calculator tab shows and on sign-in changes. */
 async function renderTasksDigest(force = false) {
   const uid = _digestUid();
-  if (!uid || tasksWorkerUrl() === null) {
+  // No digest for a campus without Tasks: the tab it links to is hidden.
+  if (!uid || tasksWorkerUrl() === null || !hasFeature(getActiveCampus(), 'tasks')) {
     _digest.uid = null;
     _digest.digest = null;
     _hideDigest();
@@ -34813,6 +34872,7 @@ registerAction('tasks:digestOpen', (el) => openTasksView(el.dataset.view));
 
 if (typeof window !== 'undefined') {
   window.addEventListener('shohoj:auth-changed', () => renderTasksDigest(true));
+  window.addEventListener('shohoj:campus-changed', () => renderTasksDigest(true));
 }
 
 // ── js/ui/signinPortal.js ───────────────────────────────────────
@@ -40952,6 +41012,10 @@ window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// The tab bar was built for the previous campus's features. Before the redraw
+// below: if the open tab is one the new campus does not get, this moves the
+// student to the calculator, and the redraw then re-enters that instead.
+window.addEventListener('shohoj:campus-changed', () => applyCampusFeatures());
 // ...and the open tab (reviews, planner, the difficulty map) was drawn from
 // the previous campus's catalogue. Re-entering it redraws it.
 window.addEventListener('shohoj:campus-changed', () => switchCalcTab(_activeCalcTab));
@@ -41626,8 +41690,35 @@ function _moveTabSlider(tabId) {
   slider.dataset.active = 'true';
 }
 
+// Hide every tab and link the active campus has no data for — the legacy twin
+// of the shell's tabsFor(). Three kinds of node carry a feature: a tab
+// ([data-tab], mapped through CALC_TAB_FEATURES), a standalone-page link or the
+// nav's Tasks link ([data-feature]), and a dropdown group, which goes when all
+// of its items have.
+function applyCampusFeatures() {
+  const campus = getActiveCampus();
+  document.querySelectorAll('#calcTabs [data-tab]').forEach(btn => {
+    btn.hidden = !campusAllowsTab(campus, btn.dataset.tab);
+  });
+  document.querySelectorAll('[data-feature]').forEach(el => {
+    el.hidden = !hasFeature(campus, el.dataset.feature);
+  });
+  document.querySelectorAll('#calcTabs .calc-tab-group').forEach(group => {
+    const items = Array.from(group.querySelectorAll('.calc-tab-menu-item'));
+    group.hidden = items.length > 0 && items.every(item => item.hidden);
+  });
+  // A student who was on a tab their campus does not get (a saved tab, a
+  // shared link, or a campus change mid-session) lands on the calculator.
+  if (!campusAllowsTab(campus, _activeCalcTab)) switchCalcTab('calculator');
+  else _moveTabSlider(_activeCalcTab); // hiding a neighbour moves the pill
+}
+
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
+  // Every route in — a click, a #calculator/<tab> link, the saved tab, the
+  // nav's Tasks link — comes through here, so this is the one place the campus
+  // check has to hold.
+  if (!campusAllowsTab(getActiveCampus(), tabId)) tabId = 'calculator';
   _activeCalcTab = tabId;
 
   // Update tab buttons — single tabs and menu items both carry data-tab.
@@ -42012,6 +42103,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSemesters();
     recalc();
   }
+
+  // The campus is still the BRACU default here — initActiveCampus() runs
+  // further down — so this is a no-op on the markup as shipped. It is here so
+  // the bar is never left in a state nothing applied; shohoj:campus-changed
+  // re-applies it once the student's campus is known, in the same tick on a
+  // warm session, and behind the sign-in gate on a cold one.
+  applyCampusFeatures();
 
   // Restore active tab from session/URL hash
   const savedTab = restoreCalcTab();
