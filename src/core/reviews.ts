@@ -11,7 +11,9 @@ import type { CourseCatalog } from './types';
 export const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'] as const;
 export type RatingKey = (typeof RATING_KEYS)[number];
 
-const REVIEW_ID_RE = /^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
+// <initials>_<course>_<hash>. The initials are letters, or letters and one
+// closing number where a campus numbers its faculty (NSU's MMS4).
+const REVIEW_ID_RE = /^(?:[A-Z]{2,6}|[A-Z]{2,5}[0-9])_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
 const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 
 export type ReviewRatings = Partial<Record<RatingKey, number>>;
@@ -41,6 +43,8 @@ export interface ReviewOverviewOptions {
   facultyInitials?: string;
   facultyName?: string;
   courseCode?: string;
+  /** The campus the initials belong to. Letters-only when omitted. */
+  campus?: InitialsCampus;
 }
 
 export interface ReviewOverview {
@@ -49,12 +53,29 @@ export interface ReviewOverview {
   basis: string;
 }
 
-export function normalizeInitials(raw: unknown): string {
+/**
+ * The one thing about a campus that initials depend on: whether a closing
+ * number tells its lecturers apart. A UniversityProfile is one of these.
+ */
+export interface InitialsCampus {
+  readonly numberedInitials?: true;
+}
+
+/** Letters only — BRACU's shape, and the default wherever no campus is given. */
+const LETTERS_ONLY: InitialsCampus = {};
+
+/**
+ * Faculty initials as they are stored and compared: uppercase, at most six
+ * characters. Where the campus numbers its faculty (NSU's MMS1, MMS3 and MMS4
+ * are three lecturers) the closing number is kept; elsewhere a digit is a typo
+ * and is dropped. Case is folded on every campus.
+ */
+export function normalizeInitials(raw: unknown, campus: InitialsCampus = LETTERS_ONLY): string {
   if (typeof raw !== 'string') return '';
   return raw
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z]/g, '')
+    .replace(campus.numberedInitials ? /[^A-Z0-9]/g : /[^A-Z]/g, '')
     .slice(0, 6);
 }
 
@@ -91,9 +112,10 @@ export async function reviewKeyHash(
   uid: unknown,
   facultyInitials: unknown,
   courseCode: unknown,
+  campus: InitialsCampus = LETTERS_ONLY,
 ): Promise<string> {
   return sha256Hex(
-    `${uid || 'anon'}|${normalizeInitials(facultyInitials)}|${String(courseCode || '').toUpperCase()}`,
+    `${uid || 'anon'}|${normalizeInitials(facultyInitials, campus)}|${String(courseCode || '').toUpperCase()}`,
   );
 }
 
@@ -107,11 +129,12 @@ export async function buildReviewDocId(
   uid: unknown,
   facultyInitials: unknown,
   courseCode: unknown,
+  campus: InitialsCampus = LETTERS_ONLY,
 ): Promise<string> {
-  const initials = normalizeInitials(facultyInitials);
+  const initials = normalizeInitials(facultyInitials, campus);
   const code = normalizeCourseCode(courseCode);
   // buildReviewDoc hashes the *normalized* values, not the raw args.
-  const hash = await reviewKeyHash(uid, initials, code);
+  const hash = await reviewKeyHash(uid, initials, code, campus);
   return `${initials}_${code}_${hash}`;
 }
 
@@ -130,9 +153,10 @@ export function isKnownCourseCode(raw: unknown, catalog: CourseCatalog): boolean
 export function validateReview(
   payload: ReviewLike | null | undefined,
   catalog: CourseCatalog,
+  campus: InitialsCampus = LETTERS_ONLY,
 ): string | null {
   if (!payload || typeof payload !== 'object') return 'Invalid payload';
-  const initials = normalizeInitials(payload.facultyInitials);
+  const initials = normalizeInitials(payload.facultyInitials, campus);
   const courseCode = normalizeCourseCode(payload.courseCode);
   if (!initials || initials.length < 2) return 'Faculty initials required';
   if (!courseCode) return 'Course code required';
@@ -182,11 +206,14 @@ export function aggregateRatings(reviews: readonly ReviewLike[]): RatingsAggrega
   return { ratings: avg, count: reviews.length };
 }
 
-export function aggregateByFaculty(reviews: readonly ReviewLike[]): FacultyAggregate[] {
+export function aggregateByFaculty(
+  reviews: readonly ReviewLike[],
+  campus: InitialsCampus = LETTERS_ONLY,
+): FacultyAggregate[] {
   if (!Array.isArray(reviews) || reviews.length === 0) return [];
   const byFac = new Map<string, ReviewLike[]>();
   for (const review of reviews) {
-    const key = normalizeInitials(review.facultyInitials);
+    const key = normalizeInitials(review.facultyInitials, campus);
     if (!key) continue;
     const list = byFac.get(key);
     if (list) list.push(review);
@@ -227,7 +254,7 @@ export function buildReviewOverview(
     : null;
   if (overall === null) return null;
 
-  const facultyInitials = normalizeInitials(opts.facultyInitials || '');
+  const facultyInitials = normalizeInitials(opts.facultyInitials || '', opts.campus);
   const facultyName = String(opts.facultyName || '').trim();
   const courseCode = normalizeCourseCode(opts.courseCode || '');
   const label = facultyName
