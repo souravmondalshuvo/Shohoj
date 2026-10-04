@@ -369,7 +369,7 @@ jobs:
       # valid document root; do not move this to a bare checkout.
       - name: Start both pages
         run: |
-          python3 -m http.server 4186 --bind 127.0.0.1 &
+          python3 scripts/e2e_static_server.py 4186 &
           npm run preview:shell -- --host 127.0.0.1 --port 4187 --strictPort &
           for i in $(seq 1 30); do
             legacy=$(curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:4186/index.html || true)
