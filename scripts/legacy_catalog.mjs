@@ -89,6 +89,12 @@ export function buildLegacyCatalog(campus, options = {}) {
   // ── Departments (which subject prefixes a department owns) ───────────────
   const prefixDepartments = {};
   const departmentMeta = {};
+  // The order departments are listed in is the order their tiles are shown in.
+  const departmentOrder = (campus.departments?.records ?? []).map((d) => d.code);
+  // Single courses owned by a department other than their subject's.
+  const departmentOverrides = Object.fromEntries(
+    (campus.departments?.overrides ?? []).map((o) => [o.course, o.department]),
+  );
   for (const d of campus.departments?.records ?? []) {
     for (const prefix of d.prefixes) prefixDepartments[prefix] = d.code;
     departmentMeta[d.code] = {
@@ -130,6 +136,8 @@ export function buildLegacyCatalog(campus, options = {}) {
     prerequisites,
     prefixDepartments,
     departmentMeta,
+    departmentOrder,
+    departmentOverrides,
     programs,
     untitled: untitled.sort(),
     unexpressed: unexpressed.sort(),
