@@ -5,6 +5,8 @@
 
 import { normalizeInitials, upsertFacultyProfile } from './faculty.js';
 import { findCourse } from './courseLookup.js';
+import { getActiveCampus } from './activeCampus.js';
+import { DEFAULT_UNIVERSITY_ID } from './university.js';
 
 const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
 // <initials>_<course>_<hash>. The initials are letters, or letters and one
@@ -12,6 +14,15 @@ const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'
 const REVIEW_ID_RE = /^(?:[A-Z]{2,6}|[A-Z]{2,5}[0-9])_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
 const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const SEEDED_REVIEWS = []; // injected by build3.py
+
+// The seed is BRACU's: data/input_reviews.jsonl is an import of BRACU faculty
+// reviews, bundled rather than stored (see build3.py). It is merged into every
+// list below, so it has to follow the campus the page is showing — an NSU
+// student's Reviews tab would otherwise be led by another university's
+// lecturers, and by any who happen to share initials or a course code.
+function _seededReviews() {
+  return getActiveCampus().id === DEFAULT_UNIVERSITY_ID ? SEEDED_REVIEWS : [];
+}
 
 export function normalizeCourseCode(raw) {
   return String(raw || '').toUpperCase().trim();
@@ -78,7 +89,7 @@ function _reviewTimestampMs(ts) {
 function _seededReviewsForFaculty(initials, courseCode = '') {
   const norm = normalizeInitials(initials);
   const scope = normalizeCourseCode(courseCode);
-  return SEEDED_REVIEWS.filter(r => {
+  return _seededReviews().filter(r => {
     if (r.facultyInitials !== norm) return false;
     if (scope && r.courseCode !== scope) return false;
     return true;
@@ -87,7 +98,7 @@ function _seededReviewsForFaculty(initials, courseCode = '') {
 
 function _seededReviewsForCourse(courseCode) {
   const scope = normalizeCourseCode(courseCode);
-  return SEEDED_REVIEWS.filter(r => r.courseCode === scope);
+  return _seededReviews().filter(r => r.courseCode === scope);
 }
 
 // SHA-256 a string using the browser's SubtleCrypto. Returns 64-char hex.
@@ -326,12 +337,12 @@ export async function fetchReviewsForCourse(courseCode, opts = {}) {
 // Fetch recent reviews site-wide.
 export async function fetchRecentReviews(n = 50) {
   const hook = window._shohoj_fetchRecentReviews;
-  if (typeof hook !== 'function') return SEEDED_REVIEWS.slice(0, n);
+  if (typeof hook !== 'function') return _seededReviews().slice(0, n);
   try {
-    return _mergeReviews(await hook(n), SEEDED_REVIEWS).slice(0, n);
+    return _mergeReviews(await hook(n), _seededReviews()).slice(0, n);
   } catch (e) {
     console.warn('[Shohoj] fetchRecentReviews failed:', e);
-    return SEEDED_REVIEWS.slice(0, n);
+    return _seededReviews().slice(0, n);
   }
 }
 
