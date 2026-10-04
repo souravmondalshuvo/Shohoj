@@ -33,9 +33,12 @@ export function buildReviewReportId(reviewId, uid) {
   return `${safeUid}_${safeReviewId}`;
 }
 
-export function validateReview(payload) {
+// `campus` is optional throughout this module: left out, initials are read by
+// the active campus's rule (see normalizeInitials in faculty.js). The Worker,
+// which has no active campus, passes the caller's.
+export function validateReview(payload, campus) {
   if (!payload || typeof payload !== 'object') return 'Invalid payload';
-  const initials = normalizeInitials(payload.facultyInitials);
+  const initials = normalizeInitials(payload.facultyInitials, campus);
   const courseCode = normalizeCourseCode(payload.courseCode);
   if (!initials || initials.length < 2) return 'Faculty initials required';
   if (!courseCode) return 'Course code required';
@@ -102,9 +105,9 @@ export async function sha256Hex(input) {
 // reviews together; but because the input is reproducible by anyone who knows a
 // candidate uid, this is pseudonymity to other users, not anonymity. See
 // docs/SECURITY.md.
-export async function reviewKeyHash(uid, facultyInitials, courseCode) {
+export async function reviewKeyHash(uid, facultyInitials, courseCode, campus) {
   return sha256Hex(
-    `${uid || 'anon'}|${normalizeInitials(facultyInitials)}|${String(courseCode || '').toUpperCase()}`
+    `${uid || 'anon'}|${normalizeInitials(facultyInitials, campus)}|${String(courseCode || '').toUpperCase()}`
   );
 }
 
@@ -194,7 +197,7 @@ export function buildReviewOverview(reviews, opts = {}) {
     : null;
   if (overall === null) return null;
 
-  const facultyInitials = normalizeInitials(opts.facultyInitials || '');
+  const facultyInitials = normalizeInitials(opts.facultyInitials || '', opts.campus);
   const facultyName = String(opts.facultyName || '').trim();
   const courseCode = normalizeCourseCode(opts.courseCode || '');
   const label = facultyName
@@ -335,11 +338,11 @@ export async function fetchRecentReviews(n = 50) {
 // Group a flat list of reviews by facultyInitials and compute aggregates
 // per faculty. Returns [{ facultyInitials, count, ratings, overall }]
 // sorted by count descending.
-export function aggregateByFaculty(reviews) {
+export function aggregateByFaculty(reviews, campus) {
   if (!Array.isArray(reviews) || reviews.length === 0) return [];
   const byFac = new Map();
   for (const r of reviews) {
-    const key = normalizeInitials(r.facultyInitials);
+    const key = normalizeInitials(r.facultyInitials, campus);
     if (!key) continue;
     if (!byFac.has(key)) byFac.set(key, []);
     byFac.get(key).push(r);
