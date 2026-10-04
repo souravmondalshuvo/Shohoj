@@ -8494,23 +8494,6 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
-.signin-portal-campus-link {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-blue);
-  text-decoration: none;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--chip-border);
-  transition: background var(--transition), border-color var(--transition);
-}
-
-.signin-portal-campus-link:hover {
-  background: var(--chip-hover);
-  border-color: var(--ink-blue);
-}
-
 /* ── Notes ── */
 .signin-portal-note {
   font-size: 12px;
@@ -8560,8 +8543,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
     align-items: flex-start;
     flex-direction: column;
   }
-  .signin-portal-campus-tag,
-  .signin-portal-campus-link {
+  .signin-portal-campus-tag {
     margin-left: 0;
   }
 }
