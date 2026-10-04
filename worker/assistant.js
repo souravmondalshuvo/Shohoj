@@ -49,6 +49,7 @@ import {
 import { buildClashMap, selectedSections, summarizeRoutine } from '../js/core/routineState.js';
 import { DEPARTMENTS } from '../js/core/departments.js';
 import { LOW_SAMPLE_THRESHOLD, ratingTier } from '../js/core/routineFaculty.js';
+import { normalizeFacultyInitials } from './facultyInitials.js';
 import { computeSimulation } from '../src/features/calculator/simulator.ts';
 // The minor requirements and the progress rules are imported from the same
 // modules the browser renders from (#760), not copied into a generated table.
@@ -77,7 +78,6 @@ export const MINOR_PICKER_LOCATION =
   'the Minor panel on the Calculator tab, just below the degree progress tracker (in the new app it is on the Degree page, under Plan)';
 
 const WEEK_DAYS = ['SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
-const FACULTY_INITIALS_RE = /^[A-Z]{2,6}$/;
 
 // The scope rules are load-bearing, not decoration. This assistant runs on the
 // project owner's own API key, so every off-topic question — "write my essay",
@@ -304,16 +304,11 @@ function normalizeCourseCode(raw) {
   return COURSE_CODE_RE.test(code) ? code : null;
 }
 
-// Initials arrive from the model, which may have read them off a seat result
-// ("SUE") or out of the student's own sentence ("sue's section"). Strip to
-// letters and upper-case before matching, exactly as js/core/faculty.js does.
-function normalizeFacultyInitials(raw) {
-  const initials = String(raw || '')
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 6);
-  return FACULTY_INITIALS_RE.test(initials) ? initials : null;
-}
+// Faculty initials arrive from the model, which may have read them off a seat
+// result ("SUE") or out of the student's own sentence ("sue's section").
+// normalizeFacultyInitials (worker/facultyInitials.js) cleans them the way
+// js/core/faculty.js does: uppercase, letters only — plus the closing number at
+// a campus that numbers its faculty, so NSU's MMS4 is not looked up as MMS.
 
 // Validate the client-supplied chat transcript. Returns the normalized
 // [{role, content}] array, or null when the payload is unusable.
@@ -727,7 +722,7 @@ function mergeReviewsById(seeded, live) {
 }
 
 async function runFacultyRating(input, ctx) {
-  const initials = normalizeFacultyInitials(input?.faculty_initials);
+  const initials = normalizeFacultyInitials(input?.faculty_initials, ctx?.campus);
   if (!initials) return { error: 'invalid_faculty_initials' };
 
   // A course filter is optional, but a malformed one must not be ignored:
