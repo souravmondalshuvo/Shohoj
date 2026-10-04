@@ -31,12 +31,18 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
+  collection as fsCollection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 
@@ -69,6 +75,12 @@ async function test(name, fn) {
     console.log(`  ✗ ${name}`);
     console.log(`      ${err.message?.split('\n')[0] || err}`);
     failed++;
+  }
+}
+
+function assertEqual(actual, expected) {
+  if (actual !== expected) {
+    throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
   }
 }
 
@@ -993,6 +1005,109 @@ async function run() {
       type: 'lost', title: 'Legacy umbrella', status: 'open',
       creatorUid: BRACU_UID, createdAt: serverTimestamp(),
     }));
+  });
+
+  // ── List queries (#821) ──────────────────────────────────────────────────
+  // Everything above reads one document at a time. The app lists. Rules are
+  // not filters: a list is judged from its constraints, before any row is
+  // read, and the campus rule cannot be proven for an unfiltered query — so
+  // the two campuses get different answers to the same request. These cases
+  // pin what js/auth/campus-scope.js is built around.
+
+  const seedCampusTrio = async (name, base) => {
+    await seedRaw(name, 'bracu_stamped', { ...base, university: 'bracu', createdAt: new Date(3000) });
+    await seedRaw(name, 'pre_tenancy', { ...base, createdAt: new Date(2000) });
+    await seedRaw(name, 'nsu_stamped', { ...base, university: 'nsu', createdAt: new Date(1000) });
+  };
+  const GROUP_BASE = {
+    courseCode: 'CSE220', title: 'Seeded', mode: 'online',
+    contactLink: 'https://m.me/x', capacity: 6, creatorUid: 'someone',
+  };
+  const newestFirst = [orderBy('createdAt', 'desc'), limit(200)];
+  const ids = (snap) => snap.docs.map((d) => d.id);
+
+  await test('list: an NSU student with no campus filter is denied', async () => {
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = nsuCtx().firestore();
+    await assertFails(getDocs(query(fsCollection(db, 'studyGroups'), ...newestFirst)));
+  });
+
+  await test('list: an NSU student filtering to NSU gets NSU rows only', async () => {
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = nsuCtx().firestore();
+    const snap = await assertSucceeds(getDocs(query(
+      fsCollection(db, 'studyGroups'), where('university', '==', 'nsu'), ...newestFirst,
+    )));
+    assertEqual(ids(snap).join(','), 'nsu_stamped');
+  });
+
+  await test('list: an NSU student cannot filter to BRACU', async () => {
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = nsuCtx().firestore();
+    await assertFails(getDocs(query(
+      fsCollection(db, 'studyGroups'), where('university', '==', 'bracu'), ...newestFirst,
+    )));
+  });
+
+  await test('list: a BRACU filter misses the pre-tenancy rows, so legacy sends none', async () => {
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = bracuCtx().firestore();
+    const snap = await assertSucceeds(getDocs(query(
+      fsCollection(db, 'studyGroups'), where('university', '==', 'bracu'), ...newestFirst,
+    )));
+    assertEqual(ids(snap).join(','), 'bracu_stamped');
+  });
+
+  await test('list: a BRACU student with no filter is allowed — and is handed every campus', async () => {
+    // The gap campus-scope.js closes on the client: the unfiltered list has to
+    // stay legal until scripts/backfill_campus.js has stamped the pre-tenancy
+    // rows, and while it is, the rules cannot hold other campuses' rows back.
+    // When the backfill lands and the rules require the filter, this case
+    // inverts — change it deliberately.
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = bracuCtx().firestore();
+    const snap = await assertSucceeds(getDocs(query(fsCollection(db, 'studyGroups'), ...newestFirst)));
+    assertEqual(ids(snap).join(','), 'bracu_stamped,pre_tenancy,nsu_stamped');
+  });
+
+  await test('list: feedback and approved papers follow the same split', async () => {
+    await seedCampusTrio('appFeedback', { type: 'general', text: 'hello', context: {}, anonymous: true });
+    await seedCampusTrio('papers', { courseCode: 'CSE220', approved: true, uploaderUid: 'someone' });
+    const nsu = nsuCtx().firestore();
+    await assertFails(getDocs(query(fsCollection(nsu, 'appFeedback'), ...newestFirst)));
+    assertEqual(ids(await assertSucceeds(getDocs(query(
+      fsCollection(nsu, 'appFeedback'), where('university', '==', 'nsu'), ...newestFirst,
+    )))).join(','), 'nsu_stamped');
+    await assertFails(getDocs(query(
+      fsCollection(nsu, 'papers'), where('approved', '==', true), ...newestFirst,
+    )));
+    assertEqual(ids(await assertSucceeds(getDocs(query(
+      fsCollection(nsu, 'papers'),
+      where('university', '==', 'nsu'), where('approved', '==', true), ...newestFirst,
+    )))).join(','), 'nsu_stamped');
+    assertEqual(ids(await assertSucceeds(getDocs(query(
+      fsCollection(nsu, 'papers'),
+      where('university', '==', 'nsu'), where('courseCode', '==', 'CSE220'),
+      where('approved', '==', true), ...newestFirst,
+    )))).join(','), 'nsu_stamped');
+  });
+
+  await test('list: an NSU group created with its campus is listed back to its author', async () => {
+    const db = nsuCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'studyGroups', 'mine'), {
+      ...GROUP_BASE, creatorUid: NSU_UID, university: 'nsu', createdAt: serverTimestamp(),
+    }));
+    const snap = await assertSucceeds(getDocs(query(
+      fsCollection(db, 'studyGroups'), where('university', '==', 'nsu'), ...newestFirst,
+    )));
+    assertEqual(ids(snap).join(','), 'mine');
+  });
+
+  await test('list: an admin sees every campus without a filter', async () => {
+    await seedCampusTrio('studyGroups', GROUP_BASE);
+    const db = adminCtx().firestore();
+    const snap = await assertSucceeds(getDocs(query(fsCollection(db, 'studyGroups'), ...newestFirst)));
+    assertEqual(ids(snap).length, 3);
   });
 
   // ── Server-owned collections (#710) ──────────────────────────────────────
