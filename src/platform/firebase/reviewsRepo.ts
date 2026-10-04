@@ -31,7 +31,7 @@
 import type { QueryConstraint } from 'firebase/firestore';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
-import { normalizeCourseCode, normalizeInitials } from '../../core/reviews.ts';
+import { normalizeCourseCode, normalizeInitials, type InitialsCampus } from '../../core/reviews.ts';
 import type { ReviewLike } from '../../core/reviews.ts';
 
 /** A review doc as stored: the review shape plus its Firestore id. */
@@ -164,6 +164,8 @@ export interface ReviewsRepo {
     courseCode?: string;
     pageSize?: number;
     after?: ReviewCursor | null;
+    /** The campus the initials belong to (NSU's keep their number). */
+    campus?: InitialsCampus | undefined;
   }): Promise<ReviewPage>;
   /** Reviews for a course across all faculty. Paged, newest first. */
   fetchByCourse(
@@ -264,8 +266,9 @@ export function createReviewsRepo(options: ReviewsRepoOptions): ReviewsRepo {
       courseCode,
       pageSize = DEFAULT_PAGE_SIZE,
       after = null,
+      campus,
     }) {
-      const initials = normalizeInitials(facultyInitials);
+      const initials = normalizeInitials(facultyInitials, campus);
       if (!initials) return EMPTY_PAGE;
       const code = courseCode ? normalizeCourseCode(courseCode) : undefined;
       const effectivePageSize = resolvePageSize(pageSize);
