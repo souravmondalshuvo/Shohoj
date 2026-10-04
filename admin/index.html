@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-Nck7ZAAmpYtF6d+b0b6m78Igt6yqF4PZl7jABTZjIKA=' 'sha256-2yaiyz3n+jq4lRllg3HoSSSkJ2+IK1oHhJoQvEnzzSk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-IBq/4BcFHzmy5Jlz/1mOWAyZz63/NsMdL03ARQDiWh8=' 'sha256-2yaiyz3n+jq4lRllg3HoSSSkJ2+IK1oHhJoQvEnzzSk='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -10342,6 +10342,147 @@ function firstDisplayName(displayName) {
   return String(displayName || '').split(' ')[0] || 'you';
 }
 
+// ── js/core/universityDirectory.js ──────────────────────────────
+// ── UNIVERSITY DIRECTORY (legacy bundle) ─────────────────────────────────────
+// The campus list the sign-in portal shows a signed-out visitor: which
+// universities Shohoj serves, which email domain identifies a student at each
+// one, and — the part that only matters here — which of them THIS build can
+// actually sign in.
+//
+// This is DISPLAY DATA ONLY. The authoritative registry — grading scales, mark
+// tiers, repeat rules, per-campus feature lists — is src/core/university.ts and
+// stays there. build3.py concatenates plain JS and cannot pull in a .ts module,
+// and the portal only ever needs names and domains, so copying the whole
+// profile here would be four hundred lines of grading policy kept in sync by
+// hope.
+//
+// The domain map is already hand-copied in three places (this file,
+// firestore.rules `campusOfEmail`, worker/index.js CAMPUS). This is a fourth
+// copy, so it does not get to drift silently: tests/universityDirectory.test.js
+// transpiles src/core/university.ts and asserts id, name, shortName and
+// emailDomains match entry for entry.
+
+/**
+ * The one campus the legacy bundle is built for.
+ *
+ * Not a preference — a fact about this build. bracu-section.json, the course
+ * catalog, the seat feed, the routine grid and the campus map are all BRACU,
+ * and js/auth/firebase.js turns away any non-BRACU account for exactly that
+ * reason: signing an NSU student in to a BRACU app wearing their name is worse
+ * than turning them away.
+ *
+ * Multi-campus lives in the React shell at /app/, which has the registry wired
+ * through to the grading scale. So the portal names the other campuses and
+ * sends them there rather than pretending this build serves them and letting
+ * the domain check reject them after the Google popup.
+ *
+ * tests/universityDirectory.test.js pins this to the domain literal in
+ * js/auth/firebase.js — broaden one and the test makes you update the other.
+ */
+const LEGACY_CAMPUS_ID = 'bracu';
+
+const UNIVERSITY_DIRECTORY = [
+  {
+    id: 'bracu',
+    name: 'BRAC University',
+    shortName: 'BRACU',
+    emailDomains: ['g.bracu.ac.bd'],
+  },
+  {
+    id: 'nsu',
+    name: 'North South University',
+    shortName: 'NSU',
+    emailDomains: ['northsouth.edu'],
+  },
+];
+
+/** Can this build sign the campus in, or does it have to hand off to the shell? */
+function servedByThisBuild(campusId) {
+  return campusId === LEGACY_CAMPUS_ID;
+}
+
+// Which campus an email address belongs to, or null for a domain we do not
+// serve at all. Case-insensitive: Google hands back whatever casing the student
+// typed, and 'A@G.BRACU.AC.BD' is the same student as the lowercase form.
+// Exact-domain match only — a suffix test would let
+// 'a@g.bracu.ac.bd.attacker.com' resolve to BRACU. Mirrors campusOfEmail in
+// firestore.rules.
+function campusOfEmail(email) {
+  const at = String(email || '').lastIndexOf('@');
+  if (at < 0) return null;
+  const domain = String(email).slice(at + 1).toLowerCase();
+  const match = UNIVERSITY_DIRECTORY.find(u => u.emailDomains.includes(domain));
+  return match ? match.id : null;
+}
+
+// ── js/auth/campus-scope.js ─────────────────────────────────────
+// ── CAMPUS SCOPE (legacy bundle) ─────────────────────────────────────────────
+//
+// How this client tags the documents it creates, and how it asks for the ones
+// it lists, so that each campus sees its own. The legacy twin of the shell's
+// campusStamp (src/platform/firebase/campusStamp.ts), plus the read half the
+// shell does not have yet.
+//
+// Everything is derived from the signed-in email — the same fact
+// firestore.rules reads (`campusOfEmail(request.auth.token.email)`) — so the
+// client's answer cannot disagree with the server's. It is NOT derived from the
+// active campus (js/core/activeCampus.js): an admin viewing the site as NSU is
+// still, to the rules, whoever their email says they are.
+//
+// WRITES. firestore.rules pins a present `university` to the writer's own
+// campus and reads a missing one as BRACU. Legacy used to send none, which was
+// right while it admitted BRACU only; an NSU student's group filed without it
+// would read back as BRACU's and be invisible to its own author.
+//
+// READS. Two facts about the rules, both measured in the emulator
+// (tests/firestore.rules.test.js, "list queries"):
+//   1. An NSU student's list with no campus filter is DENIED outright.
+//   2. A BRACU student's list with no campus filter is allowed — and has to
+//      stay unfiltered, because `where('university','==','bracu')` does not
+//      match the pre-tenancy documents that have no field at all, which is
+//      most of BRACU's. (scripts/backfill_campus.js is what lifts this.)
+// So a campus other than BRACU filters in the query, and BRACU filters here,
+// after the fact, by the rule the rules themselves use for a missing field.
+
+/**
+ * The campus a document with no `university` field belongs to. Mirrors
+ * `docCampus` in firestore.rules: everything written before tenancy is BRACU's.
+ */
+const PRE_TENANCY_CAMPUS = 'bracu';
+
+/**
+ * The field to spread into a document this user is creating: `{ university }`
+ * for a student a campus claims, `{}` otherwise.
+ *
+ * `{}` rather than a guessed default. The only signed-in user no campus claims
+ * is an admin on an outside address, and a document with no field is what such
+ * an admin has always written.
+ */
+function campusWriteField(email) {
+  const campus = campusOfEmail(email);
+  return campus ? { university: campus } : {};
+}
+
+/**
+ * How to list a campus-scoped collection for this user.
+ *
+ *   filter  the campus id to add as `where('university', '==', filter)`, or
+ *           null to send the query without one
+ *   keep    whether a returned document belongs in this user's view
+ *
+ * Admins moderate every campus and the rules let them read all of it, so they
+ * get no filter and keep everything — as does anyone no campus claims, who can
+ * only be an admin.
+ */
+function campusReadPlan(email, isAdmin = false) {
+  const campus = campusOfEmail(email);
+  if (isAdmin || !campus) {
+    return { filter: null, keep: () => true };
+  }
+  const keep = data => (data?.university ?? PRE_TENANCY_CAMPUS) === campus;
+  return { filter: campus === PRE_TENANCY_CAMPUS ? null : campus, keep };
+}
+
 // ── js/auth/paper-service.js ────────────────────────────────────
 function getPapersWorkerUrl() {
   const u = window._shohoj_papers_worker_url;
@@ -10447,6 +10588,21 @@ const LOCAL_WRITE_GRACE_MS = 5000; // 5 seconds is more than enough
 // ── Firestore ref ─────────────────────────────────────────────────────────────
 function userDocRef(uid) {
   return doc(db, 'users', uid);
+}
+
+// ── Campus-scoped lists ───────────────────────────────────────────────────────
+// Every list of a collection firestore.rules scopes by campus goes through
+// this. It adds the campus filter where the rules need one (see
+// campus-scope.js for why BRACU gets none) and drops any row that is not the
+// signed-in student's — the same view the rules would grant document by
+// document. `constraints` are the query's own, in order.
+async function listForMyCampus(col, constraints) {
+  const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+  const scoped = plan.filter
+    ? [where('university', '==', plan.filter), ...constraints]
+    : constraints;
+  const snap = await getDocs(query(col, ...scoped));
+  return snap.docs.filter(d => plan.keep(d.data()));
 }
 
 function clearCloudAppliedFlag() {
@@ -11934,6 +12090,7 @@ window._shohoj_submitFeedback = async function({ type, text, context, anonymous,
       context: (context && typeof context === 'object') ? context : {},
       anonymous: !!anonymous,
       createdAt: serverTimestamp(),
+      ...campusWriteField(currentUser.email),
     };
     if (!anonymous && submitterUid === currentUser.uid) {
       data.uid = currentUser.uid;
@@ -11949,13 +12106,11 @@ window._shohoj_submitFeedback = async function({ type, text, context, anonymous,
 window._shohoj_fetchAllFeedback = async function() {
   if (!currentUser) return [];
   try {
-    const q = query(
-      collection(db, 'appFeedback'),
+    const docs = await listForMyCampus(collection(db, 'appFeedback'), [
       orderBy('createdAt', 'desc'),
       qLimit(200),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchAllFeedback failed:', e);
     return [];
@@ -12014,6 +12169,7 @@ window._shohoj_createStudyGroup = async function({ courseCode, title, descriptio
       capacity: Math.round(Number(capacity) || 0),
       creatorUid: currentUser.uid,
       createdAt: serverTimestamp(),
+      ...campusWriteField(currentUser.email),
     };
     const desc = String(description || '').trim();
     if (desc) data.description = desc.slice(0, 500);
@@ -12033,9 +12189,11 @@ window._shohoj_fetchStudyGroups = async function() {
     // The board is capped at 200 recent groups; course/mode filtering is done
     // client-side (substring match) in groupsTab, so no server-side course
     // filter (or its composite index) is needed.
-    const q = query(collection(db, 'studyGroups'), orderBy('createdAt', 'desc'), qLimit(200));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = await listForMyCampus(collection(db, 'studyGroups'), [
+      orderBy('createdAt', 'desc'),
+      qLimit(200),
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchStudyGroups failed:', e);
     return [];
@@ -12204,16 +12362,13 @@ window._shohoj_deleteStudyGroupByReport = async function(reportId, groupId) {
 window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 } = {}) {
   if (!currentUser || !courseCode) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(
-      col,
+    const docs = await listForMyCampus(collection(db, 'papers'), [
       where('courseCode', '==', String(courseCode).toUpperCase()),
       where('approved', '==', true),
       orderBy('createdAt', 'desc'),
       qLimit(pageSize),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     // Re-throw so the UI can show a load-error state instead of an empty
     // library: a missing composite index (courseCode + approved + createdAt)
@@ -12226,10 +12381,12 @@ window._shohoj_fetchPapersByCourse = async function(courseCode, { pageSize = 50 
 window._shohoj_fetchRecentPapers = async function(n = 30) {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(col, where('approved', '==', true), orderBy('createdAt', 'desc'), qLimit(n));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const docs = await listForMyCampus(collection(db, 'papers'), [
+      where('approved', '==', true),
+      orderBy('createdAt', 'desc'),
+      qLimit(n),
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     // Re-throw so the UI can show a load-error state instead of an empty
     // library: a missing composite index (approved + createdAt) is otherwise
