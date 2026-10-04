@@ -20,6 +20,9 @@ async function boot(page) {
       sessionStorage.clear();
     }
     window.Chart = window.Chart || class { destroy() {} };
+    // Auth is settled from the start, so the sign-in gate reveals the
+    // calculator at once rather than on its four-second fallback.
+    window._shohoj_isAuthReady = () => true;
   });
   await unlockCalculator(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
