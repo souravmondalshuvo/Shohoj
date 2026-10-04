@@ -7,15 +7,17 @@
 // three people (#819). There, and only there, initials may end in one digit.
 // Everywhere else a digit is a typo. Case is never identity and is folded.
 //
-// Mirrors NUMBERED_INITIALS_CAMPUSES in js/core/faculty.js;
-// tests/facultyInitials.test.js holds the two together against the section
-// data in data/campuses.
+// Which campuses those are is the registry's `numberedInitials`
+// (js/core/university.js), the same field the page reads, so the Worker and
+// the page cannot disagree. tests/facultyInitials.test.js holds the rule to
+// the section data in data/campuses.
+
+import { getUniversity } from '../js/core/university.js';
 
 const LETTERS_RE = /^[A-Z]{2,6}$/;
 const NUMBERED_RE = /^[A-Z]{2,6}$|^[A-Z]{2,5}[0-9]$/;
-const NUMBERED_INITIALS_CAMPUSES = ['nsu'];
 
-const numbersItsFaculty = (campus) => NUMBERED_INITIALS_CAMPUSES.includes(campus);
+const numbersItsFaculty = (campus) => getUniversity(campus)?.numberedInitials === true;
 
 /** The shape well-formed faculty initials take on a campus. */
 export function facultyInitialsRe(campus) {
