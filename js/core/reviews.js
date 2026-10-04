@@ -7,7 +7,9 @@ import { normalizeInitials, upsertFacultyProfile } from './faculty.js';
 import { findCourse } from './courseLookup.js';
 
 const RATING_KEYS = ['teaching', 'marking', 'behavior', 'difficulty', 'workload'];
-const REVIEW_ID_RE = /^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
+// <initials>_<course>_<hash>. The initials are letters, or letters and one
+// closing number where a campus numbers its faculty (NSU's MMS4).
+const REVIEW_ID_RE = /^(?:[A-Z]{2,6}|[A-Z]{2,5}[0-9])_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$/;
 const COURSE_CODE_RE = /^[A-Z]{2,4}[0-9]{3}[A-Z]?$/;
 const SEEDED_REVIEWS = []; // injected by build3.py
 
