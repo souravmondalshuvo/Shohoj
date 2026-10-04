@@ -29,7 +29,15 @@ const { loadCampuses } = await import('../scripts/campus_data.mjs');
 const { isValidInitials, normalizeInitials } = await import('../js/core/faculty.js');
 const { isValidReviewId } = await import('../js/core/reviews.js');
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
+const { UNIVERSITIES } = await import('../js/core/university.js');
+const { bracu: BRACU, nsu: NSU } = UNIVERSITIES;
 const worker = await import('../worker/index.js');
+// The shell's typed copies of the same functions.
+const typedFaculty = await import('../src/core/faculty.ts');
+const typedReviews = await import('../src/core/reviews.ts');
+const draft = await import('../src/features/calculator/reviewDraft.ts');
+const { buildCourseReviewGroups } = await import('../src/features/calculator/courseReviews.ts');
+const typedUniversity = await import('../src/core/university.ts');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { campuses, errors } = loadCampuses();
@@ -39,22 +47,27 @@ const subject = (course) => course.match(/^[A-Z]+/)[0];
 
 // ── The rule ────────────────────────────────────────────────────────────────
 
-assert.equal(normalizeInitials(' mak ', 'bracu'), 'MAK');
-assert.equal(normalizeInitials('MAK2', 'bracu'), 'MAK', 'a digit at BRACU is a typo, dropped as before');
-assert.equal(normalizeInitials('mms4', 'nsu'), 'MMS4', 'a closing number at NSU is kept');
-assert.equal(normalizeInitials('ABq1', 'nsu'), 'ABQ1');
-assert.equal(normalizeInitials('abq1', 'nsu'), 'ABQ1', 'case folds on every campus');
-assert.equal(normalizeInitials('M.M-S 4', 'nsu'), 'MMS4', 'punctuation is still dropped');
-assert.equal(normalizeInitials('ABCDEFG9', 'nsu'), 'ABCDEF', 'six characters at most');
-assert.equal(normalizeInitials(null, 'nsu'), '');
+assert.equal(normalizeInitials(' mak ', BRACU), 'MAK');
+assert.equal(normalizeInitials('MAK2', BRACU), 'MAK', 'a digit at BRACU is a typo, dropped as before');
+assert.equal(normalizeInitials('mms4', NSU), 'MMS4', 'a closing number at NSU is kept');
+assert.equal(normalizeInitials('ABq1', NSU), 'ABQ1');
+assert.equal(normalizeInitials('abq1', NSU), 'ABQ1', 'case folds on every campus');
+assert.equal(normalizeInitials('M.M-S 4', NSU), 'MMS4', 'punctuation is still dropped');
+assert.equal(normalizeInitials('ABCDEFG9', NSU), 'ABCDEF', 'six characters at most');
+assert.equal(normalizeInitials(null, NSU), '');
 
-for (const [raw, id, ok] of [
-  ['MAK', 'bracu', true], ['M', 'bracu', false], ['MMS4', 'bracu', true /* → MMS */],
-  ['MMS4', 'nsu', true], ['NvA', 'nsu', true], ['M4', 'nsu', false],
-  ['MM44', 'nsu', false], ['4MMS', 'nsu', false], ['', 'nsu', false],
+for (const [raw, campusProfile, ok] of [
+  ['MAK', BRACU, true], ['M', BRACU, false], ['MMS4', BRACU, true /* → MMS */],
+  ['MMS4', NSU, true], ['NvA', NSU, true], ['M4', NSU, false],
+  ['MM44', NSU, false], ['4MMS', NSU, false], ['', NSU, false],
 ]) {
-  assert.equal(isValidInitials(raw, id), ok, `isValidInitials(${JSON.stringify(raw)}, ${id})`);
+  assert.equal(isValidInitials(raw, campusProfile), ok, `isValidInitials(${JSON.stringify(raw)}, ${campusProfile.id})`);
 }
+
+// Which campuses number their faculty is one registry field, read by the page,
+// the shell and the Worker alike.
+assert.equal(NSU.numberedInitials, true);
+assert.equal(BRACU.numberedInitials, undefined);
 
 // With no campus given it is the active one: BRACU until sign-in says otherwise.
 assert.equal(normalizeInitials('MMS4'), 'MMS');
@@ -65,6 +78,8 @@ assert.equal(normalizeInitials('MMS4'), 'MMS');
 
 // ── NSU's data: the number separates people, the case does not ─────────────
 
+const TYPED_NSU = typedUniversity.UNIVERSITIES.nsu;
+const TYPED_BRACU = typedUniversity.UNIVERSITIES.bracu;
 const nsuTerms = Object.entries(campus('nsu').sections);
 assert.ok(nsuTerms.length >= 3, 'the NSU term files are loaded');
 let numbered = 0;
@@ -82,9 +97,13 @@ for (const [term, file] of nsuTerms) {
 
   // Every real initial survives normalisation as its own uppercase, and is valid.
   for (const raw of spelled) {
-    assert.equal(normalizeInitials(raw, 'nsu'), raw.toUpperCase(), `${term}: ${raw}`);
-    assert.ok(isValidInitials(raw, 'nsu'), `${term}: ${raw} is valid at NSU`);
+    assert.equal(normalizeInitials(raw, NSU), raw.toUpperCase(), `${term}: ${raw}`);
+    assert.ok(isValidInitials(raw, NSU), `${term}: ${raw} is valid at NSU`);
     assert.ok(worker.facultyInitialsRe('nsu').test(raw.toUpperCase()), `${term}: the Worker accepts ${raw}`);
+    // The shell reads it the same way, from either of its two modules.
+    assert.equal(typedFaculty.normalizeInitials(raw, TYPED_NSU), raw.toUpperCase(), `${term}: shell ${raw}`);
+    assert.equal(typedReviews.normalizeInitials(raw, TYPED_NSU), raw.toUpperCase(), `${term}: shell reviews ${raw}`);
+    assert.ok(typedFaculty.isValidInitials(raw, TYPED_NSU), `${term}: shell accepts ${raw}`);
   }
 
   // The statistics below need a whole term's faculty to mean anything; the
@@ -107,14 +126,14 @@ for (const [term, file] of nsuTerms) {
   };
 
   // Initials the BRACU rule would merge that differ by more than case: a number.
-  const byNumber = groupBy((raw) => normalizeInitials(raw, 'bracu'))
+  const byNumber = groupBy((raw) => normalizeInitials(raw, BRACU))
     .map((g) => new Set([...g].map((raw) => raw.toUpperCase())))
     .filter((g) => g.size > 1);
   assert.ok(byNumber.length >= 10, `${term}: NSU numbers its faculty (${byNumber.length} groups)`);
   numbered += byNumber.length;
   // They stay apart under NSU's rule...
   for (const group of byNumber) {
-    assert.equal(new Set([...group].map((u) => normalizeInitials(u, 'nsu'))).size, group.size, `${term}: ${[...group]}`);
+    assert.equal(new Set([...group].map((u) => normalizeInitials(u, NSU))).size, group.size, `${term}: ${[...group]}`);
   }
   // ...and they should: lecturers who differ only by number rarely share a subject.
   const numberGroupsRaw = groupBy((raw) => raw.toUpperCase().replace(/\d/g, '')).filter(
@@ -145,26 +164,74 @@ for (const [term, file] of nsuTerms) {
   );
   // ...so they fold into one under NSU's rule.
   for (const group of byCase) {
-    assert.equal(new Set([...group].map((raw) => normalizeInitials(raw, 'nsu'))).size, 1, `${term}: ${[...group]}`);
+    assert.equal(new Set([...group].map((raw) => normalizeInitials(raw, NSU))).size, 1, `${term}: ${[...group]}`);
   }
 }
 assert.ok(wholeTerms >= 3, 'three whole terms were measured');
 
 // The three the rule is named for, in the running term.
-assert.equal(new Set(['MMS1', 'MMS3', 'MMS4'].map((x) => normalizeInitials(x, 'nsu'))).size, 3);
-assert.equal(new Set(['MMS1', 'MMS3', 'MMS4'].map((x) => normalizeInitials(x, 'bracu'))).size, 1);
+assert.equal(new Set(['MMS1', 'MMS3', 'MMS4'].map((x) => normalizeInitials(x, NSU))).size, 3);
+assert.equal(new Set(['MMS1', 'MMS3', 'MMS4'].map((x) => normalizeInitials(x, BRACU))).size, 1);
 
 // ── BRACU's data: nothing moves ─────────────────────────────────────────────
 
 const bracuFaculty = campus('bracu').faculty.records.map((f) => f.initials);
 assert.ok(bracuFaculty.length >= 100);
 for (const initials of bracuFaculty) {
-  assert.equal(normalizeInitials(initials, 'bracu'), initials, `BRACU ${initials}`);
-  assert.equal(normalizeInitials(initials, 'nsu'), initials, 'letters-only initials read the same under either rule');
+  assert.equal(normalizeInitials(initials, BRACU), initials, `BRACU ${initials}`);
+  assert.equal(normalizeInitials(initials, NSU), initials, 'letters-only initials read the same under either rule');
   assert.ok(worker.facultyInitialsRe('bracu').test(initials));
 }
 assert.equal(worker.facultyInitialsRe('bracu').test('MMS4'), false, 'the Worker takes no number from a BRACU caller');
 assert.equal(worker.facultyInitialsRe('diu').test('MMS4'), false, 'nor from a campus nothing is known about');
+
+// ── The shell: the same rule, with the campus passed in ────────────────────
+
+// With no campus the typed functions read letters only, as they always did —
+// the shell has no ambient campus, so every caller that has one must pass it.
+assert.equal(typedFaculty.normalizeInitials('MMS4'), 'MMS');
+assert.equal(typedFaculty.normalizeInitials('MMS4', TYPED_BRACU), 'MMS');
+assert.equal(typedFaculty.normalizeInitials('mms4', TYPED_NSU), 'MMS4');
+assert.equal(typedReviews.normalizeInitials('MMS4'), 'MMS');
+assert.equal(typedFaculty.isValidInitials('MM44', TYPED_NSU), false);
+
+// The review form: prefilled, typed, validated and sent with the number.
+{
+  let d = draft.emptyReviewDraft('mms4', TYPED_NSU);
+  assert.equal(d.initials, 'MMS4');
+  d = draft.setDraftInitials(d, 'mms 1', TYPED_NSU);
+  assert.equal(d.initials, 'MMS1');
+  assert.notEqual(draft.firstDraftError(d, TYPED_NSU)?.field, 'initials');
+  assert.equal(draft.buildReviewPayload(d, 'cse115', 'Fall 2026', TYPED_NSU).facultyInitials, 'MMS1');
+  // At BRACU the same keystrokes are still MMS.
+  assert.equal(draft.setDraftInitials(draft.emptyReviewDraft(), 'mms 1', TYPED_BRACU).initials, 'MMS');
+  assert.equal(draft.emptyReviewDraft('mms4').initials, 'MMS');
+}
+
+// Grouping reviews: two numbered lecturers are two rows at NSU.
+{
+  const ratings = { teaching: 4, marking: 4, behavior: 4, difficulty: 3, workload: 3 };
+  const reviews = [
+    { id: 'a', facultyInitials: 'MMS1', courseCode: 'CSE115', ratings, text: 'one' },
+    { id: 'b', facultyInitials: 'MMS4', courseCode: 'CSE115', ratings, text: 'four' },
+    { id: 'c', facultyInitials: 'MMS4', courseCode: 'CSE115', ratings, text: 'four again' },
+  ];
+  const byNsu = typedReviews.aggregateByFaculty(reviews, TYPED_NSU);
+  assert.deepEqual(byNsu.map((g) => [g.facultyInitials, g.count]), [['MMS4', 2], ['MMS1', 1]]);
+  assert.equal(typedReviews.aggregateByFaculty(reviews).length, 1, 'without the campus they collapse into MMS');
+  const groups = buildCourseReviewGroups(reviews, TYPED_NSU);
+  assert.deepEqual(groups.map((g) => g.facultyInitials), ['MMS4', 'MMS1']);
+  assert.equal(groups[1].snippets.length, 1, "MMS1's page shows MMS1's review only");
+}
+
+// A review's id carries the number, in the shell as on the legacy page.
+{
+  const id = await typedReviews.buildReviewDocId('uid-1', 'mms4', 'cse115', TYPED_NSU);
+  assert.match(id, /^MMS4_CSE115_[a-f0-9]{64}$/);
+  assert.ok(typedReviews.isValidReviewId(id), 'and the shell will let it be reported');
+  assert.notEqual(id, await typedReviews.buildReviewDocId('uid-1', 'mms1', 'cse115', TYPED_NSU));
+  assert.match(await typedReviews.buildReviewDocId('uid-1', 'mms4', 'cse115'), /^MMS_CSE115_/);
+}
 
 // ── Review ids, in the three places their shape is written ─────────────────
 
@@ -176,6 +243,8 @@ assert.equal(isValidReviewId(`4MMS_CSE115_${hash}`), false);
 assert.equal(isValidReviewId(`M_CSE115_${hash}`), false);
 
 // firestore.rules cannot import this pattern, so it is compared as text.
+assert.equal(typedReviews.isValidReviewId(`MMS44_CSE115_${hash}`), false);
+
 const clientPattern = fs
   .readFileSync(path.join(ROOT, 'js/core/reviews.js'), 'utf8')
   .match(/const REVIEW_ID_RE = \/(.+)\/;/)[1];
@@ -187,5 +256,9 @@ assert.equal(
   clientPattern.replace('(?:', '('),
   'firestore.rules validReviewId and js/core/reviews.js REVIEW_ID_RE describe the same id',
 );
+const typedPattern = fs
+  .readFileSync(path.join(ROOT, 'src/core/reviews.ts'), 'utf8')
+  .match(/const REVIEW_ID_RE =\s*\/(.+)\/;/)[1];
+assert.equal(typedPattern, clientPattern, 'the shell and the legacy page describe the same id');
 
 console.log(`facultyInitials: NSU keeps its ${numbered} numbered groups apart, folds case, and BRACU is unchanged`);
