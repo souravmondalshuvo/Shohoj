@@ -49,6 +49,7 @@ import {
 import { buildClashMap, selectedSections, summarizeRoutine } from '../js/core/routineState.js';
 import { DEPARTMENTS } from '../js/core/departments.js';
 import { LOW_SAMPLE_THRESHOLD, ratingTier } from '../js/core/routineFaculty.js';
+import { getUniversity } from '../js/core/university.js';
 import { normalizeFacultyInitials } from './facultyInitials.js';
 import { computeSimulation } from '../src/features/calculator/simulator.ts';
 // The minor requirements and the progress rules are imported from the same
@@ -763,7 +764,10 @@ async function runFacultyRating(input, ctx) {
   // and behavior) and ratingTier owns the thresholds. Both are the modules the
   // Routine Builder's ★ already runs on, so the Assistant and the grid cannot
   // disagree about the same faculty.
-  const [agg] = aggregateByFaculty(reviews);
+  // The shared review core reads initials by a campus's rule, and in the Worker
+  // there is no "active campus" to default to — so it is the caller's, passed.
+  const campus = getUniversity(ctx?.campus) ?? undefined;
+  const [agg] = aggregateByFaculty(reviews, campus);
   if (!agg)
     return { faculty_initials: initials, review_count: reviews.length, error: 'no_ratings' };
 
@@ -771,6 +775,7 @@ async function runFacultyRating(input, ctx) {
     facultyInitials: initials,
     facultyName,
     courseCode: scope,
+    campus,
   });
   const tier = ratingTier(agg.overall, agg.count);
 
