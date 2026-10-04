@@ -116,7 +116,7 @@ function _signInPrompt() {
     <div class="rv-tab-empty">
       <div class="rv-tab-empty-icon">🔒</div>
       <div class="rv-tab-empty-title">Sign in to read faculty reviews</div>
-      <div class="rv-tab-empty-sub">Reviews are visible to signed-in BRACU students only.</div>
+      <div class="rv-tab-empty-sub">Reviews are visible to signed-in students only.</div>
     </div>`;
 }
 
