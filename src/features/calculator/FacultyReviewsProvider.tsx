@@ -26,7 +26,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { normalizeCourseCode, normalizeInitials } from '../../core/reviews';
+import { normalizeCourseCode, normalizeInitials, type InitialsCampus } from '../../core/reviews';
 import {
   createReviewsRepo,
   type ReviewDoc,
@@ -44,7 +44,7 @@ import {
 import { runReviewSubmit } from './reviewSubmitFlow';
 import { recordMyReview } from './myReviewsReceipt';
 import { useRuntimeConfig } from '../../app/providers/RuntimeConfigProvider';
-import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
+import { useAuth, useIdToken, useUniversity } from '../../app/providers/AuthProvider';
 import { createBrowserStore } from '../../services/storage/browserKeyValueStore';
 import { CHIP_PLACEHOLDER, chipScoreLabel, computeChipAggregate } from './facultyChipScore';
 
@@ -68,6 +68,12 @@ interface FacultyReviewsApi {
   submitReview(submission: ReviewSubmission): Promise<ReviewSubmitResult>;
   /** Report a review for moderation (reviewReports write); no-op when signed out. */
   reportReview(reviewId: string, reason: string): Promise<ReviewReportResult>;
+  /**
+   * The campus whose reviews these are — and so the rule faculty initials are
+   * read by: NSU's keep their closing number (MMS4 is not MMS). Undefined
+   * until a campus is known, which reads initials as letters only.
+   */
+  readonly campus: InitialsCampus | undefined;
 }
 
 /** The relay call, injectable so tests drive submit without a live worker. */
@@ -89,8 +95,8 @@ declare global {
   }
 }
 
-const keyOf = (initials: string, courseCode: string) =>
-  `${normalizeInitials(initials)}|${normalizeCourseCode(courseCode)}`;
+const keyOf = (initials: string, courseCode: string, campus: InitialsCampus | undefined) =>
+  `${normalizeInitials(initials, campus)}|${normalizeCourseCode(courseCode)}`;
 
 export interface FacultyReviewsProviderProps {
   /** Explicit repo (tests); otherwise resolved from window override / config. */
@@ -111,6 +117,7 @@ export function FacultyReviewsProvider({
   const config = useRuntimeConfig();
   const getIdToken = useIdToken();
   const auth = useAuth();
+  const campus = useUniversity() ?? undefined;
   // One store for the receipt writes over the provider's lifetime.
   const store = useMemo(() => createBrowserStore(), []);
 
@@ -157,22 +164,28 @@ export function FacultyReviewsProvider({
   const inflight = useRef(new Set<string>());
   const [version, bump] = useState(0);
 
-  // A fresh repo (sign-in/out, config change) clears everything.
+  // A fresh repo (sign-in/out, config change) clears everything — and so does
+  // a change of campus: the keys are initials read by the previous one's rule.
   useEffect(() => {
     labels.current.clear();
     inflight.current.clear();
     bump((n) => n + 1);
-  }, [resolvedRepo]);
+  }, [resolvedRepo, campus]);
 
   const request = useCallback(
     (initials: string, courseCode: string) => {
-      const norm = keyOf(initials, courseCode);
+      const norm = keyOf(initials, courseCode, campus);
       const [fac, code] = norm.split('|');
       if (!fac || !code || !resolvedRepo) return;
       if (labels.current.has(norm) || inflight.current.has(norm)) return;
       inflight.current.add(norm);
       void resolvedRepo
-        .fetchByFaculty({ facultyInitials: fac, courseCode: code, pageSize: CHIP_PAGE_SIZE })
+        .fetchByFaculty({
+          facultyInitials: fac,
+          courseCode: code,
+          pageSize: CHIP_PAGE_SIZE,
+          campus,
+        })
         .then(({ reviews }) => {
           const { overall, count } = computeChipAggregate(reviews);
           labels.current.set(norm, chipScoreLabel(overall, count));
@@ -185,21 +198,24 @@ export function FacultyReviewsProvider({
           bump((n) => n + 1);
         });
     },
-    [resolvedRepo],
+    [resolvedRepo, campus],
   );
 
   const labelFor = useCallback(
     (initials: string, courseCode: string) =>
-      labels.current.get(keyOf(initials, courseCode)) ?? CHIP_PLACEHOLDER,
-    [],
+      labels.current.get(keyOf(initials, courseCode, campus)) ?? CHIP_PLACEHOLDER,
+    [campus],
   );
 
-  const invalidate = useCallback((initials: string, courseCode: string) => {
-    const norm = keyOf(initials, courseCode);
-    labels.current.delete(norm);
-    inflight.current.delete(norm);
-    bump((n) => n + 1);
-  }, []);
+  const invalidate = useCallback(
+    (initials: string, courseCode: string) => {
+      const norm = keyOf(initials, courseCode, campus);
+      labels.current.delete(norm);
+      inflight.current.delete(norm);
+      bump((n) => n + 1);
+    },
+    [campus],
+  );
 
   const fetchReviewById = useCallback(
     async (id: string): Promise<ReviewDoc | null> => {
@@ -273,6 +289,7 @@ export function FacultyReviewsProvider({
       fetchRecentReviews,
       submitReview,
       reportReview,
+      campus,
     }),
     [
       request,
@@ -283,6 +300,7 @@ export function FacultyReviewsProvider({
       fetchRecentReviews,
       submitReview,
       reportReview,
+      campus,
       version,
     ],
   );
@@ -330,6 +348,15 @@ export function useFetchReviewsByCourse(): (courseCode: string) => Promise<Revie
 export function useFetchRecentReviews(): (limit?: number) => Promise<ReviewDoc[]> {
   const ctx = useContext(FacultyReviewsContext);
   return useCallback((limit) => ctx?.fetchRecentReviews(limit) ?? Promise.resolve([]), [ctx]);
+}
+
+/**
+ * The campus faculty initials are read by — pass it to anything that
+ * normalises, validates or groups them. Undefined where no provider is mounted
+ * or no campus is known yet, which reads initials as letters only.
+ */
+export function useReviewsCampus(): InitialsCampus | undefined {
+  return useContext(FacultyReviewsContext)?.campus;
 }
 
 /**
