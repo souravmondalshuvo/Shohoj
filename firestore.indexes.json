@@ -68,6 +68,42 @@
       ]
     },
     {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university",      "order": "ASCENDING" },
+        { "fieldPath": "facultyInitials", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",       "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university",      "order": "ASCENDING" },
+        { "fieldPath": "facultyInitials", "order": "ASCENDING" },
+        { "fieldPath": "courseCode",      "order": "ASCENDING" },
+        { "fieldPath": "createdAt",       "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "facultyReviews",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "courseCode", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "studyGroups",
       "queryScope": "COLLECTION",
       "fields": [
