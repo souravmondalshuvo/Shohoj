@@ -154,7 +154,7 @@ function _renderTabContent() {
 function _submitHtml(t, uid) {
   if (!uid) {
     return `<div style="text-align:center;padding:36px 0;color:${t.text2};font-size:14px;line-height:1.6;">
-      Sign in with your BRACU Google account<br>to submit feedback.
+      Sign in with your university Google account<br>to submit feedback.
     </div>`;
   }
   return `
@@ -272,7 +272,7 @@ function _renderBoardContent() {
 
   if (!uid) {
     el.innerHTML = `<div style="text-align:center;padding:36px 0;color:${t.text2};font-size:14px;line-height:1.6;">
-      Sign in with your BRACU Google account<br>to view and upvote feedback.
+      Sign in with your university Google account<br>to view and upvote feedback.
     </div>`;
     return;
   }
