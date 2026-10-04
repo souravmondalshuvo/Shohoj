@@ -1893,6 +1893,20 @@ async function makeServiceAccountJson() {
     );
     assertEq(none.faculty_initials, 'MUNR');
     assertEq(asked.join(' '), 'nsu:MMS4 bracu:MUNR none:MUNR');
+    // And the reviews it gets back are summarised as that lecturer's: without
+    // the campus, the shared review core would file MMS4's under MMS.
+    const rated = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MMS4' }, {
+      campus: 'nsu',
+      loadFacultyReviews: async () => [{
+        id: 'MMS4_CSE115_live1',
+        facultyInitials: 'MMS4',
+        courseCode: 'CSE115',
+        ratings: { teaching: 4, marking: 4, behavior: 4, difficulty: 3, workload: 3 },
+      }],
+    });
+    assertEq(rated.faculty_initials, 'MMS4');
+    assertEq(rated.review_count, 1);
+    assert(!JSON.stringify(rated).includes('"MMS"'), 'nothing in the answer names MMS');
     // Two closing digits is nobody's initials, anywhere.
     const bad = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MMS44X9' }, ctxFor('nsu'));
     assertEq(bad.error, 'invalid_faculty_initials');
