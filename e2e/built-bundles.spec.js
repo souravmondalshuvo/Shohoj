@@ -73,3 +73,33 @@ test('the built profile page renders the Next registration zone', async ({ page 
 
   await expect(page.locator('#pfUnlockHost')).not.toBeEmpty();
 });
+
+// The bundled review seed is an import of BRACU reviews (data/input_reviews.jsonl),
+// and it only exists in the BUILT page — build3.py injects it — so this is the
+// one suite that can see it. It must follow the campus the page is showing
+// (#823): merged into every list on BRACU, absent everywhere else.
+for (const campus of [
+  { email: 'student@g.bracu.ac.bd', name: 'a BRACU student', seeded: true },
+  { email: 'student@northsouth.edu', name: 'an NSU student', seeded: false },
+]) {
+  test(`the bundled BRACU review seed ${campus.seeded ? 'shows for' : 'is hidden from'} ${campus.name}`, async ({ page }) => {
+    await page.addInitScript((email) => {
+      try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ }
+      window._shohoj_isAuthReady = () => true;
+      window._shohoj_currentUid = () => 'u1';
+      window._shohoj_userProfile = () => ({
+        signedIn: true, uid: 'u1', email, displayName: 'Test Student', photoURL: null,
+      });
+    }, campus.email);
+    await page.route('https://**/*', (route) => route.abort());
+    await page.goto('/shohoj.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.switchCalcTab === 'function');
+    await page.evaluate(() => window.switchCalcTab('reviews'));
+
+    const reviews = page.locator('#tabReviews');
+    await expect(reviews).toContainText(/faculty with reviews/i);
+    const none = /(^|\D)0\s*faculty with reviews/i;
+    if (campus.seeded) await expect(reviews).not.toContainText(none);
+    else await expect(reviews).toContainText(none);
+  });
+}
