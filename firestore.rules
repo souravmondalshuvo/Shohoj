@@ -108,7 +108,8 @@ service cloud.firestore {
 
     function validReviewId(id) {
       return id is string
-        && id.matches('^[A-Z]{2,6}_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$');
+        // <initials>_<course>_<hash>; NSU's initials may close with a number.
+        && id.matches('^([A-Z]{2,6}|[A-Z]{2,5}[0-9])_[A-Z]{2,4}[0-9]{3}[A-Z]?_[a-f0-9]{64}$');
     }
 
     function validReviewReportPayload(d) {
