@@ -170,11 +170,46 @@ test('an admin switching campus redraws the tab that is open', async ({ page }) 
   await selectCalcTab(page, 'reviews');
   await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(12);
 
-  // NSU's catalogue has no department table, so the same view has no tiles.
+  // The same view, drawn again from NSU's seventeen departments.
   await page.getByTestId('admin-campus-switcher').selectOption('nsu');
   await expect(page.locator('#tabReviews')).toHaveClass(/active/);
-  await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(0);
+  const nsuTiles = page.locator('#tabReviews .rv-tab-deptcard');
+  await expect(nsuTiles).toHaveCount(17);
+  await expect(nsuTiles.first()).toContainText('Accounting & Finance');
+  await expect(page.locator('#tabReviews .rv-tab-deptcard[data-dept="CSE"]')).toHaveCount(0);
 
   await page.getByTestId('admin-campus-switcher').selectOption('bracu');
   await expect(page.locator('#tabReviews .rv-tab-deptcard')).toHaveCount(12);
+});
+
+test('an NSU department tile opens that department\'s courses', async ({ page }) => {
+  await boot(page);
+  await signInAs(page, 'first.last@northsouth.edu');
+  await selectCalcTab(page, 'reviews');
+
+  const tiles = page.locator('#tabReviews .rv-tab-deptcard');
+  await expect(tiles).toHaveCount(17);
+  // By school, as NSU lists them: business first, then engineering.
+  expect(await tiles.evaluateAll(list => list.slice(0, 6).map(t => t.dataset.dept))).toEqual([
+    'ACT', 'ECO', 'MGT', 'MKT', 'MBA', 'ARC',
+  ]);
+
+  // CSE, EEE and ETE are all the Department of Electrical and Computer Engineering's.
+  await page.locator('#tabReviews .rv-tab-deptcard[data-dept="ECE"]').click();
+  await expect(page.locator('#tabReviews .rv-tab-title')).toHaveText('Electrical and Computer Engineering');
+  const courses = page.locator('#tabReviews .rv-tab-coursecard');
+  await expect(page.locator('#tabReviews .rv-tab-coursecard[data-course="CSE115"]')).toBeVisible();
+  await expect(page.locator('#tabReviews .rv-tab-coursecard[data-course="EEE141"]')).toHaveCount(1);
+  const subjects = await courses.evaluateAll(list => [...new Set(list.map(c => c.dataset.course.replace(/\d.*/, '')))].sort());
+  expect(subjects).toEqual(['CSE', 'EEE', 'ETE']);
+
+  // A course another department alone offers is on that department's page:
+  // BUS112 is Mathematics & Physics', not Management's.
+  await page.evaluate(() => { window.location.hash = '#calculator/reviews/dept/MAT'; });
+  await expect(page.locator('#tabReviews .rv-tab-title')).toHaveText('Mathematics & Physics');
+  await expect(page.locator('#tabReviews .rv-tab-coursecard[data-course="BUS112"]')).toHaveCount(1);
+  await page.evaluate(() => { window.location.hash = '#calculator/reviews/dept/MGT'; });
+  await expect(page.locator('#tabReviews .rv-tab-title')).toHaveText('Management');
+  await expect(page.locator('#tabReviews .rv-tab-coursecard[data-course="BUS112"]')).toHaveCount(0);
+  await expect(page.locator('#tabReviews .rv-tab-coursecard[data-course="BUS172"]')).toHaveCount(1);
 });
