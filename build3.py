@@ -231,6 +231,9 @@ FIREBASE_JS_FILES = [
     'js/auth/admin-service.js',
     'js/auth/assistant-service.js',
     'js/auth/auth-service.js',
+    # Campus tag on creates + campus filter on lists; reads the domain map
+    'js/core/universityDirectory.js',
+    'js/auth/campus-scope.js',
     'js/auth/paper-service.js',
     'js/auth/review-service.js',
     'js/auth/user-sync-service.js',
