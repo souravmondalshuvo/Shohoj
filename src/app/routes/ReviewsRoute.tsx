@@ -13,7 +13,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { aggregateByFaculty } from '../../core/reviews';
 import type { FacultyAggregate, RatingKey } from '../../core/reviews';
 import { filterDirectory } from '../../features/calculator/reviewsDirectory';
-import { useFetchRecentReviews } from '../../features/calculator/FacultyReviewsProvider';
+import {
+  useFetchRecentReviews,
+  useReviewsCampus,
+} from '../../features/calculator/FacultyReviewsProvider';
 
 const DIMENSIONS: readonly { readonly key: RatingKey; readonly label: string }[] = [
   { key: 'teaching', label: 'Teach' },
@@ -66,6 +69,9 @@ export function Component() {
   // Fetch once on mount; fetchRecent is recreated on provider bumps, read via ref.
   const fetchRef = useRef(fetchRecent);
   fetchRef.current = fetchRecent;
+  // Lecturers are grouped by the campus's initials: NSU's MMS1 and MMS4 are
+  // two rows, not one. A change of campus is a different directory.
+  const campus = useReviewsCampus();
   useEffect(() => {
     let live = true;
     setStatus('loading');
@@ -73,7 +79,7 @@ export function Component() {
       .current(200)
       .then((reviews) => {
         if (!live) return;
-        setDirectory(aggregateByFaculty(reviews));
+        setDirectory(aggregateByFaculty(reviews, campus));
         setStatus('loaded');
       })
       .catch(() => {
@@ -84,7 +90,7 @@ export function Component() {
     return () => {
       live = false;
     };
-  }, [reloadKey]);
+  }, [reloadKey, campus]);
 
   const filtered = useMemo(
     () => (status === 'loaded' ? filterDirectory(directory, query) : []),
