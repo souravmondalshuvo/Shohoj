@@ -21,6 +21,7 @@ import { isKnownCourseCode } from './catalog';
 import {
   useFetchReviewById,
   useFetchReviewsByCourse,
+  useReviewsCampus,
   useSubmitReview,
 } from './FacultyReviewsProvider';
 import { probeExistingReview } from './reviewProbe';
@@ -144,9 +145,11 @@ export default function CourseReviewsModal({
     () => auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '',
     [auth.uid],
   );
+  // Initials are read by the campus's rule: NSU's keep their closing number.
+  const campus = useReviewsCampus();
   const probeEnv = useMemo(
-    () => ({ currentUid, fetchById: fetchReviewById }),
-    [currentUid, fetchReviewById],
+    () => ({ currentUid, fetchById: fetchReviewById, campus }),
+    [currentUid, fetchReviewById, campus],
   );
 
   // Fetch on open and after a submit. fetchByCourse is recreated on provider
@@ -159,7 +162,7 @@ export default function CourseReviewsModal({
       .current(courseCode)
       .then((reviews) => {
         if (!live) return;
-        setGroups(buildCourseReviewGroups(reviews));
+        setGroups(buildCourseReviewGroups(reviews, campus));
         setFailed(false);
       })
       .catch(() => {
@@ -172,7 +175,7 @@ export default function CourseReviewsModal({
     return () => {
       live = false;
     };
-  }, [courseCode, reloadKey]);
+  }, [courseCode, reloadKey, campus]);
 
   return (
     <>
@@ -270,6 +273,7 @@ export default function CourseReviewsModal({
               isKnownCode: isKnownCourseCode,
               hook: submitToProvider,
               currentUid,
+              campus,
             })
           }
           onSubmitted={() => {
