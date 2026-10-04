@@ -66,6 +66,41 @@
         { "fieldPath": "groupId",  "order": "ASCENDING" },
         { "fieldPath": "joinedAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "studyGroups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "appFeedback",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "papers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "approved",   "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "papers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "university", "order": "ASCENDING" },
+        { "fieldPath": "courseCode", "order": "ASCENDING" },
+        { "fieldPath": "approved",   "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [
