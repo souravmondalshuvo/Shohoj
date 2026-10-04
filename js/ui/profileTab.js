@@ -11,7 +11,7 @@
 import { escHtml, escAttr } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { gpaCoreCalcSemesterGpa } from '../core/gpa-core.js';
-import { activeGradeScale } from '../core/activeCampus.js';
+import { activeGradeScale, getActiveCampus } from '../core/activeCampus.js';
 
 // Read identity through the global installed by review-service.js. Kept behind
 // typeof guards so the module is import-safe in a bare Node test (no window).
@@ -156,7 +156,7 @@ export function profileSignedOutHtml() {
     <div class="pf-empty">
       <div class="pf-empty-icon">🔒</div>
       <div class="pf-empty-title">Sign in to view your profile</div>
-      <div class="pf-empty-sub">Your saved routine, seat watchlist, and reviews live here once you sign in with your BRACU G-Suite account.</div>
+      <div class="pf-empty-sub">Your saved routine, seat watchlist, and reviews live here once you sign in with your university Google account.</div>
       <button class="pf-signin-btn" data-action="auth:signin">
         <span class="pf-signin-icon">👤</span>
         Sign in with Google
@@ -454,7 +454,7 @@ export function profileSignedInHtml(profile, seatAlerts, routine, reviews, lastS
   const includeSeatAlerts = opts.includeSeatAlerts !== false;
   const includeBriefing = opts.includeBriefing === true;
   const p = profile || {};
-  const name = p.displayName ? String(p.displayName) : 'BRACU student';
+  const name = p.displayName ? String(p.displayName) : `${getActiveCampus().shortName} student`;
   const email = p.email ? String(p.email) : '';
   const initial = (name.trim()[0] || '?').toUpperCase();
   const avatar = p.photoURL
