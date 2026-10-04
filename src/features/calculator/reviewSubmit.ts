@@ -11,7 +11,7 @@
 // shell without cloud capability still degrades like a signed-out session.
 
 import { upsertFacultyProfile } from '../../core/faculty.ts';
-import { RATING_KEYS } from '../../core/reviews.ts';
+import { RATING_KEYS, type InitialsCampus } from '../../core/reviews.ts';
 import type { ReviewPayload } from './reviewDraft.ts';
 
 export interface ReviewSubmitResult {
@@ -35,6 +35,8 @@ export interface ReviewSubmitEnv {
   readonly hook: ReviewSubmitHook | null;
   /** Current signed-in uid, or '' (legacy: window._shohoj_currentUid()). */
   readonly currentUid: () => string;
+  /** The campus the initials belong to (NSU's keep their number). */
+  readonly campus?: InitialsCampus | undefined;
 }
 
 // The shell's only Window declaration for the legacy uid hook — still read by
@@ -101,10 +103,13 @@ export async function submitReview(
     });
     if (res && res.ok) {
       // Legacy parity: a successful review enriches the local faculty cache.
-      upsertFacultyProfile({
-        initials: payload.facultyInitials,
-        courses: payload.courseCode ? [payload.courseCode] : [],
-      });
+      upsertFacultyProfile(
+        {
+          initials: payload.facultyInitials,
+          courses: payload.courseCode ? [payload.courseCode] : [],
+        },
+        env.campus,
+      );
       return { ok: true };
     }
     return { ok: false, error: res?.error || 'Submission failed', code: res?.code };
