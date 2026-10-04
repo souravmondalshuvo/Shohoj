@@ -334,7 +334,7 @@ function _needsSignInBody(text, text2) {
     <div style="padding:28px 14px;text-align:center;">
       <div style="font-size:26px;margin-bottom:10px;">🔒</div>
       <div style="font-size:13px;color:${text};font-weight:600;margin-bottom:4px;">Sign in to read reviews</div>
-      <div style="font-size:12px;color:${text2};">Faculty reviews are visible to signed-in BRACU students only.</div>
+      <div style="font-size:12px;color:${text2};">Faculty reviews are visible to signed-in students only.</div>
     </div>`;
 }
 
@@ -552,7 +552,7 @@ export async function openReviewsDirectory() {
       ⭐ Faculty Reviews
     </div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">
-      Anonymous ratings from BRACU students. Search by course code or faculty initials.
+      Anonymous ratings from students at your university. Search by course code or faculty initials.
     </div>`;
 
   if (!signedIn) {
