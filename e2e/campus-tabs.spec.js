@@ -99,3 +99,13 @@ test('the bar follows a campus change mid-session', async ({ page }) => {
   await expect(group(page, 'campus')).toBeHidden();
   await expect(page.locator('#tabCalculator')).toHaveClass(/active/);
 });
+
+test("the calculator's heading names the campus whose scale it applies", async ({ page }) => {
+  await boot(page, 'student@northsouth.edu');
+  await expect(page.locator('#calculator .section-desc')).toContainText("Built on NSU's exact grading scale");
+});
+
+test("a BRACU student's heading is unchanged", async ({ page }) => {
+  await boot(page, 'student@g.bracu.ac.bd');
+  await expect(page.locator('#calculator .section-desc')).toContainText("Built on BRACU's exact grading scale");
+});
