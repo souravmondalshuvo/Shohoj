@@ -1912,6 +1912,52 @@ async function makeServiceAccountJson() {
     assertEq(bad.error, 'invalid_faculty_initials');
   });
 
+  await test('assistant: BRACU\'s seed reviews answer only a BRACU student', async () => {
+    // MUNR is in the bundled seed, which is an import of BRACU's faculty
+    // reviews. Initials are not unique across universities: an NSU student
+    // asking about their own MUNR must not get BRACU's lecturer.
+    const none = { loadFacultyReviews: async () => [] };
+    const bracu = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MUNR' }, { ...none, campus: 'bracu' });
+    assert(bracu.review_count > 0, 'the seed answers a BRACU student');
+    const unspecified = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MUNR' }, none);
+    assertEq(unspecified.review_count, bracu.review_count, 'no campus on the context is BRACU, as before');
+
+    const nsu = await executeAssistantTool('get_faculty_rating', { faculty_initials: 'MUNR' }, { ...none, campus: 'nsu' });
+    assertEq(nsu.review_count, 0);
+    assertEq(nsu.error, 'no_reviews');
+    assertEq(nsu.faculty_name, undefined, 'nor BRACU\'s name for those initials');
+    if (bracu.faculty_name) {
+      assert(!JSON.stringify(nsu).includes(bracu.faculty_name), 'the BRACU lecturer is named nowhere in the answer');
+    }
+
+    // Live reviews are the student's own campus's, and are all the answer has.
+    const live = {
+      id: 'MUNR_CSE115_live1',
+      facultyInitials: 'MUNR',
+      courseCode: 'CSE115',
+      ratings: { teaching: 2, marking: 2, behavior: 2, difficulty: 3, workload: 3 },
+    };
+    const nsuLive = await executeAssistantTool(
+      'get_faculty_rating',
+      { faculty_initials: 'MUNR' },
+      { campus: 'nsu', loadFacultyReviews: async () => [live] },
+    );
+    assertEq(nsuLive.review_count, 1, 'one live NSU review, and none of the seed');
+    assertEq(nsuLive.overall_out_of_5, 2);
+  });
+
+  await test('assistant: the course filter is a course on the student\'s own campus', async () => {
+    const none = { loadFacultyReviews: async () => [] };
+    const run = (course, campus) =>
+      executeAssistantTool('get_faculty_rating', { faculty_initials: 'MUNR', course_code: course }, { ...none, campus });
+    // CSE115 is NSU's; CSE110 is BRACU's.
+    assertEq((await run('CSE115', 'nsu')).error, 'no_reviews', 'NSU\'s own course is a valid filter');
+    assertEq((await run('CSE110', 'nsu')).error, 'unknown_course');
+    assertEq((await run('CSE115', 'bracu')).error, 'unknown_course');
+    assert((await run('CSE110', 'bracu')).error !== 'unknown_course', 'BRACU\'s own course is still accepted');
+    assert((await run('CSE110', undefined)).error !== 'unknown_course');
+  });
+
   await test('assistant: get_faculty_rating merges live reviews and dedupes by id', async () => {
     const seededOnly = await executeAssistantTool(
       'get_faculty_rating',
