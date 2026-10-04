@@ -106,8 +106,10 @@ export function Component() {
       currentUid: () =>
         auth.uid || (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') || '',
       fetchById: fetchReviewById,
+      // Initials are read by the campus's rule: NSU's keep their closing number.
+      campus: university ?? undefined,
     }),
-    [auth.uid, fetchReviewById],
+    [auth.uid, fetchReviewById, university],
   );
 
   const { state, dispatch } = useCalculator();
@@ -257,10 +259,11 @@ export function Component() {
                 auth.uid ||
                 (typeof window !== 'undefined' ? window._shohoj_currentUid?.() : '') ||
                 '',
+              campus: university ?? undefined,
             })
           }
           onSubmitted={(payload) => {
-            const nextFac = normalizeInitials(payload.facultyInitials);
+            const nextFac = normalizeInitials(payload.facultyInitials, university ?? undefined);
             if (!nextFac) return;
             dispatch({
               type: 'updateCourse',
