@@ -306,6 +306,29 @@ async function run() {
     await assertFails(getDoc(doc(db, 'reviewReports', `${BRACU_UID}_AAA_CSE110_${'a'.repeat(64)}`)));
   });
 
+  await test('A review of a numbered NSU lecturer can be reported', async () => {
+    // NSU tells faculty apart with a closing number (MMS4), so its review ids
+    // carry one. validReviewId has to admit that shape or the review could be
+    // written (by the Worker) and never reported.
+    const hash = 'd'.repeat(64);
+    const id = reviewId('MMS4', 'CSE115', hash);
+    const malformed = reviewId('MMS44', 'CSE115', hash);
+    await testEnv.withSecurityRulesDisabled(async context => {
+      for (const reviewDocId of [id, malformed]) {
+        await setDoc(doc(context.firestore(), 'facultyReviews', reviewDocId), {
+          ...validReviewDoc(), facultyInitials: 'MMS4', courseCode: 'CSE115', university: 'nsu',
+        });
+      }
+    });
+    const db = nsuCtx().firestore();
+    const report = reviewDocId => ({
+      reviewId: reviewDocId, reason: 'Not about the course', reporterUid: NSU_UID, createdAt: serverTimestamp(),
+    });
+    await assertSucceeds(setDoc(doc(db, 'reviewReports', `${NSU_UID}_${id}`), report(id)));
+    // Two closing digits is still not a review id, even for a doc that exists.
+    await assertFails(setDoc(doc(db, 'reviewReports', `${NSU_UID}_${malformed}`), report(malformed)));
+  });
+
   await test('Admin can read /reviewReports', async () => {
     const db = adminCtx().firestore();
     await assertSucceeds(getDoc(doc(db, 'reviewReports', `${ADMIN_UID}_anything`)));
