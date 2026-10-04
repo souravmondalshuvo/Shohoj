@@ -223,7 +223,7 @@ export default function SemesterBlock({
             !!grade &&
             grade !== 'I' &&
             !!courseCode;
-          const facInit = normalizeInitials(course.faculty ?? '');
+          const facInit = normalizeInitials(course.faculty ?? '', university);
           // The tracker answers "what do I need on the final", which only means
           // something while the course is still being sat.
           const canTrackMarks = isRunning && !sem.summary && !!onCourseMarksChange;
