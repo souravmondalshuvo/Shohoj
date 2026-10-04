@@ -182,6 +182,13 @@ export interface UniversityProfile {
   readonly repeat: RepeatEligibility;
   /** Omitted where the campus's limits are not confirmed — see CreditLoadRules. */
   readonly creditLoad?: CreditLoadRules;
+  /**
+   * Set where faculty initials can close with a number that tells lecturers
+   * apart — NSU's MMS1, MMS3 and MMS4 are three people — so the number is part
+   * of who a review is about. Omitted where initials are letters only and a
+   * digit is a typo to drop. Case is never identity on either kind of campus.
+   */
+  readonly numberedInitials?: true;
   /** Features this campus has the data to support. Everything else stays hidden. */
   readonly features: readonly FeatureId[];
 }
@@ -343,6 +350,10 @@ const NSU: UniversityProfile = {
   // "A student may repeat a course in which the grade is 'B' or lower" — a B is
   // exactly 3.0, so unlike BRACU the threshold includes it.
   repeat: { threshold: 3.0, inclusive: true },
+  // Measured on three terms of NSU's section lists: initials that differ only
+  // by a closing number are different lecturers; those that differ only by
+  // case are the same one (tests/facultyInitials.test.js).
+  numberedInitials: true,
   // creditLoad is deliberately absent: NSU's per-semester minimum and maximum
   // were not confirmed, and no warning beats BRACU's warning shown to an NSU
   // student.
