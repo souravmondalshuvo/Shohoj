@@ -34,6 +34,7 @@ import {
   type ReviewPayload,
 } from './reviewDraft';
 import type { ReviewSubmitResult } from './reviewSubmit';
+import { useReviewsCampus } from './FacultyReviewsProvider';
 
 export interface RateFacultyModalProps {
   readonly courseCode: string;
@@ -96,7 +97,9 @@ export default function RateFacultyModal({
   onClose,
   probe,
 }: RateFacultyModalProps) {
-  const [draft, setDraft] = useState(() => emptyReviewDraft(prefillInitials));
+  // Initials are read by the campus's rule: NSU's keep their closing number.
+  const campus = useReviewsCampus();
+  const [draft, setDraft] = useState(() => emptyReviewDraft(prefillInitials, campus));
   const [error, setError] = useState<string | null>(null);
   const [initialsError, setInitialsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -141,7 +144,7 @@ export default function RateFacultyModal({
 
   const submit = async () => {
     setError(null);
-    const draftError = firstDraftError(draft);
+    const draftError = firstDraftError(draft, campus);
     if (draftError) {
       if (draftError.field === 'initials') {
         setInitialsError(true);
@@ -152,7 +155,7 @@ export default function RateFacultyModal({
       return;
     }
     setSubmitting(true);
-    const payload = buildReviewPayload(draft, courseCode, semester);
+    const payload = buildReviewPayload(draft, courseCode, semester, campus);
     const res = await onSubmit(payload);
     if (res.ok) {
       onSubmitted(payload);
@@ -244,7 +247,7 @@ export default function RateFacultyModal({
                   autoComplete="off"
                   value={draft.initials}
                   onChange={(e) => {
-                    setDraft((d) => setDraftInitials(d, e.target.value));
+                    setDraft((d) => setDraftInitials(d, e.target.value, campus));
                     setInitialsError(false);
                   }}
                 />
