@@ -10,6 +10,7 @@
 // modal component renders this and the submit boundary consumes the payload.
 
 import { isValidInitials, normalizeInitials } from '../../core/faculty.ts';
+import type { InitialsCampus } from '../../core/reviews.ts';
 import { RATING_KEYS, type RatingKey } from '../../core/reviews.ts';
 
 export interface RatingField {
@@ -48,13 +49,17 @@ const UNRATED: Readonly<Record<RatingKey, number>> = {
 };
 
 /** Fresh draft, initials prefilled from the course row (normalized like the input). */
-export function emptyReviewDraft(prefillInitials = ''): ReviewDraft {
-  return { initials: normalizeInitials(prefillInitials), ratings: UNRATED, text: '' };
+export function emptyReviewDraft(prefillInitials = '', campus?: InitialsCampus): ReviewDraft {
+  return { initials: normalizeInitials(prefillInitials, campus), ratings: UNRATED, text: '' };
 }
 
 /** Live-normalize the initials field (the legacy input handler rewrites its value). */
-export function setDraftInitials(draft: ReviewDraft, raw: string): ReviewDraft {
-  return { ...draft, initials: normalizeInitials(raw) };
+export function setDraftInitials(
+  draft: ReviewDraft,
+  raw: string,
+  campus?: InitialsCampus,
+): ReviewDraft {
+  return { ...draft, initials: normalizeInitials(raw, campus) };
 }
 
 /** Set one star rating. Out-of-range / non-integer values are ignored (stars only emit 1–5). */
@@ -77,8 +82,11 @@ export type ReviewDraftError =
  * (2–6 letters) first, then the first unrated dimension in RATING_KEYS order,
  * with the same user-facing messages.
  */
-export function firstDraftError(draft: ReviewDraft): ReviewDraftError | null {
-  if (!isValidInitials(draft.initials)) {
+export function firstDraftError(
+  draft: ReviewDraft,
+  campus?: InitialsCampus,
+): ReviewDraftError | null {
+  if (!isValidInitials(draft.initials, campus)) {
     return { field: 'initials', message: 'Initials must be 2–6 letters.' };
   }
   const missing = RATING_KEYS.find((k) => draft.ratings[k] < 1);
@@ -102,9 +110,10 @@ export function buildReviewPayload(
   draft: ReviewDraft,
   courseCode: string,
   semester: string,
+  campus?: InitialsCampus,
 ): ReviewPayload {
   return {
-    facultyInitials: normalizeInitials(draft.initials),
+    facultyInitials: normalizeInitials(draft.initials, campus),
     courseCode: String(courseCode ?? '')
       .toUpperCase()
       .trim(),
