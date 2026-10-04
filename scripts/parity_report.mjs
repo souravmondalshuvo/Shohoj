@@ -11,7 +11,7 @@
 // harness once a route is actually at parity.
 //
 // Usage (both servers must be up):
-//   python3 -m http.server 4186 --bind 127.0.0.1
+//   python3 scripts/e2e_static_server.py 4186
 //   npm run build:shell && npm run preview:shell -- --port 4187 --strictPort
 //   node scripts/parity_report.mjs
 //
