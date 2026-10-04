@@ -7,7 +7,7 @@
 // free; the modal renders these, the repo fetches them.
 
 import { aggregateByFaculty, normalizeInitials } from '../../core/reviews.ts';
-import type { FacultyAggregate, ReviewLike } from '../../core/reviews.ts';
+import type { FacultyAggregate, InitialsCampus, ReviewLike } from '../../core/reviews.ts';
 
 /** How many recent snippets to show per faculty, and their character cap. */
 export const MAX_SNIPPETS = 2;
@@ -34,13 +34,16 @@ function clampSnippet(text: string): string {
  * and attach the latest text snippets. `reviews` is assumed newest-first (the
  * repo returns createdAt desc), matching the legacy panel's snippet order.
  */
-export function buildCourseReviewGroups(reviews: readonly ReviewLike[]): CourseReviewGroup[] {
-  const groups = aggregateByFaculty(reviews);
+export function buildCourseReviewGroups(
+  reviews: readonly ReviewLike[],
+  campus?: InitialsCampus,
+): CourseReviewGroup[] {
+  const groups = aggregateByFaculty(reviews, campus);
   return groups.map((group) => {
     const snippets = reviews
       .filter(
         (review) =>
-          normalizeInitials(review.facultyInitials) === group.facultyInitials &&
+          normalizeInitials(review.facultyInitials, campus) === group.facultyInitials &&
           typeof review.text === 'string' &&
           review.text.length > 0,
       )
