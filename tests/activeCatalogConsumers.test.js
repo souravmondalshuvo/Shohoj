@@ -103,7 +103,8 @@ setCourseLookup((code) => COURSE_DB[code]);
 const bracu = getCatalogFor('bracu');
 assert.equal(bracu.departmentOf('CSE110'), 'CSE');
 assert.equal(bracu.departmentOf('CST333'), 'BBA', "BRACU's cross-listed course keeps its override");
-assert.equal(nsu.departmentOf('CSE115'), null, 'NSU has no department table yet');
+assert.equal(nsu.departmentOf('CSE115'), 'ECE', "NSU's CSE is Electrical and Computer Engineering's");
+assert.equal(nsu.departmentOf('BUS112'), 'MAT', 'and its own override wins over the subject');
 assert.equal(getCatalogFor('diu').departmentOf('CSE101'), null);
 
 console.log('activeCatalogConsumers: no direct BRACU reads, and the course lookup follows the page');
