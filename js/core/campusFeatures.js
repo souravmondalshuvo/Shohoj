@@ -11,6 +11,7 @@
 // boundary; nothing here is.
 
 import { hasFeature } from './university.js';
+import { campusHasFeedSnapshot } from './activeFeed.js';
 
 /**
  * Legacy tab id → the registry feature that backs it. The ids differ in one
@@ -38,7 +39,23 @@ export const CALC_TAB_FEATURES = {
  */
 export function campusAllowsTab(profile, tabId) {
   const feature = CALC_TAB_FEATURES[tabId];
-  return feature !== undefined && hasFeature(profile, feature);
+  if (feature === undefined || profile == null) return false;
+  return hasFeature(profile, feature) || legacyOnlyTab(profile, tabId);
+}
+
+/**
+ * Tabs this page can serve for a campus although the registry does not list
+ * the feature.
+ *
+ * The registry's `features` are shared with the React shell, and a feature
+ * listed there switches the shell's route on too. The shell's Routine route
+ * still reads BRACU's live feed, so listing `routine` for NSU would show NSU
+ * students BRACU's timetable there. This page has NSU's own sections
+ * (js/core/activeFeed.js), so it grants the tab itself, here, until the shell
+ * can do the same and the registry can simply say so.
+ */
+function legacyOnlyTab(profile, tabId) {
+  return tabId === 'routine' && campusHasFeedSnapshot(profile.id);
 }
 
 /** The tab ids a campus gets, in bar order. */
