@@ -1624,6 +1624,54 @@ h1[data-reveal-hero].visible {
       background: rgba(86,180,233,0.18);
       border-color: rgba(86,180,233,0.6);
     }
+    /* ── RDS GRADE HISTORY PASTE (#843) ─────────────────── */
+    .gh-import-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .gh-import-lede { font-size: 12px; color: var(--text2); margin: 0 0 12px; }
+    .gh-import-steps { margin: 0 0 12px; padding-left: 20px; font-size: 13px; line-height: 1.6; color: var(--text); }
+    .gh-import-box {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--green-glow);
+      color: var(--text);
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .gh-import-box:focus { outline: none; border-color: var(--green); }
+    .gh-import-note { font-size: 11px; color: var(--text2); margin: 8px 0 0; }
+    .gh-import-status { min-height: 16px; font-size: 12px; color: var(--ink-amber); margin: 8px 0 0; }
+    .gh-import-table-wrap { overflow-x: auto; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; }
+    .gh-import-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text); }
+    .gh-import-table th {
+      padding: 6px 8px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text2);
+      background: var(--green-glow);
+      text-align: center;
+    }
+    .gh-import-table td { padding: 4px 8px; text-align: center; border-top: 1px solid var(--border2); }
+    .gh-import-table th:first-child, .gh-import-table td:first-child { text-align: left; }
+    .gh-import-check { font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 8px; }
+    .gh-import-check.is-match { color: var(--ink-green); }
+    .gh-import-check.is-mismatch { color: var(--ink-amber); }
+    .gh-import-warnings { margin: 0 0 8px; padding-left: 18px; font-size: 12px; color: var(--ink-amber); }
+    .gh-import-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .gh-import-primary, .gh-import-secondary {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .gh-import-primary { flex: 1; border: 1px solid var(--green); background: var(--green); color: #0b0f0d; }
+    .gh-import-primary:hover { transform: translateY(-1px); }
+    .gh-import-secondary { border: 1px solid var(--chip-border); background: transparent; color: var(--text2); }
+    .gh-import-secondary:hover { background: var(--chip-hover); }
     [data-theme="light"] .semester-block.semester-running { border-color: rgba(240,165,0,0.5); }
     /* ── INCOMPLETE SEMESTER WARNING ───────────────────── */
     .semester-incomplete-badge {
