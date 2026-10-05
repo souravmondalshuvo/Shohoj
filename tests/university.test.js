@@ -189,6 +189,17 @@ test('NSU keeps feed-dependent features off until it has a data source', () => {
     }
 });
 
+test('the Assistant is offered only where it is built for the campus', () => {
+    // Its prompt addresses a BRACU student and its tools compute on BRACU's
+    // scale, retake rule, prerequisites, programs and section feed. Turning it
+    // on for a campus means making those read that campus first — not editing
+    // this list.
+    assert.equal(hasFeature(UNIVERSITIES.bracu, 'assistant'), true);
+    for (const [id, profile] of Object.entries(UNIVERSITIES)) {
+        if (id !== 'bracu') assert.equal(hasFeature(profile, 'assistant'), false, `${id} must not offer the Assistant yet`);
+    }
+});
+
 test('universityForEmail tells the two campuses apart', () => {
     assert.equal(universityForEmail('someone@northsouth.edu')?.id, 'nsu');
     assert.equal(universityForEmail('someone@g.bracu.ac.bd')?.id, 'bracu');
