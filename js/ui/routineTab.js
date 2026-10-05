@@ -16,6 +16,7 @@ import {
 } from '../core/semesterArchive.js';
 import {
   describeSemester,
+  formatSemesterDate,
   semesterCaveat,
   semesterNameFromSessionId,
   semesterHeadline,
@@ -69,6 +70,7 @@ import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { saveState } from '../core/state.js';
+import { getActiveFeedSnapshot } from '../core/activeFeed.js';
 
 // Named ROUTINE_STORAGE_KEY (not STORAGE_KEY) to avoid colliding with
 // js/core/state.js's STORAGE_KEY once build3.py concatenates every module
@@ -133,6 +135,16 @@ function _rememberSemesterChoice(sessionId) {
     if (sessionId === null) localStorage.removeItem(SEMESTER_CHOICE_KEY);
     else localStorage.setItem(SEMESTER_CHOICE_KEY, String(sessionId));
   } catch { /* storage disabled — the choice just won't survive a reload */ }
+}
+
+// A campus on a snapshot has one timetable: its own. The semester switcher and
+// the CONNECT paste are both BRACU's — the archive holds CONNECT semesters and
+// the paste parses CONNECT's page — so a choice remembered from either (an
+// admin who viewed BRACU first, say) must not be applied to another campus's
+// sections. Read through this rather than _store.chosenSession wherever the
+// answer decides WHICH sections are shown.
+function _session() {
+  return getActiveFeedSnapshot() ? null : _store.chosenSession;
 }
 
 const _store = {
@@ -200,7 +212,7 @@ function _persistRoutine() {
     // written a different semester since, and this must not clobber it.
     const book = withRoutineForSession(
       _restoreRoutineBook(),
-      _store.chosenSession,
+      _session(),
       _store.routine,
     );
     localStorage.setItem(ROUTINE_STORAGE_KEY, JSON.stringify(serializeRoutineBook(book)));
@@ -226,6 +238,34 @@ function _captureSharePayload() {
     }
     return raw;
   } catch { return null; }
+}
+
+// The sections in the store are the previous campus's, and so is the routine
+// read against them. Drop both; main.js re-enters the open tab on the same
+// event, which reloads from the new campus's feed.
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:campus-changed', () => {
+    _store.index = null;
+    _store.courseCodes = [];
+    _store.error = null;
+    _store.semester = null;
+    _store.source = null;
+    _store.importOpen = false;
+    _store.suggestionsOpen = false;
+    _store.suggestionsResult = null;
+    _store.expanded = new Set();
+    _dataVersion++;
+    // Supersede a load already in flight for the previous campus, and let the
+    // tab start a new one: renderRoutineTab only loads when nothing is loading.
+    _refreshSeq++;
+    _store.loading = false;
+    // Faculty ratings are the previous campus's too, and the same initials can
+    // be a different lecturer at another university.
+    _store.ratingMap = new Map();
+    _store.ratingLoaded = false;
+    try { localStorage.removeItem(RATING_CACHE_KEY); } catch { /* storage disabled */ }
+    _store.routine = routineForSession(_restoreRoutineBook(), _session());
+  });
 }
 
 // ── ACTIONS (delegated via dispatch.js) ─────────────────────────────────────
@@ -742,7 +782,15 @@ function _loadImported() {
   _rerender();
 }
 
+// Each load takes a number; a campus change takes one too. A load that finds a
+// later number than its own was started for sections nobody is looking at any
+// more — at boot the tab's first load goes out while the page is still on the
+// default campus, and without this its failure would land over the next
+// campus's timetable.
+let _refreshSeq = 0;
+
 async function _refresh(force = false) {
+  const seq = ++_refreshSeq;
   _store.loading = true;
   _store.error = null;
   _rerender();
@@ -755,25 +803,32 @@ async function _refresh(force = false) {
   //
   // A pasted schedule needs no fetch at all: the paste IS the data, which is
   // why the import works for a semester we never archived.
-  if (_store.chosenSession === IMPORTED_SESSION) {
+  const session = _session();
+  if (session === IMPORTED_SESSION) {
     _loadImported();
     _loadFacultyRatings(force);
     return;
   }
 
-  const archiveUrl = _store.chosenSession === null
+  // A campus whose sections come from the campus database (js/core/activeFeed.js).
+  // Same JSON, same parser, served from this site — and, like the archive, its
+  // own cache slot.
+  const snapshot = getActiveFeedSnapshot();
+  const archiveUrl = session === null
     ? null
-    : archivePayloadUrl(_workerUrl(), _store.chosenSession);
+    : archivePayloadUrl(_workerUrl(), session);
   // The live feed paints any saved copy at once, however old, and refreshes
   // behind it — its origin can take 20 s to answer (#761).
-  const feedOptions = archiveUrl === null
-    ? (force ? { forceRefresh: true } : { staleWhileRevalidate: true })
-    : { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(_store.chosenSession) };
+  let feedOptions;
+  if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+  else if (archiveUrl === null) feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+  else feedOptions = { forceRefresh: !!force, url: archiveUrl, cacheKey: archiveCacheKey(session) };
   const feedPromise = fetchConnectFeed(feedOptions);
   const reviewsPromise = _loadFacultyRatings(force);
 
   try {
     const result = await feedPromise;
+    if (seq !== _refreshSeq) return;
     _store.index = indexByCourse(result.sections);
     _dataVersion++; // new section index ⇒ invalidate the clash memo
     _store.courseCodes = Array.from(_store.index.keys()).sort();
@@ -781,7 +836,10 @@ async function _refresh(force = false) {
     // always arrives over the network, so it would report itself as "Live".
     // What the badge is asked is where the data came from, and that answer is
     // the archive (#633).
-    _store.source = archiveUrl === null ? result.source : 'archive';
+    // A snapshot likewise: when it was fetched says nothing about when it
+    // was true, which is the day it was captured.
+    if (snapshot) _store.source = 'snapshot';
+    else _store.source = archiveUrl === null ? result.source : 'archive';
     _store.fetchedAt = result.fetchedAt;
     _store.semester = describeSemester(result.sections, todayISODate());
     // A shared link's picks are applied here — once we have the feed to
@@ -800,19 +858,26 @@ async function _refresh(force = false) {
     //
     // An expired copy is not news to the other tabs; the revalidation it
     // triggers is, and reaches every tab — this one included.
-    if (_store.chosenSession === null) {
+    //
+    // Nor a snapshot: it is another campus's sections, and it is not live.
+    if (session === null && !snapshot) {
       if (result.stale) revalidateFeed();
       else broadcastFeedResult(result, _applyLiveFeed);
     }
-    if (force) _flashNote('✓ Refreshed from CONNECT');
+    if (force) _flashNote(snapshot ? '✓ Reloaded' : '✓ Refreshed from CONNECT');
   } catch {
+    if (seq !== _refreshSeq) return;
     // Never surface raw exception text in the DOM (CodeQL js/xss-through-exception):
     // the message isn't actionable for users and can leak internals. Show a fixed string.
-    _store.error = 'Failed to load Connect feed.';
+    _store.error = snapshot ? 'Failed to load the section list.' : 'Failed to load Connect feed.';
   } finally {
-    _store.loading = false;
-    _rerender();
+    // A superseded load leaves the store to whichever load replaced it.
+    if (seq === _refreshSeq) {
+      _store.loading = false;
+      _rerender();
+    }
   }
+  if (seq !== _refreshSeq) return;
 
   // Don't await reviews inside the loading block — once they arrive, just
   // rerender to surface the badges.
@@ -863,6 +928,8 @@ function _applyLiveFeed(result) {
   // archived semester, that poll is about a different semester entirely and
   // must not repaint over it.
   if (_store.chosenSession !== null) return;
+  // Nor over a campus snapshot: the live feed is BRACU's sections.
+  if (getActiveFeedSnapshot()) return;
   _store.index = indexByCourse(result.sections);
   _dataVersion++; // new section index ⇒ invalidate the clash memo
   _store.courseCodes = Array.from(_store.index.keys()).sort();
@@ -888,10 +955,15 @@ function _routineGoLive() {
 export async function renderRoutineTab() {
   const root = document.getElementById('routineContent');
   if (!root) return;
-  _routineGoLive();
-  // Fire-and-forget: the switcher appears when the answer arrives, and its
-  // absence is the correct rendering until then.
-  _loadArchiveListing();
+  // Live polling and the semester archive are the CONNECT feed's. A campus on
+  // a snapshot subscribes to neither: subscribing is what starts the poller,
+  // and it would fetch BRACU's feed every 90 seconds for nobody.
+  if (!getActiveFeedSnapshot()) {
+    _routineGoLive();
+    // Fire-and-forget: the switcher appears when the answer arrives, and its
+    // absence is the correct rendering until then.
+    _loadArchiveListing();
+  }
   if (!_store.index && !_store.loading && !_store.error) {
     _refresh(false);
     return;
@@ -964,7 +1036,7 @@ function _loadingHTML() {
         <div class="rsk rsk-block"></div>
         <div class="rsk rsk-block"></div>
       </div>
-      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
+      <div class="routine-loading-note">${getActiveFeedSnapshot() ? 'Loading this semester’s sections…' : 'Fetching live section data from CONNECT…'}</div>
     </div>
   `;
 }
@@ -973,7 +1045,7 @@ function _errorHTML() {
   return `
     <div class="routine-tab">
       <div class="routine-error">
-        <h3>Couldn't reach the Connect feed</h3>
+        <h3>${getActiveFeedSnapshot() ? 'Couldn’t load the section list' : 'Couldn\'t reach the Connect feed'}</h3>
         <p>${escHtml(_store.error || 'Unknown error.')}</p>
         <button class="btn-primary" data-action="routine:refresh">Try again</button>
       </div>
@@ -1255,7 +1327,9 @@ function _hourLabel(min) {
 
 function _headerHTML(summary) {
   const age = _ageLabel(_store.fetchedAt);
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT', archive: 'Archived' })[_store.source] || '—';
+  const snapshot = getActiveFeedSnapshot();
+  const capturedOn = snapshot ? (formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn) : '';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', imported: 'Pasted from CONNECT', archive: 'Archived', snapshot: `As of ${capturedOn}` })[_store.source] || '—';
   const sourceClass = `routine-source--${_store.source || 'unknown'}`;
   // An age belongs to the fetch, and only three of these are one. An archived
   // semester's fetch is minutes old while its timetable is months old; a pasted
@@ -1266,6 +1340,7 @@ function _headerHTML(summary) {
   const sourceTitles = {
     archive: 'Source: the semester archive, not the live feed — CONNECT no longer carries this semester.',
     imported: 'Source: a schedule you pasted from CONNECT, not the live feed.',
+    snapshot: `Source: the university's published section list as it stood on ${capturedOn}. It is not live and has not been updated since.`,
   };
   const sourceText = sourceTitles[_store.source] ? sourceLabel : `${sourceLabel} · ${age}`;
   const sourceTitle = sourceTitles[_store.source] || `Source: ${sourceLabel} • Updated ${age}`;
@@ -1282,7 +1357,7 @@ function _headerHTML(summary) {
   const importedOption = _store.imported.length > 0
     ? `<option value="${IMPORTED_SESSION}"${_store.chosenSession === IMPORTED_SESSION ? ' selected' : ''}>My CONNECT schedule</option>`
     : '';
-  const semesterPicker = (_store.archived.length > 0 || _store.imported.length > 0)
+  const semesterPicker = (!snapshot && (_store.archived.length > 0 || _store.imported.length > 0))
     ? `<select class="routine-semester-picker" id="routineSemesterPicker" aria-label="Semester to show">
          <option value=""${_store.chosenSession === null ? ' selected' : ''}>Live feed</option>
          ${importedOption}
@@ -1316,7 +1391,9 @@ function _headerHTML(summary) {
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm ${_store.qrOpen ? 'is-active' : ''}" data-action="routine:toggleQr" aria-pressed="${_store.qrOpen}" title="Show a scannable QR of the share link">📱 QR</button>`
           : ''}
-        <button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
+        ${snapshot
+          ? ''
+          : `<button class="btn-secondary btn-sm" data-action="routine:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>`}
         ${Object.keys(_store.routine.picks).length > 0
           ? `<button class="btn-secondary btn-sm" data-action="routine:clearAll" title="Remove all picked courses">Clear</button>`
           : ''}
@@ -1328,13 +1405,16 @@ function _headerHTML(summary) {
 function _pickerHTML() {
   const planCount = _planCourses().length;
   const importBtn = planCount > 0
-    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that CONNECT is offering in the semester shown above">↧ Import from Planner (${planCount})</button>`
+    ? `<button class="btn-secondary btn-sm" data-action="routine:importPlan" title="Add courses from your Semester Planner that are offered in the semester shown above">↧ Import from Planner (${planCount})</button>`
     : '';
+  const snapshot = getActiveFeedSnapshot();
   // The other importer, and the one that answers "show me the semester I am
   // actually in": the feed is a catalog with no student in it, so the only
   // place your enrolment exists is the CONNECT page you can already see.
-  const connectBtn = `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Copy your Class and Exam Schedule in CONNECT, then click here">📋 Paste CONNECT schedule</button>`;
-  const connectPanel = _store.importOpen
+  // CONNECT is BRACU's portal, and the parser reads its page; a campus on a
+  // snapshot is not offered it.
+  const connectBtn = snapshot ? '' : `<button class="btn-secondary btn-sm ${_store.importOpen ? 'is-active' : ''}" data-action="routine:toggleConnectImport" aria-expanded="${_store.importOpen}" title="Copy your Class and Exam Schedule in CONNECT, then click here">📋 Paste CONNECT schedule</button>`;
+  const connectPanel = (_store.importOpen && !snapshot)
     ? `<div class="routine-import-panel">
          <label class="routine-import-label" for="routineConnectPaste">Open CONNECT → Class and Exam Schedule, select the table, copy, and paste it here.</label>
          <textarea id="routineConnectPaste" class="routine-import-box" rows="6" spellcheck="false" placeholder="TIME/DAY&#9;SUNDAY&#9;MONDAY&#9;…"></textarea>
@@ -1352,16 +1432,22 @@ function _pickerHTML() {
     : '';
   // What an imported capture cannot tell you. Null for the live feed and for
   // anything the cron pulled itself.
-  const gap = archiveGapNotice(
+  const gap = snapshot ? null : archiveGapNotice(
     _store.archived.find(a => a.sessionId === _store.chosenSession) || null,
   );
-  const archiveNote = gap
-    ? `<div class="routine-archive-note" role="status">${escHtml(gap)}</div>`
+  // A snapshot says what it cannot tell you every time, not on hover: a
+  // timetable that looks live and is not is how a student ends up in the
+  // wrong room. Class times are the part that holds; the rest moves.
+  const snapshotNote = snapshot
+    ? `Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and exam dates aren't available.`
+    : '';
+  const archiveNote = (gap || snapshotNote)
+    ? `<div class="routine-archive-note" role="status" data-testid="${snapshot ? 'routine-snapshot-note' : 'routine-archive-note'}">${escHtml(gap || snapshotNote)}</div>`
     : '';
   return `
     <div class="routine-picker">
       <input type="text" id="routineCourseInput" class="routine-input"
-             placeholder="Add course (e.g. CSE220) — start typing for matches"
+             placeholder="Add course (e.g. ${escAttr(_store.courseCodes[0] && snapshot ? _store.courseCodes[0] : 'CSE220')}) — start typing for matches"
              autocomplete="off" spellcheck="false"
              role="combobox" aria-autocomplete="list" aria-expanded="false"
              aria-controls="routineSuggestions" aria-label="Add a course by code" />
@@ -1418,7 +1504,11 @@ function _controlsInner(picked, summary, selected) {
   const clashChip = clashes > 0
     ? `<span class="routine-stat routine-stat--clash" title="Class clashes: ${summary.classClashPairs}, exam clashes: ${summary.examClashPairs}">⚠ ${clashes} clash${clashes === 1 ? '' : 'es'}</span>`
     : `<span class="routine-stat routine-stat--ok">✓ no clashes</span>`;
-  const sortBtns = SECTION_SORT_MODES.map(([mode, label]) =>
+  // No seat counts in a snapshot, so nothing to sort by.
+  const sortModes = _store.source === 'snapshot'
+    ? SECTION_SORT_MODES.filter(([mode]) => mode !== 'seats')
+    : SECTION_SORT_MODES;
+  const sortBtns = sortModes.map(([mode, label]) =>
     `<button class="routine-sort-btn ${_store.sortMode === mode ? 'is-active' : ''}" data-action="routine:setSort" data-sort="${mode}">${label}</button>`
   ).join('');
   // Hiding clashes only does anything once at least one section is resolved.
@@ -1628,16 +1718,19 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
     candClash ? 'routine-section--candclash' : '',
   ].filter(Boolean).join(' ');
   const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
-  const seatTitle = section.isFull
-    ? 'Section full'
-    : `${section.consumedSeat}/${section.capacity} seats taken · ${seatsLeft(section)} left`;
+  // A snapshot carries no seat count (scripts/campus_feed.mjs): "0/0" would be
+  // a number about nothing.
+  const noSeats = _store.source === 'snapshot';
+  let seatTitle = `${section.consumedSeat}/${section.capacity} seats taken · ${seatsLeft(section)} left`;
+  if (section.isFull) seatTitle = 'Section full';
+  if (noSeats) seatTitle = 'Seat counts aren\'t available for this university';
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
-      <span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
+      <span class="routine-section-seats ${noSeats ? '' : `routine-seats--${seatClass}`}" title="${escAttr(seatTitle)}">${escHtml(noSeats ? '—' : _seatText(section))}</span>
       <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>
       ${isPicked && mark && mark.classClash ? `<span class="routine-clash-pill" title="Class clash">CLASS ✕</span>` : ''}
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
