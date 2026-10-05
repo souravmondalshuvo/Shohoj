@@ -99,6 +99,8 @@ MAIN_JS_FILES = [
     # Reading a CONNECT schedule the student pasted in
     'js/core/connectScheduleImport.js',
     'js/core/freeRooms.js',
+    # Folds a snapshot's room-name variants into physical rooms (Free Rooms)
+    'js/core/snapshotRooms.js',
     'js/core/seatStatus.js',
     'js/core/seatWatch.js',
     'js/core/calendarExport.js',
