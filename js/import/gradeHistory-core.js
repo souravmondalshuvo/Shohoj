@@ -12,8 +12,8 @@
 // closes each semester.
 //
 // This module is pure: it takes rows of cell text and knows nothing about the
-// DOM, so the browser's own parser turns pasted HTML into rows (in
-// js/ui/gradeHistoryImport.js) and no HTML is picked apart by hand here.
+// DOM. The rows come from the plain-text half of the clipboard, where a copied
+// table is one line per row with tabs between cells — no markup is parsed.
 //
 // The column layout comes from a published reader of the same page, not from a
 // page captured for this repo. Columns are therefore found by header name, and
