@@ -132,6 +132,16 @@ export interface RepeatEligibility {
 
 /** Feature slices a campus can switch on, keyed to the shell's routes. */
 export type FeatureId =
+  /**
+   * Shohoj Assistant. BRACU only: its prompt addresses a BRACU student and all
+   * but one of its tools compute on BRACU's rules and data — the CGPA scale and
+   * retake rule, prerequisites, programs, minors, and the section feed behind
+   * seats, routine and free rooms. Offered elsewhere it would state another
+   * university's numbers as the student's own. The Worker enforces this too
+   * (`POST /api/assistant`); enabling it for a campus means making those tools
+   * read that campus first.
+   */
+  | 'assistant'
   | 'bus'
   | 'cafeteria'
   | 'calculator'
@@ -248,6 +258,7 @@ const BRACU: UniversityProfile = {
   // gpaCoreGetSemesterCreditWarningImpl.
   creditLoad: { min: 9, max: 15, warnAbove: 12 },
   features: [
+    'assistant',
     'bus',
     'cafeteria',
     'calculator',
@@ -378,6 +389,7 @@ const NSU: UniversityProfile = {
   //   bus/cafeteria — hand-collected Merul Badda campus data.
   //   lostFound — keyed to BRACU's `FFZ-NNK` tower room codes.
   //   difficulty — derived from review volume, meaningless at zero reviews.
+  //   assistant — its tools compute on BRACU's rules and data; see FeatureId.
 };
 
 /** Every registered campus, keyed by id. */
