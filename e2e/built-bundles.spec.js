@@ -131,3 +131,27 @@ test('the built page loads an NSU student’s sections from this site', async ({
   await expect(page.getByTestId('routine-snapshot-note')).toBeVisible();
   expect(blocked.filter((m) => m.includes('feeds/'))).toEqual([]);
 });
+
+// Free Rooms reads the same snapshot through one more module
+// (js/core/snapshotRooms.js). Missing from build3.py's list it would be a
+// ReferenceError here and nowhere else.
+test('the built page works out an NSU student’s free rooms', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ }
+    window._shohoj_isAuthReady = () => true;
+    window._shohoj_currentUid = () => 'u1';
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@northsouth.edu',
+      displayName: 'Test Student', photoURL: null,
+    });
+  });
+  await page.route('https://**/*', (route) => route.abort());
+  await page.goto('/shohoj.html#calculator/freerooms', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('#tabFreeRooms .routine-source-badge')).toHaveText(/As of \d+ \w+ \d{4}/);
+  await expect(page.getByTestId('freerooms-snapshot-note')).toBeVisible();
+  await expect(page.locator('.freerooms-summary')).toBeVisible();
+  expect(errors).toEqual([]);
+});
