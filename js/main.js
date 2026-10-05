@@ -15,8 +15,8 @@ import { calculateCgpaTotals } from './core/gpa-core.js';
 import { activeGradePoint, getActiveCampus, initActiveCampus } from './core/activeCampus.js';
 import { getActiveCatalog } from './core/activeCatalog.js';
 import { setCourseLookup } from './core/courseLookup.js';
-import { campusAllowsTab } from './core/campusFeatures.js';
-import { DEFAULT_UNIVERSITY_ID, hasFeature } from './core/university.js';
+import { campusAllowsFeature, campusAllowsTab, campusPageHref } from './core/campusFeatures.js';
+import { DEFAULT_UNIVERSITY_ID } from './core/university.js';
 import { MILESTONE_TIERS, standingTierFor } from './core/milestones.js';
 
 // Thresholds and labels come from js/core/milestones.js so the standing box and
@@ -802,7 +802,12 @@ function applyCampusFeatures() {
     btn.hidden = !campusAllowsTab(campus, btn.dataset.tab);
   });
   document.querySelectorAll('[data-feature]').forEach(el => {
-    el.hidden = !hasFeature(campus, el.dataset.feature);
+    el.hidden = !campusAllowsFeature(campus, el.dataset.feature);
+  });
+  // A standalone page that serves more than one campus is told which one in
+  // its URL: it is a static page with no session of its own.
+  document.querySelectorAll('[data-campus-href]').forEach(el => {
+    el.setAttribute('href', campusPageHref(el.dataset.campusHref, campus.id, DEFAULT_UNIVERSITY_ID));
   });
   // Copy that names the campus whose rules the calculator is applying.
   document.querySelectorAll('[data-campus-name]').forEach(el => {
