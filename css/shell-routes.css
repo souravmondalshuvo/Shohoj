@@ -561,6 +561,10 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .campus-place-directory summary { cursor: pointer; font-weight: 700; color: var(--c-text); }
 .campus-place-directory summary:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 3px; }
 .bus-effective { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); color: var(--c-blue-ink); font-size: 12px; line-height: 1.6; }
+/* NSU's schedule is a past service period (BusRouteNsu.tsx): a warning's
+   colours, not a note's, and links that read as links. */
+.bus-effective--stale { border-color: rgba(240,165,0,0.5); background: rgba(240,165,0,0.1); color: var(--c-text); font-size: 13px; }
+.bus-effective--stale a { color: inherit; text-decoration: underline; font-weight: 600; }
 .bus-today { font-size: 13px; font-weight: 600; color: var(--c-green-ink); margin: 0 0 12px; }
 .bus-routes { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
 .bus-route-btn {
@@ -582,6 +586,9 @@ nav.lg-surface .shell-auth-email { color: var(--text2); max-width: 180px; }
 .bus-table tbody th { font-weight: 500; color: var(--c-text); }
 .bus-table td { white-space: nowrap; color: var(--c-text-muted); font-weight: 600; }
 .bus-table tr:last-child th, .bus-table tr:last-child td { border-bottom: none; font-weight: 700; color: var(--c-green-ink); }
+/* The last row is the campus-arrival row only on BRAC University's table; NSU's
+   lists stops alone, so its last row is a stop like the rest. */
+.bus-table--stops tbody tr:last-child th { font-weight: 500; color: var(--c-text); }
 .bus-stop--next th, .bus-stop--next td { background: rgba(46,204,113,0.10); }
 .bus-outbound h3 { font-size: 11px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 1px; color: var(--c-faint); }
 .bus-outbound p { margin: 0; font-size: 13px; color: var(--c-text); }
