@@ -74,6 +74,8 @@ MAIN_JS_FILES = [
     # Import
     'js/import/transcript-core.js',
     'js/import/parser.js',
+    # A pasted RDS Grade History (#843): NSU's import, where BRACU's is a PDF
+    'js/import/gradeHistory-core.js',
     # UI
     'js/ui/charts.js',
     'js/ui/suggestions.js',
@@ -154,6 +156,7 @@ MAIN_JS_FILES = [
     'js/ui/render.js',
     'js/ui/simulator.js',
     'js/ui/modals.js',
+    'js/ui/gradeHistoryImport.js',
     'js/ui/playground.js',
     'js/core/planner-core.js',
     'js/ui/planner.js',
