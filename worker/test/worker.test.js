@@ -17,6 +17,7 @@ import worker, {
   corsHeaders,
   isAllowedFirebasePayload,
   campusOfEmail,
+  assistantOfferedTo,
   catalogCampusFor,
   cleanOptionalFacultyInitials,
   facultyInitialsRe,
@@ -1489,6 +1490,71 @@ async function makeServiceAccountJson() {
       validateAssistantMessages(Array.from({ length: 21 }, () => ({ role: 'user', content: 'x' }))),
       null,
     );
+  });
+
+  await test('assistant: offered to a campus it is built for, and to an admin with none', () => {
+    assert(assistantOfferedTo({ email: 'alice@g.bracu.ac.bd' }));
+    assert(!assistantOfferedTo({ email: 'student@northsouth.edu' }), 'NSU has no assistant feature');
+    // An admin on an outside address belongs to no campus that could lack it.
+    assert(assistantOfferedTo({ email: 'admin@example.com', admin: true }));
+    assert(assistantOfferedTo(undefined));
+  });
+
+  /** One Assistant turn as this caller; records whether the limiter was reached. */
+  async function assistantTurnAs(claims, env = {}) {
+    const { token, jwk } = await makeFirebaseToken(claims);
+    __setTestJwksForTests({ keys: [jwk] });
+    const limited = [];
+    try {
+      const res = await worker.fetch(req('POST', '/api/assistant', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'what is my cgpa?' }] }),
+      }), {
+        ...ENV,
+        ANTHROPIC_API_KEY: 'sk-test',
+        ASSISTANT_RATE_LIMIT: { async limit({ key }) { limited.push(key); return { success: false }; } },
+        ...env,
+      }, {});
+      return { status: res.status, body: await res.json(), limited };
+    } finally {
+      __setTestJwksForTests(null);
+    }
+  }
+  const NSU_ASSISTANT_CLAIMS = {
+    user_id: 'uid_nsu',
+    email: 'student@northsouth.edu',
+    email_verified: true,
+    firebase: { sign_in_provider: 'google.com' },
+  };
+
+  await test('assistant: an NSU student is refused before anything is spent', async () => {
+    // Its tools compute on BRACU's rules; an NSU student asking for their CGPA
+    // would be given another university's number.
+    const refused = await assistantTurnAs(NSU_ASSISTANT_CLAIMS);
+    assertEq(refused.status, 403);
+    assertEq(refused.body.error, 'assistant_not_offered');
+    assert(/not available for your university/.test(refused.body.message));
+    assertEq(refused.limited.length, 0, 'the rate limiter was never reached');
+
+    // The refusal does not depend on the assistant being configured: an
+    // unconfigured Worker still says "not for you", not "try again later".
+    const unconfigured = await assistantTurnAs(NSU_ASSISTANT_CLAIMS, { ANTHROPIC_API_KEY: undefined });
+    assertEq(unconfigured.status, 403);
+  });
+
+  await test('assistant: a BRACU student and an outside admin still reach the turn', async () => {
+    // The stub limiter denies, so 429 means the campus check let them through.
+    const bracu = await assistantTurnAs(ASSISTANT_CLAIMS);
+    assertEq(bracu.status, 429);
+    assertEq(bracu.limited.length, 1);
+    const admin = await assistantTurnAs({
+      user_id: 'uid_admin',
+      email: 'admin@example.com',
+      email_verified: true,
+      admin: true,
+      firebase: { sign_in_provider: 'google.com' },
+    });
+    assertEq(admin.status, 429);
   });
 
   await test('assistant: 429 when the per-uid rate limit trips', async () => {
