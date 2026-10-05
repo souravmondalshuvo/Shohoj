@@ -6,25 +6,24 @@
 // Nothing pasted is sent anywhere — it is parsed in this tab and, once the
 // student confirms, written to the same local state every other import writes.
 //
-// Everything on screen is built with DOM calls: the text comes from a clipboard,
-// so none of it is ever handed to innerHTML.
+// Only the plain-text half of the clipboard is read. A copied table arrives
+// there as one line per row with tabs between cells, which is all the reader
+// needs; the HTML half would have to be parsed as markup, and what is read
+// should be exactly what the student sees in the box. Everything on screen is
+// built with DOM calls, so nothing pasted is ever treated as HTML.
 
 import { getActiveCampus } from '../core/activeCampus.js';
 import { getActiveCatalog } from '../core/activeCatalog.js';
 import { registerAction } from '../core/dispatch.js';
 import { calculateCgpaTotals } from '../core/gpa-core.js';
 import { state } from '../core/state.js';
-import { parseGradeHistoryRows, parseGradeHistoryText } from '../import/gradeHistory-core.js';
+import { parseGradeHistoryText } from '../import/gradeHistory-core.js';
 import { showImportModal, stageImport } from './modals.js';
 
 // Campuses whose students import by pasting their portal's grade page.
 const GRADE_HISTORY_CAMPUSES = new Set(['nsu']);
 // RDS prints two decimals; whether it rounds or cuts the third is not known.
 const GRADE_HISTORY_CGPA_TOLERANCE = 0.01;
-
-// The HTML half of the last paste. A textarea only ever receives the plain-text
-// half, and the table's cell boundaries are more reliable in the markup.
-let _gradeHistoryHtml = '';
 
 registerAction('gradeHistory:read', () => readGradeHistoryPaste());
 
@@ -55,34 +54,18 @@ function ghModalBody() {
   return content;
 }
 
-/** Every table in the pasted markup, as rows of cell text. Parsed inert — nothing in it runs. */
-function ghTablesFromHtml(html) {
-  if (!html || typeof DOMParser === 'undefined') return [];
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const text = doc.body ? doc.body.textContent : '';
-  return [...doc.querySelectorAll('table')].map(table => ({
-    text,
-    rows: [...table.rows].map(row => ({
-      cells: [...row.cells].map(cell => cell.textContent),
-      summary: row.classList.contains('summary-row'),
-    })),
-  }));
-}
-
 const ghCourseCount = parsed => parsed.semesters.reduce((n, semester) => n + semester.courses.length, 0);
 
-/** The best reading of a paste: the markup's richest table, else the plain text. */
-export function readGradeHistory(html, text) {
-  let best = parseGradeHistoryText(text);
-  for (const table of ghTablesFromHtml(html)) {
-    const parsed = parseGradeHistoryRows(table.rows, { text: table.text });
-    if (ghCourseCount(parsed) > ghCourseCount(best)) best = parsed;
-  }
-  return best;
+/**
+ * The one way into a transcript import, for every button that offers it: the
+ * paste box on a campus that pastes, the PDF picker everywhere else.
+ */
+export function openTranscriptImport() {
+  if (importsByGradeHistoryPaste()) { openGradeHistoryImport(); return; }
+  document.getElementById('transcriptFileInput')?.click();
 }
 
 export function openGradeHistoryImport() {
-  _gradeHistoryHtml = '';
   const content = ghModalBody();
   if (!content) return;
   const campus = getActiveCampus();
@@ -105,12 +88,6 @@ export function openGradeHistoryImport() {
   box.spellcheck = false;
   box.placeholder = 'Paste your Grade History here';
   box.setAttribute('aria-label', 'Your RDS Grade History, pasted');
-  box.addEventListener('paste', event => {
-    _gradeHistoryHtml = event.clipboardData ? event.clipboardData.getData('text/html') : '';
-  });
-  box.addEventListener('input', () => {
-    if (box.value === '') _gradeHistoryHtml = '';
-  });
 
   const status = ghNode('p', 'gh-import-status');
   status.id = 'gradeHistoryStatus';
@@ -137,11 +114,11 @@ function readGradeHistoryPaste() {
   const status = document.getElementById('gradeHistoryStatus');
   if (!box || !status) return;
 
-  if (!_gradeHistoryHtml && box.value.trim() === '') {
+  if (box.value.trim() === '') {
     status.textContent = 'Paste your Grade History page first.';
     return;
   }
-  const parsed = readGradeHistory(_gradeHistoryHtml, box.value);
+  const parsed = parseGradeHistoryText(box.value);
   if (!parsed.semesters.length) {
     status.textContent = 'No grades could be read from that. Make sure you copied the Grade History page, table included.';
     return;
