@@ -55,7 +55,9 @@ export function campusAllowsTab(profile, tabId) {
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
-  return tabId === 'routine' && campusHasFeedSnapshot(profile.id);
+  // Routine and Free Rooms are both read off the section snapshot. Seats is
+  // not: a snapshot has no seat counts to show.
+  return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
 
 /** The tab ids a campus gets, in bar order. */
