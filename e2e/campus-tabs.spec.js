@@ -47,9 +47,14 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await expect(group(page, 'plan')).toBeVisible();
   await expect(group(page, 'courses')).toBeVisible();
   await expect(group(page, 'campus')).toBeVisible();
-  for (const link of await page.locator('#calcTabs [data-feature]').all()) {
-    await expect(link).toHaveJSProperty('hidden', true);
-  }
+  // Of the three standalone pages, Bus is the one NSU has: it opens NSU's own
+  // service, so the link carries the campus. The map and lost & found are
+  // BRAC University's.
+  const bus = page.locator('#calcTabs [data-feature="bus"]');
+  await expect(bus).toHaveJSProperty('hidden', false);
+  await expect(bus).toHaveAttribute('href', 'bus/?campus=nsu');
+  await expect(page.locator('#calcTabs [data-feature="campus"]')).toHaveJSProperty('hidden', true);
+  await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
 
   // The nav's Tasks link opens a tab NSU does not get.
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeHidden();
@@ -80,6 +85,8 @@ test('a BRACU student keeps every tab', async ({ page }) => {
   for (const link of await page.locator('#calcTabs [data-feature]').all()) {
     await expect(link).toHaveJSProperty('hidden', false);
   }
+  // BRAC University's Bus link is the bare path it has always been.
+  await expect(page.locator('#calcTabs [data-feature="bus"]')).toHaveAttribute('href', 'bus/');
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeVisible();
 
   await page.evaluate(() => window.switchCalcTab('routine'));
