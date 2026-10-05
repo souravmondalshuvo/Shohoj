@@ -14,8 +14,9 @@
 // shared js/core/assistantFormat parser, not printed as punctuation (#730).
 //
 // The launcher renders only when the shell is cloud-capable (papersWorkerUrl
-// configured) AND the student is signed in — the endpoint requires a BRACU
-// token, so an anonymous FAB would only lead to a dead end.
+// configured), the student is signed in — the endpoint needs their token, so an
+// anonymous FAB would only lead to a dead end — and their campus has the
+// `assistant` feature, which the Worker enforces as well.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -30,7 +31,8 @@ import {
   saveStoredHistory,
 } from '../../../js/core/assistantHistory.js';
 import { parseAssistantReply, type AssistantSpan } from '../../../js/core/assistantFormat.js';
-import { useAuth, useIdToken } from '../../app/providers/AuthProvider';
+import { useAuth, useIdToken, useUniversity } from '../../app/providers/AuthProvider';
+import { hasFeature } from '../../core/university';
 import {
   examplePromptsForTab,
   fetchAssistantAvailability,
@@ -421,7 +423,10 @@ export interface AssistantLauncherProps {
  *
  * Renders nothing unless ALL of these hold:
  *   - the shell is cloud-capable (papersWorkerUrl configured),
- *   - the student is signed in (the endpoint requires a BRACU token), and
+ *   - the student is signed in (the endpoint needs their token),
+ *   - their campus has the `assistant` feature — it is built on BRACU's rules
+ *     and data, and would give anyone else another university's CGPA and
+ *     prerequisites as their own; the Worker refuses them too — and
  *   - the Worker reports the Assistant's backend dependency as configured.
  *
  * That last check is #455: the drawer shipped while ANTHROPIC_API_KEY was
@@ -451,9 +456,13 @@ export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
   const closed = useCallback(() => setPhase('idle'), []);
 
   const signedIn = auth.status === 'authenticated';
+  // A signed-in user with no campus is an admin on an outside address, who
+  // has none that could lack the feature (and whom the Worker admits).
+  const university = useUniversity();
+  const offered = university === null || hasFeature(university, 'assistant');
 
   useEffect(() => {
-    if (!workerUrl || !signedIn) return;
+    if (!workerUrl || !signedIn || !offered) return;
     const controller = new AbortController();
     let active = true;
     void fetchAssistantAvailability({ workerUrl, signal: controller.signal }).then((next) => {
@@ -463,9 +472,9 @@ export function AssistantLauncher({ workerUrl }: AssistantLauncherProps) {
       active = false;
       controller.abort();
     };
-  }, [workerUrl, signedIn]);
+  }, [workerUrl, signedIn, offered]);
 
-  if (!workerUrl || !signedIn) return null;
+  if (!workerUrl || !signedIn || !offered) return null;
   if (availability !== 'ready') return null;
 
   return (
