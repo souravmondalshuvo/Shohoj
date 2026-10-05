@@ -90,7 +90,11 @@ export const TARGETS = [
     // Raised again (1045/303 -> 1105/326) for NSU's catalogue (#815), which
     // this entry carries for the same reason shohoj.html does — see there.
     // Measured 1077/310 locally; CI's gzip runs ~8 kB larger.
-    budget: { raw: 1105, gzip: 326 },
+    //
+    // Raw raised 1105 -> 1125 for the RDS Grade History import (#843), which
+    // landed just after NSU's Routine (#840) and tipped it over: CI measured
+    // 1105.3 raw (1091.0 / 314.9 gzip locally). Gzip had room and stays put.
+    budget: { raw: 1125, gzip: 326 },
   },
   // The shell entry — what a student would download after the cutover.
   {
