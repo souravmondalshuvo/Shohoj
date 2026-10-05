@@ -142,6 +142,27 @@ test('column legend and humanized seat/exam text are shown', async ({ page }) =>
     .toContainText('Mid Jul 26 · Final Sep 13');
 });
 
+test('every column heading sits over its own column', async ({ page }) => {
+  await boot(page);
+  await addCourse(page, 'CSE110');
+  const block = page.locator('.routine-course-block', { hasText: 'CSE110' });
+  const row = block.locator('.routine-section-row').first();
+  await expect(row).toBeVisible();
+
+  // The heading and the rows are two separate grids. A row has two trailing
+  // slots for clash badges that the heading once lacked; empty, they still
+  // cost two gaps, which pushed Room, Seats and Mid · Final 20px to the right
+  // of the cells beneath them.
+  const lefts = (locator) => locator.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+  const headLefts = await lefts(block.locator('.routine-section-head span'));
+  const cellLefts = await lefts(row.locator([
+    '.routine-section-name', '.routine-section-faculty', '.routine-section-schedule',
+    '.routine-section-room', '.routine-section-seats', '.routine-section-exam',
+  ].join(', ')));
+  expect(headLefts).toHaveLength(6);
+  expect(cellLefts).toEqual(headLefts);
+});
+
 test('sort toggle reorders sections by seats available', async ({ page }) => {
   await boot(page);
   await addCourse(page, 'CSE110');
