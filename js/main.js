@@ -69,7 +69,7 @@ import {
   exportPDF, showImportModal, hideImportModal,
   importTranscriptPDF, applyImport
 } from './ui/modals.js';
-import { importsByGradeHistoryPaste, openGradeHistoryImport } from './ui/gradeHistoryImport.js';
+import { openTranscriptImport } from './ui/gradeHistoryImport.js';
 
 import {
   renderPlayground, switchPlaygroundTab, resetPlayground,
@@ -1152,11 +1152,8 @@ function _wireInlineReplacements() {
   initTabGroups();
 
   // Transcript import / export / clear-data buttons.
-  on('importPdfBtn', 'click', () => {
-    // A campus with no grade-sheet PDF pastes its portal's grade page instead.
-    if (importsByGradeHistoryPaste()) { openGradeHistoryImport(); return; }
-    document.getElementById('transcriptFileInput')?.click();
-  });
+  // A campus with no grade-sheet PDF pastes its portal's grade page instead.
+  on('importPdfBtn', 'click', () => openTranscriptImport());
   on('transcriptFileInput', 'change', e => importTranscriptPDF(e.target));
   on('exportPdfBtn',  'click', () => exportPDF());
   on('clearDataBtn',  'click', () => window.handleClearData());
