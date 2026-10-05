@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-RlH27vV5cD5QGHcgTJu0+Lns0H7EbJN/G+JFR8DApBE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-GLbH/NzH6WZmi0yD8JFfatMvq2R5rC352qND9qWLDsE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18653,7 +18653,9 @@ function campusAllowsTab(profile, tabId) {
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
-  return tabId === 'routine' && campusHasFeedSnapshot(profile.id);
+  // Routine and Free Rooms are both read off the section snapshot. Seats is
+  // not: a snapshot has no seat counts to show.
+  return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
 
 /** The tab ids a campus gets, in bar order. */
@@ -25440,6 +25442,84 @@ function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEn
     return windows;
 }
 
+// ── js/core/snapshotRooms.js ────────────────────────────────────
+// ── SNAPSHOT ROOMS (legacy bundle) ───────────────────────────────────────────
+//
+// Turns the room names in a section snapshot into physical rooms, for the one
+// tab that makes a claim about a room rather than about a class: Free Rooms.
+//
+// The Routine tab shows a section's room exactly as the university's page
+// spelled it, and should. Free Rooms cannot. NSU's page carries names like
+// `LIB901_V`, `SAC415_v1` and `NAC201-v1` beside `LIB901`, `SAC415` and
+// `NAC201` — a second section listed against the same room (the campus
+// database's note on the source says so, and that it is unconfirmed). Read as
+// rooms of their own, each would be a "room" that is free whenever its one
+// section is not meeting, listed next to the real room it shares, which may be
+// full at that moment.
+//
+// So a variant is folded into the room it names: `LIB901_V`'s classes count
+// against `LIB901`. That is the cautious reading in both directions the suffix
+// could mean — if the two sections really share the room it is correct, and if
+// the variant is something else (a virtual section, say) the room is shown
+// busy when it might be free, which costs a student nothing. The opposite
+// mistake, a room shown free with a class in it, is the one that matters.
+//
+// A variant whose base room never appears on its own is dropped: there is no
+// evidence the base is a room anyone can walk into.
+//
+// Pure. Sections in, sections out; nothing is mutated.
+
+/** `LIB901_V`, `SAC415_v1`, `NAC201-v1`, `OAT803_V2` → the room before the suffix. */
+const VARIANT_SUFFIX = /^(.+?)[_-][vV]\d*$/;
+
+/** The room a variant name refers to, or null when the name is not a variant. */
+function snapshotRoomBase(name) {
+  const match = VARIANT_SUFFIX.exec(typeof name === 'string' ? name.trim() : '');
+  return match ? match[1] : null;
+}
+
+/**
+ * Rewrite every class slot's room to a physical room.
+ *
+ * @returns {{ sections: object[], folded: number, dropped: number }}
+ *   `folded` and `dropped` count class slots, so the caller can say how much of
+ *   the timetable the answer rests on.
+ */
+function withPhysicalRooms(sections) {
+  const roomOf = (section, slot) => (slot.room || section.roomName || '').trim();
+
+  // Rooms that appear under their own name somewhere in the timetable.
+  const physical = new Set();
+  for (const section of sections) {
+    for (const slot of section.classSlots) {
+      const room = roomOf(section, slot);
+      if (room !== '' && snapshotRoomBase(room) === null) physical.add(room);
+    }
+  }
+
+  let folded = 0;
+  let dropped = 0;
+  const out = sections.map((section) => {
+    const classSlots = section.classSlots.map((slot) => {
+      const room = roomOf(section, slot);
+      const base = snapshotRoomBase(room);
+      if (base === null) return { ...slot, room };
+      if (physical.has(base)) {
+        folded += 1;
+        return { ...slot, room: base };
+      }
+      dropped += 1;
+      // Not a room anyone can be sent to. The marker is what the occupancy
+      // index already skips as "to be announced".
+      return { ...slot, room: 'TBA' };
+    });
+    // roomName is the index's fallback for a slot with no room of its own;
+    // every slot now names one, so it must not reintroduce the raw spelling.
+    return { ...section, roomName: '', classSlots };
+  });
+  return { sections: out, folded, dropped };
+}
+
 // ── js/core/seatStatus.js ───────────────────────────────────────
 // Twin of src/core/seatStatus.ts — hand-maintained, not generated.
 // src/core/seatStatus.ts is the source of truth: change it there first, then mirror the
@@ -31192,6 +31272,21 @@ const _frStore = {
   roomType: 'ALL',            // type filter (all-rooms view only)
 };
 
+// A campus change supersedes a load in flight for the previous campus, the
+// same way and for the same reason as the Routine tab (js/ui/routineTab.js).
+let _frRefreshSeq = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:campus-changed', () => {
+    _frRefreshSeq++;
+    _frStore.loading = false;
+    _frStore.error = null;
+    _frStore.index = null;
+    _frStore.semester = null;
+    _frStore.source = null;
+    _frStore.roomType = 'ALL';
+  });
+}
+
 // ── ACTIONS ─────────────────────────────────────────────────────────────────
 registerAction('freerooms:refresh',    () => _frRefresh(true));
 registerAction('freerooms:clearCache', () => { clearConnectFeedCache(); _frRefresh(true); });
@@ -31213,26 +31308,47 @@ registerAction('freerooms:setType', (el) => {
 
 // ── DATA ──────────────────────────────────────────────────────────────────
 async function _frRefresh(force = false) {
+  const seq = ++_frRefreshSeq;
   _frStore.loading = true;
   _frStore.error = null;
   _frRerender();
+  // A campus whose sections come from the campus database rather than a live
+  // feed (js/core/activeFeed.js): the same file the Routine tab reads, from the
+  // same cache slot.
+  const snapshot = getActiveFeedSnapshot();
   try {
     // Any saved copy paints at once and refreshes behind it (#761).
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : { staleWhileRevalidate: true });
-    _frStore.index = buildRoomBusyIndex(result.sections);
+    let feedOptions;
+    if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+    else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+    const result = await fetchConnectFeed(feedOptions);
+    if (seq !== _frRefreshSeq) return;
+    // A snapshot's room names are the university's spellings, some of which
+    // are not rooms (js/core/snapshotRooms.js).
+    const sections = snapshot ? withPhysicalRooms(result.sections).sections : result.sections;
+    _frStore.index = buildRoomBusyIndex(sections);
     _frStore.semester = describeSemester(result.sections, todayISODate());
-    _frStore.source = result.source;
+    _frStore.source = snapshot ? 'snapshot' : result.source;
     _frStore.fetchedAt = result.fetchedAt;
     // One fetch serves every tab: let routine/seats repaint from this result
     // instead of going stale until their own next poll. An expired copy isn't
     // worth sharing — the refresh it triggers reaches every tab.
-    if (result.stale) revalidateFeed();
-    else broadcastFeedResult(result, _frApplyLiveFeed);
+    //
+    // Not a snapshot: it is not the live feed, and the tabs listening are
+    // CONNECT's.
+    if (!snapshot) {
+      if (result.stale) revalidateFeed();
+      else broadcastFeedResult(result, _frApplyLiveFeed);
+    }
   } catch (e) {
-    _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
+    if (seq !== _frRefreshSeq) return;
+    if (snapshot) _frStore.error = 'Failed to load the section list.';
+    else _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
-    _frStore.loading = false;
-    _frRerender();
+    if (seq === _frRefreshSeq) {
+      _frStore.loading = false;
+      _frRerender();
+    }
   }
 }
 
@@ -31241,6 +31357,8 @@ async function _frRefresh(force = false) {
 // either way, and the next interaction repaints from it.
 function _frApplyLiveFeed(result) {
   if (_frStore.loading) return; // our own refresh is mid-flight; it will win
+  // The live feed is BRACU's rooms; never over a campus snapshot.
+  if (getActiveFeedSnapshot()) return;
   _frStore.index = buildRoomBusyIndex(result.sections);
   _frStore.semester = describeSemester(result.sections, todayISODate());
   _frStore.source = result.source;
@@ -31261,7 +31379,8 @@ function _frGoLive() {
 async function renderFreeRoomsTab() {
   const root = document.getElementById('freeRoomsContent');
   if (!root) return;
-  _frGoLive();
+  // Subscribing starts the CONNECT poller; a snapshot campus has nothing to poll.
+  if (!getActiveFeedSnapshot()) _frGoLive();
   if (!_frStore.index && !_frStore.loading && !_frStore.error) { _frRefresh(false); return; }
   _frRerender();
 }
@@ -31299,7 +31418,7 @@ function _frLoadingHTML() {
         <div class="rsk rsk-picker"></div>
         <div class="rsk rsk-block"></div>
       </div>
-      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
+      <div class="routine-loading-note">${getActiveFeedSnapshot() ? 'Loading this semester’s timetable…' : 'Fetching live section data from CONNECT…'}</div>
     </div>`;
 }
 
@@ -31307,7 +31426,7 @@ function _frErrorHTML() {
   return `
     <div class="freerooms-tab">
       <div class="routine-error">
-        <h3>Couldn't reach the Connect feed</h3>
+        <h3>${getActiveFeedSnapshot() ? 'Couldn’t load the timetable' : 'Couldn\'t reach the Connect feed'}</h3>
         <p>${escHtml(_frStore.error || 'Unknown error.')}</p>
         <button class="btn-primary" data-action="freerooms:refresh">Try again</button>
       </div>
@@ -31320,26 +31439,60 @@ function _frMainHTML() {
       ${_frHeaderHTML()}
       ${_frControlsHTML()}
       ${_frOutOfTermHTML()}
+      ${_frSnapshotNoteHTML()}
       <div id="freeRoomsResults">${_frResultsHTML()}</div>
     </div>`;
 }
 
+// The day a snapshot was true, "23 Sep 2026", or '' on the live feed.
+function _frCapturedOn() {
+  const snapshot = getActiveFeedSnapshot();
+  return snapshot ? (formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn) : '';
+}
+
 function _frHeaderHTML() {
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_frStore.source] || '—';
+  const snapshot = _frStore.source === 'snapshot';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', snapshot: `As of ${_frCapturedOn()}` })[_frStore.source] || '—';
   const age = _frAgeLabel(_frStore.fetchedAt);
+  // A snapshot's fetch time says nothing about when it was true (same reason
+  // as the Routine tab's badge), so it shows its capture date and no age.
+  const badgeText = snapshot ? sourceLabel : `${sourceLabel} · ${age}`;
+  const badgeTitle = snapshot
+    ? `Source: the university's published timetable as it stood on ${_frCapturedOn()}. It is not live and has not been updated since.`
+    : `Source: ${sourceLabel} • Updated ${age}`;
   return `
     <div class="routine-header">
       <div class="routine-header-left">
         <h3>🚪 Free Rooms</h3>
-        <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
-          ${escHtml(sourceLabel)} · ${escHtml(age)}
+        <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="${escAttr(badgeTitle)}">
+          ${escHtml(badgeText)}
         </span>
         ${_frStore.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_frStore.semester.status)}" title="${escAttr(semesterCaveat(_frStore.semester))}" data-testid="freerooms-semester">${escHtml(semesterHeadline(_frStore.semester))}</span>` : ''}
       </div>
       <div class="routine-header-right">
-        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
+        ${snapshot ? '' : `<button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>`}
       </div>
     </div>`;
+}
+
+// "Free" is a claim about a room right now, and a snapshot can only say what
+// the timetable looked like on one day. Unlike a routine — where a stale
+// faculty name is an inconvenience — a wrong answer here sends someone to a
+// room with a class in it, so the limits are stated on the page every time,
+// not behind a hover.
+function _frSnapshotNoteHTML() {
+  const snapshot = getActiveFeedSnapshot();
+  if (!snapshot || _frStore.source !== 'snapshot') return '';
+  const untimed = snapshot.untimedCount > 0
+    ? ` ${snapshot.untimedCount} sections had no published room or time and are not counted.`
+    : '';
+  return `
+    <p class="freerooms-outofterm" role="status" data-testid="freerooms-snapshot-note">
+      Worked out from the class timetable as the university published it on
+      ${escHtml(_frCapturedOn())}, not updated since. Rooms are reassigned and sections
+      added after that, and bookings, exams and make-up classes never appear in a
+      timetable — so a room shown free may have a class in it.${escHtml(untimed)}
+    </p>`;
 }
 
 // Occupancy is a claim about now, so it is the one answer on this tab that is
@@ -31365,7 +31518,10 @@ function _frControlsHTML() {
       <button class="freerooms-view-btn ${!_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="free" aria-pressed="${!_frStore.showAll}">Free only</button>
       <button class="freerooms-view-btn ${_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="all" aria-pressed="${_frStore.showAll}">All rooms</button>
     </div>`;
-  const typeFilter = _frStore.showAll ? `
+  // Class / Lab / Theater is read off the last letter of a BRACU room code.
+  // Another campus's codes do not follow that scheme, so the filter is not
+  // offered rather than sorting every room into "Class".
+  const typeFilter = (_frStore.showAll && _frStore.source !== 'snapshot') ? `
     <div class="freerooms-types" role="group" aria-label="Room type">
       ${FR_TYPE_FILTERS.map(t =>
         `<button class="freerooms-type ${_frStore.roomType === t.key ? 'is-active' : ''}" data-action="freerooms:setType" data-type="${t.key}" aria-pressed="${_frStore.roomType === t.key}">${escHtml(t.label)}</button>`
@@ -31443,7 +31599,7 @@ function _frRoomCardHTML(room) {
   }
   return `
     <button type="button" class="freerooms-card ${stateClass}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-haspopup="dialog" title="${escAttr(room)} — view weekly availability">
-      <span class="freerooms-card-room">${escHtml(room)}<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span></span>
+      <span class="freerooms-card-room">${escHtml(room)}${_frStore.source === 'snapshot' ? '' : `<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span>`}</span>
       <span class="freerooms-card-until">${escHtml(statusLabel)}</span>
     </button>`;
 }
