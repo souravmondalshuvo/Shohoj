@@ -1208,15 +1208,21 @@ document.addEventListener('DOMContentLoaded', () => {
     recalc();
   }
 
-  // The campus is still the BRACU default here — initActiveCampus() runs
-  // further down — so this is a no-op on the markup as shipped. It is here so
-  // the bar is never left in a state nothing applied; shohoj:campus-changed
-  // re-applies it once the student's campus is known, in the same tick on a
-  // warm session, and behind the sign-in gate on a cold one.
+  // Which campus's rules, tabs and sections apply. Settled BEFORE the saved
+  // tab is restored: a tab that loads data on entry (Routine fetches its
+  // sections) would otherwise start that load for the default campus, and a
+  // warm NSU session would ask BRACU's feed for a timetable it is about to
+  // throw away. On a cold boot auth has not resolved yet, the campus is still
+  // the default, and shohoj:campus-changed repaints once it is known.
+  //
+  // The saved tab is READ first, though. Settling the campus re-enters the
+  // tab that is showing (still the calculator), which rewrites the URL hash
+  // and the stored tab — the two places the saved tab is read from.
+  const savedTab = restoreCalcTab();
+  initActiveCampus();
   applyCampusFeatures();
 
   // Restore active tab from session/URL hash
-  const savedTab = restoreCalcTab();
   if (savedTab !== 'calculator') switchCalcTab(savedTab);
   // The Calculator tab is already showing, so switchCalcTab did not run for
   // it; the digest also refreshes on auth changes (signed out → it stays hidden).
@@ -1232,11 +1238,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // reports the assistant configured, so this call is safe before either.
   initAssistantFab();
 
-  // Which campus's grading rules apply. Before the portal, so a warm session
-  // unlocks the calculator already on its own scale.
-  initActiveCampus();
-  // After initActiveCampus on purpose: both listen for shohoj:auth-changed, and
-  // the switcher has to read the campus the line above has already settled.
+  // After initActiveCampus (above, before the tab restore) on purpose: both
+  // listen for shohoj:auth-changed, and the switcher has to read the campus
+  // that call has already settled.
   initAdminCampusSwitcher();
   syncProgramPicker();
 
