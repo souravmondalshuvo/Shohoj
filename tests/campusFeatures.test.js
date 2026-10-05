@@ -24,6 +24,7 @@ test('NSU gets the tabs it has data for, and only those', () => {
     'calculator',
     'planner',
     'playground',
+    'routine',
     'reviews',
     'papers',
     'groups',
@@ -69,4 +70,16 @@ test('every feature the page names is one the registry knows', () => {
   for (const feature of [...named, ...Object.values(CALC_TAB_FEATURES)]) {
     assert.ok(known.has(feature), `"${feature}" is not a registry feature`);
   }
+});
+
+test('Routine is granted to NSU by this page, not by the shared registry', () => {
+  // The registry's features also switch the React shell's routes on, and the
+  // shell's Routine route still reads BRACU's feed. Until it does not, the
+  // registry must not list it for NSU — the legacy page grants the tab itself
+  // because it has NSU's sections (js/core/activeFeed.js).
+  assert.equal(UNIVERSITIES.nsu.features.includes('routine'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'routine'), true);
+  // The feed tabs with no NSU data stay hidden.
+  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), false);
 });
