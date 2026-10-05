@@ -1,15 +1,15 @@
 // The tab bar follows the signed-in student's campus (#808).
 //
 // The legacy twin of the shell's tabsFor(): a tab is shown only when the
-// campus's registry profile lists the feature behind it. NSU has no section
-// feed, so Routine, Seats, Free Rooms, Difficulty and Tasks go, and with them
-// the whole Campus dropdown.
+// campus's registry profile lists the feature behind it. NSU has no live
+// section feed, so Seats, Free Rooms, Difficulty and Tasks go, and with them
+// the whole Campus dropdown. Routine stays: this page builds it from NSU's
+// sections in the campus database (e2e/nsu-routine.spec.js).
 //
 // Identity comes from the same bridge firebase.js installs
 // (window._shohoj_userProfile). Every https request is aborted, so the Firebase
 // SDK never loads and the stub is what the page sees — the pattern the profile
-// and built-bundle specs use. Legacy sign-in does not admit NSU yet; this pins
-// what the page does once it does.
+// and built-bundle specs use.
 import { expect, test } from '@playwright/test';
 
 async function boot(page, email, path = '/') {
@@ -33,8 +33,8 @@ async function boot(page, email, path = '/') {
 const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 const group = (page, id) => page.locator(`#calcTabs .calc-tab-group[data-group="${id}"]`);
 
-const NSU_TABS = ['calculator', 'planner', 'playground', 'reviews', 'papers', 'groups'];
-const BRACU_ONLY_TABS = ['routine', 'tasks', 'difficulty', 'seats', 'freerooms'];
+const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'groups'];
+const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats', 'freerooms'];
 
 test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await boot(page, 'student@northsouth.edu');
@@ -52,9 +52,9 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
 });
 
 test('an NSU student cannot reach a hidden tab by script or by link', async ({ page }) => {
-  await boot(page, 'student@northsouth.edu', '/#calculator/routine');
+  await boot(page, 'student@northsouth.edu', '/#calculator/difficulty');
   await expect(page.locator('#tabCalculator')).toHaveClass(/active/);
-  await expect(page.locator('#tabRoutine')).not.toHaveClass(/active/);
+  await expect(page.locator('#tabDifficulty')).not.toHaveClass(/active/);
 
   await page.evaluate(() => window.switchCalcTab('seats'));
   await expect(page.locator('#tabCalculator')).toHaveClass(/active/);
@@ -84,8 +84,8 @@ test('a BRACU student keeps every tab', async ({ page }) => {
 
 test('the bar follows a campus change mid-session', async ({ page }) => {
   await boot(page, 'student@g.bracu.ac.bd');
-  await page.evaluate(() => window.switchCalcTab('routine'));
-  await expect(page.locator('#tabRoutine')).toHaveClass(/active/);
+  await page.evaluate(() => window.switchCalcTab('seats'));
+  await expect(page.locator('#tabSeats')).toHaveClass(/active/);
 
   // Sign in as someone else without a reload.
   await page.evaluate(() => {
@@ -95,7 +95,9 @@ test('the bar follows a campus change mid-session', async ({ page }) => {
     window.dispatchEvent(new CustomEvent('shohoj:auth-changed', { detail: { signedIn: true } }));
   });
 
-  await expect(tab(page, 'routine')).toHaveJSProperty('hidden', true);
+  await expect(tab(page, 'seats')).toHaveJSProperty('hidden', true);
+  // Routine stays: this page has NSU's own sections (e2e/nsu-routine.spec.js).
+  await expect(tab(page, 'routine')).toHaveJSProperty('hidden', false);
   await expect(group(page, 'campus')).toBeHidden();
   await expect(page.locator('#tabCalculator')).toHaveClass(/active/);
 });
