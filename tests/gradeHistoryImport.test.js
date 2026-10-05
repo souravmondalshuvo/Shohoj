@@ -101,7 +101,7 @@ test('columns are found by name, so a reordered table reads the same', () => {
     eq(warnings, []);
 });
 
-test('rows handed over from parsed HTML read the same as the text', () => {
+test('rows handed over ready-split read the same as the text', () => {
     const rows = rowsFromText(PASTE).map(row => ({
         cells: row.cells,
         summary: /TGPA/.test(row.cells.join(' ')),
