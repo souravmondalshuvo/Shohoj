@@ -101,6 +101,7 @@ import { isKnownCourse } from './catalog.generated.js';
 // belongs where. Was a hand-maintained third copy (#571).
 import { campusOfEmail } from './campus.generated.js';
 import { facultyInitialsRe } from './facultyInitials.js';
+import { getUniversity, hasFeature } from '../js/core/university.js';
 import { ARCHIVE_INDEX_KEY, archiveKeyFor, runSemesterArchiveCron } from './semesterArchive.js';
 // The /api/v1 namespace (#710). Its logic is pure and its I/O is injected, so
 // everything below is wiring: real Firestore reads/writes, the real hash, the
@@ -260,6 +261,15 @@ export function isValidCourseCode(c, campus = 'bracu') {
  */
 export function catalogCampusFor(claims) {
   return campusOfEmail(claims?.email) || 'bracu';
+}
+
+/**
+ * Whether the Assistant is offered to this caller: their campus has the
+ * `assistant` feature, or no campus claims their address (an admin).
+ */
+export function assistantOfferedTo(claims) {
+  const campus = campusOfEmail(claims?.email);
+  return campus === '' || hasFeature(getUniversity(campus), 'assistant');
 }
 
 export function safeFilename(name) {
@@ -1661,6 +1671,25 @@ async function handleAssistant(request, env, origin, execCtx) {
   authAt = Date.now();
   const uid = safePathSegment(claims?.user_id || claims?.sub);
   if (!uid) throw new AuthError('Token carries no uid');
+
+  // Offered only where it is built for the campus — the registry's `assistant`
+  // feature, which the launchers read too. Its prompt addresses a BRACU student
+  // and all but one of its tools compute on BRACU's rules and data, so for
+  // anyone else it would state another university's CGPA, prerequisites and
+  // seats as their own. Checked here because hiding a button is not a
+  // refusal, and first, so a refused caller costs no quota and no model call.
+  // An admin on an address no campus claims has no campus to lack it.
+  if (!assistantOfferedTo(claims)) {
+    return jsonResponse(
+      {
+        error: 'assistant_not_offered',
+        message: 'Shohoj Assistant is not available for your university yet.',
+      },
+      { status: 403 },
+      env,
+      origin,
+    );
+  }
 
   // Configuration check BEFORE the rate limit: when the assistant is not
   // configured at all (#455) every turn is going to 503 anyway, so burning the
