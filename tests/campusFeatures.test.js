@@ -8,7 +8,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { CALC_TAB_FEATURES, campusAllowsTab, campusTabIds } from '../js/core/campusFeatures.js';
+import {
+  CALC_TAB_FEATURES,
+  campusAllowsFeature,
+  campusAllowsTab,
+  campusPageHref,
+  campusTabIds,
+} from '../js/core/campusFeatures.js';
 import { UNIVERSITIES } from '../js/core/university.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -86,4 +92,29 @@ test('Routine and Free Rooms are granted to NSU by this page, not by the shared 
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), true);
   // Seats is not: a snapshot carries no seat counts.
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
+});
+
+test('the Bus page is NSU\'s on this site, and the other BRACU pages are not', () => {
+  // Granted here, not in the registry: `bus` there would switch on the shell's
+  // /bus route, which shows BRAC University's timetable.
+  assert.equal(UNIVERSITIES.nsu.features.includes('bus'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'bus'), true);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'lostFound'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'tasks'), false);
+  for (const feature of ['bus', 'campus', 'lostFound', 'tasks']) {
+    assert.equal(campusAllowsFeature(UNIVERSITIES.bracu, feature), true, feature);
+  }
+  assert.equal(campusAllowsFeature(null, 'bus'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'constructor'), false);
+});
+
+test('a multi-campus page link carries the campus, except for the default one', () => {
+  assert.equal(campusPageHref('bus/', 'bracu', 'bracu'), 'bus/');
+  assert.equal(campusPageHref('bus/', 'nsu', 'bracu'), 'bus/?campus=nsu');
+  // The page must read the same parameter the link writes.
+  const route = readFileSync(new URL('../src/app/routes/BusRoute.tsx', import.meta.url), 'utf8');
+  assert.ok(route.includes("searchParams.get('campus') === 'nsu'"));
+  // And the link on the page declares the path this builds from.
+  assert.ok(INDEX_HTML.includes('data-feature="bus" data-campus-href="bus/"'));
 });
