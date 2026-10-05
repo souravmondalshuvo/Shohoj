@@ -48,40 +48,21 @@ const ROWS = [
 const SUMMARIES = [['3.00', '3.00'], ['3.50', '3.67']];
 const HEADERS = ['Semester Name', 'Semester Year', 'Course Code', 'Course Credit', 'Course Title', 'Course Grade', 'Cr.Count'];
 
-/** The page as a browser puts it on the clipboard: a table inside page chrome. */
-function pageHtml(cgpas = SUMMARIES) {
-  let summary = 0;
-  const body = ROWS.map(row => {
-    if (row) return `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
-    const [tgpa, cgpa] = cgpas[summary++];
-    return `<tr class="summary-row"><td colspan="7">TGPA: ${tgpa} &nbsp; CGPA: ${cgpa}</td></tr>`;
-  }).join('');
-  return `<div><table><tr><td>Home</td><td>Logout</td></tr></table>
-    <h3>Grade History of 2012345642</h3>
-    <table><tr>${HEADERS.map(h => `<th>${h}</th>`).join('')}</tr>${body}</table></div>`;
-}
-
-/** The same page as plain text, for a clipboard that carried no HTML. */
-function pageText() {
+/** The page as its plain-text copy: one line per row, tabs between cells. */
+function pageText(cgpas = SUMMARIES) {
   let summary = 0;
   return [
+    'Grade History of 2012345642',
     HEADERS.join('\t'),
     ...ROWS.map(row => {
       if (row) return row.join('\t');
-      const [tgpa, cgpa] = SUMMARIES[summary++];
+      const [tgpa, cgpa] = cgpas[summary++];
       return `TGPA: ${tgpa}\tCGPA: ${cgpa}`;
     }),
   ].join('\n');
 }
 
-async function pasteHtml(page, html) {
-  await page.locator('#gradeHistoryPaste').evaluate((box, markup) => {
-    const data = new DataTransfer();
-    data.setData('text/html', markup);
-    data.setData('text/plain', 'not the table');
-    box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
-  }, html);
-}
+const paste = (page, text) => page.locator('#gradeHistoryPaste').fill(text);
 
 async function openPasteBox(page) {
   await boot(page);
@@ -102,7 +83,7 @@ test('a BRACU student still gets the PDF picker, not a paste box', async ({ page
 
 test('an NSU student pastes Grade History and gets their semesters and CGPA', async ({ page }) => {
   await openPasteBox(page);
-  await pasteHtml(page, pageHtml());
+  await paste(page, pageText());
   await page.getByRole('button', { name: 'Read my grades' }).click();
 
   const modal = page.locator('#importModalContent');
@@ -126,16 +107,38 @@ test('an NSU student pastes Grade History and gets their semesters and CGPA', as
   expect(profile.sid).toBe('2012345642');
 });
 
-test('a clipboard with no HTML is read from the pasted text', async ({ page }) => {
+test('only what is in the box is read: a semester deleted there stays deleted', async ({ page }) => {
   await openPasteBox(page);
-  await page.locator('#gradeHistoryPaste').fill(pageText());
+  // The clipboard's HTML half still holds both semesters; the box holds one.
+  await page.locator('#gradeHistoryPaste').evaluate((box, text) => {
+    const data = new DataTransfer();
+    data.setData('text/html', '<table><tr><td>ignored</td></tr></table>');
+    data.setData('text/plain', text);
+    box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+  }, pageText());
+  await paste(page, pageText().split('\n').slice(0, 6).join('\n'));
   await page.getByRole('button', { name: 'Read my grades' }).click();
-  await expect(page.locator('#gradeHistoryCheck')).toHaveText('CGPA 3.67 — matches RDS.');
+  await expect(page.locator('#importModalContent')).toContainText('Found 1 semester and 3 courses.');
+  await expect(page.locator('#gradeHistoryCheck')).toHaveText('CGPA 3.00 — matches RDS.');
+});
+
+test('the simulator\'s import nudge opens the same paste box', async ({ page }) => {
+  await boot(page);
+  await signInAs(page, 'first.last@northsouth.edu');
+  // The nudge only renders beside a CGPA summary; its action is what matters here.
+  await page.evaluate(() => {
+    const button = document.createElement('button');
+    button.id = 'e2eNudge';
+    button.dataset.action = 'sim:importTranscript';
+    document.body.append(button);
+    button.click();
+  });
+  await expect(page.locator('#gradeHistoryPaste')).toBeVisible();
 });
 
 test('a CGPA that disagrees with RDS is said out loud before importing', async ({ page }) => {
   await openPasteBox(page);
-  await pasteHtml(page, pageHtml([['3.00', '3.00'], ['3.50', '3.21']]));
+  await paste(page, pageText([['3.00', '3.00'], ['3.50', '3.21']]));
   await page.getByRole('button', { name: 'Read my grades' }).click();
   await expect(page.locator('#gradeHistoryCheck')).toHaveText(/works this out as 3\.67, but RDS shows 3\.21/);
 });
@@ -145,12 +148,12 @@ test('a paste that is not the grade history is refused, and markup in it never r
   await page.getByRole('button', { name: 'Read my grades' }).click();
   await expect(page.locator('#gradeHistoryStatus')).toHaveText('Paste your Grade History page first.');
 
-  await pasteHtml(page, '<p>Class Schedule</p><img src="x" onerror="window.__ghXss = 1">');
+  await paste(page, 'Class Schedule <img src="x" onerror="window.__ghXss = 1">');
   await page.getByRole('button', { name: 'Read my grades' }).click();
   await expect(page.locator('#gradeHistoryStatus')).toContainText('No grades could be read');
 
-  const hostile = pageHtml().replace('Pre-Calculus', '<img src="x" onerror="window.__ghXss = 1">Pre-Calc');
-  await pasteHtml(page, hostile);
+  const hostile = pageText().replace('Pre-Calculus', '<img src="x" onerror="window.__ghXss = 1">Pre-Calc');
+  await paste(page, hostile);
   await page.getByRole('button', { name: 'Read my grades' }).click();
   await expect(page.locator('#gradeHistoryCheck')).toBeVisible();
   await expect(page.locator('#importModalContent img')).toHaveCount(0);
@@ -163,7 +166,7 @@ test('nothing pasted is sent anywhere', async ({ page }) => {
   page.on('request', request => {
     if (!request.url().startsWith('http://localhost') && !request.url().startsWith('http://127.0.0.1')) requests.push(request.url());
   });
-  await pasteHtml(page, pageHtml());
+  await paste(page, pageText());
   await page.getByRole('button', { name: 'Read my grades' }).click();
   await page.getByRole('button', { name: /Import Now/ }).click();
   await expect(page.locator('#cgpaVal')).toHaveText('3.67');
