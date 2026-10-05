@@ -2,9 +2,9 @@
 //
 // The legacy twin of the shell's tabsFor(): a tab is shown only when the
 // campus's registry profile lists the feature behind it. NSU has no live
-// section feed, so Seats, Free Rooms, Difficulty and Tasks go, and with them
-// the whole Campus dropdown. Routine stays: this page builds it from NSU's
-// sections in the campus database (e2e/nsu-routine.spec.js).
+// section feed, so Seats, Difficulty and Tasks go. Routine and Free Rooms stay:
+// this page builds both from NSU's sections in the campus database
+// (e2e/nsu-routine.spec.js, e2e/nsu-free-rooms.spec.js).
 //
 // Identity comes from the same bridge firebase.js installs
 // (window._shohoj_userProfile). Every https request is aborted, so the Firebase
@@ -33,8 +33,8 @@ async function boot(page, email, path = '/') {
 const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 const group = (page, id) => page.locator(`#calcTabs .calc-tab-group[data-group="${id}"]`);
 
-const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'groups'];
-const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats', 'freerooms'];
+const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'freerooms', 'groups'];
+const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats'];
 
 test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await boot(page, 'student@northsouth.edu');
@@ -42,10 +42,14 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   for (const id of NSU_TABS) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
   for (const id of BRACU_ONLY_TABS) await expect(tab(page, id)).toHaveJSProperty('hidden', true);
 
-  // Plan and Courses keep what is left of them; Campus has nothing left.
+  // Every group keeps what is left of it. Campus is down to Free Rooms: Seats
+  // and the three standalone pages (map, bus, lost & found) are BRACU's.
   await expect(group(page, 'plan')).toBeVisible();
   await expect(group(page, 'courses')).toBeVisible();
-  await expect(group(page, 'campus')).toBeHidden();
+  await expect(group(page, 'campus')).toBeVisible();
+  for (const link of await page.locator('#calcTabs [data-feature]').all()) {
+    await expect(link).toHaveJSProperty('hidden', true);
+  }
 
   // The nav's Tasks link opens a tab NSU does not get.
   await expect(page.locator('.nav-link[data-calc-tab="tasks"]')).toBeHidden();
@@ -98,7 +102,9 @@ test('the bar follows a campus change mid-session', async ({ page }) => {
   await expect(tab(page, 'seats')).toHaveJSProperty('hidden', true);
   // Routine stays: this page has NSU's own sections (e2e/nsu-routine.spec.js).
   await expect(tab(page, 'routine')).toHaveJSProperty('hidden', false);
-  await expect(group(page, 'campus')).toBeHidden();
+  // So does the Campus group, now holding Free Rooms alone.
+  await expect(group(page, 'campus')).toBeVisible();
+  await expect(tab(page, 'freerooms')).toHaveJSProperty('hidden', false);
   await expect(page.locator('#tabCalculator')).toHaveClass(/active/);
 });
 
