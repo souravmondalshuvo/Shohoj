@@ -146,7 +146,7 @@
   },
   "features": {
     "source": "bracu-registry",
-    "records": ["bus","cafeteria","calculator","campus","degree","difficulty","feedback","groups","lostFound","papers","playground","planner","profile","reviews","rooms","routine","seats","tasks","transcript"]
+    "records": ["assistant","bus","cafeteria","calculator","campus","degree","difficulty","feedback","groups","lostFound","papers","playground","planner","profile","reviews","rooms","routine","seats","tasks","transcript"]
   },
   "transcript": {
     "source": "bracu-transcript-parser",
