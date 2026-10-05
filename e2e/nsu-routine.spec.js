@@ -61,7 +61,7 @@ test('an NSU student gets NSU’s sections, labelled as a snapshot', async ({ pa
   expect(external.filter((url) => url.includes('usis-cdn'))).toEqual([]);
 });
 
-test('sections list with times and rooms, and no seat count', async ({ page }) => {
+test('sections list with times and rooms, and no seat or exam column', async ({ page }) => {
   await boot(page);
   await addCourse(page, 'ACT201');
 
@@ -72,8 +72,13 @@ test('sections list with times and rooms, and no seat count', async ({ page }) =
   const first = page.locator('.routine-section-row', { hasText: /^\s*Section 1\b/ }).first();
   await expect(first.locator('.routine-section-schedule')).toContainText('4:20 PM');
   await expect(first.locator('.routine-section-room')).toHaveText(/NAC/);
-  await expect(first.locator('.routine-section-seats')).toHaveText('—');
+  // No seat count and no exam dates exist for a snapshot, so neither column
+  // is drawn at all — not as a column of dashes.
+  await expect(page.locator('.routine-section-seats')).toHaveCount(0);
+  await expect(page.locator('.routine-section-exam')).toHaveCount(0);
   await expect(first).not.toContainText('0/0');
+  await expect(first).not.toContainText('No exam dates');
+  await expect(page.locator('.routine-section-head span')).toHaveText(['Sec', 'Faculty', 'Schedule', 'Room']);
 
   // Nothing to sort by, so the Seats sort is not offered.
   await expect(page.locator('.routine-sort-btn[data-sort="seats"]')).toHaveCount(0);
@@ -116,4 +121,21 @@ test('two sections in the same slot are flagged as a clash', async ({ page }) =>
     .click();
 
   await expect(page.locator('.routine-clash-warn')).toContainText('clash');
+});
+
+test('the section list lines up: every row has the head’s four columns', async ({ page }) => {
+  await boot(page);
+  await addCourse(page, 'ACT201');
+  const row = page.locator('.routine-section-row').first();
+  await expect(row).toBeVisible();
+
+  // The head and the rows are separate grids; dropping two columns from one
+  // and not the other would shift every cell out from under its label.
+  const left = (locator) => locator.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+  const headLefts = await left(page.locator('.routine-section-head span'));
+  const cellLefts = await left(row.locator(
+    '.routine-section-name, .routine-section-faculty, .routine-section-schedule, .routine-section-room',
+  ));
+  expect(headLefts).toHaveLength(4);
+  expect(cellLefts).toEqual(headLefts);
 });
