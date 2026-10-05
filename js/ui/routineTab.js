@@ -1658,15 +1658,23 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
   `;
 }
 
+// A snapshot carries no seat counts and no exam dates (scripts/campus_feed.mjs),
+// so the two columns that would show them are left out of the list altogether:
+// forty rows of "—" and "No exam dates" are noise, and the note above the list
+// already says the data has neither. The schedule column takes the room.
+function _sectionListIsBare() {
+  return _store.source === 'snapshot';
+}
+
 function _sectionHeadHTML() {
+  const bare = _sectionListIsBare();
   return `
-    <div class="routine-section-head" aria-hidden="true">
+    <div class="routine-section-head ${bare ? 'routine-section-head--bare' : ''}" aria-hidden="true">
       <span>Sec</span>
       <span>Faculty</span>
       <span>Schedule</span>
       <span>Room</span>
-      <span>Seats</span>
-      <span>Mid · Final</span>
+      ${bare ? '' : '<span>Seats</span>\n      <span>Mid · Final</span>'}
     </div>
   `;
 }
@@ -1711,27 +1719,25 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const data = `data-code="${escAttr(courseCode)}" data-sid="${section.sectionId}"`;
   const pickedClash = isPicked && mark && (mark.classClash || mark.examClash);
   const candClash = !isPicked && cand && (cand.cls || cand.exam);
+  const bare = _sectionListIsBare();
   const classes = [
     'routine-section-row',
+    bare ? 'routine-section-row--bare' : '',
     isPicked ? 'routine-section--picked' : '',
     pickedClash ? 'routine-section--clash' : '',
     candClash ? 'routine-section--candclash' : '',
   ].filter(Boolean).join(' ');
   const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
-  // A snapshot carries no seat count (scripts/campus_feed.mjs): "0/0" would be
-  // a number about nothing.
-  const noSeats = _store.source === 'snapshot';
   let seatTitle = `${section.consumedSeat}/${section.capacity} seats taken · ${seatsLeft(section)} left`;
   if (section.isFull) seatTitle = 'Section full';
-  if (noSeats) seatTitle = 'Seat counts aren\'t available for this university';
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
-      <span class="routine-section-seats ${noSeats ? '' : `routine-seats--${seatClass}`}" title="${escAttr(seatTitle)}">${escHtml(noSeats ? '—' : _seatText(section))}</span>
-      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>
+      ${bare ? '' : `<span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
+      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>`}
       ${isPicked && mark && mark.classClash ? `<span class="routine-clash-pill" title="Class clash">CLASS ✕</span>` : ''}
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
       ${candClash && cand.cls  ? `<span class="routine-clash-pill routine-clash-pill--cand" title="${escAttr(candTitle)}">clash</span>` : ''}
