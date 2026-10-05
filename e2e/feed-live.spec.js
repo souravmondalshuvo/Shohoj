@@ -113,11 +113,46 @@ test('a live poll updates the routine tab section rows in place', async ({ page 
   const row01 = page.locator('.routine-section-row', { hasText: 'Section 01' });
   await expect(row01).toContainText('10/30');
 
-  // Blur the search box (a focused input defers the live repaint on purpose),
-  // then let a poll period pass with a fuller section.
-  await page.locator('body').click();
+  // Move focus out of the search box, so the poll takes the full-rebuild path
+  // (the focused path is the next test). Blurred directly: this used to click
+  // <body>, which clicks whatever is under the middle of the viewport — the
+  // search box itself whenever the page happened to be scrolled that way, which
+  // left it focused and failed the test about four runs in ten.
+  const input = page.locator('#routineCourseInput');
+  await input.blur();
+  await expect(input).not.toBeFocused();
   setSeats01(28);
   await page.clock.fastForward(POLL_MS + 1_000);
 
   await expect(row01).toContainText('2 left');
+});
+
+test('a live poll updates seat counts under a focused search box, without disturbing it', async ({ page }) => {
+  const { setSeats01 } = await boot(page);
+
+  await selectCalcTab(page, "routine");
+  const input = page.locator('#routineCourseInput');
+  await input.fill('CSE220');
+  await page.locator('[data-action="routine:addFromSuggest"]').click();
+  const row01 = page.locator('.routine-section-row', { hasText: 'Section 01' });
+  await expect(row01).toContainText('10/30');
+
+  // The student starts typing the next course and stops there. Focus in the
+  // box is the tab's resting state — adding a course leaves it there — so
+  // seats must not freeze while it is.
+  await input.click();
+  await input.pressSequentially('CS');
+  await expect(input).toBeFocused();
+  await expect(page.locator('[data-action="routine:addFromSuggest"]').first()).toBeVisible();
+
+  setSeats01(28);
+  await page.clock.fastForward(POLL_MS + 1_000);
+
+  // The list has the fresh count…
+  await expect(row01).toContainText('2 left');
+  // …and the box was not rebuilt out from under the student: same focus, same
+  // text, the dropdown still open.
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue('CS');
+  await expect(page.locator('[data-action="routine:addFromSuggest"]').first()).toBeVisible();
 });
