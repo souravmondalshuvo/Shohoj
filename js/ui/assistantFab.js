@@ -13,7 +13,10 @@
 // lesson — the drawer once shipped while ANTHROPIC_API_KEY was unset and failed
 // on every single turn. The launcher appears only when:
 //   - the Worker URL is configured,
-//   - the student is signed in (the endpoint requires a token), and
+//   - the student is signed in (the endpoint requires a token),
+//   - their campus has the `assistant` feature — it is built on BRACU's rules
+//     and data, and would give anyone else another university's CGPA and
+//     prerequisites as their own; the Worker refuses them too — and
 //   - GET /ready affirmatively reports the assistant configured.
 // An inconclusive probe keeps the launcher hidden. Signed-out visitors get no
 // launcher at all rather than a button that dead-ends in an auth wall.
@@ -29,7 +32,9 @@ import {
   fetchAssistantAvailability,
   sendAssistantTurn,
 } from '../core/assistantClient.js';
+import { getActiveCampus } from '../core/activeCampus.js';
 import { renderAssistantReply } from '../core/assistantFormat.js';
+import { hasFeature } from '../core/university.js';
 // The transcript moved from sessionStorage (dies with the tab) to a device-local
 // IndexedDB record that survives a new tab and a new day (#543). Still local,
 // still uid-stamped, still deletable from the drawer.
@@ -87,6 +92,12 @@ function currentUid() {
 
 function signedIn() {
   return !!currentUid();
+}
+
+// The active campus is BRACU for anyone no campus claims (an admin on an
+// outside address), and whatever an admin has chosen to view the site as.
+function offeredOnCampus() {
+  return hasFeature(getActiveCampus(), 'assistant');
 }
 
 function authReady() {
@@ -526,7 +537,7 @@ export function refreshLauncher() {
     // is uid-stamped and only reads back for its owner, so it can be adopted.
     if (previous !== null || uid === null) clearStoredHistory();
   }
-  if (!workerUrl() || !authReady() || !signedIn()) {
+  if (!workerUrl() || !authReady() || !signedIn() || !offeredOnCampus()) {
     unmountFab();
     return;
   }
@@ -543,4 +554,7 @@ export function initAssistantFab() {
   // Auth resolves after boot and can flap while Firestore settles, so the
   // launcher follows the auth state rather than the first frame's answer.
   window.addEventListener('shohoj:auth-changed', () => refreshLauncher());
+  // ...and the campus, which can change with no auth event at all: an admin
+  // switching the site to another university's view.
+  window.addEventListener('shohoj:campus-changed', () => refreshLauncher());
 }
