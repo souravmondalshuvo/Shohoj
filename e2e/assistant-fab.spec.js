@@ -114,6 +114,45 @@ test('the launcher stays hidden when the Worker reports the assistant unconfigur
   await expect(page.locator('.assistant-fab')).toHaveCount(0);
 });
 
+// The Assistant is built on BRACU's rules and data — the CGPA scale and retake
+// rule, prerequisites, programs, the section feed. A student of another campus
+// would be handed another university's numbers as their own, so it is offered
+// only where the campus registry says it is (and the Worker refuses the rest).
+const NSU = 'first.last@northsouth.edu';
+const BRACU = '21301234@g.bracu.ac.bd';
+
+/** The signed-in stub, as a student with this address. */
+async function becomeStudent(page, email) {
+  await page.evaluate(address => {
+    window._shohoj_userProfile = () => ({ signedIn: true, email: address });
+    window.dispatchEvent(new Event('shohoj:auth-changed'));
+  }, email);
+}
+
+test('an NSU student gets no launcher, though the Worker reports the assistant ready', async ({ page }) => {
+  await page.addInitScript(address => {
+    window._shohoj_userProfile = () => ({ signedIn: true, email: address });
+  }, NSU);
+  await boot(page);
+  // Signed in and unlocked, so the launcher has had its chance to appear.
+  await expect(page.locator('#calcTabs')).toBeVisible();
+  // Long enough for the readiness probe to come back "ready" and be ignored.
+  await page.waitForTimeout(800);
+  await expect(fab(page)).toHaveCount(0);
+});
+
+test('the launcher follows the campus without a reload', async ({ page }) => {
+  await boot(page);
+  await becomeStudent(page, BRACU);
+  await expect(fab(page)).toBeVisible();
+
+  await becomeStudent(page, NSU);
+  await expect(fab(page)).toHaveCount(0);
+
+  await becomeStudent(page, BRACU);
+  await expect(fab(page)).toBeVisible();
+});
+
 test('the launcher follows the auth state without a reload', async ({ page }) => {
   await boot(page, { stub: null });
   await expect(fab(page)).toHaveCount(0);
