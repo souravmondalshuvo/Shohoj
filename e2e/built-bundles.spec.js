@@ -103,3 +103,31 @@ for (const campus of [
     else await expect(reviews).toContainText(none);
   });
 }
+
+// A campus with no live feed gets its Routine from a section file this site
+// serves (feeds/, js/core/activeFeed.js). Two things about that only exist in
+// the BUILT page: the modules have to be in build3.py's list, and the shipped
+// Content-Security-Policy has to allow a same-origin fetch — connect-src had no
+// 'self' until this feature needed one. The un-bundled suites would pass with
+// either missing.
+test('the built page loads an NSU student’s sections from this site', async ({ page }) => {
+  const blocked = [];
+  page.on('console', (m) => {
+    if (/Content Security Policy|Refused to connect/i.test(m.text())) blocked.push(m.text());
+  });
+  await page.addInitScript(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ }
+    window._shohoj_isAuthReady = () => true;
+    window._shohoj_currentUid = () => 'u1';
+    window._shohoj_userProfile = () => ({
+      signedIn: true, uid: 'u1', email: 'student@northsouth.edu',
+      displayName: 'Test Student', photoURL: null,
+    });
+  });
+  await page.route('https://**/*', (route) => route.abort());
+  await page.goto('/shohoj.html#calculator/routine', { waitUntil: 'domcontentloaded' });
+
+  await expect(page.locator('.routine-source-badge')).toHaveText(/As of \d+ \w+ \d{4}/);
+  await expect(page.getByTestId('routine-snapshot-note')).toBeVisible();
+  expect(blocked.filter((m) => m.includes('feeds/'))).toEqual([]);
+});
