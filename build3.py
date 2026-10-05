@@ -58,6 +58,11 @@ MAIN_JS_FILES = [
     'js/core/catalogNsu.generated.js',
     'js/core/activeCatalog.js',
     'js/core/courseLookup.js',
+    # A campus whose Routine comes from a campus-database snapshot: where the
+    # generated section file is (fetched on demand, not bundled), and which
+    # campus uses it
+    'js/core/campusFeeds.generated.js',
+    'js/core/activeFeed.js',
     # Which calculator tabs a campus gets (twin of the shell's tabsFor)
     'js/core/campusFeatures.js',
     'js/core/gpa-core.js',
