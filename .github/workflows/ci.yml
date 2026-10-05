@@ -536,6 +536,9 @@ jobs:
           cp 404.html     _deploy/404.html
           # Standalone pages keep their directory layout and share assets/.
           cp -R dist-pages/. _deploy/
+          # Section snapshots the Routine tab fetches on demand for a campus
+          # with no live feed (scripts/generate_campus_feed.mjs).
+          cp -R feeds _deploy/feeds
           # React shell — opt-in at /app/ (built with SHELL_BASE=/Shohoj/app/).
           cp -R dist-shell/. _deploy/app/
 
