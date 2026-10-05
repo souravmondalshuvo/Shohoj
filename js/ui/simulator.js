@@ -5,9 +5,10 @@ import { getRetakenKeys, getImprovementStrategy } from '../core/calculator.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 import { computeMilestoneLadder, visibleMilestoneRows } from '../core/milestones.js';
 import { registerAction } from '../core/dispatch.js';
+import { openTranscriptImport } from './gradeHistoryImport.js';
 
 registerAction('sim:importTranscript', () => {
-  document.getElementById('transcriptFileInput')?.click();
+  openTranscriptImport();
 });
 registerAction('sim:addSemester', () => window.addSemester?.());
 registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
