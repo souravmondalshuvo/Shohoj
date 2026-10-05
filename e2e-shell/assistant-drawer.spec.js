@@ -95,6 +95,56 @@ test('signed in but readiness probe fails: no launcher (conservative)', async ({
   await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toHaveCount(0);
 });
 
+// The Assistant is built on BRACU's rules and data, so it is offered only where
+// the campus registry says it is (#838). The Worker refuses everyone else; this
+// is the launcher not inviting them in the first place.
+const signedInAsNsu = async (page) => {
+  await page.addInitScript((globals) => {
+    Object.assign(window, globals);
+    const snapshot = {
+      status: 'authenticated',
+      uid: 'e2e-nsu',
+      email: 'student@northsouth.edu',
+      displayName: 'E2E NSU Student',
+      isAdmin: false,
+      university: 'nsu',
+    };
+    window.__shohojAuthSource = {
+      get: () => snapshot,
+      subscribe: () => () => {},
+      getIdToken: async () => 'e2e-id-token',
+    };
+  }, VALID_GLOBALS);
+};
+
+test('an NSU student gets no launcher, though the assistant is configured', async ({ page }) => {
+  let probes = 0;
+  await signedInAsNsu(page);
+  await page.route('**/ready', (route) => {
+    probes += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok', capabilities: { assistant: true } }),
+    });
+  });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.shell-auth')).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(500);
+  await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toHaveCount(0);
+  // Not offered, so not even asked about.
+  expect(probes).toBe(0);
+});
+
+test('a BRACU student still gets the launcher', async ({ page }) => {
+  await signedIn(page);
+  await readyReports(page, true);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('button', { name: 'Open Shohoj Assistant' })).toBeVisible({
+    timeout: 15_000,
+  });
+});
+
 test('signed in: example prompt round-trips through the endpoint with the bearer token', async ({ page }) => {
   await signedIn(page);
   await readyReports(page, true);
