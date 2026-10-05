@@ -938,9 +938,22 @@ function _applyLiveFeed(result) {
   _store.semester = describeSemester(result.sections, todayISODate());
   // Don't tear the DOM down mid-search: the course input and its dropdown
   // only survive a full rebuild via the focus dance _rerender doesn't do.
-  // The store is fresh either way; the next interaction repaints from it.
+  //
+  // But a focused search box is not a student mid-search — adding a course
+  // leaves focus there, so it is the tab's resting state, and skipping the
+  // repaint outright left the seat counts frozen until the next click. The
+  // section list sits outside the picker, so it is redrawn on its own: fresh
+  // seats under the box, nothing typed or open in it disturbed. The header and
+  // grid wait for the next full render; the store is fresh either way.
   const input = document.getElementById('routineCourseInput');
-  if (input && document.activeElement === input) return;
+  if (input && document.activeElement === input) {
+    // _repaintList falls back to a full rebuild when there is no list to
+    // repaint, which is the one thing this branch must not do.
+    const hasList = document.getElementById('routinePickedList')
+      && pickedCourseCodes(_store.routine).length > 0;
+    if (hasList) _repaintList();
+    return;
+  }
   _rerender();
 }
 
