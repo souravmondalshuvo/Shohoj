@@ -27,6 +27,7 @@ test('NSU gets the tabs it has data for, and only those', () => {
     'routine',
     'reviews',
     'papers',
+    'freerooms',
     'groups',
   ]);
 });
@@ -34,7 +35,9 @@ test('NSU gets the tabs it has data for, and only those', () => {
 test('the Free Rooms tab follows the rooms feature', () => {
   assert.equal(CALC_TAB_FEATURES.freerooms, 'rooms');
   assert.equal(campusAllowsTab(UNIVERSITIES.bracu, 'freerooms'), true);
-  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), false);
+  // The registry does not list rooms for NSU; this page grants the tab from
+  // the section snapshot (next test).
+  assert.equal(UNIVERSITIES.nsu.features.includes('rooms'), false);
 });
 
 test('an unknown tab id is refused for every campus', () => {
@@ -72,14 +75,15 @@ test('every feature the page names is one the registry knows', () => {
   }
 });
 
-test('Routine is granted to NSU by this page, not by the shared registry', () => {
+test('Routine and Free Rooms are granted to NSU by this page, not by the shared registry', () => {
   // The registry's features also switch the React shell's routes on, and the
   // shell's Routine route still reads BRACU's feed. Until it does not, the
   // registry must not list it for NSU — the legacy page grants the tab itself
   // because it has NSU's sections (js/core/activeFeed.js).
   assert.equal(UNIVERSITIES.nsu.features.includes('routine'), false);
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'routine'), true);
-  // The feed tabs with no NSU data stay hidden.
+  // Free Rooms is read off the same sections.
+  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), true);
+  // Seats is not: a snapshot carries no seat counts.
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
-  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'freerooms'), false);
 });
