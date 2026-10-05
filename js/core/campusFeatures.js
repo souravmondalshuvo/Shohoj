@@ -60,6 +60,45 @@ function legacyOnlyTab(profile, tabId) {
   return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
 
+/**
+ * Standalone pages this site serves for a campus although the registry does
+ * not list the feature — the page-link counterpart of legacyOnlyTab above, and
+ * for the same reason: `bus` in NSU's registry features would switch on the
+ * shell's /bus route, which shows BRAC University's timetable.
+ *
+ * Each entry names a page that takes the campus in its URL
+ * (campusPageHref below) and has that campus's own data behind it. NSU's bus
+ * page is src/app/routes/BusRouteNsu.tsx.
+ */
+const LEGACY_ONLY_PAGES = {
+  bus: ['nsu'],
+};
+
+/**
+ * Whether a campus gets a link that carries `data-feature` — the nav's Tasks
+ * link and the standalone pages in the Campus menu.
+ */
+export function campusAllowsFeature(profile, feature) {
+  if (profile == null) return false;
+  if (hasFeature(profile, feature)) return true;
+  const campuses = Object.prototype.hasOwnProperty.call(LEGACY_ONLY_PAGES, feature)
+    ? LEGACY_ONLY_PAGES[feature]
+    : [];
+  return campuses.includes(profile.id);
+}
+
+/**
+ * The href for a standalone page that serves more than one campus.
+ *
+ * Those pages are static and have no session, so they cannot know who is
+ * reading; the campus travels in the URL. The default campus gets the bare
+ * path, which is the page's address as it has always been — BRAC University's
+ * links, bookmarks and the visual-parity captures do not change.
+ */
+export function campusPageHref(basePath, campusId, defaultCampusId) {
+  return campusId === defaultCampusId ? basePath : `${basePath}?campus=${encodeURIComponent(campusId)}`;
+}
+
 /** The tab ids a campus gets, in bar order. */
 export function campusTabIds(profile) {
   return Object.keys(CALC_TAB_FEATURES).filter(tabId => campusAllowsTab(profile, tabId));
