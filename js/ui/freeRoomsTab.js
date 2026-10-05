@@ -17,6 +17,7 @@ import {
 } from '../core/freeRooms.js';
 import {
   describeSemester,
+  formatSemesterDate,
   semesterCaveat,
   semesterHeadline,
   semesterIsRunning,
@@ -26,6 +27,8 @@ import { escHtml, escAttr, REFRESH_ICON_SVG } from '../core/helpers.js';
 import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { openModal } from './modal.js';
+import { getActiveFeedSnapshot } from '../core/activeFeed.js';
+import { withPhysicalRooms } from '../core/snapshotRooms.js';
 
 const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
 const FR_DAY_SHORT = { SATURDAY:'Sat', SUNDAY:'Sun', MONDAY:'Mon', TUESDAY:'Tue', WEDNESDAY:'Wed', THURSDAY:'Thu', FRIDAY:'Fri' };
@@ -76,6 +79,21 @@ const _frStore = {
   roomType: 'ALL',            // type filter (all-rooms view only)
 };
 
+// A campus change supersedes a load in flight for the previous campus, the
+// same way and for the same reason as the Routine tab (js/ui/routineTab.js).
+let _frRefreshSeq = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('shohoj:campus-changed', () => {
+    _frRefreshSeq++;
+    _frStore.loading = false;
+    _frStore.error = null;
+    _frStore.index = null;
+    _frStore.semester = null;
+    _frStore.source = null;
+    _frStore.roomType = 'ALL';
+  });
+}
+
 // ── ACTIONS ─────────────────────────────────────────────────────────────────
 registerAction('freerooms:refresh',    () => _frRefresh(true));
 registerAction('freerooms:clearCache', () => { clearConnectFeedCache(); _frRefresh(true); });
@@ -97,26 +115,47 @@ registerAction('freerooms:setType', (el) => {
 
 // ── DATA ──────────────────────────────────────────────────────────────────
 async function _frRefresh(force = false) {
+  const seq = ++_frRefreshSeq;
   _frStore.loading = true;
   _frStore.error = null;
   _frRerender();
+  // A campus whose sections come from the campus database rather than a live
+  // feed (js/core/activeFeed.js): the same file the Routine tab reads, from the
+  // same cache slot.
+  const snapshot = getActiveFeedSnapshot();
   try {
     // Any saved copy paints at once and refreshes behind it (#761).
-    const result = await fetchConnectFeed(force ? { forceRefresh: true } : { staleWhileRevalidate: true });
-    _frStore.index = buildRoomBusyIndex(result.sections);
+    let feedOptions;
+    if (snapshot) feedOptions = { ...snapshot.fetchOptions, forceRefresh: !!force };
+    else feedOptions = force ? { forceRefresh: true } : { staleWhileRevalidate: true };
+    const result = await fetchConnectFeed(feedOptions);
+    if (seq !== _frRefreshSeq) return;
+    // A snapshot's room names are the university's spellings, some of which
+    // are not rooms (js/core/snapshotRooms.js).
+    const sections = snapshot ? withPhysicalRooms(result.sections).sections : result.sections;
+    _frStore.index = buildRoomBusyIndex(sections);
     _frStore.semester = describeSemester(result.sections, todayISODate());
-    _frStore.source = result.source;
+    _frStore.source = snapshot ? 'snapshot' : result.source;
     _frStore.fetchedAt = result.fetchedAt;
     // One fetch serves every tab: let routine/seats repaint from this result
     // instead of going stale until their own next poll. An expired copy isn't
     // worth sharing — the refresh it triggers reaches every tab.
-    if (result.stale) revalidateFeed();
-    else broadcastFeedResult(result, _frApplyLiveFeed);
+    //
+    // Not a snapshot: it is not the live feed, and the tabs listening are
+    // CONNECT's.
+    if (!snapshot) {
+      if (result.stale) revalidateFeed();
+      else broadcastFeedResult(result, _frApplyLiveFeed);
+    }
   } catch (e) {
-    _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
+    if (seq !== _frRefreshSeq) return;
+    if (snapshot) _frStore.error = 'Failed to load the section list.';
+    else _frStore.error = e && e.message ? e.message : 'Failed to load Connect feed.';
   } finally {
-    _frStore.loading = false;
-    _frRerender();
+    if (seq === _frRefreshSeq) {
+      _frStore.loading = false;
+      _frRerender();
+    }
   }
 }
 
@@ -125,6 +164,8 @@ async function _frRefresh(force = false) {
 // either way, and the next interaction repaints from it.
 function _frApplyLiveFeed(result) {
   if (_frStore.loading) return; // our own refresh is mid-flight; it will win
+  // The live feed is BRACU's rooms; never over a campus snapshot.
+  if (getActiveFeedSnapshot()) return;
   _frStore.index = buildRoomBusyIndex(result.sections);
   _frStore.semester = describeSemester(result.sections, todayISODate());
   _frStore.source = result.source;
@@ -145,7 +186,8 @@ function _frGoLive() {
 export async function renderFreeRoomsTab() {
   const root = document.getElementById('freeRoomsContent');
   if (!root) return;
-  _frGoLive();
+  // Subscribing starts the CONNECT poller; a snapshot campus has nothing to poll.
+  if (!getActiveFeedSnapshot()) _frGoLive();
   if (!_frStore.index && !_frStore.loading && !_frStore.error) { _frRefresh(false); return; }
   _frRerender();
 }
@@ -183,7 +225,7 @@ function _frLoadingHTML() {
         <div class="rsk rsk-picker"></div>
         <div class="rsk rsk-block"></div>
       </div>
-      <div class="routine-loading-note">Fetching live section data from CONNECT…</div>
+      <div class="routine-loading-note">${getActiveFeedSnapshot() ? 'Loading this semester’s timetable…' : 'Fetching live section data from CONNECT…'}</div>
     </div>`;
 }
 
@@ -191,7 +233,7 @@ function _frErrorHTML() {
   return `
     <div class="freerooms-tab">
       <div class="routine-error">
-        <h3>Couldn't reach the Connect feed</h3>
+        <h3>${getActiveFeedSnapshot() ? 'Couldn’t load the timetable' : 'Couldn\'t reach the Connect feed'}</h3>
         <p>${escHtml(_frStore.error || 'Unknown error.')}</p>
         <button class="btn-primary" data-action="freerooms:refresh">Try again</button>
       </div>
@@ -204,26 +246,60 @@ function _frMainHTML() {
       ${_frHeaderHTML()}
       ${_frControlsHTML()}
       ${_frOutOfTermHTML()}
+      ${_frSnapshotNoteHTML()}
       <div id="freeRoomsResults">${_frResultsHTML()}</div>
     </div>`;
 }
 
+// The day a snapshot was true, "23 Sep 2026", or '' on the live feed.
+function _frCapturedOn() {
+  const snapshot = getActiveFeedSnapshot();
+  return snapshot ? (formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn) : '';
+}
+
 function _frHeaderHTML() {
-  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache' })[_frStore.source] || '—';
+  const snapshot = _frStore.source === 'snapshot';
+  const sourceLabel = ({ live: 'Live', cache: 'Cached', fallback: 'Offline cache', snapshot: `As of ${_frCapturedOn()}` })[_frStore.source] || '—';
   const age = _frAgeLabel(_frStore.fetchedAt);
+  // A snapshot's fetch time says nothing about when it was true (same reason
+  // as the Routine tab's badge), so it shows its capture date and no age.
+  const badgeText = snapshot ? sourceLabel : `${sourceLabel} · ${age}`;
+  const badgeTitle = snapshot
+    ? `Source: the university's published timetable as it stood on ${_frCapturedOn()}. It is not live and has not been updated since.`
+    : `Source: ${sourceLabel} • Updated ${age}`;
   return `
     <div class="routine-header">
       <div class="routine-header-left">
         <h3>🚪 Free Rooms</h3>
-        <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="Source: ${escAttr(sourceLabel)} • Updated ${escAttr(age)}">
-          ${escHtml(sourceLabel)} · ${escHtml(age)}
+        <span class="routine-source-badge routine-source--${_frStore.source || 'unknown'}" title="${escAttr(badgeTitle)}">
+          ${escHtml(badgeText)}
         </span>
         ${_frStore.semester ? `<span class="routine-semester-badge routine-semester--${escAttr(_frStore.semester.status)}" title="${escAttr(semesterCaveat(_frStore.semester))}" data-testid="freerooms-semester">${escHtml(semesterHeadline(_frStore.semester))}</span>` : ''}
       </div>
       <div class="routine-header-right">
-        <button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>
+        ${snapshot ? '' : `<button class="btn-secondary btn-sm" data-action="freerooms:refresh" title="Re-fetch from CONNECT now">${REFRESH_ICON_SVG} Refresh</button>`}
       </div>
     </div>`;
+}
+
+// "Free" is a claim about a room right now, and a snapshot can only say what
+// the timetable looked like on one day. Unlike a routine — where a stale
+// faculty name is an inconvenience — a wrong answer here sends someone to a
+// room with a class in it, so the limits are stated on the page every time,
+// not behind a hover.
+function _frSnapshotNoteHTML() {
+  const snapshot = getActiveFeedSnapshot();
+  if (!snapshot || _frStore.source !== 'snapshot') return '';
+  const untimed = snapshot.untimedCount > 0
+    ? ` ${snapshot.untimedCount} sections had no published room or time and are not counted.`
+    : '';
+  return `
+    <p class="freerooms-outofterm" role="status" data-testid="freerooms-snapshot-note">
+      Worked out from the class timetable as the university published it on
+      ${escHtml(_frCapturedOn())}, not updated since. Rooms are reassigned and sections
+      added after that, and bookings, exams and make-up classes never appear in a
+      timetable — so a room shown free may have a class in it.${escHtml(untimed)}
+    </p>`;
 }
 
 // Occupancy is a claim about now, so it is the one answer on this tab that is
@@ -249,7 +325,10 @@ function _frControlsHTML() {
       <button class="freerooms-view-btn ${!_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="free" aria-pressed="${!_frStore.showAll}">Free only</button>
       <button class="freerooms-view-btn ${_frStore.showAll ? 'is-active' : ''}" data-action="freerooms:setView" data-view="all" aria-pressed="${_frStore.showAll}">All rooms</button>
     </div>`;
-  const typeFilter = _frStore.showAll ? `
+  // Class / Lab / Theater is read off the last letter of a BRACU room code.
+  // Another campus's codes do not follow that scheme, so the filter is not
+  // offered rather than sorting every room into "Class".
+  const typeFilter = (_frStore.showAll && _frStore.source !== 'snapshot') ? `
     <div class="freerooms-types" role="group" aria-label="Room type">
       ${FR_TYPE_FILTERS.map(t =>
         `<button class="freerooms-type ${_frStore.roomType === t.key ? 'is-active' : ''}" data-action="freerooms:setType" data-type="${t.key}" aria-pressed="${_frStore.roomType === t.key}">${escHtml(t.label)}</button>`
@@ -327,7 +406,7 @@ function _frRoomCardHTML(room) {
   }
   return `
     <button type="button" class="freerooms-card ${stateClass}" data-action="freerooms:selectRoom" data-room="${escAttr(room)}" aria-haspopup="dialog" title="${escAttr(room)} — view weekly availability">
-      <span class="freerooms-card-room">${escHtml(room)}<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span></span>
+      <span class="freerooms-card-room">${escHtml(room)}${_frStore.source === 'snapshot' ? '' : `<span class="freerooms-card-type">${escHtml(_frRoomTypeLabel(room))}</span>`}</span>
       <span class="freerooms-card-until">${escHtml(statusLabel)}</span>
     </button>`;
 }
