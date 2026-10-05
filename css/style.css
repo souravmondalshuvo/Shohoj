@@ -6231,15 +6231,17 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   transition: background 0.15s, color 0.15s;
 }
 .routine-change-btn:hover { background: var(--chip-hover); color: var(--text1); }
+/* The same eight tracks as .routine-section-row, trailing badge slots included.
+   They are empty in the heading, but their gaps are not: with six tracks here
+   and eight in the rows, the two flexible columns came out wider in the
+   heading and Room, Seats and Mid · Final sat to the right of their cells. */
 .routine-section-head {
-  display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr;
+  display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr auto auto;
   gap: 10px; padding: 6px 14px;
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
   color: var(--text3); border-bottom: 1px solid var(--hairline);
 }
-/* The same six tracks as a bare row, trailing badge slots included: they are
-   empty here, but their gaps are not, and without them every label sits 20px
-   to the right of the cells under it. */
+/* A bare row's six tracks, for the same reason as above. */
 .routine-section-head--bare { grid-template-columns: 44px 56px 1fr 100px auto auto; }
 .routine-section-empty, .routine-section-hidden {
   padding: 10px 14px; font-size: 12px; color: var(--text3);
