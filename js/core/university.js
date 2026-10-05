@@ -48,6 +48,7 @@ const BRACU = {
     repeat: { threshold: 3.0, inclusive: false },
     creditLoad: { min: 9, max: 15, warnAbove: 12 },
     features: [
+        'assistant',
         'bus',
         'cafeteria',
         'calculator',
