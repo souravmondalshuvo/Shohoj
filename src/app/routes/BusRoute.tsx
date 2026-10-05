@@ -25,12 +25,27 @@ import {
   findBusRoute,
   type BusRouteVariant,
 } from '../../core/busRoutes';
+import { NsuBus } from './BusRouteNsu';
 
 function fareLine(route: BusRouteVariant): string {
   return `BDT ${route.fareOneWay} per trip · BDT ${route.fareRoundTrip} round trip`;
 }
 
+/**
+ * Which university's service to show.
+ *
+ * The standalone page (bus/main.tsx) has no session — it is a static page with
+ * no sign-in — so it cannot know the reader's campus. The legacy site knows,
+ * and links an NSU student to /bus/?campus=nsu. Anything else, including no
+ * parameter at all, is BRAC University's timetable, as this page always was.
+ * A campus id is not personal data, and both timetables are public.
+ */
 export function Component() {
+  const [searchParams] = useSearchParams();
+  return searchParams.get('campus') === 'nsu' ? <NsuBus /> : <BracuBus />;
+}
+
+function BracuBus() {
   const [searchParams, setSearchParams] = useSearchParams();
   const selected = findBusRoute(searchParams.get('route')) ?? BUS_ROUTES[0];
 
