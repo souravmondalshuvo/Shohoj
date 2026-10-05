@@ -135,6 +135,15 @@ export function hideImportModal() {
 //    doesn't need to serialize it into an HTML attribute (XSS risk). ──────
 let _pendingImport = null;
 
+/**
+ * Hand over an import read some other way than from a PDF (a pasted RDS Grade
+ * History, js/ui/gradeHistoryImport.js). It waits in the same slot, for the
+ * same "Import Now" → applyImport.
+ */
+export function stageImport(parsed) {
+  _pendingImport = parsed;
+}
+
 function shouldInsertPdfSpace(lastXEnd, nextX, prevToken, nextToken) {
   if (lastXEnd === null || nextX === null) return false;
   const gap = nextX - lastXEnd;
