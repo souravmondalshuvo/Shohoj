@@ -437,12 +437,61 @@ jobs:
   #   * only runs on push to main (never on PRs, never from forks),
   #   * checks out ${{ github.sha }} — the exact validated commit,
   #   * uses the `production` GitHub environment (protection rules apply),
-  #   * carries its own concurrency group so only the newest release wins.
+  #   * carries its own concurrency group so only the newest release wins,
+  #   * and needs `deploy-gate`, which lets it run only for the newest commit.
+
+  # A deploy job publishes ${{ github.sha }}, whatever that is. For the run a
+  # push starts, that is the newest commit. For a RE-RUN it is not: re-running
+  # an old main run would publish an old site over the current one (and, for
+  # the Worker and Firestore, old code and old rules). The concurrency groups
+  # do not prevent that — they keep the most recently STARTED deploy, and the
+  # re-run is the one that started last.
+  #
+  # It is also not hypothetical. On 5 Oct 2026 one deploy job sat queued for a
+  # day with no runner and jammed four later main runs into `cancelled`;
+  # re-running those to clear the marks would have stepped production
+  # backwards through four old versions.
+  #
+  # So every deploy first asks whether its commit is still the tip of main, and
+  # skips when it is not. A skipped deploy leaves the run green, which is the
+  # right verdict on a superseded commit: it was validated, and something newer
+  # is what should be live. If the tip cannot be read the gate fails and
+  # nothing deploys — closed, not open.
+  deploy-gate:
+    name: Deploy gate (newest commit only)
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      newest: ${{ steps.tip.outputs.newest }}
+    steps:
+      - name: Is this run's commit still the tip of main?
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)"
+          if ! printf '%s' "$tip" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::Could not read the tip of main (got '${tip}'); refusing to deploy."
+            exit 1
+          fi
+          if [ "$tip" = "$GITHUB_SHA" ]; then
+            echo "newest=true" >> "$GITHUB_OUTPUT"
+            echo "This run's commit ${GITHUB_SHA} is the tip of main: deploying." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "newest=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Not deploying ${GITHUB_SHA}: main is at ${tip}. The run for that commit deploys it."
+            echo "Skipping every deploy: this run's commit ${GITHUB_SHA} is not the tip of main (${tip})." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   deploy-frontend:
     name: Deploy frontend (GitHub Pages)
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, deploy-gate]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.deploy-gate.outputs.newest == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -574,10 +623,11 @@ jobs:
 
   deploy-worker:
     name: Deploy Cloudflare Worker
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes]
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes, deploy-gate]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
+      needs.deploy-gate.outputs.newest == 'true' &&
       needs.changes.outputs.worker == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -623,10 +673,11 @@ jobs:
 
   deploy-firestore:
     name: Deploy Firestore rules & indexes
-    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes]
+    needs: [lint, typecheck, validate-data, unit-tests, worker-tests, build-e2e, visual-parity, changes, deploy-gate]
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
+      needs.deploy-gate.outputs.newest == 'true' &&
       needs.changes.outputs.firestore == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
