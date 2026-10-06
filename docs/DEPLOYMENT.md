@@ -77,7 +77,7 @@ Every frontend deploy publishes `version.json` at the site root (`/Shohoj/versio
 
 ### Post-deploy smoke test
 
-After publishing, `scripts/smoke-production.mjs` polls `version.json` until it reports the just-deployed SHA (GitHub Pages propagation), then checks every critical route (`/`, `/admin/`, `/profile/`, `/campus/`, `/bus/`, `/lost-found/`), the Shohoj/CSP HTML markers, and a hashed static asset. **A smoke failure fails the deploy job** — see [ROLLBACK.md](ROLLBACK.md) for what to do next.
+After publishing, `scripts/smoke-production.mjs` polls `version.json` until it reports the just-deployed SHA (GitHub Pages propagation; it waits just under six minutes, since Pages has taken over two), then checks every critical route (`/`, `/admin/`, `/profile/`, `/campus/`, `/bus/`, `/lost-found/`), the Shohoj/CSP HTML markers, and a hashed static asset. **A smoke failure fails the deploy job** — see [ROLLBACK.md](ROLLBACK.md) for what to do next.
 
 ## Running locally
 
