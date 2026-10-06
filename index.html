@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-axYbQ2vom7eYeHbr+xDk1GeAzevUNPhFtW6G4LuKuqY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-vML0C9p3cHkuH4G7HRC9hnHfC9llR8R/yY7TDblGHpg='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13859,8 +13859,7 @@ const SEASON_ORDER = ['Spring', 'Summer', 'Fall'];
  * HTML-escape a string for safe insertion into innerHTML.
  */
 function escHtml(s) {
-  if (typeof s !== 'string') return String(s ?? '');
-  return s
+  return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -40496,14 +40495,14 @@ function _renderBoardContent() {
     : sorted.map(item => {
         const voted  = _myUpvotes.has(item.id);
         const delBtn = _isAdmin()
-          ? `<button data-action="fb:adminDel" data-id="${item.id}" title="Delete"
+          ? `<button data-action="fb:adminDel" data-id="${escAttr(item.id)}" title="Delete"
                style="background:none;border:none;cursor:pointer;color:rgba(231,76,60,0.45);
                       font-size:16px;padding:0 2px;line-height:1;transition:color 0.15s;
                       margin-left:4px;">×</button>`
           : '';
         return `
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid ${t.border};">
-            <div data-action="fb:upvote" data-id="${item.id}"
+            <div data-action="fb:upvote" data-id="${escAttr(item.id)}"
                  style="display:flex;flex-direction:column;align-items:center;gap:2px;
                         min-width:34px;cursor:pointer;
                         color:${voted ? t.accent : t.text3};
@@ -40514,7 +40513,7 @@ function _renderBoardContent() {
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
                 <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;
                              text-transform:uppercase;color:${typeColor[item.type]||t.text3};">
-                  ${item.type}
+                  ${escHtml(item.type)}
                 </span>
                 ${item.context?.tab ? `<span style="font-size:10px;color:${t.text3};">${escHtml(item.context.tab)}</span>` : ''}
                 <span style="font-size:10px;color:${t.text3};margin-left:auto;">${_timeAgo(item.createdAt)}</span>
@@ -41133,28 +41132,31 @@ function openDb(factory) {
   });
 }
 
+// IndexedDB opens can resolve out of order. Serialize whole operations, not
+// just transactions, so an earlier save can never resurrect a cleared chat or
+// replace a newer account's record after its write has completed.
+let historyOperations = Promise.resolve();
+function inHistoryOrder(work) {
+  const result = historyOperations.then(work, work);
+  historyOperations = result.then(() => undefined, () => undefined);
+  return result;
+}
+
 function runTransaction(db, mode, work) {
   return new Promise((resolve) => {
-    let store;
-    try {
-      store = db.transaction(ASSISTANT_HISTORY_STORE, mode).objectStore(ASSISTANT_HISTORY_STORE);
-    } catch {
-      resolve(null);
-      return;
-    }
+    let transaction;
     let request;
     try {
-      request = work(store);
+      transaction = db.transaction(ASSISTANT_HISTORY_STORE, mode);
+      request = work(transaction.objectStore(ASSISTANT_HISTORY_STORE));
     } catch {
-      resolve(null);
+      resolve({ ok: false, value: null });
       return;
     }
-    if (!request) {
-      resolve(null);
-      return;
-    }
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => resolve(null);
+    // A request's success precedes the transaction commit. Waiting for the
+    // commit also keeps a subsequent clear ordered after a durable save.
+    transaction.oncomplete = () => resolve({ ok: true, value: request?.result ?? null });
+    transaction.onabort = transaction.onerror = () => resolve({ ok: false, value: null });
   });
 }
 
@@ -41168,11 +41170,15 @@ function runTransaction(db, mode, work) {
  * @param {string|null|undefined} owner
  * @param {IDBFactory|null} [factory]  Injectable for tests.
  */
-async function loadStoredHistory(owner, factory) {
+function loadStoredHistory(owner, factory) {
+  return inHistoryOrder(() => readHistory(owner, factory));
+}
+
+async function readHistory(owner, factory) {
   if (!owner) return [];
   const db = await openDb(factory);
   if (!db) return [];
-  const record = await runTransaction(db, 'readonly', (store) =>
+  const { value: record } = await runTransaction(db, 'readonly', (store) =>
     store.get(ASSISTANT_HISTORY_RECORD),
   );
   try {
@@ -41189,12 +41195,16 @@ async function loadStoredHistory(owner, factory) {
  * Persist `transcript` for `owner` on this device. An empty transcript, or no
  * owner, deletes the record rather than storing an empty one.
  */
-async function saveStoredHistory(owner, transcript, factory) {
+function saveStoredHistory(owner, transcript, factory) {
   const clamped = clampTranscript(transcript);
-  if (!owner || clamped.length === 0) return clearStoredHistory(factory);
+  return inHistoryOrder(() => writeHistory(owner, clamped, factory));
+}
+
+async function writeHistory(owner, clamped, factory) {
+  if (!owner || clamped.length === 0) return deleteHistory(factory);
   const db = await openDb(factory);
   if (!db) return false;
-  const ok = await runTransaction(db, 'readwrite', (store) =>
+  const { ok } = await runTransaction(db, 'readwrite', (store) =>
     store.put({ owner, messages: clamped, updatedAt: Date.now() }, ASSISTANT_HISTORY_RECORD),
   );
   try {
@@ -41202,20 +41212,24 @@ async function saveStoredHistory(owner, transcript, factory) {
   } catch {
     /* already closing */
   }
-  return ok !== null;
+  return ok;
 }
 
 /** Delete the stored transcript, whoever owns it. Backs the drawer's control. */
-async function clearStoredHistory(factory) {
+function clearStoredHistory(factory) {
+  return inHistoryOrder(() => deleteHistory(factory));
+}
+
+async function deleteHistory(factory) {
   const db = await openDb(factory);
   if (!db) return false;
-  await runTransaction(db, 'readwrite', (store) => store.delete(ASSISTANT_HISTORY_RECORD));
+  const { ok } = await runTransaction(db, 'readwrite', (store) => store.delete(ASSISTANT_HISTORY_RECORD));
   try {
     db.close();
   } catch {
     /* already closing */
   }
-  return true;
+  return ok;
 }
 
 // ── js/core/assistantMorph.js ───────────────────────────────────
@@ -41399,6 +41413,8 @@ let _probed = false;
 // — including a sign-out — has to drop the previous student's turns rather than
 // let them show up in the drawer, or be replayed as the next student's context.
 let _owner = null;
+// Invalidates history loads and replies across account changes and Clear chat.
+let _assistantGeneration = 0;
 
 // ── Environment ───────────────────────────────────────────────────────────────
 
@@ -41570,9 +41586,12 @@ function renderQuotaHint() {
 
 async function ask(question) {
   const content = String(question || '').trim();
-  if (!content || _pending) return;
-
-  _transcript = [..._transcript, { role: 'user', content }];
+  if (!content || _pending || !_owner || _owner !== currentUid()) return;
+  const owner = _owner;
+  const generation = ++_assistantGeneration;
+  const isCurrent = () => generation === _assistantGeneration && _owner === owner && currentUid() === owner;
+  const next = [..._transcript, { role: 'user', content }];
+  _transcript = next;
   if (_inputEl) _inputEl.value = '';
   _error = null;
   _pending = true;
@@ -41588,13 +41607,19 @@ async function ask(question) {
     if (typeof window._shohoj_flushCloudSave === 'function') {
       await window._shohoj_flushCloudSave();
     }
-    const result = await sendAssistantTurn(_transcript, {
+    if (!isCurrent()) return;
+    const result = await sendAssistantTurn(next, {
       workerUrl: workerUrl(),
-      getToken,
+      getToken: async () => {
+        if (!isCurrent()) return null;
+        const token = await getToken();
+        return isCurrent() ? token : null;
+      },
       routine: readRoutinePicks(),
     });
+    if (!isCurrent()) return;
     if (result.ok) {
-      _transcript = [..._transcript, { role: 'assistant', content: result.reply }];
+      _transcript = [...next, { role: 'assistant', content: result.reply }];
       persist();
       if (result.quota) _quota = result.quota;
     } else {
@@ -41604,9 +41629,11 @@ async function ask(question) {
       }
     }
   } finally {
-    _pending = false;
-    renderLog();
-    _inputEl?.focus();
+    if (isCurrent()) {
+      _pending = false;
+      renderLog();
+      _inputEl?.focus();
+    }
   }
 }
 
@@ -41632,6 +41659,9 @@ function buildDrawer() {
   clear.setAttribute('aria-label', 'Clear chat history');
   clear.textContent = 'Clear chat';
   clear.addEventListener('click', () => {
+    _assistantGeneration += 1;
+    _pending = false;
+    if (_inputEl) _inputEl.value = '';
     _transcript = [];
     _error = null;
     clearStoredHistory();
@@ -41717,8 +41747,9 @@ function openDrawer() {
   // have the stored record dropped on top of what is on screen.
   _transcript = [];
   const hydratingFor = _owner;
+  const generation = ++_assistantGeneration;
   loadStoredHistory(hydratingFor).then((stored) => {
-    if (!_drawer || _owner !== hydratingFor || _transcript.length > 0) return;
+    if (!_drawer || generation !== _assistantGeneration || _owner !== hydratingFor || currentUid() !== hydratingFor || _transcript.length > 0) return;
     if (stored.length === 0) return;
     _transcript = stored;
     renderLog();
@@ -41762,6 +41793,8 @@ function openDrawer() {
 }
 
 function closeDrawer() {
+  _assistantGeneration += 1;
+  _pending = false;
   if (!_drawer) return;
   const node = _drawer;
   document.removeEventListener('keydown', onKeydown);
@@ -41849,6 +41882,11 @@ function refreshLauncher() {
   const uid = currentUid();
   if (uid !== _owner) {
     const previous = _owner;
+    // Remove the old panel immediately, including any closing animation: even
+    // its draft and quota belong only to the previous student.
+    closeDrawer();
+    dropExiting();
+    _quota = null;
     _owner = uid;
     _transcript = [];
     _error = null;
