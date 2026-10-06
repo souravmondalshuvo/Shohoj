@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-GLbH/NzH6WZmi0yD8JFfatMvq2R5rC352qND9qWLDsE='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-axYbQ2vom7eYeHbr+xDk1GeAzevUNPhFtW6G4LuKuqY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1682,6 +1682,54 @@ h1[data-reveal-hero].visible {
       background: rgba(86,180,233,0.18);
       border-color: rgba(86,180,233,0.6);
     }
+    /* ── RDS GRADE HISTORY PASTE (#843) ─────────────────── */
+    .gh-import-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .gh-import-lede { font-size: 12px; color: var(--text2); margin: 0 0 12px; }
+    .gh-import-steps { margin: 0 0 12px; padding-left: 20px; font-size: 13px; line-height: 1.6; color: var(--text); }
+    .gh-import-box {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--green-glow);
+      color: var(--text);
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .gh-import-box:focus { outline: none; border-color: var(--green); }
+    .gh-import-note { font-size: 11px; color: var(--text2); margin: 8px 0 0; }
+    .gh-import-status { min-height: 16px; font-size: 12px; color: var(--ink-amber); margin: 8px 0 0; }
+    .gh-import-table-wrap { overflow-x: auto; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; }
+    .gh-import-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text); }
+    .gh-import-table th {
+      padding: 6px 8px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text2);
+      background: var(--green-glow);
+      text-align: center;
+    }
+    .gh-import-table td { padding: 4px 8px; text-align: center; border-top: 1px solid var(--border2); }
+    .gh-import-table th:first-child, .gh-import-table td:first-child { text-align: left; }
+    .gh-import-check { font-size: 13px; font-weight: 600; color: var(--text); margin: 0 0 8px; }
+    .gh-import-check.is-match { color: var(--ink-green); }
+    .gh-import-check.is-mismatch { color: var(--ink-amber); }
+    .gh-import-warnings { margin: 0 0 8px; padding-left: 18px; font-size: 12px; color: var(--ink-amber); }
+    .gh-import-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .gh-import-primary, .gh-import-secondary {
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .gh-import-primary { flex: 1; border: 1px solid var(--green); background: var(--green); color: #0b0f0d; }
+    .gh-import-primary:hover { transform: translateY(-1px); }
+    .gh-import-secondary { border: 1px solid var(--chip-border); background: transparent; color: var(--text2); }
+    .gh-import-secondary:hover { background: var(--chip-hover); }
     [data-theme="light"] .semester-block.semester-running { border-color: rgba(240,165,0,0.5); }
     /* ── INCOMPLETE SEMESTER WARNING ───────────────────── */
     .semester-incomplete-badge {
@@ -6139,6 +6187,10 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   font: 12px 'DM Sans', sans-serif;
   transition: background 0.15s;
 }
+/* A section list with no Seats and no Mid · Final columns: a campus whose
+   sections come from a snapshot has neither (routineTab.js _sectionListIsBare).
+   Same tracks as above with those two removed; the head mirrors it below. */
+.routine-section-row--bare { grid-template-columns: 44px 56px 1fr 100px auto auto; }
 .routine-section-row:hover { background: var(--chip-hover); }
 .routine-section--picked { background: rgba(46,204,113,0.06); }
 .routine-section--picked:hover { background: rgba(46,204,113,0.10); }
@@ -6237,12 +6289,18 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   transition: background 0.15s, color 0.15s;
 }
 .routine-change-btn:hover { background: var(--chip-hover); color: var(--text1); }
+/* The same eight tracks as .routine-section-row, trailing badge slots included.
+   They are empty in the heading, but their gaps are not: with six tracks here
+   and eight in the rows, the two flexible columns came out wider in the
+   heading and Room, Seats and Mid · Final sat to the right of their cells. */
 .routine-section-head {
-  display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr;
+  display: grid; grid-template-columns: 44px 56px 1fr 100px 80px 1fr auto auto;
   gap: 10px; padding: 6px 14px;
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
   color: var(--text3); border-bottom: 1px solid var(--hairline);
 }
+/* A bare row's six tracks, for the same reason as above. */
+.routine-section-head--bare { grid-template-columns: 44px 56px 1fr 100px auto auto; }
 .routine-section-empty, .routine-section-hidden {
   padding: 10px 14px; font-size: 12px; color: var(--text3);
 }
@@ -10149,7 +10207,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
               <span class="calc-tab-icon">📍</span><span>Campus Map</span>
               <span class="calc-tab-menu-tag">WIP</span>
             </a>
-            <a class="calc-tab-menu-item" href="bus/" data-feature="bus" role="menuitem">
+            <a class="calc-tab-menu-item" href="bus/" data-feature="bus" data-campus-href="bus/" role="menuitem">
               <span class="calc-tab-icon">🚌</span><span>Bus</span>
             </a>
             <a class="calc-tab-menu-item" href="lost-found/" data-feature="lostFound" role="menuitem">
@@ -18658,6 +18716,45 @@ function legacyOnlyTab(profile, tabId) {
   return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
 
+/**
+ * Standalone pages this site serves for a campus although the registry does
+ * not list the feature — the page-link counterpart of legacyOnlyTab above, and
+ * for the same reason: `bus` in NSU's registry features would switch on the
+ * shell's /bus route, which shows BRAC University's timetable.
+ *
+ * Each entry names a page that takes the campus in its URL
+ * (campusPageHref below) and has that campus's own data behind it. NSU's bus
+ * page is src/app/routes/BusRouteNsu.tsx.
+ */
+const LEGACY_ONLY_PAGES = {
+  bus: ['nsu'],
+};
+
+/**
+ * Whether a campus gets a link that carries `data-feature` — the nav's Tasks
+ * link and the standalone pages in the Campus menu.
+ */
+function campusAllowsFeature(profile, feature) {
+  if (profile == null) return false;
+  if (hasFeature(profile, feature)) return true;
+  const campuses = Object.prototype.hasOwnProperty.call(LEGACY_ONLY_PAGES, feature)
+    ? LEGACY_ONLY_PAGES[feature]
+    : [];
+  return campuses.includes(profile.id);
+}
+
+/**
+ * The href for a standalone page that serves more than one campus.
+ *
+ * Those pages are static and have no session, so they cannot know who is
+ * reading; the campus travels in the URL. The default campus gets the bare
+ * path, which is the page's address as it has always been — BRAC University's
+ * links, bookmarks and the visual-parity captures do not change.
+ */
+function campusPageHref(basePath, campusId, defaultCampusId) {
+  return campusId === defaultCampusId ? basePath : `${basePath}?campus=${encodeURIComponent(campusId)}`;
+}
+
 /** The tab ids a campus gets, in bar order. */
 function campusTabIds(profile) {
   return Object.keys(CALC_TAB_FEATURES).filter(tabId => campusAllowsTab(profile, tabId));
@@ -20307,6 +20404,225 @@ function legacyParseTranscript(lines, detectedDept) {
 
 // ── js/import/parser.js ─────────────────────────────────────────
 
+
+// ── js/import/gradeHistory-core.js ──────────────────────────────
+// Read a pasted RDS "Grade History" page into calculator semesters (#843).
+//
+// NSU has no downloadable grade sheet to hand to the PDF importer, and RDS sits
+// behind a login this project will not ask for. What is left is the page the
+// student is already looking at: they can see it, so they can copy it.
+//
+// The table has one row per course attempt and seven columns —
+//   Semester Name | Semester Year | Course Code | Course Credit |
+//   Course Title  | Course Grade  | Cr.Count
+// Only the first row of a semester carries its name and year; the rows under
+// it leave those two cells empty. A summary row ("TGPA: 3.50  CGPA: 3.42")
+// closes each semester.
+//
+// This module is pure: it takes rows of cell text and knows nothing about the
+// DOM. The rows come from the plain-text half of the clipboard, where a copied
+// table is one line per row with tabs between cells — no markup is parsed.
+//
+// The column layout comes from a published reader of the same page, not from a
+// page captured for this repo. Columns are therefore found by header name, and
+// anything that could not be placed is reported rather than guessed at.
+
+const GH_COLUMNS = {
+  name:    'semester name',
+  year:    'semester year',
+  code:    'course code',
+  credit:  'course credit',
+  title:   'course title',
+  grade:   'course grade',
+  crCount: 'cr.count',
+};
+// Enough to tell this table from any other on the page.
+const GH_REQUIRED = ['name', 'grade', 'crCount'];
+// The order RDS prints them in — used only when the header row was not copied.
+const GH_DEFAULT_ORDER = ['name', 'year', 'code', 'credit', 'title', 'grade', 'crCount'];
+
+const GH_SEASONS = { spring: 'Spring', summer: 'Summer', fall: 'Fall' };
+const GH_CODE_RE = /^[A-Z]{2,4}\d{3}[A-Z]?$/;
+// Grades the calculator has no row for are imported blank; these are the ones it has.
+const GH_KNOWN_GRADES = new Set(['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'F', 'W', 'I']);
+
+const ghClean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+const ghHeaderKey = value => ghClean(value).toLowerCase().replace(/\s*\.\s*/g, '.');
+
+function ghNumber(value) {
+  const n = parseFloat(ghClean(value));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** `{ name: 0, year: 1, … }` if this row is the table's header, else null. */
+function ghColumnsFromHeader(cells) {
+  const keys = cells.map(ghHeaderKey);
+  const index = {};
+  for (const [field, label] of Object.entries(GH_COLUMNS)) {
+    const at = keys.indexOf(label);
+    if (at >= 0) index[field] = at;
+  }
+  return GH_REQUIRED.every(field => field in index) ? index : null;
+}
+
+const GH_DEFAULT_COLUMNS = Object.fromEntries(GH_DEFAULT_ORDER.map((field, at) => [field, at]));
+
+/** A body row in RDS's own column order — the test for a paste without its header. */
+function ghLooksLikeDefaultRow(cells) {
+  if (cells.length < GH_DEFAULT_ORDER.length) return false;
+  const code = ghClean(cells[GH_DEFAULT_COLUMNS.code]).replace(/\s+/g, '').toUpperCase();
+  return GH_CODE_RE.test(code) && ghNumber(cells[GH_DEFAULT_COLUMNS.credit]) !== null;
+}
+
+function ghSummaryOf(row) {
+  const text = row.cells.map(ghClean).join(' ');
+  const tgpa = text.match(/TGPA\s*:?\s*(\d+(?:\.\d+)?)/i);
+  const cgpa = text.match(/CGPA\s*:?\s*(\d+(?:\.\d+)?)/i);
+  if (!row.summary && !tgpa && !cgpa) return null;
+  return { tgpa: tgpa ? parseFloat(tgpa[1]) : null, cgpa: cgpa ? parseFloat(cgpa[1]) : null };
+}
+
+function ghSemesterLabel(name, year) {
+  const season = GH_SEASONS[ghClean(name).toLowerCase()] || ghClean(name);
+  return ghClean(`${season} ${ghClean(year)}`);
+}
+
+/**
+ * Plain-text copy of an HTML table: one line per row, cells split by tabs.
+ * Lines are not trimmed first — the leading tabs are the empty semester cells.
+ */
+function rowsFromText(text) {
+  return String(text ?? '')
+    .split(/\r?\n/)
+    .filter(line => line.trim() !== '')
+    .map(line => ({ cells: line.split('\t').map(ghClean), summary: false }));
+}
+
+/** `Grade History of 2012345642` anywhere in what was copied. */
+function studentIdFrom(text) {
+  const match = String(text ?? '').match(/Grade History of\s+([0-9]{6,12})\b/i);
+  return match ? match[1] : null;
+}
+
+/**
+ * @param {{ cells: string[], summary?: boolean }[]} rows
+ * @returns {{
+ *   semesters: { id: number, name: string, running: boolean,
+ *                courses: { name: string, credits: number, grade: string }[] }[],
+ *   official: { name: string, tgpa: number|null, cgpa: number|null }[],
+ *   officialCgpa: number|null,
+ *   detectedDept: null, studentId: string|null, studentName: null,
+ *   warnings: string[],
+ * }}
+ */
+function parseGradeHistoryRows(rows, { text = '' } = {}) {
+  const list = Array.isArray(rows) ? rows.filter(row => row && Array.isArray(row.cells)) : [];
+  const warnings = [];
+
+  let columns = null;
+  let start = 0;
+  for (let i = 0; i < list.length; i++) {
+    const found = ghColumnsFromHeader(list[i].cells);
+    if (found) { columns = found; start = i + 1; break; }
+  }
+  if (!columns && list.some(row => ghLooksLikeDefaultRow(row.cells))) {
+    columns = GH_DEFAULT_COLUMNS;
+    warnings.push('The header row was not in the paste, so the columns were read in the order RDS prints them.');
+  }
+
+  const result = {
+    semesters: [],
+    official: [],
+    officialCgpa: null,
+    detectedDept: null,
+    studentId: studentIdFrom(text),
+    studentName: null,
+    warnings,
+  };
+  if (!columns) return result;
+
+  const cell = (row, field) => (field in columns ? ghClean(row.cells[columns[field]]) : '');
+  const unknownGrades = new Set();
+  let skipped = 0;
+  let current = null;
+  let record = null;
+
+  for (const row of list.slice(start)) {
+    const summary = ghSummaryOf(row);
+    if (summary) {
+      if (record) {
+        record.tgpa = summary.tgpa;
+        record.cgpa = summary.cgpa;
+        if (summary.cgpa !== null) result.officialCgpa = summary.cgpa;
+      }
+      current = null;
+      record = null;
+      continue;
+    }
+    // A header repeated further down (a second page of the same table).
+    if (ghColumnsFromHeader(row.cells)) continue;
+
+    const name = cell(row, 'name');
+    const year = cell(row, 'year');
+    if (name || year) {
+      const label = ghSemesterLabel(name, year);
+      current = { id: result.semesters.length + 1, name: label, courses: [], running: false };
+      record = { name: label, tgpa: null, cgpa: null };
+      result.semesters.push(current);
+      result.official.push(record);
+    }
+
+    const code = cell(row, 'code').replace(/\s+/g, '').toUpperCase();
+    if (!GH_CODE_RE.test(code)) {
+      // A row that only opens a semester is not a failed course; anything else is.
+      const opensOnly = (name || year) && code === '';
+      if (!opensOnly && row.cells.some(value => ghClean(value) !== '')) skipped++;
+      continue;
+    }
+    if (!current) { skipped++; continue; }
+
+    // Course Credit is the course's own weight; Cr.Count is what RDS counted
+    // towards the total, and is the only one of the two left when the first is blank.
+    const credit = ghNumber(cell(row, 'credit'));
+    const counted = ghNumber(cell(row, 'crCount'));
+    const rawGrade = cell(row, 'grade').toUpperCase();
+    let grade = '';
+    if (GH_KNOWN_GRADES.has(rawGrade)) grade = rawGrade;
+    else if (rawGrade) unknownGrades.add(rawGrade.slice(0, 8));
+
+    const title = cell(row, 'title');
+    current.courses.push({
+      name: title ? `${title} (${code})` : code,
+      credits: credit ?? counted ?? 0,
+      grade,
+    });
+  }
+
+  // A semester with courses and not one grade yet is the one being taken now.
+  for (const semester of result.semesters) {
+    semester.running = semester.courses.length > 0 && semester.courses.every(course => !course.grade);
+  }
+  const emptied = result.semesters.filter(semester => semester.courses.length === 0);
+  if (emptied.length) {
+    const kept = new Set(result.semesters.filter(semester => semester.courses.length > 0));
+    result.official = result.official.filter((_, at) => kept.has(result.semesters[at]));
+    result.semesters = [...kept].map((semester, at) => ({ ...semester, id: at + 1 }));
+    warnings.push(`${emptied.length} semester${emptied.length === 1 ? '' : 's'} had no readable courses and ${emptied.length === 1 ? 'was' : 'were'} left out.`);
+  }
+
+  if (unknownGrades.size) {
+    warnings.push(`Grades left blank because the calculator has no value for them: ${[...unknownGrades].slice(0, 6).join(', ')}.`);
+  }
+  if (skipped) {
+    warnings.push(`${skipped} row${skipped === 1 ? '' : 's'} could not be read as a course and ${skipped === 1 ? 'was' : 'were'} skipped.`);
+  }
+  return result;
+}
+
+/** The plain-text path: what a paste yields when the clipboard carried no HTML. */
+function parseGradeHistoryText(text) {
+  return parseGradeHistoryRows(rowsFromText(text), { text });
+}
 
 // ── js/ui/charts.js ─────────────────────────────────────────────
 // The chart is sized from its wrapper, which can be 0px wide when recalc() runs
@@ -30231,9 +30547,22 @@ function _applyLiveFeed(result) {
   _store.semester = describeSemester(result.sections, todayISODate());
   // Don't tear the DOM down mid-search: the course input and its dropdown
   // only survive a full rebuild via the focus dance _rerender doesn't do.
-  // The store is fresh either way; the next interaction repaints from it.
+  //
+  // But a focused search box is not a student mid-search — adding a course
+  // leaves focus there, so it is the tab's resting state, and skipping the
+  // repaint outright left the seat counts frozen until the next click. The
+  // section list sits outside the picker, so it is redrawn on its own: fresh
+  // seats under the box, nothing typed or open in it disturbed. The header and
+  // grid wait for the next full render; the store is fresh either way.
   const input = document.getElementById('routineCourseInput');
-  if (input && document.activeElement === input) return;
+  if (input && document.activeElement === input) {
+    // _repaintList falls back to a full rebuild when there is no list to
+    // repaint, which is the one thing this branch must not do.
+    const hasList = document.getElementById('routinePickedList')
+      && pickedCourseCodes(_store.routine).length > 0;
+    if (hasList) _repaintList();
+    return;
+  }
   _rerender();
 }
 
@@ -30951,15 +31280,23 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
   `;
 }
 
+// A snapshot carries no seat counts and no exam dates (scripts/campus_feed.mjs),
+// so the two columns that would show them are left out of the list altogether:
+// forty rows of "—" and "No exam dates" are noise, and the note above the list
+// already says the data has neither. The schedule column takes the room.
+function _sectionListIsBare() {
+  return _store.source === 'snapshot';
+}
+
 function _sectionHeadHTML() {
+  const bare = _sectionListIsBare();
   return `
-    <div class="routine-section-head" aria-hidden="true">
+    <div class="routine-section-head ${bare ? 'routine-section-head--bare' : ''}" aria-hidden="true">
       <span>Sec</span>
       <span>Faculty</span>
       <span>Schedule</span>
       <span>Room</span>
-      <span>Seats</span>
-      <span>Mid · Final</span>
+      ${bare ? '' : '<span>Seats</span>\n      <span>Mid · Final</span>'}
     </div>
   `;
 }
@@ -31004,27 +31341,25 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   const data = `data-code="${escAttr(courseCode)}" data-sid="${section.sectionId}"`;
   const pickedClash = isPicked && mark && (mark.classClash || mark.examClash);
   const candClash = !isPicked && cand && (cand.cls || cand.exam);
+  const bare = _sectionListIsBare();
   const classes = [
     'routine-section-row',
+    bare ? 'routine-section-row--bare' : '',
     isPicked ? 'routine-section--picked' : '',
     pickedClash ? 'routine-section--clash' : '',
     candClash ? 'routine-section--candclash' : '',
   ].filter(Boolean).join(' ');
   const candTitle = candClash ? `Clashes with ${cand.codes.join(', ')}` : '';
-  // A snapshot carries no seat count (scripts/campus_feed.mjs): "0/0" would be
-  // a number about nothing.
-  const noSeats = _store.source === 'snapshot';
   let seatTitle = `${section.consumedSeat}/${section.capacity} seats taken · ${seatsLeft(section)} left`;
   if (section.isFull) seatTitle = 'Section full';
-  if (noSeats) seatTitle = 'Seat counts aren\'t available for this university';
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
       <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
-      <span class="routine-section-seats ${noSeats ? '' : `routine-seats--${seatClass}`}" title="${escAttr(seatTitle)}">${escHtml(noSeats ? '—' : _seatText(section))}</span>
-      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>
+      ${bare ? '' : `<span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
+      <span class="routine-section-exam" title="Mid · Final exam">${_formatExams(section)}</span>`}
       ${isPicked && mark && mark.classClash ? `<span class="routine-clash-pill" title="Class clash">CLASS ✕</span>` : ''}
       ${isPicked && mark && mark.examClash  ? `<span class="routine-clash-pill routine-clash-pill--exam" title="Exam clash">EXAM ✕</span>` : ''}
       ${candClash && cand.cls  ? `<span class="routine-clash-pill routine-clash-pill--cand" title="${escAttr(candTitle)}">clash</span>` : ''}
@@ -37147,7 +37482,7 @@ function onStartSemConfirm() {
 
 // ── js/ui/simulator.js ──────────────────────────────────────────
 registerAction('sim:importTranscript', () => {
-  document.getElementById('transcriptFileInput')?.click();
+  openTranscriptImport();
 });
 registerAction('sim:addSemester', () => window.addSemester?.());
 registerAction('sim:toggleRetake', el => toggleRetake(el.dataset.key));
@@ -37820,6 +38155,15 @@ function hideImportModal() {
 //    doesn't need to serialize it into an HTML attribute (XSS risk). ──────
 let _pendingImport = null;
 
+/**
+ * Hand over an import read some other way than from a PDF (a pasted RDS Grade
+ * History, js/ui/gradeHistoryImport.js). It waits in the same slot, for the
+ * same "Import Now" → applyImport.
+ */
+function stageImport(parsed) {
+  _pendingImport = parsed;
+}
+
 function shouldInsertPdfSpace(lastXEnd, nextX, prevToken, nextToken) {
   if (lastXEnd === null || nextX === null) return false;
   const gap = nextX - lastXEnd;
@@ -38372,6 +38716,206 @@ function exportPDF() {
   doc.text(dateStr, PW - MR, footerY + 6.5, { align: 'right' });
 
   doc.save('BRACU_CGPA_Report_Shohoj.pdf');
+}
+
+// ── js/ui/gradeHistoryImport.js ─────────────────────────────────
+// The paste box behind "Import Transcript" on a campus with no grade-sheet PDF
+// (#843). An NSU student copies their RDS Grade History page and pastes it
+// here; js/import/gradeHistory-core.js reads it, and the confirmed result goes
+// through the same applyImport as a BRACU PDF.
+//
+// Nothing pasted is sent anywhere — it is parsed in this tab and, once the
+// student confirms, written to the same local state every other import writes.
+//
+// Only the plain-text half of the clipboard is read. A copied table arrives
+// there as one line per row with tabs between cells, which is all the reader
+// needs; the HTML half would have to be parsed as markup, and what is read
+// should be exactly what the student sees in the box. Everything on screen is
+// built with DOM calls, so nothing pasted is ever treated as HTML.
+
+// Campuses whose students import by pasting their portal's grade page.
+const GRADE_HISTORY_CAMPUSES = new Set(['nsu']);
+// RDS prints two decimals; whether it rounds or cuts the third is not known.
+const GRADE_HISTORY_CGPA_TOLERANCE = 0.01;
+
+registerAction('gradeHistory:read', () => readGradeHistoryPaste());
+
+/** True when the active campus imports grades by paste rather than by PDF. */
+function importsByGradeHistoryPaste() {
+  return GRADE_HISTORY_CAMPUSES.has(getActiveCampus().id);
+}
+
+function ghNode(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function ghButton(label, action, className) {
+  const button = ghNode('button', className, label);
+  button.type = 'button';
+  button.dataset.action = action;
+  return button;
+}
+
+function ghModalBody() {
+  showImportModal('');
+  const content = document.getElementById('importModalContent');
+  if (!content) return null;
+  content.replaceChildren();
+  return content;
+}
+
+const ghCourseCount = parsed => parsed.semesters.reduce((n, semester) => n + semester.courses.length, 0);
+
+/**
+ * The one way into a transcript import, for every button that offers it: the
+ * paste box on a campus that pastes, the PDF picker everywhere else.
+ */
+function openTranscriptImport() {
+  if (importsByGradeHistoryPaste()) { openGradeHistoryImport(); return; }
+  document.getElementById('transcriptFileInput')?.click();
+}
+
+function openGradeHistoryImport() {
+  const content = ghModalBody();
+  if (!content) return;
+  const campus = getActiveCampus();
+
+  content.append(
+    ghNode('div', 'gh-import-title', '📄 Import your grades from RDS'),
+    ghNode('p', 'gh-import-lede', `${campus.shortName} has no grade-sheet PDF to upload, so copy the page instead.`),
+  );
+
+  const steps = ghNode('ol', 'gh-import-steps');
+  [
+    'Open RDS and go to Grade History.',
+    'Select the whole page (Ctrl/⌘ + A) and copy it.',
+    'Paste it into the box below.',
+  ].forEach(step => steps.append(ghNode('li', '', step)));
+
+  const box = ghNode('textarea', 'gh-import-box');
+  box.id = 'gradeHistoryPaste';
+  box.rows = 7;
+  box.spellcheck = false;
+  box.placeholder = 'Paste your Grade History here';
+  box.setAttribute('aria-label', 'Your RDS Grade History, pasted');
+
+  const status = ghNode('p', 'gh-import-status');
+  status.id = 'gradeHistoryStatus';
+  status.setAttribute('role', 'alert');
+
+  const actions = ghNode('div', 'gh-import-actions');
+  actions.append(
+    ghButton('Read my grades', 'gradeHistory:read', 'gh-import-primary'),
+    ghButton('Cancel', 'modals:hideImport', 'gh-import-secondary'),
+  );
+
+  content.append(
+    steps,
+    box,
+    ghNode('p', 'gh-import-note', 'What you paste is read in this browser and goes nowhere else. Shohoj never asks for your RDS password.'),
+    status,
+    actions,
+  );
+  box.focus();
+}
+
+function readGradeHistoryPaste() {
+  const box = document.getElementById('gradeHistoryPaste');
+  const status = document.getElementById('gradeHistoryStatus');
+  if (!box || !status) return;
+
+  if (box.value.trim() === '') {
+    status.textContent = 'Paste your Grade History page first.';
+    return;
+  }
+  const parsed = parseGradeHistoryText(box.value);
+  if (!parsed.semesters.length) {
+    status.textContent = 'No grades could be read from that. Make sure you copied the Grade History page, table included.';
+    return;
+  }
+  showGradeHistoryPreview(parsed);
+}
+
+function showGradeHistoryPreview(parsed) {
+  const { courses, programs } = getActiveCatalog();
+  // Titles as the catalogue spells them, so suggestions and the tracker see
+  // the same course. Credits stay RDS's: it is the record, the catalogue is not.
+  parsed.semesters.forEach(semester => {
+    semester.courses.forEach(course => {
+      const code = course.name.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/)?.[1] ?? course.name;
+      if (courses[code]) course.name = courses[code].full;
+    });
+  });
+  // The page does not name a programme, and applyImport clears the picker when
+  // none is detected — so the one the student already chose is carried through.
+  parsed.detectedDept = programs[state.currentDept]?.label ?? null;
+
+  const hadSemesters = state.semesters.length > 0;
+  const { grades: scale, retake } = getActiveCampus();
+  const computed = calculateCgpaTotals(parsed.semesters, { includeRunning: false, scale, retake }).cgpa;
+  const official = parsed.officialCgpa;
+
+  const content = ghModalBody();
+  if (!content) return;
+  stageImport(parsed);
+
+  const total = ghCourseCount(parsed);
+  const count = parsed.semesters.length;
+  content.append(
+    ghNode('div', 'gh-import-title', '📄 Grade History read'),
+    ghNode('p', 'gh-import-lede', `Found ${count} semester${count === 1 ? '' : 's'} and ${total} course${total === 1 ? '' : 's'}.`),
+  );
+
+  const table = ghNode('table', 'gh-import-table');
+  const head = table.createTHead().insertRow();
+  ['Semester', 'Courses', 'TGPA on RDS'].forEach(label => head.append(ghNode('th', '', label)));
+  const body = table.createTBody();
+  parsed.semesters.forEach((semester, at) => {
+    const row = body.insertRow();
+    const tgpa = parsed.official[at]?.tgpa;
+    row.append(
+      ghNode('td', '', semester.running ? `${semester.name} (running)` : semester.name),
+      ghNode('td', '', String(semester.courses.length)),
+      ghNode('td', '', typeof tgpa === 'number' ? tgpa.toFixed(2) : '—'),
+    );
+  });
+  const wrap = ghNode('div', 'gh-import-table-wrap');
+  wrap.append(table);
+  content.append(wrap);
+
+  const check = ghNode('p', 'gh-import-check');
+  check.id = 'gradeHistoryCheck';
+  if (computed === null) {
+    check.textContent = 'No graded courses yet, so there is no CGPA to check.';
+  } else if (official === null) {
+    check.textContent = `CGPA ${computed.toFixed(2)}. RDS's own figure was not in the paste, so it could not be checked.`;
+  } else if (Math.abs(computed - official) <= GRADE_HISTORY_CGPA_TOLERANCE) {
+    check.classList.add('is-match');
+    check.textContent = `CGPA ${computed.toFixed(2)} — matches RDS.`;
+  } else {
+    check.classList.add('is-mismatch');
+    check.textContent = `Shohoj works this out as ${computed.toFixed(2)}, but RDS shows ${official.toFixed(2)}. Check your retakes and withdrawn courses after importing.`;
+  }
+  content.append(check);
+
+  if (parsed.warnings.length) {
+    const notes = ghNode('ul', 'gh-import-warnings');
+    parsed.warnings.forEach(warning => notes.append(ghNode('li', '', warning)));
+    content.append(notes);
+  }
+  if (hadSemesters) {
+    content.append(ghNode('p', 'gh-import-note', 'Importing replaces the semesters already in your calculator.'));
+  }
+
+  const actions = ghNode('div', 'gh-import-actions');
+  actions.append(
+    ghButton('✅ Import Now', 'modals:applyImport', 'gh-import-primary'),
+    ghButton('Cancel', 'modals:hideImport', 'gh-import-secondary'),
+  );
+  content.append(actions);
 }
 
 // ── js/ui/playground.js ─────────────────────────────────────────
@@ -42343,7 +42887,12 @@ function applyCampusFeatures() {
     btn.hidden = !campusAllowsTab(campus, btn.dataset.tab);
   });
   document.querySelectorAll('[data-feature]').forEach(el => {
-    el.hidden = !hasFeature(campus, el.dataset.feature);
+    el.hidden = !campusAllowsFeature(campus, el.dataset.feature);
+  });
+  // A standalone page that serves more than one campus is told which one in
+  // its URL: it is a static page with no session of its own.
+  document.querySelectorAll('[data-campus-href]').forEach(el => {
+    el.setAttribute('href', campusPageHref(el.dataset.campusHref, campus.id, DEFAULT_UNIVERSITY_ID));
   });
   // Copy that names the campus whose rules the calculator is applying.
   document.querySelectorAll('[data-campus-name]').forEach(el => {
@@ -42693,9 +43242,8 @@ function _wireInlineReplacements() {
   initTabGroups();
 
   // Transcript import / export / clear-data buttons.
-  on('importPdfBtn', 'click', () => {
-    document.getElementById('transcriptFileInput')?.click();
-  });
+  // A campus with no grade-sheet PDF pastes its portal's grade page instead.
+  on('importPdfBtn', 'click', () => openTranscriptImport());
   on('transcriptFileInput', 'change', e => importTranscriptPDF(e.target));
   on('exportPdfBtn',  'click', () => exportPDF());
   on('clearDataBtn',  'click', () => window.handleClearData());
