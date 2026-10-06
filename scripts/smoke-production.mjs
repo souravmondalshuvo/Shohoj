@@ -19,15 +19,25 @@
 //   BASE_URL      Base site URL (default: the project's GitHub Pages URL).
 //   EXPECTED_SHA  Commit that was just deployed; version.json must match it.
 //                 If unset, we only require version.json to be reachable.
-//   SMOKE_MAX_ATTEMPTS  Propagation poll attempts (default 20).
+//   SMOKE_MAX_ATTEMPTS  Propagation poll attempts (default 60).
 //   SMOKE_DELAY_MS      Delay between attempts (default 6000).
+//
+// The two defaults together are how long a healthy deploy is given to appear:
+// 60 attempts 6 s apart, just under six minutes. GitHub Pages publishes on its
+// own schedule after the push to gh-pages — 27 s on a quick day, 1 min 26 s and
+// 2 min 3 s on slower ones (5 and 6 Oct 2026). The wait used to be two minutes,
+// and the 2 min 3 s publish failed a deploy that had in fact succeeded: the
+// site switched over nine seconds after this script gave up. A wait that only
+// covers the usual case turns every slow day into a false alarm, and a false
+// "roll back" is the expensive kind. Six minutes is about three times the
+// slowest publish seen and well inside the deploy job's 25-minute timeout.
 
 const BASE_URL = (process.env.BASE_URL || 'https://souravmondalshuvo.github.io/Shohoj/').replace(
   /\/?$/,
   '/',
 );
 const EXPECTED_SHA = process.env.EXPECTED_SHA || '';
-const MAX_ATTEMPTS = Number(process.env.SMOKE_MAX_ATTEMPTS || 20);
+const MAX_ATTEMPTS = Number(process.env.SMOKE_MAX_ATTEMPTS || 60);
 const DELAY_MS = Number(process.env.SMOKE_DELAY_MS || 6000);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -72,7 +82,10 @@ async function waitForPropagation() {
     }
     if (attempt < MAX_ATTEMPTS) await sleep(DELAY_MS);
   }
-  throw new Error(`version.json did not report expected commit within ${MAX_ATTEMPTS} attempts`);
+  const waited = Math.round(((MAX_ATTEMPTS - 1) * DELAY_MS) / 1000);
+  throw new Error(
+    `version.json did not report expected commit within ${MAX_ATTEMPTS} attempts (${waited} s)`,
+  );
 }
 
 // ---- Step 2: check every critical route returns real HTML ----
