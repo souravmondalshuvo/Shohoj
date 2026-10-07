@@ -102,6 +102,38 @@ for (const campus of [
     if (campus.seeded) await expect(reviews).not.toContainText(none);
     else await expect(reviews).toContainText(none);
   });
+
+  // The faculty directory beside it (data/faculty_profiles.jsonl) is BRACU's
+  // too — names, university emails, the courses each lecturer takes — and the
+  // search box is where it surfaces first. Shadmin Sultana is a seeded BRACU
+  // lecturer; no NSU student should be offered her.
+  test(`the bundled BRACU faculty directory ${campus.seeded ? 'is searchable by' : 'is hidden from'} ${campus.name}`, async ({ page }) => {
+    await page.addInitScript((email) => {
+      try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ }
+      window._shohoj_isAuthReady = () => true;
+      window._shohoj_currentUid = () => 'u1';
+      window._shohoj_userProfile = () => ({
+        signedIn: true, uid: 'u1', email, displayName: 'Test Student', photoURL: null,
+      });
+    }, campus.email);
+    await page.route('https://**/*', (route) => route.abort());
+    await page.goto('/shohoj.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.switchCalcTab === 'function');
+    await page.evaluate(() => window.switchCalcTab('reviews'));
+
+    const suggestions = page.locator('#_rvt_suggestions');
+    await page.locator('#_rvt_q').pressSequentially('Shadmin');
+    if (campus.seeded) {
+      await expect(suggestions).toContainText('Shadmin Sultana');
+    } else {
+      await expect(suggestions).toBeHidden();
+      // And the box still answers for the student's own campus.
+      await page.locator('#_rvt_q').fill('');
+      await page.locator('#_rvt_q').pressSequentially('CSE115');
+      await expect(suggestions).toContainText('CSE115');
+      await expect(suggestions).not.toContainText('Faculty');
+    }
+  });
 }
 
 // A campus with no live feed gets its Routine from a section file this site
