@@ -94,7 +94,12 @@ export const TARGETS = [
     // Raw raised 1105 -> 1125 for the RDS Grade History import (#843), which
     // landed just after NSU's Routine (#840) and tipped it over: CI measured
     // 1105.3 raw (1091.0 / 314.9 gzip locally). Gzip had room and stays put.
-    budget: { raw: 1125, gzip: 326 },
+    //
+    // Both raised (1125/326 -> 1170/339) for the October dependency group
+    // (#864: react 19.3, react-router 8.4, firebase 12.19, zod 4.6 and twelve
+    // more). No application code changed; the libraries themselves grew. CI
+    // measured 1141.4 / 330.6 with the group applied; these keep ~2.5%.
+    budget: { raw: 1170, gzip: 339 },
   },
   // The shell entry — what a student would download after the cutover.
   {
@@ -121,8 +126,13 @@ export const TARGETS = [
     // Recorded from CI, which is where the gate runs — it measures ~16 kB above
     // a local build off the same tree, because `npm ci` resolves dependencies
     // that a working node_modules may not match exactly.
+    //
+    // Raised again (490/154 -> 515/161) for the October dependency group
+    // (#864), the same library growth as `vite main entry` above: CI measured
+    // 501.8 / 157.2 with it, and `shell JS, all chunks` at 2196.5 — 3.5 kB
+    // under its own ceiling, so the next shell feature will have to raise that.
     measured: { raw: 469, gzip: 147 },
-    budget: { raw: 490, gzip: 154 },
+    budget: { raw: 515, gzip: 161 },
   },
   {
     label: 'shell stylesheet',
