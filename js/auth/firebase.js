@@ -93,7 +93,7 @@ async function listForMyCampus(col, constraints) {
 // server returned it, before rows were dropped: whether there is a next page,
 // and where it starts, are facts about the query, not about what was kept.
 async function pageForMyCampus(col, constraints) {
-  const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+  const plan = myCampusReadPlan();
   const scoped = plan.filter
     ? [where('university', '==', plan.filter), ...constraints]
     : constraints;
@@ -103,6 +103,18 @@ async function pageForMyCampus(col, constraints) {
     fetched: snap.docs.length,
     last: snap.docs[snap.docs.length - 1],
   };
+}
+
+// The read plan for whoever is signed in. The campus the page is showing comes
+// from the main bundle (js/core/activeCampus.js) and only an admin's plan
+// follows it; the admin dashboard does not load that module, so the moderation
+// lists there stay across every campus.
+function myCampusReadPlan() {
+  return campusReadPlan(
+    currentUser?.email,
+    _isAdminCached,
+    window._shohoj_activeCampusId?.() ?? null,
+  );
 }
 
 function clearCloudAppliedFlag() {
@@ -1262,7 +1274,7 @@ window._shohoj_fetchFacultyProfiles = async function(initialsArr) {
   if (!currentUser || !Array.isArray(initialsArr) || !initialsArr.length) return [];
   try {
     const normalized = [...new Set(initialsArr.map(i => String(i).toUpperCase().trim()).filter(Boolean))];
-    const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+    const plan = myCampusReadPlan();
     const results = [];
     if (plan.filter) {
       // A campus that must filter cannot use the `in` list below: the rules
