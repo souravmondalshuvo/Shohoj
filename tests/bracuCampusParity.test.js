@@ -54,9 +54,8 @@ const courseDb = Object.fromEntries(
 );
 assert.deepEqual(courseDb, plain(COURSE_DB), 'COURSE_DB');
 assert.deepEqual(Object.values(courseDb).sort((a, b) => a.code.localeCompare(b.code)), plain(ALL_COURSES), 'ALL_COURSES');
-// The catalogue keeps its written order, so it can be regenerated as written.
-const writtenOrder = [...source('js/core/catalog.js').matchAll(/^\s*\['([A-Z]{2,4}\d{3}[A-Z]{0,2})',/gm)].map((m) => m[1]);
-assert.deepEqual(bracu.courses.records.filter((c) => c.source === 'bracu-catalog').map((c) => c.code), writtenOrder, '_CATALOG order');
+// The catalogue is generated from these records (#869) and keeps their order.
+assert.deepEqual(codeBased.map((c) => c.code), Object.keys(COURSE_DB), 'COURSE_DB order');
 
 const prereqs = {};
 for (const r of bracu.prerequisites.records.filter((x) => x.source === 'bracu-catalog')) {
