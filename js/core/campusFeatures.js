@@ -72,7 +72,7 @@ function legacyOnlyTab(profile, tabId) {
  */
 const LEGACY_ONLY_PAGES = {
   bus: ['nsu'],
-  // src/app/routes/CampusRouteNsu.tsx — NSU's own buildings and timetable.
+  // src/app/routes/CampusRouteNsu.tsx, chosen in campus/main.tsx.
   campus: ['nsu'],
 };
 
