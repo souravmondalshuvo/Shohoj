@@ -1,10 +1,11 @@
 // js/core/catalog.d.ts
 //
 // Typed boundary for the legacy course catalogue (js/core/catalog.js). The bulk
-// BRACU catalogue DATA stays authored in vanilla JS — it ships in the production
-// build3.py bundle and is the single source of truth. The Vite/React shell, which
-// never loads the legacy bundle, imports the same array through this declaration
-// so there is exactly ONE catalogue, not a hand-maintained duplicate. Only the
+// BRACU catalogue DATA is written in data/campuses/bracu/ and generated into the
+// module catalog.js expands, which ships in the production build3.py bundle. The
+// Vite/React shell, which never loads the legacy bundle, imports the same array
+// through this declaration so there is exactly ONE catalogue, not a
+// hand-maintained duplicate. Only the
 // shapes the typed layer consumes are declared here (see
 // src/features/calculator/catalog.ts and docs/architecture/decisions/
 // 0001-calculator-catalogue-search-boundary.md). This file is a declaration only;
