@@ -1,0 +1,1 @@
+import{v as e}from"./result-C3jh-uwk.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
