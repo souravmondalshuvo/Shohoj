@@ -6,9 +6,17 @@ Every BRACU fact Shohoj keeps in code now also lives in
 rebuilds each runtime structure from the database and requires it to equal the
 code, so "all of it" is checked, not assumed.
 
-The code has not changed: the legacy site and the shell still read their own
-literals. Making them read from the database is the next step, and the parity
-test is what will prove that switch changes nothing.
+The switch to reading from the database is happening one group of files at a
+time. Done so far (#869): the catalogue, prerequisites, department ownership,
+programs and presets. `js/core/catalog.js` and `js/core/departments.js` no
+longer hold that data; they expand modules generated from the first five rows
+of the table below by `npm run generate:legacy-catalog`. Those rows describe
+what the files mirrored when they were exported, which is now history: edit
+the JSON, not the code.
+
+Everything else is unchanged: the legacy site and the shell still read their
+own literals, and the parity test is what will prove each later switch changes
+nothing.
 
 ## What is in it, and where it came from
 
