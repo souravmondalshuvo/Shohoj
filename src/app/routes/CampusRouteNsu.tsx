@@ -34,6 +34,7 @@ import {
   buildNsuCampus,
   nsuBuilding,
   nsuPlacesOn,
+  nsuTermPhase,
   parseNsuRoom,
   type NsuBuildingId,
   type NsuCampusModel,
@@ -72,11 +73,18 @@ function snapshotUrl(): string {
 interface NowStamp {
   day: WeekdayName;
   minute: number;
+  /** The reader's local date, YYYY-MM-DD. */
+  date: string;
 }
 
 function nowStamp(): NowStamp {
   const d = new Date();
-  return { day: WEEKDAYS[d.getDay()] ?? 'SUNDAY', minute: d.getHours() * 60 + d.getMinutes() };
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return {
+    day: WEEKDAYS[d.getDay()] ?? 'SUNDAY',
+    minute: d.getHours() * 60 + d.getMinutes(),
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+  };
 }
 
 function fmtTime(minute: number): string {
@@ -159,15 +167,25 @@ export function NsuCampus() {
 
   const model = campus?.model ?? null;
 
+  // The snapshot is one term's weekly pattern. Before its first class and
+  // after its last, it says nothing about today: no room is "in class", and
+  // none is known to be free either.
+  const termPhase = nsuTermPhase(now.date, SNAPSHOT.classStartDate, SNAPSHOT.classEndDate);
+  const inTerm = termPhase === 'during';
+  const termNote =
+    termPhase === 'before'
+      ? `Term ${SNAPSHOT.term} classes start on ${fmtDate(SNAPSHOT.classStartDate)}.`
+      : `Term ${SNAPSHOT.term} classes ended on ${fmtDate(SNAPSHOT.classEndDate)}.`;
+
   const statusByCode = useMemo(() => {
     const map = new Map<string, RoomStatus>();
-    if (campus) {
+    if (campus && inTerm) {
       for (const code of campus.model.roomsByCode.keys()) {
         map.set(code, occupantAt(campus.busy, code, now.day, now.minute) ? 'busy' : 'free');
       }
     }
     return map;
-  }, [campus, now]);
+  }, [campus, now, inTerm]);
 
   const counts = useMemo(() => {
     let free = 0;
@@ -252,6 +270,7 @@ export function NsuCampus() {
   const describeRoom = useCallback(
     (code: string): RoomTooltip | null => {
       if (!campus || !campus.model.roomsByCode.has(code)) return null;
+      if (!inTerm) return { title: code, status: 'unknown', detail: termNote };
       const occupant = occupantAt(campus.busy, code, now.day, now.minute);
       const next = busyOnDay(campus.busy, code, now.day).find((i) => i.startMin > now.minute);
       return {
@@ -264,7 +283,7 @@ export function NsuCampus() {
             : 'No more classes timetabled today',
       };
     },
-    [campus, now],
+    [campus, now, inTerm, termNote],
   );
   describeRoomRef.current = describeRoom;
 
@@ -334,9 +353,12 @@ export function NsuCampus() {
   const currentFloor = currentBuilding?.floors.find((f) => f.floor === floor) ?? null;
   const floorPlaces = building && floor !== null ? nsuPlacesOn(building, floor) : [];
 
-  const roomToday = selectedRoom && campus ? busyOnDay(campus.busy, selectedRoom, now.day) : [];
+  const roomToday =
+    selectedRoom && campus && inTerm ? busyOnDay(campus.busy, selectedRoom, now.day) : [];
   const roomOccupant =
-    selectedRoom && campus ? occupantAt(campus.busy, selectedRoom, now.day, now.minute) : null;
+    selectedRoom && campus && inTerm
+      ? occupantAt(campus.busy, selectedRoom, now.day, now.minute)
+      : null;
   const roomNext = roomToday.find((i) => i.startMin > now.minute) ?? null;
   const roomParsed = parseNsuRoom(selectedRoom);
 
@@ -499,25 +521,32 @@ export function NsuCampus() {
             </p>
           )}
 
-          <div className="campus-legend" data-testid="campus-legend" role="status">
-            <span className="campus-legend-key">
-              <i className="campus-dot campus-dot--free" />
-              <span className="campus-legend-count" data-testid="campus-free-count">
-                {counts.free}
-              </span>{' '}
-              rooms with no class now
-            </span>
-            <span className="campus-legend-key">
-              <i className="campus-dot campus-dot--busy" />
-              <span className="campus-legend-count" data-testid="campus-busy-count">
-                {counts.busy}
-              </span>{' '}
-              timetabled now
-            </span>
-            <span className="campus-legend-key" aria-hidden="true">
-              <i className="campus-dot campus-dot--selected" /> Selected
-            </span>
-          </div>
+          {inTerm ? (
+            <div className="campus-legend" data-testid="campus-legend" role="status">
+              <span className="campus-legend-key">
+                <i className="campus-dot campus-dot--free" />
+                <span className="campus-legend-count" data-testid="campus-free-count">
+                  {counts.free}
+                </span>{' '}
+                rooms with no class now
+              </span>
+              <span className="campus-legend-key">
+                <i className="campus-dot campus-dot--busy" />
+                <span className="campus-legend-count" data-testid="campus-busy-count">
+                  {counts.busy}
+                </span>{' '}
+                timetabled now
+              </span>
+              <span className="campus-legend-key" aria-hidden="true">
+                <i className="campus-dot campus-dot--selected" /> Selected
+              </span>
+            </div>
+          ) : (
+            <p className="shell-muted" data-testid="campus-out-of-term" role="status">
+              {termNote} Outside the term the timetable says nothing about today, so no room is
+              shown as in class or free.
+            </p>
+          )}
 
           {roomParsed && (
             <div className="campus-room-panel" data-testid="campus-room-panel">
@@ -528,11 +557,13 @@ export function NsuCampus() {
                 </span>
               </div>
               <p className="campus-room-status">
-                {roomOccupant
-                  ? `Timetabled now — ${roomOccupant.courseCode} until ${fmtTime(roomOccupant.endMin)}`
-                  : roomNext
-                    ? `No class until ${fmtTime(roomNext.startMin)} (then ${roomNext.courseCode})`
-                    : 'No more classes timetabled today'}
+                {!inTerm
+                  ? `${termNote} The timetable has nothing for today.`
+                  : roomOccupant
+                    ? `Timetabled now — ${roomOccupant.courseCode} until ${fmtTime(roomOccupant.endMin)}`
+                    : roomNext
+                      ? `No class until ${fmtTime(roomNext.startMin)} (then ${roomNext.courseCode})`
+                      : 'No more classes timetabled today'}
               </p>
               {roomToday.length > 0 && (
                 <ul className="campus-room-schedule">
@@ -603,13 +634,19 @@ export function NsuCampus() {
                           className={
                             status === 'busy'
                               ? 'campus-dot campus-dot--busy'
-                              : 'campus-dot campus-dot--free'
+                              : status === 'free'
+                                ? 'campus-dot campus-dot--free'
+                                : 'campus-dot'
                           }
                           aria-hidden="true"
                         />
                         {room.code}
                         <span className="campus-room-sr">
-                          {status === 'busy' ? ' — class timetabled now' : ' — no class now'}
+                          {status === 'busy'
+                            ? ' — class timetabled now'
+                            : status === 'free'
+                              ? ' — no class now'
+                              : ' — no timetable for today'}
                         </span>
                       </button>
                     );
