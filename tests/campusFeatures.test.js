@@ -123,7 +123,7 @@ test('a multi-campus page link carries the campus, except for the default one', 
   // The Campus Map is the same arrangement.
   assert.equal(campusPageHref('campus/', 'bracu', 'bracu'), 'campus/');
   assert.equal(campusPageHref('campus/', 'nsu', 'bracu'), 'campus/?campus=nsu');
-  const map = readFileSync(new URL('../src/app/routes/CampusRoute.tsx', import.meta.url), 'utf8');
+  const map = readFileSync(new URL('../campus/main.tsx', import.meta.url), 'utf8');
   assert.ok(map.includes("searchParams.get('campus') === 'nsu'"));
   assert.ok(INDEX_HTML.includes('data-feature="campus" data-campus-href="campus/"'));
 });
