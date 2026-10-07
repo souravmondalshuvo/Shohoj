@@ -4,11 +4,11 @@
 // is on — the catalogue counterpart of activeCampus.js, which answers the same
 // question for grading rules.
 //
-// BRACU's catalogue is the hand-written constants in catalog.js and
-// departments.js, handed back as they are: the same objects, so nothing about
-// BRACU changes by reading them through here. NSU's is generated from
-// data/campuses/nsu/ (scripts/generate_legacy_catalog.mjs) and expanded into
-// the same shapes on first use.
+// Both are generated from data/campuses/ (scripts/generate_legacy_catalog.mjs).
+// BRACU's is expanded by catalog.js and departments.js, whose constants are
+// handed back as they are: the same objects, so nothing about BRACU changes by
+// reading them through here. NSU's is expanded into the same shapes on first
+// use.
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
 // a course, or null — because the rule is the campus's, not just its table,
