@@ -43,11 +43,16 @@ MAIN_JS_FILES = [
     # FIREBASE_JS_FILES below — that bundle is a separate type="module" script
     # and cannot see this scope, so both carry a copy of the one source file.
     'js/core/personalData.js',
+    # BRACU's programs and catalogue are generated from data/campuses/bracu
+    # (npm run generate:legacy-catalog); departments.js and catalog.js only
+    # expand the rows, so each generated file precedes its reader.
+    'js/core/departmentsBracu.generated.js',
     'js/core/departments.js',
     # Campus directory for the sign-in portal (display data only; drift-guarded
     # against src/core/university.ts by tests/universityDirectory.test.js)
     'js/core/universityDirectory.js',
     # Core (with dependencies)
+    'js/core/catalogBracu.generated.js',
     'js/core/catalog.js',
     # Campus registry (twin of src/core/university.ts); gpa-core reads its rules
     'js/core/university.js',
@@ -183,7 +188,9 @@ ADMIN_JS_FILES = [
     'js/config/runtime-config.js',
     'js/core/helpers.js',
     'js/core/dispatch.js',
+    'js/core/departmentsBracu.generated.js',
     'js/core/departments.js',
+    'js/core/catalogBracu.generated.js',
     'js/core/catalog.js',
     # papers.js validates course codes through this; admin leaves it on BRACU's
     'js/core/courseLookup.js',
@@ -225,6 +232,7 @@ PROFILE_JS_FILES = [
     # js/ loads un-bundled (#535). prereq.js reads grades.js, listed above;
     # departments.js supplies the model curricula the map filters by (#539).
     'js/core/prereq.js',
+    'js/core/departmentsBracu.generated.js',
     'js/core/departments.js',
     'js/ui/unlockMapCard.js',
     'js/animations/cursor.js',
