@@ -7,9 +7,16 @@
 //
 // Everything is derived from the signed-in email — the same fact
 // firestore.rules reads (`campusOfEmail(request.auth.token.email)`) — so the
-// client's answer cannot disagree with the server's. It is NOT derived from the
-// active campus (js/core/activeCampus.js): an admin viewing the site as NSU is
-// still, to the rules, whoever their email says they are.
+// client's answer cannot disagree with the server's. A student's is NOT derived
+// from the active campus (js/core/activeCampus.js), and neither is anything
+// this client writes: an admin viewing the site as NSU is still, to the rules,
+// whoever their email says they are.
+//
+// The one thing the active campus does decide is what an ADMIN is shown. The
+// rules let an admin read every campus, so nothing but this client narrows
+// their lists — and a page that says NSU while listing BRACU's papers and
+// reviews is showing the wrong university's, to the one reader who is there to
+// check what NSU's students see.
 //
 // WRITES. firestore.rules pins a present `university` to the writer's own
 // campus and reads a missing one as BRACU. Legacy used to send none, which was
@@ -26,7 +33,7 @@
 // So a campus other than BRACU filters in the query, and BRACU filters here,
 // after the fact, by the rule the rules themselves use for a missing field.
 
-import { campusOfEmail } from '../core/universityDirectory.js';
+import { UNIVERSITY_DIRECTORY, campusOfEmail } from '../core/universityDirectory.js';
 
 /**
  * The campus a document with no `university` field belongs to. Mirrors
@@ -54,13 +61,20 @@ export function campusWriteField(email) {
  *           null to send the query without one
  *   keep    whether a returned document belongs in this user's view
  *
- * Admins moderate every campus and the rules let them read all of it, so they
- * get no filter and keep everything — as does anyone no campus claims, who can
- * only be an admin.
+ * `viewingAs` is the campus the page is showing (js/core/activeCampus.js) and
+ * counts for an admin only: they get the list a student of that campus would,
+ * sent the way that student's client sends it. A student's own address always
+ * decides theirs, whatever is passed here.
+ *
+ * An admin on a page that shows no campus — the admin dashboard, which
+ * moderates all of them — gets no filter and keeps everything, as does anyone
+ * no campus claims, who can only be an admin.
  */
-export function campusReadPlan(email, isAdmin = false) {
-  const campus = campusOfEmail(email);
-  if (isAdmin || !campus) {
+export function campusReadPlan(email, isAdmin = false, viewingAs = null) {
+  const campus = isAdmin
+    ? (UNIVERSITY_DIRECTORY.some(u => u.id === viewingAs) ? viewingAs : null)
+    : campusOfEmail(email);
+  if (!campus) {
     return { filter: null, keep: () => true };
   }
   const keep = data => (data?.university ?? PRE_TENANCY_CAMPUS) === campus;
