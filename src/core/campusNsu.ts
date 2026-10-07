@@ -308,6 +308,21 @@ export function nsuPlacesOn(building: NsuBuildingId, floor: number): NsuPlace[] 
   return NSU_PLACES.filter((place) => place.building === building && place.floor === floor);
 }
 
+export type NsuTermPhase = 'before' | 'during' | 'after';
+
+/**
+ * Where a day falls against the term a timetable snapshot was published for.
+ *
+ * A snapshot is a weekly pattern with a first and a last day of classes.
+ * Outside them the pattern describes nothing: a room it books every Monday is
+ * not booked on a Monday in the break. All three arguments are ISO dates
+ * (YYYY-MM-DD), which compare correctly as strings; both ends are class days.
+ */
+export function nsuTermPhase(today: string, classStart: string, classEnd: string): NsuTermPhase {
+  if (today < classStart) return 'before';
+  return today > classEnd ? 'after' : 'during';
+}
+
 /** Middle of the site (OpenStreetMap), for the "am I on campus?" check. */
 export const NSU_CAMPUS_LAT = 23.815244;
 export const NSU_CAMPUS_LNG = 90.425983;
