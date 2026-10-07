@@ -3,7 +3,7 @@
 // North South University's Campus Map: the Bashundhara campus, building by
 // building, floor by floor, room by room. Reached at /campus/?campus=nsu — the
 // standalone page has no session, so the campus arrives in the URL (see
-// CampusRoute.tsx).
+// campus/main.tsx).
 //
 // Three honesty rules, each visible on the page:
 //
