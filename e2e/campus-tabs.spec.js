@@ -42,18 +42,20 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   for (const id of NSU_TABS) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
   for (const id of BRACU_ONLY_TABS) await expect(tab(page, id)).toHaveJSProperty('hidden', true);
 
-  // Every group keeps what is left of it. Campus is down to Free Rooms: Seats
-  // and the three standalone pages (map, bus, lost & found) are BRACU's.
+  // Every group keeps what is left of it. Campus keeps Free Rooms, the map
+  // and Bus: Seats and lost & found are BRACU's.
   await expect(group(page, 'plan')).toBeVisible();
   await expect(group(page, 'courses')).toBeVisible();
   await expect(group(page, 'campus')).toBeVisible();
-  // Of the three standalone pages, Bus is the one NSU has: it opens NSU's own
-  // service, so the link carries the campus. The map and lost & found are
-  // BRAC University's.
+  // Of the three standalone pages, NSU has two: Bus opens NSU's own service
+  // and the Campus Map NSU's own buildings, so each link carries the campus.
+  // Lost & found is BRAC University's.
   const bus = page.locator('#calcTabs [data-feature="bus"]');
   await expect(bus).toHaveJSProperty('hidden', false);
   await expect(bus).toHaveAttribute('href', 'bus/?campus=nsu');
-  await expect(page.locator('#calcTabs [data-feature="campus"]')).toHaveJSProperty('hidden', true);
+  const map = page.locator('#calcTabs [data-feature="campus"]');
+  await expect(map).toHaveJSProperty('hidden', false);
+  await expect(map).toHaveAttribute('href', 'campus/?campus=nsu');
   await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
 
   // The nav's Tasks link opens a tab NSU does not get.
