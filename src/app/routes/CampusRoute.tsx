@@ -51,7 +51,6 @@ import type { ExteriorModelState } from '../../features/campus/campusModel';
 // The revision-4 BRACU exterior (#750): a hashed, base-aware asset URL, so the
 // same import works in the shell and on the standalone /campus/ page.
 import exteriorModelUrl from '../../features/campus/assets/bracu-exterior.glb.gz?url';
-import { NsuCampus } from './CampusRouteNsu';
 
 const WEEKDAY_BY_INDEX: readonly WeekdayName[] = [
   'SUNDAY',
@@ -162,20 +161,7 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-/**
- * Which university's campus to show.
- *
- * The standalone page (campus/main.tsx) has no session, so it cannot know the
- * reader's campus. The legacy site knows, and links an NSU student to
- * /campus/?campus=nsu. Anything else, including no parameter at all, is BRAC
- * University's tower, as this page always was.
- */
 export function Component() {
-  const [searchParams] = useSearchParams();
-  return searchParams.get('campus') === 'nsu' ? <NsuCampus /> : <BracuCampus />;
-}
-
-function BracuCampus() {
   const [feed, setFeed] = useState<FeedState | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [now, setNow] = useState<NowStamp>(nowStamp);
