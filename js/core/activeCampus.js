@@ -41,6 +41,15 @@ export function getActiveCampus() {
   return UNIVERSITIES[_activeCampusId];
 }
 
+// The auth module's read of the same answer. firebase.js is a separate script
+// (see WHY AN EVENT above) and lists papers, reviews, groups and feedback; it
+// asks which campus the page is showing so an admin's lists follow the switcher
+// (js/auth/campus-scope.js). A hook rather than the stored choice, because the
+// choice still applies in a browser that refused to store it.
+try {
+  window._shohoj_activeCampusId = () => _activeCampusId;
+} catch (_e) { /* no window (node tests) */ }
+
 /** Shorthand for the active campus's grading scale. */
 export function activeGradeScale() {
   return getActiveCampus().grades;
