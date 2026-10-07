@@ -4,10 +4,10 @@
 // reads: COURSE_DB / ALL_COURSES / PREREQS / PREFIX_DEPT_MAP / DEPT_META
 // (js/core/catalog.js) and DEPARTMENTS (js/core/departments.js).
 //
-// BRACU's versions of those are still hand-written, and that is what makes
-// this mapping checkable: run on BRACU's records it must reproduce them
-// exactly (tests/legacyCatalog.test.js). The same function then builds NSU's,
-// which scripts/generate_legacy_catalog.mjs writes into the bundle.
+// Both campuses' are built by this one function, and
+// scripts/generate_legacy_catalog.mjs writes its output into the bundle.
+// BRACU's were hand-written until #869; the mapping was accepted because, run
+// on BRACU's records, it reproduced those literals exactly, key order included.
 //
 // It states only what the data states:
 //   - a course with no published title is not in the catalogue (the legacy
@@ -144,7 +144,11 @@ export function buildLegacyCatalog(campus, options = {}) {
   };
 }
 
-/** The sources BRACU's hand-written literals were exported from. */
+/**
+ * The records that make up BRACU's calculator catalogue: the ones its
+ * hand-written literals were exported from, before the code was generated from
+ * them. Courses and rules only a CONNECT snapshot names are left out.
+ */
 export const BRACU_LITERAL_SOURCES = {
   courseSources: ['bracu-catalog', 'bracu-departments'],
   prerequisiteSources: ['bracu-catalog'],
