@@ -11,9 +11,10 @@
 // not exist, which is both a junk-data vector and an unbounded namespace in the
 // bucket. Validating against the real catalogue closes that.
 //
-// BRACU's catalogue lives in js/core/catalog.js (the single source of truth
-// shared by the legacy bundle and the React shell); NSU's in data/campuses/nsu,
-// mapped by scripts/legacy_catalog.mjs exactly as the client's copy is. We copy
+// BRACU's catalogue is read from js/core/catalog.js (the one copy the legacy
+// bundle and the React shell share, itself generated from data/campuses/bracu);
+// NSU's from data/campuses/nsu, mapped by scripts/legacy_catalog.mjs exactly as
+// the client's copy is. We copy
 // the CODES and their CREDIT VALUES into a small generated module, so the
 // Worker bundle carries ~23 KB rather than importing whole catalogues with
 // their names and prerequisites.
