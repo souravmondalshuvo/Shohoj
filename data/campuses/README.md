@@ -28,15 +28,36 @@ data/campuses/<campus>/
 Three campuses today: `nsu/` and `diu/` (researched from each university's own
 documents — see [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md)
 and [`docs/campuses/diu-research.md`](../../docs/campuses/diu-research.md)) and
-`bracu/` (exported from the BRACU literals in Shohoj's own code — see
+`bracu/` (first exported from the BRACU literals in Shohoj's own code — see
 [`docs/campuses/bracu-data.md`](../../docs/campuses/bracu-data.md)).
 
-### BRACU is exported, not hand-edited (yet)
+### BRACU: part edited here, part still exported
 
-Until the legacy code reads from this database, BRACU's facts live twice: in
-the code and here. `tests/bracuCampusParity.test.js` rebuilds every BRACU
-runtime structure from these files and fails if any differs from the code. When
-it does, change the code as usual and re-export:
+BRACU is moving from "written in the code, exported here" to "written here,
+generated into the code", one group of files at a time.
+
+**Edit these here** — the code is generated from them (#869):
+
+| File | Generated into |
+|---|---|
+| `courses.json`, `prerequisites.json`, `departments.json` | `js/core/catalogBracu.generated.js` |
+| `programs.json`, `plans.json` | `js/core/departmentsBracu.generated.js` |
+
+```bash
+npm run generate:legacy-catalog   # after editing any of them
+npm run generate:worker-catalog   # the Worker's copy of the course codes
+```
+
+`npm run check:legacy-catalog` (run by the unit suite) fails when a generated
+file is stale, so a data edit cannot ship without its code. Only records whose
+source is `bracu-catalog` reach the calculator's catalogue; courses a CONNECT
+snapshot alone names stay in the database.
+
+**Do not edit the rest here yet** — grading, standing tiers, the minor, the
+profile, bus, cafeteria and places still live twice: in the code and here.
+`tests/bracuCampusParity.test.js` rebuilds each of those runtime structures
+from these files and fails if any differs from the code. When it does, change
+the code as usual and re-export:
 
 ```bash
 node scripts/export_bracu_campus_data.mjs \
@@ -45,7 +66,8 @@ node scripts/export_bracu_campus_data.mjs \
 
 The `--feed` files are CONNECT snapshots (the live feed at
 `https://usis-cdn.eniamza.com/connect.json` carries one semester; older ones
-come from the semester archive).
+come from the semester archive). The export leaves the hand-edited files above
+alone, apart from replacing the records a snapshot supplied.
 
 Only `sources.json` and `profile.json` are required; a campus carries whatever
 it has data for. Term files are named by term code and calendar system:
