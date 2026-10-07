@@ -2,9 +2,10 @@
 //
 // Typed department table for the React/shell calculator path (#313).
 //
-// Like the catalogue (catalog.ts), the department DATA is authored once in the
-// legacy vanilla-JS module (js/core/departments.js → DEPARTMENTS), which the
-// production build3.py bundle ships. The shell imports the same object through
+// Like the catalogue (catalog.ts), the department DATA is written once, in
+// data/campuses/bracu/, and generated into the legacy vanilla-JS module
+// (js/core/departments.js → DEPARTMENTS), which the production build3.py
+// bundle ships. The shell imports the same object through
 // the js/core/departments.d.ts boundary — one table, no hand-maintained
 // duplicate — validates it once at load, and freezes the adapted view. Presets
 // are intentionally not adapted yet (they belong to the preset-semester flow,
