@@ -3,13 +3,16 @@
  *
  * The legacy bundle's per-campus catalogue. Three links, each checked:
  *
- *   data/campuses → scripts/legacy_catalog.mjs → js/core/catalogNsu.generated.js
+ *   data/campuses → scripts/legacy_catalog.mjs → js/core/catalog*.generated.js
  *                                               → js/core/activeCatalog.js
  *
- * The mapping is trusted because, run on BRACU's records, it reproduces
- * BRACU's hand-written literals exactly. The generated NSU module must be the
- * current output of that mapping, and what activeCatalog hands back must be
- * that output again once expanded.
+ * Every generated module must be the current output of the mapping, and what
+ * the app reads — catalog.js and departments.js for BRACU, activeCatalog.js
+ * for NSU — must be that output again once expanded.
+ *
+ * BRACU's catalogue was hand-written in catalog.js and departments.js until
+ * #869. The mapping was proven against those literals before they were
+ * replaced, down to the order of their keys, which the checks below still hold.
  */
 
 import assert from 'node:assert/strict';
@@ -23,7 +26,14 @@ globalThis.addEventListener = () => {};
 
 const { loadCampuses } = await import('../scripts/campus_data.mjs');
 const { BRACU_LITERAL_SOURCES, buildLegacyCatalog } = await import('../scripts/legacy_catalog.mjs');
-const { OUT_PATH, renderNsuCatalog } = await import('../scripts/generate_legacy_catalog.mjs');
+const {
+  BRACU_CATALOG_OUT_PATH,
+  BRACU_DEPARTMENTS_OUT_PATH,
+  OUT_PATH,
+  renderBracuCatalog,
+  renderBracuDepartments,
+  renderNsuCatalog,
+} = await import('../scripts/generate_legacy_catalog.mjs');
 const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS, getCourseDept } = await import('../js/core/catalog.js');
 const { DEPARTMENTS } = await import('../js/core/departments.js');
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
@@ -34,7 +44,18 @@ const { campuses, errors } = loadCampuses();
 assert.deepEqual(errors, []);
 const campus = (id) => campuses.find((c) => c.id === id);
 
-// ── The mapping reproduces BRACU's literals ─────────────────────────────────
+// ── BRACU's generated modules are current, and expand back to the mapping ──
+
+assert.equal(
+  fs.readFileSync(BRACU_CATALOG_OUT_PATH, 'utf8'),
+  renderBracuCatalog(),
+  'js/core/catalogBracu.generated.js is out of date — run: npm run generate:legacy-catalog',
+);
+assert.equal(
+  fs.readFileSync(BRACU_DEPARTMENTS_OUT_PATH, 'utf8'),
+  renderBracuDepartments(),
+  'js/core/departmentsBracu.generated.js is out of date — run: npm run generate:legacy-catalog',
+);
 
 const bracu = buildLegacyCatalog(campus('bracu'), BRACU_LITERAL_SOURCES);
 assert.deepEqual(bracu.courses, plain(COURSE_DB), 'COURSE_DB');
@@ -44,14 +65,21 @@ assert.deepEqual(bracu.prefixDepartments, plain(PREFIX_DEPT_MAP), 'PREFIX_DEPT_M
 assert.deepEqual(bracu.departmentMeta, plain(DEPT_META), 'DEPT_META');
 assert.deepEqual(bracu.programs, plain(DEPARTMENTS), 'DEPARTMENTS');
 assert.deepEqual([bracu.untitled, bracu.unexpressed], [[], []], 'nothing of BRACU is left out');
+// deepEqual does not look at key order, and the app does: the catalogue is
+// listed, and the program picker filled, in the order the data files give.
+const hand = (file) => campus('bracu')[file].records.filter((r) => (r.source ?? campus('bracu')[file].source) === 'bracu-catalog');
+assert.deepEqual(Object.keys(COURSE_DB), hand('courses').map((c) => c.code), 'COURSE_DB order');
+assert.deepEqual(Object.keys(PREREQS), hand('prerequisites').map((r) => r.course), 'PREREQS order');
+assert.deepEqual(Object.keys(PREFIX_DEPT_MAP), campus('bracu').departments.records.flatMap((d) => d.prefixes), 'PREFIX_DEPT_MAP order');
+assert.deepEqual(Object.keys(DEPARTMENTS), campus('bracu').programs.records.map((p) => p.code), 'DEPARTMENTS order');
 // The department tiles keep the order reviewsTab.js used to spell out itself,
-// and the one cross-listed course keeps the owner catalog.js hard-codes.
+// and the one cross-listed course keeps the owner departments.json gives it.
 assert.deepEqual(
   bracu.departmentOrder,
   ['CSE', 'EEE', 'ECE', 'MPS', 'BBA', 'ENG', 'ECO', 'ANT', 'ARC', 'PHR', 'LLB', 'GENED'],
   "BRACU's tile order",
 );
-assert.deepEqual(bracu.departmentOrder, Object.keys(DEPT_META), 'which is the order catalog.js writes DEPT_META in');
+assert.deepEqual(bracu.departmentOrder, Object.keys(DEPT_META), 'which is the order DEPT_META keeps');
 assert.deepEqual(bracu.departmentOverrides, { CST333: 'BBA' });
 for (const [course, department] of Object.entries(bracu.departmentOverrides)) {
   assert.equal(getCourseDept(course), department, `getCourseDept(${course})`);
