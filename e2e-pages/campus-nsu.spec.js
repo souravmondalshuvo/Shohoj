@@ -4,6 +4,10 @@
 // /campus/?campus=nsu. The page reads NSU's section snapshot from the site
 // root (feeds/…), which the pages build does not contain, so each test serves
 // a small snapshot of its own at that address.
+//
+// The page's clock is fixed. What a room shows depends on the minute and on
+// whether today is inside the snapshot's term, so a test that read the real
+// clock would fail for one minute a day and for good once the term ended.
 
 import { expect, test } from '@playwright/test';
 
@@ -19,11 +23,15 @@ const section = (sectionId, courseCode, roomName, classSchedules) => ({
   sectionSchedule: { classSchedules },
 });
 
+// A Wednesday morning inside term 263 (classes 20 Sep – 20 Dec 2026).
+const IN_TERM = new Date('2026-10-07T10:30:00');
+// The same weekday and hour, after the term's last class.
+const AFTER_TERM = new Date('2027-01-13T10:30:00');
+
 const SNAPSHOT = [
-  // In class every minute of the week, so "now" never decides the outcome.
   section(1, 'ACT201', 'NAC210', allDay),
-  // Never in class at a time the test could run.
-  section(2, 'ENG103', 'NAC201', [{ day: 'FRIDAY', startTime: '3:00', endTime: '3:01' }]),
+  // A class on another day: free at the fixed time.
+  section(2, 'ENG103', 'NAC201', [{ day: 'FRIDAY', startTime: '9:00', endTime: '10:30' }]),
   // A second booking of SAC414, the way NSU's list names it.
   section(3, 'CSE115', 'SAC414_V', allDay),
   section(4, 'MAT120', 'LIB601', allDay),
@@ -32,7 +40,8 @@ const SNAPSHOT = [
   section(6, 'BIO103', 'NTR201', allDay),
 ];
 
-async function openNsuCampus(page, query = '') {
+async function openNsuCampus(page, query = '', at = IN_TERM) {
+  await page.clock.setFixedTime(at);
   await page.route('**/feeds/nsu-*.json', (route) =>
     route.fulfill({ contentType: 'application/json', body: JSON.stringify(SNAPSHOT) }),
   );
@@ -101,6 +110,19 @@ test('room search jumps to the room; a venue outside the map is only listed', as
   await page.getByTestId('campus-search-btn').click();
   await expect(page.getByTestId('campus-search-miss')).toBeVisible();
   await expect(page.locator('.campus-other')).toContainText('NTR201');
+});
+
+test('outside the term, no room is shown as in class or free', async ({ page }) => {
+  await openNsuCampus(page, '&room=NAC210', AFTER_TERM);
+  await expect(page.getByTestId('campus-out-of-term')).toContainText('ended on 20 December 2026');
+  await expect(page.getByTestId('campus-legend')).toHaveCount(0);
+  // In term this room is in class all day; now the page will not say so.
+  const panel = page.getByTestId('campus-room-panel');
+  await expect(panel).toContainText('NAC210');
+  await expect(panel).not.toContainText('ACT201');
+  await expect(
+    page.getByTestId('campus-room-list').getByRole('button', { name: /NAC210/ }),
+  ).toContainText('no timetable for today');
 });
 
 test('a snapshot that will not load offers a retry', async ({ page }) => {
