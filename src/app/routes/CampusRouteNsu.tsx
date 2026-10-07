@@ -39,7 +39,10 @@ import {
   type NsuBuildingId,
   type NsuCampusModel,
 } from '../../core/campusNsu';
+import type { ExteriorModelState } from '../../features/campus/campusModel';
 import type { RoomStatus, RoomTooltip } from '../../features/campus/campusScene';
+// The campus model (scripts/nsu_campus_model.py): a hashed, base-aware URL.
+import campusModelUrl from '../../features/campus/assets/nsu-campus.glb.gz?url';
 import { createNsuCampusScene, type NsuSceneHandle } from '../../features/campus/nsuCampusScene';
 
 const WEEKDAYS: readonly WeekdayName[] = [
@@ -123,6 +126,7 @@ export function NsuCampus() {
   const [search, setSearch] = useState('');
   const [searchMiss, setSearchMiss] = useState(false);
   const [webglOk, setWebglOk] = useState(true);
+  const [modelState, setModelState] = useState<ExteriorModelState | null>(null);
   const [location, setLocation] = useState<LocationState>({ phase: 'idle' });
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -295,6 +299,8 @@ export function NsuCampus() {
       onFloorClick: (b, f) => selectFloor(b, f),
       onRoomClick: (code) => selectRoom(code),
       describeRoom: (code) => describeRoomRef.current(code),
+      modelUrl: campusModelUrl,
+      onModelState: setModelState,
     });
     if (!handle) {
       setWebglOk(false);
@@ -513,6 +519,7 @@ export function NsuCampus() {
               ref={canvasHost}
               aria-hidden="true"
               data-testid="campus-canvas"
+              data-model-state={modelState ?? undefined}
             />
           ) : (
             <p className="shell-muted" data-testid="campus-no-webgl">
@@ -670,8 +677,10 @@ export function NsuCampus() {
             <summary>How accurate is this map?</summary>
             <p>
               <strong>Measured:</strong> the site, each building&apos;s outline and where it stands,
-              from OpenStreetMap. Floor counts come from NSU&apos;s own room numbers, except the
-              Administration Building&apos;s, which is not confirmed.
+              from OpenStreetMap. The façades are a reconstruction from photographs: the brick bays,
+              arched top floors and entrance front are right in kind, not in every dimension. Floor
+              counts come from NSU&apos;s own room numbers, except the Administration
+              Building&apos;s, which is not confirmed.
             </p>
             <p>
               <strong>Not measured:</strong> where a room sits on its floor. NSU publishes no floor
