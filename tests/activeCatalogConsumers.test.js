@@ -27,7 +27,6 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const CONSTANTS = ['COURSE_DB', 'ALL_COURSES', 'PREREQS', 'DEPARTMENTS', 'PREFIX_DEPT_MAP', 'DEPT_META', 'getCourseDept'];
 const MAY_IMPORT = {
-  'js/core/catalog.js': 'defines them (and builds COURSE_DB from the presets in departments.js)',
   'js/core/activeCatalog.js': "hands them back as BRACU's catalogue",
   'js/core/courseLookup.js': 'the default lookup, for bundles that carry no campus catalogue (admin)',
   'js/core/announcementDetector.js': 'a twin of shell code; Tasks is a BRACU-only feature',
