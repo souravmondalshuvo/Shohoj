@@ -1,27 +1,32 @@
 // scripts/export_bracu_campus_data.mjs (#792)
 //
-// Exports every BRACU fact Shohoj keeps in code into data/campuses/bracu/, so
-// the campus database holds BRACU alongside NSU:
+// Exports the BRACU facts Shohoj still keeps in code into data/campuses/bracu/,
+// so the campus database holds BRACU alongside NSU:
 //
 //   node scripts/export_bracu_campus_data.mjs \
 //     --feed 20263=<connect.json> --feed 20262=<semester-20262.json>
 //
-// Reads the live modules rather than retyping them — the catalogue, programs
-// and presets, grading, marks, standing tiers, the minor, the BRACU profile,
-// bus, cafeteria and campus places, campus location and hours, faculty and
-// seed reviews — plus CONNECT feed snapshots for sections (the feed carries one
-// semester; pass each snapshot you have). tests/bracuCampusParity.test.js then
-// rebuilds every runtime structure from the exported data and requires it to
-// equal what the code exports, so the two cannot drift apart unnoticed.
+// Reads the live modules rather than retyping them — grading, marks, standing
+// tiers, the minor, the BRACU profile, bus, cafeteria and campus places, campus
+// location and hours, faculty and seed reviews — plus CONNECT feed snapshots
+// for sections (the feed carries one semester; pass each snapshot you have).
+// tests/bracuCampusParity.test.js then rebuilds every runtime structure from
+// the exported data and requires it to equal what the code exports, so the two
+// cannot drift apart unnoticed.
 //
 // Re-run after changing any of those modules; the parity test says when.
+//
+// NOT exported, because the direction has reversed (#869): the catalogue,
+// prerequisites, departments, programs and presets. Those are written in
+// data/campuses/bracu/ and the code is generated from them
+// (npm run generate:legacy-catalog). This script leaves programs.json,
+// plans.json and departments.json alone, and in courses.json and
+// prerequisites.json replaces only the records a CONNECT snapshot supplied.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { COURSE_DB, PREREQS, PREFIX_DEPT_MAP, DEPT_META } from '../js/core/catalog.js';
-import { DEPARTMENTS } from '../js/core/departments.js';
 import { GRADES, POINTS_TO_GRADE } from '../js/core/grades.js';
 import { MARK_SCALE } from '../js/core/courseMarks.js';
 import { MILESTONE_TIERS } from '../js/core/milestones.js';
@@ -318,108 +323,17 @@ const profile = {
   },
 };
 
-// ── Programs and presets (plans) ────────────────────────────────────────────
-const programs = [];
-const plans = [];
-const CODE_SUFFIX = /\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/;
-for (const [code, dept] of Object.entries(DEPARTMENTS)) {
-  const termSystem =
-    SEASONS_TO_SYSTEM.get(dept.seasons.join(',')) ??
-    fail(`${code}: unknown season set ${dept.seasons}`);
-  programs.push({ code, name: dept.label, totalCredits: dept.totalCredits, termSystem });
-  dept.presets.forEach((preset, i) => {
-    for (const course of preset.courses) {
-      const m =
-        course.name.match(CODE_SUFFIX) ??
-        fail(`${code}: preset course "${course.name}" has no code`);
-      const title = course.name.replace(/\s*\([^)]+\)$/, '').trim();
-      if (`${title} (${m[1]})` !== course.name)
-        fail(`${code}: "${course.name}" would not round-trip`);
-      if (course.grade !== '') fail(`${code}: preset course ${m[1]} carries a grade`);
-      plans.push({
-        program: code,
-        year: Math.floor(i / dept.seasons.length) + 1,
-        term: i + 1,
-        termLabel: preset.name,
-        code: m[1],
-        title,
-        credits: course.credits,
-        source: 'bracu-departments',
-      });
-    }
-  });
-}
-
-// ── Departments ─────────────────────────────────────────────────────────────
-const departments = Object.entries(DEPT_META).map(([code, meta]) => ({
-  code,
-  label: meta.label,
-  school: meta.school,
-  ...(meta.displayCode ? { displayCode: meta.displayCode } : {}),
-  prefixes: Object.entries(PREFIX_DEPT_MAP)
-    .filter(([, d]) => d === code)
-    .map(([p]) => p),
-}));
-const orphan = Object.entries(PREFIX_DEPT_MAP).filter(([, d]) => !(d in DEPT_META));
-if (orphan.length) fail(`prefixes owned by departments DEPT_META lacks: ${orphan}`);
-
-// ── Catalogue: order and section headings come from the source text ─────────
-const catalogText = fs.readFileSync(path.join(ROOT, 'js/core/catalog.js'), 'utf8');
-const body = catalogText.slice(
-  catalogText.indexOf('const _CATALOG = ['),
-  catalogText.indexOf('];', catalogText.indexOf('const _CATALOG = [')),
-);
-let group = null;
-const catalogOrder = [];
-for (const line of body.split('\n')) {
-  const heading = line.match(/^\s*\/\/\s*──\s*(.+?)\s*─*\s*$/);
-  if (heading) group = heading[1];
-  const entry = line.match(/^\s*\['([A-Z]{2,4}\d{3}[A-Z]{0,2})',/);
-  if (entry) catalogOrder.push({ code: entry[1], group });
-}
-const seen = new Set();
-const courses = [];
-for (const { code, group: g } of catalogOrder) {
-  if (seen.has(code)) fail(`${code} is listed twice in _CATALOG`);
-  seen.add(code);
-  const c = COURSE_DB[code] ?? fail(`${code} missing from COURSE_DB`);
-  if (c.full !== `${c.name} (${code})`) fail(`${code}: full name is not "<name> (<code>)"`);
-  courses.push({
-    code,
-    title: c.name,
-    credits: c.credits,
-    ...(g ? { group: g } : {}),
-    source: 'bracu-catalog',
-  });
-}
-for (const c of Object.values(COURSE_DB)) {
-  if (seen.has(c.code)) continue;
-  seen.add(c.code);
-  if (c.full !== `${c.name} (${c.code})`) fail(`${c.code}: preset full name does not round-trip`);
-  courses.push({ code: c.code, title: c.name, credits: c.credits, source: 'bracu-departments' });
-}
-
-// ── Hand-kept prerequisites ─────────────────────────────────────────────────
-const prerequisites = [];
-for (const [course, rule] of Object.entries(PREREQS)) {
-  const keys = Object.keys(rule);
-  if (keys.some((k) => k !== 'hp' && k !== 'sp'))
-    fail(`${course}: unexpected prerequisite keys ${keys}`);
-  if (rule.hp && !rule.hp.length) fail(`${course}: empty hp list would not round-trip`);
-  if (rule.sp && !rule.sp.length) fail(`${course}: empty sp list would not round-trip`);
-  prerequisites.push({
-    course,
-    ...(rule.hp ? { allOf: rule.hp.map((c) => [c]) } : {}),
-    ...(rule.sp ? { recommended: [...rule.sp] } : {}),
-    raw: [
-      rule.hp && `required: ${rule.hp.join(', ')}`,
-      rule.sp && `recommended: ${rule.sp.join(', ')}`,
-    ]
-      .filter(Boolean)
-      .join('; '),
-    source: 'bracu-catalog',
-  });
-}
+// ── The catalogue and its rules: kept, not exported ─────────────────────────
+// Everything in these two files that did not come off a CONNECT snapshot is
+// written by hand there, and stays exactly as it is.
+const FEED_SOURCE = /^bracu-connect-/;
+const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(OUT, rel), 'utf8'));
+const coursesFile = readJson('courses.json');
+const prerequisitesFile = readJson('prerequisites.json');
+const kept = (file) => file.records.filter((r) => !FEED_SOURCE.test(r.source ?? file.source));
+const courses = kept(coursesFile);
+const prerequisites = kept(prerequisitesFile);
+const catalogued = new Set(courses.map((c) => c.code));
 
 // ── Sections from CONNECT feed snapshots ────────────────────────────────────
 const FEED_SOURCES = {
@@ -548,7 +462,7 @@ for (const { term, file } of feeds) {
         final: exam(sch.finalExamDate, sch.finalExamStartTime, sch.finalExamEndTime),
       };
       rec.classDates = { start: sch.classStartDate ?? null, end: sch.classEndDate ?? null };
-      if (!COURSE_DB[r.courseCode] && !feedCourses.has(r.courseCode))
+      if (!catalogued.has(r.courseCode) && !feedCourses.has(r.courseCode))
         feedCourses.set(r.courseCode, {
           code: r.courseCode,
           title: r.courseName,
@@ -601,33 +515,8 @@ const written = [
     records: SOURCES,
   }),
   write('profile.json', profile),
-  write('programs.json', {
-    source: 'bracu-departments',
-    note: 'Programs as the calculator offers them; termSystem says which seasons the presets use.',
-    records: programs,
-  }),
-  write('plans.json', {
-    source: 'bracu-departments',
-    note: "The calculator's semester presets. termLabel is the preset's own name; term counts presets in order.",
-    partial: true,
-    records: plans,
-  }),
-  write('departments.json', {
-    source: 'bracu-catalog',
-    note: 'Which department owns each course subject (a subject has exactly one owner).',
-    records: departments,
-    overrides: [{ course: 'CST333', department: 'BBA' }],
-  }),
-  write('courses.json', {
-    source: 'bracu-catalog',
-    note: 'The hand-kept catalogue in its written order (group is its section heading), then courses only the presets name, then courses only a CONNECT snapshot names (feed titles are upper case).',
-    records: courses,
-  }),
-  write('prerequisites.json', {
-    source: 'bracu-catalog',
-    note: 'The hand-kept rules (required and recommended) and, separately, the rules CONNECT publishes per course. Nothing is merged.',
-    records: prerequisites,
-  }),
+  write('courses.json', { ...coursesFile, records: courses }),
+  write('prerequisites.json', { ...prerequisitesFile, records: prerequisites }),
   write('minors.json', {
     source: 'bracu-math-minor',
     records: MINOR_PROGRAMS.map(({ source, core, electives, ...rest }) => ({
@@ -700,5 +589,5 @@ const written = [
   }),
 ];
 console.log(
-  `wrote ${[...written, ...sectionFiles].length} files to data/campuses/bracu: ${courses.length} courses, ${prerequisites.length} prerequisite rules, ${programs.length} programs, ${plans.length} plan items`,
+  `wrote ${[...written, ...sectionFiles].length} files to data/campuses/bracu: ${courses.length} courses and ${prerequisites.length} prerequisite rules (${feedCourses.size} and ${feedRules.size} of them from CONNECT snapshots)`,
 );
