@@ -94,12 +94,14 @@ test('Routine and Free Rooms are granted to NSU by this page, not by the shared 
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
 });
 
-test('the Bus page is NSU\'s on this site, and the other BRACU pages are not', () => {
+test('Bus and the Campus Map are NSU\'s on this site, and the other BRACU pages are not', () => {
   // Granted here, not in the registry: `bus` there would switch on the shell's
-  // /bus route, which shows BRAC University's timetable.
+  // /bus route, which shows BRAC University's timetable — and `campus` its
+  // /campus route, which shows BRAC University's tower.
   assert.equal(UNIVERSITIES.nsu.features.includes('bus'), false);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'bus'), true);
-  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), false);
+  assert.equal(UNIVERSITIES.nsu.features.includes('campus'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), true);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'lostFound'), false);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'tasks'), false);
   for (const feature of ['bus', 'campus', 'lostFound', 'tasks']) {
@@ -117,4 +119,11 @@ test('a multi-campus page link carries the campus, except for the default one', 
   assert.ok(route.includes("searchParams.get('campus') === 'nsu'"));
   // And the link on the page declares the path this builds from.
   assert.ok(INDEX_HTML.includes('data-feature="bus" data-campus-href="bus/"'));
+
+  // The Campus Map is the same arrangement.
+  assert.equal(campusPageHref('campus/', 'bracu', 'bracu'), 'campus/');
+  assert.equal(campusPageHref('campus/', 'nsu', 'bracu'), 'campus/?campus=nsu');
+  const map = readFileSync(new URL('../src/app/routes/CampusRoute.tsx', import.meta.url), 'utf8');
+  assert.ok(map.includes("searchParams.get('campus') === 'nsu'"));
+  assert.ok(INDEX_HTML.includes('data-feature="campus" data-campus-href="campus/"'));
 });
