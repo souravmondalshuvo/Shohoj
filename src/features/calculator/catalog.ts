@@ -2,9 +2,9 @@
 //
 // Phase 5C: the typed BRACU catalogue for the React/shell calculator path.
 //
-// The catalogue DATA is authored once, in the legacy vanilla-JS module
-// (js/core/catalog.js → ALL_COURSES), which the production build3.py bundle
-// ships. The legacy/island calculator reads it through window._shohoj_courseCatalog;
+// The catalogue DATA is written once, in data/campuses/bracu/, and generated
+// into the legacy vanilla-JS module (js/core/catalog.js → ALL_COURSES), which
+// the production build3.py bundle ships. The legacy/island calculator reads it through window._shohoj_courseCatalog;
 // the React Router shell has no legacy app, so it imports the same array here
 // through the js/core/catalog.d.ts boundary. There is exactly ONE catalogue —
 // this module adapts it into the feature's CourseSuggestion shape, validates it
