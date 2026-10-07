@@ -68,10 +68,12 @@ function legacyOnlyTab(profile, tabId) {
  *
  * Each entry names a page that takes the campus in its URL
  * (campusPageHref below) and has that campus's own data behind it. NSU's bus
- * page is src/app/routes/BusRouteNsu.tsx.
+ * page is src/app/routes/BusRouteNsu.tsx; its Campus Map is CampusRouteNsu.tsx.
  */
 const LEGACY_ONLY_PAGES = {
   bus: ['nsu'],
+  // src/app/routes/CampusRouteNsu.tsx — NSU's own buildings and timetable.
+  campus: ['nsu'],
 };
 
 /**
