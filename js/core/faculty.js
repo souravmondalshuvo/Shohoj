@@ -5,12 +5,34 @@
 // questions with whatever cache we have.
 
 import { getActiveCampus } from './activeCampus.js';
+import { DEFAULT_UNIVERSITY_ID, UNIVERSITIES } from './university.js';
 
-// Runtime cache of faculty profiles. Keyed by normalized initials.
+// Runtime cache of faculty profiles, one per campus. Keyed by campus id, then
+// by normalized initials.
 // Shape: { initials, name, email, dept, courses:[], ratings:{teaching,marking,behavior,difficulty,workload}, reviewCount }
-const _profiles = new Map();
+//
+// Per campus because initials are only a name inside one university: BRACU's
+// MAK and NSU's MAK are two lecturers, and a single cache would hand either
+// campus the other's name, email and course list — in the Reviews search, on a
+// faculty page, and in a course's "no reviews yet" list.
+const _profilesByCampus = new Map();
 
 const SEEDED_FACULTY_PROFILES = []; // injected by build3.py
+
+// The seed is BRACU's (data/faculty_profiles.jsonl), like the review seed in
+// reviews.js, so it is poured into BRACU's cache and no other.
+function _profilesFor(campus = getActiveCampus()) {
+  const id = campus?.id ?? DEFAULT_UNIVERSITY_ID;
+  let profiles = _profilesByCampus.get(id);
+  if (!profiles) {
+    profiles = new Map();
+    _profilesByCampus.set(id, profiles);
+    if (id === DEFAULT_UNIVERSITY_ID) {
+      SEEDED_FACULTY_PROFILES.forEach(profile => upsertFacultyProfile(profile, UNIVERSITIES[id]));
+    }
+  }
+  return profiles;
+}
 
 /**
  * A faculty member's initials as Shohoj stores and compares them, on `campus`
@@ -37,15 +59,15 @@ export function isValidInitials(raw, campus = getActiveCampus()) {
 }
 
 export function getFacultyProfile(initials, campus) {
-  return _profiles.get(normalizeInitials(initials, campus)) || null;
+  return _profilesFor(campus).get(normalizeInitials(initials, campus)) || null;
 }
 
 export function hasFacultyProfile(initials, campus) {
-  return _profiles.has(normalizeInitials(initials, campus));
+  return _profilesFor(campus).has(normalizeInitials(initials, campus));
 }
 
-export function listKnownFaculty() {
-  return Array.from(_profiles.values());
+export function listKnownFaculty(campus) {
+  return Array.from(_profilesFor(campus).values());
 }
 
 // Merge a profile into the cache. Called by reviews.js after fetching
@@ -54,20 +76,21 @@ export function upsertFacultyProfile(profile, campus) {
   if (!profile || typeof profile !== 'object') return;
   const initials = normalizeInitials(profile.initials, campus);
   if (!initials) return;
-  const existing = _profiles.get(initials) || { initials, courses: [], ratings: null, reviewCount: 0 };
-  _profiles.set(initials, { ...existing, ...profile, initials });
+  const profiles = _profilesFor(campus);
+  const existing = profiles.get(initials) || { initials, courses: [], ratings: null, reviewCount: 0 };
+  profiles.set(initials, { ...existing, ...profile, initials });
 }
 
 export function clearFacultyCache() {
-  _profiles.clear();
+  _profilesByCampus.clear();
 }
 
 // Suggest faculty as the user types. Matches prefix on initials or name.
-export function suggestFaculty(query, limit = 6) {
+export function suggestFaculty(query, limit = 6, campus) {
   const q = String(query || '').trim().toUpperCase();
   if (!q) return [];
   const out = [];
-  for (const p of _profiles.values()) {
+  for (const p of _profilesFor(campus).values()) {
     if (p.initials.startsWith(q) || (p.name && p.name.toUpperCase().includes(q))) {
       out.push(p);
       if (out.length >= limit) break;
@@ -75,5 +98,3 @@ export function suggestFaculty(query, limit = 6) {
   }
   return out;
 }
-
-SEEDED_FACULTY_PROFILES.forEach(profile => upsertFacultyProfile(profile));
