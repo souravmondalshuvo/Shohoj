@@ -2,10 +2,10 @@
 //
 // Typed boundary for the legacy department data (js/core/departments.js),
 // following the catalogue precedent (js/core/catalog.d.ts): the department
-// DATA stays authored in vanilla JS — it ships in the production build3.py
-// bundle and is the single source of truth — and the Vite/React shell imports
-// the same object through this declaration, so there is exactly ONE department
-// table, not a hand-maintained duplicate. Only the shapes the typed layer
+// DATA is written in data/campuses/bracu/ and generated into the module
+// departments.js expands, which ships in the production build3.py bundle, and
+// the Vite/React shell imports the same object through this declaration, so
+// there is exactly ONE department table, not a hand-maintained duplicate. Only the shapes the typed layer
 // consumes are declared (see src/features/calculator/departments.ts). This
 // file is a declaration only; it is intentionally outside the tsconfig
 // `include` and is pulled in as an import dependency.
@@ -20,7 +20,7 @@ export interface LegacyDepartmentPreset {
   }[];
 }
 
-/** One department as authored in departments.js. */
+/** One department as departments.js builds it. */
 export interface LegacyDepartment {
   readonly label: string;
   readonly totalCredits: number;
