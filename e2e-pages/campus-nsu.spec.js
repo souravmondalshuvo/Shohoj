@@ -112,6 +112,24 @@ test('room search jumps to the room; a venue outside the map is only listed', as
   await expect(page.locator('.campus-other')).toContainText('NTR201');
 });
 
+test('the campus model loads, and opening a floor keeps it', async ({ page }) => {
+  await openNsuCampus(page);
+  const canvas = page.getByTestId('campus-canvas');
+  await expect(canvas).toHaveAttribute('data-model-state', 'loaded', { timeout: 20_000 });
+  await page.getByTestId('campus-buildings').getByRole('button', { name: 'SAC', exact: true }).click();
+  await page.getByTestId('campus-floors').getByRole('button', { name: /^Floor 4/ }).click();
+  await expect(page.getByTestId('campus-room-list')).toContainText('SAC414');
+  await expect(canvas).toHaveAttribute('data-model-state', 'loaded');
+});
+
+test('without the model the drawn campus is still the map', async ({ page }) => {
+  await page.route('**/nsu-campus*.gz', (route) => route.fulfill({ status: 404, body: '' }));
+  await openNsuCampus(page);
+  await expect(page.getByTestId('campus-canvas')).toHaveAttribute('data-model-state', 'failed');
+  await page.getByTestId('campus-buildings').getByRole('button', { name: 'NAC', exact: true }).click();
+  await expect(page.getByTestId('campus-floors').getByRole('button')).toHaveCount(10);
+});
+
 test('outside the term, no room is shown as in class or free', async ({ page }) => {
   await openNsuCampus(page, '&room=NAC210', AFTER_TERM);
   await expect(page.getByTestId('campus-out-of-term')).toContainText('ended on 20 December 2026');
