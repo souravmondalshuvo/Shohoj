@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-/6cjGQ6PX3nQFRLEsJWTOeSlJFApSFU6BAJcGtLULx4=' 'sha256-ZEjaNwaFyZP2Vx3nSCpQXQFKw+SJ/S/oH9Hm3jKCGJY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-z96r2+W1N1R50iQy0f+yUVTKfqgimeNoQfYwIyZX8bU=' 'sha256-ZEjaNwaFyZP2Vx3nSCpQXQFKw+SJ/S/oH9Hm3jKCGJY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Admin · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23f5b942'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%232a1c00'>স</text></svg>">
@@ -10442,9 +10442,16 @@ function campusOfEmail(email) {
 //
 // Everything is derived from the signed-in email — the same fact
 // firestore.rules reads (`campusOfEmail(request.auth.token.email)`) — so the
-// client's answer cannot disagree with the server's. It is NOT derived from the
-// active campus (js/core/activeCampus.js): an admin viewing the site as NSU is
-// still, to the rules, whoever their email says they are.
+// client's answer cannot disagree with the server's. A student's is NOT derived
+// from the active campus (js/core/activeCampus.js), and neither is anything
+// this client writes: an admin viewing the site as NSU is still, to the rules,
+// whoever their email says they are.
+//
+// The one thing the active campus does decide is what an ADMIN is shown. The
+// rules let an admin read every campus, so nothing but this client narrows
+// their lists — and a page that says NSU while listing BRACU's papers and
+// reviews is showing the wrong university's, to the one reader who is there to
+// check what NSU's students see.
 //
 // WRITES. firestore.rules pins a present `university` to the writer's own
 // campus and reads a missing one as BRACU. Legacy used to send none, which was
@@ -10487,13 +10494,20 @@ function campusWriteField(email) {
  *           null to send the query without one
  *   keep    whether a returned document belongs in this user's view
  *
- * Admins moderate every campus and the rules let them read all of it, so they
- * get no filter and keep everything — as does anyone no campus claims, who can
- * only be an admin.
+ * `viewingAs` is the campus the page is showing (js/core/activeCampus.js) and
+ * counts for an admin only: they get the list a student of that campus would,
+ * sent the way that student's client sends it. A student's own address always
+ * decides theirs, whatever is passed here.
+ *
+ * An admin on a page that shows no campus — the admin dashboard, which
+ * moderates all of them — gets no filter and keeps everything, as does anyone
+ * no campus claims, who can only be an admin.
  */
-function campusReadPlan(email, isAdmin = false) {
-  const campus = campusOfEmail(email);
-  if (isAdmin || !campus) {
+function campusReadPlan(email, isAdmin = false, viewingAs = null) {
+  const campus = isAdmin
+    ? (UNIVERSITY_DIRECTORY.some(u => u.id === viewingAs) ? viewingAs : null)
+    : campusOfEmail(email);
+  if (!campus) {
     return { filter: null, keep: () => true };
   }
   const keep = data => (data?.university ?? PRE_TENANCY_CAMPUS) === campus;
@@ -10627,7 +10641,7 @@ async function listForMyCampus(col, constraints) {
 // server returned it, before rows were dropped: whether there is a next page,
 // and where it starts, are facts about the query, not about what was kept.
 async function pageForMyCampus(col, constraints) {
-  const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+  const plan = myCampusReadPlan();
   const scoped = plan.filter
     ? [where('university', '==', plan.filter), ...constraints]
     : constraints;
@@ -10637,6 +10651,18 @@ async function pageForMyCampus(col, constraints) {
     fetched: snap.docs.length,
     last: snap.docs[snap.docs.length - 1],
   };
+}
+
+// The read plan for whoever is signed in. The campus the page is showing comes
+// from the main bundle (js/core/activeCampus.js) and only an admin's plan
+// follows it; the admin dashboard does not load that module, so the moderation
+// lists there stay across every campus.
+function myCampusReadPlan() {
+  return campusReadPlan(
+    currentUser?.email,
+    _isAdminCached,
+    window._shohoj_activeCampusId?.() ?? null,
+  );
 }
 
 function clearCloudAppliedFlag() {
@@ -11796,7 +11822,7 @@ window._shohoj_fetchFacultyProfiles = async function(initialsArr) {
   if (!currentUser || !Array.isArray(initialsArr) || !initialsArr.length) return [];
   try {
     const normalized = [...new Set(initialsArr.map(i => String(i).toUpperCase().trim()).filter(Boolean))];
-    const plan = campusReadPlan(currentUser?.email, _isAdminCached);
+    const plan = myCampusReadPlan();
     const results = [];
     if (plan.filter) {
       // A campus that must filter cannot use the `in` list below: the rules
