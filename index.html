@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-z96r2+W1N1R50iQy0f+yUVTKfqgimeNoQfYwIyZX8bU=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-vmBFurUEySKf1Gyp2S2FSol+P7++E0Nj+jBKVbaVg5k='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-cbJzdf6+SWyxt/FaZLT0zVWulN10VNj5nFXEgZRzLqY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1125,6 +1125,11 @@ h1[data-reveal-hero].visible {
     .semester-block.lg-surface::after { border-radius: var(--radius); }
 
     .credits-static { display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--text); background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; width: 100%; height: 38px; min-width: 0; padding: 0 8px; text-align: center; user-select: none; }
+    /* A footer button for a feature the campus does not have (data-feature). */
+    .btn-import-pdf[hidden] { display: none; }
+    /* Credits the student types, on a campus with no catalogue to read them from. */
+    input.credits-typed { user-select: text; cursor: text; font-family: inherit; }
+    input.credits-typed:focus { outline: none; border-color: var(--green); }
     [data-theme="light"] .credits-static { background: rgba(13,41,20,0.07); border-color: rgba(46,204,113,0.25); color: #0d2914; }
     .grade-letter { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-align: center; min-width: 32px; }
 
@@ -10393,7 +10398,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
         <div class="footer-btn-group">
           <button class="btn-add-semester magnetic" id="addSemesterBtn">+ Add Semester</button>
           <button class="btn-running-sem magnetic" id="addRunningSemBtn">🎯 Running Semester</button>
-          <button class="btn-import-pdf magnetic" id="importPdfBtn">📄 Import Transcript</button>
+          <button class="btn-import-pdf magnetic" id="importPdfBtn" data-feature="transcript">📄 Import Transcript</button>
           <input type="file" id="transcriptFileInput" accept=".pdf" style="display:none">
           <button class="btn-export-pdf magnetic" id="exportPdfBtn">⬇ Export PDF</button>
           <button class="btn-clear-data magnetic" id="clearDataBtn">🗑 Clear Data</button>
@@ -11041,6 +11046,12 @@ const UNIVERSITY_DIRECTORY = [
     name: 'North South University',
     shortName: 'NSU',
     emailDomains: ['northsouth.edu'],
+  },
+  {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
   },
 ];
 
@@ -14869,6 +14880,12 @@ const UNIVERSITY_DIRECTORY = [
     shortName: 'NSU',
     emailDomains: ['northsouth.edu'],
   },
+  {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+  },
 ];
 
 // Which campus an email address belongs to, or null for a domain we do not
@@ -16316,10 +16333,72 @@ const NSU = {
         'reviews',
     ],
 };
+// ── DIU ─────────────────────────────────────────────────────────────────────
+// From DIU's Rules and Regulation page — the UGC uniform grading system.
+// Quarter points, and no C-, D+ or D-: a D is 2.0 and the lowest pass.
+const DIU_SCALE = {
+    points: {
+        'A+': 4.0,
+        A: 3.75,
+        'A-': 3.5,
+        'B+': 3.25,
+        B: 3.0,
+        'B-': 2.75,
+        'C+': 2.5,
+        C: 2.25,
+        D: 2.0,
+        F: 0.0,
+        I: null,
+    },
+    pointsToGrade: [
+        [4.0, 'A+'],
+        [3.75, 'A'],
+        [3.5, 'A-'],
+        [3.25, 'B+'],
+        [3.0, 'B'],
+        [2.75, 'B-'],
+        [2.5, 'C+'],
+        [2.25, 'C'],
+        [2.0, 'D'],
+        [0.0, 'F'],
+    ],
+    max: 4.0,
+    // Five marks to a letter: an A+ is 80 here, and 40 passes.
+    marks: [
+        { letter: 'A+', min: 80 },
+        { letter: 'A', min: 75 },
+        { letter: 'A-', min: 70 },
+        { letter: 'B+', min: 65 },
+        { letter: 'B', min: 60 },
+        { letter: 'B-', min: 55 },
+        { letter: 'C+', min: 50 },
+        { letter: 'C', min: 45 },
+        { letter: 'D', min: 40 },
+        { letter: 'F', min: 0 },
+    ],
+};
+const DIU = {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    // s.diu.edu.bd is students only; diu.edu.bd is students and staff alike.
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+    grades: DIU_SCALE,
+    // The last attempt counts, with no start-term cutoff.
+    retake: { kind: 'latest' },
+    // "Less than B" — strictly below 3.0, so a B is not repeatable.
+    repeat: { threshold: 3.0, inclusive: false },
+    // No maxRetakes and no creditLoad: DIU caps only failed courses, and
+    // publishes no per-semester maximum.
+    // The calculator and playground are granted by the legacy page itself
+    // (LEGACY_ONLY_TABS, campusFeatures.js): the shell's cannot take typed credits.
+    features: ['feedback', 'profile'],
+};
 /** Every registered campus, keyed by id. */
 const UNIVERSITIES = {
     bracu: BRACU,
     nsu: NSU,
+    diu: DIU,
 };
 /** The campus assumed when nothing else identifies one — all pre-tenancy data is BRACU's. */
 const DEFAULT_UNIVERSITY_ID = 'bracu';
@@ -18075,6 +18154,54 @@ const NSU_UNTITLED_CODES = ["AMCS504L","AMCS506","AMCS507","AMCS510","AMCS511","
 /** Courses whose prerequisite the flat list above cannot express. */
 const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","CSE299","CSE440","CSE445","CSE498","CSE499A","ECO436","EEE111","EEE111L","EEE241","EEE241L","EEE299","EEE311","EEE498","EEE499A","ENV455","ETE299","ETE498","ETE499A","MGT390","MGT489","MIS499","PHY108"];
 
+// ── js/core/catalogDiu.generated.js ─────────────────────────────
+// js/core/catalogDiu.generated.js
+//
+// GENERATED FILE — DO NOT EDIT BY HAND.
+// Regenerate with: npm run generate:legacy-catalog
+// Source of truth: data/campuses/diu/programs.json
+//
+// DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
+// 33 programs, and no courses: DIU publishes no catalogue, only each
+// department's offer for a term (docs/campuses/diu-research.md).
+
+/** program → { label, totalCredits, seasons? }. No seasons: DIU does not say which calendar it runs on. */
+const DIU_PROGRAM_ROWS = {
+  "AGS": { label: "Bachelor of Agricultural Science", totalCredits: 150 },
+  "ARCH": { label: "Bachelor of Architecture (B. Arch.)", totalCredits: 194 },
+  "BBA": { label: "Bachelor of Business Administration (BBA)", totalCredits: 130 },
+  "BBA-ACT": { label: "BBA in Accounting", totalCredits: 133 },
+  "BBA-FB": { label: "BBA in Finance & Banking", totalCredits: 133 },
+  "BBA-MGT": { label: "BBA in Management", totalCredits: 133 },
+  "BBA-MKT": { label: "BBA in Marketing", totalCredits: 133 },
+  "BPH": { label: "Bachelor of Public Health (BPH)", totalCredits: 142 },
+  "CE": { label: "B.Sc. in Civil Engineering (CE)", totalCredits: 147, seasons: ["Spring","Summer","Fall"] },
+  "CIS": { label: "B.Sc. in Computing and Information System (CIS)", totalCredits: 142 },
+  "CSE": { label: "B. Sc. in Computer Science and Engineering", totalCredits: 154.5, seasons: ["Spring","Summer","Fall"] },
+  "EEE": { label: "B.Sc. in Electrical and Electronic Engineering", totalCredits: 144, seasons: ["Spring","Summer","Fall"] },
+  "ENG": { label: "B.A. (Hons) in English", totalCredits: 130 },
+  "ENTR": { label: "Bachelor of Entrepreneurship (BE)", totalCredits: 130 },
+  "ESDM": { label: "B. Sc. in Environmental Science and Disaster Management(ESDM)", totalCredits: 146 },
+  "FSH": { label: "B. Sc. (Hons.) in Fisheries", totalCredits: 144 },
+  "GEB": { label: "B.Sc. (Hon’s) in Genetic Engineering and Biotechnology", totalCredits: 145 },
+  "ICE": { label: "B.Sc. in Information & Communication Engineering (ICE)", totalCredits: 145 },
+  "ITM": { label: "B.Sc. in Information Technology & Management (ITM)", totalCredits: 142 },
+  "JMC": { label: "BSS in Journalism, Media and Communication (JMC)", totalCredits: 142 },
+  "LLB": { label: "LL.B. (Hons.)", totalCredits: 144 },
+  "MCT": { label: "B. Sc. in Multimedia & Creative Technology (MCT)", totalCredits: 147 },
+  "NFE": { label: "Bachelor of Nutrition and Food Engineering (NFE)", totalCredits: 151 },
+  "PESS": { label: "B.Sc. (Hon's) in Physical Education and Sports Science (PESS)", totalCredits: 144 },
+  "PHARM": { label: "Bachelor of Pharmacy (B. Pharm)", totalCredits: 165 },
+  "RE": { label: "Bachelor of Real Estate", totalCredits: 130 },
+  "RME": { label: "B.Sc. in Robotics and Mechatronics Engineering", totalCredits: 154 },
+  "SWE": { label: "B. Sc. in Software Engineering (SWE)", totalCredits: 147 },
+  "SWE-CS": { label: "B. Sc. in Software Engineering (Major in Cyber Security)", totalCredits: 145 },
+  "SWE-DS": { label: "B.Sc. in Software Engineering ( Major in Data Science)", totalCredits: 147 },
+  "SWE-ROB": { label: "B. Sc. in Software Engineering (Major in Robotics)", totalCredits: 147 },
+  "TE": { label: "B.Sc. in Textile Engineering (TE)", totalCredits: 154 },
+  "THM": { label: "Bachelor of Tourism & Hospitality Management (BTHM)", totalCredits: 130 },
+};
+
 // ── js/core/activeCatalog.js ────────────────────────────────────
 // ── ACTIVE CATALOGUE (legacy bundle) ─────────────────────────────────────────
 //
@@ -18082,11 +18209,12 @@ const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","C
 // is on — the catalogue counterpart of activeCampus.js, which answers the same
 // question for grading rules.
 //
-// Both are generated from data/campuses/ (scripts/generate_legacy_catalog.mjs).
+// All are generated from data/campuses/ (scripts/generate_legacy_catalog.mjs).
 // BRACU's is expanded by catalog.js and departments.js, whose constants are
 // handed back as they are: the same objects, so nothing about BRACU changes by
 // reading them through here. NSU's is expanded into the same shapes on first
-// use.
+// use. DIU's is its programs and nothing else: DIU publishes no course
+// catalogue, so its students type their courses in.
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
 // a course, or null — because the rule is the campus's, not just its table,
@@ -18165,12 +18293,27 @@ function expandNsuCatalog() {
   };
 }
 
+let _diuCatalog = null;
+
+// Programs only: a total to count towards, and a calendar where DIU states one.
+function expandDiuCatalog() {
+  const programs = {};
+  for (const [code, p] of Object.entries(DIU_PROGRAM_ROWS)) {
+    programs[code] = { ...p, presets: [] };
+  }
+  return { ...EMPTY_CATALOG, departmentOverrides: {}, programs };
+}
+
 /** The catalogue of one campus, by id. Unknown or data-less campuses get an empty one. */
 function getCatalogFor(campusId) {
   if (campusId === 'bracu') return BRACU_CATALOG;
   if (campusId === 'nsu') {
     if (_nsuCatalog === null) _nsuCatalog = expandNsuCatalog();
     return _nsuCatalog;
+  }
+  if (campusId === 'diu') {
+    if (_diuCatalog === null) _diuCatalog = expandDiuCatalog();
+    return _diuCatalog;
   }
   return EMPTY_CATALOG;
 }
@@ -18326,10 +18469,26 @@ function campusAllowsTab(profile, tabId) {
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
+  if (Object.prototype.hasOwnProperty.call(LEGACY_ONLY_TABS, profile.id) && LEGACY_ONLY_TABS[profile.id].includes(tabId)) return true;
   // Routine and Free Rooms are both read off the section snapshot. Seats is
   // not: a snapshot has no seat counts to show.
   return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
+
+/**
+ * Tabs granted here by name, for the same reason as the snapshot tabs above.
+ *
+ * DIU publishes no course catalogue, so a DIU student types each course and
+ * its credits, and only this page's calculator has a credits field
+ * (campusTypesCredits, js/ui/render.js). The shell's calculator reads credits
+ * from BRAC University's catalogue and its degree tracker counts towards BRAC
+ * University's programs, so `calculator`, `playground` and `degree` in DIU's
+ * registry features would hand a DIU student another university's numbers at
+ * /app/. They move to the registry when the shell can serve DIU.
+ */
+const LEGACY_ONLY_TABS = {
+  diu: ['calculator', 'playground'],
+};
 
 /**
  * Standalone pages this site serves for a campus although the registry does
@@ -20454,6 +20613,11 @@ function onCourseBlur(e, semId, cIdx) {
     resolvedCredits = exactMatch.credits;
   } else if (!val) {
     resolvedCredits = 0;
+  } else if (getActiveCatalog().allCourses.length === 0) {
+    // No catalogue to read the credits from (DIU): the student types them, so
+    // what they typed stays. A course just named starts at three, the usual
+    // weight, in a field they can see and change.
+    resolvedCredits = prevName ? course.credits : 3;
   } else {
     resolvedCredits = 0;
   }
@@ -21395,8 +21559,9 @@ function renderMinorTracker() {
   if (!box || !content) return;
 
   // Nothing to measure yet: the panel appears with the calculator's first
-  // semester, the same moment the rest of the results do.
-  if (!state.semesters.length) {
+  // semester, the same moment the rest of the results do. And nothing to
+  // measure against anywhere but BRAC University: these are its minors.
+  if (!state.semesters.length || getActiveCampus().id !== DEFAULT_UNIVERSITY_ID) {
     box.style.display = 'none';
     return;
   }
@@ -35966,6 +36131,7 @@ registerAction('render:clearBorder',     el => { el.style.borderColor = ''; });
 registerAction('render:courseInput',     (el, ev) => window.onCourseInput?.(ev, Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:pfChange',        el => window.onPFChange?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value));
 registerAction('render:autoDetectGrade', el => window.autoDetectGrade?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value, el));
+registerAction('render:creditsChange',   (el, ev) => { if (ev.type === 'change') setTypedCredits(Number(el.dataset.semId), Number(el.dataset.idx), el.value); });
 registerAction('render:rateCourse',      el => openRateForCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:removeCourse',    el => removeCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:addCourse',       el => addCourse(Number(el.dataset.semId)));
@@ -36536,6 +36702,7 @@ function renderSemesters() {
   // fight. Inert until the island opts in by setting this flag.
   if (typeof window !== 'undefined' && window.__SHOHOJ_REACT_SEMESTERS__) return;
   const container = document.getElementById('semestersContainer');
+  const typedCredits = campusTypesCredits();
   const hasSummary = state.semesters.some(s => s.summary);
   const hasNonSummary = state.semesters.some(s => !s.summary);
 
@@ -36644,7 +36811,11 @@ function renderSemesters() {
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
-            <span class="credits-static">${c.credits}</span>${
+            ${typedCredits && c.name.trim()
+              ? `<input type="text" inputmode="decimal" class="credits-static credits-typed" aria-label="Credits"
+                  value="${c.credits}" autocomplete="off"
+                  data-action="render:creditsChange" data-sem-id="${sem.id}" data-idx="${i}" />`
+              : `<span class="credits-static">${c.credits}</span>`}${
               c.name.trim() && c.credits > 0 && ![0.5,1,1.5,2,2.5,3,3.5,4,4.5,6,8,10,12].includes(c.credits)
                 ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
                 : ''
@@ -36903,6 +37074,38 @@ function removeSemester(id) {
   state.semesters = state.semesters.filter(s => s.id !== id);
   renderSemesters();
   window._shohoj_recalc();
+}
+
+// Credits come from the catalogue wherever there is one. A campus that
+// publishes none (DIU) has no other source than the student, so there the
+// credits cell is a field.
+function campusTypesCredits() {
+  return getActiveCatalog().allCourses.length === 0;
+}
+
+/** Credits a student may type: zero to twelve, halves and quarters included. */
+function parseTypedCredits(raw) {
+  const text = String(raw).trim();
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(text)) return null;
+  const credits = Number(text);
+  return credits <= 12 ? credits : null;
+}
+
+function setTypedCredits(semId, cIdx, raw) {
+  const course = courseAt(semId, cIdx);
+  const credits = parseTypedCredits(raw);
+  if (course && credits !== null && campusTypesCredits()) {
+    course.credits = credits;
+    // A course with no credits is pass/fail and one with credits is graded,
+    // so a grade of the other kind does not carry over. An F is both.
+    const passFail = course.grade === 'P' || course.grade === 'F' || course.grade === '';
+    if (credits === 0 ? !passFail : course.grade === 'P') {
+      course.grade = '';
+      course.gradePoint = '';
+    }
+  }
+  // Anything unreadable is put back as it was.
+  window._shohoj_renderAndRecalc();
 }
 
 function addCourse(semId) {
@@ -38411,6 +38614,9 @@ const ghCourseCount = parsed => parsed.semesters.reduce((n, semester) => n + sem
  * paste box on a campus that pastes, the PDF picker everywhere else.
  */
 function openTranscriptImport() {
+  // No reader for this campus's transcript: the buttons that lead here are
+  // hidden, and one drawn before the campus was known does nothing.
+  if (!hasFeature(getActiveCampus(), 'transcript')) return;
   if (importsByGradeHistoryPaste()) { openGradeHistoryImport(); return; }
   document.getElementById('transcriptFileInput')?.click();
 }

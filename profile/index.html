@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-z96r2+W1N1R50iQy0f+yUVTKfqgimeNoQfYwIyZX8bU=' 'sha256-fGGzTR9LaYOepYC8cXtWwXIKBlcG+DwjiJbrQ2J5iac='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-FG9Z7gISCoVDN+4mvp0V4E60mrDOkZHILO6AyIMMvn8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -1107,6 +1107,11 @@ h1[data-reveal-hero].visible {
     .semester-block.lg-surface::after { border-radius: var(--radius); }
 
     .credits-static { display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--text); background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; width: 100%; height: 38px; min-width: 0; padding: 0 8px; text-align: center; user-select: none; }
+    /* A footer button for a feature the campus does not have (data-feature). */
+    .btn-import-pdf[hidden] { display: none; }
+    /* Credits the student types, on a campus with no catalogue to read them from. */
+    input.credits-typed { user-select: text; cursor: text; font-family: inherit; }
+    input.credits-typed:focus { outline: none; border-color: var(--green); }
     [data-theme="light"] .credits-static { background: rgba(13,41,20,0.07); border-color: rgba(46,204,113,0.25); color: #0d2914; }
     .grade-letter { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; text-align: center; min-width: 32px; }
 
@@ -10415,6 +10420,12 @@ const UNIVERSITY_DIRECTORY = [
     shortName: 'NSU',
     emailDomains: ['northsouth.edu'],
   },
+  {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+  },
 ];
 
 // Which campus an email address belongs to, or null for a domain we do not
@@ -13512,10 +13523,72 @@ const NSU = {
         'reviews',
     ],
 };
+// ── DIU ─────────────────────────────────────────────────────────────────────
+// From DIU's Rules and Regulation page — the UGC uniform grading system.
+// Quarter points, and no C-, D+ or D-: a D is 2.0 and the lowest pass.
+const DIU_SCALE = {
+    points: {
+        'A+': 4.0,
+        A: 3.75,
+        'A-': 3.5,
+        'B+': 3.25,
+        B: 3.0,
+        'B-': 2.75,
+        'C+': 2.5,
+        C: 2.25,
+        D: 2.0,
+        F: 0.0,
+        I: null,
+    },
+    pointsToGrade: [
+        [4.0, 'A+'],
+        [3.75, 'A'],
+        [3.5, 'A-'],
+        [3.25, 'B+'],
+        [3.0, 'B'],
+        [2.75, 'B-'],
+        [2.5, 'C+'],
+        [2.25, 'C'],
+        [2.0, 'D'],
+        [0.0, 'F'],
+    ],
+    max: 4.0,
+    // Five marks to a letter: an A+ is 80 here, and 40 passes.
+    marks: [
+        { letter: 'A+', min: 80 },
+        { letter: 'A', min: 75 },
+        { letter: 'A-', min: 70 },
+        { letter: 'B+', min: 65 },
+        { letter: 'B', min: 60 },
+        { letter: 'B-', min: 55 },
+        { letter: 'C+', min: 50 },
+        { letter: 'C', min: 45 },
+        { letter: 'D', min: 40 },
+        { letter: 'F', min: 0 },
+    ],
+};
+const DIU = {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    // s.diu.edu.bd is students only; diu.edu.bd is students and staff alike.
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+    grades: DIU_SCALE,
+    // The last attempt counts, with no start-term cutoff.
+    retake: { kind: 'latest' },
+    // "Less than B" — strictly below 3.0, so a B is not repeatable.
+    repeat: { threshold: 3.0, inclusive: false },
+    // No maxRetakes and no creditLoad: DIU caps only failed courses, and
+    // publishes no per-semester maximum.
+    // The calculator and playground are granted by the legacy page itself
+    // (LEGACY_ONLY_TABS, campusFeatures.js): the shell's cannot take typed credits.
+    features: ['feedback', 'profile'],
+};
 /** Every registered campus, keyed by id. */
 const UNIVERSITIES = {
     bracu: BRACU,
     nsu: NSU,
+    diu: DIU,
 };
 /** The campus assumed when nothing else identifies one — all pre-tenancy data is BRACU's. */
 const DEFAULT_UNIVERSITY_ID = 'bracu';

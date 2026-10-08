@@ -1,0 +1,1 @@
+import{v as e}from"./result-RBj0j773.js";function t(t){return e(t.currentUser?.email??``)?.id??``}export{t};
