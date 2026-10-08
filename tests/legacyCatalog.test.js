@@ -8,7 +8,7 @@
  *
  * Every generated module must be the current output of the mapping, and what
  * the app reads — catalog.js and departments.js for BRACU, activeCatalog.js
- * for NSU — must be that output again once expanded.
+ * for NSU and DIU — must be that output again once expanded.
  *
  * BRACU's catalogue was hand-written in catalog.js and departments.js until
  * #869. The mapping was proven against those literals before they were
@@ -29,9 +29,11 @@ const { BRACU_LITERAL_SOURCES, buildLegacyCatalog } = await import('../scripts/l
 const {
   BRACU_CATALOG_OUT_PATH,
   BRACU_DEPARTMENTS_OUT_PATH,
+  DIU_OUT_PATH,
   OUT_PATH,
   renderBracuCatalog,
   renderBracuDepartments,
+  renderDiuCatalog,
   renderNsuCatalog,
 } = await import('../scripts/generate_legacy_catalog.mjs');
 const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS, getCourseDept } = await import('../js/core/catalog.js');
@@ -188,8 +190,28 @@ assert.equal(getActiveCatalog(), getCatalogFor('bracu'));
 setActiveCampusForEmail(null);
 assert.equal(getActiveCatalog(), getCatalogFor('bracu'));
 
+// DIU's module is current, and expands to programs alone: DIU publishes no
+// course catalogue, so there is no course, prerequisite or department to offer
+// — and none of another university's in their place.
+assert.equal(
+  fs.readFileSync(DIU_OUT_PATH, 'utf8'),
+  renderDiuCatalog(),
+  'js/core/catalogDiu.generated.js is out of date — run: npm run generate:legacy-catalog',
+);
+const diu = getCatalogFor('diu');
+assert.deepEqual(plain(diu), plain(buildLegacyCatalog(campus('diu'))), 'the expanded DIU catalogue equals the mapping');
+assert.deepEqual([diu.allCourses, Object.keys(diu.courses), Object.keys(diu.prerequisites), diu.departmentOrder], [[], [], [], []]);
+assert.equal(Object.keys(diu.programs).length, 33);
+assert.equal(diu.programs.CSE.totalCredits, 154.5, 'half credits survive');
+assert.deepEqual(diu.programs.CSE.seasons, ['Spring', 'Summer', 'Fall'], "trimester by CSE's own course offer");
+assert.equal(diu.programs.BBA.seasons, undefined, 'no calendar is claimed where DIU states none');
+assert.equal(diu.departmentOf('CSE228'), null);
+setActiveCampusForEmail('someone@s.diu.edu.bd');
+assert.equal(getActiveCatalog(), diu);
+setActiveCampusForEmail(null);
+
 // A campus with no catalogue gets none — never another university's.
-const none = getCatalogFor('diu');
+const none = getCatalogFor('aiub');
 assert.deepEqual([none.allCourses, Object.keys(none.courses), Object.keys(none.programs)], [[], [], []]);
 
-console.log('legacyCatalog: the mapping reproduces BRACU, the NSU module is current, the accessor follows the campus');
+console.log('legacyCatalog: the mapping reproduces BRACU, the NSU and DIU modules are current, the accessor follows the campus');
