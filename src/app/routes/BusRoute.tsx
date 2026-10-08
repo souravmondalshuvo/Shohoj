@@ -25,6 +25,7 @@ import {
   findBusRoute,
   type BusRouteVariant,
 } from '../../core/busRoutes';
+import { DiuBus } from './BusRouteDiu';
 import { NsuBus } from './BusRouteNsu';
 
 function fareLine(route: BusRouteVariant): string {
@@ -36,13 +37,16 @@ function fareLine(route: BusRouteVariant): string {
  *
  * The standalone page (bus/main.tsx) has no session — it is a static page with
  * no sign-in — so it cannot know the reader's campus. The legacy site knows,
- * and links an NSU student to /bus/?campus=nsu. Anything else, including no
- * parameter at all, is BRAC University's timetable, as this page always was.
+ * and links an NSU student to /bus/?campus=nsu and a DIU student to
+ * /bus/?campus=diu. Anything else, including no parameter at all, is BRAC
+ * University's timetable, as this page always was.
  * A campus id is not personal data, and both timetables are public.
  */
 export function Component() {
   const [searchParams] = useSearchParams();
-  return searchParams.get('campus') === 'nsu' ? <NsuBus /> : <BracuBus />;
+  if (searchParams.get('campus') === 'nsu') return <NsuBus />;
+  if (searchParams.get('campus') === 'diu') return <DiuBus />;
+  return <BracuBus />;
 }
 
 function BracuBus() {
