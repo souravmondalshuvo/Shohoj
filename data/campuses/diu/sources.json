@@ -11,7 +11,7 @@
     {"id": "diu-eee-offer-263", "status": "official", "title": "EEE Course Offer, Fall 2026 (level-terms 1-1 to 4-3, batches 263 to 231)", "url": "https://webbackend.daffodilvarsity.edu.bd/noticeFile/course-offer-fall2026-b60f2d3289.pdf", "retrieved": "2026-09-28"},
     {"id": "diu-ce-offer-263", "status": "official", "title": "Civil Engineering Course Offer, Fall 2026 (L4-T3)", "url": "https://webbackend.daffodilvarsity.edu.bd/noticeFile/course-offer-of-fall-2026-ddf0107cf0.pdf", "retrieved": "2026-09-28"},
     {"id": "diu-cse-routine-263", "status": "official", "title": "CSE Class Routine V3.1, Fall 2026 (effective 26 Sep 2026)", "url": "https://webbackend.daffodilvarsity.edu.bd/noticeFile/cse-class-routine-v31-f4f0af7da9.pdf", "retrieved": "2026-09-28"},
-    {"id": "diu-transport", "status": "official", "title": "Transport routes and schedule feed", "url": "https://webbackend.daffodilvarsity.edu.bd/api/v2/public/transport", "retrieved": "2026-09-28"},
+    {"id": "diu-transport", "status": "official", "title": "Transport routes and schedule feed", "url": "https://webbackend.daffodilvarsity.edu.bd/api/v2/public/transport", "retrieved": "2026-10-09"},
     {"id": "diu-it-section", "status": "official", "title": "DIU IT Section: email accounts on Google Workspace for Education", "url": "https://it.daffodilvarsity.edu.bd/", "retrieved": "2026-09-28"},
     {"id": "diu-student-projects-email", "status": "third-party", "title": "Sign-in checks in DIU students' own projects: DIU Computer Programming Club server (accounts/helpers.py), OurDIU, DIU Lens and 0xdevabir/contest all accept diu.edu.bd and s.diu.edu.bd", "url": "https://github.com/kazikhalednur/cpc-server/blob/main/accounts/helpers.py", "retrieved": "2026-10-09"}
   ]
