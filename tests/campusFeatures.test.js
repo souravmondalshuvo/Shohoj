@@ -81,6 +81,21 @@ test('every feature the page names is one the registry knows', () => {
   }
 });
 
+test("DIU's calculator and playground are granted by this page, not by the shared registry", () => {
+  // DIU has no course catalogue, so its students type credits, and only this
+  // page's calculator has a field for them. In the registry these features
+  // would switch on the shell's calculator and degree tracker, which read
+  // BRAC University's catalogue and programs.
+  for (const feature of ['calculator', 'playground', 'degree']) {
+    assert.equal(UNIVERSITIES.diu.features.includes(feature), false, `${feature} is not in DIU's registry features`);
+  }
+  assert.deepEqual(campusTabIds(UNIVERSITIES.diu), ['calculator', 'playground']);
+  // By name, for DIU alone: nothing else comes with them.
+  assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'planner'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.diu, 'toString'), false);
+  assert.equal(campusAllowsTab({ ...UNIVERSITIES.diu, id: 'elsewhere' }, 'calculator'), false);
+});
+
 test('Routine and Free Rooms are granted to NSU by this page, not by the shared registry', () => {
   // The registry's features also switch the React shell's routes on, and the
   // shell's Routine route still reads BRACU's feed. Until it does not, the
