@@ -14,8 +14,15 @@
  * Footprints, floor counts and the site are measured (src/core/campusNsu.ts).
  * Room positions are a number-order diagram, not a plan, and the page says so.
  *
- * Drawn entirely in code — no model file. Nothing animates: a change of focus
- * is a cut, and a frame is drawn only when something changed. The canvas is
+ * The buildings are first drawn in code, as plain storeys, so the page works
+ * at once and without WebGL extras. When the route passes `modelUrl`, the
+ * campus model (scripts/nsu_campus_model.py — brick bays, arched top floors,
+ * the portico, the auditorium's roof) streams in and takes their place; the
+ * drawn storeys stay on as the click targets and as the faded outline of the
+ * buildings that are not in focus. Any failure keeps the drawn campus.
+ *
+ * Nothing animates: a change of focus is a cut, and a frame is drawn only when
+ * something changed. The canvas is
  * presentation-only; the route mirrors every interaction in the DOM.
  */
 
@@ -28,8 +35,11 @@ import {
   DirectionalLight,
   Group,
   HemisphereLight,
+  type Material,
   Mesh,
   MeshStandardMaterial,
+  NeutralToneMapping,
+  type Object3D,
   PerspectiveCamera,
   Raycaster,
   Scene,
@@ -41,6 +51,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
   NSU_COURTYARD,
@@ -52,6 +63,7 @@ import {
   type NsuCampusModel,
   type NsuRect,
 } from '../../core/campusNsu.ts';
+import { canDecompressGzip, fetchExteriorGlb, type ExteriorModelState } from './campusModel.ts';
 import type { RoomStatus, RoomTooltip } from './campusScene.ts';
 
 export interface NsuSceneColors {
@@ -69,6 +81,10 @@ export interface NsuSceneOptions {
   onRoomClick?: (code: string) => void;
   /** Describe a room for its hover tooltip, or null to suppress it. */
   describeRoom?: (code: string) => RoomTooltip | null;
+  /** URL of the gzipped campus model. Without it the drawn campus is the map. */
+  modelUrl?: string;
+  /** Model lifecycle, for the route (tests, diagnostics). */
+  onModelState?: (state: ExteriorModelState) => void;
 }
 
 export interface NsuSceneHandle {
@@ -128,6 +144,8 @@ interface StoreyEntry {
   mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
   /** The storey's window band — dropped while the building is faded back. */
   band: Mesh;
+  /** False while the storey is lifted away above an open floor. */
+  pickable: boolean;
 }
 
 interface RoomEntry {
@@ -153,14 +171,16 @@ export function createNsuCampusScene(
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = SRGBColorSpace;
+  // Keeps the model's own colours; ACES would shift its brick toward grey.
+  renderer.toneMapping = NeutralToneMapping;
   renderer.domElement.setAttribute('aria-hidden', 'true');
   container.appendChild(renderer.domElement);
 
   const colors = options.colors;
   const scene = new Scene();
-  scene.add(new AmbientLight(0xffffff, 0.75));
-  scene.add(new HemisphereLight(new Color('#ffffff'), new Color('#c9ccc6'), 0.9));
-  const sun = new DirectionalLight(0xffffff, 1.5);
+  scene.add(new AmbientLight(0xffffff, 0.35));
+  scene.add(new HemisphereLight(new Color('#ffffff'), new Color('#b9b3a4'), 0.55));
+  const sun = new DirectionalLight(0xffffff, 2.1);
   sun.position.set(-90, 160, 110);
   scene.add(sun);
 
@@ -190,9 +210,12 @@ export function createNsuCampusScene(
   }
 
   // --- Site ----------------------------------------------------------------
-  slab(NSU_SITE, -0.35, 0.5, flat('#dcdad0'));
-  slab(NSU_COURTYARD, -0.05, 0.12, flat('#b9b3a4'));
-  slab(NSU_PLAYGROUND, -0.05, 0.12, flat('#6f9d62'));
+  // Replaced by the model's own grounds once it loads.
+  const drawnSite = [
+    slab(NSU_SITE, -0.35, 0.5, flat('#dcdad0')),
+    slab(NSU_COURTYARD, -0.05, 0.12, flat('#b9b3a4')),
+    slab(NSU_PLAYGROUND, -0.05, 0.12, flat('#6f9d62')),
+  ];
 
   // --- Buildings -----------------------------------------------------------
   const storeyGroup = new Group();
@@ -231,7 +254,7 @@ export function createNsuCampusScene(
       const band = new Mesh(bandGeometry, bandMaterial);
       mesh.add(band);
       storeyGroup.add(mesh);
-      storeys.push({ building: building.id, floor, mesh, band });
+      storeys.push({ building: building.id, floor, mesh, band, pickable: true });
     }
     const top = building.levels * H;
     const roofMeshes: Mesh[] = [];
@@ -276,6 +299,87 @@ export function createNsuCampusScene(
     nameLabel.renderOrder = 4;
     scene.add(nameLabel);
     nameLabels.set(building.id, nameLabel);
+  }
+
+  // --- Campus model --------------------------------------------------------
+  // The model is exported with one node per building (NSU_NAC), per storey
+  // (NSU_NAC_L3) and per roof (NSU_NAC_Roof), which is what lets a floor be
+  // opened: the storeys above it are simply switched off.
+  interface ModelBuilding {
+    id: NsuBuildingId;
+    node: Object3D;
+    roof: Object3D | null;
+    extras: Object3D[];
+    levels: Map<number, Object3D>;
+  }
+  let campusModel: { root: Object3D; buildings: ModelBuilding[] } | null = null;
+  const modelAbort = new AbortController();
+
+  function disposeModel(root: Object3D): void {
+    root.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      object.geometry.dispose();
+      const materials: Material[] = Array.isArray(object.material)
+        ? object.material
+        : [object.material];
+      for (const material of materials) material.dispose();
+    });
+  }
+
+  function adoptModel(root: Object3D): boolean {
+    const buildings: ModelBuilding[] = [];
+    for (const { building } of model.buildings) {
+      const node = root.getObjectByName(`NSU_${building.id}`);
+      // A model without one of the buildings is not this campus: keep the
+      // drawn one rather than show a campus with a hole in it.
+      if (!node) return false;
+      const levels = new Map<number, Object3D>();
+      for (let floor = 1; floor <= building.levels; floor += 1) {
+        const level = root.getObjectByName(`NSU_${building.id}_L${floor}`);
+        if (!level) return false;
+        levels.set(floor, level);
+      }
+      buildings.push({
+        id: building.id,
+        node,
+        roof: root.getObjectByName(`NSU_${building.id}_Roof`) ?? null,
+        extras: node.children.filter((child) => !child.name.startsWith('NSU_')),
+        levels,
+      });
+    }
+    scene.add(root);
+    for (const mesh of drawnSite) mesh.visible = false;
+    campusModel = { root, buildings };
+    applyFocus(false);
+    return true;
+  }
+
+  function loadModel(url: string): void {
+    const report = (state: ExteriorModelState) => options.onModelState?.(state);
+    if (!canDecompressGzip()) {
+      report('unavailable');
+      return;
+    }
+    report('loading');
+    fetchExteriorGlb(url, modelAbort.signal)
+      .then((glb) => new GLTFLoader().parseAsync(glb, ''))
+      .then((gltf) => {
+        if (disposed) {
+          disposeModel(gltf.scene);
+          return;
+        }
+        if (adoptModel(gltf.scene)) {
+          report('loaded');
+        } else {
+          disposeModel(gltf.scene);
+          report('failed');
+        }
+      })
+      .catch((error: unknown) => {
+        if (disposed) return;
+        console.warn('Campus map: campus model unavailable; keeping the drawn campus.', error);
+        report('failed');
+      });
   }
 
   // --- Focused floor: plate + rooms ---------------------------------------
@@ -371,14 +475,17 @@ export function createNsuCampusScene(
     controls.update();
   }
 
-  function applyFocus(): void {
+  function applyFocus(reframe = true): void {
     const focused = model.buildings.find((b) => b.building.id === focusBuilding) ?? null;
     for (const storey of storeys) {
       const own = storey.building === focusBuilding;
       // Above an open floor the building is lifted away entirely.
       const hidden = own && focusFloor !== null && storey.floor >= focusFloor;
       const faded = focusBuilding !== null && !own;
-      storey.mesh.visible = !hidden;
+      storey.pickable = !hidden;
+      // With the model in, a drawn storey shows only as the faded outline of
+      // a building that is out of focus; the model is the building itself.
+      storey.mesh.visible = campusModel ? faded : !hidden;
       // Ten translucent storeys already read as a ghost of the building; ten
       // more layers of glass on top of them turn it to smoke.
       storey.band.visible = !faded;
@@ -391,8 +498,23 @@ export function createNsuCampusScene(
       const own = id === focusBuilding;
       const faded = focusBuilding !== null && !own;
       for (const mesh of meshes) {
-        mesh.visible = !(own && focusFloor !== null);
+        mesh.visible = !campusModel && !(own && focusFloor !== null);
         setFaded(mesh.material as MeshStandardMaterial, faded);
+      }
+    }
+    if (campusModel) {
+      for (const part of campusModel.buildings) {
+        const own = part.id === focusBuilding;
+        const open = own && focusFloor !== null;
+        const shown = focusBuilding === null || own;
+        part.node.visible = shown;
+        if (part.roof) part.roof.visible = shown && !open;
+        // Whatever spans the building's height — the portico, the library's
+        // arched crown, the auditorium's vault — goes when a floor is opened.
+        for (const extra of part.extras) extra.visible = !open;
+        for (const [level, node] of part.levels) {
+          node.visible = !(open && focusFloor !== null && level > focusFloor);
+        }
       }
     }
 
@@ -403,11 +525,13 @@ export function createNsuCampusScene(
       plate.scale.set(c.width, 1, c.depth);
       plate.position.set(c.x, y + PLATE_HEIGHT / 2, c.z);
       buildRooms();
-      frame(new Vector3(c.x, y, c.z), Math.max(c.width, c.depth) * 1.05 + 30);
+      if (reframe) frame(new Vector3(c.x, y, c.z), Math.max(c.width, c.depth) * 1.05 + 30);
     } else {
       plate.visible = false;
       clearRooms();
-      if (focused) {
+      if (!reframe) {
+        // The view is the reader's; a model arriving must not move it.
+      } else if (focused) {
         const c = centre(focused.building.rect);
         const height = focused.building.levels * H;
         frame(new Vector3(c.x, height / 2, c.z), Math.max(c.width, c.depth, height) * 1.25 + 40);
@@ -483,6 +607,36 @@ export function createNsuCampusScene(
     return typeof code === 'string' ? code : null;
   }
 
+  /**
+   * The storey under the pointer (aim() first). With the model in, the model's
+   * own storeys answer first: they are what is on screen, and they reach past
+   * the drawn boxes in places — the Administration Building's link wing, for
+   * one. The boxes still answer for a building shown only as an outline.
+   */
+  function storeyAt(): { building: NsuBuildingId; floor: number } | null {
+    if (campusModel) {
+      const levels: Object3D[] = [];
+      for (const part of campusModel.buildings) {
+        if (!part.node.visible) continue;
+        for (const node of part.levels.values()) if (node.visible) levels.push(node);
+      }
+      for (let node = raycaster.intersectObjects(levels, true)[0]?.object ?? null; node; ) {
+        const match = /^NSU_([A-Z]{3})_L(\d+)$/.exec(node.name);
+        if (match) return { building: match[1] as NsuBuildingId, floor: Number(match[2]) };
+        node = node.parent;
+      }
+    }
+    const hit = raycaster.intersectObjects(
+      storeys.filter((storey) => storey.pickable).map((storey) => storey.mesh),
+      false,
+    )[0];
+    const building: unknown = hit?.object.userData['building'];
+    const floor: unknown = hit?.object.userData['floor'];
+    return typeof building === 'string' && typeof floor === 'number'
+      ? { building: building as NsuBuildingId, floor }
+      : null;
+  }
+
   let downX = 0;
   let downY = 0;
   const onPointerDown = (event: PointerEvent): void => {
@@ -497,15 +651,8 @@ export function createNsuCampusScene(
       options.onRoomClick?.(code);
       return;
     }
-    const hit = raycaster.intersectObjects(
-      storeys.filter((storey) => storey.mesh.visible).map((storey) => storey.mesh),
-      false,
-    )[0];
-    const building: unknown = hit?.object.userData['building'];
-    const floor: unknown = hit?.object.userData['floor'];
-    if (typeof building === 'string' && typeof floor === 'number') {
-      options.onFloorClick?.(building as NsuBuildingId, floor);
-    }
+    const picked = storeyAt();
+    if (picked) options.onFloorClick?.(picked.building, picked.floor);
   };
   const onPointerMove = (event: PointerEvent): void => {
     const code = event.pointerType === 'mouse' ? roomAt(event) : null;
@@ -530,6 +677,7 @@ export function createNsuCampusScene(
   canvas.addEventListener('pointerleave', hideTooltip);
 
   applyFocus();
+  if (options.modelUrl) loadModel(options.modelUrl);
 
   return {
     setFocus(building, floor) {
@@ -551,6 +699,8 @@ export function createNsuCampusScene(
     },
     dispose() {
       disposed = true;
+      modelAbort.abort();
+      if (campusModel) disposeModel(campusModel.root);
       if (frameRequest !== 0) cancelAnimationFrame(frameRequest);
       resizeObserver?.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);
