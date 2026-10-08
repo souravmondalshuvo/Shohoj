@@ -138,5 +138,49 @@ test('commas/semicolons in text are escaped per RFC 5545', () => {
     assert(ics.includes('LOCATION:Room 3\\, Block C'), 'comma not escaped:\n' + ics);
 });
 
+console.log('\na term calendar:');
+// NSU's Fall 2026: holidays inside the term, and ST ending five days before MW.
+const NSU_TERM = {
+    term: '263', classStartDate: '2026-09-20', classEndDate: '2026-12-20',
+    noClassDays: [
+        { date: '2026-10-19', event: 'No Classes' },
+        { date: '2026-10-21', event: 'Holiday- Durga Puja' },
+        { date: '2026-12-16', event: 'Holiday- Victory Day' },
+    ],
+    lastClassDays: [
+        { date: '2026-12-15', days: ['SUNDAY', 'TUESDAY'] },
+        { date: '2026-12-20', days: ['MONDAY', 'WEDNESDAY'] },
+    ],
+};
+const nsuSection = (day) => parseFeed([
+    sec({
+        sectionId: 9, courseCode: 'ACT201', courseName: 'X', sectionName: '1',
+        sectionSchedule: {
+            classSchedules: [{ day, startTime: '09:40', endTime: '11:10' }],
+            classStartDate: '2026-09-20', classEndDate: '2026-12-20',
+        },
+    }),
+]).sections;
+test('a weekday stops on its own pattern’s last class day', () => {
+    // The term ends on Sunday 20 Dec, but Sunday classes ended with ST on the 15th.
+    const sunday = buildRoutineICS(nsuSection('SUNDAY'), { now: NOW, term: NSU_TERM });
+    assert(sunday.includes('UNTIL=20261215T235959'), 'Sunday runs past ST’s last day:\n' + sunday);
+    const monday = buildRoutineICS(nsuSection('MONDAY'), { now: NOW, term: NSU_TERM });
+    assert(monday.includes('UNTIL=20261220T235959'), 'Monday UNTIL wrong:\n' + monday);
+});
+test('no-class days are excluded from the weekday they fall on', () => {
+    const wednesday = buildRoutineICS(nsuSection('WEDNESDAY'), { now: NOW, term: NSU_TERM });
+    assert(wednesday.includes('EXDATE:20261021T094000'), 'Durga Puja not excluded:\n' + wednesday);
+    assert(wednesday.includes('EXDATE:20261216T094000'), 'Victory Day not excluded');
+    assert(!wednesday.includes('EXDATE:20261019'), 'a Monday date excluded from Wednesday');
+    const monday = buildRoutineICS(nsuSection('MONDAY'), { now: NOW, term: NSU_TERM });
+    eq((monday.match(/EXDATE:/g) || []).length, 1);
+});
+test('without a term calendar the export is unchanged', () => {
+    const plain = buildRoutineICS(nsuSection('SUNDAY'), { now: NOW });
+    assert(plain.includes('UNTIL=20261220T235959'), 'UNTIL should be the section’s end date');
+    assert(!plain.includes('EXDATE'), 'no EXDATE without a calendar');
+});
+
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
