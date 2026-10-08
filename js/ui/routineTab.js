@@ -24,6 +24,7 @@ import {
   todayISODate,
 } from '../core/semesterIdentity.js';
 import { buildRoutineICS } from '../core/calendarExport.js';
+import { termExamNote } from '../core/termCalendar.js';
 import qrcode from 'qrcode-generator';
 import {
   emptyRoutineBook,
@@ -466,7 +467,10 @@ function _onAddToCalendar() {
   if (!_store.index) return;
   const sections = selectedSections(_store.routine, _store.index);
   if (sections.length === 0) return;
-  const ics = buildRoutineICS(sections);
+  // A snapshot campus's calendar is known: its holidays and each day
+  // pattern's own last class day keep the export off days with no class.
+  const snapshot = _store.source === 'snapshot' ? getActiveFeedSnapshot() : null;
+  const ics = buildRoutineICS(sections, snapshot ? { term: snapshot } : {});
   try {
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -1452,7 +1456,7 @@ function _pickerHTML() {
   // timetable that looks live and is not is how a student ends up in the
   // wrong room. Class times are the part that holds; the rest moves.
   const snapshotNote = snapshot
-    ? `Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and exam dates aren't available.`
+    ? `Sections as the university published them on ${formatSemesterDate(snapshot.capturedOn) || snapshot.capturedOn}, not updated since. Class times rarely change after that; faculty and rooms do, and sections get added or cancelled — check your official portal before relying on one. Seat counts and each course's exam date aren't available. ${termExamNote(snapshot, (date) => formatSemesterDate(date) || date)}`.trim()
     : '';
   const archiveNote = (gap || snapshotNote)
     ? `<div class="routine-archive-note" role="status" data-testid="${snapshot ? 'routine-snapshot-note' : 'routine-archive-note'}">${escHtml(gap || snapshotNote)}</div>`
