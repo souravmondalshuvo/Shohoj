@@ -33,6 +33,7 @@ import {
   NSU_CAMPUS_LNG,
   buildNsuCampus,
   nsuBuilding,
+  nsuFloorName,
   nsuPlacesOn,
   nsuTermPhase,
   parseNsuRoom,
@@ -367,6 +368,7 @@ export function NsuCampus() {
       : null;
   const roomNext = roomToday.find((i) => i.startMin > now.minute) ?? null;
   const roomParsed = parseNsuRoom(selectedRoom);
+  const roomBuilding = nsuBuilding(roomParsed?.building);
 
   return (
     <section className="shell-page campus-page" data-testid="campus-page" data-campus="nsu">
@@ -463,7 +465,7 @@ export function NsuCampus() {
                   aria-pressed={floor === f.floor}
                   onClick={() => selectFloor(currentBuilding.building.id, f.floor)}
                 >
-                  Floor {f.floor}
+                  {nsuFloorName(currentBuilding.building, f.floor)}
                   <span className="campus-room-sr">
                     {f.rooms.length === 0
                       ? ', no timetabled rooms'
@@ -560,7 +562,8 @@ export function NsuCampus() {
               <div className="campus-room-head">
                 <strong>{roomParsed.code}</strong>
                 <span className="shell-muted">
-                  {nsuBuilding(roomParsed.building)?.name} · Floor {roomParsed.floor}
+                  {roomBuilding?.name} ·{' '}
+                  {roomBuilding ? nsuFloorName(roomBuilding, roomParsed.floor) : ''}
                 </span>
               </div>
               <p className="campus-room-status">
@@ -591,7 +594,8 @@ export function NsuCampus() {
             </p>
           ) : !currentFloor ? (
             <p className="shell-muted" data-testid="campus-floor-hint">
-              {currentBuilding.building.name} — {currentBuilding.building.levels} floors
+              {currentBuilding.building.name} — {currentBuilding.building.levels}{' '}
+              {currentBuilding.building.below ? 'levels' : 'floors'}
               {currentBuilding.building.levelsConfirmed ? '' : ' (floor count not confirmed)'},{' '}
               {currentBuilding.roomCount === 0
                 ? 'no timetabled rooms'
@@ -601,7 +605,8 @@ export function NsuCampus() {
           ) : (
             <div className="campus-room-list" data-testid="campus-room-list">
               <h2 className="campus-zone-title">
-                {currentBuilding.building.name} · Floor {currentFloor.floor}
+                {currentBuilding.building.name} ·{' '}
+                {nsuFloorName(currentBuilding.building, currentFloor.floor)}
               </h2>
               {floorPlaces.length > 0 && (
                 <ul className="campus-room-schedule" data-testid="campus-floor-places">
@@ -685,8 +690,9 @@ export function NsuCampus() {
             <p>
               <strong>Not measured:</strong> where a room sits on its floor. NSU publishes no floor
               plans, so rooms are drawn in number order along the building — a diagram, not a plan.
-              OAT rooms are shown in the Auditorium building, which is our reading and not something
-              NSU states. Do not use this map to find an exit.
+              OAT rooms are shown in the Auditorium building, and rooms numbered B1xx–B3xx in the
+              basements; both are our reading of the codes and not something NSU states. Do not use
+              this map to find an exit.
             </p>
             <p>
               <strong>Timetable:</strong> NSU&apos;s section list for term {SNAPSHOT.term}, as
