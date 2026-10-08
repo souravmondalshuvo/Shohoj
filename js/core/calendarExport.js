@@ -9,6 +9,8 @@
 // event carries a VALARM (default 30 min before). Times are floating local
 // date-times (BRACU = Asia/Dhaka, no DST). Pure + UI-agnostic.
 
+import { termLastClassDate, termNoClassDates } from './termCalendar.js';
+
 const BYDAY = {
     SUNDAY: 'SU', MONDAY: 'MO', TUESDAY: 'TU', WEDNESDAY: 'WE',
     THURSDAY: 'TH', FRIDAY: 'FR', SATURDAY: 'SA',
@@ -86,6 +88,9 @@ function vevent(ev, dtstamp, alarmMinutes) {
     if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`);
     if (ev.untilDate && ev.byday) {
         lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${ev.byday};UNTIL=${compactDate(ev.untilDate)}T235959`);
+        for (const date of ev.skipDates ?? []) {
+            lines.push(`EXDATE:${floatingDateTime(date, ev.startMin)}`);
+        }
     }
     lines.push(...valarm(ev.summary, alarmMinutes));
     lines.push('END:VEVENT');
@@ -95,11 +100,14 @@ function vevent(ev, dtstamp, alarmMinutes) {
 // Build a complete VCALENDAR string for the given sections. Sections are
 // processed in order; for each, class meetings come before mid/final exams.
 // Class events are only emitted when both semester dates are known and an
-// occurrence falls within them.
+// occurrence falls within them. With `options.term` (a snapshot campus's
+// calendar, js/core/termCalendar.js) a weekday's classes stop on its own
+// pattern's last day and skip the term's no-class days.
 export function buildRoutineICS(sections, options = {}) {
     const alarmMinutes = Math.max(0, Math.round(options.alarmMinutes ?? 30));
     const calName = options.calName ?? 'Shohoj Routine';
     const dtstamp = utcStamp(options.now ?? new Date());
+    const term = options.term ?? null;
 
     const lines = [
         'BEGIN:VCALENDAR',
@@ -117,7 +125,12 @@ export function buildRoutineICS(sections, options = {}) {
         if (s.classStartDate && s.classEndDate) {
             for (const slot of s.classSlots) {
                 const startDate = firstOnOrAfter(s.classStartDate, slot.day);
-                if (startDate > s.classEndDate) continue; // no occurrence in range
+                const lastDate = term ? termLastClassDate(term, slot.day) : s.classEndDate;
+                const untilDate = lastDate < s.classEndDate ? lastDate : s.classEndDate;
+                if (startDate > untilDate) continue; // no occurrence in range
+                const skipDates = term
+                    ? termNoClassDates(term, slot.day).filter((d) => d >= startDate && d <= untilDate)
+                    : [];
                 lines.push(...vevent({
                     uid: `shohoj-${s.sectionId}-class-${slot.day}-${slot.startMin}@shohoj.app`,
                     summary: `${tag} class`,
@@ -126,7 +139,8 @@ export function buildRoutineICS(sections, options = {}) {
                     startDate,
                     startMin: slot.startMin,
                     endMin: slot.endMin,
-                    untilDate: s.classEndDate,
+                    untilDate,
+                    skipDates,
                     byday: BYDAY[slot.day],
                 }, dtstamp, alarmMinutes));
             }
