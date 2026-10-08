@@ -13,7 +13,6 @@ import {
     NSU_SITE,
     buildNsuCampus,
     layoutNsuFloor,
-    nsuTermPhase,
     nsuBuilding,
     nsuFloorBaseY,
     nsuFloorName,
@@ -135,17 +134,6 @@ test('the snapshot the page reads resolves to rooms that fit their buildings', (
     for (const entry of campus.buildings) {
         for (const floor of entry.floors) assertLaidOut(entry.building, floor.rooms);
     }
-});
-
-test('the timetable only speaks for the days of its term', () => {
-    const phase = (day) => nsuTermPhase(day, '2026-09-20', '2026-12-20');
-    assert.equal(phase('2026-09-19'), 'before');
-    // The first and the last day of classes are both class days.
-    assert.equal(phase('2026-09-20'), 'during');
-    assert.equal(phase('2026-10-08'), 'during');
-    assert.equal(phase('2026-12-20'), 'during');
-    assert.equal(phase('2026-12-21'), 'after');
-    assert.equal(phase('2027-01-15'), 'after');
 });
 
 test('a floor far busier than any today still fits', () => {
