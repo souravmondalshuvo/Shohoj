@@ -457,8 +457,11 @@ Still BRAC University's on a DIU student's screen, and not yet DIU's:
 - the hero and feature copy above the calculator names BRACU.
 BRACU's **minors** card was shown to every campus; it is now BRACU's alone.
 
-The React shell at `/app/` reads the same registry, so it lists DIU too, but its
-calculator has no typed-credits field — DIU is built for the legacy site.
+The React shell at `/app/` reads the same registry, so it lists DIU too. Its
+calculator has no typed-credits field and its degree tracker counts towards BRACU's
+programs, so DIU's registry features are `feedback` and `profile` only; the calculator
+and playground are granted by the legacy page itself (`LEGACY_ONLY_TABS`,
+`js/core/campusFeatures.js`), and the shell offers DIU neither.
 
 Compared with NSU, DIU has a real path to **bus** and **routine**. It is behind
 NSU on the catalogue (§8), which is what holds back everything course-shaped.
