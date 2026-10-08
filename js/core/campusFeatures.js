@@ -55,10 +55,26 @@ export function campusAllowsTab(profile, tabId) {
  * can do the same and the registry can simply say so.
  */
 function legacyOnlyTab(profile, tabId) {
+  if (Object.prototype.hasOwnProperty.call(LEGACY_ONLY_TABS, profile.id) && LEGACY_ONLY_TABS[profile.id].includes(tabId)) return true;
   // Routine and Free Rooms are both read off the section snapshot. Seats is
   // not: a snapshot has no seat counts to show.
   return (tabId === 'routine' || tabId === 'freerooms') && campusHasFeedSnapshot(profile.id);
 }
+
+/**
+ * Tabs granted here by name, for the same reason as the snapshot tabs above.
+ *
+ * DIU publishes no course catalogue, so a DIU student types each course and
+ * its credits, and only this page's calculator has a credits field
+ * (campusTypesCredits, js/ui/render.js). The shell's calculator reads credits
+ * from BRAC University's catalogue and its degree tracker counts towards BRAC
+ * University's programs, so `calculator`, `playground` and `degree` in DIU's
+ * registry features would hand a DIU student another university's numbers at
+ * /app/. They move to the registry when the shell can serve DIU.
+ */
+const LEGACY_ONLY_TABS = {
+  diu: ['calculator', 'playground'],
+};
 
 /**
  * Standalone pages this site serves for a campus although the registry does
