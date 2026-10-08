@@ -204,8 +204,9 @@ const DIU = {
     repeat: { threshold: 3.0, inclusive: false },
     // No maxRetakes and no creditLoad: DIU caps only failed courses, and
     // publishes no per-semester maximum.
-    // No planner: it lists a catalogue's courses, and DIU publishes none.
-    features: ['calculator', 'degree', 'feedback', 'playground', 'profile'],
+    // The calculator and playground are granted by the legacy page itself
+    // (LEGACY_ONLY_TABS, campusFeatures.js): the shell's cannot take typed credits.
+    features: ['feedback', 'profile'],
 };
 /** Every registered campus, keyed by id. */
 export const UNIVERSITIES = {
