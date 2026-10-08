@@ -34,6 +34,7 @@ test('NSU gets the tabs it has data for, and only those', () => {
     'reviews',
     'papers',
     'freerooms',
+    'campus',
     'groups',
   ]);
 });
@@ -75,7 +76,7 @@ test('the map covers exactly the tabs main.js can switch to', () => {
 test('every feature the page names is one the registry knows', () => {
   const known = new Set(Object.values(UNIVERSITIES).flatMap((u) => u.features));
   const named = [...INDEX_HTML.matchAll(/data-feature="([A-Za-z]+)"/g)].map((m) => m[1]);
-  assert.ok(named.length >= 4, 'the nav Tasks link and the three standalone-page links');
+  assert.ok(named.length >= 3, 'the nav Tasks link and the two standalone-page links');
   for (const feature of [...named, ...Object.values(CALC_TAB_FEATURES)]) {
     assert.ok(known.has(feature), `"${feature}" is not a registry feature`);
   }
@@ -109,14 +110,26 @@ test('Routine and Free Rooms are granted to NSU by this page, not by the shared 
   assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'seats'), false);
 });
 
-test('Bus and the Campus Map are NSU\'s on this site, and the other BRACU pages are not', () => {
+test('the Campus Map is a tab, and NSU\'s is granted by this page', () => {
+  // `campus` in NSU's registry features would switch on the shell's /campus
+  // route, which shows BRAC University's tower. The tab here mounts NSU's own
+  // buildings, so this page grants it — as a tab, not as a link out.
+  assert.equal(UNIVERSITIES.nsu.features.includes('campus'), false);
+  assert.equal(campusAllowsTab(UNIVERSITIES.nsu, 'campus'), true);
+  assert.equal(campusAllowsTab(UNIVERSITIES.bracu, 'campus'), true);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), false);
+  assert.ok(INDEX_HTML.includes('data-tab="campus"'));
+  assert.equal(INDEX_HTML.includes('href="campus/"'), false, 'no link out to the standalone page');
+  // The module the tab mounts picks NSU's map from the campus it is handed.
+  const embed = read('campus/embed.tsx');
+  assert.ok(embed.includes("options.campus === 'nsu'"));
+});
+
+test('Bus is NSU\'s on this site, and the other BRACU pages are not', () => {
   // Granted here, not in the registry: `bus` there would switch on the shell's
-  // /bus route, which shows BRAC University's timetable — and `campus` its
-  // /campus route, which shows BRAC University's tower.
+  // /bus route, which shows BRAC University's timetable.
   assert.equal(UNIVERSITIES.nsu.features.includes('bus'), false);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'bus'), true);
-  assert.equal(UNIVERSITIES.nsu.features.includes('campus'), false);
-  assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), true);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'lostFound'), false);
   // DIU has a bus page of its own, and no map.
   assert.equal(UNIVERSITIES.diu.features.includes('bus'), false);
@@ -140,11 +153,4 @@ test('a multi-campus page link carries the campus, except for the default one', 
   assert.ok(route.includes("searchParams.get('campus') === 'diu'"));
   // And the link on the page declares the path this builds from.
   assert.ok(INDEX_HTML.includes('data-feature="bus" data-campus-href="bus/"'));
-
-  // The Campus Map is the same arrangement.
-  assert.equal(campusPageHref('campus/', 'bracu', 'bracu'), 'campus/');
-  assert.equal(campusPageHref('campus/', 'nsu', 'bracu'), 'campus/?campus=nsu');
-  const map = readFileSync(new URL('../campus/main.tsx', import.meta.url), 'utf8');
-  assert.ok(map.includes("searchParams.get('campus') === 'nsu'"));
-  assert.ok(INDEX_HTML.includes('data-feature="campus" data-campus-href="campus/"'));
 });
