@@ -16,6 +16,13 @@ export interface CampusFeedSnapshot {
   untimedCount: number;
   classStartDate: string;
   classEndDate: string;
+  /** Holidays and "No Classes" days inside the term, in date order. */
+  noClassDays: { date: string; event: string }[];
+  /** Each day pattern's last class day, where the campus ends them separately. */
+  lastClassDays: { date: string; days: string[] }[];
+  /** The final exam window, or null when the calendar names none. */
+  examStartDate: string | null;
+  examEndDate: string | null;
 }
 
 /** campus id → its snapshot. Only campuses fed from a snapshot have an entry. */
