@@ -16,6 +16,8 @@
 // URLs relative because the site lives under a project subpath
 // (souravmondalshuvo.github.io/Shohoj/). Only the inputs listed here build —
 // the repo-root index.html (legacy build3.py source) is never touched.
+// One input is a module, not a page: campus/embed.tsx, which the legacy site
+// imports to show the Campus Map inside its own tab.
 // Every standalone page is retired at the shell cutover.
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -63,10 +65,25 @@ export default defineConfig({
     outDir: resolve(import.meta.dirname, 'dist-pages'),
     emptyOutDir: true,
     rollupOptions: {
+      // Keep a module entry's exports. Without this the embed's one export,
+      // mountCampusMap, is shaken out as unused and the legacy page imports
+      // an empty module.
+      preserveEntrySignatures: 'strict',
       input: {
         campus: resolve(import.meta.dirname, 'campus/index.html'),
         bus: resolve(import.meta.dirname, 'bus/index.html'),
         'lost-found': resolve(import.meta.dirname, 'lost-found/index.html'),
+        // Not a page: the Campus Map as a module the legacy site mounts into
+        // its own tab (campus/embed.tsx).
+        'campus-embed': resolve(import.meta.dirname, 'campus/embed.tsx'),
+      },
+      output: {
+        // The legacy bundle is built by build3.py and never sees this build's
+        // manifest, so it cannot know a hashed name. The embed gets a fixed
+        // address beside the page it shares its chunks with; everything it
+        // imports is still hashed.
+        entryFileNames: (chunk) =>
+          chunk.name === 'campus-embed' ? 'campus/embed.js' : 'assets/[name]-[hash].js',
       },
     },
   },
