@@ -68,10 +68,10 @@ const SNAPSHOT = CAMPUS_FEED_SNAPSHOTS.nsu;
 
 /**
  * The section snapshot's address. Its `url` is relative to the site root, and
- * this page lives one directory below it (/campus/).
+ * `siteRoot` is the way there from the page showing the map.
  */
-function snapshotUrl(): string {
-  return new URL(`../${SNAPSHOT.url}`, window.location.href).toString();
+function snapshotUrl(siteRoot: string): string {
+  return new URL(`${siteRoot}${SNAPSHOT.url}`, window.location.href).toString();
 }
 
 interface NowStamp {
@@ -117,7 +117,16 @@ type LocationState =
   | { phase: 'done'; distance: number }
   | { phase: 'error'; message: string };
 
-export function NsuCampus() {
+interface NsuCampusProps {
+  /**
+   * Relative path from the page showing the map to the site root. The
+   * standalone page lives one directory below it (/campus/), which is the
+   * default; the legacy site mounts the map at the root itself (campus/embed.tsx).
+   */
+  siteRoot?: string;
+}
+
+export function NsuCampus({ siteRoot = '../' }: NsuCampusProps = {}) {
   const [campus, setCampus] = useState<CampusState | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [now, setNow] = useState<NowStamp>(nowStamp);
@@ -141,7 +150,7 @@ export function NsuCampus() {
     setLoadError(false);
     // storage: null — the snapshot is a 1.5 MB static file the HTTP cache
     // already holds; a second copy in localStorage would crowd out the app's.
-    fetchConnectFeed({ url: snapshotUrl(), storage: null, timeoutMs: 20_000 })
+    fetchConnectFeed({ url: snapshotUrl(siteRoot), storage: null, timeoutMs: 20_000 })
       .then((result) => {
         if (!live) return;
         const index = buildRoomBusyIndex(result.sections);
@@ -161,7 +170,7 @@ export function NsuCampus() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [siteRoot]);
 
   useEffect(() => load(), [load]);
 
