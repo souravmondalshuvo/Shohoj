@@ -382,7 +382,13 @@ before DIU ships anything that stores codes.
     13:30 / 16:20 / 18:10. Routes also from Uttara (via metro rail centre), Tongi,
     Mirpur (ECB Chattar), Baipail, Dhamrai, Savar, Narayanganj, Mugda, Konabari.
   - ⚠ The feed is still titled "Special Transport Schedule for Exam-2026 / Summer-2026"
-    on 28 Sep, after Fall classes began — a cron must not assume it's current.
+    on 9 Oct, a month after Fall classes began, and is route for route what was
+    recorded on 28 Sep — a cron must not assume it's current.
+  - The feed's direction names are `from_home` and `from_campus`, and its own note
+    speaks of "the scheduled departure time": the times are when a bus **sets off**,
+    not when it reaches campus. `bus.json` keeps them under the shared
+    `arriveCampus` / `departCampus` field names; the DIU page labels them
+    "Sets off for campus" / "Leaves campus".
   - ⚠ Friday return times read `02:20` / `06:30` — 12-hour values in a 24-hour field,
     almost certainly 14:20 / 18:30 [derived].
   - Transport policy PDF linked from the feed [official].
@@ -441,7 +447,7 @@ On the legacy site, as of 2026-10-09:
 | program picker | ✅ on | 33 programs and totals, generated into `js/core/catalogDiu.generated.js`. A program whose calendar DIU does not state is offered all three seasons. |
 | planner | ❌ | Lists a catalogue's courses and prerequisites; DIU publishes neither (§8). |
 | groups, papers, reviews | ❌ | Each names a course, and the page and the Worker both check it against the campus's catalogue. Needs §8 first; reviews also need §11 and an answer to staff sharing `diu.edu.bd` (§9). |
-| **bus** | 🔶 next | Official structured feed, already in `bus.json` (§13) — needs a DIU page beside NSU's (`src/app/routes/BusRouteNsu.tsx`). |
+| **bus** | ✅ on | `bus/?campus=diu` (`src/app/routes/BusRouteDiu.tsx`), from `bus.json`: 10 regular routes, 5 shuttles, 5 on Fridays. Shown under DIU's own title for the schedule ("Special Transport Schedule for Exam-2026", Summer 2026) and the day it was last read, with no clock-derived "next bus". Granted in `js/core/campusFeatures.js`, not the registry, as NSU's is. |
 | routine | 🔶 | Official files exist; needs a per-department parser and a batch-section UI (§12) |
 | transcript | ❌ | Paste import needs a real portal sample (§10). The "Import Transcript" button is hidden. |
 | rooms | ❌ for now | Needs every department's routine, not CSE's alone (§12) |
@@ -463,7 +469,7 @@ programs, so DIU's registry features are `feedback` and `profile` only; the calc
 and playground are granted by the legacy page itself (`LEGACY_ONLY_TABS`,
 `js/core/campusFeatures.js`), and the shell offers DIU neither.
 
-Compared with NSU, DIU has a real path to **bus** and **routine**. It is behind
+Compared with NSU, DIU has a real path to **routine**. It is behind
 NSU on the catalogue (§8), which is what holds back everything course-shaped.
 
 ## 16. Questions for DIU (Registrar / IT)
