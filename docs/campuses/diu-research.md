@@ -34,9 +34,13 @@ Google sign-in). No bot protection was worked around.
 
 **⚠ DIU's own documents contradict each other in four places** — repeat eligibility
 (§2), probation length (§3), attendance and add/drop timing (§5). Most are collected in
-§16. None blocks the calculator, but the first two change what a student is told, so
-they need a registrar answer before the profile ships. Separately, the **student email
-domain** (§9) is unconfirmed and *does* block sign-in.
+§16. None blocks the calculator; where two disagree the registry follows the Rules
+page, and says so. The **student email domain** (§9) was the blocker for sign-in: it is
+now settled from students' own projects, not from DIU.
+
+**Status (2026-10-09):** DIU is in the registry and signs in on the legacy site with the
+calculator, the playground, the degree tracker, profile and feedback. What it took, and
+what is still off, is in §15.
 
 ---
 
@@ -269,26 +273,39 @@ before DIU ships anything that stores codes.
 - **DIU runs Google Workspace for Education** [official, DIU IT Section], so the
   existing Google sign-in works.
 - "Every student, faculty member and employee has an individual email ID in university
-  domain" [official, DIU site search] — so students do have one, but no public DIU page
-  names it (site search, IT section, FAQ and the BLC login page all checked). The fastest
-  answer is a current DIU student saying what their Google account ends in.
-- **Which domain students get is not settled.** Three DIU domains have Google mail
-  (MX) records — `diu.edu.bd`, `student.diu.edu.bd`, `s.diu.edu.bd` [derived, DNS;
-  no wildcard] — plus `daffodilvarsity.edu.bd`, which staff and offices use
-  (`itsupport@`, `registraroffice2@`) [official].
-  - One student project defines staff as `@diu.edu.bd` and students as
-    `@student.diu.edu.bd` [3rd-party]. Another student's course project uses a plain
-    `@diu.edu.bd` address [3rd-party]. Plausibly older batches got `@diu.edu.bd` and
-    newer ones `@student.diu.edu.bd` — **unconfirmed**.
-  - ⚠ If `diu.edu.bd` is also the staff domain, admitting it lets faculty sign in as
-    students — and review themselves, the same exposure NSU has.
-  - `emailDomains` is an exact-match list and the domain map is generated into
-    `worker/campus.generated.js` + `firestore.rules` (`npm run generate:campus-map`),
-    so listing the wrong domain denies real students every read and write.
+  domain" [official, DIU site search] — so students do have one, but **no public DIU
+  page names it**. Checked again 2026-10-09: site search, IT section, the FAQ (which
+  says only "your DIU email account"), the BLC login page and the public notice feed.
+  The DIU forum thread titled "Our Email address (@diu.edu.bd)" exists but answers 403.
+- **Students sign in from `diu.edu.bd` and `s.diu.edu.bd`** [3rd-party, students' own
+  projects, read 2026-10-09]. Four separate projects accept exactly these two:
+  - the **DIU Computer Programming Club's server** (`kazikhalednur/cpc-server`,
+    `accounts/helpers.py`) — Google sign-in, then it matches the digits in the address
+    against the student ID;
+  - **OurDIU** (`SourovCodes/OurDIU`, "DIU addresses (staff and students)");
+  - **DIU Lens** (`jishanws/diu-lens`, "Use your official DIU email address");
+  - `0xdevabir/contest`, which marks `s.diu.edu.bd` as **students only** and
+    `diu.edu.bd` as either.
+  Nine more student projects check `@diu.edu.bd` alone, several calling it the "DIU
+  student email". Which students got which domain is not stated anywhere read here
+  (by batch is the likely split, and is a guess).
+- All three DIU subdomains still have Google mail (MX) records — `diu.edu.bd`,
+  `s.diu.edu.bd`, `student.diu.edu.bd` [derived, DNS, re-queried 2026-10-09].
+  `student.diu.edu.bd` is named by **one** project only (as the student domain, with
+  `diu.edu.bd` as staff) and by none of the four above, so it is **not admitted**. A
+  student on it is told their address is not served — the signal to add it.
+- ⚠ `diu.edu.bd` is also what staff use, so a lecturer can sign in — the same exposure
+  NSU has, and the reason DIU gets no Reviews tab until that is thought through.
+  Offices use `daffodilvarsity.edu.bd` (`itsupport@`, `registraroffice2@`) [official],
+  which is not admitted.
+- **Applied:** `emailDomains: ['diu.edu.bd', 's.diu.edu.bd']` in
+  `src/core/university.ts`, its twin, `js/core/universityDirectory.js`, and — generated
+  by `npm run generate:campus-map` — `worker/campus.generated.js` and `firestore.rules`.
+  **The rules must be deployed** before a DIU student's reads and writes are allowed.
 - **Student ID format** [unknown] — not confirmed from any source read here; the
   routine's batch numbers (`63`–`73`) are not IDs.
-- Legacy rejects everything but `@g.bracu.ac.bd` at `js/auth/firebase.js:467`, `:762`
-  (Google `hd` hint), `:819`; DIU needs all three, like NSU.
+- Legacy admits whoever `campusOfEmail` in `js/core/universityDirectory.js` resolves, so
+  the directory entry is the whole of DIU's sign-in on that page.
 
 ## 10. Transcript import (`js/import/transcript-core.js`)
 
@@ -379,10 +396,9 @@ before DIU ships anything that stores codes.
 - **Cafeteria:** nothing official found [unknown].
 - **Campus 3D model:** none; `campus` stays off.
 
-## 14. Proposed profile for `src/core/university.ts` (not applied)
+## 14. Profile in `src/core/university.ts` (applied 2026-10-09)
 
 ```ts
-// id 'diu' must be added to UniversityId; then `npm run generate:campus-map`.
 const DIU_SCALE: GradeScale = {
   points: { 'A+': 4.0, A: 3.75, 'A-': 3.5, 'B+': 3.25, B: 3.0, 'B-': 2.75,
             'C+': 2.5, C: 2.25, D: 2.0, F: 0.0, I: null },
@@ -396,7 +412,7 @@ const DIU_SCALE: GradeScale = {
 };
 const DIU: UniversityProfile = {
   id: 'diu', name: 'Daffodil International University', shortName: 'DIU',
-  emailDomains: [/* BLOCKED on §9 — do not guess */],
+  emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],   // §9
   grades: DIU_SCALE,
   retake: { kind: 'latest' },
   repeat: { threshold: 3.0, inclusive: false },   // Rules page; FAQ disagrees (§2)
@@ -415,29 +431,43 @@ Things the profile type can't say yet, that DIU needs:
 5. **A campus-specific course-code pattern** (§8).
 6. **A default assessment breakdown** for the marks tracker (§5).
 
-## 15. What DIU can switch on
+## 15. What DIU has switched on
 
-| Feature | Day one? | Why |
+On the legacy site, as of 2026-10-09:
+
+| Feature | State | Why |
 |---|---|---|
-| calculator, playground, planner, degree, profile, feedback | ✅ once §9 + §14 land | Pure rules; the scale is official |
-| groups, papers, reviews | ✅ (reviews after §11) | User-generated; reviews must skip placeholder initials |
-| **bus** | ✅ | Official structured feed (§13) — better than BRACU's |
+| calculator, playground, degree, profile, feedback | ✅ on | Pure rules; the scale is official. The student types each course **and its credits** — with no catalogue the legacy calculator had nowhere to read credits from, so on a campus with none the credits cell is a field (`campusTypesCredits`, `js/ui/render.js`). A named course starts at 3. |
+| program picker | ✅ on | 33 programs and totals, generated into `js/core/catalogDiu.generated.js`. A program whose calendar DIU does not state is offered all three seasons. |
+| planner | ❌ | Lists a catalogue's courses and prerequisites; DIU publishes neither (§8). |
+| groups, papers, reviews | ❌ | Each names a course, and the page and the Worker both check it against the campus's catalogue. Needs §8 first; reviews also need §11 and an answer to staff sharing `diu.edu.bd` (§9). |
+| **bus** | 🔶 next | Official structured feed, already in `bus.json` (§13) — needs a DIU page beside NSU's (`src/app/routes/BusRouteNsu.tsx`). |
 | routine | 🔶 | Official files exist; needs a per-department parser and a batch-section UI (§12) |
-| transcript | 🔶 | Paste import needs a real portal sample (§10) |
+| transcript | ❌ | Paste import needs a real portal sample (§10). The "Import Transcript" button is hidden. |
 | rooms | ❌ for now | Needs every department's routine, not CSE's alone (§12) |
 | seats | ❌ | No seat market, no seat data (§12) |
 | tasks | ❌ | Needs a DIU catalogue and code normalisation (§8) |
 | lostFound | 🔶 | Room codes fit; needs the full room list |
-| cafeteria, campus, difficulty | ❌ | No data / no model / no review volume |
+| cafeteria, campus, difficulty, assistant | ❌ | No data / no model / no review volume / BRACU-only tools |
 
-Compared with NSU, DIU gains **bus** and has a real path to **routine**. It is behind
-NSU on the catalogue (§8) and on sign-in (§9).
+Still BRAC University's on a DIU student's screen, and not yet DIU's:
+- the playground's **milestones** (Distinction 3.50, Higher Distinction 3.65, …) are
+  BRACU's tiers — NSU sees them too. DIU's own are in `profile.json`
+  (`honours`, `classStanding`);
+- the hero and feature copy above the calculator names BRACU.
+BRACU's **minors** card was shown to every campus; it is now BRACU's alone.
+
+The React shell at `/app/` reads the same registry, so it lists DIU too, but its
+calculator has no typed-credits field — DIU is built for the legacy site.
+
+Compared with NSU, DIU has a real path to **bus** and **routine**. It is behind
+NSU on the catalogue (§8), which is what holds back everything course-shaped.
 
 ## 16. Questions for DIU (Registrar / IT)
 
-1. **IT:** Which domain do student Google accounts use — `diu.edu.bd`,
-   `student.diu.edu.bd` or `s.diu.edu.bd` — and does it depend on batch? Is
-   `diu.edu.bd` also used by faculty/staff?
+1. **IT:** Students' own projects say `diu.edu.bd` and `s.diu.edu.bd` (§9) — is that
+   right, which batches got which, and does any student have `student.diu.edu.bd`?
+   Is `diu.edu.bd` also used by faculty/staff?
 2. Probation: dropped after **two** consecutive semesters below 2.00, or after **three**?
 3. Repeat/improvement: is a **B** eligible ("less than B" vs "B or less")?
 4. Is there a **W** grade? A **P** grade?
@@ -463,12 +493,14 @@ In `data/campuses/diu/` (validated by `npm run check:campus-data`):
 |---|---|---|
 | `sources.json` | Every DIU source cited below | — |
 | `profile.json` | Grading, retake, standing, honours, credit load, rules, term systems, day codes | [official]; empty lists and null fields carry a note saying what DIU doesn't publish |
+| `profile.json` → `identity` | The two student email domains | [3rd-party] — students' projects, §9 |
 | `programs.json` | 33 undergraduate programmes and total credits; four `conflicts` | [official] |
 | `calendar/*.json` | All five 2026 calendars (bi-semester and trimester) | [official]; bi-semester Fall's term code assumed |
 | `bus.json` | 20 routes: stops, times, off-days | [official]; five Friday return times corrected, each with a note |
 
-Retrieved 2026-09-28. The routine and transport data change during a term;
-re-pull before relying on them.
+Retrieved 2026-09-28 (identity: 2026-10-09). The routine and transport data change
+during a term; re-pull before relying on them — the notice feed already lists a CSE
+routine **V4.1** for Fall 2026, newer than the V3.1 parsed here.
 
 ## 17. Not loaded yet, and why
 
