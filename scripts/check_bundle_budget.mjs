@@ -178,8 +178,14 @@ export const TARGETS = [
     // place the note above says to look. `shell entry` is untouched (449.8 kB
     // raw / 140.8 kB gzip at the time), and the 1.8 MB model itself is a
     // separate asset fetched after the map's first paint, not JS.
+    //
+    // Raised from 2200 for DIU's bus page (#882). The October dependency group
+    // (#864) had left 3.5 kB here, as the `shell entry` note says, and DIU's 20
+    // routes with their stops are ~4 kB of data in the lazy BusRoute chunk: CI
+    // measured 2200.6. `shell entry` did not move (502.5 kB raw / 157.4 gzip).
+    // The same ~2% of room the last raise left, not whatever happens to fit.
     measured: { raw: 2123 },
-    budget: { raw: 2200 },
+    budget: { raw: 2245 },
   },
 ];
 
