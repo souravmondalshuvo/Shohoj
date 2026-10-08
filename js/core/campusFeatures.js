@@ -28,6 +28,7 @@ export const CALC_TAB_FEATURES = {
   papers:     'papers',
   seats:      'seats',
   freerooms:  'rooms',
+  campus:     'campus',
   groups:     'groups',
 };
 
@@ -71,9 +72,15 @@ function legacyOnlyTab(profile, tabId) {
  * University's programs, so `calculator`, `playground` and `degree` in DIU's
  * registry features would hand a DIU student another university's numbers at
  * /app/. They move to the registry when the shell can serve DIU.
+ *
+ * NSU's Campus Map is the same arrangement: `campus` in NSU's registry
+ * features would switch on the shell's /campus route, which shows BRAC
+ * University's tower. The tab here mounts NSU's own buildings
+ * (src/app/routes/CampusRouteNsu.tsx, chosen in campus/embed.tsx).
  */
 const LEGACY_ONLY_TABS = {
   diu: ['calculator', 'playground'],
+  nsu: ['campus'],
 };
 
 /**
@@ -83,13 +90,12 @@ const LEGACY_ONLY_TABS = {
  * shell's /bus route, which shows BRAC University's timetable.
  *
  * Each entry names a page that takes the campus in its URL
- * (campusPageHref below) and has that campus's own data behind it.
+ * (campusPageHref below) and has that campus's own data behind it. The
+ * Campus Map used to be one of these; it is a tab now (LEGACY_ONLY_TABS above).
  */
 const LEGACY_ONLY_PAGES = {
   // src/app/routes/BusRouteNsu.tsx and BusRouteDiu.tsx, chosen in BusRoute.tsx.
   bus: ['nsu', 'diu'],
-  // src/app/routes/CampusRouteNsu.tsx, chosen in campus/main.tsx.
-  campus: ['nsu'],
 };
 
 /**
