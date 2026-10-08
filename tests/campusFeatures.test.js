@@ -118,6 +118,10 @@ test('Bus and the Campus Map are NSU\'s on this site, and the other BRACU pages 
   assert.equal(UNIVERSITIES.nsu.features.includes('campus'), false);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'campus'), true);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'lostFound'), false);
+  // DIU has a bus page of its own, and no map.
+  assert.equal(UNIVERSITIES.diu.features.includes('bus'), false);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.diu, 'bus'), true);
+  assert.equal(campusAllowsFeature(UNIVERSITIES.diu, 'campus'), false);
   assert.equal(campusAllowsFeature(UNIVERSITIES.nsu, 'tasks'), false);
   for (const feature of ['bus', 'campus', 'lostFound', 'tasks']) {
     assert.equal(campusAllowsFeature(UNIVERSITIES.bracu, feature), true, feature);
@@ -132,6 +136,8 @@ test('a multi-campus page link carries the campus, except for the default one', 
   // The page must read the same parameter the link writes.
   const route = readFileSync(new URL('../src/app/routes/BusRoute.tsx', import.meta.url), 'utf8');
   assert.ok(route.includes("searchParams.get('campus') === 'nsu'"));
+  assert.equal(campusPageHref('bus/', 'diu', 'bracu'), 'bus/?campus=diu');
+  assert.ok(route.includes("searchParams.get('campus') === 'diu'"));
   // And the link on the page declares the path this builds from.
   assert.ok(INDEX_HTML.includes('data-feature="bus" data-campus-href="bus/"'));
 
