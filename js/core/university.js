@@ -147,10 +147,71 @@ const NSU = {
         'reviews',
     ],
 };
+// ── DIU ─────────────────────────────────────────────────────────────────────
+// From DIU's Rules and Regulation page — the UGC uniform grading system.
+// Quarter points, and no C-, D+ or D-: a D is 2.0 and the lowest pass.
+const DIU_SCALE = {
+    points: {
+        'A+': 4.0,
+        A: 3.75,
+        'A-': 3.5,
+        'B+': 3.25,
+        B: 3.0,
+        'B-': 2.75,
+        'C+': 2.5,
+        C: 2.25,
+        D: 2.0,
+        F: 0.0,
+        I: null,
+    },
+    pointsToGrade: [
+        [4.0, 'A+'],
+        [3.75, 'A'],
+        [3.5, 'A-'],
+        [3.25, 'B+'],
+        [3.0, 'B'],
+        [2.75, 'B-'],
+        [2.5, 'C+'],
+        [2.25, 'C'],
+        [2.0, 'D'],
+        [0.0, 'F'],
+    ],
+    max: 4.0,
+    // Five marks to a letter: an A+ is 80 here, and 40 passes.
+    marks: [
+        { letter: 'A+', min: 80 },
+        { letter: 'A', min: 75 },
+        { letter: 'A-', min: 70 },
+        { letter: 'B+', min: 65 },
+        { letter: 'B', min: 60 },
+        { letter: 'B-', min: 55 },
+        { letter: 'C+', min: 50 },
+        { letter: 'C', min: 45 },
+        { letter: 'D', min: 40 },
+        { letter: 'F', min: 0 },
+    ],
+};
+const DIU = {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    // s.diu.edu.bd is students only; diu.edu.bd is students and staff alike.
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+    grades: DIU_SCALE,
+    // The last attempt counts, with no start-term cutoff.
+    retake: { kind: 'latest' },
+    // "Less than B" — strictly below 3.0, so a B is not repeatable.
+    repeat: { threshold: 3.0, inclusive: false },
+    // No maxRetakes and no creditLoad: DIU caps only failed courses, and
+    // publishes no per-semester maximum.
+    // No planner: it lists a catalogue's courses, and DIU publishes none.
+    features: ['calculator', 'degree', 'feedback', 'playground', 'profile'],
+};
 /** Every registered campus, keyed by id. */
 export const UNIVERSITIES = {
     bracu: BRACU,
     nsu: NSU,
+    diu: DIU,
 };
 /** The campus assumed when nothing else identifies one — all pre-tenancy data is BRACU's. */
 export const DEFAULT_UNIVERSITY_ID = 'bracu';
