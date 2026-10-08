@@ -91,6 +91,7 @@ import { renderPapersTab } from './ui/papersTab.js';
 import { renderRoutineTab } from './ui/routineTab.js';
 import { renderSeatsTab } from './ui/seatsTab.js';
 import { renderFreeRoomsTab } from './ui/freeRoomsTab.js';
+import { renderCampusMapTab } from './ui/campusMapTab.js';
 import { renderGroupsTab } from './ui/groupsTab.js';
 import { renderTasksTab } from './ui/tasksTab.js';
 import { renderTasksDigest } from './ui/tasksDigest.js';
@@ -694,6 +695,7 @@ const TAB_MAP = {
   routine:    'tabRoutine',
   seats:      'tabSeats',
   freerooms:  'tabFreeRooms',
+  campus:     'tabCampus',
   groups:     'tabGroups',
   tasks:      'tabTasks',
 };
@@ -859,7 +861,9 @@ function switchCalcTab(tabId) {
   if (history.replaceState) {
     const currentHash = window.location.hash || '';
     const onReviewsSubroute = tabId === 'reviews' && currentHash.startsWith('#calculator/reviews/');
-    if (!onReviewsSubroute) {
+    // ...or a Campus Map link that names a room: #calculator/campus?room=09G-31T.
+    const onCampusDeepLink = tabId === 'campus' && currentHash.startsWith('#calculator/campus?');
+    if (!onReviewsSubroute && !onCampusDeepLink) {
       const hash = tabId === 'calculator' ? '#calculator' : `#calculator/${tabId}`;
       history.replaceState(null, '', hash);
     }
@@ -889,6 +893,9 @@ function switchCalcTab(tabId) {
   }
   if (tabId === 'freerooms') {
     renderFreeRoomsTab();
+  }
+  if (tabId === 'campus') {
+    renderCampusMapTab();
   }
   if (tabId === 'groups') {
     renderGroupsTab();
@@ -923,6 +930,7 @@ function restoreCalcTab() {
   if (hash.startsWith('#calculator/routine'))  return 'routine';
   if (hash.startsWith('#calculator/seats'))     return 'seats';
   if (hash.startsWith('#calculator/freerooms')) return 'freerooms';
+  if (hash.startsWith('#calculator/campus'))    return 'campus';
   if (hash.startsWith('#calculator/groups'))    return 'groups';
   if (hash.startsWith('#calculator/tasks'))     return 'tasks';
 
