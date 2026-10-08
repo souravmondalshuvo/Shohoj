@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { CAMPUS_FEED_SNAPSHOTS } from '../../../js/core/campusFeeds.generated.js';
+import { termDayNote, termDayStatus } from '../../../js/core/termCalendar.js';
 import { fetchConnectFeed } from '../../core/connectFeedClient';
 import type { WeekdayName } from '../../core/connectFeed';
 import { buildRoomBusyIndex, busyOnDay, occupantAt, type BusyInterval } from '../../core/freeRooms';
@@ -35,7 +36,6 @@ import {
   nsuBuilding,
   nsuFloorName,
   nsuPlacesOn,
-  nsuTermPhase,
   parseNsuRoom,
   type NsuBuildingId,
   type NsuCampusModel,
@@ -172,15 +172,13 @@ export function NsuCampus() {
 
   const model = campus?.model ?? null;
 
-  // The snapshot is one term's weekly pattern. Before its first class and
-  // after its last, it says nothing about today: no room is "in class", and
-  // none is known to be free either.
-  const termPhase = nsuTermPhase(now.date, SNAPSHOT.classStartDate, SNAPSHOT.classEndDate);
-  const inTerm = termPhase === 'during';
-  const termNote =
-    termPhase === 'before'
-      ? `Term ${SNAPSHOT.term} classes start on ${fmtDate(SNAPSHOT.classStartDate)}.`
-      : `Term ${SNAPSHOT.term} classes ended on ${fmtDate(SNAPSHOT.classEndDate)}.`;
+  // The snapshot is one term's weekly pattern. Before its first class, after
+  // its last, on a holiday and on a weekday whose classes have already ended,
+  // it says nothing about today: no room is "in class", and none is known to
+  // be free either (js/core/termCalendar.js).
+  const termDay = termDayStatus(now.date, SNAPSHOT);
+  const inTerm = termDay.phase === 'classes';
+  const termNote = termDayNote(termDay, SNAPSHOT, fmtDate);
 
   const statusByCode = useMemo(() => {
     const map = new Map<string, RoomStatus>();
@@ -552,8 +550,8 @@ export function NsuCampus() {
             </div>
           ) : (
             <p className="shell-muted" data-testid="campus-out-of-term" role="status">
-              {termNote} Outside the term the timetable says nothing about today, so no room is
-              shown as in class or free.
+              {termNote} The weekly timetable says nothing about today, so no room is shown as in
+              class or free.
             </p>
           )}
 
