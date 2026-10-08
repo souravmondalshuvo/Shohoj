@@ -88,6 +88,56 @@ export function classDates(calendar) {
   };
 }
 
+/** Kinds of calendar row on which nothing is taught. */
+const NO_CLASS_KINDS = new Set(['holiday', 'no-classes']);
+
+/**
+ * What a term calendar says about the days between its first and last class,
+ * beyond those two dates. A weekly timetable is wrong on every one of them:
+ *
+ *   noClassDays    holidays and "No Classes" days inside the term
+ *   lastClassDays  the last class day of each day pattern, where the campus
+ *                  ends them separately (NSU: ST, RA and MW). After its date
+ *                  a pattern's weekdays have no classes left, though the term
+ *                  is still running for the others.
+ *   exams          the final exam window, which begins after the last class
+ *
+ * Day codes become the feed's day names, so nothing downstream needs the
+ * campus's letters.
+ */
+export function termCalendar(calendar) {
+  const records = calendar?.records ?? [];
+  const { classStartDate, classEndDate } = classDates(calendar);
+  const inTerm = (date) =>
+    classStartDate !== null &&
+    classEndDate !== null &&
+    date >= classStartDate &&
+    date <= classEndDate;
+  const finals = records
+    .filter((r) => r.kind === 'finals')
+    .map((r) => r.date)
+    .sort();
+  return {
+    noClassDays: records
+      .filter((r) => NO_CLASS_KINDS.has(r.kind) && inTerm(r.date))
+      .map((r) => ({ date: r.date, event: r.event }))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    lastClassDays: records
+      .filter((r) => r.kind === 'last-class' && r.days)
+      .map((r) => ({
+        date: r.date,
+        days: [...r.days].map((letter) => {
+          const day = DAY_NAMES[letter];
+          if (!day) throw new Error(`calendar ${r.date}: unknown day letter '${letter}'`);
+          return day;
+        }),
+      }))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    examStartDate: finals.length > 0 ? finals[0] : null,
+    examEndDate: finals.length > 0 ? finals[finals.length - 1] : null,
+  };
+}
+
 /**
  * Build the feed for one term of one campus.
  *
@@ -144,6 +194,7 @@ export function buildCampusFeed(snapshot, calendar, courses) {
       untimedCount: sections.filter((s) => s.sectionSchedule.classSchedules.length === 0).length,
       classStartDate,
       classEndDate,
+      ...termCalendar(calendar),
     },
   };
 }

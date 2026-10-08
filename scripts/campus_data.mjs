@@ -572,6 +572,10 @@ const calendarSchema = z
             endDate: z.string().regex(ISO_DATE).optional(),
             kind: z.string().regex(/^[a-z-]+$/),
             event: z.string().min(1),
+            // On a "last-class" row: the day codes (profile.days) of the
+            // pattern whose classes end that day, when the campus ends each
+            // pattern on its own date.
+            days: z.string().min(1).optional(),
           })
           .strict(),
       )
@@ -1045,6 +1049,13 @@ function checkCampus(campus, problems) {
         err(`calendar/${term}: bad date ${e.date}`);
       if (e.endDate && e.endDate < e.date)
         err(`calendar/${term}: ${e.date} ends before it starts (${e.endDate})`);
+      if (e.days !== undefined) {
+        const days = [...e.days];
+        if (e.kind !== 'last-class')
+          err(`calendar/${term}: ${e.date} names days but is not a last-class row`);
+        if (days.some((d) => !dayCodes.has(d)) || new Set(days).size !== days.length)
+          err(`calendar/${term}: ${e.date} has a bad day string "${e.days}"`);
+      }
     }
   }
 }

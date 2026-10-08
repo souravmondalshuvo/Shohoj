@@ -27,6 +27,8 @@ const section = (sectionId, courseCode, roomName, classSchedules) => ({
 const IN_TERM = new Date('2026-10-07T10:30:00');
 // The same weekday and hour, after the term's last class.
 const AFTER_TERM = new Date('2027-01-13T10:30:00');
+// The same weekday and hour two weeks on: Durga Puja, a holiday inside the term.
+const HOLIDAY = new Date('2026-10-21T10:30:00');
 
 const SNAPSHOT = [
   section(1, 'ACT201', 'NAC210', allDay),
@@ -156,6 +158,16 @@ test('outside the term, no room is shown as in class or free', async ({ page }) 
   await expect(
     page.getByTestId('campus-room-list').getByRole('button', { name: /NAC210/ }),
   ).toContainText('no timetable for today');
+});
+
+test('on a holiday inside the term, no room is shown as in class or free', async ({ page }) => {
+  await openNsuCampus(page, '&room=NAC210', HOLIDAY);
+  await expect(page.getByTestId('campus-out-of-term')).toContainText(
+    'No classes today: Holiday- Durga Puja.',
+  );
+  await expect(page.getByTestId('campus-legend')).toHaveCount(0);
+  // The timetable books this room every Wednesday; today it is not in use.
+  await expect(page.getByTestId('campus-room-panel')).not.toContainText('ACT201');
 });
 
 test('the basements open level by level, B1 downward', async ({ page }) => {

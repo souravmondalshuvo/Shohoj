@@ -28,6 +28,7 @@ import { registerAction } from '../core/dispatch.js';
 import { onFeedUpdate, broadcastFeedResult, revalidateFeed } from './feedLive.js';
 import { openModal } from './modal.js';
 import { getActiveFeedSnapshot } from '../core/activeFeed.js';
+import { termDayNote, termDayStatus } from '../core/termCalendar.js';
 import { withPhysicalRooms } from '../core/snapshotRooms.js';
 
 const FR_DAY_ORDER = ['SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'];
@@ -246,6 +247,7 @@ function _frMainHTML() {
       ${_frHeaderHTML()}
       ${_frControlsHTML()}
       ${_frOutOfTermHTML()}
+      ${_frNoClassDayHTML()}
       ${_frSnapshotNoteHTML()}
       <div id="freeRoomsResults">${_frResultsHTML()}</div>
     </div>`;
@@ -299,6 +301,21 @@ function _frSnapshotNoteHTML() {
       ${escHtml(_frCapturedOn())}, not updated since. Rooms are reassigned and sections
       added after that, and bookings, exams and make-up classes never appear in a
       timetable — so a room shown free may have a class in it.${escHtml(untimed)}
+    </p>`;
+}
+
+// A holiday, or a weekday whose classes have already ended: the term is
+// running, so _frOutOfTermHTML stays quiet, but the weekly timetable these
+// rooms are read off is not today's (js/core/termCalendar.js).
+function _frNoClassDayHTML() {
+  const snapshot = getActiveFeedSnapshot();
+  if (!snapshot || _frStore.source !== 'snapshot') return '';
+  const today = termDayStatus(todayISODate(), snapshot);
+  if (today.phase !== 'off') return '';
+  const note = termDayNote(today, snapshot, (date) => formatSemesterDate(date) || date);
+  return `
+    <p class="freerooms-outofterm" role="status" data-testid="freerooms-no-class-day">
+      ${escHtml(note)} The rooms below are an ordinary week's timetable, not today's.
     </p>`;
 }
 
