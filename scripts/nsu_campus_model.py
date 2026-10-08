@@ -25,8 +25,9 @@ if os.environ.get('NSU_FEED'):
   if mm and 1<=int(mm.group(2))<=10:RC.setdefault(mm.group(1),{}).setdefault(mm.group(2),set()).add(mm.group(0))
  RC={b:{f:sorted(v,key=lambda c:(int(re.sub(r'\D','',c)),c)) for f,v in d.items()} for b,d in RC.items()}
 # NSU_WEB=<out.glb>: build the building a visitor sees from outside and write it as a GLB for the
-# Campus Map. Interiors, furniture, basements, small signs and railings are left out (they are
-# most of the geometry and invisible from outside), glass is opaque and brick is a flat colour
+# Campus Map. Interiors, furniture, small signs and railings are left out (they are
+# most of the geometry and invisible from outside; the basements are kept, since the map opens
+# them), glass is opaque and brick is a flat colour
 # (the page's CSP allows neither transmission passes' cost nor blob: textures).
 WEB=os.environ.get('NSU_WEB');LITE=bool(WEB);ARC=8 if LITE else 28
 OUT=Path(sys.argv[sys.argv.index('--')+1]);OUT.mkdir(parents=True,exist_ok=True)
@@ -363,7 +364,7 @@ roof('OAT',(69,106,-2,44),10*H);g=Geo('OAT • curved roof',B['OAT']['col'],buil
 for i in range(24):g.box((69+37*(i+.5)/24,21,10*H+1.2+2.3*math.sin((i+.5)/24*math.pi)),(37/24+.02,32,.15),'Metal')
 text('OAT name','NORTH SOUTH UNIVERSITY\nAUDITORIUM',(87.5,-2.38,6.1),.52,B['OAT']['col'])
 zs=[-9.8,-9.8*2/3,-9.8/3]
-for ii,z in enumerate([] if LITE else zs):
+for ii,z in enumerate(zs):
  l='B'+str(3-ii);c=col(l+' • Parking & services',BASE,building='BASE',level=l);g=Geo(l+' structure and parking',c,building='BASE',level=l,element='structure');holes=[(-111,-80,-60,-52)]
  for bid in ['NAC','SAC']:
   cy=B[bid]['cy'];holes += [(x-2.6,x+2.6,cy+.65,cy+7.8) for x in [-66,42]]+[(-62,-59,cy-7,cy-4)]
@@ -493,8 +494,9 @@ for bid,data in B.items():
  be=group(data['col'],camp,'NSU_'+bid,kind='building',building=bid,label=data['name'])
  for fl in data['floors']:group(bpy.data.collections[fl['collection']],be,'NSU_'+bid+'_'+fl['id'],kind='floor',building=bid,level=fl['id'],elevation=fl['z'],position_accuracy='approximate')
 for cc in [SITE,PLAZA,BASE,ROOF,LIFTS]:
- e=group(cc,camp,'NSU_'+cc.name.split(' • ')[-1].replace(' ','_'),kind='group')
- for sub in cc.children:group(sub,e,'NSU_'+sub.name.replace(' | ','_'),kind='floor',level=str(sub.get('level','')),building=str(sub.get('building','')))
+ # The basements are a building to the Campus Map: NSU_BAS, with NSU_BAS_L1 (B1) to NSU_BAS_L3.
+ e=group(cc,camp,'NSU_BAS' if cc is BASE else 'NSU_'+cc.name.split(' • ')[-1].replace(' ','_'),kind='group')
+ for sub in cc.children:group(sub,e,'NSU_BAS_L'+str(sub.get('level'))[1:] if cc is BASE else 'NSU_'+sub.name.replace(' | ','_'),kind='floor',level=str(sub.get('level','')),building=str(sub.get('building','')))
 def camera(n,loc,target,lens=40,ortho=None):
  d=bpy.data.cameras.new(n);o=bpy.data.objects.new(n,d);RIG.objects.link(o);o.location=loc;o.rotation_euler=(Vector(target)-o.location).to_track_quat('-Z','Y').to_euler();d.lens=lens;d.clip_end=1500
  if ortho:d.type='ORTHO';d.ortho_scale=ortho
