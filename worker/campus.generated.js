@@ -8,14 +8,16 @@
 // the id list the Firestore rules validate that stamp against. Anchored ^…$ and
 // dot-escaped: an unanchored match would admit x@g.bracu.ac.bd.attacker.com
 // as a bracu student.
-// 2 campuses.
+// 3 campuses.
 
 export const CAMPUS_EMAIL_RES = [
   ['bracu', /^[^@]+@g\.bracu\.ac\.bd$/],
   ['nsu', /^[^@]+@northsouth\.edu$/],
+  ['diu', /^[^@]+@diu\.edu\.bd$/],
+  ['diu', /^[^@]+@s\.diu\.edu\.bd$/],
 ];
 
-export const VALID_CAMPUS_IDS = new Set(['bracu', 'nsu']);
+export const VALID_CAMPUS_IDS = new Set(['bracu', 'nsu', 'diu']);
 
 /** The campus an address belongs to, or '' when no registered campus claims it. */
 export function campusOfEmail(email) {
