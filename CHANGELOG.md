@@ -14,6 +14,10 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 - **Campus 360 — find a place.** The Campus route can search for a named place (a lab, an office, a lecture theatre) instead of only browsing floor by floor, ranked name-prefix first, then word-prefix, then alias, then substring, and working from static place data even before the class-schedule feed has loaded. (#748)
 - **The assistant explains itself in structure, not markdown, and now has a daily quota.** Replies are parsed into typed blocks and rendered as real elements on both surfaces instead of printing raw markdown syntax at students. A per-student daily message quota now gates both the assistant and AI task extraction, on top of the existing monthly spend ceiling, and both drawers show it as it's used down.
 
+### Changed
+
+- **The Campus Map opens inside the main site.** Campus → Campus Map is a tab now, under the same header and tab bar as Free Rooms and Seats, where it used to send you to a separate page. It is dressed as the rest of the site is — pill chips for floors and buildings, the Free Rooms room tiles, the same toolbar buttons — in both themes, for BRAC University's tower and North South University's campus alike. The map (React, three.js and the building models) is downloaded the first time the tab is opened, so the main page is no heavier for anyone who never opens it. A link can open it on a room: `#calculator/campus?room=09G-31T`. The standalone `/campus/` page still exists for the links that already point at it.
+
 ### Fixed
 
 - **The live section feed no longer hangs Routine, Seats or Free Rooms.** Requests to CONNECT now time out and fall back to a stale cache instead of leaving a tab spinning against a slow or dead origin, and all three tabs paint whatever is already cached immediately, refreshing behind it rather than showing nothing until the network answers. Seats specifically never alerts from a stale read. (#761)
