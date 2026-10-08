@@ -38,7 +38,7 @@ import { GRADES, POINTS_TO_GRADE, type GradeLetter, type GradePoint } from './gr
 import type { SemesterSeason } from './types.ts';
 
 /** Every campus Shohoj can serve. */
-export type UniversityId = 'bracu' | 'nsu';
+export type UniversityId = 'bracu' | 'nsu' | 'diu';
 
 /**
  * A campus grading scale.
@@ -392,10 +392,116 @@ const NSU: UniversityProfile = {
   //   assistant — its tools compute on BRACU's rules and data; see FeatureId.
 };
 
+// ── DIU ─────────────────────────────────────────────────────────────────────
+// Daffodil International University. Scale transcribed from DIU's Rules and
+// Regulation page — the UGC uniform grading system — and held to
+// data/campuses/diu/profile.json by tests/universityData.test.js. How each
+// fact was found, and what DIU's own pages disagree on, is in
+// docs/campuses/diu-research.md.
+//
+// The scale runs in quarter points and stops at D: there is no C-, D+ or D-,
+// and a D is a 2.0 — the pass mark and the good-standing CGPA are the same
+// number here. All three missing letters are absent from `points`, so
+// gradePointOn reports them as not awarded rather than scoring them.
+//
+// Not claimed, because DIU does not publish it: a `W` or a `P` grade.
+const DIU_SCALE: GradeScale = {
+  points: {
+    'A+': 4.0,
+    A: 3.75,
+    'A-': 3.5,
+    'B+': 3.25,
+    B: 3.0,
+    'B-': 2.75,
+    'C+': 2.5,
+    C: 2.25,
+    D: 2.0,
+    F: 0.0,
+    I: null,
+  },
+  pointsToGrade: [
+    [4.0, 'A+'],
+    [3.75, 'A'],
+    [3.5, 'A-'],
+    [3.25, 'B+'],
+    [3.0, 'B'],
+    [2.75, 'B-'],
+    [2.5, 'C+'],
+    [2.25, 'C'],
+    [2.0, 'D'],
+    [0.0, 'F'],
+  ],
+  max: 4.0,
+  // Five marks to a letter, and far lower than either other campus: an A+ is
+  // 80 here where BRACU asks 97, and 40 passes.
+  marks: [
+    { letter: 'A+', min: 80 },
+    { letter: 'A', min: 75 },
+    { letter: 'A-', min: 70 },
+    { letter: 'B+', min: 65 },
+    { letter: 'B', min: 60 },
+    { letter: 'B-', min: 55 },
+    { letter: 'C+', min: 50 },
+    { letter: 'C', min: 45 },
+    { letter: 'D', min: 40 },
+    { letter: 'F', min: 0 },
+  ],
+};
+
+const DIU: UniversityProfile = {
+  id: 'diu',
+  name: 'Daffodil International University',
+  shortName: 'DIU',
+  // DIU runs Google Workspace, so the existing Google sign-in covers it. No DIU
+  // page names the student domain; these two are what DIU students' own
+  // projects accept (the Computer Programming Club's server among them), and
+  // both are DIU's Google mail domains by their MX records. `s.diu.edu.bd` is
+  // students only; `diu.edu.bd` is students and staff alike, so like NSU's it
+  // does not by itself tell a student from a lecturer.
+  emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+  grades: DIU_SCALE,
+  // "GPA and CGPA will be calculated on the basis of the grades obtained at
+  // the last attempt" — unconditional, with no start-term cutoff.
+  retake: { kind: 'latest' },
+  // "A course passed with a grade less than B may be repeated": strictly below
+  // 3.0, so a B is not repeatable. DIU's FAQ says "Grade B or less" for its
+  // improvement exams; the Rules page is the one that speaks of repeating a
+  // course, so it is the one followed.
+  repeat: { threshold: 3.0, inclusive: false },
+  // maxRetakes is deliberately absent: "twice at the most" is stated for
+  // failed courses only, and a cap shown on every course would over-apply it.
+  // creditLoad is deliberately absent: DIU publishes a 9-credit minimum and
+  // advisor consent above 15, but no maximum, and CreditLoadRules needs one.
+  features: [
+    // Everything here works from courses, credits and grades the student
+    // types in: DIU publishes no course catalogue to read them from.
+    'calculator',
+    'degree',
+    'feedback',
+    'playground',
+    'profile',
+  ],
+  // Deliberately off, and why:
+  //   planner — it lists the catalogue's courses and their prerequisites, and
+  //     DIU publishes neither, so the tab would open on an empty list.
+  //   groups/papers/reviews/tasks/difficulty — each names a course, and a
+  //     course is checked against the campus's catalogue. DIU's departments
+  //     write codes five different ways (docs/campuses/diu-research.md §8),
+  //     so every post would be refused.
+  //   transcript — the import reads a portal page nobody has shown us.
+  //   routine/rooms/seats — DIU posts each department's routine as its own
+  //     PDF; only CSE's has been parsed, and no seat counts exist anywhere.
+  //   bus — DIU's 20 routes are in data/campuses/diu/bus.json, but the shell's
+  //     /bus route shows BRAC University's timetable; see js/core/campusFeatures.js
+  //     for how the legacy site grants a page the shell cannot serve yet.
+  //   cafeteria/campus/lostFound/assistant — no DIU data behind any of them.
+};
+
 /** Every registered campus, keyed by id. */
 export const UNIVERSITIES: Readonly<Record<UniversityId, UniversityProfile>> = {
   bracu: BRACU,
   nsu: NSU,
+  diu: DIU,
 };
 
 /**
