@@ -15,6 +15,8 @@ import {
     layoutNsuFloor,
     nsuTermPhase,
     nsuBuilding,
+    nsuFloorBaseY,
+    nsuFloorName,
     parseNsuRoom,
 } from '../src/core/campusNsu.ts';
 import { CAMPUS_FEED_SNAPSHOTS } from '../js/core/campusFeeds.generated.js';
@@ -42,13 +44,30 @@ test('a second booking of a room is the room itself', () => {
 });
 
 test('venues outside the mapped buildings are not guessed at', () => {
-    for (const name of ['NTR201', 'B113', 'LAB4', 'TV LAB', 'Upper Plaza', '', null, undefined]) {
+    for (const name of ['NTR201', 'B413', 'B013', 'LAB4', 'TV LAB', 'Upper Plaza', '', null, undefined]) {
         assert.equal(parseNsuRoom(name), null, String(name));
     }
     // A floor the building does not have is a typo, not a room.
     assert.equal(parseNsuRoom('NAC11117'), null);
     assert.equal(parseNsuRoom('NAC1201'), null);
     assert.equal(parseNsuRoom('NAC001'), null);
+});
+
+test('a B room is a basement room, on the level its first digit names', () => {
+    assert.deepEqual(parseNsuRoom('B113'), {
+        code: 'B113', building: 'BAS', floor: 1, number: 13, suffix: '',
+    });
+    assert.deepEqual(parseNsuRoom('b310a'), {
+        code: 'B310A', building: 'BAS', floor: 3, number: 10, suffix: 'A',
+    });
+    const basements = nsuBuilding('BAS');
+    assert.equal(basements.below, true);
+    assert.equal(nsuFloorName(basements, 2), 'B2');
+    assert.equal(nsuFloorName(nsuBuilding('NAC'), 2), 'Floor 2');
+    // B1 is the first level down; the ground floor sits on the ground.
+    assert.ok(nsuFloorBaseY(basements, 1) < 0);
+    assert.ok(nsuFloorBaseY(basements, 3) < nsuFloorBaseY(basements, 1));
+    assert.equal(nsuFloorBaseY(nsuBuilding('NAC'), 1), 0);
 });
 
 test('every building keeps every floor, with or without rooms', () => {
@@ -72,7 +91,8 @@ test('buildings stand inside the site and do not overlap', () => {
     }
     for (const a of NSU_BUILDINGS) {
         for (const b of NSU_BUILDINGS) {
-            if (a.id >= b.id) continue;
+            // The basements lie under everything, by design.
+            if (a.id >= b.id || a.below || b.below) continue;
             const overlap =
                 a.rect.x1 < b.rect.x2 && b.rect.x1 < a.rect.x2 &&
                 a.rect.y1 < b.rect.y2 && b.rect.y1 < a.rect.y2;
