@@ -9,6 +9,8 @@
 //                                            departments, read by catalog.js
 //   js/core/departmentsBracu.generated.js    BRACU's programs and presets, read
 //                                            by departments.js
+//   js/core/catalogDiu.generated.js          DIU's programs, which is all of a
+//                                            catalogue DIU publishes
 //
 // The legacy bundle is one concatenated script (build3.py) and cannot read the
 // campus database at run time, so the records it needs are written into
@@ -32,6 +34,7 @@ import { BRACU_LITERAL_SOURCES, buildLegacyCatalog } from './legacy_catalog.mjs'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT_PATH = resolve(repoRoot, 'js/core/catalogNsu.generated.js');
+export const DIU_OUT_PATH = resolve(repoRoot, 'js/core/catalogDiu.generated.js');
 export const BRACU_CATALOG_OUT_PATH = resolve(repoRoot, 'js/core/catalogBracu.generated.js');
 export const BRACU_DEPARTMENTS_OUT_PATH = resolve(
   repoRoot,
@@ -212,10 +215,47 @@ ${programRows(catalog.programs)}
 `;
 }
 
+export function renderDiuCatalog() {
+  const catalog = buildLegacyCatalog(loadCampus('diu'));
+  const count = Object.keys(catalog.programs).length;
+  if (count === 0) throw new Error('refusing to generate an empty DIU program list');
+  if (catalog.allCourses.length > 0) {
+    throw new Error(
+      'data/campuses/diu now has courses, and this writes programs only — carry them the way renderNsuCatalog does',
+    );
+  }
+  // `seasons` is written only where DIU's own documents show the program's
+  // calendar. The page offers all three seasons to the rest, which is right
+  // for a trimester program and one season too many for a bi-semester one.
+  const programs = Object.entries(catalog.programs)
+    .map(([code, p]) => {
+      const seasons = p.seasons ? `, seasons: ${JSON.stringify(p.seasons)}` : '';
+      return `  ${JSON.stringify(code)}: { label: ${JSON.stringify(p.label)}, totalCredits: ${p.totalCredits}${seasons} },`;
+    })
+    .join('\n');
+
+  return `// js/core/catalogDiu.generated.js
+//
+// GENERATED FILE — DO NOT EDIT BY HAND.
+// Regenerate with: npm run generate:legacy-catalog
+// Source of truth: data/campuses/diu/programs.json
+//
+// DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
+// ${count} programs, and no courses: DIU publishes no catalogue, only each
+// department's offer for a term (docs/campuses/diu-research.md).
+
+/** program → { label, totalCredits, seasons? }. No seasons: DIU does not say which calendar it runs on. */
+export const DIU_PROGRAM_ROWS = {
+${programs}
+};
+`;
+}
+
 const TARGETS = [
   { path: OUT_PATH, render: renderNsuCatalog },
   { path: BRACU_CATALOG_OUT_PATH, render: renderBracuCatalog },
   { path: BRACU_DEPARTMENTS_OUT_PATH, render: renderBracuDepartments },
+  { path: DIU_OUT_PATH, render: renderDiuCatalog },
 ];
 
 function main() {
