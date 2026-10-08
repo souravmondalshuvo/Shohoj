@@ -25,7 +25,7 @@
  * draw from the model built here. No imports, so node tests can load it.
  */
 
-export type NsuBuildingId = 'NAC' | 'SAC' | 'LIB' | 'OAT' | 'ADM';
+export type NsuBuildingId = 'NAC' | 'SAC' | 'LIB' | 'OAT' | 'ADM' | 'BAS';
 
 /** An axis-aligned footprint in campus metres (x east, y north). */
 export interface NsuRect {
@@ -46,10 +46,17 @@ export interface NsuBuilding {
   levelsConfirmed: boolean;
   /** True when class sections are scheduled in rooms of this building. */
   hasClassrooms: boolean;
+  /**
+   * True for the basements: "floor" 1 is B1, the first level below ground,
+   * and the numbers grow downward.
+   */
+  below: boolean;
 }
 
 /** Storey height the map draws, in metres. A drawing constant, not a survey. */
 export const NSU_FLOOR_HEIGHT = 3.65;
+/** Height of one basement level, in metres — three of them in 9.8 m. */
+export const NSU_BASEMENT_HEIGHT = 9.8 / 3;
 
 /** The site outline (OpenStreetMap), in the same frame as the buildings. */
 export const NSU_SITE: NsuRect = { x1: -118, x2: 119, y1: -66, y2: 69 };
@@ -67,6 +74,7 @@ export const NSU_BUILDINGS: readonly NsuBuilding[] = [
     levels: 10,
     levelsConfirmed: true,
     hasClassrooms: true,
+    below: false,
   },
   {
     id: 'SAC',
@@ -76,6 +84,7 @@ export const NSU_BUILDINGS: readonly NsuBuilding[] = [
     levels: 10,
     levelsConfirmed: true,
     hasClassrooms: true,
+    below: false,
   },
   {
     id: 'LIB',
@@ -85,6 +94,7 @@ export const NSU_BUILDINGS: readonly NsuBuilding[] = [
     levels: 10,
     levelsConfirmed: true,
     hasClassrooms: true,
+    below: false,
   },
   {
     id: 'OAT',
@@ -94,6 +104,7 @@ export const NSU_BUILDINGS: readonly NsuBuilding[] = [
     levels: 10,
     levelsConfirmed: true,
     hasClassrooms: true,
+    below: false,
   },
   {
     id: 'ADM',
@@ -103,6 +114,19 @@ export const NSU_BUILDINGS: readonly NsuBuilding[] = [
     levels: 8,
     levelsConfirmed: false,
     hasClassrooms: false,
+    below: false,
+  },
+  {
+    // Three parking levels under the whole complex. NSU states the count; the
+    // outline is the complex's own, a little wider — a drawing, not a survey.
+    id: 'BAS',
+    name: 'Basements',
+    shortName: 'Basements',
+    rect: { x1: -111, x2: 104, y1: -60, y2: 18 },
+    levels: 3,
+    levelsConfirmed: true,
+    hasClassrooms: true,
+    below: true,
   },
 ];
 
@@ -130,6 +154,10 @@ export interface NsuRoom {
 // are the room itself, so the suffix is dropped.
 const ROOM_RE = /^(NAC|SAC|LIB|OAT)(\d{1,2})(\d{2})([A-Z]?)$/;
 const VARIANT_RE = /[_-]V\d*$/;
+// A basement room: B, the level (1–3), a two-digit number, an optional letter —
+// B113, B310A. That "B" means basement is our reading of the code; NSU's lists
+// do not spell it out, and the page says so.
+const BASEMENT_ROOM_RE = /^B(\d)(\d{2})([A-Z]?)$/;
 
 /**
  * Parse a room name from NSU's section lists, or null when it is not a room
@@ -139,6 +167,19 @@ const VARIANT_RE = /[_-]V\d*$/;
 export function parseNsuRoom(raw: string | null | undefined): NsuRoom | null {
   if (typeof raw !== 'string') return null;
   const name = raw.trim().toUpperCase().replace(VARIANT_RE, '');
+  const basement = BASEMENT_ROOM_RE.exec(name);
+  if (basement) {
+    const level = parseInt(basement[1] ?? '', 10);
+    const levels = nsuBuilding('BAS')?.levels ?? 0;
+    if (level < 1 || level > levels) return null;
+    return {
+      code: name,
+      building: 'BAS',
+      floor: level,
+      number: parseInt(basement[2] ?? '', 10),
+      suffix: basement[3] ?? '',
+    };
+  }
   const match = ROOM_RE.exec(name);
   if (!match) return null;
   const building = nsuBuilding(match[1]);
@@ -242,6 +283,7 @@ const CORRIDOR = 3.2;
 const WALL_INSET = 1.2;
 const ROOM_GAP = 0.9;
 const MAX_ROOM_LENGTH = 11;
+const MAX_ROOM_DEPTH = 12;
 
 /**
  * Lay a floor's rooms out as a diagram: two rows either side of a corridor
@@ -262,7 +304,9 @@ export function layoutNsuFloor(building: NsuBuilding, rooms: readonly NsuRoom[])
   const columns = Math.max(1, Math.ceil(rooms.length / 2));
   const pitch = Math.min(longLength / columns, MAX_ROOM_LENGTH + ROOM_GAP);
   const roomLength = pitch - ROOM_GAP;
-  const roomDepth = (shortLength - CORRIDOR) / 2 - WALL_INSET;
+  // Capped: in a block far deeper than a classroom (the library, the basements)
+  // a room that ran wall to corridor would be a hall.
+  const roomDepth = Math.min((shortLength - CORRIDOR) / 2 - WALL_INSET, MAX_ROOM_DEPTH);
   const rowOffset = CORRIDOR / 2 + roomDepth / 2;
 
   return rooms.map((room, index) => {
@@ -274,6 +318,16 @@ export function layoutNsuFloor(building: NsuBuilding, rooms: readonly NsuRoom[])
   });
 }
 
+/** What a floor is called: "Floor 4" above ground, "B2" below it. */
+export function nsuFloorName(building: NsuBuilding, floor: number): string {
+  return building.below ? `B${floor}` : `Floor ${floor}`;
+}
+
+/** Height of a floor's slab above the ground, in metres; negative below it. */
+export function nsuFloorBaseY(building: NsuBuilding, floor: number): number {
+  return building.below ? -floor * NSU_BASEMENT_HEIGHT : (floor - 1) * NSU_FLOOR_HEIGHT;
+}
+
 export interface NsuPlace {
   building: NsuBuildingId;
   floor: number;
@@ -282,13 +336,21 @@ export interface NsuPlace {
   source: string;
 }
 
+const NSU_WIKIPEDIA = 'https://en.wikipedia.org/wiki/North_South_University';
 const LIBRARY_COLLECTION_MAP = 'https://library.northsouth.edu/about-nsu-library/collection-map/';
 
 /**
- * Places NSU itself puts on a floor. Short on purpose: an entry needs a page
- * of NSU's that names the floor, and so far only the library publishes one.
+ * Places a public source puts on a floor. Short on purpose: an entry needs a
+ * page that names the floor — so far the library's own, and the campus
+ * description that gives the three basements over to parking.
  */
 export const NSU_PLACES: readonly NsuPlace[] = [
+  ...[1, 2, 3].map((floor): NsuPlace => ({
+    building: 'BAS',
+    floor,
+    name: 'Vehicle parking — one of three basement levels',
+    source: NSU_WIKIPEDIA,
+  })),
   {
     building: 'LIB',
     floor: 3,
