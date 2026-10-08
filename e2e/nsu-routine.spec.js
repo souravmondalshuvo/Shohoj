@@ -49,6 +49,8 @@ test('an NSU student gets NSU’s sections, labelled as a snapshot', async ({ pa
   const note = page.getByTestId('routine-snapshot-note');
   await expect(note).toContainText('23 Sep 2026');
   await expect(note).toContainText('Seat counts');
+  // The term's last class is not its end: the exam window is named beside it.
+  await expect(note).toContainText('Final exams run from 22 Dec 2026 to 28 Dec 2026.');
   await expect(page.locator('.routine-semester-badge')).toContainText('Fall 2026');
 
   // BRACU's tools are not offered: nothing to refresh, no CONNECT to paste
