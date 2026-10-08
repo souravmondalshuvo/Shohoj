@@ -607,6 +607,36 @@ export function createNsuCampusScene(
     return typeof code === 'string' ? code : null;
   }
 
+  /**
+   * The storey under the pointer (aim() first). With the model in, the model's
+   * own storeys answer first: they are what is on screen, and they reach past
+   * the drawn boxes in places — the Administration Building's link wing, for
+   * one. The boxes still answer for a building shown only as an outline.
+   */
+  function storeyAt(): { building: NsuBuildingId; floor: number } | null {
+    if (campusModel) {
+      const levels: Object3D[] = [];
+      for (const part of campusModel.buildings) {
+        if (!part.node.visible) continue;
+        for (const node of part.levels.values()) if (node.visible) levels.push(node);
+      }
+      for (let node = raycaster.intersectObjects(levels, true)[0]?.object ?? null; node; ) {
+        const match = /^NSU_([A-Z]{3})_L(\d+)$/.exec(node.name);
+        if (match) return { building: match[1] as NsuBuildingId, floor: Number(match[2]) };
+        node = node.parent;
+      }
+    }
+    const hit = raycaster.intersectObjects(
+      storeys.filter((storey) => storey.pickable).map((storey) => storey.mesh),
+      false,
+    )[0];
+    const building: unknown = hit?.object.userData['building'];
+    const floor: unknown = hit?.object.userData['floor'];
+    return typeof building === 'string' && typeof floor === 'number'
+      ? { building: building as NsuBuildingId, floor }
+      : null;
+  }
+
   let downX = 0;
   let downY = 0;
   const onPointerDown = (event: PointerEvent): void => {
@@ -621,15 +651,8 @@ export function createNsuCampusScene(
       options.onRoomClick?.(code);
       return;
     }
-    const hit = raycaster.intersectObjects(
-      storeys.filter((storey) => storey.pickable).map((storey) => storey.mesh),
-      false,
-    )[0];
-    const building: unknown = hit?.object.userData['building'];
-    const floor: unknown = hit?.object.userData['floor'];
-    if (typeof building === 'string' && typeof floor === 'number') {
-      options.onFloorClick?.(building as NsuBuildingId, floor);
-    }
+    const picked = storeyAt();
+    if (picked) options.onFloorClick?.(picked.building, picked.floor);
   };
   const onPointerMove = (event: PointerEvent): void => {
     const code = event.pointerType === 'mouse' ? roomAt(event) : null;
