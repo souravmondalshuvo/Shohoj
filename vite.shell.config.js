@@ -148,5 +148,23 @@ export default defineConfig({
   build: {
     outDir: resolve(import.meta.dirname, 'dist-shell'),
     emptyOutDir: true,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            // BRACU's catalogue and programs, in a file of their own. Every
+            // page loads it with the entry, so this saves no bytes on a first
+            // visit; it is for the visits after a deploy, when the entry's
+            // hash changes and the catalogue's almost never does. The bundler
+            // used to split it this way unasked, and stopped when the data
+            // moved into generated modules (#869).
+            {
+              name: 'catalog',
+              test: /[\\/]js[\\/]core[\\/](catalog|departments)(Bracu\.generated)?\.js$/,
+            },
+          ],
+        },
+      },
+    },
   },
 });
