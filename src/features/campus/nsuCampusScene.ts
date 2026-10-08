@@ -54,11 +54,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import {
+  NSU_BASEMENT_HEIGHT,
   NSU_COURTYARD,
   NSU_FLOOR_HEIGHT,
   NSU_PLAYGROUND,
   NSU_SITE,
   layoutNsuFloor,
+  nsuBuilding,
+  nsuFloorBaseY,
   type NsuBuildingId,
   type NsuCampusModel,
   type NsuRect,
@@ -144,6 +147,8 @@ interface StoreyEntry {
   mesh: Mesh<BoxGeometry, MeshStandardMaterial>;
   /** The storey's window band — dropped while the building is faded back. */
   band: Mesh;
+  /** A basement level: underground, so never part of the skyline. */
+  below: boolean;
   /** False while the storey is lifted away above an open floor. */
   pickable: boolean;
 }
@@ -237,6 +242,23 @@ export function createNsuCampusScene(
 
   for (const { building } of model.buildings) {
     const c = centre(building.rect);
+    if (building.below) {
+      // Underground: plain concrete levels, no roof and no name in the sky.
+      // Hidden until the basements are what the reader asked for.
+      const height = NSU_BASEMENT_HEIGHT * 0.8;
+      const geometry = track(new BoxGeometry(c.width, height, c.depth));
+      for (let floor = 1; floor <= building.levels; floor += 1) {
+        const mesh = new Mesh(geometry, flat(floor % 2 === 0 ? '#8d908c' : '#7d807c'));
+        mesh.position.set(c.x, nsuFloorBaseY(building, floor) + height / 2, c.z);
+        mesh.userData['building'] = building.id;
+        mesh.userData['floor'] = floor;
+        const band = new Mesh(geometry, mesh.material);
+        band.visible = false;
+        storeyGroup.add(mesh);
+        storeys.push({ building: building.id, floor, mesh, band, below: true, pickable: false });
+      }
+      continue;
+    }
     const geometry = track(new BoxGeometry(c.width, STOREY_HEIGHT, c.depth));
     // A ribbon of glass round each storey, proud of the brick by a hand's width.
     const bandGeometry = track(new BoxGeometry(c.width + 0.3, WINDOW_BAND_HEIGHT, c.depth + 0.3));
@@ -254,7 +276,7 @@ export function createNsuCampusScene(
       const band = new Mesh(bandGeometry, bandMaterial);
       mesh.add(band);
       storeyGroup.add(mesh);
-      storeys.push({ building: building.id, floor, mesh, band, pickable: true });
+      storeys.push({ building: building.id, floor, mesh, band, below: false, pickable: true });
     }
     const top = building.levels * H;
     const roofMeshes: Mesh[] = [];
@@ -312,7 +334,13 @@ export function createNsuCampusScene(
     extras: Object3D[];
     levels: Map<number, Object3D>;
   }
-  let campusModel: { root: Object3D; buildings: ModelBuilding[] } | null = null;
+  let campusModel: { root: Object3D; buildings: ModelBuilding[]; ground: Object3D[] } | null = null;
+  /** The model's nodes that lie on the ground and so hide the basements. */
+  const GROUND_NODES = [
+    'NSU_Grounds',
+    'NSU_Courtyard_and_memorial',
+    'NSU_Lift_cabins_and_presentation_rig',
+  ];
   const modelAbort = new AbortController();
 
   function disposeModel(root: Object3D): void {
@@ -348,8 +376,8 @@ export function createNsuCampusScene(
       });
     }
     scene.add(root);
-    for (const mesh of drawnSite) mesh.visible = false;
-    campusModel = { root, buildings };
+    const ground = GROUND_NODES.flatMap((name) => root.getObjectByName(name) ?? []);
+    campusModel = { root, buildings, ground };
     applyFocus(false);
     return true;
   }
@@ -421,7 +449,7 @@ export function createNsuCampusScene(
     const entry = model.buildings.find((b) => b.building.id === focusBuilding);
     const floor = entry?.floors.find((f) => f.floor === focusFloor);
     if (!entry || !floor) return;
-    const base = (floor.floor - 1) * H + PLATE_HEIGHT;
+    const base = nsuFloorBaseY(entry.building, floor.floor) + PLATE_HEIGHT;
     for (const slot of layoutNsuFloor(entry.building, floor.rooms)) {
       const material = new MeshStandardMaterial({ roughness: 0.6, metalness: 0.05 });
       const mesh = new Mesh(new BoxGeometry(slot.width, ROOM_HEIGHT, slot.depth), material);
@@ -430,7 +458,7 @@ export function createNsuCampusScene(
       // The label shows the number within the building: "210", not "NAC210".
       const label = new Sprite(
         new SpriteMaterial({
-          map: makeRoomLabel(slot.code.slice(3)),
+          map: makeRoomLabel(entry.building.below ? slot.code : slot.code.slice(3)),
           transparent: true,
           depthTest: false,
         }),
@@ -477,10 +505,25 @@ export function createNsuCampusScene(
 
   function applyFocus(reframe = true): void {
     const focused = model.buildings.find((b) => b.building.id === focusBuilding) ?? null;
+    // The basements are under the ground: opening them takes the ground away.
+    const underground = focused?.building.below ?? false;
+    for (const mesh of drawnSite) mesh.visible = !campusModel && !underground;
+    for (const node of campusModel?.ground ?? []) node.visible = !underground;
     for (const storey of storeys) {
       const own = storey.building === focusBuilding;
-      // Above an open floor the building is lifted away entirely.
-      const hidden = own && focusFloor !== null && storey.floor >= focusFloor;
+      // Above an open floor the building is lifted away entirely. Basement
+      // levels count downward, so "above" B2 is B1.
+      const hidden =
+        own &&
+        focusFloor !== null &&
+        (storey.below ? storey.floor <= focusFloor : storey.floor >= focusFloor);
+      if (storey.below) {
+        // Never an outline and never a click target unless it is the focus:
+        // a click on the lawn must not fall through to the car park.
+        storey.pickable = own && !hidden;
+        storey.mesh.visible = !campusModel && own && !hidden;
+        continue;
+      }
       const faded = focusBuilding !== null && !own;
       storey.pickable = !hidden;
       // With the model in, a drawn storey shows only as the faded outline of
@@ -506,22 +549,25 @@ export function createNsuCampusScene(
       for (const part of campusModel.buildings) {
         const own = part.id === focusBuilding;
         const open = own && focusFloor !== null;
-        const shown = focusBuilding === null || own;
+        const below = nsuBuilding(part.id)?.below ?? false;
+        const shown = below ? own : focusBuilding === null || own;
         part.node.visible = shown;
         if (part.roof) part.roof.visible = shown && !open;
         // Whatever spans the building's height — the portico, the library's
         // arched crown, the auditorium's vault — goes when a floor is opened.
         for (const extra of part.extras) extra.visible = !open;
         for (const [level, node] of part.levels) {
-          node.visible = !(open && focusFloor !== null && level > focusFloor);
+          const above = focusFloor !== null && (below ? level < focusFloor : level > focusFloor);
+          node.visible = !(open && above);
         }
       }
     }
 
     if (focused && focusFloor !== null) {
       const c = centre(focused.building.rect);
-      const y = (focusFloor - 1) * H;
-      plate.visible = true;
+      const y = nsuFloorBaseY(focused.building, focusFloor);
+      // The model's car park is the floor; a plate over it would hide the bays.
+      plate.visible = !(focused.building.below && campusModel);
       plate.scale.set(c.width, 1, c.depth);
       plate.position.set(c.x, y + PLATE_HEIGHT / 2, c.z);
       buildRooms();
@@ -534,7 +580,8 @@ export function createNsuCampusScene(
       } else if (focused) {
         const c = centre(focused.building.rect);
         const height = focused.building.levels * H;
-        frame(new Vector3(c.x, height / 2, c.z), Math.max(c.width, c.depth, height) * 1.25 + 40);
+        const middle = focused.building.below ? nsuFloorBaseY(focused.building, 1) : height / 2;
+        frame(new Vector3(c.x, middle, c.z), Math.max(c.width, c.depth, height) * 1.25 + 40);
       } else {
         frame(new Vector3(0, 12, 0), 265);
       }
