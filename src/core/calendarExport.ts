@@ -13,6 +13,8 @@
  * in Bangladesh and avoids shipping a VTIMEZONE block. Pure + UI-agnostic.
  */
 
+import { termLastClassDate, termNoClassDates } from '../../js/core/termCalendar.js';
+import type { TermCalendar } from '../../js/core/termCalendar.js';
 import type { NormalizedSection, WeekdayName } from './connectFeed';
 
 export interface IcsOptions {
@@ -22,6 +24,11 @@ export interface IcsOptions {
   calName?: string;
   /** Injected clock for deterministic DTSTAMP/UID in tests. Default now. */
   now?: Date;
+  /**
+   * A snapshot campus's calendar: a weekday's classes stop on its own
+   * pattern's last day and skip the term's no-class days.
+   */
+  term?: TermCalendar;
 }
 
 const BYDAY: Record<WeekdayName, string> = {
@@ -117,6 +124,8 @@ interface EventInput {
   endMin: number;
   /** Weekly recurrence end date `YYYY-MM-DD`, or null for a one-off event. */
   untilDate: string | null;
+  /** Dates inside the recurrence on which the class is not held. */
+  skipDates?: string[];
   byday: string | null;
 }
 
@@ -133,6 +142,9 @@ function vevent(ev: EventInput, dtstamp: string, alarmMinutes: number): string[]
   if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`);
   if (ev.untilDate && ev.byday) {
     lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${ev.byday};UNTIL=${compactDate(ev.untilDate)}T235959`);
+    for (const date of ev.skipDates ?? []) {
+      lines.push(`EXDATE:${floatingDateTime(date, ev.startMin)}`);
+    }
   }
   lines.push(...valarm(ev.summary, alarmMinutes));
   lines.push('END:VEVENT');
@@ -152,6 +164,7 @@ export function buildRoutineICS(
   const alarmMinutes = Math.max(0, Math.round(options.alarmMinutes ?? 30));
   const calName = options.calName ?? 'Shohoj Routine';
   const dtstamp = utcStamp(options.now ?? new Date());
+  const term = options.term ?? null;
 
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -169,7 +182,12 @@ export function buildRoutineICS(
     if (s.classStartDate && s.classEndDate) {
       for (const slot of s.classSlots) {
         const startDate = firstOnOrAfter(s.classStartDate, slot.day);
-        if (startDate > s.classEndDate) continue; // no occurrence in range
+        const lastDate = term ? termLastClassDate(term, slot.day) : s.classEndDate;
+        const untilDate = lastDate < s.classEndDate ? lastDate : s.classEndDate;
+        if (startDate > untilDate) continue; // no occurrence in range
+        const skipDates = term
+          ? termNoClassDates(term, slot.day).filter((d) => d >= startDate && d <= untilDate)
+          : [];
         lines.push(
           ...vevent(
             {
@@ -180,7 +198,8 @@ export function buildRoutineICS(
               startDate,
               startMin: slot.startMin,
               endMin: slot.endMin,
-              untilDate: s.classEndDate,
+              untilDate,
+              skipDates,
               byday: BYDAY[slot.day],
             },
             dtstamp,
