@@ -39,7 +39,7 @@ async function signInAs(page, email) {
 
 const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 
-test('a DIU student gets the calculator and the playground, and nothing DIU has no data for', async ({ page }) => {
+test('a DIU student gets the calculator, the playground and DIU\'s buses, and nothing DIU has no data for', async ({ page }) => {
   await boot(page);
   // Both of the domains DIU's students sign in from are DIU.
   for (const email of ['rahim15-1234@diu.edu.bd', 'rahim@s.diu.edu.bd']) {
@@ -48,7 +48,12 @@ test('a DIU student gets the calculator and the playground, and nothing DIU has 
     for (const id of ['planner', 'routine', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'groups']) {
       await expect(tab(page, id)).toHaveJSProperty('hidden', true);
     }
-    for (const feature of ['bus', 'campus', 'lostFound']) {
+    // Of the standalone pages DIU has one: Bus opens DIU's own routes, so the
+    // link carries the campus. The map and lost & found are other campuses'.
+    const bus = page.locator('#calcTabs [data-feature="bus"]');
+    await expect(bus).toHaveJSProperty('hidden', false);
+    await expect(bus).toHaveAttribute('href', 'bus/?campus=diu');
+    for (const feature of ['campus', 'lostFound']) {
       await expect(page.locator(`#calcTabs [data-feature="${feature}"]`)).toHaveJSProperty('hidden', true);
     }
   }
