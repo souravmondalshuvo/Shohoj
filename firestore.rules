@@ -34,7 +34,9 @@ service cloud.firestore {
         ? 'bracu'
         : (addr.matches('^[^@]+@northsouth[.]edu$')
           ? 'nsu'
-          : '');
+          : ((addr.matches('^[^@]+@diu[.]edu[.]bd$') || addr.matches('^[^@]+@s[.]diu[.]edu[.]bd$'))
+            ? 'diu'
+            : ''));
     }
     // END GENERATED campusOfEmail
 
@@ -72,7 +74,7 @@ service cloud.firestore {
 
     // BEGIN GENERATED validCampus — npm run generate:campus-map
     function validCampus(value) {
-      return value is string && (value == 'bracu' || value == 'nsu');
+      return value is string && (value == 'bracu' || value == 'nsu' || value == 'diu');
     }
     // END GENERATED validCampus
 
