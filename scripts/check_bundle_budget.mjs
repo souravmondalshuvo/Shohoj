@@ -73,8 +73,11 @@ export const TARGETS = [
     // the signed-in student's campus. CI measured 135.2 with it; 139 keeps the
     // ~2.5% headroom the other budgets hold. Raised again from 139 for
     // campus-scoped data access (#821), the same auth-module growth as
-    // admin.html above: measured 139.2 with it.
-    budget: { gzip: 143 },
+    // admin.html above: measured 139.2 with it. And from 143 for the Campus
+    // Map tab's styles (#877): css/style.css is inlined into every page, so
+    // this one carries ~11 kB of them too. Measured 143.1 with them. The map's
+    // own code is fetched when the tab is opened and is in none of these files.
+    budget: { gzip: 147 },
   },
   // Vite islands entry — not deployed today, but it is what Phase 10 tracked.
   {
