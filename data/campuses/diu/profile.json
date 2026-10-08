@@ -3,9 +3,9 @@
   "name": "Daffodil International University",
   "shortName": "DIU",
   "identity": {
-    "source": "diu-it-section",
-    "emailDomains": [],
-    "note": "DIU runs Google Workspace for Education and says every student has an address in a university domain, but no public DIU page names the student domain. diu.edu.bd, student.diu.edu.bd and s.diu.edu.bd all have Google MX records; one student project treats diu.edu.bd as staff and student.diu.edu.bd as students. Left empty until DIU or a current student confirms it, because a wrong domain locks students out and a staff domain lets lecturers sign in as students."
+    "source": "diu-student-projects-email",
+    "emailDomains": ["diu.edu.bd", "s.diu.edu.bd"],
+    "note": "No public DIU page names the student domain (diu-it-section says only that every student has an address in a university domain), so these are what DIU students' own projects accept: four separate ones take both diu.edu.bd and s.diu.edu.bd, the Computer Programming Club's server among them, and one marks s.diu.edu.bd as students only. Both have Google MX records. diu.edu.bd is also what staff use, so like NSU's it cannot tell a student from a lecturer. student.diu.edu.bd has Google MX records too but only one project names it, so it is left out until a student on it turns up."
   },
   "grading": {
     "source": "diu-rules",
