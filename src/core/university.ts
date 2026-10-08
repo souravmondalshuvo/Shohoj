@@ -472,16 +472,17 @@ const DIU: UniversityProfile = {
   // failed courses only, and a cap shown on every course would over-apply it.
   // creditLoad is deliberately absent: DIU publishes a 9-credit minimum and
   // advisor consent above 15, but no maximum, and CreditLoadRules needs one.
-  features: [
-    // Everything here works from courses, credits and grades the student
-    // types in: DIU publishes no course catalogue to read them from.
-    'calculator',
-    'degree',
-    'feedback',
-    'playground',
-    'profile',
-  ],
-  // Deliberately off, and why:
+  features: ['feedback', 'profile'],
+  // The calculator and the playground are DIU's too, but only on the legacy
+  // page, which grants them itself (LEGACY_ONLY_TABS, js/core/campusFeatures.js).
+  // DIU publishes no course catalogue, so a student types each course and its
+  // credits, and the shell's calculator has no credits field: it reads them
+  // from BRAC University's catalogue, and its degree tracker counts towards
+  // BRAC University's programs. Listing `calculator`, `playground` or `degree`
+  // here would switch those shell routes on for DIU with another university's
+  // numbers behind them.
+  //
+  // Off everywhere, and why:
   //   planner — it lists the catalogue's courses and their prerequisites, and
   //     DIU publishes neither, so the tab would open on an empty list.
   //   groups/papers/reviews/tasks/difficulty — each names a course, and a
