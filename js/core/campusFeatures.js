@@ -83,11 +83,11 @@ const LEGACY_ONLY_TABS = {
  * shell's /bus route, which shows BRAC University's timetable.
  *
  * Each entry names a page that takes the campus in its URL
- * (campusPageHref below) and has that campus's own data behind it. NSU's bus
- * page is src/app/routes/BusRouteNsu.tsx; its Campus Map is CampusRouteNsu.tsx.
+ * (campusPageHref below) and has that campus's own data behind it.
  */
 const LEGACY_ONLY_PAGES = {
-  bus: ['nsu'],
+  // src/app/routes/BusRouteNsu.tsx and BusRouteDiu.tsx, chosen in BusRoute.tsx.
+  bus: ['nsu', 'diu'],
   // src/app/routes/CampusRouteNsu.tsx, chosen in campus/main.tsx.
   campus: ['nsu'],
 };
