@@ -36,6 +36,8 @@ const SNAPSHOT = [
   section(3, 'CSE115', 'SAC414_V', allDay),
   section(4, 'MAT120', 'LIB601', allDay),
   section(5, 'PHY107', 'OAT1001', allDay),
+  // A basement room: level 1, room 13.
+  section(7, 'CEE335', 'B113', allDay),
   // Not a room of a mapped building.
   section(6, 'BIO103', 'NTR201', allDay),
 ];
@@ -53,7 +55,7 @@ async function openNsuCampus(page, query = '', at = IN_TERM) {
 test('shows NSU, its buildings, and that the timetable is not live', async ({ page }) => {
   await openNsuCampus(page);
   const buildings = page.getByTestId('campus-buildings');
-  for (const name of ['Whole campus', 'NAC', 'SAC', 'Library', 'Auditorium', 'Admin']) {
+  for (const name of ['Whole campus', 'NAC', 'SAC', 'Library', 'Auditorium', 'Admin', 'Basements']) {
     await expect(buildings.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await expect(page.getByTestId('campus-snapshot')).toContainText('not live');
@@ -154,6 +156,27 @@ test('outside the term, no room is shown as in class or free', async ({ page }) 
   await expect(
     page.getByTestId('campus-room-list').getByRole('button', { name: /NAC210/ }),
   ).toContainText('no timetable for today');
+});
+
+test('the basements open level by level, B1 downward', async ({ page }) => {
+  await openNsuCampus(page);
+  await page.getByTestId('campus-buildings').getByRole('button', { name: 'Basements' }).click();
+  const floors = page.getByTestId('campus-floors');
+  await expect(floors.getByRole('button')).toHaveCount(3);
+  await expect(floors.getByRole('button').first()).toContainText('B1');
+  await expect(page).toHaveURL(/building=BAS/);
+
+  await floors.getByRole('button', { name: /^B1/ }).click();
+  const list = page.getByTestId('campus-room-list');
+  await expect(list).toContainText('Basements · B1');
+  await expect(list).toContainText('Vehicle parking');
+  await list.getByRole('button', { name: /B113/ }).click();
+  await expect(page.getByTestId('campus-room-panel')).toContainText('Basements · B1');
+  await expect(page.getByTestId('campus-room-panel')).toContainText('CEE335');
+
+  // A level with no timetabled room is still a level.
+  await floors.getByRole('button', { name: /^B3/ }).click();
+  await expect(page.getByTestId('campus-floor-empty')).toBeVisible();
 });
 
 test('a snapshot that will not load offers a retry', async ({ page }) => {
