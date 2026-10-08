@@ -28,7 +28,8 @@ test('the model has a node for every building, storey and roof the scene switche
     const names = new Set(readGltfJson().nodes.map((node) => node.name));
     for (const building of NSU_BUILDINGS) {
         assert.ok(names.has(`NSU_${building.id}`), `NSU_${building.id}`);
-        assert.ok(names.has(`NSU_${building.id}_Roof`), `NSU_${building.id}_Roof`);
+        // The basements have the ground for a roof.
+        if (!building.below) assert.ok(names.has(`NSU_${building.id}_Roof`), `NSU_${building.id}_Roof`);
         for (let floor = 1; floor <= building.levels; floor += 1) {
             assert.ok(names.has(`NSU_${building.id}_L${floor}`), `NSU_${building.id}_L${floor}`);
         }
