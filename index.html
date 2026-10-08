@@ -442,15 +442,15 @@
             <button class="calc-tab-menu-item" data-tab="freerooms" role="menuitem">
               <span class="calc-tab-icon">🚪</span><span>Free Rooms</span>
             </button>
+            <button class="calc-tab-menu-item" data-tab="campus" role="menuitem">
+              <span class="calc-tab-icon">📍</span><span>Campus Map</span>
+              <span class="calc-tab-menu-tag">WIP</span>
+            </button>
             <!-- Standalone pages (#383), not tabs: no data-tab, so the tab
                  machinery ignores them and the anchors navigate natively.
                  data-feature names the campus feature behind each, so
                  applyCampusFeatures (js/main.js) can hide the ones the
                  signed-in student's campus has no data for. -->
-            <a class="calc-tab-menu-item" href="campus/" data-feature="campus" data-campus-href="campus/" role="menuitem">
-              <span class="calc-tab-icon">📍</span><span>Campus Map</span>
-              <span class="calc-tab-menu-tag">WIP</span>
-            </a>
             <a class="calc-tab-menu-item" href="bus/" data-feature="bus" data-campus-href="bus/" role="menuitem">
               <span class="calc-tab-icon">🚌</span><span>Bus</span>
             </a>
@@ -613,6 +613,14 @@
         <div class="calc-body">
           <div id="freeRoomsContent">
             <!-- Rendered dynamically by freeRoomsTab.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-tab-panel" id="tabCampus">
+        <div class="calc-body">
+          <div id="campusMapContent">
+            <!-- Mounted on demand by campusMapTab.js -->
           </div>
         </div>
       </div>
