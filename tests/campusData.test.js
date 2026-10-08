@@ -69,7 +69,12 @@ for (const major of ['ACT', 'ECO', 'FIN', 'HRM', 'INB', 'MGT', 'MIS', 'MKT', 'SC
 // note, never guessed.
 const diu = real.campuses.find((c) => c.id === 'diu');
 assert.ok(diu, 'DIU is registered');
-assert.deepEqual(diu.profile.identity.emailDomains, [], 'the student domain stays unconfirmed, not guessed');
+assert.deepEqual(diu.profile.identity.emailDomains, ['diu.edu.bd', 's.diu.edu.bd']);
+assert.equal(
+  real.campuses.find((c) => c.id === 'diu').sources.records.find((r) => r.id === diu.profile.identity.source).status,
+  'third-party',
+  "DIU names no student domain itself, so the domains are students' own word and say so",
+);
 assert.deepEqual(
   diu.profile.grading.scale.map((g) => [g.letter, g.points, g.minMark]).slice(0, 3),
   [['A+', 4.0, 80], ['A', 3.75, 75], ['A-', 3.5, 70]],
@@ -232,6 +237,7 @@ expectError('a campus without sources.json', (dir) => {
 
 // "Not published" is allowed only when a note says so.
 expectError('no email domain and no note', (dir) => editJson(path.join(dir, 'profile.json'), (d) => {
+  d.identity.emailDomains = [];
   delete d.identity.note;
 }), /diu: identity: no email domains and no note/, 'diu');
 
