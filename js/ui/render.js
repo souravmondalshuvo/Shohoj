@@ -23,6 +23,7 @@ registerAction('render:clearBorder',     el => { el.style.borderColor = ''; });
 registerAction('render:courseInput',     (el, ev) => window.onCourseInput?.(ev, Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:pfChange',        el => window.onPFChange?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value));
 registerAction('render:autoDetectGrade', el => window.autoDetectGrade?.(Number(el.dataset.semId), Number(el.dataset.idx), el.value, el));
+registerAction('render:creditsChange',   (el, ev) => { if (ev.type === 'change') setTypedCredits(Number(el.dataset.semId), Number(el.dataset.idx), el.value); });
 registerAction('render:rateCourse',      el => openRateForCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:removeCourse',    el => removeCourse(Number(el.dataset.semId), Number(el.dataset.idx)));
 registerAction('render:addCourse',       el => addCourse(Number(el.dataset.semId)));
@@ -593,6 +594,7 @@ export function renderSemesters() {
   // fight. Inert until the island opts in by setting this flag.
   if (typeof window !== 'undefined' && window.__SHOHOJ_REACT_SEMESTERS__) return;
   const container = document.getElementById('semestersContainer');
+  const typedCredits = campusTypesCredits();
   const hasSummary = state.semesters.some(s => s.summary);
   const hasNonSummary = state.semesters.some(s => !s.summary);
 
@@ -701,7 +703,11 @@ export function renderSemesters() {
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
-            <span class="credits-static">${c.credits}</span>${
+            ${typedCredits && c.name.trim()
+              ? `<input type="text" inputmode="decimal" class="credits-static credits-typed" aria-label="Credits"
+                  value="${c.credits}" autocomplete="off"
+                  data-action="render:creditsChange" data-sem-id="${sem.id}" data-idx="${i}" />`
+              : `<span class="credits-static">${c.credits}</span>`}${
               c.name.trim() && c.credits > 0 && ![0.5,1,1.5,2,2.5,3,3.5,4,4.5,6,8,10,12].includes(c.credits)
                 ? `<span class="credit-error-dot" title="Unusual credit value: ${c.credits}"></span>`
                 : ''
@@ -960,6 +966,38 @@ export function removeSemester(id) {
   state.semesters = state.semesters.filter(s => s.id !== id);
   renderSemesters();
   window._shohoj_recalc();
+}
+
+// Credits come from the catalogue wherever there is one. A campus that
+// publishes none (DIU) has no other source than the student, so there the
+// credits cell is a field.
+export function campusTypesCredits() {
+  return getActiveCatalog().allCourses.length === 0;
+}
+
+/** Credits a student may type: zero to twelve, halves and quarters included. */
+export function parseTypedCredits(raw) {
+  const text = String(raw).trim();
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(text)) return null;
+  const credits = Number(text);
+  return credits <= 12 ? credits : null;
+}
+
+function setTypedCredits(semId, cIdx, raw) {
+  const course = courseAt(semId, cIdx);
+  const credits = parseTypedCredits(raw);
+  if (course && credits !== null && campusTypesCredits()) {
+    course.credits = credits;
+    // A course with no credits is pass/fail and one with credits is graded,
+    // so a grade of the other kind does not carry over. An F is both.
+    const passFail = course.grade === 'P' || course.grade === 'F' || course.grade === '';
+    if (credits === 0 ? !passFail : course.grade === 'P') {
+      course.grade = '';
+      course.gradePoint = '';
+    }
+  }
+  // Anything unreadable is put back as it was.
+  window._shohoj_renderAndRecalc();
 }
 
 export function addCourse(semId) {
