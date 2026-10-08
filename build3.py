@@ -58,9 +58,11 @@ MAIN_JS_FILES = [
     'js/core/university.js',
     # Which campus the signed-in student is on; every grade call reads its rules
     'js/core/activeCampus.js',
-    # The active campus's catalogue: NSU's (generated from data/campuses/nsu)
-    # beside BRACU's catalog.js, and the lookup the data layers validate with
+    # The active campus's catalogue: NSU's and DIU's (generated from
+    # data/campuses) beside BRACU's catalog.js, and the lookup the data layers
+    # validate with
     'js/core/catalogNsu.generated.js',
+    'js/core/catalogDiu.generated.js',
     'js/core/activeCatalog.js',
     'js/core/courseLookup.js',
     # A campus whose Routine comes from a campus-database snapshot: where the

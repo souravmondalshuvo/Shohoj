@@ -124,7 +124,7 @@ try {
   // DIU: half credits, an unknown calendar and a corrected bus time survive the build.
   assert.equal(one("SELECT total_credits FROM programs WHERE campus='diu' AND code='CSE'").total_credits, 154.5);
   assert.ok(one("SELECT COUNT(*) AS n FROM programs WHERE campus='diu' AND term_system IS NULL AND note IS NOT NULL").n > 0);
-  assert.equal(one("SELECT email_domains FROM campuses WHERE id='diu'").email_domains, '');
+  assert.equal(one("SELECT email_domains FROM campuses WHERE id='diu'").email_domains, 'diu.edu.bd,s.diu.edu.bd');
   const graduate = one("SELECT source FROM academic_rules WHERE campus='diu' AND id='min-cgpa-to-graduate'");
   assert.equal(graduate.source, 'diu-faq', 'a rule keeps its own source');
   const fridayBus = all(`SELECT t.time FROM bus_times t JOIN bus_routes r ON r.campus=t.campus AND r.route=t.route

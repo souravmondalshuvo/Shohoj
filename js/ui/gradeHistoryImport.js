@@ -13,6 +13,7 @@
 // built with DOM calls, so nothing pasted is ever treated as HTML.
 
 import { getActiveCampus } from '../core/activeCampus.js';
+import { hasFeature } from '../core/university.js';
 import { getActiveCatalog } from '../core/activeCatalog.js';
 import { registerAction } from '../core/dispatch.js';
 import { calculateCgpaTotals } from '../core/gpa-core.js';
@@ -61,6 +62,9 @@ const ghCourseCount = parsed => parsed.semesters.reduce((n, semester) => n + sem
  * paste box on a campus that pastes, the PDF picker everywhere else.
  */
 export function openTranscriptImport() {
+  // No reader for this campus's transcript: the buttons that lead here are
+  // hidden, and one drawn before the campus was known does nothing.
+  if (!hasFeature(getActiveCampus(), 'transcript')) return;
   if (importsByGradeHistoryPaste()) { openGradeHistoryImport(); return; }
   document.getElementById('transcriptFileInput')?.click();
 }

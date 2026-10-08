@@ -31,6 +31,12 @@ export const UNIVERSITY_DIRECTORY = [
     shortName: 'NSU',
     emailDomains: ['northsouth.edu'],
   },
+  {
+    id: 'diu',
+    name: 'Daffodil International University',
+    shortName: 'DIU',
+    emailDomains: ['diu.edu.bd', 's.diu.edu.bd'],
+  },
 ];
 
 // Which campus an email address belongs to, or null for a domain we do not

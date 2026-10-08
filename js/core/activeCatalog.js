@@ -4,11 +4,12 @@
 // is on — the catalogue counterpart of activeCampus.js, which answers the same
 // question for grading rules.
 //
-// Both are generated from data/campuses/ (scripts/generate_legacy_catalog.mjs).
+// All are generated from data/campuses/ (scripts/generate_legacy_catalog.mjs).
 // BRACU's is expanded by catalog.js and departments.js, whose constants are
 // handed back as they are: the same objects, so nothing about BRACU changes by
 // reading them through here. NSU's is expanded into the same shapes on first
-// use.
+// use. DIU's is its programs and nothing else: DIU publishes no course
+// catalogue, so its students type their courses in.
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
 // a course, or null — because the rule is the campus's, not just its table,
@@ -39,6 +40,7 @@ import {
   NSU_UNEXPRESSED_PREREQS,
   NSU_UNTITLED_CODES,
 } from './catalogNsu.generated.js';
+import { DIU_PROGRAM_ROWS } from './catalogDiu.generated.js';
 import { DEPARTMENTS } from './departments.js';
 
 const BRACU_CATALOG = {
@@ -110,12 +112,27 @@ function expandNsuCatalog() {
   };
 }
 
+let _diuCatalog = null;
+
+// Programs only: a total to count towards, and a calendar where DIU states one.
+function expandDiuCatalog() {
+  const programs = {};
+  for (const [code, p] of Object.entries(DIU_PROGRAM_ROWS)) {
+    programs[code] = { ...p, presets: [] };
+  }
+  return { ...EMPTY_CATALOG, departmentOverrides: {}, programs };
+}
+
 /** The catalogue of one campus, by id. Unknown or data-less campuses get an empty one. */
 export function getCatalogFor(campusId) {
   if (campusId === 'bracu') return BRACU_CATALOG;
   if (campusId === 'nsu') {
     if (_nsuCatalog === null) _nsuCatalog = expandNsuCatalog();
     return _nsuCatalog;
+  }
+  if (campusId === 'diu') {
+    if (_diuCatalog === null) _diuCatalog = expandDiuCatalog();
+    return _diuCatalog;
   }
   return EMPTY_CATALOG;
 }
