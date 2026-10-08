@@ -70,6 +70,9 @@ MAIN_JS_FILES = [
     # campus uses it
     'js/core/campusFeeds.generated.js',
     'js/core/activeFeed.js',
+    # Which dates of a term its weekly timetable describes (holidays, day
+    # patterns that end early, the exam window)
+    'js/core/termCalendar.js',
     # Which calculator tabs a campus gets (twin of the shell's tabsFor)
     'js/core/campusFeatures.js',
     'js/core/gpa-core.js',
