@@ -33,7 +33,7 @@ async function boot(page, email, path = '/') {
 const tab = (page, id) => page.locator(`#calcTabs [data-tab="${id}"]`);
 const group = (page, id) => page.locator(`#calcTabs .calc-tab-group[data-group="${id}"]`);
 
-const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'freerooms', 'groups'];
+const NSU_TABS = ['calculator', 'planner', 'playground', 'routine', 'reviews', 'papers', 'freerooms', 'campus', 'groups'];
 const BRACU_ONLY_TABS = ['tasks', 'difficulty', 'seats'];
 
 test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
@@ -47,15 +47,13 @@ test('an NSU student sees only the tabs NSU has data for', async ({ page }) => {
   await expect(group(page, 'plan')).toBeVisible();
   await expect(group(page, 'courses')).toBeVisible();
   await expect(group(page, 'campus')).toBeVisible();
-  // Of the three standalone pages, NSU has two: Bus opens NSU's own service
-  // and the Campus Map NSU's own buildings, so each link carries the campus.
-  // Lost & found is BRAC University's.
+  // Of the two standalone pages, NSU has one: Bus opens NSU's own service, so
+  // the link carries the campus. Lost & found is BRAC University's. The Campus
+  // Map is a tab (NSU_TABS above), not a link out.
   const bus = page.locator('#calcTabs [data-feature="bus"]');
   await expect(bus).toHaveJSProperty('hidden', false);
   await expect(bus).toHaveAttribute('href', 'bus/?campus=nsu');
-  const map = page.locator('#calcTabs [data-feature="campus"]');
-  await expect(map).toHaveJSProperty('hidden', false);
-  await expect(map).toHaveAttribute('href', 'campus/?campus=nsu');
+  await expect(page.locator('#calcTabs a[href^="campus/"]')).toHaveCount(0);
   await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
 
   // The nav's Tasks link opens a tab NSU does not get.
@@ -83,7 +81,7 @@ test('a BRACU student keeps every tab', async ({ page }) => {
     await expect(tab(page, id)).toHaveJSProperty('hidden', false);
   }
   for (const id of ['plan', 'courses', 'campus']) await expect(group(page, id)).toBeVisible();
-  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(3);
+  await expect(page.locator('#calcTabs [data-feature]')).toHaveCount(2);
   for (const link of await page.locator('#calcTabs [data-feature]').all()) {
     await expect(link).toHaveJSProperty('hidden', false);
   }
