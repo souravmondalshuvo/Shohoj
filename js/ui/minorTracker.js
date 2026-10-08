@@ -8,6 +8,8 @@
 // The picker is wired through data-action rather than an inline onchange: the
 // bundle's CSP blocks inline handlers.
 
+import { getActiveCampus } from '../core/activeCampus.js';
+import { DEFAULT_UNIVERSITY_ID } from '../core/university.js';
 import { state, saveState } from '../core/state.js';
 import { registerAction } from '../core/dispatch.js';
 import { escHtml } from '../core/helpers.js';
@@ -127,8 +129,9 @@ export function renderMinorTracker() {
   if (!box || !content) return;
 
   // Nothing to measure yet: the panel appears with the calculator's first
-  // semester, the same moment the rest of the results do.
-  if (!state.semesters.length) {
+  // semester, the same moment the rest of the results do. And nothing to
+  // measure against anywhere but BRAC University: these are its minors.
+  if (!state.semesters.length || getActiveCampus().id !== DEFAULT_UNIVERSITY_ID) {
     box.style.display = 'none';
     return;
   }
