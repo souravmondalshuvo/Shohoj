@@ -56,6 +56,11 @@ export function onCourseBlur(e, semId, cIdx) {
     resolvedCredits = exactMatch.credits;
   } else if (!val) {
     resolvedCredits = 0;
+  } else if (getActiveCatalog().allCourses.length === 0) {
+    // No catalogue to read the credits from (DIU): the student types them, so
+    // what they typed stays. A course just named starts at three, the usual
+    // weight, in a field they can see and change.
+    resolvedCredits = prevName ? course.credits : 3;
   } else {
     resolvedCredits = 0;
   }
