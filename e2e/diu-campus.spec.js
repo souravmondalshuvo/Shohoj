@@ -45,17 +45,16 @@ test('a DIU student gets the calculator, the playground and DIU\'s buses, and no
   for (const email of ['rahim15-1234@diu.edu.bd', 'rahim@s.diu.edu.bd']) {
     await signInAs(page, email);
     for (const id of ['calculator', 'playground']) await expect(tab(page, id)).toHaveJSProperty('hidden', false);
-    for (const id of ['planner', 'routine', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'groups']) {
+    for (const id of ['planner', 'routine', 'tasks', 'reviews', 'difficulty', 'papers', 'seats', 'freerooms', 'campus', 'groups']) {
       await expect(tab(page, id)).toHaveJSProperty('hidden', true);
     }
     // Of the standalone pages DIU has one: Bus opens DIU's own routes, so the
-    // link carries the campus. The map and lost & found are other campuses'.
+    // link carries the campus. Lost & found is another campus's — and so is
+    // the Campus Map, which is a tab (hidden with the others above).
     const bus = page.locator('#calcTabs [data-feature="bus"]');
     await expect(bus).toHaveJSProperty('hidden', false);
     await expect(bus).toHaveAttribute('href', 'bus/?campus=diu');
-    for (const feature of ['campus', 'lostFound']) {
-      await expect(page.locator(`#calcTabs [data-feature="${feature}"]`)).toHaveJSProperty('hidden', true);
-    }
+    await expect(page.locator('#calcTabs [data-feature="lostFound"]')).toHaveJSProperty('hidden', true);
   }
   await expect(page.locator('#calculator')).toContainText("DIU's exact grading scale");
 
