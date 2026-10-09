@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-/n7PnZU910HjbWTOnR5U3i9Y9zq3f9V5VxdN3fd947g='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-YuS0kgUxtslq8APWTKY6ILu3mLpchUIYrUj8eZb+NwY='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18624,11 +18624,11 @@ const LEGACY_ONLY_TABS = {
  * shell's /bus route, which shows BRAC University's timetable.
  *
  * Each entry names a page that takes the campus in its URL
- * (campusPageHref below) and has that campus's own data behind it. NSU's bus
- * page is src/app/routes/BusRouteNsu.tsx; its Campus Map is CampusRouteNsu.tsx.
+ * (campusPageHref below) and has that campus's own data behind it.
  */
 const LEGACY_ONLY_PAGES = {
-  bus: ['nsu'],
+  // src/app/routes/BusRouteNsu.tsx and BusRouteDiu.tsx, chosen in BusRoute.tsx.
+  bus: ['nsu', 'diu'],
   // src/app/routes/CampusRouteNsu.tsx, chosen in campus/main.tsx.
   campus: ['nsu'],
 };
