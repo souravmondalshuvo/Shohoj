@@ -51,7 +51,15 @@ export const TARGETS = [
     // over loading it on demand, which would put a network request behind
     // course search. That cost grows with each campus: revisit on-demand
     // loading when a third catalogue goes in rather than raising this again.
-    budget: { raw: 3780, gzip: 1775 },
+    //
+    // The third (DIU's course lists, #889) went in on demand, as that note
+    // asks: 692 courses as feeds/diu-courses.json, 32 kB that only a DIU
+    // student fetches. Bundled, they put the page at 3813.7 raw. What is left
+    // in the bundle is the fetch, the per-program catalogue and typed credits
+    // for courses a list does not hold — ~5 kB of code on a page that had
+    // ~4 kB of room, measured 3780.7. Raw raised to 3850 for that code, the
+    // ~2% of room the other budgets keep; the data stays out.
+    budget: { raw: 3850, gzip: 1775 },
   },
   {
     label: 'admin.html',
