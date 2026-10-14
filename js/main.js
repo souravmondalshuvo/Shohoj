@@ -13,7 +13,7 @@ import {
 } from './core/calculator.js';
 import { calculateCgpaTotals } from './core/gpa-core.js';
 import { activeGradePoint, getActiveCampus, initActiveCampus } from './core/activeCampus.js';
-import { getActiveCatalog } from './core/activeCatalog.js';
+import { getActiveCatalog, loadDiuProgramCourses } from './core/activeCatalog.js';
 import { setCourseLookup } from './core/courseLookup.js';
 import { campusAllowsFeature, campusAllowsTab, campusPageHref } from './core/campusFeatures.js';
 import { DEFAULT_UNIVERSITY_ID } from './core/university.js';
@@ -114,6 +114,15 @@ window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// DIU's course lists are fetched only for a DIU student, and arrive after the
+// page has drawn: draw the calculator again with them, and the open tab.
+window.addEventListener('shohoj:campus-changed', () => {
+  if (getActiveCampus().id === 'diu') loadDiuProgramCourses();
+});
+window.addEventListener('shohoj:catalog-changed', () => {
+  window._shohoj_renderAndRecalc();
+  switchCalcTab(_activeCalcTab);
+});
 // The tab bar was built for the previous campus's features. Before the redraw
 // below: if the open tab is one the new campus does not get, this moves the
 // student to the calculator, and the redraw then re-enters that instead.
