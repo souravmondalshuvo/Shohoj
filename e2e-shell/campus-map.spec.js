@@ -53,8 +53,10 @@ test('campus page renders floors from the feed and prompts for a floor', async (
   await expect(page.getByRole('button', { name: 'Floor 7' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Floor 9' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Floor 10' })).toBeVisible();
-  // Floor 8 has no rooms in the stub, so it must not be offered.
-  await expect(page.getByRole('button', { name: 'Floor 8' })).toHaveCount(0);
+  // Every level opens, scheduled rooms or not — basements to upper roof.
+  for (const name of ['Basements 1–3', 'Ground floor', 'Floor 8', 'Floor 13', 'Upper roof']) {
+    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  }
   await expect(page.getByTestId('campus-floor-hint')).toBeVisible();
   // 3D canvas when WebGL is available, an explanatory note otherwise —
   // either way the DOM controls carry the feature.
@@ -112,8 +114,12 @@ test('?floor= deep link (from the cafeteria guide) focuses the floor without a r
   );
   // A bare floor link highlights the floor but opens no room panel.
   await expect(page.getByTestId('campus-room-panel')).toHaveCount(0);
-  // A floor with no rooms in the feed is ignored (no crash, prompt stays).
+  // A floor with no rooms in the feed still opens, and says it has none.
   await openCampus(page, '/campus?floor=8');
+  await expect(page.getByRole('button', { name: 'Floor 8' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('campus-floor-empty')).toContainText('No classes are scheduled on Floor 8');
+  // A level the building does not have is ignored.
+  await openCampus(page, '/campus?floor=40');
   await expect(page.getByTestId('campus-floor-hint')).toBeVisible();
 });
 
@@ -205,7 +211,7 @@ test.describe('exterior model (#750)', () => {
 });
 
 test.describe('place directory (#748)', () => {
-  test('searching a place names its floor, even off the map', async ({ page }) => {
+  test('searching a place names its floor and opens it', async ({ page }) => {
     await openCampus(page);
     await page.getByTestId('campus-place-input').fill('registrar');
     const first = page.getByTestId('campus-place-result').first();
@@ -214,12 +220,15 @@ test.describe('place directory (#748)', () => {
     await first.click();
     const status = page.getByTestId('campus-place-status');
     await expect(status).toContainText('Office of the Registrar is on Floor 4.');
-    // Floor 4 has no scheduled rooms, so the map stays where it was.
-    await expect(status).toContainText('only focuses floors with scheduled rooms');
-    await expect(page.getByRole('button', { name: 'Tower' })).toHaveAttribute(
+    // Floor 4 has no scheduled rooms, and opens all the same, listing what
+    // Campus 360 puts there.
+    await expect(status).toContainText('Showing Floor 4 on the map.');
+    await expect(page.getByRole('button', { name: 'Floor 4', exact: true })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
+    await expect(page.getByTestId('campus-level-places')).toContainText('Office of the Registrar');
+    await expect(page.getByTestId('campus-floor-empty')).toBeVisible();
   });
 
   test('choosing a place on a map floor focuses that floor', async ({ page }) => {
