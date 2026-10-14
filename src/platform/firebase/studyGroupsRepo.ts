@@ -102,6 +102,7 @@ export function studyGroupWrite(
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
+  readCampus?: string | undefined,
 ): Promise<StudyGroupsBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
   const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
@@ -149,7 +150,12 @@ async function defaultBackend(
   return {
     async listGroups(limit) {
       const snap = await getDocs(
-        query(groups, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+        query(
+          groups,
+          ...campusFilter(auth, where, readCampus),
+          orderBy('createdAt', 'desc'),
+          qLimit(limit),
+        ),
       );
       return snap.docs.flatMap((d) => toGroup(d.id, d.data()));
     },
@@ -212,6 +218,11 @@ async function defaultBackend(
 export interface StudyGroupsRepoOptions {
   readonly config: FirebaseConfig;
   readonly recaptchaV3SiteKey?: string;
+  /**
+   * The campus to list (useUniversity()'s id): an admin's switcher choice, else
+   * the student's own. Omitted, lists follow the signed-in email's campus.
+   */
+  readonly readCampus?: string | undefined;
   /** Injectable backend loader (tests); defaults to the lazy npm SDK. */
   readonly loadBackend?: () => Promise<StudyGroupsBackend>;
 }
@@ -219,7 +230,8 @@ export interface StudyGroupsRepoOptions {
 /** Create the repo; the Firestore SDK loads on first use, shared thereafter. */
 export function createStudyGroupsRepo(options: StudyGroupsRepoOptions): StudyGroupsRepo {
   const loadBackend =
-    options.loadBackend ?? (() => defaultBackend(options.config, options.recaptchaV3SiteKey));
+    options.loadBackend ??
+    (() => defaultBackend(options.config, options.recaptchaV3SiteKey, options.readCampus));
   let backend: Promise<StudyGroupsBackend> | null = null;
   const load = () => (backend ??= loadBackend());
 
