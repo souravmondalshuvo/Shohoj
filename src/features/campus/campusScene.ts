@@ -1058,7 +1058,14 @@ export function createCampusScene(
             if (!isFocused) {
                 f.targetOpacity = 0;
                 f.mesh.material.depthWrite = false;
+            } else {
+                // A floor opened while the model was still loading took the
+                // drawn stack's plate: make it the model's lighter one.
+                f.targetOpacity = MODEL_FOCUSED_SLAB_OPACITY;
+                f.mesh.castShadow = false;
             }
+            // Numbers floating over the cut-away floors would mark nothing.
+            if (focusedFloor !== null && f.floor > focusedFloor) f.targetLabelOpacity = 0;
         }
     }
 
@@ -1284,12 +1291,20 @@ export function createCampusScene(
     }
 
     function applyFloorFocus(): void {
+        // The level the drawn stack shows. Without the model, a level with no
+        // slab of its own (basements, ground floor, upper roof) cannot be
+        // opened in the drawing, so the drawing stays on the tower — the DOM
+        // lists that level's places, and the model, if it arrives, cuts to it.
+        const shownFloor =
+            focusedFloor !== null && !modelAdopted && !floors.some((f) => f.floor === focusedFloor)
+                ? null
+                : focusedFloor;
         for (const f of floors) {
-            const lifted = focusedFloor !== null && f.floor > focusedFloor;
+            const lifted = shownFloor !== null && f.floor > shownFloor;
             f.targetY = f.baseY + (lifted ? EXPLODE_LIFT : 0);
-            const isFocused = focusedFloor !== null && f.floor === focusedFloor;
+            const isFocused = shownFloor !== null && f.floor === shownFloor;
             f.targetOpacity =
-                focusedFloor === null
+                shownFloor === null
                     ? 0.1
                     : isFocused
                         ? modelAdopted ? MODEL_FOCUSED_SLAB_OPACITY : 0.78
@@ -1303,7 +1318,7 @@ export function createCampusScene(
             // A clear slab must not write depth, or it walls off what's behind it.
             f.mesh.material.depthWrite = f.targetOpacity > 0;
             f.targetLabelOpacity =
-                focusedFloor === null
+                shownFloor === null
                     ? f.interactive ? 0.86 : 0.3
                     : isFocused ? 1 : lifted ? (modelAdopted ? 0 : 0.08) : 0.18;
             // Faded slabs must not throw full-strength shadows (shadow maps
@@ -1311,7 +1326,7 @@ export function createCampusScene(
             f.mesh.castShadow = f.targetOpacity > 0.5;
             f.targetColor.copy(slabTargetColor(f));
         }
-        const focused = focusedFloor !== null;
+        const focused = shownFloor !== null;
         architectureTargetFactor = focused ? 0.1 : 1;
         applyCut();
         shellTargetOpacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
