@@ -1,0 +1,38 @@
+# gitleaks configuration — used by .github/workflows/secret-scan.yml.
+#
+# Keeps every default rule and allowlists only values that are public by
+# design or are not credentials at all. Each allowlist is as narrow as the
+# false positive it silences: a different key of the same shape still fails.
+#
+# Run locally:  gitleaks git --config .gitleaks.toml --log-opts=HEAD --redact
+
+title = "Shohoj"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public Firebase web client config — ships to every browser in runtime-config.js"
+regexTarget = "secret"
+regexes = [
+  # Firebase web API key: identifies the project, not a credential. Access is
+  # enforced by firestore.rules, storage.rules and App Check.
+  '''^AIzaSyA4cz0TPyvqgeZicrsX5bEgxIJuGlour54$''',
+  # reCAPTCHA v3 SITE key (the public half; the secret half is never in the repo).
+  '''^6LfVKuAsAAAAADEF3ffdvibgVvmY5OQfi-HTHDyW$''',
+]
+
+[[allowlists]]
+description = "localStorage key names such as ROUTINE_STORAGE_KEY = 'shohoj_routine_v1'"
+regexTarget = "secret"
+regexes = ['''^shohoj_[a-z0-9_]+$''']
+
+[[allowlists]]
+description = "Firebase UIDs compared in security rules — identifiers, not secrets"
+regexTarget = "match"
+regexes = ['''request\.auth\.uid\s*==\s*['"]''']
+
+[[allowlists]]
+description = "Fake token in the Firestore rules tests"
+regexTarget = "secret"
+regexes = ['''^cft_0123456789abcdef0123456789abcdef$''']
