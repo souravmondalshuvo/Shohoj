@@ -79,6 +79,7 @@ assert.equal(normalizeInitials('MMS4'), 'MMS');
 // ── NSU's data: the number separates people, the case does not ─────────────
 
 const TYPED_NSU = typedUniversity.UNIVERSITIES.nsu;
+const FALL_2026_NAMES_NOT_INITIALS = new Set(['Shaifur', 'Shafiur']);
 const TYPED_BRACU = typedUniversity.UNIVERSITIES.bracu;
 const nsuTerms = Object.entries(campus('nsu').sections);
 assert.ok(nsuTerms.length >= 3, 'the NSU term files are loaded');
@@ -90,6 +91,10 @@ for (const [term, file] of nsuTerms) {
   for (const s of file.records) {
     // A few 2025 PDF cells are spreadsheet debris ("Mar-03"), not initials.
     if (!s.faculty || !/^[A-Za-z0-9]+$/.test(s.faculty)) continue;
+    // RDS's Fall 2026 page names one lecturer by first name, in two
+    // spellings, where initials go. A name is not initials, and is longer
+    // than any initials the campus uses.
+    if (FALL_2026_NAMES_NOT_INITIALS.has(s.faculty)) continue;
     if (!teaches.has(s.faculty)) teaches.set(s.faculty, new Set());
     teaches.get(s.faculty).add(subject(s.course));
   }
