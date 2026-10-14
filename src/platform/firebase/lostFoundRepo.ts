@@ -12,7 +12,7 @@
 //   - claims use the deterministic `${postId}_${uid}` id (one per user/post).
 //   - every createdAt is serverTimestamp() (rules pin `== request.time`).
 
-import { campusStamp } from './campusStamp.ts';
+import { campusFilter, campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import type { LostFoundDraft, LostFoundPost } from '../../core/lostFound.ts';
 import type { FieldValue } from 'firebase/firestore';
@@ -86,6 +86,7 @@ async function defaultBackend(
     doc,
     getDocs,
     query,
+    where,
     orderBy,
     limit: qLimit,
     writeBatch,
@@ -115,7 +116,9 @@ async function defaultBackend(
 
   return {
     async listRecent(limit) {
-      const snap = await getDocs(query(posts, orderBy('createdAt', 'desc'), qLimit(limit)));
+      const snap = await getDocs(
+        query(posts, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+      );
       return snap.docs.map(toPost);
     },
     async createPost(draft, uid, email) {
