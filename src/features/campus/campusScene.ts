@@ -81,7 +81,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import type { CampusModel, ParsedRoom } from '../../core/campusRooms';
-import { BASEMENT_LEVEL, GROUND_LEVEL } from '../../core/campusPlaces.ts';
+import { BASEMENT_LEVEL, GROUND_LEVEL, UPPER_ROOF_LEVEL } from '../../core/campusPlaces.ts';
 import {
     canDecompressGzip,
     fetchExteriorGlb,
@@ -236,8 +236,24 @@ export const MODEL_LIGHTING = {
 export function floorClipHeight(level: number): number | null {
     if (level === BASEMENT_LEVEL) return MODEL_GROUND_Y - CLIP_CLEARANCE;
     if (level === GROUND_LEVEL) return -CLIP_CLEARANCE;
-    if (level >= PUBLISHED_TOP_FLOOR + 1) return null;
+    // The upper roof has nothing above it. Any other level — including a floor
+    // the feed knows beyond the published thirteen — is cut over itself.
+    if (level === UPPER_ROOF_LEVEL) return null;
     return level * FLOOR_GAP - CLIP_CLEARANCE;
+}
+
+/**
+ * The level a point at scene height `y` belongs to — what a click on the
+ * model opens. Inverse of the slab layout: floor f spans from just under its
+ * own slab to just under the next. Below floor 1 is the ground floor, below the
+ * ground the basements (one level in the directory), and above floor 13 the
+ * upper roof. Pure and exported for unit tests.
+ */
+export function levelAtHeight(y: number): number {
+    if (y < MODEL_GROUND_Y - CLIP_CLEARANCE) return BASEMENT_LEVEL;
+    if (y < -CLIP_CLEARANCE) return GROUND_LEVEL;
+    const floor = Math.floor((y + CLIP_CLEARANCE) / FLOOR_GAP) + 1;
+    return floor > PUBLISHED_TOP_FLOOR ? UPPER_ROOF_LEVEL : floor;
 }
 
 /**
@@ -1261,7 +1277,10 @@ export function createCampusScene(
         cameraTargetY =
             focusedFloor === null || !modelAdopted
                 ? towerTargetY
-                : levelBaseY(focusedFloor) + FLOOR_GAP / 2;
+                : focusedFloor === BASEMENT_LEVEL
+                  ? // Basements 1–3 open together: aim at the middle of the three.
+                    MODEL_GROUND_Y - 1.5 * FLOOR_GAP
+                  : levelBaseY(focusedFloor) + FLOOR_GAP / 2;
     }
 
     function applyFloorFocus(): void {
@@ -1550,6 +1569,25 @@ export function createCampusScene(
             -((event.clientY - rect.top) / rect.height) * 2 + 1,
         );
         raycaster.setFromCamera(pointer, camera);
+        // With the model in, a click on the building opens the level it lands
+        // on — any level, the ground floor, basements and roof included. The
+        // raycaster ignores the cut, so a hit above it is not a hit.
+        if (modelAdopted) {
+            const modelHit = raycaster
+                .intersectObjects(modelGroup.children, true)
+                .find(
+                    (hit) =>
+                        hit.point.y <= clipPlane.constant &&
+                        // The building, not the park round it: a click on the
+                        // lawn is not a click on the ground floor.
+                        Math.abs(hit.point.x) <= MODEL_FLOOR_PLATE.width / 2 + 2 &&
+                        Math.abs(hit.point.z) <= MODEL_FLOOR_PLATE.depth / 2 + 2,
+                );
+            if (modelHit) {
+                options.onFloorClick?.(levelAtHeight(modelHit.point.y));
+                return;
+            }
+        }
         // Any level opens now, not only those with scheduled rooms — but a
         // slab above the cut is not there to click, even though the raycaster
         // still sees its (invisible) mesh.
