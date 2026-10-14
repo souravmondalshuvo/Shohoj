@@ -120,6 +120,7 @@ export function feedbackWrite(
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
+  readCampus?: string | undefined,
 ): Promise<FeedbackBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
   const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
@@ -144,7 +145,12 @@ async function defaultBackend(
   return {
     async listRecent(limit) {
       const snap = await getDocs(
-        query(feedback, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+        query(
+          feedback,
+          ...campusFilter(auth, where, readCampus),
+          orderBy('createdAt', 'desc'),
+          qLimit(limit),
+        ),
       );
       return snap.docs.flatMap((d) => {
         const data = d.data();
@@ -192,6 +198,11 @@ async function defaultBackend(
 export interface FeedbackRepoOptions {
   readonly config: FirebaseConfig;
   readonly recaptchaV3SiteKey?: string;
+  /**
+   * The campus to list (useUniversity()'s id): an admin's switcher choice, else
+   * the student's own. Omitted, lists follow the signed-in email's campus.
+   */
+  readonly readCampus?: string | undefined;
   /** Injectable backend loader (tests); defaults to the lazy npm SDK. */
   readonly loadBackend?: () => Promise<FeedbackBackend>;
 }
@@ -199,7 +210,8 @@ export interface FeedbackRepoOptions {
 /** Create the repo; the Firestore SDK loads on first use, shared thereafter. */
 export function createFeedbackRepo(options: FeedbackRepoOptions): FeedbackRepo {
   const loadBackend =
-    options.loadBackend ?? (() => defaultBackend(options.config, options.recaptchaV3SiteKey));
+    options.loadBackend ??
+    (() => defaultBackend(options.config, options.recaptchaV3SiteKey, options.readCampus));
   let backend: Promise<FeedbackBackend> | null = null;
   const load = () => (backend ??= loadBackend());
 
