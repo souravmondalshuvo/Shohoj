@@ -16,6 +16,7 @@
 
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { retypeGenericBlob } from '../../core/paperPreview.ts';
+import { campusFilter } from './campusStamp.ts';
 
 export interface PaperRecord {
   id: string;
@@ -83,7 +84,7 @@ async function defaultBackend(
   recaptchaV3SiteKey?: string,
 ): Promise<PapersBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
-  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
   const {
     getFirestore,
     collection,
@@ -102,7 +103,13 @@ async function defaultBackend(
   return {
     async listRecent(limit) {
       const snap = await getDocs(
-        query(papers, where('approved', '==', true), orderBy('createdAt', 'desc'), qLimit(limit)),
+        query(
+          papers,
+          ...campusFilter(auth, where),
+          where('approved', '==', true),
+          orderBy('createdAt', 'desc'),
+          qLimit(limit),
+        ),
       );
       return snap.docs.map((d) => toRecord(d.id, d.data()));
     },
@@ -110,6 +117,7 @@ async function defaultBackend(
       const snap = await getDocs(
         query(
           papers,
+          ...campusFilter(auth, where),
           where('courseCode', '==', courseCode),
           where('approved', '==', true),
           orderBy('createdAt', 'desc'),
