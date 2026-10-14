@@ -32,22 +32,29 @@ import { anonymousAuthSource } from '../src/platform/auth/authSnapshot';
 import { createFirebaseAuthSource } from '../src/platform/auth/firebaseAuthSource';
 import { runtimeConfigFromGlobals } from '../src/platform/configuration/runtimeConfig';
 
+// e.g. "/Shohoj/lost-found" on Pages, "/lost-found" under vite preview.
+const basename = window.location.pathname.replace(/\/+$/, '');
+// The directory the page is mounted in, where the main site lives: "/Shohoj/".
+// Taken from the mount point, not from the URL being redirected, so a
+// trailing slash on that URL cannot move it.
+const siteRoot = basename.replace(/[^/]*$/, '');
+
 /**
  * Forwards the route's internal /campus?room= links to the main site's Campus
  * Map tab, which opens on the room named in its hash (js/ui/campusMapTab.js).
  */
 function CampusRedirect() {
   useEffect(() => {
-    // Current URL is <mount>/campus?room=…; ../ resolves to the site root,
-    // where the legacy page reads #calculator/campus?room=… as the tab and
-    // the room. The standalone /campus/ page still serves old bookmarks.
-    window.location.replace(`../#calculator/campus${window.location.search}`);
+    // Every room code on the board is a BRAC University tower room
+    // (parseRoomCode in src/core/lostFound.ts), so the link names that campus:
+    // a reader whose own campus is another would otherwise get their map,
+    // without the room. The standalone /campus/ page still serves bookmarks.
+    const room = new URLSearchParams(window.location.search).get('room');
+    const query = new URLSearchParams({ ...(room ? { room } : {}), campus: 'bracu' });
+    window.location.replace(`${siteRoot}#calculator/campus?${query.toString()}`);
   }, []);
   return null;
 }
-
-// e.g. "/Shohoj/lost-found" on Pages, "/lost-found" under vite preview.
-const basename = window.location.pathname.replace(/\/+$/, '');
 
 const router = createBrowserRouter(
   [
