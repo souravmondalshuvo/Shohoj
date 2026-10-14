@@ -29,17 +29,19 @@ const { BRACU_LITERAL_SOURCES, buildLegacyCatalog } = await import('../scripts/l
 const {
   BRACU_CATALOG_OUT_PATH,
   BRACU_DEPARTMENTS_OUT_PATH,
+  DIU_COURSES_PATH,
   DIU_OUT_PATH,
   OUT_PATH,
   renderBracuCatalog,
   renderBracuDepartments,
   renderDiuCatalog,
+  renderDiuCourses,
   renderNsuCatalog,
 } = await import('../scripts/generate_legacy_catalog.mjs');
 const { ALL_COURSES, COURSE_DB, DEPT_META, PREFIX_DEPT_MAP, PREREQS, getCourseDept } = await import('../js/core/catalog.js');
 const { DEPARTMENTS } = await import('../js/core/departments.js');
 const { setActiveCampusForEmail } = await import('../js/core/activeCampus.js');
-const { getActiveCatalog, getCatalogFor } = await import('../js/core/activeCatalog.js');
+const { getActiveCatalog, getCatalogFor, loadDiuProgramCourses, setDiuProgramCourses } = await import('../js/core/activeCatalog.js');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const { campuses, errors } = loadCampuses();
@@ -190,24 +192,75 @@ assert.equal(getActiveCatalog(), getCatalogFor('bracu'));
 setActiveCampusForEmail(null);
 assert.equal(getActiveCatalog(), getCatalogFor('bracu'));
 
-// DIU's module is current, and expands to programs alone: DIU publishes no
-// course catalogue, so there is no course, prerequisite or department to offer
-// — and none of another university's in their place.
+// DIU's module is current, and its catalogue is one program's at a time: a
+// DIU code is unique only within a department, so there is no campus-wide
+// course table — and never another university's in its place.
 assert.equal(
   fs.readFileSync(DIU_OUT_PATH, 'utf8'),
   renderDiuCatalog(),
   'js/core/catalogDiu.generated.js is out of date — run: npm run generate:legacy-catalog',
 );
-const diu = getCatalogFor('diu');
-assert.deepEqual(plain(diu), plain(buildLegacyCatalog(campus('diu'))), 'the expanded DIU catalogue equals the mapping');
-assert.deepEqual([diu.allCourses, Object.keys(diu.courses), Object.keys(diu.prerequisites), diu.departmentOrder], [[], [], [], []]);
-assert.equal(Object.keys(diu.programs).length, 33);
-assert.equal(diu.programs.CSE.totalCredits, 154.5, 'half credits survive');
-assert.deepEqual(diu.programs.CSE.seasons, ['Spring', 'Summer', 'Fall'], "trimester by CSE's own course offer");
-assert.equal(diu.programs.BBA.seasons, undefined, 'no calendar is claimed where DIU states none');
-assert.equal(diu.departmentOf('CSE228'), null);
+const diuData = campus('diu');
+const listed = (program) =>
+  diuData.programCourses.records
+    .filter((r) => r.program === program)
+    .map((r) => [r.code, r.title, r.credits])
+    .sort(([a], [b]) => (a < b ? -1 : 1));
+
+// The lists are fetched, not bundled. Before they arrive a DIU catalogue has
+// programs and no courses; this hands them over the way the page's fetch does.
+assert.deepEqual(getCatalogFor('diu', 'CSE').allCourses, [], 'nothing before the lists arrive');
+const diuCourses = JSON.parse(fs.readFileSync(DIU_COURSES_PATH, 'utf8'));
+assert.equal(fs.readFileSync(DIU_COURSES_PATH, 'utf8'), renderDiuCourses(), 'feeds/diu-courses.json is current');
+setDiuProgramCourses(diuCourses.programs);
+
+// No program picked: programs to pick from, and no courses.
+const unpicked = getCatalogFor('diu', '');
+assert.deepEqual([unpicked.allCourses, Object.keys(unpicked.prerequisites), unpicked.departmentOrder], [[], [], []]);
+assert.equal(Object.keys(unpicked.programs).length, 33);
+assert.equal(unpicked.programs.CSE.totalCredits, 154.5, 'half credits survive');
+assert.deepEqual(unpicked.programs.CSE.seasons, ['Spring', 'Summer', 'Fall'], "trimester by CSE's own course offer");
+assert.equal(unpicked.programs.BBA.seasons, undefined, 'no calendar is claimed where DIU states none');
+assert.deepEqual(plain(unpicked.programs), plain(buildLegacyCatalog(diuData).programs), "DIU's programs equal the mapping");
+
+// A program picked: exactly the courses its page lists.
+const cse = getCatalogFor('diu', 'CSE');
+assert.deepEqual(cse.allCourses.map((c) => [c.code, c.name, c.credits]), listed('CSE'));
+assert.equal(cse.courses.CSE113.name, 'Programming and Problem Solving');
+assert.equal(cse.courses.CSE114.credits, 1.5);
+assert.equal(cse.courses.CSE113.full, 'Programming and Problem Solving (CSE113)');
+assert.equal(cse.programs, unpicked.programs, 'one program table for every pick');
+assert.equal(getCatalogFor('diu', 'CSE'), cse, 'expanded once per program');
+// The same code is another course in another program.
+assert.equal(cse.courses.CSE212.name, 'Discrete Mathematics');
+assert.match(getCatalogFor('diu', 'RME').courses.CSE212.name, /Object Oriented Programming/);
+// A program whose page lists no courses Shohoj can read offers none.
+assert.deepEqual(getCatalogFor('diu', 'BBA').allCourses, []);
+assert.deepEqual(getCatalogFor('diu', 'NOPE').allCourses, []);
+// Electives are published as slots, so every DIU catalogue is partial and a
+// course it does not hold takes typed credits.
+for (const c of [unpicked, cse, getCatalogFor('diu', 'BBA')]) assert.equal(c.typesCredits, true);
+for (const id of ['bracu', 'nsu']) assert.equal(getCatalogFor(id).typesCredits, undefined, `${id} keeps catalogue credits`);
+assert.equal(cse.departmentOf('CSE228'), null);
+
+// The fetch: the page's own URL for the lists, once, and a failure leaves the
+// catalogue working without them and tries again next time.
+setDiuProgramCourses(null);
+const asked = [];
+const failing = (url) => { asked.push(url); return Promise.resolve({ ok: false, status: 404 }); };
+assert.equal(await loadDiuProgramCourses(failing), false);
+assert.deepEqual(getCatalogFor('diu', 'CSE').allCourses, []);
+const serving = (url) => { asked.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve(diuCourses) }); };
+const [first, second] = await Promise.all([loadDiuProgramCourses(serving), loadDiuProgramCourses(serving)]);
+assert.deepEqual([first, second], [true, true]);
+assert.deepEqual(asked, ['feeds/diu-courses.json', 'feeds/diu-courses.json'], 'one failed fetch, then one shared fetch');
+assert.equal(await loadDiuProgramCourses(serving), true);
+assert.equal(asked.length, 2, 'not fetched again once in hand');
+assert.equal(getCatalogFor('diu', 'CSE').courses.CSE113.name, 'Programming and Problem Solving');
+
+// It follows the signed-in student's campus.
 setActiveCampusForEmail('someone@s.diu.edu.bd');
-assert.equal(getActiveCatalog(), diu);
+assert.equal(getActiveCatalog(), getCatalogFor('diu'));
 setActiveCampusForEmail(null);
 
 // A campus with no catalogue gets none — never another university's.
