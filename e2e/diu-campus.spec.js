@@ -79,7 +79,7 @@ test('a DIU student picks from DIU programs and counts towards DIU totals', asyn
   await expect(page.locator('#deptCreditsText')).toHaveText('154.5 Total Credits');
 });
 
-test('with no catalogue to read them from, a DIU student types a course and its credits', async ({ page }) => {
+test("a course its program's list does not hold takes typed credits", async ({ page }) => {
   await boot(page);
   // Demo mode is the quickest way to a semester with course rows.
   await page.locator('#heroDemoBtn').click();
@@ -96,12 +96,13 @@ test('with no catalogue to read them from, a DIU student types a course and its 
   await expect(page.locator('#minorTrackerBox')).toBeHidden();
   await expect(page.locator('#importPdfBtn')).toBeHidden();
 
-  // A course DIU offers, which no catalogue here knows.
+  // The demo's program is CSE, which DIU has too; CSE491 is an elective its
+  // page publishes only as a slot, so no list here holds it.
   await page.locator('#sem-0 .btn-add-course').click();
   const name = page.locator('#course-input-0-3');
-  await name.fill('CSE228');
+  await name.fill('CSE491');
   await name.blur();
-  await expect(page.locator('#course-input-0-3')).toHaveValue('CSE228');
+  await expect(page.locator('#course-input-0-3')).toHaveValue('CSE491');
 
   // It starts at three credits, graded — not a 0-credit pass/fail row.
   const row = page.locator('#sem-0 .course-row', { has: page.locator('#course-input-0-3') });
@@ -130,7 +131,57 @@ test('with no catalogue to read them from, a DIU student types a course and its 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#deptSelect')).toBeVisible();
   await signInAs(page, 'rahim15-1234@diu.edu.bd');
-  await expect(page.locator('#course-input-0-3')).toHaveValue('CSE228');
+  await expect(page.locator('#course-input-0-3')).toHaveValue('CSE491');
   await expect(row.locator('input.credits-typed')).toHaveValue('1.5');
   await expect(page.locator('#cgpaVal')).toHaveText('3.40');
+});
+
+test("a DIU student's program fills in its own courses, and leaves the rest to type", async ({ page }) => {
+  await boot(page);
+  // The lists are fetched for a DIU student alone.
+  const fetched = page.waitForResponse(r => r.url().endsWith('/feeds/diu-courses.json') && r.ok());
+  await signInAs(page, 'rahim@s.diu.edu.bd');
+  await fetched;
+  // Picked before there is anything to lose: a change of program later asks
+  // to clear the semesters.
+  await page.locator('#deptSelect').selectOption('CSE');
+  await page.locator('#startSeason').selectOption('Fall');
+  await page.locator('#startYear').selectOption('2025');
+  await page.locator('#addSemesterBtn').click();
+  const sem = page.locator('.semester-block').first();
+  await expect(sem).toBeVisible();
+
+  const typeAt = async (text) => {
+    await sem.locator('.btn-add-course').click();
+    const input = sem.locator('input[id^="course-input-"]').last();
+    const id = await input.getAttribute('id');
+    await input.fill(text);
+    await input.blur();
+    return { input: page.locator(`#${id}`), row: page.locator('.course-row', { has: page.locator(`#${id}`) }) };
+  };
+
+  // On CSE's list: its title and its credits, which are the list's, not a field.
+  const listed = await typeAt('CSE113');
+  await expect(listed.input).toHaveValue('Programming and Problem Solving (CSE113)');
+  await expect(listed.row.locator('.credits-static')).toHaveText('3');
+  await expect(listed.row.locator('input.credits-typed')).toHaveCount(0);
+
+  // An elective: CSE's page publishes it only as a slot, so its credits are typed.
+  const elective = await typeAt('CSE491');
+  await expect(elective.input).toHaveValue('CSE491');
+  await expect(elective.row.locator('input.credits-typed')).toHaveValue('3');
+
+  // What a code means depends on the program: CSE212 is Discrete Mathematics here.
+  const discrete = await typeAt('CSE212');
+  await expect(discrete.input).toHaveValue('Discrete Mathematics (CSE212)');
+});
+
+test('BRAC University students never fetch DIU\'s course lists', async ({ page }) => {
+  const asked = [];
+  page.on('request', r => { if (r.url().includes('diu-courses')) asked.push(r.url()); });
+  await boot(page);
+  await signInAs(page, '21301234@g.bracu.ac.bd');
+  await page.locator('#heroDemoBtn').click();
+  await expect(page.locator('#course-input-0-0')).toHaveValue(/CSE110/);
+  expect(asked).toEqual([]);
 });
