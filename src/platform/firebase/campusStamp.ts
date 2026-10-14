@@ -35,13 +35,18 @@ export function campusStamp(auth: Pick<Auth, 'currentUser'>): string {
 
 /**
  * The campus filter a list of a campus-scoped collection must open with:
- * `[where('university', '==', campus)]` for a student, `[]` for a session no
- * campus claims.
+ * `[where('university', '==', campus)]`, or `[]` when there is no campus to
+ * scope to.
  *
  * firestore.rules judges a list from its constraints before reading a row, and
  * a document belongs only to the campus its `university` field names — so a
- * student's list without this filter is denied outright. The empty case is an
- * admin on an outside address, whom the rules let read every campus.
+ * student's list without this filter is denied outright.
+ *
+ * `readCampus` is the campus the page is showing (useUniversity()), which is
+ * the student's own or, for an admin, the one picked in the campus switcher.
+ * Left out, it falls back to the session's own campus. The empty case is an
+ * admin on an outside address who has picked none, whom the rules let read
+ * every campus.
  *
  * `where` is passed in rather than imported so this module stays free of the
  * Firestore SDK, which the repos load lazily.
@@ -49,7 +54,8 @@ export function campusStamp(auth: Pick<Auth, 'currentUser'>): string {
 export function campusFilter<C>(
   auth: Pick<Auth, 'currentUser'>,
   where: (field: 'university', op: '==', value: string) => C,
+  readCampus?: string | undefined,
 ): C[] {
-  const campus = campusStamp(auth);
+  const campus = readCampus ?? campusStamp(auth);
   return campus ? [where('university', '==', campus)] : [];
 }
