@@ -38,8 +38,10 @@ assert.ok(
   'RDS gives seats left, never a section size',
 );
 assert.ok(
-  nsu.courses.records.filter((c) => c.title === null).every((c) => c.source === 'rds4plus-263'),
-  'every untitled catalogue stub says it came from the RDS snapshot',
+  nsu.courses.records
+    .filter((c) => c.title === null)
+    .every((c) => ['rds4plus-263', 'nsuer-263'].includes(c.source)),
+  'every untitled catalogue stub says which copy of the RDS page it came from',
 );
 for (const key of ['261-trimester', '262-trimester', '263-trimester', '261-bisemester', '262-bisemester']) {
   assert.ok(nsu.calendars[key], `the ${key} calendar is loaded`);
