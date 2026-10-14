@@ -69,6 +69,16 @@ def program_url(dept, slug):
     return f'{API}department/{dept}/program/{urllib.parse.quote(slug)}'
 
 
+def record_path(directory, program_id):
+    """Where one program's record is kept: <directory>/<id>.json. The id comes
+    from DIU's API, so it is held to what DIU's ids are (digits) and can never
+    name a file outside the directory."""
+    text = str(program_id)
+    if not re.fullmatch(r'\d{1,6}', text):
+        raise ValueError(f'unexpected program id from the API: {text!r}')
+    return os.path.join(directory, f'{text}.json')
+
+
 def fetch(out):
     os.makedirs(out, exist_ok=True)
     listing = get(API + 'academic/programs')
@@ -78,7 +88,7 @@ def fetch(out):
             continue
         for p in kind['programs']:
             record = get(program_url(p['department_short_name'], p['slug']))
-            json.dump(record, open(os.path.join(out, f"{p['id']}.json"), 'w'), ensure_ascii=False)
+            json.dump(record, open(record_path(out, p['id']), 'w'), ensure_ascii=False)
             print('fetched', p['slug'])
             time.sleep(0.5)
 
@@ -304,7 +314,7 @@ def main(src):
             if code is None:
                 left_out.append((p['name'], 'not in programs.json'))
                 continue
-            record = json.load(open(os.path.join(src, f"{p['id']}.json")))
+            record = json.load(open(record_path(src, p['id'])))
             courses, rep = courses_of((record.get('program') or {}).get('summary'))
             source = f'diu-curriculum-{code.lower()}'
             if rep['isced'] > rep['rows']:
