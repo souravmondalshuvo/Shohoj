@@ -133,6 +133,12 @@ try {
     one("SELECT COUNT(*) AS n FROM program_courses WHERE campus='diu'").n,
     diu.programCourses.records.length,
   );
+  // Every title and credit value as written, not only the count.
+  const built = all("SELECT program, code, title, credits, source FROM program_courses WHERE campus='diu' ORDER BY position");
+  assert.deepEqual(
+    built,
+    diu.programCourses.records.map((r) => ({ program: r.program, code: r.code, title: r.title, credits: r.credits, source: r.source })),
+  );
   const graduate = one("SELECT source FROM academic_rules WHERE campus='diu' AND id='min-cgpa-to-graduate'");
   assert.equal(graduate.source, 'diu-faq', 'a rule keeps its own source');
   const fridayBus = all(`SELECT t.time FROM bus_times t JOIN bus_routes r ON r.campus=t.campus AND r.route=t.route
