@@ -140,9 +140,10 @@ export function FacultyReviewsProvider({
       return createReviewsRepo({
         config: config.firebase,
         recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+        readCampus: campus?.id,
       });
     return null;
-  }, [repo, config]);
+  }, [repo, config, campus?.id]);
 
   // The report repo resolves the same way (prop → e2e stub → config-built).
   const resolvedReportRepo = useMemo<ReviewReportRepo | null>(() => {
