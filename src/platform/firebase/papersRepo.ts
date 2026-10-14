@@ -82,6 +82,7 @@ function toRecord(id: string, data: any): PaperRecord {
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
+  readCampus?: string | undefined,
 ): Promise<PapersBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
   const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
@@ -105,7 +106,7 @@ async function defaultBackend(
       const snap = await getDocs(
         query(
           papers,
-          ...campusFilter(auth, where),
+          ...campusFilter(auth, where, readCampus),
           where('approved', '==', true),
           orderBy('createdAt', 'desc'),
           qLimit(limit),
@@ -117,7 +118,7 @@ async function defaultBackend(
       const snap = await getDocs(
         query(
           papers,
-          ...campusFilter(auth, where),
+          ...campusFilter(auth, where, readCampus),
           where('courseCode', '==', courseCode),
           where('approved', '==', true),
           orderBy('createdAt', 'desc'),
@@ -140,6 +141,11 @@ async function defaultBackend(
 export interface PapersRepoOptions {
   readonly config: FirebaseConfig;
   readonly recaptchaV3SiteKey?: string;
+  /**
+   * The campus to list (useUniversity()'s id): an admin's switcher choice, else
+   * the student's own. Omitted, lists follow the signed-in email's campus.
+   */
+  readonly readCampus?: string | undefined;
   /** Papers Worker base URL (runtime config); upload/download fail without it. */
   readonly workerUrl?: string;
   /** Fresh Firebase ID token for Worker calls. */
@@ -153,7 +159,8 @@ export interface PapersRepoOptions {
 /** Create the repo; the Firestore SDK loads on first use, shared thereafter. */
 export function createPapersRepo(options: PapersRepoOptions): PapersRepo {
   const loadBackend =
-    options.loadBackend ?? (() => defaultBackend(options.config, options.recaptchaV3SiteKey));
+    options.loadBackend ??
+    (() => defaultBackend(options.config, options.recaptchaV3SiteKey, options.readCampus));
   const fetchFn = options.fetchFn ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   let backend: Promise<PapersBackend> | null = null;
   const load = () => (backend ??= loadBackend());
