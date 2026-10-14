@@ -30,6 +30,7 @@
 
 import type { QueryConstraint } from 'firebase/firestore';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
+import { campusFilter } from './campusStamp.ts';
 import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
 import { normalizeCourseCode, normalizeInitials, type InitialsCampus } from '../../core/reviews.ts';
 import type { ReviewLike } from '../../core/reviews.ts';
@@ -185,7 +186,7 @@ async function defaultBackend(
   recaptchaV3SiteKey?: string,
 ): Promise<ReviewsBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
-  const { app } = await loadFirebaseClient(config, recaptchaV3SiteKey);
+  const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
   const {
     getFirestore,
     collection,
@@ -197,7 +198,6 @@ async function defaultBackend(
     orderBy,
     startAfter,
     limit: qLimit,
-    documentId,
   } = await import('firebase/firestore');
   const db = getFirestore(app);
   const reviews = collection(db, 'facultyReviews');
@@ -210,7 +210,10 @@ async function defaultBackend(
 
   return {
     async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
-      const constraints: QueryConstraint[] = [where('facultyInitials', '==', facultyInitials)];
+      const constraints: QueryConstraint[] = [
+        ...campusFilter(auth, where),
+        where('facultyInitials', '==', facultyInitials),
+      ];
       if (courseCode) constraints.push(where('courseCode', '==', courseCode));
       constraints.push(orderBy('createdAt', 'desc'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -221,6 +224,7 @@ async function defaultBackend(
     },
     async queryByCourse({ courseCode, limit, after }) {
       const constraints: QueryConstraint[] = [
+        ...campusFilter(auth, where),
         where('courseCode', '==', courseCode),
         orderBy('createdAt', 'desc'),
       ];
@@ -235,13 +239,22 @@ async function defaultBackend(
       return snap.exists() ? { id: snap.id, ...snap.data() } : null;
     },
     async queryRecent(limit) {
-      const snap = await getDocs(query(reviews, orderBy('createdAt', 'desc'), qLimit(limit)));
+      const snap = await getDocs(
+        query(reviews, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+      );
       return snap.docs.map(toDoc);
     },
     async getFacultyProfiles(idsChunk) {
-      const snap = await getDocs(query(profiles, where(documentId(), 'in', idsChunk as string[])));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return snap.docs.map((d: any) => ({ initials: d.id, ...d.data() }));
+      // One read per id, not a `documentId() in` list: the rules judge that
+      // list id by id, so a single initials that is another campus's lecturer
+      // denies the whole chunk, campus filter or not. Read singly, that one
+      // profile is denied and reads here as no profile — as legacy does.
+      const reads = await Promise.allSettled(idsChunk.map((id) => getDoc(doc(profiles, id))));
+      return reads.flatMap((r) =>
+        r.status === 'fulfilled' && r.value.exists()
+          ? [{ initials: r.value.id, ...r.value.data() } as FacultyProfileDoc]
+          : [],
+      );
     },
   };
 }
