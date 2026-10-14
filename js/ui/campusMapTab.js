@@ -60,6 +60,17 @@ function _cmDeepLink() {
   return hash.startsWith('#calculator/campus') && at !== -1 ? hash.slice(at) : '';
 }
 
+// Campuses with a map. A link may name one (&campus=bracu) when its room is on
+// a campus that need not be the reader's own: Lost & Found's room codes are
+// all BRAC University tower rooms, whoever is reading the board.
+const CM_MAP_CAMPUSES = ['bracu', 'nsu'];
+
+/** The campus the map shows: the one a link names, else the reader's. */
+function _cmCampusId() {
+  const named = new URLSearchParams(_cmDeepLink()).get('campus');
+  return named && CM_MAP_CAMPUSES.includes(named) ? named : getActiveCampus().id;
+}
+
 function _cmUnmount() {
   if (!_cmMounted) return;
   try { _cmMounted.unmount(); } catch { /* already gone */ }
@@ -92,7 +103,7 @@ function _cmErrorHTML() {
 export function renderCampusMapTab() {
   const content = document.getElementById('campusMapContent');
   if (!content) return;
-  const campusId = getActiveCampus().id;
+  const campusId = _cmCampusId();
 
   // Already showing this campus: leave it alone. Re-mounting would throw away
   // the floor and room the student had open, and reload a multi-megabyte model.
