@@ -41,10 +41,10 @@ async function at(page, day, hhmm) {
 test('the tab opens from the Campus group and says the timetable is a snapshot', async ({ page }) => {
   const { external } = await boot(page);
 
-  await expect(page.locator('#tabFreeRooms .routine-source-badge')).toHaveText(/As of 14 Oct 2026/);
+  await expect(page.locator('#tabFreeRooms .routine-source-badge')).toHaveText(/As of 28 Sep 2026/);
   const note = page.getByTestId('freerooms-snapshot-note');
   await expect(note).toBeVisible();
-  await expect(note).toContainText('14 Oct 2026');
+  await expect(note).toContainText('28 Sep 2026');
   await expect(note).toContainText('may have a class in it');
   await expect(page.getByTestId('freerooms-semester')).toContainText('Fall 2026');
 
