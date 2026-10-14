@@ -257,6 +257,29 @@ const coursesSchema = citedRecords(
     }),
 );
 
+// Each program's courses, as its own curriculum lists them — for a campus whose
+// codes are unique only within a department (DIU's CSE212 is one course in CSE
+// and another in RME), so a course is a code *in a program*, and a campus-wide
+// courses.json would have to pick one meaning per code.
+const programCoursesSchema = z
+  .object({
+    note: z.string().min(1),
+    records: z
+      .array(
+        z
+          .object({
+            program: z.string().regex(/^[A-Z]+(-[A-Z]+)?$/),
+            code: courseCode,
+            title: z.string().min(1),
+            credits: credits.refine((n) => n > 0, 'a listed course carries credits'),
+            source: sourceId,
+          })
+          .strict(),
+      )
+      .min(1),
+  })
+  .strict();
+
 // Academic departments and which course subjects each one owns.
 const departmentsSchema = cited({
   records: z
@@ -662,6 +685,7 @@ const FILES = {
   profile: { file: 'profile.json', schema: profileSchema, required: true },
   programs: { file: 'programs.json', schema: programsSchema },
   courses: { file: 'courses.json', schema: coursesSchema },
+  programCourses: { file: 'program-courses.json', schema: programCoursesSchema },
   prerequisites: { file: 'prerequisites.json', schema: prerequisitesSchema },
   plans: { file: 'plans.json', schema: plansSchema },
   requirements: { file: 'requirements.json', schema: requirementsSchema },
@@ -831,6 +855,19 @@ function checkCampus(campus, problems) {
     courses.set(c.code, c);
     cite(`courses.${c.code}`, c.source);
   }
+
+  // A code once per program; the same code in two programs is two courses.
+  const programCourseKeys = new Set();
+  for (const c of campus.programCourses?.records ?? []) {
+    const where = `program-courses.${c.program}.${c.code}`;
+    knownProgram(where, c.program);
+    cite(where, c.source);
+    const key = `${c.program}|${c.code}`;
+    if (programCourseKeys.has(key)) err(`program-courses: ${c.program} lists ${c.code} twice`);
+    programCourseKeys.add(key);
+  }
+  if (campus.programCourses && campus.courses)
+    err('program-courses: a campus lists its courses per program or campus-wide, not both');
 
   // Codes a rule names that nothing lists yet, grouped per source: one line
   // per source keeps a real problem visible among hundreds of feed rules.
@@ -1083,7 +1120,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (const c of campuses) {
     const sections = Object.values(c.sections).reduce((n, f) => n + f.records.length, 0);
     console.log(
-      `${c.id}: ${c.programs?.records.length ?? 0} programs, ${c.courses?.records.length ?? 0} courses, ` +
+      `${c.id}: ${c.programs?.records.length ?? 0} programs, ` +
+        (c.programCourses
+          ? `${c.programCourses.records.length} courses across ${new Set(c.programCourses.records.map((r) => r.program)).size} programs' lists, `
+          : `${c.courses?.records.length ?? 0} courses, `) +
         `${c.prerequisites?.records.length ?? 0} prerequisite rules, ${c.requirements?.records.length ?? 0} requirement groups, ` +
         `${c.plans?.records.length ?? 0} plan items, ${sections} sections in ${Object.keys(c.sections).length} term files, ` +
         `${Object.keys(c.calendars).length} calendars`,
