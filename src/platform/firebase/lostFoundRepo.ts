@@ -77,6 +77,7 @@ export function lostFoundClaimWrite(
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
+  readCampus?: string | undefined,
 ): Promise<LostFoundBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
   const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
@@ -117,7 +118,12 @@ async function defaultBackend(
   return {
     async listRecent(limit) {
       const snap = await getDocs(
-        query(posts, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+        query(
+          posts,
+          ...campusFilter(auth, where, readCampus),
+          orderBy('createdAt', 'desc'),
+          qLimit(limit),
+        ),
       );
       return snap.docs.map(toPost);
     },
@@ -158,6 +164,11 @@ async function defaultBackend(
 export interface LostFoundRepoOptions {
   readonly config: FirebaseConfig;
   readonly recaptchaV3SiteKey?: string;
+  /**
+   * The campus to list (useUniversity()'s id): an admin's switcher choice, else
+   * the student's own. Omitted, lists follow the signed-in email's campus.
+   */
+  readonly readCampus?: string | undefined;
   /** Injectable backend loader (tests); defaults to the lazy npm SDK. */
   readonly loadBackend?: () => Promise<LostFoundBackend>;
 }
@@ -165,7 +176,8 @@ export interface LostFoundRepoOptions {
 /** Create the repo; the Firestore SDK loads on first use, shared thereafter. */
 export function createLostFoundRepo(options: LostFoundRepoOptions): LostFoundRepo {
   const loadBackend =
-    options.loadBackend ?? (() => defaultBackend(options.config, options.recaptchaV3SiteKey));
+    options.loadBackend ??
+    (() => defaultBackend(options.config, options.recaptchaV3SiteKey, options.readCampus));
   let backend: Promise<LostFoundBackend> | null = null;
   const load = () => (backend ??= loadBackend());
 
