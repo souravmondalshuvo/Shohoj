@@ -455,6 +455,17 @@ async function run() {
     })));
   });
 
+  // js/auth/firebase.js _shohoj_adminDeleteLostFound logs exactly this shape;
+  // _writeAdminLog swallows a rules denial, so only this test catches drift.
+  await test('adminLog accepts delete_lostfound action', async () => {
+    const db = adminCtx().firestore();
+    await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log_delete_lostfound'), adminLogDoc({
+      action: 'delete_lostfound',
+      targetType: 'lostFoundPosts',
+      targetId: 'post_abc',
+    })));
+  });
+
   await test('adminLog update is denied', async () => {
     const db = adminCtx().firestore();
     await assertSucceeds(setDoc(doc(db, 'adminLogs', 'log6'), adminLogDoc()));
