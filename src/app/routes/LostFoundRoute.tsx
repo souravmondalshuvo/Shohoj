@@ -28,7 +28,7 @@ import {
   type LostFoundType,
 } from '../../core/lostFound.ts';
 import { createLostFoundRepo, type LostFoundRepo } from '../../platform/firebase/lostFoundRepo.ts';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth, useUniversity } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { useNotifications } from '../../state/NotificationProvider';
@@ -194,6 +194,8 @@ export function Component() {
     return typeof window !== 'undefined' ? (window.__shohojLostFoundIdentity ?? null) : null;
   }, [auth]);
 
+  // The campus being shown; an admin's switch rebuilds the repo and refetches.
+  const readCampus = useUniversity()?.id;
   const repo = useMemo<LostFoundRepo | null>(() => {
     if (typeof window !== 'undefined' && window.__shohojLostFoundRepo) {
       return window.__shohojLostFoundRepo;
@@ -202,8 +204,9 @@ export function Component() {
     return createLostFoundRepo({
       config: config.firebase,
       recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      readCampus,
     });
-  }, [config]);
+  }, [config, readCampus]);
 
   const [posts, setPosts] = useState<LostFoundPost[] | undefined>(undefined);
   const [filter, setFilter] = useState<Filter>('all');
@@ -232,7 +235,8 @@ export function Component() {
     return () => {
       live = false;
     };
-  }, [canUse]);
+    // readCampus: an admin's campus switch lists the other campus's board.
+  }, [canUse, readCampus]);
 
   const visible = useMemo(
     () => (posts ? visiblePosts(posts, Date.now(), filter) : []),
