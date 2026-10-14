@@ -35,6 +35,9 @@ import {
   type CampusModel,
 } from '../../core/campusRooms';
 import {
+  BASEMENT_LEVEL,
+  GROUND_LEVEL,
+  UPPER_ROOF_LEVEL,
   levelLabel,
   placeKindLabel,
   placesByLevel,
@@ -113,7 +116,8 @@ function readStoredFloor(): number | null {
   try {
     const raw = localStorage.getItem(FLOOR_STORAGE_KEY);
     const parsed = raw === null ? NaN : parseInt(raw, 10);
-    return Number.isFinite(parsed) ? parsed : null;
+    // A level this building no longer has (or never had) is no level at all.
+    return BUILDING_LEVELS.includes(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -151,6 +155,24 @@ const SOURCE_LABEL: Record<FeedSource, string> = {
 // the schedule feed has loaded. Search results are capped so a one-letter
 // query doesn't dump the whole directory above the fold.
 const PLACE_LEVELS = placesByLevel();
+
+/**
+ * Every level of the building, bottom to top — each one can be opened, with or
+ * without scheduled rooms: the basements, the ground floor, floors 1–13 and the
+ * upper roof. Floors the feed knows beyond 13 are added in buildingLevels().
+ */
+const BUILDING_LEVELS: readonly number[] = [
+  BASEMENT_LEVEL,
+  GROUND_LEVEL,
+  ...Array.from({ length: 13 }, (_, i) => i + 1),
+  UPPER_ROOF_LEVEL,
+];
+
+function buildingLevels(model: CampusModel | null): number[] {
+  const levels = new Set(BUILDING_LEVELS);
+  for (const f of model?.floors ?? []) levels.add(f.floor);
+  return [...levels].sort((a, b) => a - b);
+}
 const PLACE_RESULT_LIMIT = 12;
 
 function prefersReducedMotion(): boolean {
@@ -276,10 +298,9 @@ export function Component() {
       setSelectedRoom(parsed.code);
       return;
     }
-    const floorParam = Number(searchParams.get('floor'));
-    if (Number.isInteger(floorParam) && model.floors.some((f) => f.floor === floorParam)) {
-      setFloor(floorParam);
-    }
+    const raw = searchParams.get('floor');
+    const floorParam = raw === null || raw.trim() === '' ? NaN : Number(raw);
+    if (buildingLevels(model).includes(floorParam)) setFloor(floorParam);
   }, [model, searchParams]);
 
   const selectFloor = useCallback((next: number | null) => {
@@ -316,10 +337,13 @@ export function Component() {
     if (onlyMatch !== undefined) selectRoom(onlyMatch);
   }, [model, search, selectRoom]);
 
-  // A floor the 3D map can focus — only floors with feed rooms are data floors.
-  const isMapFloor = useCallback(
-    (f: number) => model?.floors.some((entry) => entry.floor === f) ?? false,
-    [model],
+  // A level the 3D map can open: every level of the building, now — not only
+  // the floors with scheduled rooms.
+  const isMapFloor = useCallback((f: number) => buildingLevels(model).includes(f), [model]);
+  const levels = useMemo(() => buildingLevels(model), [model]);
+  const levelPlaces = useMemo(
+    () => (floor === null ? [] : (PLACE_LEVELS.find((l) => l.floor === floor)?.places ?? [])),
+    [floor],
   );
 
   // Choose a place (#748): always say which floor it's on; when the map has that
@@ -560,19 +584,17 @@ export function Component() {
             >
               Tower
             </button>
-            {model.floors.map((f) => (
+            {levels.map((level) => (
               <button
-                key={f.floor}
+                key={level}
                 type="button"
                 className={
-                  floor === f.floor
-                    ? 'campus-floor-btn campus-floor-btn--active'
-                    : 'campus-floor-btn'
+                  floor === level ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'
                 }
-                aria-pressed={floor === f.floor}
-                onClick={() => selectFloor(f.floor)}
+                aria-pressed={floor === level}
+                onClick={() => selectFloor(level)}
               >
-                Floor {f.floor}
+                {levelLabel(level)}
               </button>
             ))}
           </div>
@@ -727,7 +749,33 @@ export function Component() {
             </div>
           )}
 
-          {currentFloor ? (
+          {floor !== null && levelPlaces.length > 0 && (
+            <div className="campus-room-list" data-testid="campus-level-places">
+              <h2 className="campus-zone-title">On {levelLabel(floor)}</h2>
+              <ul className="campus-place-list">
+                {levelPlaces.map((place) => (
+                  <li key={place.id}>
+                    <button
+                      type="button"
+                      className="campus-place-btn"
+                      aria-pressed={selectedPlace?.id === place.id}
+                      onClick={() => choosePlace(place)}
+                    >
+                      <span className="campus-place-name">{place.name}</span>
+                      <span className="campus-place-meta">{placeKindLabel(place.kind)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {floor !== null && !currentFloor ? (
+            <p className="shell-muted" data-testid="campus-floor-empty">
+              No classes are scheduled on {levelLabel(floor)}
+              {levelPlaces.length > 0 ? ' — the places above are what Campus 360 lists here.' : '.'}
+            </p>
+          ) : currentFloor ? (
             visibleZones.length === 0 ? (
               <p className="shell-muted" data-testid="campus-no-matches">
                 No rooms on this floor match{onlyFree ? ' the “only free” filter' : ''}
@@ -845,7 +893,7 @@ export function Component() {
             {!model
               ? ''
               : !isMapFloor(selectedPlace.floor)
-                ? ' The 3D map only focuses floors with scheduled rooms.'
+                ? ''
                 : floor === selectedPlace.floor
                   ? ` Showing ${levelLabel(selectedPlace.floor)} on the map.`
                   : ''}
