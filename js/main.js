@@ -1259,8 +1259,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // tab that is showing (still the calculator), which rewrites the URL hash
   // and the stored tab — the two places the saved tab is read from.
   const savedTab = restoreCalcTab();
+  // A Campus Map link carries more than the tab — the room, and maybe the
+  // campus it is on (#calculator/campus?room=…). Settling the campus rewrites
+  // the hash to #calculator before the tab is entered, so that part would be
+  // gone by the time the map reads it. Put it back for the tab to find.
+  const savedHash = window.location.hash || '';
   initActiveCampus();
   applyCampusFeatures();
+  if (savedTab === 'campus' && savedHash.startsWith('#calculator/campus?') && history.replaceState) {
+    history.replaceState(null, '', savedHash);
+  }
 
   // Restore active tab from session/URL hash
   if (savedTab !== 'calculator') switchCalcTab(savedTab);
