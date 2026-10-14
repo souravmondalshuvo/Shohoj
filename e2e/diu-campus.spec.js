@@ -174,14 +174,61 @@ test("a DIU student's program fills in its own courses, and leaves the rest to t
   // What a code means depends on the program: CSE212 is Discrete Mathematics here.
   const discrete = await typeAt('CSE212');
   await expect(discrete.input).toHaveValue('Discrete Mathematics (CSE212)');
+
+  // A listed 1.5-credit lab replaced by an unlisted elective: the elective
+  // starts at the usual 3, not at the lab's 1.5, which the student never typed.
+  const lab = await typeAt('CSE114');
+  await expect(lab.row.locator('.credits-static')).toHaveText('1.5');
+  await lab.input.fill('CSE492');
+  await lab.input.blur();
+  await expect(lab.row.locator('input.credits-typed')).toHaveValue('3');
 });
 
-test('BRAC University students never fetch DIU\'s course lists', async ({ page }) => {
+test('courses typed before the lists arrived take the list\'s credits when they do', async ({ page }) => {
+  // Hold the lists back until the rows are written.
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route('**/feeds/diu-courses.json', async route => { await held; await route.continue(); });
+  await boot(page);
+  await signInAs(page, 'rahim@s.diu.edu.bd');
+  await page.locator('#deptSelect').selectOption('CSE');
+  await page.locator('#startSeason').selectOption('Fall');
+  await page.locator('#startYear').selectOption('2025');
+  await page.locator('#addSemesterBtn').click();
+  const sem = page.locator('.semester-block').first();
+  await sem.locator('.btn-add-course').click();
+  const input = sem.locator('input[id^="course-input-"]').last();
+  const id = await input.getAttribute('id');
+  await input.fill('CSE114');
+  await input.blur();
+  const row = page.locator('.course-row', { has: page.locator(`#${id}`) });
+  // No list yet: a typed field, at the usual 3.
+  await expect(row.locator('input.credits-typed')).toHaveValue('3');
+
+  release();
+  // The list arrives: CSE114 is its 1.5-credit lab, named as the list names it.
+  await expect(page.locator(`#${id}`)).toHaveValue('Programming and Problem Solving Lab (CSE114)');
+  await expect(row.locator('.credits-static')).toHaveText('1.5');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('shohoj_cgpa_v1')).semesters[0].courses.at(-1));
+  expect([saved.name, saved.credits]).toEqual(['Programming and Problem Solving Lab (CSE114)', 1.5]);
+});
+
+test('only a DIU student fetches DIU\'s course lists', async ({ page }) => {
   const asked = [];
   page.on('request', r => { if (r.url().includes('diu-courses')) asked.push(r.url()); });
   await boot(page);
-  await signInAs(page, '21301234@g.bracu.ac.bd');
   await page.locator('#heroDemoBtn').click();
   await expect(page.locator('#course-input-0-0')).toHaveValue(/CSE110/);
+  // A real campus change, to a campus that is not DIU: the page switches
+  // campus (Seats goes) without asking for the lists.
+  await signInAs(page, 'first.last@northsouth.edu');
+  await expect(tab(page, 'seats')).toHaveJSProperty('hidden', true);
+  await page.evaluate(() => window.switchCalcTab('playground'));
+  await expect(page.locator('#tabPlayground')).toHaveClass(/active/);
   expect(asked).toEqual([]);
+  // Then DIU, which does.
+  const fetched = page.waitForResponse(r => r.url().endsWith('/feeds/diu-courses.json'));
+  await signInAs(page, 'rahim@s.diu.edu.bd');
+  await fetched;
+  expect(asked).toHaveLength(1);
 });
