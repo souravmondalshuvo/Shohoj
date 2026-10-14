@@ -24,6 +24,15 @@ Settings → **Code security**:
 Free for public repositories. Push protection is the cheapest defense against a
 leaked Firebase service-account key or Cloudflare token.
 
+In addition, the [`secret-scan.yml`](../.github/workflows/secret-scan.yml)
+workflow runs gitleaks over the full history of every PR and every push to
+`main`. Its allowlist lives in [`.gitleaks.toml`](../.gitleaks.toml) and is
+deliberately narrow (the public Firebase web key and reCAPTCHA site key by exact
+value, `shohoj_*` storage key names, UIDs in rules). If it flags something that
+is genuinely public, add the narrowest entry that silences it — never allowlist
+a whole path. If it flags a real secret, **rotate it first**: removing it from a
+later commit does not remove it from history.
+
 ## 3. Dependabot security alerts
 
 Settings → **Code security**:
