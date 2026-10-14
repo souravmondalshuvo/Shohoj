@@ -184,6 +184,7 @@ export interface ReviewsRepo {
 async function defaultBackend(
   config: FirebaseConfig,
   recaptchaV3SiteKey?: string,
+  readCampus?: string | undefined,
 ): Promise<ReviewsBackend> {
   const { loadFirebaseClient } = await import('./firebaseClient.ts');
   const { app, auth } = await loadFirebaseClient(config, recaptchaV3SiteKey);
@@ -211,7 +212,7 @@ async function defaultBackend(
   return {
     async queryByFaculty({ facultyInitials, courseCode, limit, after }) {
       const constraints: QueryConstraint[] = [
-        ...campusFilter(auth, where),
+        ...campusFilter(auth, where, readCampus),
         where('facultyInitials', '==', facultyInitials),
       ];
       if (courseCode) constraints.push(where('courseCode', '==', courseCode));
@@ -224,7 +225,7 @@ async function defaultBackend(
     },
     async queryByCourse({ courseCode, limit, after }) {
       const constraints: QueryConstraint[] = [
-        ...campusFilter(auth, where),
+        ...campusFilter(auth, where, readCampus),
         where('courseCode', '==', courseCode),
         orderBy('createdAt', 'desc'),
       ];
@@ -240,7 +241,12 @@ async function defaultBackend(
     },
     async queryRecent(limit) {
       const snap = await getDocs(
-        query(reviews, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+        query(
+          reviews,
+          ...campusFilter(auth, where, readCampus),
+          orderBy('createdAt', 'desc'),
+          qLimit(limit),
+        ),
       );
       return snap.docs.map(toDoc);
     },
@@ -249,11 +255,18 @@ async function defaultBackend(
       // list id by id, so a single initials that is another campus's lecturer
       // denies the whole chunk, campus filter or not. Read singly, that one
       // profile is denied and reads here as no profile — as legacy does.
-      const reads = await Promise.allSettled(idsChunk.map((id) => getDoc(doc(profiles, id))));
-      return reads.flatMap((r) =>
-        r.status === 'fulfilled' && r.value.exists()
-          ? [{ initials: r.value.id, ...r.value.data() } as FacultyProfileDoc]
-          : [],
+      // Only that denial is absorbed: an outage or any other failure rejects,
+      // so readOrThrow reports it instead of rendering it as missing profiles.
+      const reads = await Promise.all(
+        idsChunk.map((id) =>
+          getDoc(doc(profiles, id)).catch((e: unknown) => {
+            if ((e as { code?: unknown } | null)?.code === 'permission-denied') return null;
+            throw e;
+          }),
+        ),
+      );
+      return reads.flatMap((snap) =>
+        snap?.exists() ? [{ initials: snap.id, ...snap.data() } as FacultyProfileDoc] : [],
       );
     },
   };
@@ -262,6 +275,11 @@ async function defaultBackend(
 export interface ReviewsRepoOptions {
   readonly config: FirebaseConfig;
   readonly recaptchaV3SiteKey?: string;
+  /**
+   * The campus to list (useUniversity()'s id): an admin's switcher choice, else
+   * the student's own. Omitted, lists follow the signed-in email's campus.
+   */
+  readonly readCampus?: string | undefined;
   /** Injectable backend loader (tests); defaults to the lazy npm SDK. */
   readonly loadBackend?: () => Promise<ReviewsBackend>;
 }
@@ -269,7 +287,8 @@ export interface ReviewsRepoOptions {
 /** Create the repo; the Firestore SDK loads on first use, shared thereafter. */
 export function createReviewsRepo(options: ReviewsRepoOptions): ReviewsRepo {
   const loadBackend =
-    options.loadBackend ?? (() => defaultBackend(options.config, options.recaptchaV3SiteKey));
+    options.loadBackend ??
+    (() => defaultBackend(options.config, options.recaptchaV3SiteKey, options.readCampus));
   let backend: Promise<ReviewsBackend> | null = null;
   const load = () => (backend ??= loadBackend());
 
