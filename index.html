@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-79ZbDPRhFvJAda8+0AHR2b55jgAHueDPR0lO563rzd4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-Dlb8LIpda+rNVHDMJjmb5dJB8Jvt3p6628j5wCitdl8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16851,7 +16851,7 @@ function initActiveCampus() {
 // 1018 courses, 285 prerequisite rules, 25 programs.
 //
 // Left out because the data does not state them in a form these shapes hold
-// (scripts/legacy_catalog.mjs says why): 109 courses with no published title,
+// (scripts/legacy_catalog.mjs says why): 115 courses with no published title,
 // listed in NSU_UNTITLED_CODES, and the prerequisites of 27 courses, listed in
 // NSU_UNEXPRESSED_PREREQS.
 
@@ -18403,7 +18403,7 @@ const NSU_PROGRAM_ROWS = {
 };
 
 /** Offered at NSU, but no source publishes a title or credits. */
-const NSU_UNTITLED_CODES = ["AMCS504L","AMCS506","AMCS507","AMCS510","AMCS511","AMCS515","AMCS516","ANT102","ANT103","ANT204","ARC454","BBT422","BBT695","BBT702","CEE452","CEE492","CEE499A","CEE499B","CEE499C","CSE146","CSE434","CSE438L","CSE534","CSE545","CSE553","CSE597","CSE598","DEV503","DEV573","ECO614","ECO686","EEE221L","EEE331","EEE331L","EEE332","EEE332L","EEE333","EEE336","EEE336L","EEE411L","EEE413L","EEE424","EEE453","EEE468","EEE528","EEE546","EEE552","EEE589","EEE597","EEE660","EMB500","EMPG540","ENG090","ENG092","ENG441","ENG461","ENG466","ENG515","ENG528","ENV304","ENV317","ENV402","ENV499","ENV685","ENV697","ETE141L","ETE241","ETE311","ETE312","ETE332","ETE332L","ETE333","ETE335","ETE335L","ETE361","ETE412L","ETE418","ETE419","ETE419L","ETE498R","ETE597","HAS503","HAS506","HAS510","HAS515","HRM645","MAT483","MAT485","MCJ404","MCJ406","MCJ407","MCJ420","MCJ420L","MGT604","MIC311","MIC404","MIC416","MIC498","MIS661","MIS662","PBH105","PBH123","PHY350","PPG500","PPG501","PPG520","SCM601","SCM606","SOC205"];
+const NSU_UNTITLED_CODES = ["AMCS504L","AMCS506","AMCS507","AMCS510","AMCS511","AMCS515","AMCS516","ANT102","ANT103","ANT204","ARC454","BBT422","BBT695","BBT702","CEE452","CEE492","CEE499A","CEE499B","CEE499C","CSE146","CSE434","CSE438L","CSE534","CSE545","CSE553","CSE597","CSE598","DEV503","DEV573","ECO614","ECO686","EEE221L","EEE331","EEE331L","EEE332","EEE332L","EEE333","EEE336","EEE336L","EEE411L","EEE413L","EEE424","EEE453","EEE468","EEE528","EEE546","EEE552","EEE589","EEE597","EEE660","EMB500","EMPG540","ENG090","ENG092","ENG441","ENG461","ENG466","ENG515","ENG524","ENG528","ENG553","ENV304","ENV317","ENV402","ENV499","ENV685","ENV697","ETE141L","ETE241","ETE311","ETE312","ETE332","ETE332L","ETE333","ETE334","ETE334L","ETE335","ETE335L","ETE361","ETE412L","ETE418","ETE419","ETE419L","ETE498R","ETE597","HAS503","HAS506","HAS510","HAS515","HRM645","MAT483","MAT485","MCJ404","MCJ406","MCJ407","MCJ420","MCJ420L","MGT603","MGT604","MGT670","MIC311","MIC404","MIC416","MIC498","MIS661","MIS662","PBH105","PBH123","PHY350","PPG500","PPG501","PPG520","SCM601","SCM606","SOC205"];
 
 /** Courses whose prerequisite the flat list above cannot express. */
 const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","CSE299","CSE440","CSE445","CSE498","CSE499A","ECO436","EEE111","EEE111L","EEE241","EEE241L","EEE299","EEE311","EEE498","EEE499A","ENV455","ETE299","ETE498","ETE499A","MGT390","MGT489","MIS499","PHY108"];
@@ -18721,7 +18721,7 @@ function setCourseLookup(lookup) {
 
 /** campus id → { url, capturedOn, term, semesterSessionId, source, … }. */
 const CAMPUS_FEED_SNAPSHOTS = {
-  "nsu": {"url":"feeds/nsu-263.json","capturedOn":"2026-09-23","term":"263","semesterSessionId":20263,"source":"rds4plus-263","sectionCount":3787,"courseCount":721,"untimedCount":252,"classStartDate":"2026-09-20","classEndDate":"2026-12-20","noClassDays":[{"date":"2026-10-19","event":"No Classes"},{"date":"2026-10-20","event":"Holiday- Durga Puja"},{"date":"2026-10-21","event":"Holiday- Durga Puja"},{"date":"2026-10-22","event":"No Classes"},{"date":"2026-11-07","event":"Holiday - National Revolution and Solidarity Day"},{"date":"2026-12-06","event":"No Classes"},{"date":"2026-12-16","event":"Holiday- Victory Day"}],"lastClassDays":[{"date":"2026-12-15","days":["SUNDAY","TUESDAY"]},{"date":"2026-12-19","days":["THURSDAY","SATURDAY"]},{"date":"2026-12-20","days":["MONDAY","WEDNESDAY"]}],"examStartDate":"2026-12-22","examEndDate":"2026-12-28"},
+  "nsu": {"url":"feeds/nsu-263.json","capturedOn":"2026-09-28","term":"263","semesterSessionId":20263,"source":"nsuer-263","sectionCount":3818,"courseCount":734,"untimedCount":252,"classStartDate":"2026-09-20","classEndDate":"2026-12-20","noClassDays":[{"date":"2026-10-19","event":"No Classes"},{"date":"2026-10-20","event":"Holiday- Durga Puja"},{"date":"2026-10-21","event":"Holiday- Durga Puja"},{"date":"2026-10-22","event":"No Classes"},{"date":"2026-11-07","event":"Holiday - National Revolution and Solidarity Day"},{"date":"2026-12-06","event":"No Classes"},{"date":"2026-12-16","event":"Holiday- Victory Day"}],"lastClassDays":[{"date":"2026-12-15","days":["SUNDAY","TUESDAY"]},{"date":"2026-12-19","days":["THURSDAY","SATURDAY"]},{"date":"2026-12-20","days":["MONDAY","WEDNESDAY"]}],"examStartDate":"2026-12-22","examEndDate":"2026-12-28"},
 };
 
 // ── js/core/activeFeed.js ───────────────────────────────────────
@@ -26084,6 +26084,9 @@ function freeWindowsForRoom(index, room, day, dayStart = CAMPUS_START_MIN, dayEn
 // busy when it might be free, which costs a student nothing. The opposite
 // mistake, a room shown free with a class in it, is the one that matters.
 //
+// The base is matched to a room without regard to case: RDS spells the same
+// room `LIB907` and, in a variant, `Lib907_V`.
+//
 // A variant whose base room never appears on its own is dropped: there is no
 // evidence the base is a room anyone can walk into.
 //
@@ -26108,12 +26111,13 @@ function snapshotRoomBase(name) {
 function withPhysicalRooms(sections) {
   const roomOf = (section, slot) => (slot.room || section.roomName || '').trim();
 
-  // Rooms that appear under their own name somewhere in the timetable.
-  const physical = new Set();
+  // Rooms that appear under their own name somewhere in the timetable, keyed
+  // by their uppercase spelling.
+  const physical = new Map();
   for (const section of sections) {
     for (const slot of section.classSlots) {
       const room = roomOf(section, slot);
-      if (room !== '' && snapshotRoomBase(room) === null) physical.add(room);
+      if (room !== '' && snapshotRoomBase(room) === null) physical.set(room.toUpperCase(), room);
     }
   }
 
@@ -26124,9 +26128,10 @@ function withPhysicalRooms(sections) {
       const room = roomOf(section, slot);
       const base = snapshotRoomBase(room);
       if (base === null) return { ...slot, room };
-      if (physical.has(base)) {
+      const physicalRoom = physical.get(base.toUpperCase());
+      if (physicalRoom !== undefined) {
         folded += 1;
-        return { ...slot, room: base };
+        return { ...slot, room: physicalRoom };
       }
       dropped += 1;
       // Not a room anyone can be sent to. The marker is what the occupancy
@@ -26954,7 +26959,10 @@ function ratingTier(overall, count) {
 
 function normalizeKey(raw) {
     if (typeof raw !== 'string') return '';
-    return raw.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6);
+    // Longer than any initials (RDS lists one NSU lecturer as "Shaifur"): a
+    // name, not initials, so no rating rather than one for a truncation.
+    const key = raw.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    return key.length > 6 ? '' : key;
 }
 
 function buildFacultyRatingMap(aggregated) {
