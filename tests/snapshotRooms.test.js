@@ -45,6 +45,19 @@ test('a variant’s class counts against the real room', () => {
   assert.deepEqual(freeRoomsAt(index, 'MONDAY', 720), []);
 });
 
+test('a variant spelled in another case still counts against the room', () => {
+  // RDS's Fall 2026 page lists LIB907 and, for a second section, Lib907_V.
+  const { sections, folded, dropped } = withPhysicalRooms([
+    section('ENG103', '1', [slot('SUNDAY', 600, 690, 'LIB907')]),
+    section('ENG103', '2', [slot('MONDAY', 600, 690, 'Lib907_V')]),
+  ]);
+  assert.equal(folded, 1);
+  assert.equal(dropped, 0);
+  const index = buildRoomBusyIndex(sections);
+  assert.deepEqual(listAllRooms(index), ['LIB907']);
+  assert.equal(occupantAt(index, 'LIB907', 'MONDAY', 620).sectionName, '2');
+});
+
 test('a variant with no real room behind it is left out, not invented', () => {
   const { sections, folded, dropped } = withPhysicalRooms([
     section('BIO101', '1', [slot('SUNDAY', 600, 690, 'XYZ101_V')]),
@@ -83,9 +96,14 @@ test('on NSU’s real feed every variant folds into a room that exists', () => {
   assert.deepEqual(rooms.filter((room) => snapshotRoomBase(room) !== null), []);
   assert.equal(rooms.length, rawRooms.length - variants.length);
   assert.ok(result.folded > 0);
-  // If this ever stops being 0, a variant has no real room behind it: the tab
-  // drops it, and its classes stop counting against any room.
-  assert.equal(result.dropped, 0);
+  // A variant is dropped only when no room of its name, in any case, is listed
+  // on its own: the tab cannot vouch for a room nothing else is booked in.
+  // Fall 2026 has three: TBA_V and TBA_v2, which are no room at all, and
+  // LIB913_V. If another appears, decide whether it is a room.
+  const listed = new Set(rawRooms.filter((room) => snapshotRoomBase(room) === null).map((room) => room.toUpperCase()));
+  const orphans = variants.filter((room) => !listed.has(snapshotRoomBase(room).toUpperCase())).sort();
+  assert.deepEqual(orphans, ['LIB913_V', 'TBA_V', 'TBA_v2']);
+  assert.ok(result.dropped > 0);
   // The fold only ever makes a room busier.
   const before = buildRoomBusyIndex(sections);
   const after = buildRoomBusyIndex(result.sections);
