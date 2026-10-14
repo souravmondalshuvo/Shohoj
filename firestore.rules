@@ -46,21 +46,21 @@ service cloud.firestore {
         : '';
     }
 
-    // A document written before tenancy existed has no `university` field, and
-    // every one of those is BRACU's by definition — the app served nobody else.
-    // Reads default a missing field to 'bracu'. The legacy BRACU client may
-    // still omit this field on creation, but no other campus gets that exception.
+    // A document belongs to the campus named in its `university` field, and a
+    // document with no field belongs to nobody.
     //
-    // This default covers READS ONLY, and that limit matters. A query that
-    // filters `where('university','==','bracu')` does not match a document
-    // where the field is absent — it is not a null comparison, the document is
-    // simply not in that index. So client queries must not be scoped by campus
-    // until scripts/backfill_campus.js has stamped the existing documents;
-    // doing it the other way round hides every pre-tenancy document from the
-    // students it belongs to, while these rules go on permitting reads nobody
-    // is asking for any more.
+    // It used to default a missing field to 'bracu' — every document written
+    // before tenancy was BRACU's. That default could not be told apart from
+    // "any campus" when judging a LIST: a BRACU student's query with no campus
+    // filter was allowed and handed NSU's and DIU's rows too, which only the
+    // client then hid. scripts/backfill_campus.js has since stamped every
+    // pre-tenancy document, so the field is required and a list must filter on
+    // it — `where('university','==',<own campus>)` — or be denied.
+    //
+    // A document still missing the field is now readable by admins only; the
+    // backfill's dry run reporting 0 remaining is what keeps that set empty.
     function docCampus(data) {
-      return 'university' in data ? data.university : 'bracu';
+      return 'university' in data ? data.university : '';
     }
 
     // Takes the whole `resource`, not `resource.data`, because a read of a
@@ -69,7 +69,8 @@ service cloud.firestore {
     // letting Firestore answer "not found" as it always did. A missing document
     // has no campus and nothing to leak, so it passes the check.
     function campusMatches(res) {
-      return isAdmin() || res == null || docCampus(res.data) == userCampus();
+      return isAdmin() || res == null
+        || ('university' in res.data && res.data.university == userCampus());
     }
 
     // BEGIN GENERATED validCampus — npm run generate:campus-map
@@ -79,20 +80,11 @@ service cloud.firestore {
     // END GENERATED validCampus
 
     // The caller's own campus, and only their own — a client cannot label a
-    // document as belonging somewhere it is not.
-    //
-    // The legacy root client omits campus. Only a verified BRACU caller may
-    // use that format; a client from another campus must label its own writes.
+    // document as belonging somewhere it is not, nor leave it unlabelled.
     function writingOwnCampus(data) {
       return 'university' in data
         && validCampus(data.university)
         && data.university == userCampus();
-    }
-
-    function validCreateCampus(data) {
-      return 'university' in data
-        ? writingOwnCampus(data)
-        : (isVerifiedCampusUser() && userCampus() == 'bracu');
     }
 
     function isVerifiedCampusUser() {
@@ -158,7 +150,7 @@ service cloud.firestore {
     // arbitrary hex suffixes.
     match /facultyReviews/{reviewId} {
       // The Worker is the only writer and must stamp `university` on new
-      // reviews; pre-tenancy reviews have no field and read as BRACU's.
+      // reviews; a review without one is readable by admins only.
       allow read: if isCampusUser() && campusMatches(resource);
       allow create, update: if false;
       allow delete: if isAdmin();
@@ -200,7 +192,7 @@ service cloud.firestore {
     function validFeedbackPayload(d) {
       return d.keys().hasOnly(['type','text','context','anonymous','uid','university','createdAt'])
         && d.keys().hasAll(['type','text','anonymous','createdAt'])
-        && validCreateCampus(d)
+        && writingOwnCampus(d)
         && validFeedbackType(d.type)
         && d.text is string
         && d.text.size() >= 3
@@ -365,7 +357,7 @@ service cloud.firestore {
     function validStudyGroupPayload(d) {
       return d.keys().hasOnly(['courseCode','title','description','mode','schedule','contactLink','capacity','creatorUid','university','createdAt'])
         && d.keys().hasAll(['courseCode','title','mode','contactLink','capacity','creatorUid','createdAt'])
-        && validCreateCampus(d)
+        && writingOwnCampus(d)
         && d.courseCode is string
         && d.courseCode.matches('^[A-Z]{2,4}[0-9]{3}[A-Z]?$')
         && d.title is string
@@ -469,7 +461,7 @@ service cloud.firestore {
     function validLostFoundPostPayload(d) {
       return d.keys().hasOnly(['type','title','description','locationHint','roomCode','status','creatorUid','university','createdAt'])
         && d.keys().hasAll(['type','title','status','creatorUid','createdAt'])
-        && validCreateCampus(d)
+        && writingOwnCampus(d)
         && validLostFoundType(d.type)
         && d.title is string
         && d.title.size() >= 3
