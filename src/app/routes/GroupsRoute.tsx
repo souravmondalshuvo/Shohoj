@@ -33,7 +33,7 @@ import {
   REPORT_REASON_MAX,
   type StudyGroupsRepo,
 } from '../../platform/firebase/studyGroupsRepo.ts';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth, useUniversity } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { useNotifications } from '../../state/NotificationProvider';
@@ -78,6 +78,8 @@ export function Component() {
     return typeof window !== 'undefined' ? (window.__shohojGroupsIdentity ?? null) : null;
   }, [auth]);
 
+  // The campus being shown; an admin's switch rebuilds the repo and refetches.
+  const readCampus = useUniversity()?.id;
   const repo = useMemo<StudyGroupsRepo | null>(() => {
     if (typeof window !== 'undefined' && window.__shohojGroupsRepo) {
       return window.__shohojGroupsRepo;
@@ -86,8 +88,9 @@ export function Component() {
     return createStudyGroupsRepo({
       config: config.firebase,
       recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      readCampus,
     });
-  }, [config]);
+  }, [config, readCampus]);
 
   const [groups, setGroups] = useState<StudyGroup[] | undefined>(undefined);
   const [myGroupIds, setMyGroupIds] = useState<ReadonlySet<string>>(new Set());
@@ -123,7 +126,8 @@ export function Component() {
     return () => {
       live = false;
     };
-  }, [canUse, identity?.uid, reloadKey]);
+    // readCampus: an admin's campus switch lists the other campus's groups.
+  }, [canUse, identity?.uid, reloadKey, readCampus]);
 
   const visible = useMemo(
     () => groupsView(groups ?? [], modeFilter, courseFilter),
