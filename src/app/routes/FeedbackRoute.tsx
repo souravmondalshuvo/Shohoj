@@ -24,7 +24,7 @@ import {
   type FeedbackType,
 } from '../../core/feedback.ts';
 import { createFeedbackRepo, type FeedbackRepo } from '../../platform/firebase/feedbackRepo.ts';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth, useUniversity } from '../providers/AuthProvider';
 import { useConfirm } from '../providers/ModalProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { useNotifications } from '../../state/NotificationProvider';
@@ -57,6 +57,8 @@ export function Component() {
     return seam ? { uid: seam.uid, isAdmin: seam.isAdmin === true } : null;
   }, [auth]);
 
+  // The campus being shown; an admin's switch rebuilds the repo and refetches.
+  const readCampus = useUniversity()?.id;
   const repo = useMemo<FeedbackRepo | null>(() => {
     if (typeof window !== 'undefined' && window.__shohojFeedbackRepo) {
       return window.__shohojFeedbackRepo;
@@ -65,8 +67,9 @@ export function Component() {
     return createFeedbackRepo({
       config: config.firebase,
       recaptchaV3SiteKey: config.recaptchaV3SiteKey,
+      readCampus,
     });
-  }, [config]);
+  }, [config, readCampus]);
 
   const [items, setItems] = useState<FeedbackItem[] | undefined>(undefined);
   // Distinct from `items === undefined` (loading) and `items.length === 0`
@@ -106,8 +109,9 @@ export function Component() {
     return () => {
       live = false;
     };
-    // identity.uid (not the object) so an auth refresh doesn't re-fetch.
-  }, [canUse, identity?.uid, reloadKey]);
+    // identity.uid (not the object) so an auth refresh doesn't re-fetch;
+    // readCampus so an admin's campus switch does.
+  }, [canUse, identity?.uid, reloadKey, readCampus]);
 
   const board = useMemo(() => boardView(items ?? [], filter), [items, filter]);
   const now = Date.now();
