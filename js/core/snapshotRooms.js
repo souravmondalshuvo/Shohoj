@@ -19,6 +19,9 @@
 // busy when it might be free, which costs a student nothing. The opposite
 // mistake, a room shown free with a class in it, is the one that matters.
 //
+// The base is matched to a room without regard to case: RDS spells the same
+// room `LIB907` and, in a variant, `Lib907_V`.
+//
 // A variant whose base room never appears on its own is dropped: there is no
 // evidence the base is a room anyone can walk into.
 //
@@ -43,12 +46,13 @@ export function snapshotRoomBase(name) {
 export function withPhysicalRooms(sections) {
   const roomOf = (section, slot) => (slot.room || section.roomName || '').trim();
 
-  // Rooms that appear under their own name somewhere in the timetable.
-  const physical = new Set();
+  // Rooms that appear under their own name somewhere in the timetable, keyed
+  // by their uppercase spelling.
+  const physical = new Map();
   for (const section of sections) {
     for (const slot of section.classSlots) {
       const room = roomOf(section, slot);
-      if (room !== '' && snapshotRoomBase(room) === null) physical.add(room);
+      if (room !== '' && snapshotRoomBase(room) === null) physical.set(room.toUpperCase(), room);
     }
   }
 
@@ -59,9 +63,10 @@ export function withPhysicalRooms(sections) {
       const room = roomOf(section, slot);
       const base = snapshotRoomBase(room);
       if (base === null) return { ...slot, room };
-      if (physical.has(base)) {
+      const physicalRoom = physical.get(base.toUpperCase());
+      if (physicalRoom !== undefined) {
         folded += 1;
-        return { ...slot, room: base };
+        return { ...slot, room: physicalRoom };
       }
       dropped += 1;
       // Not a room anyone can be sent to. The marker is what the occupancy
