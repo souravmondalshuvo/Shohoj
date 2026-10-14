@@ -20,7 +20,10 @@ export function ratingTier(overall, count) {
 
 function normalizeKey(raw) {
     if (typeof raw !== 'string') return '';
-    return raw.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6);
+    // Longer than any initials (RDS lists one NSU lecturer as "Shaifur"): a
+    // name, not initials, so no rating rather than one for a truncation.
+    const key = raw.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    return key.length > 6 ? '' : key;
 }
 
 export function buildFacultyRatingMap(aggregated) {
