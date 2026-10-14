@@ -116,8 +116,9 @@ function readStoredFloor(): number | null {
   try {
     const raw = localStorage.getItem(FLOOR_STORAGE_KEY);
     const parsed = raw === null ? NaN : parseInt(raw, 10);
-    // A level this building no longer has (or never had) is no level at all.
-    return BUILDING_LEVELS.includes(parsed) ? parsed : null;
+    // Checked against the building's levels once the feed is in (a feed floor
+    // can lie beyond the published thirteen) — see the effect that drops it.
+    return Number.isInteger(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -315,6 +316,8 @@ export function Component() {
   const selectRoom = useCallback((code: string) => {
     const parsed = parseRoomCode(code);
     if (!parsed) return;
+    // An explicit choice outranks a place picked while the feed was loading.
+    pendingPlaceFloor.current = null;
     setFloor(parsed.floor);
     storeFloor(parsed.floor);
     setSelectedRoom(parsed.code);
@@ -336,6 +339,23 @@ export function Component() {
     const onlyMatch = matches.length === 1 ? matches[0] : undefined;
     if (onlyMatch !== undefined) selectRoom(onlyMatch);
   }, [model, search, selectRoom]);
+
+  // A level the reader picks themselves — a button, the map, the Tower. It
+  // outranks a place chosen while the feed was loading, which would otherwise
+  // be replayed over it when the feed arrives.
+  const chooseFloor = useCallback(
+    (next: number | null) => {
+      pendingPlaceFloor.current = null;
+      selectFloor(next);
+    },
+    [selectFloor],
+  );
+
+  // A stored level the building turns out not to have is dropped once the
+  // feed says which levels it has.
+  useEffect(() => {
+    if (model && floor !== null && !buildingLevels(model).includes(floor)) selectFloor(null);
+  }, [model, floor, selectFloor]);
 
   // A level the 3D map can open: every level of the building, now — not only
   // the floors with scheduled rooms.
@@ -423,7 +443,7 @@ export function Component() {
     if (!model || !host) return;
     const handle = createCampusScene(host, model, {
       colors: SCENE_COLORS,
-      onFloorClick: (f) => selectFloor(f),
+      onFloorClick: (f) => chooseFloor(f),
       onRoomClick: (code) => selectRoom(code),
       describeRoom: (code) => describeRoomRef.current(code),
       exteriorModelUrl,
@@ -439,7 +459,7 @@ export function Component() {
       sceneRef.current = null;
       handle.dispose();
     };
-  }, [model, selectFloor, selectRoom]);
+  }, [model, chooseFloor, selectRoom]);
 
   useEffect(() => {
     sceneRef.current?.setFloor(floor);
@@ -580,7 +600,7 @@ export function Component() {
                 floor === null ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'
               }
               aria-pressed={floor === null}
-              onClick={() => selectFloor(null)}
+              onClick={() => chooseFloor(null)}
             >
               Tower
             </button>
@@ -592,7 +612,7 @@ export function Component() {
                   floor === level ? 'campus-floor-btn campus-floor-btn--active' : 'campus-floor-btn'
                 }
                 aria-pressed={floor === level}
-                onClick={() => selectFloor(level)}
+                onClick={() => chooseFloor(level)}
               >
                 {levelLabel(level)}
               </button>
