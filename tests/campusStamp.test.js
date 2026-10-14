@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { campusStamp } from '../src/platform/firebase/campusStamp.ts';
+import { campusFilter, campusStamp } from '../src/platform/firebase/campusStamp.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,23 +41,30 @@ test('campusStamp returns empty rather than guessing a campus', () => {
     assert.equal(campusStamp({ currentUser: { email: 'x@g.bracu.ac.bd.attacker.com' } }), '');
 });
 
-test('rules accept stamped campuses and allow omitted campus only for legacy BRACU', () => {
-    // The invariant changed after the first fix shipped, and the reason is the
-    // deploy boundary. Two clients write these collections and cannot be
-    // upgraded together: the legacy bundle at the site root sends no campus,
-    // the shell under /app/ does. So the rules must
-    //
-    //   ACCEPT the field  — or the shell's creates are denied, and
-    //   ALLOW OMISSION for BRACU — the legacy client is BRACU-only.
-    //
-    // Omission by another campus must fail, because legacy documents default
-    // to BRACU. Behavioral campus checks also run in the rules emulator suite.
+test('campusFilter scopes a student\'s list to their campus and an outside admin\'s to none', () => {
+    const where = (field, op, value) => ({ field, op, value });
+    assert.deepEqual(campusFilter({ currentUser: { email: 'student@g.bracu.ac.bd' } }, where), [
+        { field: 'university', op: '==', value: 'bracu' },
+    ]);
+    assert.deepEqual(campusFilter({ currentUser: { email: 'student@northsouth.edu' } }, where), [
+        { field: 'university', op: '==', value: 'nsu' },
+    ]);
+    assert.deepEqual(campusFilter({ currentUser: { email: 'admin@gmail.com' } }, where), []);
+});
+
+test('rules require every client create to carry its own campus, and the shell sends it', () => {
+    // History: the field was first optional for BRACU, because the legacy
+    // bundle sent none. Legacy stamps since #822 (tests/campusScope.test.js)
+    // and scripts/backfill_campus.js stamped the documents written before it,
+    // so the exception — and the read-side default to BRACU that leaked other
+    // campuses' rows into BRACU's unfiltered lists — is gone.
     const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
 
-    const campusValidator = rules.slice(rules.indexOf('function validCreateCampus('));
-    const campusBody = campusValidator.slice(0, campusValidator.indexOf('\n    }'));
-    assert.ok(campusBody.includes('writingOwnCampus(data)'));
-    assert.ok(campusBody.includes("isVerifiedCampusUser() && userCampus() == 'bracu'"));
+    const own = rules.slice(rules.indexOf('function writingOwnCampus('));
+    const ownBody = own.slice(0, own.indexOf('\n    }'));
+    assert.ok(ownBody.includes("'university' in data"));
+    assert.ok(ownBody.includes('data.university == userCampus()'));
+    assert.ok(!rules.includes('validCreateCampus'), 'the BRACU omission path is gone');
 
     const clientWritten = [
         ['src/platform/firebase/studyGroupsRepo.ts', 'validStudyGroupPayload'],
@@ -68,26 +75,28 @@ test('rules accept stamped campuses and allow omitted campus only for legacy BRA
     for (const [repoPath, validator] of clientWritten) {
         const fn = rules.slice(rules.indexOf(`function ${validator}(`));
         const body = fn.slice(0, fn.indexOf('\n    }'));
-
         const hasOnly = body.slice(body.indexOf('hasOnly('), body.indexOf('])', body.indexOf('hasOnly(')));
-        const hasAll = body.slice(body.indexOf('hasAll('), body.indexOf('])', body.indexOf('hasAll(')));
 
-        assert.ok(
-            hasOnly.includes("'university'"),
-            `${validator} must ACCEPT university — the shell stamps it and would be denied`,
-        );
-        assert.ok(
-            !hasAll.includes("'university'"),
-            `${validator} must NOT require university — the legacy bundle sends none, ` +
-            `and every legacy create would be denied when these rules deploy`,
-        );
-        // Optional is not unchecked: a present field is still pinned to the writer.
-        assert.ok(
-            body.includes('validCreateCampus(d)'),
-            `${validator} must use the campus validator that guards both stamped and legacy writes`,
-        );
+        assert.ok(hasOnly.includes("'university'"), `${validator} must accept university`);
+        assert.ok(body.includes('writingOwnCampus(d)'), `${validator} must require the writer's campus`);
 
         const repo = fs.readFileSync(path.join(ROOT, repoPath), 'utf8');
         assert.ok(repo.includes('campusStamp('), `${repoPath} should stamp the campus`);
+    }
+});
+
+test('every shell list of a campus-scoped collection carries the campus filter', () => {
+    // The read half of the same drift: a list the rules require a filter on,
+    // sent without one, is denied for every campus.
+    const lists = [
+        ['src/platform/firebase/studyGroupsRepo.ts', 1],
+        ['src/platform/firebase/feedbackRepo.ts', 1],
+        ['src/platform/firebase/lostFoundRepo.ts', 1],
+        ['src/platform/firebase/papersRepo.ts', 2],
+        ['src/platform/firebase/reviewsRepo.ts', 3],
+    ];
+    for (const [repoPath, count] of lists) {
+        const repo = fs.readFileSync(path.join(ROOT, repoPath), 'utf8');
+        assert.equal(repo.split('...campusFilter(auth, where)').length - 1, count, repoPath);
     }
 });
