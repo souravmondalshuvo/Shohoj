@@ -96,6 +96,12 @@ CREATE TABLE courses (
   subject TEXT NOT NULL, level INTEGER NOT NULL, is_lab INTEGER NOT NULL, department TEXT,
   catalogue_group TEXT, position INTEGER NOT NULL, source TEXT NOT NULL,
   PRIMARY KEY (campus, code));
+-- A campus whose codes repeat across departments lists courses per program
+-- (data/campuses/diu/program-courses.json): the same code is one row per program.
+CREATE TABLE program_courses (
+  campus TEXT NOT NULL, program TEXT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL,
+  credits REAL NOT NULL, position INTEGER NOT NULL, source TEXT NOT NULL,
+  PRIMARY KEY (campus, program, code));
 -- A course can carry rules from several documents, some scoped to one program,
 -- so each rule has its own id.
 CREATE TABLE prerequisites (
@@ -536,6 +542,22 @@ function campusStatements(c) {
           r.source ?? c.courses.source,
         ];
       }),
+    );
+  }
+
+  if (c.programCourses) {
+    add(
+      'program_courses',
+      ['campus', 'program', 'code', 'title', 'credits', 'position', 'source'],
+      c.programCourses.records.map((r, i) => [
+        id,
+        r.program,
+        r.code,
+        r.title,
+        r.credits,
+        i + 1,
+        r.source,
+      ]),
     );
   }
 
