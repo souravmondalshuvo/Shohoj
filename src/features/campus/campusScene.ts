@@ -62,6 +62,7 @@ import {
     Object3D,
     PCFShadowMap,
     PerspectiveCamera,
+    Plane,
     Raycaster,
     RingGeometry,
     Scene,
@@ -72,6 +73,7 @@ import {
     SpriteMaterial,
     SRGBColorSpace,
     Vector2,
+    Vector3,
     WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -79,6 +81,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import type { CampusModel, ParsedRoom } from '../../core/campusRooms';
+import { BASEMENT_LEVEL, GROUND_LEVEL } from '../../core/campusPlaces.ts';
 import {
     canDecompressGzip,
     fetchExteriorGlb,
@@ -130,6 +133,11 @@ export interface CampusSceneOptions {
 
 export interface CampusSceneHandle {
     /** Focus a floor (explode the stack there) or null to show the tower. */
+    /**
+     * Focus a level (explode the drawn stack there, or cut the model away above
+     * it) or null to show the tower. Any level opens, not only those with
+     * scheduled rooms: BASEMENT_LEVEL, GROUND_LEVEL, 1–13 and the upper roof.
+     */
     setFloor(floor: number | null): void;
     /** Recolor the focused floor's rooms from a code → status map. */
     setRoomStatus(status: ReadonlyMap<string, RoomStatus>): void;
@@ -165,7 +173,9 @@ const SHADOW_MAP_SIZE = 2048;
 const MAX_PIXEL_RATIO = 2;      // a settled frame: full sharpness up to 2x
 const MOTION_PIXEL_RATIO = 1.5; // while the camera moves, where motion hides it
 const HEAT_MAX_MIX = 0.55;      // how far a fully-busy floor tints toward "hot"
-const MODEL_FOCUSED_OPACITY = 0.04;    // exterior model opacity while a floor is open
+const MODEL_FOCUSED_SLAB_OPACITY = 0.45; // the open floor's locator plate, over the model's own floor
+const CLIP_CLEARANCE = 0.3;            // the cut runs this far below the next slab's centre
+const CLIP_OFF = 1e4;                  // a cut above everything: the whole model shows
 const FRAMING_REFERENCE_ASPECT = 1.25; // canvases at least this wide keep the default framing
 const FRAMING_MAX_SCALE = 1.85;        // 101 m default distance x 1.85 stays under maxDistance 190
 
@@ -211,6 +221,24 @@ export const MODEL_LIGHTING = {
     sun: 1.9,
     exposure: 1.0,
 } as const;
+
+/**
+ * Where the model is cut away to open a level: everything above this height
+ * (scene y) is hidden, so the level's own floor, walls and furniture-free rooms
+ * show with the levels below intact — the way a section drawing shows a floor.
+ * `null` means no cut (the upper roof: there is nothing above it).
+ *
+ * Floor f's slab is centred at (f - 1) * FLOOR_GAP, so the cut sits just under
+ * the slab of the floor above it. The ground floor's ceiling is floor 1's slab;
+ * the basements' is the ground itself, at MODEL_GROUND_Y. Pure and exported so
+ * the levels can be unit-tested without WebGL.
+ */
+export function floorClipHeight(level: number): number | null {
+    if (level === BASEMENT_LEVEL) return MODEL_GROUND_Y - CLIP_CLEARANCE;
+    if (level === GROUND_LEVEL) return -CLIP_CLEARANCE;
+    if (level >= PUBLISHED_TOP_FLOOR + 1) return null;
+    return level * FLOOR_GAP - CLIP_CLEARANCE;
+}
 
 /**
  * Sky/sun mood for the viewer's local hour — day, golden hour, night. Pure
@@ -913,10 +941,23 @@ export function createCampusScene(
         baseDepthWrite: boolean;
     }> = [];
     let modelSlabGeometry: RoundedBoxGeometry | null = null;
+    // The section cut (#nsu parity): one plane shared by every model material.
+    // Only its constant ever changes, so moving the cut never recompiles.
+    const clipPlane = new Plane(new Vector3(0, -1, 0), CLIP_OFF);
+    function clipModel(root: Object3D): void {
+        root.traverse((object) => {
+            if (!(object instanceof Mesh)) return;
+            const list: Material[] = Array.isArray(object.material)
+                ? object.material
+                : [object.material];
+            for (const material of list) {
+                material.clippingPlanes = [clipPlane];
+                // A cut-away floor must not keep throwing its shadow.
+                material.clipShadows = true;
+            }
+        });
+    }
     let modelAdopted = false;
-    // The model fades harder than the drawn architecture when a floor opens:
-    // its dense façade screens (180k triangles) still read as busy at 10%.
-    let modelTargetFactor = 1;
     const modelAbort = new AbortController();
     let disposed = false;
 
@@ -993,6 +1034,7 @@ export function createCampusScene(
         const planScale = MODEL_FLOOR_PLATE.width / SLAB_W;
         roomGroup.scale.set(planScale, 1, planScale);
         modelAdopted = true;
+        applyCut();
         // Re-derive slab targets now that outlines are hidden. Called directly
         // rather than via applyFloorFocus so an open floor's rooms aren't rebuilt.
         for (const f of floors) {
@@ -1060,6 +1102,12 @@ export function createCampusScene(
         report('loading');
         fetchExteriorGlb(url, modelAbort.signal)
             .then((glb) => new GLTFLoader().parseAsync(glb, ''))
+            .then((gltf) => {
+                // Before precompiling: the clipping plane is part of each
+                // material's shader, so it has to be there when they compile.
+                clipModel(gltf.scene);
+                return gltf;
+            })
             .then((gltf) => (disposed ? gltf : precompileModel(gltf.scene).then(() => gltf)))
             .then((gltf) => {
                 if (disposed) {
@@ -1192,13 +1240,41 @@ export function createCampusScene(
         for (const f of floors) f.targetColor.copy(slabTargetColor(f));
     }
 
+    /** Scene y of a level's floor; the basements are drawn as one level. */
+    function levelBaseY(level: number): number {
+        if (level === BASEMENT_LEVEL) return MODEL_GROUND_Y - 2 * FLOOR_GAP;
+        if (level === GROUND_LEVEL) return MODEL_GROUND_Y;
+        return (level - PODIUM_FLOORS_MIN) * FLOOR_GAP;
+    }
+
+    /**
+     * Cut the model away above the open level (#nsu parity). The model is
+     * never faded any more: a level reads as the building's own floor, with
+     * the floors below it intact. Without the model there is nothing to cut,
+     * and the drawn stack keeps its exploded view.
+     */
+    function applyCut(): void {
+        const cut = focusedFloor === null || !modelAdopted ? null : floorClipHeight(focusedFloor);
+        clipPlane.constant = cut ?? CLIP_OFF;
+        // Look at the open level, not the middle of the tower; the render loop
+        // eases the camera there along whatever bearing the reader has.
+        cameraTargetY =
+            focusedFloor === null || !modelAdopted
+                ? towerTargetY
+                : levelBaseY(focusedFloor) + FLOOR_GAP / 2;
+    }
+
     function applyFloorFocus(): void {
         for (const f of floors) {
             const lifted = focusedFloor !== null && f.floor > focusedFloor;
             f.targetY = f.baseY + (lifted ? EXPLODE_LIFT : 0);
             const isFocused = focusedFloor !== null && f.floor === focusedFloor;
             f.targetOpacity =
-                focusedFloor === null ? 0.1 : isFocused ? 0.78 : lifted ? 0.04 : 0.07;
+                focusedFloor === null
+                    ? 0.1
+                    : isFocused
+                        ? modelAdopted ? MODEL_FOCUSED_SLAB_OPACITY : 0.78
+                        : lifted ? 0.04 : 0.07;
             // With the exterior model in, the model's own floors read as the
             // building, and the plate-sized slabs only poke out past its set-back
             // west façade — so every slab but the focused one goes fully clear.
@@ -1210,7 +1286,7 @@ export function createCampusScene(
             f.targetLabelOpacity =
                 focusedFloor === null
                     ? f.interactive ? 0.86 : 0.3
-                    : isFocused ? 1 : lifted ? 0.08 : 0.18;
+                    : isFocused ? 1 : lifted ? (modelAdopted ? 0 : 0.08) : 0.18;
             // Faded slabs must not throw full-strength shadows (shadow maps
             // ignore opacity), so shadow casting follows the settled state.
             f.mesh.castShadow = f.targetOpacity > 0.5;
@@ -1218,7 +1294,7 @@ export function createCampusScene(
         }
         const focused = focusedFloor !== null;
         architectureTargetFactor = focused ? 0.1 : 1;
-        modelTargetFactor = focused ? MODEL_FOCUSED_OPACITY : 1;
+        applyCut();
         shellTargetOpacity = focused ? SHELL_OPACITY.focused : SHELL_OPACITY.tower;
         shellEdgesTargetOpacity = focused ? SHELL_EDGE_OPACITY.focused : SHELL_EDGE_OPACITY.tower;
         fresnelTargetOpacity = focused ? FRESNEL_OPACITY.focused : FRESNEL_OPACITY.tower;
@@ -1244,6 +1320,8 @@ export function createCampusScene(
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.needsUpdate = true;
     renderer.outputColorSpace = SRGBColorSpace;
+    // The section cut lives on the model's materials (clipModel).
+    renderer.localClippingEnabled = true;
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     renderer.domElement.setAttribute('aria-hidden', 'true');
@@ -1275,7 +1353,9 @@ export function createCampusScene(
     camera.position.set(68, 54, 68);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, towerHeight / 2 + 4, 0);
+    const towerTargetY = towerHeight / 2 + 4;
+    let cameraTargetY = towerTargetY;
+    controls.target.set(0, towerTargetY, 0);
     controls.enableDamping = !reducedMotion;
     controls.maxPolarAngle = Math.PI * 0.52;
     controls.minDistance = 18;
@@ -1371,14 +1451,16 @@ export function createCampusScene(
             const targetOpacity = entry.baseOpacity * architectureTargetFactor;
             entry.material.opacity = step(entry.material.opacity, targetOpacity);
         }
-        // The exterior model fades with the architecture. Its opaque materials
-        // blend only while faded: an opaque façade keeps depth-writing (no
-        // sorting artefacts across 180k triangles), a faded one must not wall
-        // off the room layer behind it.
+        // The exterior model is no longer faded to open a level — it is cut
+        // away above it (applyCut) — so its materials hold their own opacity.
+        // An opaque one blends only if it ever drops below that: an opaque
+        // façade keeps depth-writing (no sorting artefacts across 180k
+        // triangles).
         for (const entry of modelMaterials) {
             const { material } = entry;
-            const targetOpacity = entry.baseOpacity * modelTargetFactor;
-            material.opacity = step(material.opacity, targetOpacity);
+            // Never faded now (the cut opens a level), so this settles at once;
+            // it stays for a material the model itself ships translucent.
+            material.opacity = step(material.opacity, entry.baseOpacity);
             const blend = entry.baseTransparent || material.opacity < 0.995;
             if (material.transparent !== blend) {
                 material.transparent = blend;
@@ -1407,6 +1489,15 @@ export function createCampusScene(
                         0.1 + 0.08 * (0.5 + 0.5 * Math.sin(time / 420 + entry.phase));
                 }
             }
+        }
+
+        // A level opened or closed: glide the view up or down to it, keeping
+        // the camera's offset (and so the reader's bearing and distance).
+        const targetY = step(controls.target.y, cameraTargetY);
+        if (targetY !== controls.target.y) {
+            camera.position.y += targetY - controls.target.y;
+            controls.target.y = targetY;
+            cameraChanged = true;
         }
 
         // update() reports whether the camera moved: a drag, or damping
@@ -1459,9 +1550,16 @@ export function createCampusScene(
             -((event.clientY - rect.top) / rect.height) * 2 + 1,
         );
         raycaster.setFromCamera(pointer, camera);
-        const floorHit = raycaster
-            .intersectObjects(floorGroup.children, false)
-            .find((hit) => hit.object.userData['interactive'] === true);
+        // Any level opens now, not only those with scheduled rooms — but a
+        // slab above the cut is not there to click, even though the raycaster
+        // still sees its (invisible) mesh.
+        const floorHit = raycaster.intersectObjects(floorGroup.children, false).find((hit) => {
+            const level = hit.object.userData['floor'];
+            return (
+                typeof level === 'number' &&
+                (focusedFloor === null || !modelAdopted || level <= focusedFloor)
+            );
+        });
         const floor = floorHit?.object.userData['floor'];
         if (typeof floor === 'number') options.onFloorClick?.(floor);
     }
@@ -1510,7 +1608,7 @@ export function createCampusScene(
 
     return {
         setFloor(floor) {
-            focusedFloor = floor !== null && dataFloors.has(floor) ? floor : null;
+            focusedFloor = floor;
             applyFloorFocus();
             invalidate();
         },
