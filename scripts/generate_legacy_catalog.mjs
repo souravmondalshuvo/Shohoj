@@ -35,6 +35,10 @@ import { BRACU_LITERAL_SOURCES, buildLegacyCatalog } from './legacy_catalog.mjs'
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT_PATH = resolve(repoRoot, 'js/core/catalogNsu.generated.js');
 export const DIU_OUT_PATH = resolve(repoRoot, 'js/core/catalogDiu.generated.js');
+// DIU's course lists are fetched by DIU students alone, not carried in the
+// bundle every student downloads. feeds/ is deployed beside the page as it is.
+export const DIU_COURSES_URL = 'feeds/diu-courses.json';
+export const DIU_COURSES_PATH = resolve(repoRoot, DIU_COURSES_URL);
 export const BRACU_CATALOG_OUT_PATH = resolve(repoRoot, 'js/core/catalogBracu.generated.js');
 export const BRACU_DEPARTMENTS_OUT_PATH = resolve(
   repoRoot,
@@ -216,12 +220,13 @@ ${programRows(catalog.programs)}
 }
 
 export function renderDiuCatalog() {
-  const catalog = buildLegacyCatalog(loadCampus('diu'));
+  const campus = loadCampus('diu');
+  const catalog = buildLegacyCatalog(campus);
   const count = Object.keys(catalog.programs).length;
   if (count === 0) throw new Error('refusing to generate an empty DIU program list');
   if (catalog.allCourses.length > 0) {
     throw new Error(
-      'data/campuses/diu now has courses, and this writes programs only — carry them the way renderNsuCatalog does',
+      'data/campuses/diu now has a campus-wide courses.json; DIU lists its courses per program (program-courses.json)',
     );
   }
   // `seasons` is written only where DIU's own documents show the program's
@@ -234,21 +239,55 @@ export function renderDiuCatalog() {
     })
     .join('\n');
 
+  const lists = diuCourseLists(campus);
+  const courseCount = Object.values(lists).reduce((n, rows) => n + rows.length, 0);
+
   return `// js/core/catalogDiu.generated.js
 //
 // GENERATED FILE — DO NOT EDIT BY HAND.
 // Regenerate with: npm run generate:legacy-catalog
-// Source of truth: data/campuses/diu/programs.json
+// Source of truth: data/campuses/diu/programs.json and program-courses.json
 //
 // DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
-// ${count} programs, and no courses: DIU publishes no catalogue, only each
-// department's offer for a term (docs/campuses/diu-research.md).
+// ${count} programs. Their courses — ${courseCount} across the ${Object.keys(lists).length} programs whose pages list
+// them in a form Shohoj reads — are in ${DIU_COURSES_URL}, fetched only when a
+// DIU student is on the page (docs/campuses/diu-research.md says which programs,
+// and why the rest are not there).
 
 /** program → { label, totalCredits, seasons? }. No seasons: DIU does not say which calendar it runs on. */
 export const DIU_PROGRAM_ROWS = {
 ${programs}
 };
+
+/** Where DIU's course lists are fetched from, relative to the page. */
+export const DIU_COURSES_URL = ${JSON.stringify(DIU_COURSES_URL)};
 `;
+}
+
+/**
+ * Each DIU program's courses, in code order: program → [[code, title, credits]].
+ * A code is only unique within a program at DIU, so these never merge into one
+ * campus-wide table.
+ */
+function diuCourseLists(campus) {
+  const lists = {};
+  for (const r of campus.programCourses?.records ?? []) {
+    (lists[r.program] ??= []).push([r.code, r.title, r.credits]);
+  }
+  const sorted = {};
+  for (const program of Object.keys(lists).sort()) {
+    sorted[program] = lists[program].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  }
+  return sorted;
+}
+
+/** feeds/diu-courses.json — one program per line, so a data change diffs as one. */
+export function renderDiuCourses() {
+  const lists = diuCourseLists(loadCampus('diu'));
+  const body = Object.entries(lists)
+    .map(([program, rows]) => `    ${JSON.stringify(program)}: ${JSON.stringify(rows)}`)
+    .join(',\n');
+  return `{\n  "source": "data/campuses/diu/program-courses.json",\n  "programs": {\n${body}\n  }\n}\n`;
 }
 
 const TARGETS = [
@@ -256,6 +295,7 @@ const TARGETS = [
   { path: BRACU_CATALOG_OUT_PATH, render: renderBracuCatalog },
   { path: BRACU_DEPARTMENTS_OUT_PATH, render: renderBracuDepartments },
   { path: DIU_OUT_PATH, render: renderDiuCatalog },
+  { path: DIU_COURSES_PATH, render: renderDiuCourses },
 ];
 
 function main() {
