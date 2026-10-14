@@ -5,8 +5,8 @@
 // lives in e2e-shell/lost-found.spec.js (same component over the same
 // seams); this suite pins what is unique to the standalone mount: booting
 // outside the shell with the recreated provider stack, the derived-basename
-// router, and the /campus?room= redirect shim landing on the real standalone
-// campus page in the same build.
+// router, and the /campus?room= redirect shim sending the room to the main
+// site's Campus Map tab.
 
 import { expect, test } from '@playwright/test';
 
@@ -57,12 +57,14 @@ test('without an identity the board shows the signed-out state, not the form', a
   await expect(page.getByTestId('lostfound-form')).toHaveCount(0);
 });
 
-test('room deep link redirects to the standalone campus page with the room selected', async ({ page }) => {
+test('room deep link opens the main site\'s Campus Map tab on that room', async ({ page }) => {
   await openBoard(page);
   await page.getByRole('link', { name: /09G-31T on the campus map/ }).click();
-  await page.waitForURL('**/campus/?room=09G-31T');
-  await expect(page.getByTestId('campus-page')).toBeVisible();
-  await expect(page.getByTestId('campus-room-panel')).toContainText('09G-31T');
+  // The site root, with the tab and the room in the hash. This build has no
+  // page at the root (the legacy site is built separately), so the address is
+  // what is checked here; legacy-campus-tab.spec.js opens the tab on a room
+  // from that same hash.
+  await page.waitForURL((url) => url.pathname === '/' && url.hash === '#calculator/campus?room=09G-31T');
 });
 
 test('top bar links back to the main site', async ({ page }) => {
