@@ -294,15 +294,18 @@ the only public source of which initials teach which course.
   1. **Student paste** of the rds4 page, as CONNECT paste works for BRACU.
   2. Ask NSU IT for an official feed or permission.
   3. A static per-term snapshot — timetables and free rooms work, **live seat counts don't**.
-     **Done for Fall 2026:** `sections/263-trimester.json`, 3,787 sections from RDS4+'s
-     copy of rds4 (23 Sep 2026) [3rd-party].
+     **Done for Fall 2026:** `sections/263-trimester.json`, 3,818 sections from nsuer.pro's
+     copy of rds4, read 14 Oct 2026 [3rd-party]. It replaced RDS4+'s 23 Sep copy (3,787
+     sections); no class time changed between the two.
 - **Third-party copies of rds4** (checked 28 Sep 2026) [3rd-party]:
   - [RDS4+](https://github.com/Aminul-Islam7/rds4plus) (MIT) commits the table as
     `data/response.json`. It got past the challenge with a headless browser, later a
     home-PC daemon, and **paused its sync on 23 Sep 2026** when advising closed.
   - [nsuer.pro](https://nsuer.pro/) serves the page verbatim at `/api/fetch-courses`
     (CORS open, Fall 2026, 3,835 sections). It is an undocumented route of someone
-    else's site with no terms, so using it needs the owner's permission. A 28 Sep copy
+    else's site with no terms. It was imported on 14 Oct 2026 by the maintainer's
+    decision, without asking the owner first; asking remains open. It still carried
+    3,835 sections then, as on 28 Sep, so it may not have re-read RDS since. A 28 Sep copy
     already differed from RDS4+'s in 453 sections (99 added, 78 gone, 169 faculty
     back to TBA, 45 faculty swapped, 67 rooms moved; no time changed).
   - Both carry the same columns: `Course | Section | Faculty | Time | Room | Seats Available`.
