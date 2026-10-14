@@ -703,7 +703,7 @@ export function renderSemesters() {
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
-            ${typedCredits && c.name.trim()
+            ${typedCredits && rowTypesCredits(c)
               ? `<input type="text" inputmode="decimal" class="credits-static credits-typed" aria-label="Credits"
                   value="${c.credits}" autocomplete="off"
                   data-action="render:creditsChange" data-sem-id="${sem.id}" data-idx="${i}" />`
@@ -968,11 +968,24 @@ export function removeSemester(id) {
   window._shohoj_recalc();
 }
 
-// Credits come from the catalogue wherever there is one. A campus that
-// publishes none (DIU) has no other source than the student, so there the
-// credits cell is a field.
+// Credits come from the catalogue. Where the catalogue is known to be partial
+// (DIU's: each program's published courses, with electives published only as
+// slots), a course it does not hold still needs credits, and the student is the
+// only source left — so for that course the credits cell is a field.
 export function campusTypesCredits() {
-  return getActiveCatalog().allCourses.length === 0;
+  return getActiveCatalog().typesCredits === true;
+}
+
+/** The catalogue's entry for a course row, by its "(CODE)" suffix or a bare code. */
+function catalogCourseOf(name) {
+  const raw = String(name ?? '').trim();
+  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+  return code ? getActiveCatalog().courses[code] ?? null : null;
+}
+
+/** Whether a row's credits are typed: a named course the catalogue cannot give credits for. */
+function rowTypesCredits(course) {
+  return campusTypesCredits() && course.name.trim() !== '' && !catalogCourseOf(course.name);
 }
 
 /** Credits a student may type: zero to twelve, halves and quarters included. */
@@ -986,7 +999,7 @@ export function parseTypedCredits(raw) {
 function setTypedCredits(semId, cIdx, raw) {
   const course = courseAt(semId, cIdx);
   const credits = parseTypedCredits(raw);
-  if (course && credits !== null && campusTypesCredits()) {
+  if (course && credits !== null && rowTypesCredits(course)) {
     course.credits = credits;
     // A course with no credits is pass/fail and one with credits is graded,
     // so a grade of the other kind does not carry over. An F is both.
