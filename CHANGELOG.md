@@ -17,6 +17,7 @@ versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - **The Campus Map opens inside the main site.** Campus → Campus Map is a tab now, under the same header and tab bar as Free Rooms and Seats, where it used to send you to a separate page. It is dressed as the rest of the site is — pill chips for floors and buildings, the Free Rooms room tiles, the same toolbar buttons — in both themes, for BRAC University's tower and North South University's campus alike. The map (React, three.js and the building models) is downloaded the first time the tab is opened, so the main page is no heavier for anyone who never opens it. A link can open it on a room: `#calculator/campus?room=09G-31T`. The standalone `/campus/` page still exists for the links that already point at it.
+- **The standalone Campus Map page matches the site too.** `/campus/` (and `/campus/?campus=nsu`), still reached from Lost & Found's room links and bookmarks, now wears the same look as the Campus Map tab — the site's colours, background and brand mark, the map in the calculator's glass card, the same chips, tiles and buttons. Both read one stylesheet, `css/campus-map.css`, so they cannot drift apart.
 
 ### Fixed
 
