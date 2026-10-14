@@ -110,7 +110,13 @@ export const TARGETS = [
     // (#864: react 19.3, react-router 8.4, firebase 12.19, zod 4.6 and twelve
     // more). No application code changed; the libraries themselves grew. CI
     // measured 1141.4 / 330.6 with the group applied; these keep ~2.5%.
-    budget: { raw: 1170, gzip: 339 },
+    //
+    // Raw raised 1170 -> 1195 for DIU's catalogue (#889), for the same code
+    // as shohoj.html's raise: the on-demand fetch, the per-program catalogue,
+    // typed credits for courses a list lacks, and the row reconciling when the
+    // lists arrive. The lists themselves are fetched, not bundled. CI measured
+    // 1171.4; the room left is ~2%, as before. Gzip had room and stays put.
+    budget: { raw: 1195, gzip: 339 },
   },
   // The shell entry — what a student would download after the cutover.
   {
