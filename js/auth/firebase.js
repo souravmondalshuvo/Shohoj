@@ -1930,15 +1930,14 @@ window._shohoj_fetchRecentPapers = async function(n = 30) {
 window._shohoj_fetchMyPapers = async function() {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(
-      col,
+    // Campus-scoped like every other papers list: the rules judge the campus
+    // before the uploader, so a list of one's own uploads still needs the filter.
+    const docs = await listForMyCampus(collection(db, 'papers'), [
       where('uploaderUid', '==', currentUser.uid),
       orderBy('createdAt', 'desc'),
       qLimit(100),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchMyPapers failed:', e);
     return [];
