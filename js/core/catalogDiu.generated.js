@@ -2,11 +2,13 @@
 //
 // GENERATED FILE — DO NOT EDIT BY HAND.
 // Regenerate with: npm run generate:legacy-catalog
-// Source of truth: data/campuses/diu/programs.json
+// Source of truth: data/campuses/diu/programs.json and program-courses.json
 //
 // DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
-// 33 programs, and no courses: DIU publishes no catalogue, only each
-// department's offer for a term (docs/campuses/diu-research.md).
+// 33 programs. Their courses — 692 across the 11 programs whose pages list
+// them in a form Shohoj reads — are in feeds/diu-courses.json, fetched only when a
+// DIU student is on the page (docs/campuses/diu-research.md says which programs,
+// and why the rest are not there).
 
 /** program → { label, totalCredits, seasons? }. No seasons: DIU does not say which calendar it runs on. */
 export const DIU_PROGRAM_ROWS = {
@@ -44,3 +46,6 @@ export const DIU_PROGRAM_ROWS = {
   "TE": { label: "B.Sc. in Textile Engineering (TE)", totalCredits: 154 },
   "THM": { label: "Bachelor of Tourism & Hospitality Management (BTHM)", totalCredits: 130 },
 };
+
+/** Where DIU's course lists are fetched from, relative to the page. */
+export const DIU_COURSES_URL = "feeds/diu-courses.json";
