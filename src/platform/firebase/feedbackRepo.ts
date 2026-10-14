@@ -13,7 +13,7 @@
 //   - upvotes live in `appFeedbackUpvotes` under the deterministic
 //     `${feedbackId}_${uid}` id (one vote per user per item).
 
-import { campusStamp } from './campusStamp.ts';
+import { campusFilter, campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import { FirebaseUnavailableError, PermissionError, type ShohojError } from '../../core/errors.ts';
 import {
@@ -143,7 +143,9 @@ async function defaultBackend(
 
   return {
     async listRecent(limit) {
-      const snap = await getDocs(query(feedback, orderBy('createdAt', 'desc'), qLimit(limit)));
+      const snap = await getDocs(
+        query(feedback, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+      );
       return snap.docs.flatMap((d) => {
         const data = d.data();
         if (!isFeedbackType(data['type'])) return [];
