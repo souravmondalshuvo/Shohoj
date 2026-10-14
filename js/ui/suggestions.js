@@ -37,6 +37,13 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   lastSuggestionShownAt = Date.now();
 }
 
+/** The active catalogue's entry for a row's name: its "(CODE)" suffix or a bare code. */
+function catalogEntryFor(name) {
+  const raw = String(name ?? '').trim();
+  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+  return code ? getActiveCatalog().courses[code] ?? null : null;
+}
+
 export function onCourseBlur(e, semId, cIdx) {
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem || !sem.courses[cIdx]) return;
@@ -58,10 +65,13 @@ export function onCourseBlur(e, semId, cIdx) {
     resolvedCredits = 0;
   } else if (getActiveCatalog().typesCredits === true) {
     // A course the catalogue does not hold, on a campus whose catalogue is
-    // partial (DIU): the student types its credits, so what they typed stays.
-    // A course just named starts at three, the usual weight, in a field they
+    // partial (DIU): the student types its credits. What they typed for the
+    // row stays; but credits the catalogue gave a listed course were never
+    // typed, and do not carry over to the unlisted one that replaces it. A
+    // course just named starts at three, the usual weight, in a field they
     // can see and change.
-    resolvedCredits = prevName && course.credits > 0 ? course.credits : 3;
+    const typedBefore = prevName && !catalogEntryFor(prevName) && course.credits > 0;
+    resolvedCredits = typedBefore ? course.credits : 3;
   } else {
     resolvedCredits = 0;
   }
