@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-TrmYFVtGRXKbzQ9B0BpiToJSD1pcpV9/kwoaT7FAckQ='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-79ZbDPRhFvJAda8+0AHR2b55jgAHueDPR0lO563rzd4='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18404,11 +18404,13 @@ const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","C
 //
 // GENERATED FILE — DO NOT EDIT BY HAND.
 // Regenerate with: npm run generate:legacy-catalog
-// Source of truth: data/campuses/diu/programs.json
+// Source of truth: data/campuses/diu/programs.json and program-courses.json
 //
 // DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
-// 33 programs, and no courses: DIU publishes no catalogue, only each
-// department's offer for a term (docs/campuses/diu-research.md).
+// 33 programs. Their courses — 692 across the 11 programs whose pages list
+// them in a form Shohoj reads — are in feeds/diu-courses.json, fetched only when a
+// DIU student is on the page (docs/campuses/diu-research.md says which programs,
+// and why the rest are not there).
 
 /** program → { label, totalCredits, seasons? }. No seasons: DIU does not say which calendar it runs on. */
 const DIU_PROGRAM_ROWS = {
@@ -18447,6 +18449,9 @@ const DIU_PROGRAM_ROWS = {
   "THM": { label: "Bachelor of Tourism & Hospitality Management (BTHM)", totalCredits: 130 },
 };
 
+/** Where DIU's course lists are fetched from, relative to the page. */
+const DIU_COURSES_URL = "feeds/diu-courses.json";
+
 // ── js/core/activeCatalog.js ────────────────────────────────────
 // ── ACTIVE CATALOGUE (legacy bundle) ─────────────────────────────────────────
 //
@@ -18458,8 +18463,8 @@ const DIU_PROGRAM_ROWS = {
 // BRACU's is expanded by catalog.js and departments.js, whose constants are
 // handed back as they are: the same objects, so nothing about BRACU changes by
 // reading them through here. NSU's is expanded into the same shapes on first
-// use. DIU's is its programs and nothing else: DIU publishes no course
-// catalogue, so its students type their courses in.
+// use. DIU's is per program: its programs, and the courses of the one the
+// student has picked (expandDiuCatalog below says why).
 //
 // Each catalogue also answers `departmentOf(code)` — the department that owns
 // a course, or null — because the rule is the campus's, not just its table,
@@ -18538,27 +18543,126 @@ function expandNsuCatalog() {
   };
 }
 
-let _diuCatalog = null;
+// DIU's catalogue is one program's. Its codes are unique only within a
+// department — CSE212 is Discrete Mathematics in CSE and a lab in RME — so the
+// courses a DIU student is offered are those of the program they picked, and
+// a student who has picked none is offered none.
+const _diuCatalogs = new Map();
+let _diuPrograms = null;
+// program → [[code, title, credits]], once fetched. The lists are not in the
+// bundle: every student would download them, and only DIU's read them.
+let _diuProgramCourses = null;
+let _diuLoading = null;
 
-// Programs only: a total to count towards, and a calendar where DIU states one.
-function expandDiuCatalog() {
-  const programs = {};
-  for (const [code, p] of Object.entries(DIU_PROGRAM_ROWS)) {
-    programs[code] = { ...p, presets: [] };
-  }
-  return { ...EMPTY_CATALOG, departmentOverrides: {}, programs };
+/** program → [[code, title, credits]], and nothing else. */
+function isCourseLists(lists) {
+  if (lists === null || typeof lists !== 'object' || Array.isArray(lists)) return false;
+  return Object.values(lists).every(rows =>
+    Array.isArray(rows) &&
+    rows.every(r => Array.isArray(r) && typeof r[0] === 'string' && typeof r[1] === 'string' && typeof r[2] === 'number'));
 }
 
-/** The catalogue of one campus, by id. Unknown or data-less campuses get an empty one. */
-function getCatalogFor(campusId) {
+/** Hand the catalogue DIU's course lists (feeds/diu-courses.json's `programs`). */
+function setDiuProgramCourses(lists) {
+  _diuProgramCourses = lists && typeof lists === 'object' ? lists : null;
+  _diuCatalogs.clear();
+}
+
+/**
+ * Fetch DIU's course lists, once. Resolves true when they are in hand. Until
+ * then a DIU catalogue has programs and no courses, and every course takes
+ * typed credits — the page still works, it just fills in less. On success the
+ * page is told (`shohoj:catalog-changed`) so it can draw again with them.
+ */
+function loadDiuProgramCourses(fetchImpl = globalThis.fetch) {
+  if (_diuProgramCourses !== null) return Promise.resolve(true);
+  if (_diuLoading) return _diuLoading;
+  if (typeof fetchImpl !== 'function') return Promise.resolve(false);
+  _diuLoading = Promise.resolve()
+    .then(() => fetchImpl(DIU_COURSES_URL))
+    .then(response => (response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
+    .then(body => {
+      if (!isCourseLists(body?.programs)) throw new Error('not DIU course lists');
+      setDiuProgramCourses(body.programs);
+      globalThis.dispatchEvent?.(new CustomEvent('shohoj:catalog-changed', { detail: { campus: 'diu' } }));
+      return true;
+    })
+    .catch(() => {
+      // Nothing is kept from a failed or malformed answer. The page asks again
+      // whenever the student next opens a tab or picks a program.
+      _diuLoading = null;
+      return false;
+    });
+  return _diuLoading;
+}
+
+function diuPrograms() {
+  if (_diuPrograms === null) {
+    _diuPrograms = {};
+    for (const [code, p] of Object.entries(DIU_PROGRAM_ROWS)) {
+      _diuPrograms[code] = { ...p, presets: [] };
+    }
+  }
+  return _diuPrograms;
+}
+
+function expandDiuCatalog(program) {
+  const courses = {};
+  for (const [code, name, credits] of _diuProgramCourses?.[program] ?? []) {
+    courses[code] = { code, name, credits, full: `${name} (${code})` };
+  }
+  return {
+    ...EMPTY_CATALOG,
+    courses,
+    allCourses: Object.values(courses),
+    departmentOverrides: {},
+    programs: diuPrograms(),
+    // The lists are each program's published courses, and its electives are
+    // published as slots ("CSE-***"), not as courses. A course a list does not
+    // hold is still a real course, so its credits are the student's to type.
+    typesCredits: true,
+  };
+}
+
+/**
+ * Bring course rows in line with a catalogue that arrived after they were
+ * written. A row whose name is a code the catalogue holds — bare ("CSE114") or
+ * as the catalogue writes it ("… (CSE114)") — takes the catalogue's name and
+ * credits: from now on its credits are the catalogue's and no longer a field,
+ * so a typed placeholder (the 3 a named course starts at) must not stay behind
+ * as if it were. Returns how many rows changed.
+ */
+function reconcileCourseRows(semesters, catalog = getActiveCatalog()) {
+  let changed = 0;
+  for (const semester of semesters ?? []) {
+    for (const course of semester.courses ?? []) {
+      const raw = String(course.name ?? '').trim();
+      const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+      const listed = code ? catalog.courses[code] : undefined;
+      if (!listed || (course.name === listed.full && course.credits === listed.credits)) continue;
+      course.name = listed.full;
+      course.credits = listed.credits;
+      changed += 1;
+    }
+  }
+  return changed;
+}
+
+/**
+ * The catalogue of one campus, by id. Unknown or data-less campuses get an
+ * empty one. DIU's is the given program's (by default the one the student has
+ * picked).
+ */
+function getCatalogFor(campusId, program = state.currentDept) {
   if (campusId === 'bracu') return BRACU_CATALOG;
   if (campusId === 'nsu') {
     if (_nsuCatalog === null) _nsuCatalog = expandNsuCatalog();
     return _nsuCatalog;
   }
   if (campusId === 'diu') {
-    if (_diuCatalog === null) _diuCatalog = expandDiuCatalog();
-    return _diuCatalog;
+    const key = _diuProgramCourses && Object.prototype.hasOwnProperty.call(_diuProgramCourses, program) ? program : '';
+    if (!_diuCatalogs.has(key)) _diuCatalogs.set(key, expandDiuCatalog(key));
+    return _diuCatalogs.get(key);
   }
   return EMPTY_CATALOG;
 }
@@ -20972,6 +21076,13 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   lastSuggestionShownAt = Date.now();
 }
 
+/** The active catalogue's entry for a row's name: its "(CODE)" suffix or a bare code. */
+function catalogEntryFor(name) {
+  const raw = String(name ?? '').trim();
+  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+  return code ? getActiveCatalog().courses[code] ?? null : null;
+}
+
 function onCourseBlur(e, semId, cIdx) {
   const sem = state.semesters.find(s => s.id === semId);
   if (!sem || !sem.courses[cIdx]) return;
@@ -20991,11 +21102,15 @@ function onCourseBlur(e, semId, cIdx) {
     resolvedCredits = exactMatch.credits;
   } else if (!val) {
     resolvedCredits = 0;
-  } else if (getActiveCatalog().allCourses.length === 0) {
-    // No catalogue to read the credits from (DIU): the student types them, so
-    // what they typed stays. A course just named starts at three, the usual
-    // weight, in a field they can see and change.
-    resolvedCredits = prevName ? course.credits : 3;
+  } else if (getActiveCatalog().typesCredits === true) {
+    // A course the catalogue does not hold, on a campus whose catalogue is
+    // partial (DIU): the student types its credits. What they typed for the
+    // row stays; but credits the catalogue gave a listed course were never
+    // typed, and do not carry over to the unlisted one that replaces it. A
+    // course just named starts at three, the usual weight, in a field they
+    // can see and change.
+    const typedBefore = prevName && !catalogEntryFor(prevName) && course.credits > 0;
+    resolvedCredits = typedBefore ? course.credits : 3;
   } else {
     resolvedCredits = 0;
   }
@@ -37339,7 +37454,7 @@ function renderSemesters() {
             ${isRetaken ? `<span class="retaken-badge">${supersedeBadgeLabel}</span>` : ''}
           </div>
           <span class="credits-static-wrap">
-            ${typedCredits && c.name.trim()
+            ${typedCredits && rowTypesCredits(c)
               ? `<input type="text" inputmode="decimal" class="credits-static credits-typed" aria-label="Credits"
                   value="${c.credits}" autocomplete="off"
                   data-action="render:creditsChange" data-sem-id="${sem.id}" data-idx="${i}" />`
@@ -37604,11 +37719,24 @@ function removeSemester(id) {
   window._shohoj_recalc();
 }
 
-// Credits come from the catalogue wherever there is one. A campus that
-// publishes none (DIU) has no other source than the student, so there the
-// credits cell is a field.
+// Credits come from the catalogue. Where the catalogue is known to be partial
+// (DIU's: each program's published courses, with electives published only as
+// slots), a course it does not hold still needs credits, and the student is the
+// only source left — so for that course the credits cell is a field.
 function campusTypesCredits() {
-  return getActiveCatalog().allCourses.length === 0;
+  return getActiveCatalog().typesCredits === true;
+}
+
+/** The catalogue's entry for a course row, by its "(CODE)" suffix or a bare code. */
+function catalogCourseOf(name) {
+  const raw = String(name ?? '').trim();
+  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+  return code ? getActiveCatalog().courses[code] ?? null : null;
+}
+
+/** Whether a row's credits are typed: a named course the catalogue cannot give credits for. */
+function rowTypesCredits(course) {
+  return campusTypesCredits() && course.name.trim() !== '' && !catalogCourseOf(course.name);
 }
 
 /** Credits a student may type: zero to twelve, halves and quarters included. */
@@ -37622,7 +37750,7 @@ function parseTypedCredits(raw) {
 function setTypedCredits(semId, cIdx, raw) {
   const course = courseAt(semId, cIdx);
   const credits = parseTypedCredits(raw);
-  if (course && credits !== null && campusTypesCredits()) {
+  if (course && credits !== null && rowTypesCredits(course)) {
     course.credits = credits;
     // A course with no credits is pass/fail and one with credits is graded,
     // so a grade of the other kind does not carry over. An F is both.
@@ -42608,6 +42736,30 @@ window._shohoj_renderAndRecalc = () => { renderSemesters(); recalc(); };
 window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 // Every grade point on screen was computed on the previous campus's scale.
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
+// DIU's course lists are fetched only for a DIU student, and arrive after the
+// page has drawn: draw the calculator again with them, and the open tab.
+const loadDiuCoursesIfDiu = () => {
+  if (getActiveCampus().id === 'diu') loadDiuProgramCourses();
+};
+window.addEventListener('shohoj:campus-changed', loadDiuCoursesIfDiu);
+// The campus may already be DIU before this listener existed.
+loadDiuCoursesIfDiu();
+window.addEventListener('shohoj:catalog-changed', () => {
+  const redraw = () => {
+    // Rows written before the lists arrived take the list's name and credits.
+    if (reconcileCourseRows(state.semesters) > 0) saveState();
+    window._shohoj_renderAndRecalc();
+    switchCalcTab(_activeCalcTab);
+  };
+  // A student mid-way through typing a course keeps it: redraw once the field
+  // has let go and committed what was typed.
+  const active = document.activeElement;
+  if (active && active.closest?.('#semestersContainer') && active.matches?.('input, select, textarea')) {
+    active.addEventListener('focusout', () => setTimeout(redraw, 0), { once: true });
+  } else {
+    redraw();
+  }
+});
 // The tab bar was built for the previous campus's features. Before the redraw
 // below: if the open tab is one the new campus does not get, this moves the
 // student to the calculator, and the redraw then re-enters that instead.
@@ -43321,6 +43473,9 @@ function applyCampusFeatures() {
 
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
+  // A DIU student whose course lists failed to arrive gets another try on
+  // every tab they open (the loader does nothing once they are in hand).
+  loadDiuCoursesIfDiu();
   // Every route in — a click, a #calculator/<tab> link, the saved tab, the
   // nav's Tasks link — comes through here, so this is the one place the campus
   // check has to hold.
