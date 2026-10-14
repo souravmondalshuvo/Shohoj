@@ -13,7 +13,7 @@
 //     pinning the joiner's own verified email.
 //   - reports live in `studyGroupReports` under `${uid}_${groupId}`.
 
-import { campusStamp } from './campusStamp.ts';
+import { campusFilter, campusStamp } from './campusStamp.ts';
 import type { FirebaseConfig } from '../configuration/runtimeConfig.ts';
 import {
   GROUPS_LIMIT,
@@ -148,7 +148,9 @@ async function defaultBackend(
 
   return {
     async listGroups(limit) {
-      const snap = await getDocs(query(groups, orderBy('createdAt', 'desc'), qLimit(limit)));
+      const snap = await getDocs(
+        query(groups, ...campusFilter(auth, where), orderBy('createdAt', 'desc'), qLimit(limit)),
+      );
       return snap.docs.flatMap((d) => toGroup(d.id, d.data()));
     },
     async listMyMemberships(uid) {
