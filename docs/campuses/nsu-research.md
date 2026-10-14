@@ -295,7 +295,8 @@ the only public source of which initials teach which course.
   2. Ask NSU IT for an official feed or permission.
   3. A static per-term snapshot — timetables and free rooms work, **live seat counts don't**.
      **Done for Fall 2026:** `sections/263-trimester.json`, 3,818 sections from nsuer.pro's
-     copy of rds4, read 14 Oct 2026 [3rd-party]. It replaced RDS4+'s 23 Sep copy (3,787
+     copy of rds4, read 14 Oct 2026 and dated 28 Sep 2026, the first day nsuer.pro is
+     known to have served the same rows, since it does not say how old its copy is [3rd-party]. It replaced RDS4+'s 23 Sep copy (3,787
      sections); no class time changed between the two.
 - **Third-party copies of rds4** (checked 28 Sep 2026) [3rd-party]:
   - [RDS4+](https://github.com/Aminul-Islam7/rds4plus) (MIT) commits the table as
