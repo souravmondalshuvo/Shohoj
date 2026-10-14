@@ -18,28 +18,22 @@
 // reviews is showing the wrong university's, to the one reader who is there to
 // check what NSU's students see.
 //
-// WRITES. firestore.rules pins a present `university` to the writer's own
-// campus and reads a missing one as BRACU. Legacy used to send none, which was
-// right while it admitted BRACU only; an NSU student's group filed without it
-// would read back as BRACU's and be invisible to its own author.
+// WRITES. firestore.rules requires `university` on every document a client
+// creates and pins it to the writer's own campus.
 //
-// READS. Two facts about the rules, both measured in the emulator
-// (tests/firestore.rules.test.js, "list queries"):
-//   1. An NSU student's list with no campus filter is DENIED outright.
-//   2. A BRACU student's list with no campus filter is allowed — and has to
-//      stay unfiltered, because `where('university','==','bracu')` does not
-//      match the pre-tenancy documents that have no field at all, which is
-//      most of BRACU's. (scripts/backfill_campus.js is what lifts this.)
-// So a campus other than BRACU filters in the query, and BRACU filters here,
-// after the fact, by the rule the rules themselves use for a missing field.
+// READS. A document belongs to the campus its `university` field names, and a
+// list must say which campus it wants: `where('university','==',campus)`. The
+// rules judge a list from its constraints before reading a row, so a list
+// without that filter is denied — for every campus, BRACU included.
+//
+// BRACU used to be the exception. Pre-tenancy documents had no field, the
+// rules read a missing one as BRACU's, and a BRACU filter would have missed
+// them — so BRACU sent none, and the rules, unable to hold the other campuses'
+// rows back from an unfiltered list, handed them over for this client to drop.
+// scripts/backfill_campus.js stamped those documents, and that exception, with
+// the leak it carried, is gone.
 
 import { UNIVERSITY_DIRECTORY, campusOfEmail } from '../core/universityDirectory.js';
-
-/**
- * The campus a document with no `university` field belongs to. Mirrors
- * `docCampus` in firestore.rules: everything written before tenancy is BRACU's.
- */
-export const PRE_TENANCY_CAMPUS = 'bracu';
 
 /**
  * The field to spread into a document this user is creating: `{ university }`
@@ -77,6 +71,5 @@ export function campusReadPlan(email, isAdmin = false, viewingAs = null) {
   if (!campus) {
     return { filter: null, keep: () => true };
   }
-  const keep = data => (data?.university ?? PRE_TENANCY_CAMPUS) === campus;
-  return { filter: campus === PRE_TENANCY_CAMPUS ? null : campus, keep };
+  return { filter: campus, keep: data => data?.university === campus };
 }
