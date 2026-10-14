@@ -108,16 +108,16 @@ test('clash detection works on the generated sections', () => {
       && s.classSlots[0].day === a.classSlots[0].day
       && s.classSlots[0].startMin === a.classSlots[0].startMin,
   );
-  assert.ok(sameSlot, 'two sections share a slot somewhere in 3,787');
+  assert.ok(sameSlot, 'two sections share a slot somewhere in 3,818');
   const report = detectClashes([a, sameSlot]);
   assert.equal(report.classClashes.length, 1);
   // No exam schedule is published per section, so none can clash.
   assert.equal(report.examClashes.length, 0);
 });
 
-test('capturedOn is the scrape date the snapshot’s own note states', () => {
-  assert.equal(nsuMeta.capturedOn, '2026-09-23');
-  assert.ok(snapshot.note.includes('23 Sep 2026'), 'the note no longer states this capture date');
+test('capturedOn is the read date the snapshot’s own note states', () => {
+  assert.equal(nsuMeta.capturedOn, '2026-10-14');
+  assert.ok(snapshot.note.includes('14 Oct 2026'), 'the note no longer states this capture date');
   assert.equal(nsuMeta.source, snapshot.source);
 });
 
