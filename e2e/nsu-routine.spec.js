@@ -45,9 +45,9 @@ test('an NSU student gets NSU’s sections, labelled as a snapshot', async ({ pa
 
   // Where the data came from, in the badge and — because a hover is not enough
   // for something this easy to mistake for live — in plain sight below it.
-  await expect(page.locator('.routine-source-badge')).toHaveText(/As of 23 Sep 2026/);
+  await expect(page.locator('.routine-source-badge')).toHaveText(/As of 14 Oct 2026/);
   const note = page.getByTestId('routine-snapshot-note');
-  await expect(note).toContainText('23 Sep 2026');
+  await expect(note).toContainText('14 Oct 2026');
   await expect(note).toContainText('Seat counts');
   // The term's last class is not its end: the exam window is named beside it.
   await expect(note).toContainText('Final exams run from 22 Dec 2026 to 28 Dec 2026.');
