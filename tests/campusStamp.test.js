@@ -52,6 +52,22 @@ test('campusFilter scopes a student\'s list to their campus and an outside admin
     assert.deepEqual(campusFilter({ currentUser: { email: 'admin@gmail.com' } }, where), []);
 });
 
+test('campusFilter follows the campus the page is showing when one is passed', () => {
+    // An admin's campus switcher: useUniversity() resolves the view-as campus,
+    // and the list must be that campus's, whatever the admin's own address.
+    const where = (field, op, value) => ({ field, op, value });
+    assert.deepEqual(campusFilter({ currentUser: { email: 'admin@gmail.com' } }, where, 'nsu'), [
+        { field: 'university', op: '==', value: 'nsu' },
+    ]);
+    assert.deepEqual(campusFilter({ currentUser: { email: 'admin@g.bracu.ac.bd' } }, where, 'diu'), [
+        { field: 'university', op: '==', value: 'diu' },
+    ]);
+    // Undefined (nothing resolved yet) falls back to the session's own campus.
+    assert.deepEqual(campusFilter({ currentUser: { email: 'student@northsouth.edu' } }, where, undefined), [
+        { field: 'university', op: '==', value: 'nsu' },
+    ]);
+});
+
 test('rules require every client create to carry its own campus, and the shell sends it', () => {
     // History: the field was first optional for BRACU, because the legacy
     // bundle sent none. Legacy stamps since #822 (tests/campusScope.test.js)
@@ -87,7 +103,8 @@ test('rules require every client create to carry its own campus, and the shell s
 
 test('every shell list of a campus-scoped collection carries the campus filter', () => {
     // The read half of the same drift: a list the rules require a filter on,
-    // sent without one, is denied for every campus.
+    // sent without one, is denied for every campus. And each filter follows
+    // the campus being shown, so an admin's switcher moves it.
     const lists = [
         ['src/platform/firebase/studyGroupsRepo.ts', 1],
         ['src/platform/firebase/feedbackRepo.ts', 1],
@@ -97,6 +114,6 @@ test('every shell list of a campus-scoped collection carries the campus filter',
     ];
     for (const [repoPath, count] of lists) {
         const repo = fs.readFileSync(path.join(ROOT, repoPath), 'utf8');
-        assert.equal(repo.split('...campusFilter(auth, where)').length - 1, count, repoPath);
+        assert.equal(repo.split('...campusFilter(auth, where, readCampus)').length - 1, count, repoPath);
     }
 });
