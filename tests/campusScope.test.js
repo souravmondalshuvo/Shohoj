@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { PRE_TENANCY_CAMPUS, campusReadPlan, campusWriteField } from '../js/auth/campus-scope.js';
+import { campusReadPlan, campusWriteField } from '../js/auth/campus-scope.js';
 import { setActiveCampusForEmail } from '../js/core/activeCampus.js';
 import {
   clearFacultyCache,
@@ -43,16 +43,17 @@ test('NSU filters in the query and keeps only NSU rows', () => {
   assert.equal(plan.filter, 'nsu');
   assert.equal(plan.keep({ university: 'nsu' }), true);
   assert.equal(plan.keep({ university: 'bracu' }), false);
-  // No field means BRACU's, by the rules' own reading — never NSU's.
   assert.equal(plan.keep({}), false);
 });
 
-test('BRACU sends no filter, keeps its pre-tenancy rows and drops other campuses', () => {
+test('BRACU filters in the query too, now that no document lacks a campus', () => {
+  // It used to send none so its unstamped pre-tenancy rows would come back,
+  // and the rules then handed it every campus's rows (#821).
   const plan = campusReadPlan(BRACU);
-  assert.equal(plan.filter, null);
+  assert.equal(plan.filter, 'bracu');
   assert.equal(plan.keep({ university: 'bracu' }), true);
-  assert.equal(plan.keep({}), true);
   assert.equal(plan.keep({ university: 'nsu' }), false);
+  assert.equal(plan.keep({}), false);
 });
 
 test('an admin on a page that shows no campus sees every campus, whatever their address', () => {
@@ -76,9 +77,9 @@ test('an admin viewing a campus is listed what its students are, whatever their 
     assert.equal(asNsu.keep({}), false);
 
     const asBracu = campusReadPlan(email, true, 'bracu');
-    assert.equal(asBracu.filter, null);
+    assert.equal(asBracu.filter, 'bracu');
     assert.equal(asBracu.keep({ university: 'bracu' }), true);
-    assert.equal(asBracu.keep({}), true);
+    assert.equal(asBracu.keep({}), false);
     assert.equal(asBracu.keep({ university: 'nsu' }), false);
   }
 });
@@ -89,22 +90,23 @@ test('the campus being viewed never moves a student off their own', () => {
   assert.equal(planted.filter, 'nsu');
   assert.equal(planted.keep({ university: 'bracu' }), false);
   assert.equal(planted.keep({}), false);
+  assert.equal(campusReadPlan(BRACU, false, 'nsu').filter, 'bracu');
   assert.equal(campusReadPlan(BRACU, false, 'nsu').keep({ university: 'nsu' }), false);
 });
 
-test('the pre-tenancy default is the one firestore.rules uses', () => {
+test('firestore.rules gives a document with no campus to nobody', () => {
+  // The other half of BRACU filtering: a missing field no longer reads as
+  // BRACU's, so an unfiltered BRACU list cannot be proven safe and is denied.
   const rules = read('firestore.rules');
-  const match = rules.match(
-    /function docCampus\(data\) \{\s*return 'university' in data \? data\.university : '([a-z]+)';/,
-  );
-  assert.ok(match, 'found docCampus in firestore.rules');
-  assert.equal(match[1], PRE_TENANCY_CAMPUS);
+  assert.match(rules, /function docCampus\(data\) \{\s*return 'university' in data \? data\.university : '';/);
+  assert.match(rules, /'university' in res\.data && res\.data\.university == userCampus\(\)/);
+  assert.doesNotMatch(rules, /validCreateCampus|: 'bracu'/);
 });
 
 test('every hook that reads a campus-scoped collection is campus-scoped or a named exception', () => {
   // The collections this client reads and the rules scope by campus. A hook
-  // that queries one without the campus helpers is denied for NSU and
-  // unfiltered for BRACU, so it has to be a deliberate exception here.
+  // that queries one without the campus helpers is denied for every campus,
+  // so it has to be a deliberate exception here.
   const SCOPED =
     /collection\(db, '(studyGroups|appFeedback|papers|facultyReviews|facultyProfiles)'\)/;
   const HELPERS = /listForMyCampus\(|pageForMyCampus\(|myCampusReadPlan\(/;
@@ -124,8 +126,6 @@ test('every hook that reads a campus-scoped collection is campus-scoped or a nam
       // The admin dashboard's stats and moderation queue: admins read every campus.
       '_shohoj_fetchAdminStats',
       '_shohoj_fetchUnapprovedPapers',
-      // The student's own uploads, which the rules allow by uploaderUid.
-      '_shohoj_fetchMyPapers',
     ].sort(),
   );
 });
