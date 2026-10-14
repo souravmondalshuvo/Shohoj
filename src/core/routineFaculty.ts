@@ -48,11 +48,13 @@ export function ratingTier(overall: number | null, count: number): RatingTier {
 
 function normalizeKey(raw: string | null | undefined): string {
   if (typeof raw !== 'string') return '';
-  return raw
+  // Longer than any initials (RDS lists one NSU lecturer as "Shaifur"): a
+  // name, not initials, so no rating rather than one for a truncation.
+  const key = raw
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 6);
+    .replace(/[^A-Z]/g, '');
+  return key.length > 6 ? '' : key;
 }
 
 /**
