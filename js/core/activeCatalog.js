@@ -124,6 +124,14 @@ let _diuPrograms = null;
 let _diuProgramCourses = null;
 let _diuLoading = null;
 
+/** program → [[code, title, credits]], and nothing else. */
+function isCourseLists(lists) {
+  if (lists === null || typeof lists !== 'object' || Array.isArray(lists)) return false;
+  return Object.values(lists).every(rows =>
+    Array.isArray(rows) &&
+    rows.every(r => Array.isArray(r) && typeof r[0] === 'string' && typeof r[1] === 'string' && typeof r[2] === 'number'));
+}
+
 /** Hand the catalogue DIU's course lists (feeds/diu-courses.json's `programs`). */
 export function setDiuProgramCourses(lists) {
   _diuProgramCourses = lists && typeof lists === 'object' ? lists : null;
@@ -144,12 +152,14 @@ export function loadDiuProgramCourses(fetchImpl = globalThis.fetch) {
     .then(() => fetchImpl(DIU_COURSES_URL))
     .then(response => (response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
     .then(body => {
+      if (!isCourseLists(body?.programs)) throw new Error('not DIU course lists');
       setDiuProgramCourses(body.programs);
       globalThis.dispatchEvent?.(new CustomEvent('shohoj:catalog-changed', { detail: { campus: 'diu' } }));
       return true;
     })
     .catch(() => {
-      // A later visit to the tab, or the next campus change, tries again.
+      // Nothing is kept from a failed or malformed answer. The page asks again
+      // whenever the student next opens a tab or picks a program.
       _diuLoading = null;
       return false;
     });
@@ -182,6 +192,30 @@ function expandDiuCatalog(program) {
     // hold is still a real course, so its credits are the student's to type.
     typesCredits: true,
   };
+}
+
+/**
+ * Bring course rows in line with a catalogue that arrived after they were
+ * written. A row whose name is a code the catalogue holds — bare ("CSE114") or
+ * as the catalogue writes it ("… (CSE114)") — takes the catalogue's name and
+ * credits: from now on its credits are the catalogue's and no longer a field,
+ * so a typed placeholder (the 3 a named course starts at) must not stay behind
+ * as if it were. Returns how many rows changed.
+ */
+export function reconcileCourseRows(semesters, catalog = getActiveCatalog()) {
+  let changed = 0;
+  for (const semester of semesters ?? []) {
+    for (const course of semester.courses ?? []) {
+      const raw = String(course.name ?? '').trim();
+      const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
+      const listed = code ? catalog.courses[code] : undefined;
+      if (!listed || (course.name === listed.full && course.credits === listed.credits)) continue;
+      course.name = listed.full;
+      course.credits = listed.credits;
+      changed += 1;
+    }
+  }
+  return changed;
 }
 
 /**
