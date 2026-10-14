@@ -41,10 +41,10 @@ async function at(page, day, hhmm) {
 test('the tab opens from the Campus group and says the timetable is a snapshot', async ({ page }) => {
   const { external } = await boot(page);
 
-  await expect(page.locator('#tabFreeRooms .routine-source-badge')).toHaveText(/As of 23 Sep 2026/);
+  await expect(page.locator('#tabFreeRooms .routine-source-badge')).toHaveText(/As of 14 Oct 2026/);
   const note = page.getByTestId('freerooms-snapshot-note');
   await expect(note).toBeVisible();
-  await expect(note).toContainText('23 Sep 2026');
+  await expect(note).toContainText('14 Oct 2026');
   await expect(note).toContainText('may have a class in it');
   await expect(page.getByTestId('freerooms-semester')).toContainText('Fall 2026');
 
@@ -55,18 +55,18 @@ test('the tab opens from the Campus group and says the timetable is a snapshot',
 
 test('a room with a class in it reads as in class, with the section', async ({ page }) => {
   await boot(page);
-  // ACT201 section 1 meets Monday and Wednesday 4:20–5:50 PM in NAC603.
+  // ACT201 section 1 meets Monday and Wednesday 4:20–5:50 PM in NAC202.
   await at(page, 'MONDAY', '16:30');
   await page.locator('[data-action="freerooms:setView"][data-view="all"]').click();
 
-  const card = page.locator('.freerooms-card[data-room="NAC603"]');
+  const card = page.locator('.freerooms-card[data-room="NAC202"]');
   await expect(card).toHaveClass(/is-class/);
   await expect(card).toContainText('ACT201 Section 1');
   await expect(card).toContainText('until 5:50 PM');
 
   // And it is not in the free-only list at that moment.
   await page.locator('[data-action="freerooms:setView"][data-view="free"]').click();
-  await expect(page.locator('.freerooms-card[data-room="NAC603"]')).toHaveCount(0);
+  await expect(page.locator('.freerooms-card[data-room="NAC202"]')).toHaveCount(0);
 });
 
 test('BRACU’s room types are not guessed at for another campus', async ({ page }) => {
@@ -95,14 +95,18 @@ test('a second spelling of a room is never listed, and its class counts against 
     const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
     for (const s of feed) {
       const base = /^(.+?)[_-][vV]\d*$/.exec(s.roomName)?.[1];
-      if (!base) continue;
+      // Only a variant of a room that is listed in its own name is folded
+      // into it (js/core/snapshotRooms.js).
+      if (!base || !feed.some((o) => o.roomName === base)) continue;
       for (const c of s.sectionSchedule.classSchedules) {
         const start = mins(c.startTime);
         const clashes = feed.some((o) => o.roomName === base && o.sectionSchedule.classSchedules.some(
           (x) => x.day === c.day && mins(x.startTime) <= start + 10 && mins(x.endTime) > start + 10,
         ));
         if (!clashes && start >= 480 && start < 1300) {
-          return { base, day: c.day, time: c.startTime.slice(0, 2) + ':' + String(Number(c.startTime.slice(3, 5)) + 10).padStart(2, '0'), course: s.courseCode, section: s.sectionName };
+          const probeMin = start + 10;
+          const time = `${String(Math.floor(probeMin / 60)).padStart(2, '0')}:${String(probeMin % 60).padStart(2, '0')}`;
+          return { base, day: c.day, time, course: s.courseCode, section: s.sectionName };
         }
       }
     }
@@ -120,7 +124,7 @@ test('a room’s week opens in the modal', async ({ page }) => {
   await boot(page);
   await at(page, 'MONDAY', '16:30');
   await page.locator('[data-action="freerooms:setView"][data-view="all"]').click();
-  await page.locator('.freerooms-card[data-room="NAC603"]').click();
+  await page.locator('.freerooms-card[data-room="NAC202"]').click();
   await expect(page.locator('.freerooms-week')).toBeVisible();
   await expect(page.locator('.freerooms-week')).toContainText('ACT201 Section 1');
 });
