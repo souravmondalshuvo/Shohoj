@@ -33,6 +33,7 @@ import { dirname, resolve } from 'node:path';
 import {
   collection as fsCollection,
   doc,
+  documentId,
   getDoc,
   getDocs,
   limit,
@@ -161,6 +162,8 @@ function paperDoc(extra = {}) {
     mimeType: 'application/pdf',
     uploaderUid,
     approved: false,
+    // The Worker stamps every paper it writes.
+    university: 'bracu',
     createdAt: serverTimestamp(),
     ...extra,
   };
@@ -753,7 +756,7 @@ async function run() {
       { groupId: 'grp1', uid: BRACU_UID, email: BRACU_EMAIL, joinedAt: serverTimestamp() }));
   });
 
-  await test('cross-campus membership is denied in both directions and for legacy groups', async () => {
+  await test('cross-campus membership is denied in both directions and for unstamped groups', async () => {
     await seedGroup('bracu_group');
     await seedGroup('nsu_group', { university: 'nsu', creatorUid: NSU_UID });
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
@@ -769,7 +772,8 @@ async function run() {
     await assertFails(join(nsu, 'legacy_group', NSU_UID, NSU_EMAIL));
     await assertFails(join(bracu, 'nsu_group', BRACU_UID, BRACU_EMAIL));
     await assertSucceeds(join(nsu, 'nsu_group', NSU_UID, NSU_EMAIL));
-    await assertSucceeds(join(bracu, 'legacy_group', BRACU_UID, BRACU_EMAIL));
+    // A group with no campus belongs to nobody, BRACU included.
+    await assertFails(join(bracu, 'legacy_group', BRACU_UID, BRACU_EMAIL));
   });
 
   await test('preexisting foreign-campus membership cannot expose another member email', async () => {
@@ -997,7 +1001,7 @@ async function run() {
       lostFoundClaim('lf_nsu', 'nsu_other', 'other@northsouth.edu')));
   });
 
-  await test('lost&found: legacy posts without a campus accept only BRACU claims', async () => {
+  await test('lost&found: a post without a campus accepts no claims', async () => {
     const legacy = lostFoundPost({ createdAt: new Date() });
     delete legacy.university;
     await seedRaw('lostFoundPosts', 'lf_legacy', legacy);
@@ -1005,7 +1009,7 @@ async function run() {
     await assertFails(setDoc(doc(nsu, 'lostFoundClaims', `lf_legacy_${NSU_UID}`),
       lostFoundClaim('lf_legacy', NSU_UID, NSU_EMAIL)));
     const bracu = bracuCtx(OTHER_BRACU_UID, OTHER_BRACU_EMAIL).firestore();
-    await assertSucceeds(setDoc(doc(bracu, 'lostFoundClaims', `lf_legacy_${OTHER_BRACU_UID}`),
+    await assertFails(setDoc(doc(bracu, 'lostFoundClaims', `lf_legacy_${OTHER_BRACU_UID}`),
       lostFoundClaim('lf_legacy')));
   });
 
@@ -1111,24 +1115,24 @@ async function run() {
     }));
   });
 
-  await test('campus isolation: pre-tenancy documents belong to BRACU', async () => {
-    // Everything written before tenancy existed has no university field, and
-    // all of it is BRACU's — the app served nobody else. BRACU must still read
-    // it, and NSU must not inherit it.
+  await test('campus isolation: a document with no campus is readable by admins only', async () => {
+    // Pre-tenancy documents used to read as BRACU's. scripts/backfill_campus.js
+    // stamped them, and the default went with it: it is what let an unfiltered
+    // BRACU list be handed every campus's rows (see "list:" below).
     await seedRaw('studyGroups', 'grp_legacy', {
       courseCode: 'CSE220', title: 'Legacy group', mode: 'online',
       contactLink: 'https://m.me/x', capacity: 6,
       creatorUid: BRACU_UID, createdAt: new Date(),
     });
-    await assertSucceeds(getDoc(doc(bracuCtx().firestore(), 'studyGroups', 'grp_legacy')));
+    await assertFails(getDoc(doc(bracuCtx().firestore(), 'studyGroups', 'grp_legacy')));
     await assertFails(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'grp_legacy')));
+    await assertSucceeds(getDoc(doc(adminCtx().firestore(), 'studyGroups', 'grp_legacy')));
   });
 
-  await test('both client shapes are accepted: with a campus and without', async () => {
-    // Two clients write these collections and cannot be upgraded atomically —
-    // the legacy bundle at the site root sends no campus, the shell under /app/
-    // does. Requiring the field would deny every legacy create the moment these
-    // rules deploy, and legacy is the main production app.
+  await test('a create must carry its campus: BRACU no longer gets to omit it', async () => {
+    // Legacy used to send no campus, so BRACU alone was let off. Both clients
+    // have stamped every create since #822; an unstamped one would now be a
+    // document nobody but an admin can read.
     const db = bracuCtx().firestore();
 
     // Shell shape: campus present, pinned to the writer's own.
@@ -1138,16 +1142,14 @@ async function run() {
       creatorUid: BRACU_UID, university: 'bracu', createdAt: serverTimestamp(),
     }));
 
-    // Legacy shape: no campus at all. Reads back as BRACU via docCampus.
-    await assertSucceeds(setDoc(doc(db, 'studyGroups', 'legacyshape'), {
+    // Old legacy shape: no campus at all.
+    await assertFails(setDoc(doc(db, 'studyGroups', 'legacyshape'), {
       courseCode: 'CSE220', title: 'Legacy shape', mode: 'online',
       contactLink: 'https://m.me/x', capacity: 6,
       creatorUid: BRACU_UID, createdAt: serverTimestamp(),
     }));
-    await assertSucceeds(getDoc(doc(db, 'studyGroups', 'legacyshape')));
-    await assertFails(getDoc(doc(nsuCtx().firestore(), 'studyGroups', 'legacyshape')));
 
-    // Optional does NOT mean unchecked: a present-but-wrong campus is refused.
+    // And a present campus must be the writer's own.
     await assertFails(setDoc(doc(db, 'studyGroups', 'wrongcampus'), {
       courseCode: 'CSE220', title: 'Wrong', mode: 'online',
       contactLink: 'https://m.me/x', capacity: 6,
@@ -1155,17 +1157,21 @@ async function run() {
     }));
   });
 
-  await test('feedback and lost&found accept both shapes too', async () => {
+  await test('feedback and lost&found must carry their campus too', async () => {
     const db = bracuCtx().firestore();
-    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_legacy'), {
+    await assertFails(setDoc(doc(db, 'appFeedback', 'fb_legacy'), {
       type: 'bug', text: 'legacy shape, no campus', anonymous: true,
       createdAt: serverTimestamp(),
+    }));
+    await assertSucceeds(setDoc(doc(db, 'appFeedback', 'fb_stamped'), {
+      type: 'bug', text: 'stamped shape', anonymous: true,
+      university: 'bracu', createdAt: serverTimestamp(),
     }));
     await assertFails(setDoc(doc(db, 'appFeedback', 'fb_wrong'), {
       type: 'bug', text: 'wrong campus', anonymous: true,
       university: 'nsu', createdAt: serverTimestamp(),
     }));
-    await assertSucceeds(setDoc(doc(db, 'lostFoundPosts', 'lf_legacy'), {
+    await assertFails(setDoc(doc(db, 'lostFoundPosts', 'lf_legacy'), {
       type: 'lost', title: 'Legacy umbrella', status: 'open',
       creatorUid: BRACU_UID, createdAt: serverTimestamp(),
     }));
@@ -1175,8 +1181,11 @@ async function run() {
   // Everything above reads one document at a time. The app lists. Rules are
   // not filters: a list is judged from its constraints, before any row is
   // read, and the campus rule cannot be proven for an unfiltered query — so
-  // the two campuses get different answers to the same request. These cases
-  // pin what js/auth/campus-scope.js is built around.
+  // every campus must filter on its own. These cases pin what
+  // js/auth/campus-scope.js and the shell's campusFilter are built around.
+  //
+  // The trio keeps one unstamped row on purpose. None should exist after
+  // scripts/backfill_campus.js, and if one does it must reach nobody.
 
   const seedCampusTrio = async (name, base) => {
     await seedRaw(name, 'bracu_stamped', { ...base, university: 'bracu', createdAt: new Date(3000) });
@@ -1213,7 +1222,7 @@ async function run() {
     )));
   });
 
-  await test('list: a BRACU filter misses the pre-tenancy rows, so legacy sends none', async () => {
+  await test('list: a BRACU student filtering to BRACU gets BRACU rows only', async () => {
     await seedCampusTrio('studyGroups', GROUP_BASE);
     const db = bracuCtx().firestore();
     const snap = await assertSucceeds(getDocs(query(
@@ -1222,19 +1231,16 @@ async function run() {
     assertEqual(ids(snap).join(','), 'bracu_stamped');
   });
 
-  await test('list: a BRACU student with no filter is allowed — and is handed every campus', async () => {
-    // The gap campus-scope.js closes on the client: the unfiltered list has to
-    // stay legal until scripts/backfill_campus.js has stamped the pre-tenancy
-    // rows, and while it is, the rules cannot hold other campuses' rows back.
-    // When the backfill lands and the rules require the filter, this case
-    // inverts — change it deliberately.
+  await test('list: a BRACU student with no campus filter is denied', async () => {
+    // The leak this closes (#821): while a missing field read as BRACU's, this
+    // list was allowed and handed BRACU every campus's rows — NSU's included —
+    // for the legacy client to drop after the fact.
     await seedCampusTrio('studyGroups', GROUP_BASE);
     const db = bracuCtx().firestore();
-    const snap = await assertSucceeds(getDocs(query(fsCollection(db, 'studyGroups'), ...newestFirst)));
-    assertEqual(ids(snap).join(','), 'bracu_stamped,pre_tenancy,nsu_stamped');
+    await assertFails(getDocs(query(fsCollection(db, 'studyGroups'), ...newestFirst)));
   });
 
-  await test('list: feedback and approved papers follow the same split', async () => {
+  await test('list: feedback and approved papers need the filter too', async () => {
     await seedCampusTrio('appFeedback', { type: 'general', text: 'hello', context: {}, anonymous: true });
     await seedCampusTrio('papers', { courseCode: 'CSE220', approved: true, uploaderUid: 'someone' });
     const nsu = nsuCtx().firestore();
@@ -1294,13 +1300,31 @@ async function run() {
     }
   });
 
-  await test('list: a BRACU student keeps the unfiltered review list', async () => {
+  await test('list: a BRACU review list needs the BRACU filter', async () => {
     await seedCampusTrio('facultyReviews', REVIEW_BASE);
     const db = bracuCtx().firestore();
+    const col = fsCollection(db, 'facultyReviews');
+    const byFaculty = [where('facultyInitials', '==', 'MAK')];
+    await assertFails(getDocs(query(col, ...byFaculty, ...newestFirst)));
     const snap = await assertSucceeds(getDocs(query(
-      fsCollection(db, 'facultyReviews'), where('facultyInitials', '==', 'MAK'), ...newestFirst,
+      col, where('university', '==', 'bracu'), ...byFaculty, ...newestFirst,
     )));
-    assertEqual(ids(snap).length, 3);
+    assertEqual(ids(snap).join(','), 'bracu_stamped');
+  });
+
+  await test('list: own uploads and lost&found posts need the filter too', async () => {
+    await seedCampusTrio('papers', { courseCode: 'CSE220', approved: false, uploaderUid: BRACU_UID });
+    await seedCampusTrio('lostFoundPosts', { type: 'lost', title: 'Umbrella', status: 'open', creatorUid: 'someone' });
+    const db = bracuCtx().firestore();
+    const mine = [where('uploaderUid', '==', BRACU_UID), ...newestFirst];
+    await assertFails(getDocs(query(fsCollection(db, 'papers'), ...mine)));
+    assertEqual(ids(await assertSucceeds(getDocs(query(
+      fsCollection(db, 'papers'), where('university', '==', 'bracu'), ...mine,
+    )))).join(','), 'bracu_stamped');
+    await assertFails(getDocs(query(fsCollection(db, 'lostFoundPosts'), ...newestFirst)));
+    assertEqual(ids(await assertSucceeds(getDocs(query(
+      fsCollection(db, 'lostFoundPosts'), where('university', '==', 'bracu'), ...newestFirst,
+    )))).join(','), 'bracu_stamped');
   });
 
   await test('profiles: one read per id is judged by campus; a missing id reads as absent', async () => {
@@ -1313,8 +1337,23 @@ async function run() {
     await assertFails(getDoc(doc(nsu, 'facultyProfiles', 'OLD')));
     assertEqual((await assertSucceeds(getDoc(doc(nsu, 'facultyProfiles', 'NOPE')))).exists(), false);
     const bracu = bracuCtx().firestore();
-    assertEqual((await assertSucceeds(getDoc(doc(bracu, 'facultyProfiles', 'OLD')))).exists(), true);
+    assertEqual((await assertSucceeds(getDoc(doc(bracu, 'facultyProfiles', 'MAK')))).exists(), true);
+    await assertFails(getDoc(doc(bracu, 'facultyProfiles', 'OLD')));
     await assertFails(getDoc(doc(bracu, 'facultyProfiles', 'MMS4')));
+  });
+
+  await test('profiles: a batched id list is judged id by id, so both clients read singly', async () => {
+    // Why neither client batches profile reads: one id from another campus
+    // denies the whole `in` list, even under the campus filter.
+    await seedRaw('facultyProfiles', 'MAK', { name: 'BRACU lecturer', university: 'bracu' });
+    await seedRaw('facultyProfiles', 'MMS4', { name: 'NSU lecturer', university: 'nsu' });
+    const col = fsCollection(bracuCtx().firestore(), 'facultyProfiles');
+    const campus = where('university', '==', 'bracu');
+    await assertFails(getDocs(query(col, campus, where(documentId(), 'in', ['MAK', 'MMS4']))));
+    const snap = await assertSucceeds(getDocs(query(
+      col, campus, where(documentId(), 'in', ['MAK', 'NOPE']),
+    )));
+    assertEqual(ids(snap).join(','), 'MAK');
   });
 
   await test('NSU cannot omit campus to plant documents in BRACU collections', async () => {
