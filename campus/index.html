@@ -16,214 +16,158 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
       rel="stylesheet"
     />
+    <!-- The map's look: the same sheet the legacy site's Campus Map tab wears. -->
+    <link rel="stylesheet" href="../css/campus-map.css" />
     <style>
-      /* Standalone campus-map page (#383): the shell's CampusRoute published at
-         /campus/ ahead of the full cutover. Styles are the campus slice of
-         app/index.html plus the shell primitives the route renders — keep the
-         two in sync until the cutover retires this page. */
-      /* Shohoj brand layer (light theme) — matches the shell's app/index.html so
-         this standalone page reads as the real app. Keep in sync with it. */
-      :root, :root[data-theme="light"] {
-        --green: #2ECC71; --green-dim: #1a7a44; --gold: #F0A500;
-        --bg: #f2f8f4; --glass2: rgba(255,255,255,0.85);
-        --shadow-card: 0 20px 60px rgba(13,41,20,0.07), inset 0 1px 0 rgba(255,255,255,0.9);
-        --c-text: #10241a; --c-text-muted: #2d5a3d; --c-faint: rgba(0,0,0,0.5);
-        --c-green-ink: #187a43; --c-card: #ffffff; --c-surface: rgba(0,0,0,0.04);
-        --c-line: rgba(0,0,0,0.08); --c-border: rgba(0,0,0,0.12); --c-border2: rgba(0,0,0,0.15);
-        --c-border3: rgba(0,0,0,0.2); --border: rgba(26,122,68,0.22);
-        --text: var(--c-text); --text2: var(--c-text-muted);
-        --c-warn-ink: #9a6c12; --c-blue-ink: #2b5c8f; --c-danger-ink: #c0392b;
-        /* Near-opaque, no backdrop-filter (#781): a blur over the map re-ran on
-           every frame the canvas drew beneath it. */
-        --header-bg: rgba(242,248,244,0.97);
-      }
-      :root[data-theme="dark"] {
-        --bg: #071009; --glass2: rgba(255,255,255,0.055);
-        --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
-        --c-text: #e8f0ea; --c-text-muted: #9fc4ab; --c-faint: rgba(232,240,234,0.55);
-        --c-green-ink: #5fe0a0; --c-card: rgba(255,255,255,0.05); --c-surface: rgba(255,255,255,0.05);
-        --c-line: rgba(255,255,255,0.09); --c-border: rgba(46,204,113,0.2); --c-border2: rgba(46,204,113,0.24);
-        --c-border3: rgba(46,204,113,0.3); --border: rgba(46,204,113,0.22);
-        --c-warn-ink: #e8c06a; --c-blue-ink: #8fb8e8; --c-danger-ink: #ff8b7d;
-        --header-bg: rgba(9,18,12,0.97);
-      }
+      /* Standalone Campus Map page (#383), dressed as the legacy site (#887).
+
+         The map is styled by css/campus-map.css, shared with the legacy page's
+         Campus Map tab. What is here is the page around it: the legacy site's
+         colour tokens, its background, its brand bar and a calculator-style
+         glass card. The tokens below are css/style.css's own, verbatim —
+         tests/campusMapStyles.test.js fails if the two drift. This page does
+         not load style.css itself: its landing-page rules would restyle the
+         map's <section>s and headings. */
+
+/* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --green:       #2ECC71;
+      --green-dim:   #1a7a44;
+      --green-glow:  rgba(46,204,113,0.15);
+      --gold:        #F0A500;
+      --accent:      #2ECC71;
+      --radius:      16px;
+      --transition:  0.35s cubic-bezier(.4,0,.2,1);
+    }
+    [data-theme="dark"] {
+      --bg:          #060d09;
+      --glass:       rgba(255,255,255,0.04);
+      --glass2:      rgba(255,255,255,0.07);
+      --glass3:      rgba(46,204,113,0.06);
+      --glass-hover: rgba(255,255,255,0.09);
+      --border:      rgba(46,204,113,0.18);
+      --border2:     rgba(255,255,255,0.08);
+      --text:        #e8f0ea;
+      --text1:       #e8f0ea;
+      --text2:       #8aab90;
+      --text3:       #4d6b52;
+      --input-bg:    rgba(0,0,0,0.25);
+      --chip-border: rgba(255,255,255,0.10);
+      --chip-hover:  rgba(255,255,255,0.05);
+      --card-bg:     rgba(255,255,255,0.02);
+      --card-bg-2:   rgba(255,255,255,0.03);
+      --card-hover:  rgba(255,255,255,0.06);
+      --card-border: rgba(255,255,255,0.08);
+      --hairline:    rgba(255,255,255,0.05);
+      --badge-bg:    rgba(255,255,255,0.06);
+      --skel-lo:     rgba(255,255,255,0.04);
+      --skel-hi:     rgba(255,255,255,0.09);
+      --ink-green:   #2ecc71;
+      --ink-blue:    #5b9dff;
+      --ink-amber:   #f1c40f;
+      --shadow:      0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(46,204,113,0.08);
+      --shadow-card: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    [data-theme="light"] {
+      --bg:          #f2f8f4;
+      --glass:       rgba(255,255,255,0.70);
+      --glass2:      rgba(255,255,255,0.85);
+      --glass3:      rgba(46,204,113,0.08);
+      --glass-hover: rgba(255,255,255,0.95);
+      --border:      rgba(26,122,68,0.22);
+      --border2:     rgba(13,41,20,0.12);
+      --text:        #10241a;
+      --text1:       #10241a;
+      --text2:       #3f6b4d;
+      --text3:       #7da28a;
+      --input-bg:    rgba(255,255,255,0.85);
+      --chip-border: rgba(13,41,20,0.14);
+      --chip-hover:  rgba(13,41,20,0.045);
+      --card-bg:     rgba(255,255,255,0.72);
+      --card-bg-2:   rgba(255,255,255,0.85);
+      --card-hover:  #ffffff;
+      --card-border: rgba(13,41,20,0.10);
+      --hairline:    rgba(13,41,20,0.08);
+      --badge-bg:    rgba(13,41,20,0.06);
+      --skel-lo:     rgba(0,0,0,0.04);
+      --skel-hi:     rgba(0,0,0,0.09);
+      --ink-green:   #187a43;
+      --ink-blue:    #2b5c8f;
+      --ink-amber:   #9a6c12;
+      --shadow:      0 8px 32px rgba(13,41,20,0.08), 0 0 0 1px rgba(13,41,20,0.03);
+      --shadow-card: 0 20px 60px rgba(13,41,20,0.07), inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
       * { box-sizing: border-box; }
       body {
-        margin: 0; font-family: 'DM Sans', system-ui, sans-serif; color: var(--text);
+        margin: 0; font-family: 'DM Sans', sans-serif; color: var(--text);
         background: var(--bg); min-height: 100vh; position: relative; overflow-x: hidden;
       }
-      body::before, body::after {
-        content: ''; position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: -1;
+      /* The legacy page's drifting background light (.orb), without the drift:
+         the map's canvas repaints often enough. */
+      .campus-orb { position: fixed; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: -1; }
+      .campus-orb--1 {
+        width: min(520px, 90vw); height: min(520px, 90vw); top: -120px; left: -100px;
+        background: radial-gradient(circle, rgba(46,204,113,0.22) 0%, transparent 70%);
       }
-      body::before {
-        width: min(520px,90vw); height: min(520px,90vw); top: -140px; left: -120px;
-        background: radial-gradient(circle, rgba(46,204,113,0.30) 0%, transparent 70%);
+      .campus-orb--2 {
+        width: min(400px, 80vw); height: min(400px, 80vw); bottom: 10%; right: -80px;
+        background: radial-gradient(circle, rgba(16,120,60,0.18) 0%, transparent 70%);
       }
-      body::after {
-        width: min(400px,80vw); height: min(400px,80vw); bottom: 5%; right: -100px;
-        background: radial-gradient(circle, rgba(100,200,140,0.25) 0%, transparent 70%);
-      }
-      /* Lighter orbs on the near-white surface so the page doesn't read green. */
-      :root[data-theme="light"] body::before {
-        background: radial-gradient(circle, rgba(46,204,113,0.16) 0%, transparent 70%);
-      }
-      :root[data-theme="light"] body::after {
-        background: radial-gradient(circle, rgba(100,200,140,0.13) 0%, transparent 70%);
-      }
-      h1, h2, h3 { font-family: 'Syne','DM Sans',sans-serif; letter-spacing: -0.02em; }
+      [data-theme="light"] .campus-orb--1 { background: radial-gradient(circle, rgba(46,204,113,0.16) 0%, transparent 70%); }
+      [data-theme="light"] .campus-orb--2 { background: radial-gradient(circle, rgba(100,200,140,0.13) 0%, transparent 70%); }
+
+      /* The legacy nav's brand (.nav-logo). Near-opaque and with no
+         backdrop-filter: a blur over the map re-ran on every frame the canvas
+         drew beneath it (#781). */
       .campus-topbar {
-        position: sticky; top: 0; z-index: 20; padding: 12px 16px; border-bottom: 1px solid var(--border);
-        background: var(--header-bg);
+        position: sticky; top: 0; z-index: 20;
+        display: flex; align-items: center; height: 64px; padding: 0 2rem;
+        background: rgba(6,13,9,0.94); border-bottom: 1px solid var(--border2);
       }
-      .pg-brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
-      .pg-brand-mark {
-        width: 32px; height: 32px; flex-shrink: 0; background: var(--green); border-radius: 8px;
+      [data-theme="light"] .campus-topbar { background: rgba(242,248,244,0.96); }
+      .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+      .nav-logo:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
+      .nav-logo-mark {
+        width: 34px; height: 34px; background: var(--green); border-radius: 8px;
         display: flex; align-items: center; justify-content: center;
-        font-family: 'Syne',sans-serif; font-weight: 800; font-size: 15px; color: #0b0f0d; letter-spacing: -0.5px;
+        font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px; color: #0b0f0d; letter-spacing: -0.5px;
       }
-      .pg-brand:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 8px; }
-      .pg-brand-text { font-family: 'Syne',sans-serif; font-weight: 700; font-size: 17px; color: var(--text); }
-      .pg-brand-text span { color: var(--green); }
-      .shell-page {
-        margin: 20px auto; padding: 24px; max-width: 720px; background: var(--glass2);
-        border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-card);
+      .nav-logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: var(--text); }
+      .nav-logo-text span { color: var(--green); }
+
+      /* The legacy calculator's card (.calc-wrapper + .calc-body), without its
+         backdrop blur: behind it is only the already-blurred background, and
+         the map's canvas inside it repaints often. */
+      #campusMap {
+        max-width: 1080px; margin: 2rem auto 3rem; padding: 1.8rem 2.5rem;
+        background: var(--glass); border: 1px solid var(--border); border-radius: 20px;
+        box-shadow: var(--shadow-card);
       }
-      .shell-muted { color: var(--text2); }
-      .shell-btn {
-        font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer;
-        border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text);
-        display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+      [data-theme="light"] #campusMap { background: var(--glass2); }
+
+      @media (max-width: 1080px) { #campusMap { margin: 1.5rem 1.2rem 2.5rem; padding: 1.4rem 1.6rem; } }
+      @media (max-width: 480px) {
+        .campus-topbar { height: 56px; padding: 0 1rem; }
+        #campusMap { margin: 0.8rem 0.6rem 2rem; padding: 0.9rem; border-radius: 14px; }
       }
-      .shell-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-      .campus-page { max-width: 1080px; }
-      .campus-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--c-text-muted); }
-      .campus-meta-btn { min-height: 36px; padding: 5px 12px; font-size: 12px; }
-      .campus-location { font-weight: 600; color: var(--c-green-ink); }
-      .campus-floors { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
-      .campus-floor-btn {
-        font: inherit; font-size: 12px; font-weight: 600; padding: 8px 12px; min-height: 44px;
-        border-radius: 6px; cursor: pointer; border: 1px solid var(--c-border2); background: var(--c-card); color: var(--c-text-muted);
-      }
-      .campus-floor-btn--active { border-color: rgba(46,204,113,0.45); background: rgba(46,204,113,0.12); color: var(--c-green-ink); }
-      .campus-floor-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-      .campus-canvas {
-        position: relative;
-        height: min(560px, 68vh); border: 1px solid var(--c-border); border-radius: 12px;
-        overflow: hidden; background: linear-gradient(rgba(46,204,113,0.04), rgba(86,180,233,0.05));
-        touch-action: none;
-      }
-      .campus-canvas canvas { display: block; width: 100%; height: 100%; }
-      /* v2 hover tooltip + feed-refresh shimmer (#385) — kept in sync with app/index.html */
-      .campus-tooltip {
-        position: absolute; z-index: 5; pointer-events: none; max-width: 220px;
-        transform: translate(-50%, calc(-100% - 12px));
-        padding: 7px 10px; border-radius: 9px; font-size: 12px; line-height: 1.35;
-        background: var(--header-bg);
-        border: 1px solid var(--c-border2); box-shadow: var(--shadow-card); color: var(--c-text);
-        display: flex; flex-direction: column; gap: 2px; white-space: nowrap;
-      }
-      .campus-tooltip[hidden] { display: none; }
-      .campus-tooltip-title { font-size: 12px; font-weight: 700; }
-      .campus-tooltip-detail { color: var(--c-text-muted); }
-      .campus-tooltip[data-status="free"] .campus-tooltip-detail { color: var(--c-green-ink); }
-      .campus-tooltip[data-status="busy"] .campus-tooltip-detail { color: var(--c-danger-ink); }
-      .campus-canvas[data-refreshing]::after {
-        content: ''; position: absolute; inset: 0; pointer-events: none;
-        background: linear-gradient(100deg, transparent 34%, rgba(255,255,255,0.16) 50%, transparent 66%);
-        background-size: 220% 100%; animation: campus-shimmer 1.1s ease-in-out infinite;
-      }
-      @keyframes campus-shimmer { 0% { background-position: 190% 0; } 100% { background-position: -90% 0; } }
-      .campus-legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 14px; font-size: 11px; color: var(--c-faint); }
-      .campus-legend span { display: flex; align-items: center; gap: 5px; }
-      .campus-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: #9aa59e; flex-shrink: 0; }
-      .campus-dot--free { background: #27ae60; }
-      .campus-dot--busy { background: #e74c3c; }
-      .campus-dot--selected { background: var(--c-blue-ink); }
-      .campus-evidence {
-        margin: -2px 0 14px; padding: 10px 12px; border: 1px solid var(--c-border);
-        border-radius: 10px; background: rgba(86,180,233,0.045); color: var(--c-text-muted);
-        font-size: 12px; line-height: 1.55;
-      }
-      .campus-evidence summary { cursor: pointer; color: var(--c-text); font-weight: 700; }
-      .campus-evidence p { margin: 8px 0 6px; }
-      .campus-evidence-links { display: flex; flex-wrap: wrap; gap: 8px 14px; }
-      .campus-evidence-links a { color: var(--c-blue-ink); font-weight: 600; }
-      .campus-evidence summary:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 3px; }
-      /* v2 room search + free filter (#385) — kept in sync with app/index.html */
-      .campus-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
-      .campus-search-field { display: flex; align-items: center; gap: 6px; font-size: 12px; }
-      .campus-search-input {
-        min-height: 36px; padding: 5px 10px; font-size: 13px; min-width: 150px;
-        border: 1px solid var(--c-border); border-radius: 8px;
-        background: var(--c-card); color: var(--c-text); text-transform: uppercase;
-      }
-      .campus-search-input:focus { border-color: rgba(46,204,113,0.55); outline: none; }
-      .campus-search-input::placeholder { text-transform: none; color: var(--c-faint); }
-      .campus-freefilter { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--c-text-muted); min-height: 36px; cursor: pointer; }
-      .campus-legend-key { display: flex; align-items: center; gap: 5px; }
-      .campus-legend-count { font-weight: 800; color: var(--c-text); font-variant-numeric: tabular-nums; display: inline-block; animation: campus-count-pulse 0.4s ease-out; }
-      @keyframes campus-count-pulse { 0% { transform: scale(1.35); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
-      .campus-room-panel { border: 1px solid rgba(46,204,113,0.25); background: rgba(46,204,113,0.05); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
-      .campus-room-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 14px; }
-      .campus-room-status { margin: 6px 0 0; font-size: 13px; color: var(--c-text); font-weight: 600; }
-      .campus-room-schedule { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: var(--c-text-muted); }
-      .campus-zone-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--c-faint); margin: 12px 0 6px; }
-      .campus-zone-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
-      .campus-room-btn {
-        display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 600;
-        padding: 8px 10px; min-height: 44px; border-radius: 8px; cursor: pointer;
-        border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text);
-      }
-      .campus-room-btn--selected { border-color: var(--c-blue-ink); background: rgba(86,180,233,0.10); }
-      .campus-room-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-      .campus-room-sr {
-        position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-      }
-      .campus-error { padding: 16px 0; }
-      .campus-other { margin-top: 16px; font-size: 13px; color: var(--c-text-muted); }
-      /* Place directory (#748) — kept in sync with css/shell-routes.css */
-      .campus-places { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--c-border); }
-      .campus-places-title { font-size: 16px; font-weight: 800; margin: 0 0 4px; color: var(--c-text); }
-      .campus-places-lede { font-size: 12px; margin: 0 0 10px; }
-      .campus-places-lede a { color: var(--c-blue-ink); font-weight: 600; }
-      .campus-search-input--text { text-transform: none; min-width: 220px; }
-      .campus-place-status { margin: 0 0 10px; padding: 10px 14px; border: 1px solid rgba(86,180,233,0.35); border-radius: 10px; background: rgba(86,180,233,0.08); font-size: 13px; color: var(--c-text); }
-      .campus-place-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; }
-      .campus-place-btn {
-        display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left;
-        font: inherit; padding: 8px 12px; min-height: 44px; border-radius: 8px; cursor: pointer;
-        border: 1px solid var(--c-border); background: var(--c-card); color: var(--c-text);
-      }
-      .campus-place-btn[aria-pressed="true"] { border-color: var(--c-blue-ink); background: rgba(86,180,233,0.10); }
-      .campus-place-btn:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 2px; }
-      .campus-place-name { font-size: 13px; font-weight: 600; line-height: 1.35; }
-      .campus-place-meta { font-size: 11px; color: var(--c-text-muted); }
-      .campus-place-directory { margin-top: 12px; font-size: 13px; color: var(--c-text-muted); }
-      .campus-place-directory summary { cursor: pointer; font-weight: 700; color: var(--c-text); }
-      .campus-place-directory summary:focus-visible { outline: 2px solid var(--c-green-ink); outline-offset: 3px; }
-      @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-      [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
-      [data-theme="dark"] select,
-      [data-theme="dark"] textarea {
-        background: rgba(0,0,0,0.28); color: var(--c-text);
-        border: 1px solid var(--c-border); border-radius: 8px;
-      }
-      [data-theme="dark"] input::placeholder,
-      [data-theme="dark"] textarea::placeholder { color: var(--c-faint); }
     </style>
   </head>
   <body>
+    <div class="campus-orb campus-orb--1" aria-hidden="true"></div>
+    <div class="campus-orb campus-orb--2" aria-hidden="true"></div>
     <header class="campus-topbar">
-      <a class="pg-brand" href="../" aria-label="Back to Shohoj">
-        <span class="pg-brand-mark" aria-hidden="true">স</span>
-        <span class="pg-brand-text">Shohoj <span>সহজ</span></span>
+      <a class="nav-logo" href="../" aria-label="Back to Shohoj">
+        <span class="nav-logo-mark" aria-hidden="true">স</span>
+        <span class="nav-logo-text">Shohoj <span>সহজ</span></span>
       </a>
     </header>
-    <div id="root"></div>
+    <main id="campusMap">
+      <div id="root"></div>
+    </main>
     <script type="module" src="./main.tsx"></script>
   </body>
 </html>
