@@ -64,7 +64,21 @@ test('room deep link opens the main site\'s Campus Map tab on that room', async 
   // page at the root (the legacy site is built separately), so the address is
   // what is checked here; legacy-campus-tab.spec.js opens the tab on a room
   // from that same hash.
-  await page.waitForURL((url) => url.pathname === '/' && url.hash === '#calculator/campus?room=09G-31T');
+  await page.waitForURL(
+    (url) => url.pathname === '/' && url.hash === '#calculator/campus?room=09G-31T&campus=bracu',
+  );
+});
+
+test('a trailing slash on the room link still lands at the site root', async ({ page }) => {
+  await openBoard(page);
+  // The redirect is built from the page's mount point, not from this URL.
+  await page.evaluate(() => {
+    history.pushState(null, '', '/lost-found/campus/?room=09G-31T');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await page.waitForURL(
+    (url) => url.pathname === '/' && url.hash === '#calculator/campus?room=09G-31T&campus=bracu',
+  );
 });
 
 test('top bar links back to the main site', async ({ page }) => {
