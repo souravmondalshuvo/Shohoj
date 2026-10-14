@@ -30,6 +30,7 @@
     {"id": "nsu-departments", "status": "derived", "title": "Departments and the subjects they own: the offering department on each row of the Fall 2025 offered list, named from NSU's school pages", "url": "https://www.northsouth.edu/newassets/images/IT/252-offered-courses-list-100925.pdf", "retrieved": "2026-10-04"},
     {"id": "rds-cgpa-extension", "status": "third-party", "title": "What-if CGPA Planner (MIT-licensed Chrome extension for the RDS grade history page)", "url": "https://github.com/Shadhin-f/what-if-cgpa-planner", "retrieved": "2026-09-27"},
     {"id": "rds4plus-263", "status": "third-party", "title": "RDS4+ (MIT-licensed advising planner): its copy of RDS's Offered Courses page for Fall 2026, scraped 23 Sep 2026 10:48 UTC, after which its sync was paused", "url": "https://github.com/Aminul-Islam7/rds4plus/blob/main/data/response.json", "retrieved": "2026-09-28"},
+    {"id": "nsuer-263", "status": "third-party", "title": "nsuer.pro: its verbatim copy of RDS's Offered Courses page for Fall 2026, read 14 Oct 2026 06:09 UTC. Undocumented route of a student advising site, used without the owner's permission; how often it re-reads RDS is not stated", "url": "https://nsuer.pro/api/fetch-courses", "retrieved": "2026-10-14"},
     {"id": "calculator-sites", "status": "third-party", "title": "NSU CGPA calculator sites (students.bd, cgpacalculatoronline.net)", "url": "https://students.bd/calculator/nsu-cgpa", "retrieved": "2026-09-27"}
   ]
 }
