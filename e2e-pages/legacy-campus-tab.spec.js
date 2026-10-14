@@ -135,6 +135,18 @@ test('a link can open the map on a room', async ({ page }) => {
   await expect(panel(page).getByTestId('campus-room-panel')).toContainText('09G-31T');
 });
 
+test('a link that names BRAC University opens its tower for an NSU student', async ({ page }) => {
+  // Lost & Found's room links: every room on that board is a tower room.
+  await openLegacy(page, {
+    email: 'student@northsouth.edu',
+    hash: '#calculator/campus?room=09G-31T&campus=bracu',
+  });
+  const map = panel(page).getByTestId('campus-page');
+  await expect(map).toBeVisible();
+  await expect(map).not.toHaveAttribute('data-campus', 'nsu');
+  await expect(panel(page).getByTestId('campus-room-panel')).toContainText('09G-31T');
+});
+
 test('leaving the tab and coming back keeps the floor that was open', async ({ page }) => {
   await openLegacy(page, { email: 'student@g.bracu.ac.bd' });
   await panel(page).getByRole('button', { name: 'Floor 7' }).click();
