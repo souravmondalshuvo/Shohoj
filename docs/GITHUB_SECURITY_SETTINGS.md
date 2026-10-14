@@ -26,12 +26,15 @@ leaked Firebase service-account key or Cloudflare token.
 
 In addition, the [`secret-scan.yml`](../.github/workflows/secret-scan.yml)
 workflow runs gitleaks over the full history of every PR and every push to
-`main`. Its allowlist lives in [`.gitleaks.toml`](../.gitleaks.toml) and is
-deliberately narrow (the public Firebase web key and reCAPTCHA site key by exact
-value, `shohoj_*` storage key names, UIDs in rules). If it flags something that
-is genuinely public, add the narrowest entry that silences it — never allowlist
-a whole path. If it flags a real secret, **rotate it first**: removing it from a
-later commit does not remove it from history.
+`main`. Its allowlist lives in [`.gitleaks.toml`](../.gitleaks.toml) and holds
+only exact values (the public Firebase web key and reCAPTCHA site key, a few
+storage key names, one UID) — never a pattern or a path. If it flags something
+that is genuinely public, add that exact value in a PR of its own: on pull
+requests the scan reads `.gitleaks.toml` from the base branch, so a PR cannot
+allowlist its own finding. If it flags a real secret, **rotate it first**:
+removing it from a later commit does not remove it from history.
+
+The scan only blocks a merge once `Gitleaks` is a required check (section 6).
 
 ## 3. Dependabot security alerts
 
@@ -68,7 +71,8 @@ Settings → **Rules** → **Rulesets** (or Branches → Branch protection). For
 - **Require a pull request before merging.**
 - **Require status checks to pass** — select these jobs from the CI/CD workflow:
   `Lint`, `Typecheck`, `Validate data`, `Unit + Firestore rules tests`,
-  `Worker tests`, `Build + E2E + bundle guards`, `Review dependency changes`.
+  `Worker tests`, `Build + E2E + bundle guards`, `Review dependency changes`,
+  and `Gitleaks` (from the Secret scan workflow).
 - **Require branches to be up to date before merging.**
 - **Do not allow bypassing** (except the automation account if one is needed).
 - Keep **Rebase-and-merge** enabled and **Squash disabled** (repo convention:
