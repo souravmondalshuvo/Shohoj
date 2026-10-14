@@ -28,7 +28,7 @@ import {
   type PaperRecord,
   type PapersRepo,
 } from '../../platform/firebase/papersRepo.ts';
-import { useAuth, useIdToken } from '../providers/AuthProvider';
+import { useAuth, useIdToken, useUniversity } from '../providers/AuthProvider';
 import { useRuntimeConfig } from '../providers/RuntimeConfigProvider';
 import { useNotifications } from '../../state/NotificationProvider';
 
@@ -88,6 +88,8 @@ export function Component() {
   }, [auth]);
 
   const getIdToken = useIdToken();
+  // The campus being shown; an admin's switch rebuilds the repo and refetches.
+  const readCampus = useUniversity()?.id;
   const repo = useMemo<PapersRepo | null>(() => {
     if (typeof window !== 'undefined' && window.__shohojPapersRepo) {
       return window.__shohojPapersRepo;
@@ -98,8 +100,9 @@ export function Component() {
       recaptchaV3SiteKey: config.recaptchaV3SiteKey,
       workerUrl: config.papersWorkerUrl,
       getIdToken,
+      readCampus,
     });
-  }, [config, getIdToken]);
+  }, [config, getIdToken, readCampus]);
 
   const [list, setList] = useState<ListState>({ phase: 'loading' });
   const [query, setQuery] = useState('');
@@ -140,7 +143,8 @@ export function Component() {
     return () => {
       live = false;
     };
-  }, [canUse, isCourseQuery, searchCode, reloadKey]);
+    // readCampus: an admin's campus switch lists the other campus's papers.
+  }, [canUse, isCourseQuery, searchCode, reloadKey, readCampus]);
 
   const visible = useMemo(() => {
     if (list.phase !== 'ready') return [];
