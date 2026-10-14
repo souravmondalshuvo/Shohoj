@@ -22,6 +22,7 @@ try {
   const { dbPath, sqlPath } = buildCampusDb({ outDir: out });
   const { campuses } = loadCampuses();
   const nsu = campuses.find((c) => c.id === 'nsu');
+  const diu = campuses.find((c) => c.id === 'diu');
   const db = new DatabaseSync(dbPath, { readOnly: true });
   const one = (sql, ...params) => db.prepare(sql).get(...params);
   // node:sqlite returns null-prototype rows; spread them so deepEqual compares values.
@@ -125,6 +126,13 @@ try {
   assert.equal(one("SELECT total_credits FROM programs WHERE campus='diu' AND code='CSE'").total_credits, 154.5);
   assert.ok(one("SELECT COUNT(*) AS n FROM programs WHERE campus='diu' AND term_system IS NULL AND note IS NOT NULL").n > 0);
   assert.equal(one("SELECT email_domains FROM campuses WHERE id='diu'").email_domains, 'diu.edu.bd,s.diu.edu.bd');
+  // One code, a row per program that lists it.
+  const mat101 = all("SELECT program FROM program_courses WHERE campus='diu' AND code='MAT101' ORDER BY program").map((r) => r.program);
+  assert.ok(mat101.length > 1 && mat101.includes('CSE'), 'MAT101 is a course in several DIU programs');
+  assert.equal(
+    one("SELECT COUNT(*) AS n FROM program_courses WHERE campus='diu'").n,
+    diu.programCourses.records.length,
+  );
   const graduate = one("SELECT source FROM academic_rules WHERE campus='diu' AND id='min-cgpa-to-graduate'");
   assert.equal(graduate.source, 'diu-faq', 'a rule keeps its own source');
   const fridayBus = all(`SELECT t.time FROM bus_times t JOIN bus_routes r ON r.campus=t.campus AND r.route=t.route
