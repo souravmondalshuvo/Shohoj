@@ -88,6 +88,17 @@ for (const key of ['261-trimester', '262-trimester', '263-trimester', '261-bisem
   assert.ok(diu.calendars[key], `DIU ${key} calendar is loaded`);
 }
 assert.equal(diu.bus.records.length, 20);
+// Courses per program: a DIU code means one course in one program only.
+assert.equal(diu.courses, undefined, 'no campus-wide course table for DIU');
+const diuCourse = (program, code) => diu.programCourses.records.find((r) => r.program === program && r.code === code);
+assert.equal(diuCourse('CSE', 'CSE113').title, 'Programming and Problem Solving');
+assert.equal(diuCourse('CSE', 'CSE212').title, 'Discrete Mathematics');
+assert.match(diuCourse('RME', 'CSE212').title, /Object Oriented Programming/);
+assert.equal(diuCourse('ARCH', 'ARCH102').credits, 5, "Architecture's 0:5 is five credits, not ten contact hours");
+assert.ok(diu.programCourses.note.includes('ISCED'), 'the note says why the BBA family and EEE are not listed');
+for (const r of diu.programCourses.records) {
+  assert.equal(diu.sources.records.find((s) => s.id === r.source)?.status, 'official', `${r.program} ${r.code} cites DIU's own page`);
+}
 const friday = diu.bus.records.find((r) => r.route.startsWith('Friday Schedule : Dhanmondi'));
 assert.deepEqual(friday.departCampus, ['14:20', '18:30'], 'the 12-hour Friday times are read as afternoon');
 assert.match(friday.note, /Printed as 02:20, 06:30/);
@@ -234,6 +245,14 @@ expectError('an unknown field (typo)', (dir) => editJson(path.join(dir, 'program
 expectError('a campus without sources.json', (dir) => {
   fs.rmSync(path.join(dir, 'sources.json'));
 }, /nsu: missing sources\.json/);
+
+expectError('a code listed twice in one program', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  d.records.push({ ...d.records[0] });
+}), /program-courses: \w+ lists \w+ twice/, 'diu');
+
+expectError('a program list naming an unknown program', (dir) => editJson(path.join(dir, 'program-courses.json'), (d) => {
+  d.records[0].program = 'NOPE';
+}), /unknown program NOPE/, 'diu');
 
 // "Not published" is allowed only when a note says so.
 expectError('no email domain and no note', (dir) => editJson(path.join(dir, 'profile.json'), (d) => {
