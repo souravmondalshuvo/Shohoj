@@ -115,9 +115,9 @@ test('clash detection works on the generated sections', () => {
   assert.equal(report.examClashes.length, 0);
 });
 
-test('capturedOn is the read date the snapshot’s own note states', () => {
-  assert.equal(nsuMeta.capturedOn, '2026-10-14');
-  assert.ok(snapshot.note.includes('14 Oct 2026'), 'the note no longer states this capture date');
+test('capturedOn is the date the snapshot’s own note gives it', () => {
+  assert.equal(nsuMeta.capturedOn, '2026-09-28');
+  assert.ok(snapshot.note.includes('dated 28 Sep 2026'), 'the note no longer states this capture date');
   assert.equal(nsuMeta.source, snapshot.source);
 });
 
