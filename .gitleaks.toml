@@ -1,8 +1,12 @@
 # gitleaks configuration — used by .github/workflows/secret-scan.yml.
 #
-# Keeps every default rule and allowlists only values that are public by
-# design or are not credentials at all. Each allowlist is as narrow as the
-# false positive it silences: a different key of the same shape still fails.
+# Keeps every default rule and allowlists only EXACT values that are public by
+# design or are not credentials at all — never a pattern, never a path. A
+# different value of the same shape still fails.
+#
+# On a pull request the scan loads this file from the BASE branch, so a PR
+# cannot allowlist its own finding: an addition here takes effect only once it
+# has been merged on its own.
 #
 # Run locally:  gitleaks git --config .gitleaks.toml --log-opts=HEAD --redact
 
@@ -23,14 +27,20 @@ regexes = [
 ]
 
 [[allowlists]]
-description = "localStorage key names such as ROUTINE_STORAGE_KEY = 'shohoj_routine_v1'"
+description = "localStorage key names assigned to *_KEY constants"
 regexTarget = "secret"
-regexes = ['''^shohoj_[a-z0-9_]+$''']
+regexes = [
+  '''^shohoj_campus_floor_v1$''',
+  '''^shohoj_maint_dismissed_2026_06$''',
+  '''^shohoj_routine_picks_v1$''',
+  '''^shohoj_routine_ratings_v1$''',
+  '''^shohoj_routine_v1$''',
+]
 
 [[allowlists]]
-description = "Firebase UIDs compared in security rules — identifiers, not secrets"
-regexTarget = "match"
-regexes = ['''request\.auth\.uid\s*==\s*['"]''']
+description = "Admin Firebase UID once compared in firestore.rules / storage.rules — an identifier, not a secret"
+regexTarget = "secret"
+regexes = ['''^LuMu2ZLdaSVeQjs0IQ1qJTwZwfe2$''']
 
 [[allowlists]]
 description = "Fake token in the Firestore rules tests"
