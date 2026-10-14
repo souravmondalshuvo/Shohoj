@@ -267,6 +267,10 @@ FIREBASE_JS_FILES = [
 ]
 
 CSS_FILE = 'css/style.css'
+# Sheets a page links after style.css and gets inlined after it, in order.
+# css/campus-map.css is shared with the standalone /campus/ page (a Vite page,
+# which bundles it itself), so it cannot live inside style.css.
+CAMPUS_MAP_CSS = 'css/campus-map.css'
 
 # (template_path, output_path, css_link_pattern, main_script_pattern)
 PAGES = [
@@ -278,6 +282,7 @@ PAGES = [
         'css_pattern': r'<link\s+[^>]*href=["\']css/style\.css["\'][^>]*/?>',
         'main_pattern': r'<script\s+type=["\']module["\']\s+src=["\']js/main\.js["\'][^>]*>\s*</script>',
         'qr_strip': '  <script src="js/qr-data.js"></script>\n',
+        'extra_css': [(CAMPUS_MAP_CSS, r'\s*<link\s+[^>]*href=["\']css/campus-map\.css["\'][^>]*/?>')],
     },
     {
         'template': 'admin/index.html',
@@ -584,9 +589,19 @@ def harden_script_csp(html, output_path):
 
 
 def render_page(template_path, output_path, css, firebase_js, bundled_js,
-                css_pattern, main_pattern, qr_strip):
+                css_pattern, main_pattern, qr_strip, extra_css=()):
     with open(template_path, 'r', encoding='utf-8') as f:
         html = f.read()
+
+    # An extra sheet's <link> goes, and its text joins style.css's <style>
+    # block. A page that names one and does not link it is a build error: the
+    # dev page would be missing the styles the built one has.
+    for extra_path, link_pattern in extra_css:
+        html, linked = re.subn(link_pattern, '', html)
+        if linked != 1:
+            raise SystemExit(f'{template_path} must link {extra_path} exactly once (found {linked}).')
+        with open(extra_path, 'r', encoding='utf-8') as f:
+            css = css.rstrip('\n') + '\n\n' + f.read()
 
     if qr_strip:
         html = html.replace(qr_strip, '')
@@ -700,10 +715,11 @@ def build():
             css_pattern=page['css_pattern'],
             main_pattern=page['main_pattern'],
             qr_strip=page['qr_strip'],
+            extra_css=page.get('extra_css', ()),
         )
 
     print(f'   Main JS files: {len(MAIN_JS_FILES)} · Admin JS files: {len(ADMIN_JS_FILES)} · Profile JS files: {len(PROFILE_JS_FILES)}')
-    print(f'   CSS inlined from: {CSS_FILE}')
+    print(f'   CSS inlined from: {CSS_FILE} (+ {CAMPUS_MAP_CSS} on shohoj.html)')
     print(f'   Firebase inlined: {", ".join(FIREBASE_JS_FILES)}')
 
 
