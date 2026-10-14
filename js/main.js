@@ -13,7 +13,7 @@ import {
 } from './core/calculator.js';
 import { calculateCgpaTotals } from './core/gpa-core.js';
 import { activeGradePoint, getActiveCampus, initActiveCampus } from './core/activeCampus.js';
-import { getActiveCatalog, loadDiuProgramCourses } from './core/activeCatalog.js';
+import { getActiveCatalog, loadDiuProgramCourses, reconcileCourseRows } from './core/activeCatalog.js';
 import { setCourseLookup } from './core/courseLookup.js';
 import { campusAllowsFeature, campusAllowsTab, campusPageHref } from './core/campusFeatures.js';
 import { DEFAULT_UNIVERSITY_ID } from './core/university.js';
@@ -116,12 +116,27 @@ window.addEventListener('shohoj:campus-changed', () => syncProgramPicker());
 window.addEventListener('shohoj:campus-changed', () => window._shohoj_renderAndRecalc());
 // DIU's course lists are fetched only for a DIU student, and arrive after the
 // page has drawn: draw the calculator again with them, and the open tab.
-window.addEventListener('shohoj:campus-changed', () => {
+const loadDiuCoursesIfDiu = () => {
   if (getActiveCampus().id === 'diu') loadDiuProgramCourses();
-});
+};
+window.addEventListener('shohoj:campus-changed', loadDiuCoursesIfDiu);
+// The campus may already be DIU before this listener existed.
+loadDiuCoursesIfDiu();
 window.addEventListener('shohoj:catalog-changed', () => {
-  window._shohoj_renderAndRecalc();
-  switchCalcTab(_activeCalcTab);
+  const redraw = () => {
+    // Rows written before the lists arrived take the list's name and credits.
+    if (reconcileCourseRows(state.semesters) > 0) saveState();
+    window._shohoj_renderAndRecalc();
+    switchCalcTab(_activeCalcTab);
+  };
+  // A student mid-way through typing a course keeps it: redraw once the field
+  // has let go and committed what was typed.
+  const active = document.activeElement;
+  if (active && active.closest?.('#semestersContainer') && active.matches?.('input, select, textarea')) {
+    active.addEventListener('focusout', () => setTimeout(redraw, 0), { once: true });
+  } else {
+    redraw();
+  }
 });
 // The tab bar was built for the previous campus's features. Before the redraw
 // below: if the open tab is one the new campus does not get, this moves the
@@ -836,6 +851,9 @@ function applyCampusFeatures() {
 
 function switchCalcTab(tabId) {
   if (!TAB_MAP[tabId]) return;
+  // A DIU student whose course lists failed to arrive gets another try on
+  // every tab they open (the loader does nothing once they are in hand).
+  loadDiuCoursesIfDiu();
   // Every route in — a click, a #calculator/<tab> link, the saved tab, the
   // nav's Tasks link — comes through here, so this is the one place the campus
   // check has to hold.
