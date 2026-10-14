@@ -294,7 +294,8 @@ service cloud.firestore {
           || a == 'delete_review_report'
           || a == 'delete_feedback'
           || a == 'delete_study_group'
-          || a == 'delete_study_group_report';
+          || a == 'delete_study_group_report'
+          || a == 'delete_lostfound';
     }
 
     function validAdminLogPayload(d) {
