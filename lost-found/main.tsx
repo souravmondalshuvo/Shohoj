@@ -11,8 +11,8 @@
 // Router notes: the basename is derived from the boot pathname so the route's
 // internal absolute links stay under the page's mount point (the Pages site
 // lives under /Shohoj/). The route's "<room> on the campus map" links point at
-// the shell's /campus route; a tiny redirect shim forwards them to the
-// standalone /campus/ page instead. Retired at the shell cutover.
+// the shell's /campus route; a tiny redirect shim forwards them to the main
+// site's Campus Map tab instead. Retired at the shell cutover.
 
 import { StrictMode, useEffect, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -32,12 +32,16 @@ import { anonymousAuthSource } from '../src/platform/auth/authSnapshot';
 import { createFirebaseAuthSource } from '../src/platform/auth/firebaseAuthSource';
 import { runtimeConfigFromGlobals } from '../src/platform/configuration/runtimeConfig';
 
-/** Forwards the route's internal /campus?room= links to the standalone page. */
+/**
+ * Forwards the route's internal /campus?room= links to the main site's Campus
+ * Map tab, which opens on the room named in its hash (js/ui/campusMapTab.js).
+ */
 function CampusRedirect() {
   useEffect(() => {
-    // Current URL is <mount>/campus?room=…; ../campus/ resolves to the
-    // sibling standalone campus page with the query preserved.
-    window.location.replace(`../campus/${window.location.search}`);
+    // Current URL is <mount>/campus?room=…; ../ resolves to the site root,
+    // where the legacy page reads #calculator/campus?room=… as the tab and
+    // the room. The standalone /campus/ page still serves old bookmarks.
+    window.location.replace(`../#calculator/campus${window.location.search}`);
   }, []);
   return null;
 }
