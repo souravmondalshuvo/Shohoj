@@ -30,13 +30,13 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * Which snapshot each campus's Routine tab is built from.
  *
- * `capturedOn` is the day the snapshot was true, which the section file states
+ * `capturedOn` is the day the snapshot was read, which the section file states
  * only in prose (its `note`), so it is restated here where code can read it;
  * tests/campusFeed.test.js holds the two together. It is what the tab shows
- * the student, because this data goes stale: NSU's Fall 2026 page had changed
- * in about one section in eight five days after this copy was taken.
+ * the student, because this data goes stale: NSU's Fall 2026 page changed in
+ * about one section in eight in the five days after advising closed.
  */
-export const CAMPUS_FEEDS = [{ campus: 'nsu', termKey: '263-trimester', capturedOn: '2026-09-23' }];
+export const CAMPUS_FEEDS = [{ campus: 'nsu', termKey: '263-trimester', capturedOn: '2026-10-14' }];
 
 export const META_PATH = resolve(repoRoot, 'js/core/campusFeeds.generated.js');
 export const feedPath = (campus, term) => resolve(repoRoot, `feeds/${campus}-${term}.json`);
