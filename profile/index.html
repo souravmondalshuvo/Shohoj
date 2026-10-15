@@ -27,7 +27,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-/xSN2N6DL6M3/KuFExyCIzEhjvOzUSITVOQ8HXWxUVM=' 'sha256-FG9Z7gISCoVDN+4mvp0V4E60mrDOkZHILO6AyIMMvn8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com 'sha256-fshw3AT+PVvpFcSHKafEF2hk5bVMMocL67nmZ8HYH/A=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-FG9Z7gISCoVDN+4mvp0V4E60mrDOkZHILO6AyIMMvn8='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com blob: https://www.gstatic.com https://www.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Profile · Shohoj</title>
   <meta name="robots" content="noindex,nofollow"/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231DB954'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='44' font-weight='900' fill='%23062012'>স</text></svg>">
@@ -10463,26 +10463,20 @@ function campusOfEmail(email) {
 // reviews is showing the wrong university's, to the one reader who is there to
 // check what NSU's students see.
 //
-// WRITES. firestore.rules pins a present `university` to the writer's own
-// campus and reads a missing one as BRACU. Legacy used to send none, which was
-// right while it admitted BRACU only; an NSU student's group filed without it
-// would read back as BRACU's and be invisible to its own author.
+// WRITES. firestore.rules requires `university` on every document a client
+// creates and pins it to the writer's own campus.
 //
-// READS. Two facts about the rules, both measured in the emulator
-// (tests/firestore.rules.test.js, "list queries"):
-//   1. An NSU student's list with no campus filter is DENIED outright.
-//   2. A BRACU student's list with no campus filter is allowed — and has to
-//      stay unfiltered, because `where('university','==','bracu')` does not
-//      match the pre-tenancy documents that have no field at all, which is
-//      most of BRACU's. (scripts/backfill_campus.js is what lifts this.)
-// So a campus other than BRACU filters in the query, and BRACU filters here,
-// after the fact, by the rule the rules themselves use for a missing field.
-
-/**
- * The campus a document with no `university` field belongs to. Mirrors
- * `docCampus` in firestore.rules: everything written before tenancy is BRACU's.
- */
-const PRE_TENANCY_CAMPUS = 'bracu';
+// READS. A document belongs to the campus its `university` field names, and a
+// list must say which campus it wants: `where('university','==',campus)`. The
+// rules judge a list from its constraints before reading a row, so a list
+// without that filter is denied — for every campus, BRACU included.
+//
+// BRACU used to be the exception. Pre-tenancy documents had no field, the
+// rules read a missing one as BRACU's, and a BRACU filter would have missed
+// them — so BRACU sent none, and the rules, unable to hold the other campuses'
+// rows back from an unfiltered list, handed them over for this client to drop.
+// scripts/backfill_campus.js stamped those documents, and that exception, with
+// the leak it carried, is gone.
 
 /**
  * The field to spread into a document this user is creating: `{ university }`
@@ -10520,8 +10514,7 @@ function campusReadPlan(email, isAdmin = false, viewingAs = null) {
   if (!campus) {
     return { filter: null, keep: () => true };
   }
-  const keep = data => (data?.university ?? PRE_TENANCY_CAMPUS) === campus;
-  return { filter: campus === PRE_TENANCY_CAMPUS ? null : campus, keep };
+  return { filter: campus, keep: data => data?.university === campus };
 }
 
 // ── js/auth/paper-service.js ────────────────────────────────────
@@ -12488,15 +12481,14 @@ window._shohoj_fetchRecentPapers = async function(n = 30) {
 window._shohoj_fetchMyPapers = async function() {
   if (!currentUser) return [];
   try {
-    const col = collection(db, 'papers');
-    const q = query(
-      col,
+    // Campus-scoped like every other papers list: the rules judge the campus
+    // before the uploader, so a list of one's own uploads still needs the filter.
+    const docs = await listForMyCampus(collection(db, 'papers'), [
       where('uploaderUid', '==', currentUser.uid),
       orderBy('createdAt', 'desc'),
       qLimit(100),
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    ]);
+    return docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
     console.warn('[Shohoj] fetchMyPapers failed:', e);
     return [];
