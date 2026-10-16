@@ -178,7 +178,7 @@ export function claudeText(content) {
  * Resolves to { text, usage } — tokens summed across every round, because the
  * spend ceiling has to account for the tool rounds too, not just the last call.
  */
-export async function runClaudeTurn({ anthropic, messages, ctx }) {
+export async function runClaudeTurn({ anthropic, messages, ctx, system = ASSISTANT_SYSTEM }) {
   const convo = messages.map((m) => ({ role: m.role, content: m.content }));
   let lastText = '';
   const usage = { inputTokens: 0, outputTokens: 0 };
@@ -194,7 +194,7 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
           boundedModelObject({
             model: CLAUDE_MODEL,
             max_tokens: CLAUDE_MAX_TOKENS,
-            system: ASSISTANT_SYSTEM,
+            system,
             tools: ASSISTANT_TOOLS,
             messages: convo,
           }),
@@ -260,11 +260,17 @@ export function openAiText(output) {
 }
 
 /** The same bounded tool loop, in Responses API terms. Same { text, usage }. */
-export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }) {
+export async function runOpenAiTurn({
+  apiKey,
+  messages,
+  ctx,
+  system = ASSISTANT_SYSTEM,
+  fetchImpl = fetch,
+}) {
   // The system prompt rides as the first input item; the Responses API keeps
   // the whole exchange — messages, tool calls, tool outputs — in one array.
   const input = [
-    { role: 'system', content: ASSISTANT_SYSTEM },
+    { role: 'system', content: system },
     ...messages.map((m) => ({ role: m.role, content: m.content })),
   ];
   const tools = openAiTools();
@@ -438,7 +444,13 @@ function geminiGroundedPrompt(messages, grounding) {
 }
 
 /** The same bounded tool loop against the Interactions API. Same { text, usage }. */
-export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }) {
+export async function runGeminiTurn({
+  apiKey,
+  messages,
+  ctx,
+  system = ASSISTANT_SYSTEM,
+  fetchImpl = fetch,
+}) {
   // Tool declarations happen to use the same shape OpenAI's Responses API
   // wants, so there is one translation, not two.
   const tools = openAiTools();
@@ -447,7 +459,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
   const timing = createTurnTiming();
   let payload = {
     model: GEMINI_MODEL,
-    system_instruction: ASSISTANT_SYSTEM,
+    system_instruction: system,
     generation_config: GEMINI_GENERATION_CONFIG,
     tools,
     input: geminiPrompt(messages),
@@ -498,7 +510,7 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
       continuationRefused = true;
       payload = {
         model: GEMINI_MODEL,
-        system_instruction: ASSISTANT_SYSTEM,
+        system_instruction: system,
         generation_config: GEMINI_GENERATION_CONFIG,
         input: geminiGroundedPrompt(messages, grounding),
       };
@@ -584,26 +596,27 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
   if (env?.GEMINI_API_KEY) {
     providers.push({
       name: 'gemini',
-      run: ({ messages, ctx }) =>
-        runGeminiTurn({ apiKey: env.GEMINI_API_KEY, messages, ctx, fetchImpl }),
+      run: ({ messages, ctx, system }) =>
+        runGeminiTurn({ apiKey: env.GEMINI_API_KEY, messages, ctx, system, fetchImpl }),
     });
   }
   if (env?.ANTHROPIC_API_KEY) {
     providers.push({
       name: 'claude',
-      run: ({ messages, ctx }) =>
+      run: ({ messages, ctx, system }) =>
         runClaudeTurn({
           anthropic: new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, maxRetries: 0 }),
           messages,
           ctx,
+          system,
         }),
     });
   }
   if (env?.OPENAI_API_KEY) {
     providers.push({
       name: 'openai',
-      run: ({ messages, ctx }) =>
-        runOpenAiTurn({ apiKey: env.OPENAI_API_KEY, messages, ctx, fetchImpl }),
+      run: ({ messages, ctx, system }) =>
+        runOpenAiTurn({ apiKey: env.OPENAI_API_KEY, messages, ctx, system, fetchImpl }),
     });
   }
   return providers;
@@ -618,15 +631,19 @@ export function buildAssistantProviders(env, { fetchImpl } = {}) {
  * attempt are not billed to us in any recoverable way — a 5xx or a dropped
  * connection has no usage block to read — so the ledger cannot count what it
  * cannot see. It is one more reason the ceiling errs on the expensive side.
+ *
+ * `system` is this turn's prompt (assistant.js assistantSystemFor), built once
+ * by the caller so a fallback provider answers from the same student record
+ * instead of reading it again. Omitted, every provider uses the shared rules.
  */
-export async function runAssistantTurn({ providers, messages, ctx, onFallback }) {
+export async function runAssistantTurn({ providers, messages, ctx, system, onFallback }) {
   if (!providers || providers.length === 0) {
     throw new Error('No assistant provider configured');
   }
   let lastFailure = null;
   for (const provider of providers) {
     try {
-      const { text, usage, timing } = await provider.run({ messages, ctx });
+      const { text, usage, timing } = await provider.run({ messages, ctx, system });
       // A stub provider (and every unit test) may return no timing; the caller
       // logs whatever arrives, so an empty accumulator is the honest default
       // rather than a crash on the response path.
