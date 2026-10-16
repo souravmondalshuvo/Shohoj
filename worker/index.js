@@ -93,7 +93,7 @@ import {
 import { monthKey, monthlyBudgetUsd } from './assistantBudget.js';
 import { dailyLimit, dayKey, resetsAtIso } from './assistantQuota.js';
 import { createFirestoreAtomicStore } from './firestoreAtomic.js';
-import { reserveAiAdmission, settleAiAdmission } from './aiAdmission.js';
+import { extendAiAdmission, reserveAiAdmission, settleAiAdmission } from './aiAdmission.js';
 import { meterProviders, MAX_AI_BODY_BYTES, MAX_EXTRACTION_BODY_BYTES } from './aiLimits.js';
 import { isKnownCourse } from './catalog.generated.js';
 // The domain -> campus map, generated from src/core/university.ts so the
@@ -1715,6 +1715,24 @@ async function finishAiAdmission(store, admission, meter, answered, execCtx) {
   else await pending;
 }
 
+/**
+ * The `reserve` a turn's meter calls before contacting a fallback provider
+ * (#920): that provider's worst case, added to this turn's reservation against
+ * the monthly ceiling. Resolves false when it does not fit; throws when the
+ * ledger itself fails, which aborts the turn rather than calling unheld.
+ */
+function fallbackHolds(env, currentTurn) {
+  return async (extraUsd) => {
+    // Read at call time: the meter is built before admission has run.
+    const { store, admission } = currentTurn();
+    const { granted } = await extendAiAdmission(store, admission, {
+      budgetUsd: monthlyBudgetUsd(env),
+      extraUsd,
+    });
+    return granted;
+  };
+}
+
 async function handleAssistant(request, env, origin, execCtx) {
   const originCheck = requireBrowserOriginAllowed(request, env, origin);
   if (originCheck) return originCheck;
@@ -1820,9 +1838,11 @@ async function handleAssistant(request, env, origin, execCtx) {
     });
     return snapshotLoad;
   };
-  const meter = meterProviders(providers);
   let store;
   let admission;
+  const meter = meterProviders(providers, {
+    reserve: fallbackHolds(env, () => ({ store, admission })),
+  });
   try {
     store = atomicStore(env, await getServiceAccountAccessToken(env));
     // The student record (#915) needs the snapshot before the first model
@@ -2076,9 +2096,12 @@ async function handleTaskExtraction(request, env, origin, execCtx) {
     return apiV1Error(env, origin, 400, API_ERROR_CODES.INVALID_REQUEST, 'Invalid course codes.');
   }
   const quotaLimit = dailyLimit(env);
-  const meter = meterProviders(providers, { extraction: true });
   let store;
   let admission;
+  const meter = meterProviders(providers, {
+    extraction: true,
+    reserve: fallbackHolds(env, () => ({ store, admission })),
+  });
   try {
     store = atomicStore(env, await getServiceAccountAccessToken(env));
     admission = await reserveAiAdmission(store, {
