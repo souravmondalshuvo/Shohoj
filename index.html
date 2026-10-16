@@ -50,7 +50,7 @@
     })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-KRW/cNlYdCSJSaGl4UL8XWYNEjN8p2qBbeu88v8/Vvw='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://www.google.com https://www.googletagmanager.com https://apis.google.com https://accounts.google.com 'sha256-FSP5kEo+EQAltpL69fDpwxUmaimECec3yxvnXM7rAq4=' 'sha256-vdkfU1m1btaysHajnoBUE6b4APFE9v4GGckgXAj76NI=' 'sha256-3l/2OSZeRTH5V+K+PhNP3EfiTbVLFpQb1b0Z0/MqB7k=' 'sha256-efOfUhdUMob3DWCOy6wt0uGE5G+HsktEYget2rKwC9M=' 'sha256-tkXr6yGaWiHmHfZ4cPy4EURYngWN9KuALoIsS2+G6+w=' 'sha256-Ss6IyKgGf3QG4sgZN5UlCLWBMUd6i+L0Ux4AnQ+8LWc=' 'sha256-tINMCLOWfNEVS9XuUq/rCXDkVbZ6a6HtAJF8r6mZ0l8=' 'sha256-6r6spnW6UpWnzRzib4eGindgsjp8KZhK4GycW2poa9I='; worker-src 'self' https://cdnjs.cloudflare.com blob:; style-src 'self' https://fonts.googleapis.com https://accounts.google.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src https://www.gstatic.com 'self' blob: https://www.gstatic.com https://www.google.com https://accounts.google.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://shohoj-papers.souravmondal033.workers.dev https://usis-cdn.eniamza.com; img-src 'self' data: https://*.googleusercontent.com; frame-src 'self' blob: https://accounts.google.com https://www.google.com https://*.firebaseapp.com; frame-ancestors 'none';">
   <title>Shohoj — সহজ | University Life, Made Simple</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%232ECC71'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='serif' font-size='38' font-weight='900' fill='%230b0f0d'>স</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18408,7 +18408,7 @@ const NSU_UNEXPRESSED_PREREQS = ["BUS498","BUS499","CEE475","CEE498","CEE499","C
 // Source of truth: data/campuses/diu/programs.json and program-courses.json
 //
 // DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
-// 33 programs. Their courses — 692 across the 11 programs whose pages list
+// 33 programs. Their courses — 1558 across the 25 programs whose pages list
 // them in a form Shohoj reads — are in feeds/diu-courses.json, fetched only when a
 // DIU student is on the page (docs/campuses/diu-research.md says which programs,
 // and why the rest are not there).
@@ -18626,6 +18626,31 @@ function expandDiuCatalog(program) {
 }
 
 /**
+ * A course code, written as the catalogue writes it, or null. Two shapes: a
+ * subject and three digits ("CSE 115", "cse-115" → "CSE115"), and the ISCED
+ * field codes most DIU programs use ("0413 101", "0413101" → "0413-101").
+ */
+function normalizeCatalogCode(text) {
+  const t = String(text ?? '').trim().toUpperCase();
+  const field = t.match(/^(\d{4})\s*[-–]?\s*(\d{3})([A-Z]?)$/);
+  if (field) return `${field[1]}-${field[2]}${field[3]}`;
+  const subject = t.match(/^([A-Z]{2,4})\s*[-–]?\s*(\d{3})([A-Z]{0,2})$/);
+  return subject ? subject[1] + subject[2] + subject[3] : null;
+}
+
+/** The code a course row names: its "(CODE)" suffix, or the whole name when that is a code. */
+function courseCodeIn(name) {
+  const raw = String(name ?? '').trim();
+  return normalizeCatalogCode(raw.match(/\(([^()]+)\)$/)?.[1]) ?? normalizeCatalogCode(raw);
+}
+
+/** The catalogue's entry for a course row, or null. */
+function catalogEntryFor(name, catalog = getActiveCatalog()) {
+  const code = courseCodeIn(name);
+  return code ? catalog.courses[code] ?? null : null;
+}
+
+/**
  * Bring course rows in line with a catalogue that arrived after they were
  * written. A row whose name is a code the catalogue holds — bare ("CSE114") or
  * as the catalogue writes it ("… (CSE114)") — takes the catalogue's name and
@@ -18637,9 +18662,7 @@ function reconcileCourseRows(semesters, catalog = getActiveCatalog()) {
   let changed = 0;
   for (const semester of semesters ?? []) {
     for (const course of semester.courses ?? []) {
-      const raw = String(course.name ?? '').trim();
-      const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-      const listed = code ? catalog.courses[code] : undefined;
+      const listed = catalogEntryFor(course.name, catalog);
       if (!listed || (course.name === listed.full && course.credits === listed.credits)) continue;
       course.name = listed.full;
       course.credits = listed.credits;
@@ -19076,7 +19099,10 @@ function gpaCoreUsesBestGradePolicyImpl(options = {}) {
     return seasonIndex < cutoffIndex;
 }
 function getCourseCode(courseName) {
-    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
+    // A subject code ("CSE110"), or an ISCED field code ("1015-205") as most
+    // DIU programs write theirs. Without the second, two DIU courses sharing a
+    // title would fall back to one title key and be counted as one retaken.
+    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?|\d{4}-\d{3}[A-Z]?)\)$/);
     return match ? match[1] : null;
 }
 function getCourseIdentity(courseName) {
@@ -21077,11 +21103,17 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   lastSuggestionShownAt = Date.now();
 }
 
-/** The active catalogue's entry for a row's name: its "(CODE)" suffix or a bare code. */
-function catalogEntryFor(name) {
-  const raw = String(name ?? '').trim();
-  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-  return code ? getActiveCatalog().courses[code] ?? null : null;
+/**
+ * A typed course, found by its code. On a campus whose catalogue is partial
+ * (DIU) the code may be typed any of the ways the campus writes it — "0413
+ * 101", "0413101", "CSE 113" — and is matched as the catalogue writes it.
+ * Elsewhere the lookup is exactly as it has always been.
+ */
+function catalogEntryForTyped(text) {
+  const catalog = getActiveCatalog();
+  const exact = catalog.courses[text.toUpperCase()];
+  if (exact || catalog.typesCredits !== true) return exact;
+  return catalogEntryFor(text, catalog);
 }
 
 function onCourseBlur(e, semId, cIdx) {
@@ -21090,7 +21122,7 @@ function onCourseBlur(e, semId, cIdx) {
   const val = e.target.value.trim();
   const course = sem.courses[cIdx];
   const prevName = course.name;
-  const exactMatch = getActiveCatalog().courses[val.toUpperCase()]
+  const exactMatch = catalogEntryForTyped(val)
     || getActiveCatalog().allCourses.find(c =>
       c.full.toLowerCase() === val.toLowerCase() ||
       c.name.toLowerCase() === val.toLowerCase()
@@ -21155,8 +21187,8 @@ function onCourseInput(e, semId, cIdx) {
 
   if (!val) { getPortal().innerHTML = ''; return; }
 
-  const { courses, allCourses } = getActiveCatalog();
-  const exactMatch = courses[raw.toUpperCase()];
+  const { allCourses } = getActiveCatalog();
+  const exactMatch = catalogEntryForTyped(raw);
   const t1 = exactMatch ? [exactMatch] : [];
   const t2 = allCourses.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
   const t3 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
@@ -37749,9 +37781,7 @@ function campusTypesCredits() {
 
 /** The catalogue's entry for a course row, by its "(CODE)" suffix or a bare code. */
 function catalogCourseOf(name) {
-  const raw = String(name ?? '').trim();
-  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-  return code ? getActiveCatalog().courses[code] ?? null : null;
+  return catalogEntryFor(name);
 }
 
 /** Whether a row's credits are typed: a named course the catalogue cannot give credits for. */
