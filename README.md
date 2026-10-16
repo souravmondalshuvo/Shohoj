@@ -788,10 +788,12 @@ Smart semester recommendations, burnout warning system, graduation timeline pred
 Shohoj scales beyond BRAC University, and that is working code rather than a
 plan: three campuses sign in today, on both frontends.
 
-- **A campus database** (`data/campuses/{bracu,nsu,diu}`) is the source of
-  truth for each university's grading scale, programs, courses, sections and
-  calendar, with a cited source for every fact and a note wherever a value is
-  missing. The catalogues the app ships are generated from it.
+- **A campus database** (`data/campuses/`) is the source of truth for each
+  university's grading scale, programs, courses, sections and calendar, with a
+  cited source for every fact and a note wherever a value is missing. The
+  catalogues the app ships are generated from it. It holds BRACU, NSU, DIU and
+  now BUBT — a campus is researched there before it is registered, so BUBT has
+  data but no sign-in yet.
 - **A campus registry** (`src/core/university.ts`, mirrored for the root app in
   `js/core/university.js`) holds each university's grading scale, mark cutoffs,
   retake/repeat policy, identifying email domains, and which features it has
