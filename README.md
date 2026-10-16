@@ -15,7 +15,7 @@
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/Status-v0.6.0-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-TypeScript%20·%20React%20·%20Firebase%20·%20Cloudflare-3498DB?style=flat-square" alt="Stack" />
-  <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
+  <img src="https://img.shields.io/badge/Campuses-BRACU%20·%20NSU%20·%20DIU-F39C12?style=flat-square" alt="Campuses" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Courses-857%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
 </p>
@@ -65,16 +65,18 @@ shipping versus in progress:
   fund one. It is signed-in only, bounded to degree questions, and hidden
   outright when the Worker reports no provider is configured (`GET /ready`),
   rather than offering a button that cannot answer.
-- **Multi-campus works on the shell, not on the shipping root.** The React
-  shell resolves a student's campus from their email and applies that campus's
-  grading scale, retake/repeat policy and feature set throughout — so an NSU
-  transcript is scored on NSU's rules, and tabs a campus has no data for do not
-  render. The vanilla app at the site root is still BRACU-only, which is one
-  more reason the cutover matters. See [Multi-University Vision](#multi-university-vision).
+- **Three campuses sign in: BRACU, NSU and DIU.** Both frontends resolve a
+  student's campus from their email and apply that campus's grading scale,
+  retake/repeat policy and feature set throughout — so an NSU transcript is
+  scored on NSU's rules, and tabs a campus has no data for do not render. The
+  vanilla app at the site root actually serves the newer campuses *more* than
+  the shell does: NSU's Routine, Free Rooms and Campus Map, and DIU's
+  calculator, are root-only for now, because the shell's versions of those
+  routes still read BRACU's data. See [Multi-University Vision](#multi-university-vision).
 - **Some features depend on external data feeds** (live seat status, free rooms,
   the campus map's room status) that are third-party and best-effort.
-- **No claim of a user base.** This is a portfolio-grade project built for
-  BRACU students; adoption numbers are not tracked or advertised.
+- **No claim of a user base.** This is a portfolio-grade project that started
+  with BRACU students; adoption numbers are not tracked or advertised.
 - **Two features shipped outside the phase roadmap this cycle.** Shohoj Tasks
   (an academic task-management layer — deadlines, priority, grade impact, a
   subscribable calendar feed) and a Minor Program Tracker are both live on
@@ -199,7 +201,7 @@ Reachable at `/tasks` and as a dashboard card on the shell, and as a Tasks tab o
 
 ### 🗓️ Routine Builder
 
-Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it.
+Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it. NSU students get the same builder on the site root, over a dated snapshot of NSU's Fall 2026 sections.
 
 - **Auto-suggest** — generates valid section combinations for your chosen courses, ranked to prefer **compact days** (a `gapWeight` factor penalizes idle time between same-day classes); each suggestion shows its total gap time
 - **Conflict detection** — overlapping sections are split and flagged in a weekly grid; faculty ratings surface inline on each section
@@ -242,11 +244,13 @@ Shohoj keeps its own.
 
 ### 🗺️ Campus Map (New)
 
-A procedural 3D campus tower at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/) that renders live room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab.
+A 3D model of the campus that renders room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab. It is a **Campus Map** tab in the app's Campus menu, and still a standalone page at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/).
 
-- **Live room status in three dimensions** — floors and rooms light by occupancy, so "where is there a free room right now" is a glance rather than a scan
-- **Presentation-only 3D** — the Three.js canvas (light rig, glass envelope, motion) is an enhancement over the accessible underlying room data, never the only way to read it
-- **Standalone page** — published on the public site through the consolidated multi-page build, ahead of the shell cutover
+- **BRACU's real building** — the model is BRACU's own building, loaded without its furniture, in neutral lighting. **Open any level**: the model is cut away above it, so you see that floor's own walls with the levels below still in place, and the camera glides to it
+- **NSU has its own map** at [`/campus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/campus/?campus=nsu) — a reconstruction, not a survey: footprints follow OpenStreetMap and facades were rebuilt from photographs, with the three basement levels (B1–B3). A room code says which building and floor a room is on, so occupancy lands on the right floor; where on that floor is not published
+- **Live room status in three dimensions** — rooms light by occupancy, so "where is there a free room right now" is a glance rather than a scan
+- **Linked from Lost & Found** — a room code on a post opens the Campus Map on that room
+- **Presentation-only 3D** — the Three.js canvas is an enhancement over the accessible underlying room data, never the only way to read it
 
 ### 🧳 Lost & Found (New)
 
@@ -259,6 +263,10 @@ A campus lost-and-found board at [`/lost-found/`](https://souravmondalshuvo.gith
 ### 🚌 Bus Routes & Timings (New)
 
 Shuttle routes and schedules at [`/bus/`](https://souravmondalshuvo.github.io/Shohoj/bus/), transcribed from the official BRACU transport brochure — available both as a shell route and as a standalone page.
+
+- **NSU** at [`/bus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=nsu) — routes and fares from NSU's only published schedule, which is for a past service period. The page says so first, in a warning's colours, links NSU's portal for today's answer, and highlights no "next pickup" — that would dress a year-old time up as a live one
+- **DIU** at [`/bus/?campus=diu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=diu) — DIU's 20 routes, read from DIU's own transport feed. The page leads with the title DIU gives the schedule and the day Shohoj last read it, for the same reason
+- Each campus's Campus menu links its own page; the page has no session, so the campus travels in the URL
 
 ### 🍽️ Cafeteria Guide (New)
 
@@ -405,7 +413,7 @@ A separate admin shell at `/admin/` for moderation and audit work.
 
 ### ☁ Cloud Sync
 
-Sign in with your university Google account (`@g.bracu.ac.bd`, or `@northsouth.edu` on the shell) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
+Sign in with your university Google account (`@g.bracu.ac.bd`, `@northsouth.edu`, `@diu.edu.bd` or `@s.diu.edu.bd`) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
 
 - **Google Sign-In** — custom modal with BRACU domain restriction, no browser dialogs
 - **Automatic sync** — data saves to Firestore every time you make a change
@@ -577,7 +585,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Shipping frontend | HTML, CSS, vanilla JavaScript (bundled by `build3.py`) | The production app people use today (`shohoj.html`)    |
 | Beta frontend | TypeScript, React 19, React Router, Vite            | The typed rewrite under `src/`, deployed to `/app/` (not yet the default root) |
 | Standalone pages | Vite multi-page build (`vite.pages.config.js`)     | `/campus/`, `/bus/`, `/lost-found/` — shipped on the public site ahead of the cutover |
-| 3D          | [Three.js](https://threejs.org/)                      | The procedural campus tower on `/campus/` (presentation layer only) |
+| 3D          | [Three.js](https://threejs.org/)                      | The Campus Map's building models — BRACU's and NSU's (presentation layer only) |
 | Validation  | [Zod](https://zod.dev/)                               | Runtime schema validation for imported/restored data   |
 | Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
@@ -626,7 +634,7 @@ GitHub Pages
   │                — standalone Vite pages (dist-pages)
   └── /app/        — React Router shell beta (dist-shell)
   │
-  │ Firebase Auth (registered-campus Google sign-in; BRACU-only on the root app)
+  │ Firebase Auth (registered-campus Google sign-in: BRACU, NSU, DIU)
   │ App Check (reCAPTCHA v3)
   ▼
 Firestore (rules-enforced for browser clients; campus-partitioned)
@@ -692,12 +700,13 @@ Shohoj has been through a self-directed security review (no external audit is cl
 - **Safe transcript import** — `applyImport()` no longer serialises parsed PDF data into an `onclick` attribute. Parsed data is held in a JS-side `_pendingImport` slot and consumed directly, eliminating attribute-injection risk.
 - **localStorage sanitisation** — `sanitizeRestoredState()` validates and strips malformed or legacy data on every load, including stripping legacy `<sup>` HTML from semester names.
 - **CDN subresource integrity** — `jsPDF`, `pdf.js`, and `Chart.js` are loaded with `integrity` and `crossorigin="anonymous"` attributes.
-- **Registered-campus restriction** — Google Sign-In is accepted only from a domain a registered campus claims (`g.bracu.ac.bd`, and `northsouth.edu` on the shell), enforced client-side after the popup and server-side via Firestore security rules. The vanilla root app is narrower still: it restricts to `@g.bracu.ac.bd` outright.
+- **Registered-campus restriction** — Google Sign-In is accepted only from a domain a registered campus claims (`g.bracu.ac.bd`, `northsouth.edu`, and DIU's `diu.edu.bd` and `s.diu.edu.bd`), on both frontends, enforced client-side after the popup and server-side via Firestore security rules. The rules' `campusOfEmail` is generated from the registry (`npm run generate:campus-map`) and anchors both ends of each domain, so `x@g.bracu.ac.bd.attacker.com` resolves to no campus.
 - **Firestore security rules** — users can only read and write their own document (`users/{uid}`), and only with a verified Google account on a domain some registered campus claims (`isCampusUser()` — no longer a hardcoded BRACU regex). Faculty reviews (`facultyReviews/{reviewId}`) are readable only by accounts on the review's own campus, and client creates/updates are denied; new reviews are written through the Worker (`POST /reviews`) with deterministic IDs and a public body that stores no UID or email. Only admin-claim moderators can delete abusive reviews. Review reports (`reviewReports/{uid_reviewId}`) are write-only from the client, must point at a real review, and are capped at one report per user per review. Paper metadata is created only by the Worker, then readable only when approved, owned by the uploader, or accessed by an admin. Feedback upvote documents are readable only by their owner or an admin. Study groups (`studyGroups/{groupId}`) are readable only by accounts on the group's own campus, created only with the caller's own `creatorUid`, immutable after creation, and deletable only by the creator or an admin; membership docs (`studyGroupMembers/{groupId_uid}`) pin the joiner's own verified email and are readable only by the member, a fellow member of the same group, or an admin, so the email roster never leaks to non-members. Lost & found contact details live in a separate `lostFoundContacts` collection that no client can read. `facultyProfiles` is read-only for all clients; only admin-side seed scripts can write to it. No other access is permitted.
 - **Campus partitioning** — client-created `studyGroups`, `appFeedback` and `lostFoundPosts` documents must carry a `university` field pinned to the campus of the writer's own verified email, so one campus's writes cannot land in another's data. Reads are scoped the same way (`campusMatches`), so a student sees their own campus's boards and reviews, not another's. Documents written before tenancy existed have no field and read as `bracu`, which is what they are by definition; `scripts/backfill_campus.js` stamps them. The Worker mirrors the same registry (`campusOfEmail`) so client and server cannot disagree about who belongs where.
 - **Past-paper file controls** — the Cloudflare Worker verifies Firebase ID tokens, rejects accounts on no registered campus, stores new uploads under `papers/{COURSE}/{UPLOADER_UID}/{filename}`, allows legacy downloads/deletes for older files, caps uploads at 10 MB, and accepts only PDF, PNG, JPEG, WebP, or GIF.
 - **Assistant key isolation and blast-radius limits** — no model provider key ever reaches the browser; the client talks only to `POST /api/assistant`. The Assistant's tools are read-only and scoped to the caller's own data, and a monthly spend ceiling stops the relay rather than running up an unbounded bill. `GET /ready` reports capability booleans only, never key material.
 - **Pseudonymous faculty reviews** — the public review document body stores no UID, email, or other user identifier. The Firestore doc ID is a deterministic, **unsalted** SHA-256 of `uid | faculty | course` (there is no secret salt — the determinism is what enforces one review per user/faculty/course). This is pseudonymity to other users, **not** anonymity: a project admin can correlate writes, and anyone who already knows a UID can reproduce the hash. Full detail in [docs/SECURITY.md](docs/SECURITY.md).
+- **Secret scanning** — a [gitleaks](https://github.com/gitleaks/gitleaks) workflow scans the full history on every PR and every push to `main`. Its allowlist holds exact public values only, never a pattern or a path, and on a PR it is read from the base branch, so a PR cannot allowlist its own finding. See [docs/GITHUB_SECURITY_SETTINGS.md](docs/GITHUB_SECURITY_SETTINGS.md).
 - **Firebase config exposure** — the Firebase web config is public by design. Shohoj keeps it out of committed source by generating `js/config/runtime-config.js` from local `.env` values or GitHub Actions secrets at build time (the generated file is gitignored). Access is protected by Firestore rules (and App Check once console enforcement is verified — see [docs/SECURITY.md](docs/SECURITY.md)), not by hiding the web config.
 
 ---
@@ -776,27 +785,47 @@ Smart semester recommendations, burnout warning system, graduation timeline pred
 
 ## Multi-University Vision
 
-Shohoj scales beyond BRAC University, and on the React shell that is working
-code rather than a plan:
+Shohoj scales beyond BRAC University, and that is working code rather than a
+plan: three campuses sign in today, on both frontends.
 
-- **A campus registry** (`src/core/university.ts`) holds each university's
-  grading scale, mark cutoffs, retake/repeat policy, identifying email domains,
-  and which features it has data for. Adding a campus is an entry there, not a
-  fork of the calculator. No profile ships on a guessed grade point — the
-  numbers come from the registrar or the official student handbook, and a policy
-  that could not be confirmed is left absent rather than inherited from BRACU.
-- **Campus rules run the whole calculator path** on the shell — results, the
-  degree tracker, the GPA trend, the goal simulator, retake shortlisting, the
-  marks tracker, planner credit totals and the PDF report all take the active
-  campus's scale rather than assuming BRACU's. The same transcript produces
-  different, correct answers on different campuses, and that is a test, not a
-  claim.
-- **Features are declared per campus.** A route a campus has no data for is not
-  rendered as an empty shell — NSU's profile turns off seats, routine, free
-  rooms and the campus map (they all derive from BRACU's CONNECT feed, and NSU's
-  RDS portal has no known public equivalent), plus bus and cafeteria
-  (hand-collected Merul Badda data) and lost & found (keyed to BRACU's room
-  codes).
+- **A campus database** (`data/campuses/`) is the source of truth for each
+  university's grading scale, programs, courses, sections and calendar, with a
+  cited source for every fact and a note wherever a value is missing. The
+  catalogues the app ships are generated from it. It holds BRACU, NSU, DIU and
+  now BUBT — a campus is researched there before it is registered, so BUBT has
+  data but no sign-in yet.
+- **A campus registry** (`src/core/university.ts`, mirrored for the root app in
+  `js/core/university.js`) holds each university's grading scale, mark cutoffs,
+  retake/repeat policy, identifying email domains, and which features it has
+  data for. Adding a campus is an entry there, not a fork of the calculator. No
+  profile ships on a guessed grade point — the numbers come from the registrar
+  or the official student handbook, and a policy that could not be confirmed is
+  left absent rather than inherited from BRACU.
+- **Campus rules run the whole calculator path** — results, the degree tracker,
+  the GPA trend, the goal simulator, retake shortlisting, the marks tracker,
+  planner credit totals and the PDF report all take the active campus's scale
+  rather than assuming BRACU's. The same transcript produces different, correct
+  answers on different campuses, and that is a test, not a claim.
+- **Features are declared per campus.** A tab a campus has no data for is not
+  rendered as an empty shell. What each campus gets today:
+
+  | | BRACU | NSU | DIU |
+  | --- | --- | --- | --- |
+  | Calculator, Playground | ✅ both | ✅ both | ✅ root only — DIU's per-program course lists fill in credits where a course is listed, and you type them where it isn't; only the root calculator has a credits field |
+  | Degree, Planner, Transcript import | ✅ both | ✅ both | — the shell's degree tracker counts towards BRACU's programs, DIU publishes no prerequisites, and no DIU transcript has been seen |
+  | Reviews, Papers, Groups | ✅ both | ✅ both (empty until NSU students post) | — each names a course, and DIU's departments write codes five different ways |
+  | Feedback, Profile | ✅ both | ✅ both | ✅ both |
+  | Routine, Free Rooms | ✅ both, live feed | ✅ root only, from a dated section snapshot | — DIU posts each department's routine as its own PDF |
+  | Seat Status | ✅ both | — no public seat counts | — |
+  | Campus Map | ✅ both | ✅ root only, NSU's own model | — |
+  | Bus | ✅ both | ✅ [`/bus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=nsu) | ✅ [`/bus/?campus=diu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=diu) |
+  | Tasks, Difficulty, Cafeteria, Lost & Found, Assistant | ✅ | — | — |
+
+  "Root only" means the vanilla app at the site root serves it and the shell
+  does not yet: the shell's version of that route still reads BRACU's data, so
+  switching it on there would show an NSU or DIU student another university's
+  numbers. The root grants those tabs itself (`js/core/campusFeatures.js`)
+  until the shell can serve them.
 - **A sign-in portal** gates the calculator on **both** builds — the React shell
   and the vanilla app at the site root. Sign-in is what resolves a student to a
   campus, and the campus decides the grading rules, so neither build shows a
@@ -808,18 +837,15 @@ code rather than a plan:
   correctness gate, not an authorization one; Firestore rules remain the security
   boundary.
 - **Campus-partitioned data** — Firestore rules pin each client-created
-  community document to the writer's own campus, and `scripts/backfill_campus.js`
-  stamps pre-tenancy documents.
-
-**The catch:** all of this lives on the React shell at `/app/`. The vanilla app
-still served at the site root restricts sign-in to `@g.bracu.ac.bd` and computes
-on BRACU's scale, so a second campus becomes real for most users at the cutover,
-not before.
+  community document to the writer's own campus, reads are scoped the same way,
+  and `scripts/backfill_campus.js` stamps pre-tenancy documents. An admin can
+  switch which campus they are viewing, and every campus-scoped list refetches
+  for it.
 
 | Stage | Scope                                  | Status |
 | ----- | -------------------------------------- | ------ |
 | v1.0  | BRAC University                        | ✅ Live |
-| v2.0  | NSU, IUB, EWU                          | 🔶 NSU profile live on the shell (`/app/`); root app still BRACU-only. IUB and EWU not started |
+| v2.0  | NSU, DIU, IUB, EWU                     | 🔶 NSU and DIU sign in on both frontends (more of NSU's and DIU's tabs on the root than on the shell, see above). IUB and EWU not started |
 | v3.0  | All private universities in Bangladesh | Planned |
 | v4.0  | Public universities (BUET, DU, CUET)   | Planned |
 | v5.0  | South Asia                             | Planned |
@@ -1146,7 +1172,7 @@ Additional notes on Repeat:
 
 ### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
 
-- All four read the **public CONNECT section feed**, which is third-party and best-effort. If the feed is down or changes shape, these features degrade rather than invent data.
+- For BRACU, all four read the **public CONNECT section feed**, which is third-party and best-effort. (NSU's equivalents read a dated snapshot instead; see [Multi-Campus](#multi-campus).) If the feed is down or changes shape, these features degrade rather than invent data.
 - **The feed holds one semester at a time.** It is an advising feed: when registration opens for the next semester it replaces the running one outright. Shohoj's own archive (see [Semester Archive](#-semester-archive-new)) covers this, but only for semesters captured since the cron started — anything the feed dropped before then is not recoverable.
 - **An archived semester is a snapshot, not a live view.** Its seat counts are frozen at the moment of capture and are historical, not current; sections that had no instructor assigned or no timetable at capture stay that way. Each snapshot states which of these apply to it rather than presenting stale numbers as live ones.
 - **Free Rooms and the campus map show scheduled occupancy only.** There is no ad-hoc room booking feed, so a room that is free on the timetable may still be in use by a club, a makeup class, or an event.
@@ -1169,6 +1195,9 @@ Additional notes on Repeat:
 ### Bus Routes
 
 - Transcribed from the official BRACU transport brochure at a point in time. Routes and timings change; the page reflects the brochure, not a live vehicle feed.
+- **NSU's page is a past schedule.** NSU has published nothing newer than the notice for its 25 Sep – 24 Dec 2025 service period, so that is what the page shows, labelled as such.
+- **DIU's page is as of the day it was read.** On 9 Oct 2026, a month into Fall, DIU's feed still served a schedule titled for the Summer 2026 exam period; the page shows that title rather than assuming it is current.
+- The shell's `/bus` route is BRACU's only. NSU and DIU students reach their pages from the site root's Campus menu.
 
 ### Next Registration
 
@@ -1186,7 +1215,7 @@ Additional notes on Repeat:
 
 ### Cloud Sync
 
-- Requires a Google account on a registered campus domain — `@g.bracu.ac.bd` everywhere, plus `@northsouth.edu` on the shell. Anything else is rejected client-side and by Firestore security rules.
+- Requires a Google account on a registered campus domain — `@g.bracu.ac.bd`, `@northsouth.edu`, `@diu.edu.bd` or `@s.diu.edu.bd`, on both frontends. Anything else is rejected client-side and by Firestore security rules.
 - Firestore document limit: **512KB per user**. A typical full transcript is well under 50KB, so this limit is unlikely to be reached in practice.
 - Offline changes are saved to `localStorage` and synced automatically when reconnected.
 - When both a device and the account hold data, the conflict is resolved by **asking you**, on a data fingerprint — never by "newest wins". Simultaneous edits on two devices are still last-write-wins within a session; no field-level merge is performed.
@@ -1230,10 +1259,11 @@ Additional notes on Repeat:
 
 ### Multi-Campus
 
-- Campus rules apply on the **React shell (`/app/`) only**. The vanilla app at the site root restricts sign-in to `@g.bracu.ac.bd` and computes on BRACU's scale — an NSU student needs the shell.
-- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, so **no credit-load warning is shown for NSU at all** — better silent than wrong.
-- **Feed-driven features are off for NSU** — seats, routine, free rooms and the campus map all derive from BRACU's CONNECT feed, and no public equivalent is known for NSU's RDS portal. Bus and cafeteria data is hand-collected for Merul Badda, and lost & found is keyed to BRACU room codes. These routes don't render for an NSU account rather than rendering empty.
-- Community features (reviews, papers, groups, feedback) work for a new campus from day one — they are simply empty until that campus's students post, and campus partitioning keeps them separate.
+- Campus rules apply on **both frontends**. Some NSU and DIU tabs are served only by the vanilla app at the site root, because the shell's version of the route still reads BRACU's data; the [per-campus table](#multi-university-vision) lists which.
+- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, and DIU publishes a minimum but no maximum, so **no credit-load warning is shown for NSU or DIU at all** — better silent than wrong.
+- **NSU's Routine and Free Rooms are a snapshot, not a live feed.** NSU's RDS portal has no known public feed, so they read a section list dated 28 Sep 2026, taken from [nsuer.pro](https://nsuer.pro), a third-party mirror of RDS. The tabs say how old it is; it carries no seat counts, so NSU has no Seat Status, and faculty and rooms are as published that day. The calendar export uses NSU's term calendar, so exported classes skip NSU's holidays and stop on each day pattern's last class day.
+- **DIU has no published catalogue.** Its per-program course lists (1,558 courses across 25 programs, read from DIU's program pages) fill in credits where a course is listed; anything else you type yourself. A course code is matched however it is spaced, ISCED field codes included.
+- Community features (reviews, papers, groups, feedback) work for a new campus from day one — they are simply empty until that campus's students post, and campus partitioning keeps them separate. DIU is the exception for reviews, papers and groups: each names a course, and with DIU's departments writing codes five different ways, every post would be refused, so those tabs are off for DIU and only Feedback is on.
 - An account on a domain no profile claims is signed in but **campus-unknown**, and sees a notice rather than a calculator applying someone else's grading scale.
 - Stored data written before tenancy existed has no campus field and is read as BRACU, which is what it is by definition.
 
@@ -1321,12 +1351,12 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | Routine Builder / Seat Status / Free Rooms      | 🔶 Live — depend on the third-party CONNECT feed        |
 | Campus Map                                      | 🔶 Live — scheduled occupancy only, no ad-hoc bookings  |
 | Lost & Found                                    | 🔶 Live — claim relay needs a configured email sender   |
-| Bus Routes                                      | ✅ Live — static, from the official brochure            |
+| Bus Routes                                      | ✅ Live — static; BRACU's from the brochure, NSU's a past schedule, DIU's as of the day read |
 | Cafeteria Guide                                 | 🔶 Live — outlet directory; hours unverified until confirmed |
 | Shohoj Assistant                                | 🔶 Live — free-tier model, monthly spend ceiling, scope-bounded |
 | Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
 | React Router shell (`/app/`)                    | 🔶 Beta — full route parity, cutover still pending      |
-| Multi-campus tenancy                            | 🔶 Live on the shell (BRACU + NSU); root app still BRACU-only |
+| Multi-campus tenancy                            | 🔶 Live on both frontends (BRACU, NSU, DIU); some NSU and DIU tabs are root-only until the shell can serve them |
 
 ---
 
