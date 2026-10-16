@@ -1,7 +1,7 @@
 # BUBT — what Shohoj needs, and what we know
 
 Research for adding **Bangladesh University of Business and Technology** (Rupnagar,
-Mirpur-2, Dhaka-1216) as a campus. Gathered 2026-10-16. The data itself lives in
+Mirpur-2, Dhaka-1216) as a campus. Gathered 2026-10-16 (dates in this file are UTC). The data itself lives in
 [`data/campuses/bubt/`](../../data/campuses/bubt/) (see [Data files](#data-files));
 this file is how it was found, what was left out, and what is still unknown, laid out
 like [`diu-research.md`](diu-research.md) so the two can be compared section by section.
@@ -28,16 +28,17 @@ Primary sources:
   page's Spring 2027 fee table, which repeats every programme's credits
 - Class routines — https://bubt.edu.bd/routines, which links 13 programmes to
   `https://annex.bubt.edu.bd/global_file/routine.php?p=<programme>&semNo=068,502,614,902`
-  (public HTML, no login) and the rest to PDFs
+  (public HTML, no login) and the rest to PDFs; querying that endpoint for programme ids
+  001–040 (2026-10-16) found 16 (§12, §18)
 - Notices — 1,514 notices (2015-06-27 → 2026-10-15) embedded in https://bubt.edu.bd/notice
 - *Course Offer – Fall 2026 – CSE [Day]* — https://bubt.edu.bd/storage/notices/iM4YVPW8Eq4Qz8uZ58wCQW20c6dvOfDpGIlHUy6z.pdf
 - Credit-limit and student-email notices (2021) —
   `https://classic.bubt.edu.bd/assets/frontend/media/1618300925Notice_on_Credit_Limitations.png`,
   `…/1632242831Noitce_for_BUBT_Email_for_Students.jpg`
 
-Not reached, and left alone: the student portal itself (annex login, BUBT-NX). No bot
-protection was met; none was worked around. The annex routine pages are linked from
-the public routines page and need no account.
+Not reached, and left alone: the student portal itself (annex login, BUBT-NX) and every
+annex form (§18). No bot protection was met; none was worked around. The annex routine
+pages need no account.
 
 **Headline:** BUBT is the easiest non-BRACU campus to give a **routine and free rooms**:
 one public endpoint gives every programme's timetable as clean HTML, with faculty
@@ -227,9 +228,9 @@ Fall calendar has "Pre-Registration for Spring **2026**" (means 2027) and "22 **
 The Law Spring calendar prints two wrong weekdays (14 Apr "Thursday" is a Tuesday;
 5–9 Apr "Sunday – Monday" ends on a Thursday); the dates are what count.
 
-**Term codes:** the routine endpoint takes `semNo=068,502,614,902`, four opaque internal
-ids (likely one per calendar stream or shift). Their meaning: [unknown]. Don't key
-Shohoj's terms on them.
+**Term codes:** the routine endpoint takes `semNo=068,502,614,902`, a list of internal
+section-pool ids for the running term (§12); Spring 2026's list was `066,501,612,901`.
+They are not term codes. Don't key Shohoj's terms on them.
 
 ## 7. Programmes and total credits (`departments.js`)
 
@@ -331,8 +332,10 @@ before adding `emailDomains`.
 ## 11. Faculty initials (`js/core/faculty.js`, `reviews.js`)
 
 - **The routine pages publish an initials → full name table for every course**
-  [official]. That gives **292 faculty codes**, each mapping to exactly one name
-  [derived]. No other campus gives Shohoj this officially.
+  [official]. Across the 16 routines that gives **298 faculty codes**, each mapping to
+  exactly one name [derived]; 297 teach a scheduled class, and `MACa` appears only in
+  the LL.M legend, against LAW 5107, which has no slot this term. No other campus gives
+  Shohoj this officially.
 - Codes are 2–6 letters, mostly upper case, with exceptions to keep as-is: `ShS`,
   `DMFIa`, `GCMa`, `MDIH01`, `texn5`. The lower-case suffixes look like disambiguators
   for two people with the same initials [derived].
@@ -350,47 +353,65 @@ Parsed for Fall 2026 on 2026-10-16 [derived]:
 
 | | |
 |---|---|
-| Programmes | 13 (BBA, CSE, CSE-DH, DSE, English, MA ELT, LL.B, Economics, M.Sc Econ, EEE, EEE-DH, Textile, Civil) |
-| Intake-sections | **343** |
-| Class meetings | **2,452**, 0 unparsed cells |
-| Course codes | 427 |
-| Faculty codes | 292 |
-| Rooms | 114 |
+| Programmes | 16 (BBA, CSE, CSE-DH, DSE, English, MA ELT, LL.B, LL.M, Economics, M.Sc Econ, EEE, EEE-DH, Textile, Textile-DH, Civil, Civil-DH) |
+| Intake-sections | **366** |
+| Class meetings | **2,640**, 0 unparsed cells |
+| Course codes | 445 scheduled (450 in the legends) |
+| Faculty codes | 298 (297 with a scheduled class) |
+| Rooms | 115 |
 | Room double-bookings | **0** |
 | Teacher in two rooms at once | **0** |
 
-Programme ids used by the endpoint: 001 BBA, 006 CSE, 007 English, 009 LL.B,
-013 M.Sc Econ, 016 MA ELT, 019 CSE-DH, 020 Economics, 021 EEE, 022 Textile,
-023 EEE-DH, 027 Civil, 029 DSE.
+Programme ids that answer: 001 BBA, 006 CSE, 007 English, 009 LL.B, 013 M.Sc Econ,
+**014 LL.M**, 016 MA ELT, 019 CSE-DH, 020 Economics, 021 EEE, 022 Textile,
+023 EEE-DH, **024 Textile-DH**, 027 Civil, **028 Civil-DH**, 029 DSE. The three in bold
+are linked from no BUBT page; they were found by asking for every id from 001 to 040.
+The classic site's older routine page also names 004 (Executive MBA), 008 (MA in
+English) and 030 (M.Sc CSE); all three, and every other id, return an empty body this
+term.
+
+**How `semNo` works** [derived, by querying one pool at a time]: it is a list of
+section pools for the running term, and a programme's sections are spread across them.
+CSE's Fall 2026 sections are 18 in pool `068` and 57 in `614`; BBA's are 67 and 50;
+LL.B's are split between `502` and another pool in the list. Each programme's full
+routine needs the whole list.
+
+**Only the running term is served.** Spring 2026's pools (`066,501,612,901`, still
+linked from the classic site) return an empty body, as do the single pools `066` and
+`067`. There is no routine archive on annex: a term that isn't captured while it runs
+is gone. To keep history, Shohoj has to save each term as BRACU's semester archive
+does (a Worker cron storing every term before the feed forgets it).
 
 - **Two slot grids** [official]:
   - **Day** — six 90-minute slots, 08:15–09:45, 09:45–11:15, 11:15–12:45,
     **13:15**–14:45, 14:45–16:15, 16:15–17:45 (a 30-minute break 12:45–13:15). Labs take
     two consecutive slots.
-  - **DH / evening / M.Sc Econ** — nine 75-minute slots, 08:00 → **21:30**, with a gap
+  - **DH / evening / graduate** — nine 75-minute slots, 08:00 → **21:30**, with a gap
     13:00–15:15.
-- **Days:** day programmes meet **Sunday–Thursday only**; DH programmes add **Friday**
-  (123 meetings); M.Sc Economics meets on **Saturday** [derived].
+- **Days:** day programmes meet **Sunday–Thursday only**. The DH programmes are mostly
+  **Friday** programmes (Civil-DH has 109 of its 136 meetings on Friday; 263 Friday
+  meetings across the four DH tracks); LL.M meets on Friday and Saturday, and
+  M.Sc Economics on Saturday [derived].
 - **Rooms:** 4-digit codes, "the first digit represent[s] the building"; Building 2 =
   *Martyr Sujan Mahmud Building*, Building 3 = *Martyr Tahmid Abdullah Building*
-  [official, routine header]. Rooms by building: 1 → 23, 2 → 37, 3 → 23, 4 → 24,
+  [official, routine header]. Rooms by building: 1 → 23, 2 → 37, 3 → 24, 4 → 24,
   5 → 7. Two exceptions: `41101` (Building 4, floor 11?) and `1504-B`. The remaining
   digits read like floor + room (`2316` = Building 2, floor 3, room 16) [derived,
   unconfirmed].
 - **Intake numbers are per programme**, not global: BBA is at Intake 68, CSE 59,
   Civil 14, DSE 3. A section key is `(programme, intake, section)`.
-- **Not in the endpoint (PDF only):** M.Sc CSE, LL.M (two intakes), MBA/EMBA, Textile
-  (Evening), Civil (Evening/DH), Economics Intake 52, two extra LL.B intakes. These
-  also book rooms, so Free Rooms built from the 13 HTML programmes **overstates
-  vacancy** in those rooms. Measure how many rooms the PDFs add before switching Rooms
-  on.
+- **Not in the endpoint (PDF only):** only **M.Sc CSE and MBA/EMBA**. Every other
+  routine the routines page links as a PDF (Textile and Civil evening, Economics Intake
+  52, LL.B Intakes 48 and 56, LL.M) is also on the endpoint. The two PDF-only
+  programmes are small graduate ones, so Free Rooms built from the endpoint is close
+  to complete; it would understate occupancy only in the rooms those two book.
 - **Seats:** no seat or capacity data anywhere [unknown]. `seats` stays off.
-- **Etiquette for a cron:** 13 requests per refresh, spaced. Neither host serves a
+- **Etiquette for a cron:** 16 requests per refresh, spaced. Neither host serves a
   `robots.txt` (both 404 on 2026-10-16), but ask BUBT IT before polling (question 9).
 
-This is enough for **routine** (pick your intake-section) and, with the PDF caveat,
-**free rooms**. Both need the schema change DIU already needs (§17 there): sections that
-meet at different times on different days, no capacity, and string section keys.
+This is enough for **routine** (pick your intake-section) and **free rooms**. Both need
+the schema change DIU already needs (§17 there): sections that meet at different times
+on different days, no capacity, and string section keys.
 
 ## 13. Campus life (`bus`, `cafeteria`, `campus`, `lostFound`)
 
@@ -407,8 +428,8 @@ meet at different times on different days, no capacity, and string section keys.
 - **Cafeteria:** open **08:30–21:00**, AC, Wi-Fi, breakfast and lunch [official, classic
   *Cafeteria* page, undated]. That is one line, too thin for a `cafeteria.json` beyond
   hours.
-- **Lost & Found:** room codes are short and stable, and the routine gives a 114-room
-  list. Fit for keys once the PDF-only programmes' rooms are added.
+- **Lost & Found:** room codes are short and stable, and the routines give a 115-room
+  list covering every programme but M.Sc CSE and MBA/EMBA. Fit for keys.
 - **Campus 3D model:** none; `campus` stays off.
 
 ## 14. Proposed profile in `src/core/university.ts`
@@ -446,9 +467,9 @@ What the profile type can't say yet, that BUBT needs:
 | Feature | Ready? | Why |
 |---|---|---|
 | calculator, playground, degree, profile, feedback | 🔶 after §9 | Scale official, identical to DIU's; typed credits (as DIU) until a catalogue exists. Degree tracker gets 16 programme totals. |
-| **routine** | 🔶 strong | All 13 annex programmes parse cleanly (§12); needs the intake-section schema DIU also needs |
-| **rooms** | 🔶 | Same data; 0 clashes; PDF-only programmes must be added or flagged first |
-| faculty directory / reviews | 🔶 | 292 official initials → names (§11); reviews also need §8 and §9 |
+| **routine** | 🔶 strong | All 16 annex programmes parse cleanly (§12); needs the intake-section schema DIU also needs, and a per-term capture since annex keeps no past terms |
+| **rooms** | 🔶 strong | Same data; 0 clashes; only M.Sc CSE and MBA/EMBA are missing (PDF-only) |
+| faculty directory / reviews | 🔶 | 298 official initials → names (§11); reviews also need §8 and §9 |
 | course autocomplete | 🔶 partial | CSE Day/Evening offers give codes + credits; other departments need their offers |
 | planner, tasks, groups, papers | ❌ | Need a per-programme catalogue + prerequisites (§8) |
 | transcript | ❌ | Needs a real annex grade sheet (§10) |
@@ -470,13 +491,16 @@ What the profile type can't say yet, that BUBT needs:
 7. Is there a **W** grade? How long does an **I** stay open?
 8. Can Shohoj get each programme's **current curriculum** (codes, titles, credits,
    prerequisites) and the old ↔ new course-code equivalences (3-digit → 4-digit)?
-9. May Shohoj read `annex.bubt.edu.bd/global_file/routine.php` on a schedule? What do
-   `semNo` values `068, 502, 614, 902` stand for, and do older ones return past terms?
+9. May Shohoj read `annex.bubt.edu.bd/global_file/routine.php` on a schedule (16
+   requests per refresh)? Are past terms' routines kept anywhere public (annex serves
+   only the running term, §12)?
 10. Bus routes, stops and times? Is there a public schedule?
 11. Which buildings exist now (the routines use 1–5), and what do the room digits after
     the first encode?
 12. Is there a Textile (DH) row missing from the admission fee table, or is that
     track no longer admitting?
+13. **IT:** the annex forgot-password page fetches account "hints" for any typed
+    student ID without signing in (§18). Is that intended? (Not tested by us.)
 
 ## Data files
 
@@ -485,14 +509,14 @@ warnings):
 
 | File | What | Tag |
 |---|---|---|
-| `sources.json` | 23 sources | — |
+| `sources.json` | 24 sources | — |
 | `profile.json` | Grading (+ R and I), retake (`best`, A- and below), credit load (warn above 16, no hard max), 18 academic rules, both term systems with their history, day codes, buildings 2 and 3, room-code pattern | [official]; `emailDomains` empty with a note (§9); class divisions, honours, class standing empty with notes |
 | `programs.json` | 16 undergraduate programmes (the 4 diploma-holder tracks included), credits, faculty, term system | [official]; every total cross-checked against the admission fee table |
 | `calendar/261-trimester.json`, `262-trimester.json`, `263-trimester.json` | Spring, Summer, Fall 2026 | [official]; the "Spring – 2026" header slips recorded as the term they belong to, with a note |
 | `calendar/261-bisemester.json` | Spring 2026, Law | [official]; two wrong printed weekdays noted |
 | `calendar/263-bisemester.json` | Fall 2026, Law | [official]; "Spring 2026" pre-registration and "22 Non" slips noted |
 | `calendar/253-bisemester.json` | Fall 2025, the last university-wide bi-semester term | [official]; its 7 Jan Spring start conflicts with the Spring calendar's 1 Jan (noted) |
-| `faculty.json` | 292 initials → names | [derived] from the routine legends; `dept` is the subject taught most, `courses` empty (see the file's note) |
+| `faculty.json` | 298 initials → names | [derived] from the 16 routines' legends; `dept` is the subject taught most (legend course for `MACa`, who has no slot), `courses` empty (see the file's note) |
 
 Retrieved 2026-10-16. Calendar rows for clubs, wellbeing, census, parents', sports and
 research-showcase days are left out. `classes-pause` marks the last class before the
@@ -502,7 +526,7 @@ Not loaded, because the schema can't hold them yet:
 - **Course offers and course credits.** `credits` must be a multiple of 0.5, and BUBT
   has 0.75-credit labs (`CSE 100`, `CSE 324`); course codes must be 3-digit, and half
   of BUBT's are 4-digit (`ENG 1101`).
-- **Sections (Fall 2026, 2,452 meetings).** Same shape problem as DIU's (§12): the key
+- **Sections (Fall 2026, 2,640 meetings).** Same shape problem as DIU's (§12): the key
   is (programme, intake, section), a section meets at different times on different
   days, and there is no capacity.
 
@@ -513,6 +537,23 @@ Not loaded, because the schema can't hold them yet:
    settled, plus `tests/universityData.test.js` parity against `profile.json`.
 3. Widen the campus schema for 4-digit codes and quarter credits, then load the CSE
    course offers (§8).
-4. Commit the routine snapshot once the intake-section schema exists. The parser that
-   produced §12's numbers is ~60 lines over the annex HTML (scratch, not in the repo).
+4. Commit the routine snapshot once the intake-section schema exists, and capture each
+   term while it runs (annex keeps none, §12). The parser that produced §12's numbers
+   is ~60 lines over the annex HTML (scratch, not in the repo).
 5. Ask BUBT the §16 questions, starting with 1, 2, 5 and 9.
+
+## 18. What annex.bubt.edu.bd exposes (scanned 2026-10-16)
+
+Only links BUBT's own pages expose were followed, plus the routine endpoint's own
+parameters. No form was submitted, no sign-in attempted, no path guessed.
+
+| Part | Access | Use to Shohoj |
+|---|---|---|
+| `global_file/routine.php` | Public HTML, no login | **The source for routine, free rooms and faculty names** (§11, §12). Running term only. `&print=true` is the same data. |
+| BUBT-NX (the portal behind the annex login) | Student ID + password | By its own *About* page, it shows each student's registered courses and class schedule, marks, grades and attendance, fees, and "all the courses along with information of prerequisite courses of each program". That catalogue is what §8 lacks, but it is reachable only by a signed-in student: the way in is the CONNECT model, a student pasting their own page, never Shohoj holding credentials. |
+| Sign-up, forgot-password, login forms | Public pages, but each takes a student's ID, ID-card serial, email or phone | None. Pages loaded, nothing submitted. |
+| `global_file/action/pwdsinfo_hints_action.php?forgtID=<id>` | Called by the forgot-password page as soon as an ID is typed, before any check | **Off-limits.** It returns account hints for whatever ID it is given, so querying other students' IDs would be collecting personal data. Never called; raised with BUBT as question 13. |
+| `nxdemo.bubt.edu.bd` (linked from the login page) | No response | — |
+
+Students sign in to annex with a numeric ID; the login page's own script treats
+anything non-numeric as an employee login.
