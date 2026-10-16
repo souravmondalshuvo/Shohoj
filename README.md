@@ -784,27 +784,45 @@ Smart semester recommendations, burnout warning system, graduation timeline pred
 
 ## Multi-University Vision
 
-Shohoj scales beyond BRAC University, and on the React shell that is working
-code rather than a plan:
+Shohoj scales beyond BRAC University, and that is working code rather than a
+plan: three campuses sign in today, on both frontends.
 
-- **A campus registry** (`src/core/university.ts`) holds each university's
-  grading scale, mark cutoffs, retake/repeat policy, identifying email domains,
-  and which features it has data for. Adding a campus is an entry there, not a
-  fork of the calculator. No profile ships on a guessed grade point — the
-  numbers come from the registrar or the official student handbook, and a policy
-  that could not be confirmed is left absent rather than inherited from BRACU.
-- **Campus rules run the whole calculator path** on the shell — results, the
-  degree tracker, the GPA trend, the goal simulator, retake shortlisting, the
-  marks tracker, planner credit totals and the PDF report all take the active
-  campus's scale rather than assuming BRACU's. The same transcript produces
-  different, correct answers on different campuses, and that is a test, not a
-  claim.
-- **Features are declared per campus.** A route a campus has no data for is not
-  rendered as an empty shell — NSU's profile turns off seats, routine, free
-  rooms and the campus map (they all derive from BRACU's CONNECT feed, and NSU's
-  RDS portal has no known public equivalent), plus bus and cafeteria
-  (hand-collected Merul Badda data) and lost & found (keyed to BRACU's room
-  codes).
+- **A campus database** (`data/campuses/{bracu,nsu,diu}`) is the source of
+  truth for each university's grading scale, programs, courses, sections and
+  calendar, with a cited source for every fact and a note wherever a value is
+  missing. The catalogues the app ships are generated from it.
+- **A campus registry** (`src/core/university.ts`, mirrored for the root app in
+  `js/core/university.js`) holds each university's grading scale, mark cutoffs,
+  retake/repeat policy, identifying email domains, and which features it has
+  data for. Adding a campus is an entry there, not a fork of the calculator. No
+  profile ships on a guessed grade point — the numbers come from the registrar
+  or the official student handbook, and a policy that could not be confirmed is
+  left absent rather than inherited from BRACU.
+- **Campus rules run the whole calculator path** — results, the degree tracker,
+  the GPA trend, the goal simulator, retake shortlisting, the marks tracker,
+  planner credit totals and the PDF report all take the active campus's scale
+  rather than assuming BRACU's. The same transcript produces different, correct
+  answers on different campuses, and that is a test, not a claim.
+- **Features are declared per campus.** A tab a campus has no data for is not
+  rendered as an empty shell. What each campus gets today:
+
+  | | BRACU | NSU | DIU |
+  | --- | --- | --- | --- |
+  | Calculator, Playground | ✅ both | ✅ both | ✅ root only — DIU publishes no catalogue, so you type each course's credits, and only the root calculator has a credits field |
+  | Degree, Planner, Transcript import | ✅ both | ✅ both | — no published curriculum or prerequisites, and no transcript format seen yet |
+  | Reviews, Papers, Groups | ✅ both | ✅ both (empty until NSU students post) | — each names a course, and DIU's departments write codes five different ways |
+  | Feedback, Profile | ✅ both | ✅ both | ✅ both |
+  | Routine, Free Rooms | ✅ both, live feed | ✅ root only, from a dated section snapshot | — DIU posts each department's routine as its own PDF |
+  | Seat Status | ✅ both | — no public seat counts | — |
+  | Campus Map | ✅ both | ✅ root only, NSU's own model | — |
+  | Bus | ✅ both | ✅ [`/bus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=nsu) | ✅ [`/bus/?campus=diu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=diu) |
+  | Tasks, Difficulty, Cafeteria, Lost & Found, Assistant | ✅ | — | — |
+
+  "Root only" means the vanilla app at the site root serves it and the shell
+  does not yet: the shell's version of that route still reads BRACU's data, so
+  switching it on there would show an NSU or DIU student another university's
+  numbers. The root grants those tabs itself (`js/core/campusFeatures.js`)
+  until the shell can serve them.
 - **A sign-in portal** gates the calculator on **both** builds — the React shell
   and the vanilla app at the site root. Sign-in is what resolves a student to a
   campus, and the campus decides the grading rules, so neither build shows a
@@ -816,18 +834,15 @@ code rather than a plan:
   correctness gate, not an authorization one; Firestore rules remain the security
   boundary.
 - **Campus-partitioned data** — Firestore rules pin each client-created
-  community document to the writer's own campus, and `scripts/backfill_campus.js`
-  stamps pre-tenancy documents.
-
-**The catch:** all of this lives on the React shell at `/app/`. The vanilla app
-still served at the site root restricts sign-in to `@g.bracu.ac.bd` and computes
-on BRACU's scale, so a second campus becomes real for most users at the cutover,
-not before.
+  community document to the writer's own campus, reads are scoped the same way,
+  and `scripts/backfill_campus.js` stamps pre-tenancy documents. An admin can
+  switch which campus they are viewing, and every campus-scoped list refetches
+  for it.
 
 | Stage | Scope                                  | Status |
 | ----- | -------------------------------------- | ------ |
 | v1.0  | BRAC University                        | ✅ Live |
-| v2.0  | NSU, IUB, EWU                          | 🔶 NSU profile live on the shell (`/app/`); root app still BRACU-only. IUB and EWU not started |
+| v2.0  | NSU, DIU, IUB, EWU                     | 🔶 NSU and DIU sign in on both frontends (more of NSU's and DIU's tabs on the root than on the shell, see above). IUB and EWU not started |
 | v3.0  | All private universities in Bangladesh | Planned |
 | v4.0  | Public universities (BUET, DU, CUET)   | Planned |
 | v5.0  | South Asia                             | Planned |
