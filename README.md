@@ -201,7 +201,7 @@ Reachable at `/tasks` and as a dashboard card on the shell, and as a Tasks tab o
 
 ### 🗓️ Routine Builder
 
-Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it.
+Build a clash-free weekly class schedule from the live BRACU section feed, then export or share it. NSU students get the same builder on the site root, over a dated snapshot of NSU's Fall 2026 sections.
 
 - **Auto-suggest** — generates valid section combinations for your chosen courses, ranked to prefer **compact days** (a `gapWeight` factor penalizes idle time between same-day classes); each suggestion shows its total gap time
 - **Conflict detection** — overlapping sections are split and flagged in a weekly grid; faculty ratings surface inline on each section
@@ -1170,7 +1170,7 @@ Additional notes on Repeat:
 
 ### Live Feed Features (Seats, Free Rooms, Routine, Campus Map)
 
-- All four read the **public CONNECT section feed**, which is third-party and best-effort. If the feed is down or changes shape, these features degrade rather than invent data.
+- For BRACU, all four read the **public CONNECT section feed**, which is third-party and best-effort. (NSU's equivalents read a dated snapshot instead; see [Multi-Campus](#multi-campus).) If the feed is down or changes shape, these features degrade rather than invent data.
 - **The feed holds one semester at a time.** It is an advising feed: when registration opens for the next semester it replaces the running one outright. Shohoj's own archive (see [Semester Archive](#-semester-archive-new)) covers this, but only for semesters captured since the cron started — anything the feed dropped before then is not recoverable.
 - **An archived semester is a snapshot, not a live view.** Its seat counts are frozen at the moment of capture and are historical, not current; sections that had no instructor assigned or no timetable at capture stay that way. Each snapshot states which of these apply to it rather than presenting stale numbers as live ones.
 - **Free Rooms and the campus map show scheduled occupancy only.** There is no ad-hoc room booking feed, so a room that is free on the timetable may still be in use by a club, a makeup class, or an event.
@@ -1257,10 +1257,11 @@ Additional notes on Repeat:
 
 ### Multi-Campus
 
-- Campus rules apply on the **React shell (`/app/`) only**. The vanilla app at the site root restricts sign-in to `@g.bracu.ac.bd` and computes on BRACU's scale — an NSU student needs the shell.
-- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, so **no credit-load warning is shown for NSU at all** — better silent than wrong.
-- **Feed-driven features are off for NSU** — seats, routine, free rooms and the campus map all derive from BRACU's CONNECT feed, and no public equivalent is known for NSU's RDS portal. Bus and cafeteria data is hand-collected for Merul Badda, and lost & found is keyed to BRACU room codes. These routes don't render for an NSU account rather than rendering empty.
-- Community features (reviews, papers, groups, feedback) work for a new campus from day one — they are simply empty until that campus's students post, and campus partitioning keeps them separate.
+- Campus rules apply on **both frontends**. Some NSU and DIU tabs are served only by the vanilla app at the site root, because the shell's version of the route still reads BRACU's data; the [per-campus table](#multi-university-vision) lists which.
+- A campus profile ships only with policy numbers confirmed from the registrar or the official handbook. NSU's per-semester credit minimum and maximum were not confirmed, and DIU publishes a minimum but no maximum, so **no credit-load warning is shown for NSU or DIU at all** — better silent than wrong.
+- **NSU's Routine and Free Rooms are a snapshot, not a live feed.** NSU's RDS portal has no known public feed, so they read a section list dated 28 Sep 2026, taken from [nsuer.pro](https://nsuer.pro), a third-party mirror of RDS. The tabs say how old it is; it carries no seat counts, so NSU has no Seat Status, and faculty and rooms are as published that day. The calendar export uses NSU's term calendar, so exported classes skip NSU's holidays and stop on each day pattern's last class day.
+- **DIU has no published catalogue.** Its per-program course lists (1,558 courses across 25 programs, read from DIU's program pages) fill in credits where a course is listed; anything else you type yourself. A course code is matched however it is spaced, ISCED field codes included.
+- Community features (reviews, papers, groups, feedback) work for a new campus from day one — they are simply empty until that campus's students post, and campus partitioning keeps them separate. DIU is the exception for reviews, papers and groups: each names a course, and with DIU's departments writing codes five different ways, every post would be refused, so those tabs are off for DIU and only Feedback is on.
 - An account on a domain no profile claims is signed in but **campus-unknown**, and sees a notice rather than a calculator applying someone else's grading scale.
 - Stored data written before tenancy existed has no campus field and is read as BRACU, which is what it is by definition.
 
