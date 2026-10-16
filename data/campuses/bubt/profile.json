@@ -1,0 +1,137 @@
+{
+  "id": "bubt",
+  "name": "Bangladesh University of Business and Technology",
+  "shortName": "BUBT",
+  "identity": {
+    "source": "bubt-notice-student-email",
+    "emailDomains": [],
+    "note": "BUBT gives every student a Google Workspace (G Suite) address \"from its domain\", shown with a one-time password in the student's Annex account, but no public page names the domain. Staff use bubt.edu.bd (and some departments a subdomain, such as management.bubt.edu.bd), so bubt.edu.bd is not assumed to be students-only. The account is deleted after two consecutive semesters without registration. Left empty until the domain is confirmed."
+  },
+  "grading": {
+    "source": "bubt-grading",
+    "note": "The UGC uniform grading system, identical to DIU's. No C-, D+ or D-. Each minMark is inclusive (\"80% and above\", \"75% to less than 80%\"). The transcript shows the letter, its grade point and the CGPA, never the marks.",
+    "scale": [
+      {"letter": "A+", "points": 4.0, "minMark": 80},
+      {"letter": "A", "points": 3.75, "minMark": 75},
+      {"letter": "A-", "points": 3.5, "minMark": 70},
+      {"letter": "B+", "points": 3.25, "minMark": 65},
+      {"letter": "B", "points": 3.0, "minMark": 60},
+      {"letter": "B-", "points": 2.75, "minMark": 55},
+      {"letter": "C+", "points": 2.5, "minMark": 50},
+      {"letter": "C", "points": 2.25, "minMark": 45},
+      {"letter": "D", "points": 2.0, "minMark": 40},
+      {"letter": "F", "points": 0.0, "minMark": 0}
+    ],
+    "nonGpaGrades": [
+      {"letter": "R", "meaning": "Retake: marks every earlier attempt of a course that was taken again; it has no effect on GPA or CGPA"},
+      {"letter": "I", "meaning": "Incomplete: every calendar sets a last day for grading the previous term's Incomplete grades; what an unresolved I becomes is not published"}
+    ],
+    "unknown": ["W", "P"]
+  },
+  "retake": {
+    "source": "bubt-rules",
+    "eligibleAtOrBelow": "A-",
+    "counts": "best",
+    "maxRetakes": null,
+    "note": "\"Students with grade lower than 'A' in any course may retake the course to improve their grades\", so A+ and A are locked and A- is the highest repeatable grade (threshold 3.75, exclusive). Two paragraphs disagree on what counts: the grading page's \"Policy for Semester Promotion\" says \"the improved grade will be computed\" and earlier attempts are marked R, while the Rules page's \"Repeating Courses\" says \"CGPA is calculated on the basis of the better of the two grades\". They differ only when a retake scores worse, and only the second covers that case, so the better grade counts. The same paragraph says \"a course can be repeated once only\", yet an F must be repeated (within the next three consecutive semesters) until at least a D, so whether the cap covers failed courses is unclear and maxRetakes stays null."
+  },
+  "classDivisions": {
+    "source": "bubt-rules",
+    "records": [],
+    "note": "BUBT publishes no class divisions."
+  },
+  "honours": {
+    "source": "bubt-calendar-263",
+    "records": [],
+    "note": "Every 2026 calendar has a \"Deans Award for Students\" day (2 Feb, 16 Jun, 13 Oct), but no BUBT page gives its criteria, and no Latin honours are published."
+  },
+  "classStanding": {
+    "source": "bubt-rules",
+    "records": [],
+    "note": "BUBT publishes no freshman/sophomore-style standing by credits; students are grouped by intake instead."
+  },
+  "creditLoad": {
+    "source": "bubt-notice-credit-limit",
+    "warnAbove": 16,
+    "max": null,
+    "note": "\"A student can register maximum 16 credits for tri-semester\"; 16 to 18 credits needs the departmental chairman's permission, and more than 18 a special permission from the Vice Chancellor or Pro-Vice Chancellor, so there is no hard maximum. The notice is from April 2021, the earlier trimester period; whether it binds again since the 2026 return to trimesters is unconfirmed. The Rules page calls 12 credits (four courses) the normal load."
+  },
+  "academicRules": {
+    "source": "bubt-rules",
+    "records": [
+      {"id": "assessment-weights", "rule": "Each course is marked out of 100: attendance 5, quizzes 5, class tests and tutorials 10, assignment/presentation/lab/project 10, mid-term 30, final 40.", "source": "bubt-grading"},
+      {"id": "assessment-weights-law", "rule": "LL.B and LL.M courses: attendance 10, class test 10, assignment and presentation 10, mid-term 30, final 40.", "source": "bubt-grading"},
+      {"id": "attendance", "rule": "A student must attend at least 70% of classes. Attendance marks: 70-75% earns 1, 76-80% 2, 81-85% 3, 86-90% 4, 91-100% 5 (doubled for LL.B and LL.M)."},
+      {"id": "credit-hours", "rule": "A theory course's credits equal its contact hours per week; a practical or sessional course's are half its contact hours.", "source": "bubt-grading"},
+      {"id": "normal-load", "rule": "Twelve credits without laboratory credits (four courses) is the normal load; more or fewer needs permission."},
+      {"id": "english-by-fourth-semester", "rule": "English language requirements must be met by the fourth semester after admission."},
+      {"id": "prerequisites-first", "rule": "All prerequisite courses (foundation, support and core) must be passed before registering for major or concentration courses."},
+      {"id": "f-retake-window", "rule": "A course graded F must be repeated within the next three consecutive semesters, prerequisites first, at full tuition, and passed with at least a D.", "source": "bubt-grading"},
+      {"id": "improvement-application", "rule": "Retaking a passed course to improve it needs an application within two weeks of the term's results, and costs half the course's tuition.", "source": "bubt-grading"},
+      {"id": "improvement-after-completion", "rule": "A student who wants to improve a course after completing every course of the programme must notify the department chairman within a week of the final term's results, or the improved grade does not count toward the final CGPA.", "source": "bubt-notice-improvement"},
+      {"id": "course-withdrawal", "rule": "A course may be withdrawn within 15 days of the semester starting, with permission. The 2026 calendars set the add/drop deadline about nine days after classes begin."},
+      {"id": "semester-withdrawal", "rule": "A semester may be withdrawn within 15 days of classes starting; a student who stops attending without withdrawing pays all fees and receives F in every course of the semester."},
+      {"id": "min-cgpa-to-graduate", "rule": "An undergraduate degree needs a CGPA of at least 2.00 on all BUBT credits; a graduate degree needs 2.50."},
+      {"id": "internship-research-grade", "rule": "An internship or research project required for the degree must be passed with at least a C."},
+      {"id": "time-limit", "rule": "A four-year bachelor's programme must be completed within 7 years; three-year programmes within 6, two-year within 4, one-year within 2."},
+      {"id": "credit-transfer", "rule": "Transfer applicants need CGPA 2.50; only courses graded B or above transfer, and at least 60% of the credits plus the internship/project must be earned at BUBT.", "source": "bubt-credit-transfer"},
+      {"id": "supplementary-exams", "rule": "A missed mid-term or final can be sat in a supplementary examination on application, for Tk 1,000 (mid-term) or Tk 2,000 (final) per course.", "source": "bubt-calendar-263"},
+      {"id": "intake-sections", "rule": "Students are admitted in numbered intakes, divided into sections, and each intake is offered a fixed set of courses per semester. Intake numbers are per programme.", "source": "bubt-cse-offer-263"}
+    ]
+  },
+  "termSystems": {
+    "source": "bubt-calendar-263",
+    "records": [
+      {
+        "id": "trimester",
+        "terms": [
+          {"season": "Spring", "months": "Jan-Apr"},
+          {"season": "Summer", "months": "May-Aug"},
+          {"season": "Fall", "months": "Sep-Dec"}
+        ],
+        "note": "Every programme except Law since Spring 2026 (bubt-calendar-261): 14 teaching weeks, 90-minute classes. BUBT also ran trimesters until Spring 2023, when Fall spanned two calendar years and was printed \"Fall 2022-23\" (bubt-notice-archive)."
+      },
+      {
+        "id": "bisemester",
+        "terms": [
+          {"season": "Spring", "months": "Jan-Jun"},
+          {"season": "Fall", "months": "Jul-Dec"}
+        ],
+        "note": "The Faculty of Law (LL.B, LL.M) today. From Spring 2023 to Fall 2025 it was the whole university's calendar, announced in \"Trimester to Bi-semester\" notices (bubt-notice-archive); Fall 2025 ran 15 Jul to 29 Dec with 75-minute classes (bubt-calendar-253). bubt-semester-policy still describes it as the only calendar."
+      }
+    ]
+  },
+  "termCodes": {
+    "source": "bubt-routines",
+    "pattern": "Shohoj's own, as for NSU and DIU: two-digit year followed by 1 (Spring), 2 (Summer) or 3 (Fall). BUBT publishes no term codes.",
+    "note": "The annex routine pages take semNo=068,502,614,902, four opaque internal ids whose meaning is not published; they are not term codes. A bi-semester Fall gets 3 here, as for DIU."
+  },
+  "days": {
+    "source": "bubt-routines",
+    "records": [
+      {"code": "S", "day": "Sunday"},
+      {"code": "M", "day": "Monday"},
+      {"code": "T", "day": "Tuesday"},
+      {"code": "W", "day": "Wednesday"},
+      {"code": "R", "day": "Thursday"},
+      {"code": "F", "day": "Friday"},
+      {"code": "A", "day": "Saturday"}
+    ],
+    "note": "Codes are Shohoj's own, matching NSU's and DIU's; the routines print SAT, SUN, MON, TUE, WED, THR, FRI. Day programmes meet Sunday to Thursday in six 90-minute slots from 08:15 to 17:45 (break 12:45-13:15); the diploma-holder (evening) programmes also meet on Friday, in nine 75-minute slots from 08:00 to 21:30; M.Sc. Economics meets on Saturday."
+  },
+  "buildings": {
+    "source": "bubt-routines",
+    "records": [
+      {"code": "2", "name": "Martyr Sujan Mahmud Building"},
+      {"code": "3", "name": "Martyr Tahmid Abdullah Building"}
+    ],
+    "note": "The routine header names only buildings 2 and 3. Rooms in buildings 1, 4 and 5 are booked too, but no BUBT page names those buildings; the classic Campus page still speaks of three buildings."
+  },
+  "roomCodes": {
+    "source": "bubt-routines",
+    "pattern": "BFRR: a four-digit number whose first digit is the building (\"Room[4-digit number, the first digit represent the building]\"); 41101 and 1504-B are the only exceptions in Fall 2026",
+    "regex": "^[1-5]\\d{3,4}(-[A-Z])?$",
+    "kinds": {},
+    "note": "That the middle digits are the floor (2316 = building 2, floor 3) is our reading, not BUBT's. Room codes carry no kind letter; labs and classrooms look alike."
+  }
+}
