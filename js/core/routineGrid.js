@@ -6,6 +6,8 @@
 // weekly-calendar grid. UI-agnostic: outputs grid rows/cols + minute bounds;
 // the renderer maps to CSS grid or pixel offsets.
 
+import { slotFaculties } from './connectFeed.js';
+
 const WEEK_ORDER = [
     'SATURDAY','SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY',
 ];
@@ -71,11 +73,16 @@ export function computeGridLayout(routine, options = {}) {
             if (localEnd <= localStart) continue;
             const rowStart = Math.floor((localStart - startMin) / rowMinutes);
             const rowEnd = Math.ceil((localEnd - startMin) / rowMinutes);
+            // Who teaches this meeting: a lab names its own faculty (often
+            // two), TBA for anyone unassigned.
+            const faculties = slotFaculties(s, slot);
             blocks.push({
                 sectionId: s.sectionId,
                 courseCode: s.courseCode,
                 sectionName: s.sectionName,
-                facultyInitials: s.facultyInitials,
+                kind: slot.kind,
+                faculties,
+                facultyInitials: faculties.join(', '),
                 // The slot's own room (a lab meets elsewhere than its theory
                 // class); the section room is the fallback when it's blank.
                 roomName: slot.room || s.roomName,
