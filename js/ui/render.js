@@ -1,5 +1,5 @@
 import { activeGradePoint, getActiveCampus } from '../core/activeCampus.js';
-import { getActiveCatalog } from '../core/activeCatalog.js';
+import { catalogEntryFor, getActiveCatalog } from '../core/activeCatalog.js';
 import { state, saveState, clearState } from '../core/state.js';
 import { calcSemGPA, getRetakenKeys, getSemCreditWarning } from '../core/calculator.js';
 import {
@@ -978,9 +978,7 @@ export function campusTypesCredits() {
 
 /** The catalogue's entry for a course row, by its "(CODE)" suffix or a bare code. */
 function catalogCourseOf(name) {
-  const raw = String(name ?? '').trim();
-  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-  return code ? getActiveCatalog().courses[code] ?? null : null;
+  return catalogEntryFor(name);
 }
 
 /** Whether a row's credits are typed: a named course the catalogue cannot give credits for. */
