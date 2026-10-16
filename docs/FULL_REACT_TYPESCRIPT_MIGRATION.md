@@ -166,7 +166,7 @@ writes the island now owns).
 
 **Difficulty map:** `_dm_goToCourse`, `_dm_setDept`, `_dm_setSort`.
 
-**Payment QR:** `_shohoj_bkash_qr`, `_shohoj_rocket_qr`.
+**Payment QR:** `_shohoj_rocket_qr`.
 
 Each global must be removed only after the corresponding React feature is live
 and no consumer remains (Phase 5/14).
@@ -286,7 +286,7 @@ Pure domain logic (Phase 3) lands under `src/core/`; UI (Phase 5) under
 | `js/core/state.js` | `src/state/` + `src/services/storage/` | ⬜ Phase 2 |
 | `js/core/dispatch.js` | retire (replace globals w/ typed events/context) | ⬜ Phase 5 |
 | `js/vendor/qrcode.js` | installed `qrcode-generator` pkg | ✅ removed; both build paths use the pkg |
-| `js/qr-data.js` | (data) payment QR images (`_shohoj_bkash_qr` / `_shohoj_rocket_qr`) | data stays JS — not the QR generator |
+| `js/qr-data.js` | (data) payment QR image (`_shohoj_rocket_qr`) | data stays JS — not the QR generator |
 | `js/ui/render.js` | `src/features/calculator/*` | ⬜ Phase 5B |
 | `js/ui/planner.js` | `src/features/planner/*` | ⬜ Phase 5D |
 | `js/ui/simulator.js` | `src/features/simulator/*` | ⬜ Phase 5D |
