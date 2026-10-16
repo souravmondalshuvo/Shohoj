@@ -213,6 +213,28 @@ test('courses typed before the lists arrived take the list\'s credits when they 
   expect([saved.name, saved.credits]).toEqual(['Programming and Problem Solving Lab (CSE114)', 1.5]);
 });
 
+test('a DIU business student types an ISCED code however they write it', async ({ page }) => {
+  await boot(page);
+  const fetched = page.waitForResponse(r => r.url().endsWith('/feeds/diu-courses.json') && r.ok());
+  await signInAs(page, 'rahim@s.diu.edu.bd');
+  await fetched;
+  await page.locator('#deptSelect').selectOption('BBA');
+  await page.locator('#startSeason').selectOption('Fall');
+  await page.locator('#startYear').selectOption('2025');
+  await page.locator('#addSemesterBtn').click();
+  const sem = page.locator('.semester-block').first();
+  await sem.locator('.btn-add-course').click();
+  const input = sem.locator('input[id^="course-input-"]').last();
+  const id = await input.getAttribute('id');
+  // Typed with a space where DIU writes a hyphen.
+  await input.fill('0413 313');
+  await input.blur();
+  await expect(page.locator(`#${id}`)).toHaveValue('Production and Operations Management (0413-313)');
+  const row = page.locator('.course-row', { has: page.locator(`#${id}`) });
+  await expect(row.locator('.credits-static')).toHaveText('3');
+  await expect(row.locator('input.credits-typed')).toHaveCount(0);
+});
+
 test('only a DIU student fetches DIU\'s course lists', async ({ page }) => {
   const asked = [];
   page.on('request', r => { if (r.url().includes('diu-courses')) asked.push(r.url()); });
