@@ -790,8 +790,18 @@ export const FIXTURES = {
       [SEMESTERS_WORSE_RETAKE, { retake: BRACU.retake, startYear: 2025 }],
       [SEMESTERS_WORSE_RETAKE, { scale: NSU.grades, retake: NSU.retake }],
     ],
-    getCourseCode: [['Physics (PHY111)'], ['No code here'], ['']],
-    getCourseIdentity: [['Physics (PHY111)'], ['Independent Study']],
+    getCourseCode: [
+      ['Physics (PHY111)'],
+      ['Tour, Travel and Transport Management (1015-205)'],
+      ['No code here'],
+      [''],
+    ],
+    getCourseIdentity: [
+      ['Physics (PHY111)'],
+      ['Independent Study'],
+      ['Tour, Travel and Transport Management (1015-205)'],
+      ['Tour, Travel and Transport Management (1015-206)'],
+    ],
     clampGradePoint: [[5], [-1], [2.7], [NaN], ['4.3', NSU.grades]],
     normalizeGradePoint: [
       ['3.7', 3],
