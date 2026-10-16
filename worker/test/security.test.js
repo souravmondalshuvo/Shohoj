@@ -4,8 +4,9 @@ import { generateKeyPair, exportJWK, exportPKCS8, SignJWT } from 'jose';
 import worker, { __setTestJwksForTests, runLostFoundCron } from '../index.js';
 import { firestoreRest, toFields, fromFields } from './helpers/firestoreRest.js';
 import { createFirestoreAtomicStore } from '../firestoreAtomic.js';
-import { reserveAiAdmission, settleAiAdmission } from '../aiAdmission.js';
-import { boundedModelPayload, readBoundedJson, BodyTooLarge, meterProviders, MAX_MODEL_INPUT_BYTES } from '../aiLimits.js';
+import { extendAiAdmission, reserveAiAdmission, settleAiAdmission } from '../aiAdmission.js';
+import { boundedModelPayload, readBoundedJson, BodyTooLarge, meterProviders, providerReservationUsd, MAX_MODEL_INPUT_BYTES } from '../aiLimits.js';
+import { ProviderUnavailable } from '../assistantProviders.js';
 const { publicKey, privateKey } = await generateKeyPair('RS256', { extractable: true });
 const jwk = { ...await exportJWK(publicKey), kid: 'security-test', alg: 'RS256', use: 'sig' };
 const base = 'https://firestore.googleapis.com/v1/projects/security-test/databases/(default)/documents';
@@ -129,6 +130,95 @@ test('paid failures and incomplete usage cannot be settled as free', async () =>
   assert.equal(incomplete.costUsd(), incomplete.heldUsd);
 });
 
+
+// #920: admission used to hold every configured provider's worst case, so a
+// turn the free tier answered still tied up $1.50 of paid headroom.
+test('a fallback hold is added to the reservation and settles back to zero', async () => {
+  const db = firestoreRest();
+  const store = createFirestoreAtomicStore({ baseUrl: base, token: 'test', toFields, fromFields, fetchImpl: db.fetch });
+  const options = { uid: 'student', day: '2026-10-17', month: '2026-10', quotaLimit: 40, budgetUsd: 1, heldUsd: 0 };
+  const admission = await reserveAiAdmission(store, options);
+  assert.equal(db.read('assistantBudget/2026-10').reservedUsd, 0, 'a free-tier-first turn holds nothing');
+  assert.deepEqual(await extendAiAdmission(store, admission, { budgetUsd: 1, extraUsd: 0.8 }), { granted: true });
+  assert.equal(db.read('assistantBudget/2026-10').reservedUsd, 0.8);
+  assert.equal(db.read(admission.path).heldUsd, 0.8, 'the hold rides on the reservation');
+  // No room for a second fallback under the $1 ceiling: refused, nothing written.
+  assert.deepEqual(await extendAiAdmission(store, admission, { budgetUsd: 1, extraUsd: 0.8 }), { granted: false });
+  assert.equal(db.read('assistantBudget/2026-10').reservedUsd, 0.8);
+  await settleAiAdmission(store, admission, { costUsd: 0.01, answered: true });
+  await settleAiAdmission(store, admission, { costUsd: 0.01, answered: true });
+  assert.equal(db.read('assistantBudget/2026-10').reservedUsd, 0, 'settlement released the added hold, once');
+  assert.equal(db.read('assistantBudget/2026-10').spentUsd, 0.01);
+  await assert.rejects(extendAiAdmission(store, admission, { budgetUsd: 1, extraUsd: 0.1 }), /not pending/);
+});
+
+test('a fallback is never contacted without winning its own hold', async () => {
+  let openAiCalls = 0;
+  const providers = [
+    { name: 'gemini', run: async () => { throw new ProviderUnavailable('gemini', 'HTTP 429'); } },
+    { name: 'openai', run: async () => { openAiCalls++; return { usage: { inputTokens: 100, outputTokens: 10 } }; } },
+  ];
+  const asked = [];
+  const refused = meterProviders(providers, { reserve: async (usd) => { asked.push(usd); return false; } });
+  assert.equal(refused.heldUsd, 0, 'admission holds only the free provider that leads');
+  await assert.rejects(refused.providers[0].run({}), ProviderUnavailable);
+  assert.deepEqual(asked, [], 'the first provider runs on the admission hold');
+  await assert.rejects(refused.providers[1].run({}), ProviderUnavailable);
+  assert.deepEqual(asked, [providerReservationUsd('openai')], 'asked for exactly its worst case');
+  assert.equal(openAiCalls, 0, 'refused, so never called');
+  assert.equal(refused.costUsd(), 0);
+
+  const unmetered = meterProviders(providers);
+  await assert.rejects(unmetered.providers[1].run({}), ProviderUnavailable, 'no reserve means no fallback');
+  assert.equal(openAiCalls, 0);
+
+  const granted = meterProviders(providers, { reserve: async () => true });
+  await granted.providers[1].run({});
+  assert.equal(openAiCalls, 1);
+  assert.ok(granted.costUsd() > 0 && granted.costUsd() < providerReservationUsd('openai'), 'settled at usage');
+});
+
+test('concurrent free-tier turns are not capped by paid fallback holds', async () => harness(async ({ db, request }) => {
+  const viaHarness = globalThis.fetch;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(typeof input === 'string' ? input : input.url);
+    if (url.hostname === 'generativelanguage.googleapis.com') {
+      // Long enough that every turn is admitted before any settles.
+      await sleep(50);
+      return Response.json({ id: 'i', steps: [{ type: 'model_generated', content: [{ type: 'text', text: 'Hi' }] }] });
+    }
+    return viaHarness(input, init);
+  };
+  // $5 ceiling, OpenAI armed behind Gemini: the old $0.80-per-turn hold
+  // admitted six of these and refused the rest with nothing spent.
+  const responses = await Promise.all(Array.from({ length: 10 }, () =>
+    request('POST', '/api/assistant', { messages: [{ role: 'user', content: 'hello' }] }, undefined, { GEMINI_API_KEY: 'g' })));
+  assert.deepEqual(responses.map((r) => r.status), Array(10).fill(200));
+  const budget = db.read('assistantBudget/' + new Date().toISOString().slice(0, 7));
+  assert.equal(budget.reservedUsd, 0);
+  assert.equal(budget.spentUsd, 0);
+}));
+
+test('a turn that falls back holds that provider, then settles at what it used', async () => harness(async ({ db, request, calls }) => {
+  const viaHarness = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(typeof input === 'string' ? input : input.url);
+    if (url.hostname === 'generativelanguage.googleapis.com') return new Response('quota', { status: 429 });
+    return viaHarness(input, init);
+  };
+  const response = await request('POST', '/api/assistant', { messages: [{ role: 'user', content: 'hello' }] }, undefined, { GEMINI_API_KEY: 'g' });
+  assert.equal(response.status, 200);
+  assert.equal(calls(), 1, 'OpenAI answered');
+  const admissions = [...db.docs.keys()].filter((p) => p.startsWith('assistantAdmissions/'));
+  assert.equal(admissions.length, 1);
+  const reservation = db.read(admissions[0]);
+  assert.equal(reservation.heldUsd, providerReservationUsd('openai'), 'the fallback hold was added');
+  assert.equal(reservation.status, 'settled');
+  const budget = db.read('assistantBudget/' + new Date().toISOString().slice(0, 7));
+  assert.equal(budget.reservedUsd, 0);
+  assert.ok(budget.spentUsd > 0 && budget.spentUsd < 0.01, 'charged for 120 tokens, not the hold');
+}));
 
 test('review and academic bodies stop reading at their byte caps before database work', async () => harness(async ({ db }) => {
   const token = await sign();
