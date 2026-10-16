@@ -6,7 +6,8 @@
  * grid rows / columns to CSS grid-row / grid-column or to pixel offsets.
  */
 
-import type { NormalizedSection, WeekdayName } from './connectFeed';
+import { slotFaculties } from './connectFeed';
+import type { NormalizedSection, SlotKind, WeekdayName } from './connectFeed';
 
 const WEEK_ORDER: readonly WeekdayName[] = [
   'SATURDAY',
@@ -26,6 +27,14 @@ export interface GridBlock {
   sectionId: number;
   courseCode: string;
   sectionName: string;
+  /** Whether this meeting is the section's theory class or its lab. */
+  kind: SlotKind;
+  /**
+   * Who teaches *this meeting*, never empty — a lab names its own faculty
+   * (often two), `TBA` for anyone unassigned. See `slotFaculties`.
+   */
+  faculties: string[];
+  /** `faculties` joined for display, e.g. `"TAP, TBA"`. */
   facultyInitials: string;
   /**
    * Room for *this meeting* — the slot's own room (labs meet elsewhere than
@@ -139,11 +148,14 @@ export function computeGridLayout(
       if (localEnd <= localStart) continue;
       const rowStart = Math.floor((localStart - startMin) / rowMinutes);
       const rowEnd = Math.ceil((localEnd - startMin) / rowMinutes);
+      const faculties = slotFaculties(s, slot);
       blocks.push({
         sectionId: s.sectionId,
         courseCode: s.courseCode,
         sectionName: s.sectionName,
-        facultyInitials: s.facultyInitials,
+        kind: slot.kind,
+        faculties,
+        facultyInitials: faculties.join(', '),
         roomName: slot.room || s.roomName,
         day: slot.day,
         dayCol,
