@@ -6,7 +6,7 @@
 // highlighting + a source/age badge that's honest about freshness.
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
-import { indexByCourse, hasClassClash, hasExamClash, parseFeed } from '../core/connectFeed.js';
+import { indexByCourse, hasClassClash, hasExamClash, parseFeed, slotFaculties } from '../core/connectFeed.js';
 import { parseConnectSchedule, picksFromImport } from '../core/connectScheduleImport.js';
 import {
   archiveCacheKey,
@@ -1231,7 +1231,7 @@ function _agendaItemHTML(block, clashMap, hueMap) {
       <div class="routine-agenda-time">${_min2hhmm(block.startMin)}<span>${_min2hhmm(block.endMin)}</span></div>
       <div class="routine-agenda-body">
         <div class="routine-agenda-code">${escHtml(block.courseCode)} <span class="routine-agenda-sec">Section ${escHtml(block.sectionName)}</span>${clashPill}</div>
-        <div class="routine-agenda-meta">${escHtml(block.facultyInitials || 'TBA')}${_facultyBadgeHTML(block)} · ${escHtml(block.roomName || '—')}</div>
+        <div class="routine-agenda-meta">${_blockFacultiesHTML(block, (f) => _facultyBadgeHTML({ facultyInitials: f }))} · ${escHtml(block.roomName || '—')}</div>
       </div>
     </div>`;
 }
@@ -1274,17 +1274,21 @@ function _gridBlockHTML(block, clashMap, hueMap) {
     styleParts.push(`--sub-x: calc(100% * ${block.subCol})`);
   }
   const styles = styleParts.join('; ');
-  const rating = _store.ratingLoaded
-    ? getRatingForSection({ facultyInitials: block.facultyInitials }, _store.ratingMap)
-    : null;
-  const ratingBadge = (rating && rating.tier !== 'unknown')
-    ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
-    : '';
-  const ratingTitle = rating && rating.tier !== 'unknown'
-    ? ` — ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
-    : '';
+  const ratingBadge = (f) => {
+    const rating = _knownRating(f);
+    return rating
+      ? ` <span class="routine-grid-block-rating routine-faculty-badge--${rating.tier}">★ ${escHtml(formatRatingScore(rating.overall))}</span>`
+      : '';
+  };
+  const facultyTitle = _blockFaculties(block).map((f) => {
+    const rating = _knownRating(f);
+    return rating
+      ? `${f} ★${formatRatingScore(rating.overall)} (${rating.count} review${rating.count === 1 ? '' : 's'})`
+      : f;
+  }).join(', ');
   const clashLabel = isClash ? ' — clashes with another class' : '';
-  const title = `${block.courseCode} Section ${block.sectionName} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${block.facultyInitials || 'TBA'}${ratingTitle} — ${block.roomName || ''}${clashLabel}`;
+  const kindLabel = block.kind === 'lab' ? ' lab' : '';
+  const title = `${block.courseCode} Section ${block.sectionName}${kindLabel} — ${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)} — ${facultyTitle} — ${block.roomName || ''}${clashLabel}`;
   // Non-color clash cue (⚠) so the state reads without relying on red alone. It
   // rides the time line, not the code line: 12px of mark there would push a
   // 7-character room onto the ellipsis at a 1280 window, and the time line has
@@ -1305,10 +1309,33 @@ function _gridBlockHTML(block, clashMap, hueMap) {
   return `
     <div class="routine-grid-block ${isClash ? 'routine-grid-block--clash' : ''} ${isSplit ? 'routine-grid-block--split' : ''}" style="${styles}" tabindex="0" role="group" aria-label="${escAttr(title)}" title="${escAttr(title)}">
       <div class="routine-grid-block-code"><span class="routine-grid-block-codetext">${escHtml(block.courseCode)}</span>${roomLabel}</div>
-      <div class="routine-grid-block-meta">${escHtml(block.facultyInitials || 'TBA')}${ratingBadge} · Sec ${escHtml(block.sectionName)}</div>
+      <div class="routine-grid-block-meta">${_blockFacultiesHTML(block, ratingBadge)} · Sec ${escHtml(block.sectionName)}</div>
       <div class="routine-grid-block-time">${clashMark}<span class="routine-grid-block-timetext">${_min2hhmm(block.startMin)}–${_min2hhmm(block.endMin)}</span></div>
     </div>
   `;
+}
+
+// Who teaches one grid block. A lab names its own faculty — often two, and
+// "TAP, TBA" until the university assigns them (core/connectFeed.js
+// slotFaculties) — so each name is listed with its own rating rather than the
+// section's theory faculty standing in for all of them.
+function _blockFaculties(block) {
+  if (Array.isArray(block.faculties) && block.faculties.length > 0) return block.faculties;
+  return [block.facultyInitials || 'TBA'];
+}
+
+function _blockFacultiesHTML(block, badgeFor) {
+  return _blockFaculties(block)
+    .map((f) => `${escHtml(f)}${f === 'TBA' ? '' : badgeFor(f)}`)
+    .join(', ');
+}
+
+// A faculty's rating when there is one worth showing; null while reviews load,
+// for TBA, and for the "unknown" tier the badges never render.
+function _knownRating(initials) {
+  if (!_store.ratingLoaded || initials === 'TBA') return null;
+  const r = getRatingForSection({ facultyInitials: initials }, _store.ratingMap);
+  return r && r.tier !== 'unknown' ? r : null;
 }
 
 // Build a courseCode -> hue map by walking the grid blocks in first-appearance
@@ -1661,6 +1688,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
           <span class="routine-collapsed-pick">
             <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+            ${_collapsedLabFacultyHTML(section)}
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
             <span class="routine-collapsed-room" title="Room">${escHtml(_formatRooms(section))}</span>
             ${clashPill}
@@ -1750,7 +1778,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
-      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+      <span class="routine-section-faculty" title="${escAttr(_sectionFacultyTitle(section))}">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}${_sectionLabFacultyHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
       ${bare ? '' : `<span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
@@ -1773,6 +1801,42 @@ function _facultyBadgeHTML(section) {
     ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
     : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
   return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
+}
+
+// Who teaches a section's lab, or null when it has none. Its own list — often
+// two people, not always the theory faculty — or "TAP, TBA" until assigned
+// (core/connectFeed.js slotFaculties), the same names the grid's lab block shows.
+function _labFaculties(section) {
+  const hasLab = (section.classSlots || []).some((slot) => slot.kind === 'lab');
+  return hasLab ? slotFaculties(section, { kind: 'lab' }) : null;
+}
+
+// The folded course row has width to spare, so each lab faculty gets a badge.
+function _collapsedLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  const names = lab
+    .map((f) => `${escHtml(f)}${f === 'TBA' ? '' : _facultyBadgeHTML({ facultyInitials: f })}`)
+    .join(', ');
+  return `<span class="routine-collapsed-labfac" title="Lab faculty"><span class="routine-lab-tag">Lab</span> ${names}</span>`;
+}
+
+// The section list's faculty column is 56px — a second, quieter line under the
+// theory faculty, names only; their ratings ride the cell's title.
+function _sectionLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  return `<span class="routine-section-labfac"><span class="routine-lab-tag">Lab</span> ${escHtml(lab.join(', '))}</span>`;
+}
+
+function _sectionFacultyTitle(section) {
+  const named = (f) => {
+    const r = _knownRating(f);
+    return r ? `${f} ★${formatRatingScore(r.overall)}` : f;
+  };
+  const theory = `Faculty: ${named(section.facultyInitials || 'TBA')}`;
+  const lab = _labFaculties(section);
+  return lab ? `${theory} · Lab: ${lab.map(named).join(', ')}` : theory;
 }
 
 // Rooms for a picked section, de-duplicated in slot order — a section with a

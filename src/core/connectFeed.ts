@@ -110,6 +110,14 @@ export interface NormalizedSection {
   isFull: boolean;
   /** Free-form faculty initials string from the feed, e.g. `"SHO"`. */
   facultyInitials: string;
+  /**
+   * Who teaches the lab, as the feed spells it — a comma list such as
+   * `"THMD,ARFB"`, since a lab often has more than one faculty, or `"TBA"`
+   * until the university assigns them. Not necessarily the theory faculty.
+   * Null when the feed publishes no lab faculty at all. Read it through
+   * `slotFaculties`, which knows what TBA and null mean.
+   */
+  labFacultyInitials: string | null;
   roomName: string;
   semesterSessionId: number | null;
   /** Class meetings (theory + lab merged). */
@@ -244,6 +252,7 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     consumedSeat,
     isFull: capacity > 0 && consumedSeat >= capacity,
     facultyInitials: (raw.faculties ?? '').trim().toUpperCase(),
+    labFacultyInitials: (raw.labFaculties ?? '').trim().toUpperCase() || null,
     roomName,
     semesterSessionId: typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
     classSlots,
@@ -255,6 +264,43 @@ export function normalizeSection(raw: RawSection): NormalizedSection | null {
     // and normalizing it here would put a grammar in the feed layer.
     prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
   };
+}
+
+/**
+ * A feed faculty string as a list of initials: `"THMD, ARFB"` → `["THMD",
+ * "ARFB"]`. Placeholders (`TBA`) and repeats are dropped, so an unassigned
+ * section reads as an empty list.
+ */
+export function splitFacultyInitials(value: string | null | undefined): string[] {
+  const out: string[] = [];
+  for (const part of String(value ?? '').split(',')) {
+    const initials = part.trim().toUpperCase();
+    if (initials && initials !== 'TBA' && !out.includes(initials)) out.push(initials);
+  }
+  return out;
+}
+
+/**
+ * Who teaches one meeting of a section, for display: never empty, `TBA`
+ * standing in for anyone not yet assigned.
+ *
+ * A theory slot is the section's faculty. A lab slot is the lab's own list —
+ * often two people, and not always including the theory faculty. Until the
+ * university assigns it (the feed says `TBA`), the lab shows the theory
+ * faculty plus `TBA`: a lab is run by more than one person, and the theory
+ * faculty is the one already known. A source that publishes no lab faculty at
+ * all (null) leaves the lab with the theory faculty, as before.
+ */
+export function slotFaculties(
+  section: Pick<NormalizedSection, 'facultyInitials'> &
+    Partial<Pick<NormalizedSection, 'labFacultyInitials'>>,
+  slot: Pick<TimeSlot, 'kind'>,
+): string[] {
+  const theory = splitFacultyInitials(section.facultyInitials);
+  const labRaw = section.labFacultyInitials ?? null;
+  if (slot.kind !== 'lab' || labRaw === null) return theory.length > 0 ? theory : ['TBA'];
+  const lab = splitFacultyInitials(labRaw);
+  return lab.length > 0 ? lab : [...theory, 'TBA'];
 }
 
 /**
