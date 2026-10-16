@@ -15,6 +15,7 @@ import {
     detectClashes,
     isClashFree,
     summarizeFeed,
+    slotFaculties,
 } from '../js/core/connectFeed.js';
 // The typed twin (#479). Imported alongside the JS so the parity block below
 // fails if either copy drifts again.
@@ -206,6 +207,40 @@ test('merges lab schedules into classSlots', () => {
     });
     eq(out.classSlots.length, 2);
     eq(out.classSlots[1].day, 'THURSDAY');
+});
+// ---- lab faculty -------------------------------------------------------------
+// The feed names the lab's own faculty separately (labFaculties) — often two
+// people, not always including the theory faculty, and TBA until assigned. The
+// grid used to label a lab with the theory faculty alone.
+const LAB_SECTION = {
+    sectionId: 1, courseCode: 'CSE221', faculties: 'TAP',
+    sectionSchedule: {
+        classSchedules: [{ day: 'SUNDAY', startTime: '11:00', endTime: '12:20' }],
+    },
+    labSchedules: [{ day: 'SATURDAY', startTime: '14:00', endTime: '16:50' }],
+    labFaculties: 'TBA',
+};
+test('keeps the lab faculty the feed publishes', () => {
+    eq(normalizeSection({ ...LAB_SECTION, labFaculties: 'thmd,ARFB ' }).labFacultyInitials, 'THMD,ARFB');
+    eq(normalizeSection(LAB_SECTION).labFacultyInitials, 'TBA');
+    eq(normalizeSection({ ...LAB_SECTION, labFaculties: undefined }).labFacultyInitials, null);
+});
+test('a lab slot names every lab faculty, not the theory faculty', () => {
+    const s = normalizeSection({ ...LAB_SECTION, faculties: 'DTAZ', labFaculties: 'THMD,ARFB' });
+    const [theory, lab] = s.classSlots;
+    eq(slotFaculties(s, theory), ['DTAZ']);
+    eq(slotFaculties(s, lab), ['THMD', 'ARFB']);
+});
+test('an unassigned lab shows the theory faculty plus TBA', () => {
+    const s = normalizeSection(LAB_SECTION);
+    eq(slotFaculties(s, s.classSlots[1]), ['TAP', 'TBA']);
+    eq(slotFaculties({ ...s, facultyInitials: 'TBA' }, s.classSlots[1]), ['TBA']);
+});
+test('a source with no lab faculty leaves the lab with the theory faculty', () => {
+    const s = normalizeSection({ ...LAB_SECTION, labFaculties: null });
+    eq(slotFaculties(s, s.classSlots[1]), ['TAP']);
+    // A section cached before labFacultyInitials existed reads the same way.
+    eq(slotFaculties({ facultyInitials: 'TAP' }, { kind: 'lab' }), ['TAP']);
 });
 test('parses classStartDate/classEndDate, nulling malformed values', () => {
     const ok = normalizeSection({
