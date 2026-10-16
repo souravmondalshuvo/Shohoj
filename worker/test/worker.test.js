@@ -52,7 +52,9 @@ import {
   ASSISTANT_SYSTEM,
   ASSISTANT_TOOLS,
   MINOR_PICKER_LOCATION,
+  assistantSystemFor,
   executeAssistantTool,
+  loadStudentBrief,
   validateRoutinePicks,
   validateAssistantMessages,
 } from '../assistant.js';
@@ -2605,27 +2607,50 @@ async function makeServiceAccountJson() {
     assertEq(seen.users, 1, 'one users/{uid} read for the whole turn');
   });
 
-  await test('a failed snapshot read is retried by the next tool, not cached', async () => {
+  // The first read is the one started beside admission (#915). Its failure
+  // must not stick: the record is built from a second read, and the tool that
+  // follows reuses that one.
+  await test('a failed snapshot read is retried, not cached', async () => {
     const { res, seen } = await assistantRequest({
       anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
       users: (n) => n === 1
         ? new Response('unavailable', { status: 503 })
         : json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } }),
-      openai: (n) => n <= 2
+      openai: (n) => n === 1
         ? json(openAiResponse([{
           type: 'function_call',
-          call_id: `c${n}`,
+          call_id: 'c1',
           name: 'get_cgpa_scenario',
           arguments: JSON.stringify({ target_cgpa: 3.8 }),
         }]))
         : json(openAiSays('Done.')),
     });
     assertEq(res.status, 200);
-    assertEq(seen.users, 2, 'the second tool read again');
-    const outputOf = (i) =>
-      JSON.parse(seen.openaiBodies[i]).input.filter(item => item.type === 'function_call_output').at(-1).output;
-    assert(outputOf(1).startsWith('Error:'), 'the first read failed as a tool error');
-    assertEq(JSON.parse(outputOf(2)).current.cgpa, 3.5, 'the retry answered from the record');
+    assertEq(seen.users, 2, 'one failed read, one retry, and nothing after');
+    const first = JSON.parse(seen.openaiBodies[0]);
+    assert(first.input[0].content.includes('STUDENT RECORD'), 'the record survived the failed read');
+    const output = JSON.parse(seen.openaiBodies[1]).input
+      .find(item => item.type === 'function_call_output').output;
+    assertEq(JSON.parse(output).current.cgpa, 3.5, 'the tool answered from the retried read');
+  });
+
+  await test('the first model call already carries the student record', async () => {
+    const { res, seen } = await assistantRequest({
+      anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
+      openai: () => json(openAiSays('You have earned 6 credits.')),
+      body: { messages: [{ role: 'user', content: 'how many credits do I have?' }] },
+    });
+    assertEq(res.status, 200);
+    assertEq(seen.openai, 1, 'answered without a tool round');
+    const system = JSON.parse(seen.openaiBodies[0]).input[0].content;
+    assert(system.startsWith(ASSISTANT_SYSTEM), 'the shared rules come first, unchanged');
+    const record = JSON.parse(system.slice(system.lastIndexOf('\n') + 1));
+    // Alice has two graded courses and no department: the executor's own
+    // output, error code included, not a paraphrase of it.
+    assertEq(record.get_degree_progress.earned_credits, 6);
+    assertEq(record.get_degree_progress.error, 'no_department');
+    assertEq(record.get_minor_progress.error, 'no_minor');
+    assertEq(seen.users, 1);
   });
 
   // The assistant runs on the project owner's own API key, so an off-topic
@@ -2647,6 +2672,80 @@ async function makeServiceAccountJson() {
     // room nobody is using. Dropping this line turns an honest suggestion into
     // a booking the student cannot rely on (#645).
     assert(/no room-booking feed/.test(ASSISTANT_SYSTEM), 'the room limit is stated');
+  });
+
+  // The student record (#915) is the tools' own output, placed where the
+  // first call can see it. These pin what it is built from and what happens
+  // when it cannot be built.
+  await test('the student record is the record tools\' own output', async () => {
+    const ctx = { loadUserSnapshot: async () => ({ ...JSON.parse(ALICE_SNAPSHOT), currentDept: 'CSE' }) };
+    const brief = await loadStudentBrief(ctx);
+    assertEq(
+      JSON.stringify(brief.get_degree_progress),
+      JSON.stringify(await executeAssistantTool('get_degree_progress', {}, ctx)),
+      'identical to calling the tool',
+    );
+    assertEq(
+      JSON.stringify(brief.get_minor_progress),
+      JSON.stringify(await executeAssistantTool('get_minor_progress', {}, ctx)),
+    );
+    const system = assistantSystemFor(brief);
+    assert(system.startsWith(ASSISTANT_SYSTEM), 'the rules are not reworded per turn');
+    assert(/counts\./.test(ASSISTANT_SYSTEM), 'the grounding rule admits the record as a tool result');
+    assert(/still needs its own tool/.test(system), 'the record does not stand in for other tools');
+  });
+
+  await test('no readable record leaves the prompt exactly as it was', async () => {
+    assertEq(assistantSystemFor(null), ASSISTANT_SYSTEM);
+    assertEq(await loadStudentBrief({}), null, 'no loader, no record');
+    assertEq(
+      await loadStudentBrief({ loadUserSnapshot: async () => { throw new Error('firestore down'); } }),
+      null,
+      'a failed read degrades to the tools, not to an error',
+    );
+  });
+
+  await test('every provider sends the turn\'s prompt, and the fallback gets the same one', async () => {
+    const seenSystems = [];
+    const stub = (name, fail) => ({
+      name,
+      run: async ({ system }) => {
+        seenSystems.push(system);
+        if (fail) throw new ProviderUnavailable(name, 'down');
+        return { text: 'ok', usage: { inputTokens: 1, outputTokens: 1 } };
+      },
+    });
+    await runAssistantTurn({
+      providers: [stub('gemini', true), stub('claude', false)],
+      messages: [{ role: 'user', content: 'hi' }],
+      ctx: {},
+      system: 'TURN PROMPT',
+    });
+    assertEq(seenSystems.join('|'), 'TURN PROMPT|TURN PROMPT');
+
+    let geminiBody;
+    await runGeminiTurn({
+      apiKey: 'k', messages: [{ role: 'user', content: 'hi' }], ctx: {}, system: 'TURN PROMPT',
+      fetchImpl: async (url, init) => { geminiBody = JSON.parse(init.body); return json({ id: 'i1', output_text: 'ok' }); },
+    });
+    assertEq(geminiBody.system_instruction, 'TURN PROMPT');
+
+    let openAiBody;
+    await runOpenAiTurn({
+      apiKey: 'k', messages: [{ role: 'user', content: 'hi' }], ctx: {}, system: 'TURN PROMPT',
+      fetchImpl: async (url, init) => { openAiBody = JSON.parse(init.body); return json(openAiSays('ok')); },
+    });
+    assertEq(openAiBody.input[0].content, 'TURN PROMPT');
+
+    let claudeBody;
+    await runClaudeTurn({
+      anthropic: { messages: { create: async (body) => {
+        claudeBody = body;
+        return assistantMessage({ content: [{ type: 'text', text: 'ok' }] });
+      } } },
+      messages: [{ role: 'user', content: 'hi' }], ctx: {}, system: 'TURN PROMPT',
+    });
+    assertEq(claudeBody.system, 'TURN PROMPT');
   });
 
   await test('both providers are driven by the same system prompt', async () => {
