@@ -413,7 +413,7 @@ A separate admin shell at `/admin/` for moderation and audit work.
 
 ### ☁ Cloud Sync
 
-Sign in with your university Google account (`@g.bracu.ac.bd`, or `@northsouth.edu` on the shell) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
+Sign in with your university Google account (`@g.bracu.ac.bd`, `@northsouth.edu`, `@diu.edu.bd` or `@s.diu.edu.bd`) and your data syncs automatically across all your devices via Firebase. Your CGPA, semesters, and grades are always with you — whether you're on your phone, laptop, or a friend's computer.
 
 - **Google Sign-In** — custom modal with BRACU domain restriction, no browser dialogs
 - **Automatic sync** — data saves to Firestore every time you make a change
@@ -1213,7 +1213,7 @@ Additional notes on Repeat:
 
 ### Cloud Sync
 
-- Requires a Google account on a registered campus domain — `@g.bracu.ac.bd` everywhere, plus `@northsouth.edu` on the shell. Anything else is rejected client-side and by Firestore security rules.
+- Requires a Google account on a registered campus domain — `@g.bracu.ac.bd`, `@northsouth.edu`, `@diu.edu.bd` or `@s.diu.edu.bd`, on both frontends. Anything else is rejected client-side and by Firestore security rules.
 - Firestore document limit: **512KB per user**. A typical full transcript is well under 50KB, so this limit is unlikely to be reached in practice.
 - Offline changes are saved to `localStorage` and synced automatically when reconnected.
 - When both a device and the account hold data, the conflict is resolved by **asking you**, on a data fingerprint — never by "newest wins". Simultaneous edits on two devices are still last-write-wins within a session; no field-level merge is performed.
@@ -1349,12 +1349,12 @@ Academic sync and community metadata live in Firestore. Paper file bodies are st
 | Routine Builder / Seat Status / Free Rooms      | 🔶 Live — depend on the third-party CONNECT feed        |
 | Campus Map                                      | 🔶 Live — scheduled occupancy only, no ad-hoc bookings  |
 | Lost & Found                                    | 🔶 Live — claim relay needs a configured email sender   |
-| Bus Routes                                      | ✅ Live — static, from the official brochure            |
+| Bus Routes                                      | ✅ Live — static; BRACU's from the brochure, NSU's a past schedule, DIU's as of the day read |
 | Cafeteria Guide                                 | 🔶 Live — outlet directory; hours unverified until confirmed |
 | Shohoj Assistant                                | 🔶 Live — free-tier model, monthly spend ceiling, scope-bounded |
 | Admin Dashboard                                 | ✅ Production-ready for current moderation flows        |
 | React Router shell (`/app/`)                    | 🔶 Beta — full route parity, cutover still pending      |
-| Multi-campus tenancy                            | 🔶 Live on the shell (BRACU + NSU); root app still BRACU-only |
+| Multi-campus tenancy                            | 🔶 Live on both frontends (BRACU, NSU, DIU); some NSU and DIU tabs are root-only until the shell can serve them |
 
 ---
 
