@@ -1,0 +1,18 @@
+{
+  "source": "bubt-programs",
+  "note": "Undergraduate programmes and total credits from the programme list bubt.edu.bd embeds in every page; school is the faculty its academic hierarchy files the department under. Program codes are Shohoj's; names are BUBT's. Only name, credits and duration in that list are real: its curriculum and semester-breakdown fields are template text (BBA in Accounting lists \"Introduction to Programming\"). The diploma-holder (evening) tracks of CSE, EEE, Civil and Textile are not listed separately, and their totals are not published. Graduate programmes (MBA 66, LL.M 41, M.Sc. CSE 40, M.Sc. Economics 40, MA in ELT 40) are left out, as for the other campuses. termSystem: Law follows the bi-semester calendar, every other programme the trimester one (bubt-calendar-263).",
+  "records": [
+    {"code": "BBA-ACT", "name": "Bachelor of Business Administration in Accounting", "school": "Faculty of Business & Economics", "totalCredits": 132, "termSystem": "trimester"},
+    {"code": "BBA-FIN", "name": "Bachelor of Business Administration in Finance", "school": "Faculty of Business & Economics", "totalCredits": 132, "termSystem": "trimester"},
+    {"code": "BBA-MGT", "name": "Bachelor of Business Administration in Management", "school": "Faculty of Business & Economics", "totalCredits": 132, "termSystem": "trimester"},
+    {"code": "BBA-MKT", "name": "Bachelor of Business Administration in Marketing", "school": "Faculty of Business & Economics", "totalCredits": 132, "termSystem": "trimester"},
+    {"code": "ECO", "name": "Bachelor of Science in Economics", "school": "Faculty of Business & Economics", "totalCredits": 130, "termSystem": "trimester"},
+    {"code": "CSE", "name": "Bachelor of Science in Computer Science and Engineering", "school": "Faculty of Computer Science & Artificial Intelligence", "totalCredits": 154, "termSystem": "trimester", "note": "Trimester by its own Fall 2026 course offer (\"Trisemester\").", "source": "bubt-cse-offer-263"},
+    {"code": "DSE", "name": "B.Sc. in Data Science and Engineering", "school": "Faculty of Computer Science & Artificial Intelligence", "totalCredits": 138, "termSystem": "trimester", "note": "A new programme: the Fall 2026 routine has intakes 1 to 3 only."},
+    {"code": "EEE", "name": "Bachelor of Electrical and Electronic Engineering", "school": "Faculty of Sciences & Engineering", "totalCredits": 142, "termSystem": "trimester"},
+    {"code": "CE", "name": "Bachelor of Science in Civil Engineering", "school": "Faculty of Sciences & Engineering", "totalCredits": 150, "termSystem": "trimester"},
+    {"code": "TEX", "name": "Bachelor of Science in Textile Engineering", "school": "Faculty of Sciences & Engineering", "totalCredits": 147, "termSystem": "trimester"},
+    {"code": "ENG", "name": "Bachelor of Arts with Honours in English", "school": "Faculty of Arts Humanities & Social Sciences", "totalCredits": 130, "termSystem": "trimester"},
+    {"code": "LLB", "name": "Bachelor of Laws (LL.B Hons)", "school": "Faculty of Law", "totalCredits": 147, "termSystem": "bisemester"}
+  ]
+}
