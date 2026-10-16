@@ -127,6 +127,32 @@ test('a retaken course resolves to the better grade for an NSU student', () => {
     assert.equal(totals.attemptedCredits, 6);
 });
 
+test('two DIU courses that share a title are two courses, not a retake', () => {
+    // THM's theory and its 1-credit sessional have the same title and ISCED
+    // codes one apart. Both count.
+    const DIU = UNIVERSITIES.diu;
+    const semesters = [
+        semester(1, [
+            course('Tour, Travel and Transport Management (1015-205)', 'A', 3),
+            course('Tour, Travel and Transport Management (1015-206)', 'B', 1),
+        ]),
+    ];
+    const totals = calculateCgpaTotals(semesters, { scale: DIU.grades, retake: DIU.retake });
+    assert.equal(totals.cgpaCredits, 4);
+    assert.equal(totals.cgpa, (3.75 * 3 + 3.0 * 1) / 4);
+
+    // The same ISCED-coded course twice is a retake, and the last attempt counts.
+    const retaken = calculateCgpaTotals(
+        [
+            semester(1, [course('Principles of Management (0413-101)', 'B')]),
+            semester(2, [course('Principles of Management (0413-101)', 'C')]),
+        ],
+        { scale: DIU.grades, retake: DIU.retake },
+    );
+    assert.equal(retaken.cgpaCredits, 3);
+    assert.equal(retaken.cgpa, 2.25);
+});
+
 test('the credit warning stays silent for a campus with no confirmed limits', () => {
     const overloaded = semester(1, [
         course('A (CSE101)', 'A', 6),
