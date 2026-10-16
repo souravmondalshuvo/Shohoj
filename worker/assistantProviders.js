@@ -92,15 +92,53 @@ export function createTurnTiming() {
   return { modelMs: 0, toolMs: 0, modelCalls: 0, toolCalls: 0, rounds: 0 };
 }
 
-/** Run `fn`, adding its wall time to `timing[key]`. Failures are timed too. */
-async function timed(timing, key, fn) {
+/**
+ * Run `fn`, adding its wall time to `timing[key]` and `calls` to the matching
+ * call count. Failures are timed too.
+ */
+async function timed(timing, key, fn, calls = 1) {
   const startedAt = Date.now();
   try {
     return await fn();
   } finally {
     timing[key] += Date.now() - startedAt;
-    timing[key === 'modelMs' ? 'modelCalls' : 'toolCalls'] += 1;
+    timing[key === 'modelMs' ? 'modelCalls' : 'toolCalls'] += calls;
   }
+}
+
+/**
+ * Execute one round's tool calls together (#912).
+ *
+ * A model that asks for seats in three courses asks for them in one round, and
+ * none of the three depends on another — so the round costs the slowest call,
+ * not the sum. Results come back in the order the model asked, which is the
+ * order every provider below pairs them up in.
+ *
+ * Each call is `{ name, readArgs }`. readArgs runs INSIDE the per-call guard
+ * because the arguments are the model's output: OpenAI's arrive as a JSON
+ * string, and malformed JSON is the model's mistake, reported back as that
+ * call's error rather than failing its siblings or the provider.
+ *
+ * toolMs is the round's wall time, not the sum of its calls: the student waits
+ * for the round, and summing overlapping calls would book time nobody spent.
+ */
+async function executeRound(calls, ctx, timing) {
+  return timed(
+    timing,
+    'toolMs',
+    () =>
+      Promise.all(
+        calls.map(async ({ name, readArgs }) => {
+          try {
+            const result = await executeAssistantTool(name, readArgs(), ctx);
+            return { content: JSON.stringify(result), isError: false };
+          } catch (e) {
+            return { content: `Error: ${e?.message || 'tool failed'}`, isError: true };
+          }
+        }),
+      ),
+    calls.length,
+  );
 }
 
 const NO_ANSWER = 'Sorry, I could not produce an answer. Please try rephrasing.';
@@ -177,26 +215,18 @@ export async function runClaudeTurn({ anthropic, messages, ctx }) {
       return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
 
     convo.push({ role: 'assistant', content: response.content });
-    const results = [];
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue;
-      let content;
-      let isError = false;
-      try {
-        content = JSON.stringify(
-          await timed(timing, 'toolMs', () => executeAssistantTool(block.name, block.input, ctx)),
-        );
-      } catch (e) {
-        content = `Error: ${e?.message || 'tool failed'}`;
-        isError = true;
-      }
-      results.push({
-        type: 'tool_result',
-        tool_use_id: block.id,
-        content,
-        ...(isError ? { is_error: true } : {}),
-      });
-    }
+    const uses = response.content.filter((block) => block.type === 'tool_use');
+    const outcomes = await executeRound(
+      uses.map((block) => ({ name: block.name, readArgs: () => block.input })),
+      ctx,
+      timing,
+    );
+    const results = uses.map((block, i) => ({
+      type: 'tool_result',
+      tool_use_id: block.id,
+      content: outcomes[i].content,
+      ...(outcomes[i].isError ? { is_error: true } : {}),
+    }));
     convo.push({ role: 'user', content: results });
   }
 
@@ -308,21 +338,24 @@ export async function runOpenAiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
         arguments: call.arguments,
       });
     }
-    for (const call of calls) {
-      let out;
-      try {
-        // Arguments arrive as a JSON string; malformed JSON is the model's
-        // mistake, so it is reported back as a tool error rather than treated
-        // as the provider being down.
-        const args = JSON.parse(call.arguments || '{}');
-        out = JSON.stringify(
-          await timed(timing, 'toolMs', () => executeAssistantTool(call.name, args, ctx)),
-        );
-      } catch (e) {
-        out = `Error: ${e?.message || 'tool failed'}`;
-      }
-      input.push({ type: 'function_call_output', call_id: call.call_id, output: out });
-    }
+    // Arguments arrive as a JSON string; malformed JSON is the model's
+    // mistake, so it is reported back as a tool error rather than treated as
+    // the provider being down.
+    const outcomes = await executeRound(
+      calls.map((call) => ({
+        name: call.name,
+        readArgs: () => JSON.parse(call.arguments || '{}'),
+      })),
+      ctx,
+      timing,
+    );
+    calls.forEach((call, i) => {
+      input.push({
+        type: 'function_call_output',
+        call_id: call.call_id,
+        output: outcomes[i].content,
+      });
+    });
   }
 
   return { text: lastText || TOO_MANY_ROUNDS, usage, usageComplete, timing };
@@ -500,29 +533,27 @@ export async function runGeminiTurn({ apiKey, messages, ctx, fetchImpl = fetch }
     const calls = geminiSteps(body).filter((step) => step?.type === 'function_call');
     if (calls.length === 0) return { text: lastText || NO_ANSWER, usage, usageComplete, timing };
 
-    const results = [];
-    for (const call of calls) {
-      let out;
-      try {
-        // Arguments arrive parsed here, unlike OpenAI's JSON string — accept
-        // both rather than assuming, since a malformed value is the model's
-        // mistake and belongs in the tool result, not in a provider failure.
-        const args =
-          typeof call.arguments === 'string' ? JSON.parse(call.arguments || '{}') : call.arguments;
-        out = JSON.stringify(
-          await timed(timing, 'toolMs', () => executeAssistantTool(call.name, args || {}, ctx)),
-        );
-      } catch (e) {
-        out = `Error: ${e?.message || 'tool failed'}`;
-      }
-      results.push({
-        type: 'function_result',
+    // Arguments arrive parsed here, unlike OpenAI's JSON string — accept both
+    // rather than assuming, since a malformed value is the model's mistake and
+    // belongs in the tool result, not in a provider failure.
+    const outcomes = await executeRound(
+      calls.map((call) => ({
         name: call.name,
-        call_id: call.call_id ?? call.id,
-        result: [{ type: 'text', text: out }],
-      });
-      grounding.push({ name: call.name, output: out });
-    }
+        readArgs: () =>
+          (typeof call.arguments === 'string'
+            ? JSON.parse(call.arguments || '{}')
+            : call.arguments) || {},
+      })),
+      ctx,
+      timing,
+    );
+    const results = calls.map((call, i) => ({
+      type: 'function_result',
+      name: call.name,
+      call_id: call.call_id ?? call.id,
+      result: [{ type: 'text', text: outcomes[i].content }],
+    }));
+    calls.forEach((call, i) => grounding.push({ name: call.name, output: outcomes[i].content }));
 
     // Continue THIS turn against the interaction the model just created.
     payload = {
