@@ -808,8 +808,8 @@ plan: three campuses sign in today, on both frontends.
 
   | | BRACU | NSU | DIU |
   | --- | --- | --- | --- |
-  | Calculator, Playground | ✅ both | ✅ both | ✅ root only — DIU publishes no catalogue, so you type each course's credits, and only the root calculator has a credits field |
-  | Degree, Planner, Transcript import | ✅ both | ✅ both | — no published curriculum or prerequisites, and no transcript format seen yet |
+  | Calculator, Playground | ✅ both | ✅ both | ✅ root only — DIU's per-program course lists fill in credits where a course is listed, and you type them where it isn't; only the root calculator has a credits field |
+  | Degree, Planner, Transcript import | ✅ both | ✅ both | — the shell's degree tracker counts towards BRACU's programs, DIU publishes no prerequisites, and no DIU transcript has been seen |
   | Reviews, Papers, Groups | ✅ both | ✅ both (empty until NSU students post) | — each names a course, and DIU's departments write codes five different ways |
   | Feedback, Profile | ✅ both | ✅ both | ✅ both |
   | Routine, Free Rooms | ✅ both, live feed | ✅ root only, from a dated section snapshot | — DIU posts each department's routine as its own PDF |
