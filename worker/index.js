@@ -70,7 +70,9 @@
 
 import { jwtVerify, createRemoteJWKSet, createLocalJWKSet, SignJWT, importPKCS8 } from 'jose';
 import {
+  assistantSystemFor,
   loadSeatIndexFromFeed,
+  loadStudentBrief,
   validateAssistantMessages,
   validateRoutinePicks,
 } from './assistant.js';
@@ -1793,11 +1795,41 @@ async function handleAssistant(request, env, origin, execCtx) {
 
   const day = dayKey();
   const quotaLimit = dailyLimit(env);
+  // The uid is interpolated into the Firestore path HERE, server-side.
+  const readUserSnapshot = async () => {
+    const saToken = await getServiceAccountAccessToken(env);
+    const fields = await firestoreGetFields(env, saToken, `users/${uid}`);
+    if (!fields || typeof fields.data !== 'string') return null;
+    try {
+      return JSON.parse(fields.data);
+    } catch {
+      return null;
+    }
+  };
+  // One read per turn (#912). Most tools start from the saved semesters, and a
+  // turn that asks for a CGPA scenario and degree progress — in one round or
+  // two — would otherwise fetch the same document twice. Scoped to this
+  // request, so it can never serve one student's record to another, and never
+  // outlives a turn. A null (nothing saved) is a real answer and is kept; a
+  // failed read is not, so a later tool in the turn tries again.
+  let snapshotLoad = null;
+  const loadUserSnapshot = () => {
+    snapshotLoad ??= readUserSnapshot().catch((e) => {
+      snapshotLoad = null;
+      throw e;
+    });
+    return snapshotLoad;
+  };
   const meter = meterProviders(providers);
   let store;
   let admission;
   try {
     store = atomicStore(env, await getServiceAccountAccessToken(env));
+    // The student record (#915) needs the snapshot before the first model
+    // call. Start the read now, beside admission's own reads, instead of after
+    // it — the token is already cached, so this costs no second mint. A turn
+    // that is then refused has spent one read of the caller's own document.
+    loadUserSnapshot().catch(() => {});
     admission = await reserveAiAdmission(store, {
       uid,
       day,
@@ -1825,31 +1857,8 @@ async function handleAssistant(request, env, origin, execCtx) {
 
   // Capability-style loaders: the uid is interpolated into the Firestore path
   // HERE, server-side. assistant.js never sees a uid at all.
-  const readUserSnapshot = async () => {
-    const saToken = await getServiceAccountAccessToken(env);
-    const fields = await firestoreGetFields(env, saToken, `users/${uid}`);
-    if (!fields || typeof fields.data !== 'string') return null;
-    try {
-      return JSON.parse(fields.data);
-    } catch {
-      return null;
-    }
-  };
-  // One read per turn (#912). Most tools start from the saved semesters, and a
-  // turn that asks for a CGPA scenario and degree progress — in one round or
-  // two — would otherwise fetch the same document twice. Scoped to this
-  // request, so it can never serve one student's record to another, and never
-  // outlives a turn. A null (nothing saved) is a real answer and is kept; a
-  // failed read is not, so a later tool in the turn tries again.
-  let snapshotLoad = null;
   const ctx = {
-    loadUserSnapshot: () => {
-      snapshotLoad ??= readUserSnapshot().catch((e) => {
-        snapshotLoad = null;
-        throw e;
-      });
-      return snapshotLoad;
-    },
+    loadUserSnapshot,
     loadSeatIndex: () => loadSeatIndexCached(),
     // Client-supplied, validated above, and about the caller's own schedule
     // only — the tool schema still carries no identifier of any kind.
@@ -1888,10 +1897,17 @@ async function handleAssistant(request, env, origin, execCtx) {
 
   const turnStartedAt = Date.now();
   try {
+    // The student's own numbers, ready before the first model call (#915), so
+    // a CGPA or degree-progress question is answered in one call, not two.
+    // Built once here rather than per provider: a fallback answers from the
+    // same record without reading it again. No record → the plain prompt.
+    const system = assistantSystemFor(await loadStudentBrief(ctx));
+    const briefAt = Date.now();
     const { reply, provider, usage, timing } = await runAssistantTurn({
       providers: meter.providers,
       messages,
       ctx,
+      system,
       // A fallback is a real operational event — the primary provider is
       // failing for someone — so it is logged even though the student sees a
       // normal answer. No transcript, no uid: the reason only.
@@ -1918,6 +1934,7 @@ async function handleAssistant(request, env, origin, execCtx) {
         authMs: authAt - startedAt,
         budgetMs: budgetAt - authAt,
         turnMs: finishedAt - turnStartedAt,
+        briefMs: briefAt - turnStartedAt,
         modelMs: timing?.modelMs ?? 0,
         toolMs: timing?.toolMs ?? 0,
         modelCalls: timing?.modelCalls ?? 0,
