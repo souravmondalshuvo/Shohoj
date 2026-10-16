@@ -59,6 +59,42 @@ export async function reserveAiAdmission(
   throw new Error('AI admission contention');
 }
 
+// Add a fallback provider's hold to a pending reservation before that provider
+// is contacted (#920). Admission holds only the first provider's worst case —
+// nothing, when the free tier leads — so a turn the free tier answers never
+// ties up paid headroom. The extra hold is checked against the same ceiling
+// and written to the reservation in the same commit as the budget, so
+// settlement releases exactly what was held, retries included.
+export async function extendAiAdmission(store, admission, { budgetUsd, extraUsd }) {
+  if (!Number.isFinite(extraUsd) || extraUsd < 0) throw new Error('Invalid AI hold');
+  if (extraUsd === 0) return { granted: true };
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const reservation = await store.getDocSnapshot(admission.path);
+    if (!reservation) throw new Error('Missing AI reservation');
+    if (reservation.fields.status !== 'pending') throw new Error('AI reservation is not pending');
+    const heldUsd = nonnegative(reservation.fields, 'heldUsd');
+    const budget = await store.getDocSnapshot(reservation.fields.budgetPath);
+    const spent = nonnegative(budget?.fields, 'spentUsd');
+    const reserved = nonnegative(budget?.fields, 'reservedUsd');
+    if (budgetUsd === 0 || spent + reserved + extraUsd > budgetUsd) return { granted: false };
+    const updatedAt = new Date().toISOString();
+    try {
+      await store.commitWrites([
+        conditionalWrite(reservation.fields.budgetPath, budget, {
+          spentUsd: spent,
+          reservedUsd: reserved + extraUsd,
+          updatedAt,
+        }),
+        conditionalWrite(admission.path, reservation, { heldUsd: heldUsd + extraUsd, updatedAt }),
+      ]);
+      return { granted: true };
+    } catch (error) {
+      if (!error.conflict) throw error;
+    }
+  }
+  throw new Error('AI hold contention');
+}
+
 // Reservation status is part of the same commit: retries cannot double-charge
 // or double-refund. A failed paid attempt retains its pessimistic charge because
 // transport errors do not prove that the provider did no billable work.
