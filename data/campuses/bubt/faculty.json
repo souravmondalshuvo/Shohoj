@@ -1,6 +1,6 @@
 {
  "source": "bubt-routine-faculty",
- "note": "Every teacher the Fall 2026 annex routines name, with the full name each routine's legend gives for the initials (each initials maps to exactly one name across all 13 programmes; case is significant, as in ShS and DMFIa). dept is not published: it is the course subject this teacher teaches most often in the routines (an ENG teacher in a CSE section is ENG), so it is a subject, not a confirmed department. email is empty because the routines give none. courses is empty on purpose: BUBT's codes repeat across programmes with different meanings (CSE 209 is Operating Systems in CSE and Data Communication in CSE-DH), and half of them are four-digit (ENG 1101), which a course code here cannot hold yet.",
+ "note": "Every teacher the Fall 2026 annex routines name, with the full name each routine's legend gives for the initials (each initials maps to exactly one name across all 16 programmes on the endpoint, three of them (LL.M, Textile DH, Civil DH) linked from no BUBT page; case is significant, as in ShS and DMFIa). dept is not published: it is the course subject this teacher teaches most often in the routines (an ENG teacher in a CSE section is ENG), so it is a subject, not a confirmed department; a teacher listed in a legend with no scheduled slot (MACa, LL.M) takes the subject of their legend course. email is empty because the routines give none. courses is empty on purpose: BUBT's codes repeat across programmes with different meanings (CSE 209 is Operating Systems in CSE and Data Communication in CSE-DH), and half of them are four-digit (ENG 1101), which a course code here cannot hold yet.",
  "records": [
   {
    "initials": "AAA",
@@ -56,6 +56,13 @@
    "name": "Afroza Akter",
    "email": "",
    "dept": "BHC",
+   "courses": []
+  },
+  {
+   "initials": "AFT",
+   "name": "Afsara Tasnim",
+   "email": "",
+   "dept": "CE",
    "courses": []
   },
   {
@@ -252,6 +259,13 @@
    "name": "Chitra Roy",
    "email": "",
    "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "csen1",
+   "name": "New Faculty 1",
+   "email": "",
+   "dept": "CSE",
    "courses": []
   },
   {
@@ -538,7 +552,7 @@
    "initials": "HMO",
    "name": "Helal Morshed Omiyo",
    "email": "",
-   "dept": "LAW",
+   "dept": "GED",
    "courses": []
   },
   {
@@ -636,7 +650,7 @@
    "initials": "JUI",
    "name": "Junaid Ul Islam",
    "email": "",
-   "dept": "MTH",
+   "dept": "CE",
    "courses": []
   },
   {
@@ -738,10 +752,24 @@
    "courses": []
   },
   {
+   "initials": "MACa",
+   "name": "Md. Minhajul Abedin Chowdhury",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
    "initials": "MAFI",
    "name": "Md. Ashraful Islam",
    "email": "",
    "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MAHR",
+   "name": "Mahmudur Rahman",
+   "email": "",
+   "dept": "CE",
    "courses": []
   },
   {
@@ -1946,6 +1974,20 @@
    "name": "Tanzina Tazreen Meem",
    "email": "",
    "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "texn2",
+   "name": "New Faculty2",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "texn4",
+   "name": "New Faculty4",
+   "email": "",
+   "dept": "TEX",
    "courses": []
   },
   {
