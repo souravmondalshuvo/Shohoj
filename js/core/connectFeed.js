@@ -93,6 +93,9 @@ export function normalizeSection(raw) {
         consumedSeat,
         isFull: capacity > 0 && consumedSeat >= capacity,
         facultyInitials: (raw.faculties || '').trim().toUpperCase(),
+        // The lab's own faculty list ("THMD,ARFB", or "TBA" until assigned);
+        // null when the feed publishes none. Read through slotFaculties.
+        labFacultyInitials: (raw.labFaculties || '').trim().toUpperCase() || null,
         roomName,
         semesterSessionId:
             typeof raw.semesterSessionId === 'number' ? raw.semesterSessionId : null,
@@ -105,6 +108,32 @@ export function normalizeSection(raw) {
         // (#478), and normalizing it here would put a grammar in the feed layer.
         prerequisiteCourses: (raw.prerequisiteCourses ?? '').trim(),
     };
+}
+
+// A feed faculty string as a list of initials: "THMD, ARFB" → ["THMD", "ARFB"].
+// Placeholders (TBA) and repeats are dropped, so an unassigned section reads as
+// an empty list.
+export function splitFacultyInitials(value) {
+    const out = [];
+    for (const part of String(value ?? '').split(',')) {
+        const initials = part.trim().toUpperCase();
+        if (initials && initials !== 'TBA' && !out.includes(initials)) out.push(initials);
+    }
+    return out;
+}
+
+// Who teaches one meeting of a section, for display: never empty, TBA standing
+// in for anyone not yet assigned. A theory slot is the section's faculty; a lab
+// slot is the lab's own list — often two people, not always including the
+// theory faculty. Until the university assigns it (TBA), the lab shows the
+// theory faculty plus TBA. A source with no lab faculty at all (null) leaves
+// the lab with the theory faculty, as before.
+export function slotFaculties(section, slot) {
+    const theory = splitFacultyInitials(section.facultyInitials);
+    const labRaw = section.labFacultyInitials ?? null;
+    if (slot.kind !== 'lab' || labRaw === null) return theory.length > 0 ? theory : ['TBA'];
+    const lab = splitFacultyInitials(labRaw);
+    return lab.length > 0 ? lab : [...theory, 'TBA'];
 }
 
 export function parseFeed(payload) {
