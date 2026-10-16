@@ -1,4 +1,4 @@
-import { getActiveCatalog } from '../core/activeCatalog.js';
+import { catalogEntryFor, getActiveCatalog } from '../core/activeCatalog.js';
 import { state } from '../core/state.js';
 import { escHtml, escAttr } from '../core/helpers.js';
 
@@ -37,11 +37,17 @@ function showPortalSuggestions(inputEl, semId, cIdx, matches) {
   lastSuggestionShownAt = Date.now();
 }
 
-/** The active catalogue's entry for a row's name: its "(CODE)" suffix or a bare code. */
-function catalogEntryFor(name) {
-  const raw = String(name ?? '').trim();
-  const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-  return code ? getActiveCatalog().courses[code] ?? null : null;
+/**
+ * A typed course, found by its code. On a campus whose catalogue is partial
+ * (DIU) the code may be typed any of the ways the campus writes it — "0413
+ * 101", "0413101", "CSE 113" — and is matched as the catalogue writes it.
+ * Elsewhere the lookup is exactly as it has always been.
+ */
+function catalogEntryForTyped(text) {
+  const catalog = getActiveCatalog();
+  const exact = catalog.courses[text.toUpperCase()];
+  if (exact || catalog.typesCredits !== true) return exact;
+  return catalogEntryFor(text, catalog);
 }
 
 export function onCourseBlur(e, semId, cIdx) {
@@ -50,7 +56,7 @@ export function onCourseBlur(e, semId, cIdx) {
   const val = e.target.value.trim();
   const course = sem.courses[cIdx];
   const prevName = course.name;
-  const exactMatch = getActiveCatalog().courses[val.toUpperCase()]
+  const exactMatch = catalogEntryForTyped(val)
     || getActiveCatalog().allCourses.find(c =>
       c.full.toLowerCase() === val.toLowerCase() ||
       c.name.toLowerCase() === val.toLowerCase()
@@ -115,8 +121,8 @@ export function onCourseInput(e, semId, cIdx) {
 
   if (!val) { getPortal().innerHTML = ''; return; }
 
-  const { courses, allCourses } = getActiveCatalog();
-  const exactMatch = courses[raw.toUpperCase()];
+  const { allCourses } = getActiveCatalog();
+  const exactMatch = catalogEntryForTyped(raw);
   const t1 = exactMatch ? [exactMatch] : [];
   const t2 = allCourses.filter(c => c !== exactMatch && c.code.toLowerCase().startsWith(val));
   const t3 = allCourses.filter(c => c !== exactMatch && !t2.includes(c) && c.code.toLowerCase().includes(val));
