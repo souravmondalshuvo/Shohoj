@@ -37,6 +37,12 @@ const MOCK_FEED = [
     labSchedules: [slot('SATURDAY', '14:00:00', '16:50:00')],
     labFaculties: 'TBA', labRoomName: '09B-11L',
   }),
+  // A CSE221 section with no lab, so the list has a row that must not grow one.
+  section({
+    sectionId: 9202, courseCode: 'CSE221', courseName: 'ALGORITHMS', sectionName: '13',
+    faculties: 'FGZ', roomName: '10B-18C',
+    classSchedules: [slot('MONDAY', '14:00:00', '15:20:00')],
+  }),
   section({
     sectionId: 9301, courseCode: 'EEE103', courseName: 'CIRCUITS I', sectionName: '06',
     faculties: 'SAIF', roomName: '07A-01C',
@@ -96,4 +102,24 @@ test('a lab block names its own faculty, a theory block the theory faculty', asy
   await expect(eeeLab.locator('.routine-grid-block-meta')).toHaveText('AHFA, SMC · Sec 06');
   const eeeTheory = block(page, 'EEE103', '9:20');
   await expect(eeeTheory.locator('.routine-grid-block-meta')).toHaveText('SAIF · Sec 06');
+});
+
+test('the section list and the folded course row name the lab faculty too', async ({ page }) => {
+  await boot(page);
+  await page.locator('#routineCourseInput').fill('CSE221');
+  await page.locator('[data-action="routine:addCourse"]').click();
+
+  const row = (sid) => page.locator(`.routine-section-row[data-sid="${sid}"]`);
+  await expect(row(9201).locator('.routine-section-labfac')).toHaveText('Lab TAP, TBA');
+  await expect(row(9201).locator('.routine-section-faculty')).toHaveAttribute('title', 'Faculty: TAP · Lab: TAP, TBA');
+  await expect(row(9202).locator('.routine-section-labfac')).toHaveCount(0);
+
+  await row(9201).click();
+  const folded = page.locator('.routine-course-block--collapsed', { hasText: 'CSE221' });
+  await expect(folded.locator('.routine-collapsed-fac')).toHaveText('TAP');
+  await expect(folded.locator('.routine-collapsed-labfac')).toHaveText('Lab TAP, TBA');
+
+  await pick(page, 'EEE103', 9301);
+  const eee = page.locator('.routine-course-block--collapsed', { hasText: 'EEE103' });
+  await expect(eee.locator('.routine-collapsed-labfac')).toHaveText('Lab AHFA, SMC');
 });
