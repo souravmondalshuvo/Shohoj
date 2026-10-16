@@ -60,8 +60,14 @@ const results = read({
     table(['ARCH-102', 'Design Studio-I (Basic Design)', '0:5', '10'], ['ARCH-101', 'Architecture of Ancient Civilizations', '2:0', '2']),
   // ESDM: a header whose names are in the wrong order for its rows.
   esdm: table(['Course Title', 'Course Code', 'Credit'], ['ESDM101', 'Introduction to Environmental Science', '3'], ['BIO101A', 'Environmental Biology lab', '1']),
-  // The BBA family: ISCED field codes, which this importer does not read.
-  bba: table(['Course Code', 'Course Title', 'Credit'], ['0413-101', 'Principles of Management', '3']),
+  // The BBA family: ISCED field codes, spaced however the page spaces them.
+  bba: table(['Course Code', 'Course Title', 'Credit'], ['0413-101', 'Principles of Management', '3'], ['0321- 106L', 'Information Gathering Lab', '1']),
+  // ITM: a row with an ISCED code and the program's own; the program's is kept,
+  // and columns still line up from the first code cell.
+  itm: table(
+    ['Semester', 'BNQF Course Code', 'Course Code', 'Course Name', 'Total Credit', 'Sem. wise Credit'],
+    ['1st', '0613-123', 'ITM 123', 'Programming Fundamentals', '3', '13'],
+  ),
   // One code, two different credit values, or two different courses.
   conflicts: table(
     ['Code', 'Course Title', 'Credits'],
@@ -107,9 +113,16 @@ test('a header that does not line up with its rows falls back to the row itself'
   ]);
 });
 
-test('ISCED codes are counted, not read', () => {
-  assert.deepEqual(courses('bba'), []);
-  assert.equal(results.bba.report.isced, 1);
+test('ISCED codes are read, with one hyphen however the page spaces them', () => {
+  assert.deepEqual(courses('bba'), [
+    ['0321-106L', 'Information Gathering Lab', 1],
+    ['0413-101', 'Principles of Management', 3],
+  ]);
+  assert.equal(results.bba.report.isced, 2);
+});
+
+test("where a row has a field code and the program's own, the program's is kept", () => {
+  assert.deepEqual(courses('itm'), [['ITM123', 'Programming Fundamentals', 3]]);
 });
 
 test('a code that means two things is left out, and two wordings of one title are not', () => {
@@ -142,7 +155,7 @@ test('the committed lists are what the importer writes', () => {
   for (const program of new Set(file.records.map((r) => r.program))) {
     const codes = file.records.filter((r) => r.program === program).map((r) => r.code);
     assert.deepEqual(codes, [...codes].sort(), `${program} is in code order`);
-    assert.ok(codes.every((c) => /^[A-Z]{2,4}\d{3}[A-Z]{0,2}$/.test(c)));
+    assert.ok(codes.every((c) => /^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?)$/.test(c)), `${program}'s codes`);
   }
   assert.equal(new Set(keys).size, keys.length);
 
