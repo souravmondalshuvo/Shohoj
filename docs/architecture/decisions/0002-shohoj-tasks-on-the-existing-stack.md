@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-09-20
 - **Supersedes:** nothing
+- **Superseded in part by:** ADR 0003 (Tasks storage moves to Cloudflare D1; point 3
+  of the decision below no longer holds, everything else stands)
 - **Amends:** `docs/architecture/TARGET_ARCHITECTURE.md` (adds the `/api/v1` namespace
   and the server-owned user record; does not change the stack it names)
 - **Issue:** #710
