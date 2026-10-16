@@ -55,7 +55,10 @@ function gpaCoreUsesBestGradePolicyImpl(options = {}) {
     return seasonIndex < cutoffIndex;
 }
 export function getCourseCode(courseName) {
-    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?)\)$/);
+    // A subject code ("CSE110"), or an ISCED field code ("1015-205") as most
+    // DIU programs write theirs. Without the second, two DIU courses sharing a
+    // title would fall back to one title key and be counted as one retaken.
+    const match = courseName.match(/\(([A-Z]{2,4}\d{3}[A-Z]?|\d{4}-\d{3}[A-Z]?)\)$/);
     return match ? match[1] : null;
 }
 export function getCourseIdentity(courseName) {
