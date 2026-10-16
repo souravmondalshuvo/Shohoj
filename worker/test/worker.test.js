@@ -2634,6 +2634,18 @@ async function makeServiceAccountJson() {
     assertEq(JSON.parse(output).current.cgpa, 3.5, 'the tool answered from the retried read');
   });
 
+  await test('a hung users/{uid} read still lets the turn answer, without the record', async () => {
+    const { res, seen } = await assistantRequest({
+      anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
+      users: () => new Promise(() => {}),
+      openai: () => json(openAiSays('MAT216 has seats in section 3.')),
+      body: { messages: [{ role: 'user', content: 'are there seats in MAT216?' }] },
+    });
+    assertEq(res.status, 200);
+    assertEq(seen.openai, 1);
+    assertEq(JSON.parse(seen.openaiBodies[0]).input[0].content, ASSISTANT_SYSTEM, 'plain prompt');
+  });
+
   await test('the first model call already carries the student record', async () => {
     const { res, seen } = await assistantRequest({
       anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
@@ -2703,6 +2715,18 @@ async function makeServiceAccountJson() {
       null,
       'a failed read degrades to the tools, not to an error',
     );
+  });
+
+  // A read that hangs never rejects, so a catch alone would hold every turn —
+  // seats, rooms, declines — behind Firestore. The record is bounded instead.
+  await test('a stalled record read gives up on time instead of holding the turn', async () => {
+    const startedAt = Date.now();
+    const brief = await loadStudentBrief(
+      { loadUserSnapshot: () => new Promise(() => {}) },
+      { timeoutMs: 20 },
+    );
+    assertEq(brief, null);
+    assert(Date.now() - startedAt < 1000, 'returned on the timeout, not the read');
   });
 
   await test('every provider sends the turn\'s prompt, and the fallback gets the same one', async () => {
