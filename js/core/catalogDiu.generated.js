@@ -5,7 +5,7 @@
 // Source of truth: data/campuses/diu/programs.json and program-courses.json
 //
 // DIU's programs for the legacy bundle, read through js/core/activeCatalog.js.
-// 33 programs. Their courses — 692 across the 11 programs whose pages list
+// 33 programs. Their courses — 1558 across the 25 programs whose pages list
 // them in a form Shohoj reads — are in feeds/diu-courses.json, fetched only when a
 // DIU student is on the page (docs/campuses/diu-research.md says which programs,
 // and why the rest are not there).
