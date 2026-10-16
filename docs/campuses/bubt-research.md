@@ -21,9 +21,11 @@ Primary sources:
   (the new site's copy at `/Home/page_details/…` is a 404; the classic one is live)
 - Academic calendars — https://bubt.edu.bd/page/academic-calendar (Fall 2026 trimester
   and Fall 2026 Law bi-semester, embedded as JPEG scans in the page), plus the Spring
-  2026 and Summer 2026 PDFs and the Fall 2025 (Revised) PDF
+  2026 (trimester and Law bi-semester) and Summer 2026 PDFs and the Fall 2025 (Revised) PDF
 - Programmes and departments — the `window.undergraduateProgramsList`,
-  `window.departments` and `window.academicHierarchy` JSON every bubt.edu.bd page embeds
+  `window.departments` and `window.academicHierarchy` JSON every bubt.edu.bd page embeds;
+  the diploma-holder programme pages (`/program/bsc-in-cse-dh` etc.); and the admission
+  page's Spring 2027 fee table, which repeats every programme's credits
 - Class routines — https://bubt.edu.bd/routines, which links 13 programmes to
   `https://annex.bubt.edu.bd/global_file/routine.php?p=<programme>&semNo=068,502,614,902`
   (public HTML, no login) and the rest to PDFs
@@ -193,10 +195,12 @@ mechanism looks like it. Confirm with the registrar (question 2 in §16).
 
 14 weeks, a 3-credit theory course = 14 × 2 × 90 min.
 
-**Law (LL.B, LL.M): bi-semester** [official, *Academic Calendar Fall 2026 (Bi-Semester)*]:
-Fall runs **5 Jul → 29 Dec 2026** (mid-term 6–20 Sep, finals 1–15 Dec), Spring 2027
-from 3 Jan. ⚠ So **"Fall 2026" means Sep–Dec for a CSE student and Jul–Dec for a law
-student.** This is the same trap as NSU's BPharm/LLB, in reverse.
+**Law (LL.B, LL.M): bi-semester** [official, *Academic Calendar Spring 2026 (Bi-Semester)*
+and *Fall 2026 (Bi-Semester)*, Department of Law & Justice]: Spring runs **1 Jan →
+2 Jul 2026** (mid-term 24 Feb–12 Mar, finals 5–17 Jun); Fall runs **5 Jul → 29 Dec
+2026** (mid-term 6–20 Sep, finals 1–15 Dec); Spring 2027 from 3 Jan. ⚠ So **"Fall
+2026" means Sep–Dec for a CSE student and Jul–Dec for a law student**, and "Spring
+2026" Jan–Apr against Jan–Jun. This is the same trap as NSU's BPharm/LLB, in reverse.
 
 ### History — why old transcripts won't parse with one rule
 
@@ -219,7 +223,9 @@ Consequences for `semesterIdentity.js`:
 
 **Typos to correct, with a note, never silently:** the Fall 2026 and Summer 2026
 calendars both open with "commencement of classes of **Spring** – 2026", and the Law
-calendar has "Pre-Registration for Spring **2026**" (means 2027) and "22 **Non**".
+Fall calendar has "Pre-Registration for Spring **2026**" (means 2027) and "22 **Non**".
+The Law Spring calendar prints two wrong weekdays (14 Apr "Thursday" is a Tuesday;
+5–9 Apr "Sunday – Monday" ends on a Thursday); the dates are what count.
 
 **Term codes:** the routine endpoint takes `semNo=068,502,614,902`, four opaque internal
 ids (likely one per calendar stream or shift). Their meaning: [unknown]. Don't key
@@ -243,12 +249,19 @@ From the JSON every bubt.edu.bd page embeds [official]:
 | ENG | BA (Hons) in English | 130 | 4 yrs |
 | Economics | B.Sc. in Economics | 130 | 4 yrs |
 | LLB | LL.B (Hons) | 147 | 4 yrs |
+| CSE-DH | B.Sc. in CSE, Diploma Holder | 139 | 4 yrs |
+| EEE-DH | B.Sc. in EEE, Diploma Holder | 130 | 4 yrs |
+| CE-DH | B.Sc. in Civil Engineering, Diploma Holder | 133 | 4 yrs |
+| TEX-DH | B.Sc. in Textile Engineering, Diploma Holder | 130 | 4 yrs |
 
 Graduate: MBA 66, LL.M 41, M.Sc. CSE 40, M.Sc. Economics 40, MA in ELT 40 [official].
 
-- **DH (diploma-holder) tracks** exist for CSE, EEE, Civil and Textile and are labelled
-  "(Evening)" on the routines page [official]. Their credit totals aren't published
-  separately [unknown].
+- **DH (diploma-holder) tracks** for CSE, EEE, Civil and Textile are labelled
+  "(Evening)" on the routines page. The embedded list leaves them out, but each has its
+  own programme page (`/program/bsc-in-cse-dh` etc.) with its total [official].
+- **Cross-check:** the admission page's *Fee Structure – Spring 2027* table gives every
+  total above independently and agrees on all of them; Textile (DH) is the one it omits
+  [official].
 - **5 faculties, 15 departments/offices** (CSE and Data Science sit in the Faculty of
   Computer Science & AI) [official]. That gives the `school` per programme which DIU
   couldn't publish.
@@ -432,7 +445,7 @@ What the profile type can't say yet, that BUBT needs:
 
 | Feature | Ready? | Why |
 |---|---|---|
-| calculator, playground, degree, profile, feedback | 🔶 after §9 | Scale official, identical to DIU's; typed credits (as DIU) until a catalogue exists. Degree tracker gets 12 programme totals. |
+| calculator, playground, degree, profile, feedback | 🔶 after §9 | Scale official, identical to DIU's; typed credits (as DIU) until a catalogue exists. Degree tracker gets 16 programme totals. |
 | **routine** | 🔶 strong | All 13 annex programmes parse cleanly (§12); needs the intake-section schema DIU also needs |
 | **rooms** | 🔶 | Same data; 0 clashes; PDF-only programmes must be added or flagged first |
 | faculty directory / reviews | 🔶 | 292 official initials → names (§11); reviews also need §8 and §9 |
@@ -462,7 +475,8 @@ What the profile type can't say yet, that BUBT needs:
 10. Bus routes, stops and times? Is there a public schedule?
 11. Which buildings exist now (the routines use 1–5), and what do the room digits after
     the first encode?
-12. How long do the DH (evening) programmes take, and in how many credits?
+12. Is there a Textile (DH) row missing from the admission fee table, or is that
+    track no longer admitting?
 
 ## Data files
 
@@ -471,10 +485,11 @@ warnings):
 
 | File | What | Tag |
 |---|---|---|
-| `sources.json` | 17 sources | — |
+| `sources.json` | 23 sources | — |
 | `profile.json` | Grading (+ R and I), retake (`best`, A- and below), credit load (warn above 16, no hard max), 18 academic rules, both term systems with their history, day codes, buildings 2 and 3, room-code pattern | [official]; `emailDomains` empty with a note (§9); class divisions, honours, class standing empty with notes |
-| `programs.json` | 12 undergraduate programmes, credits, faculty, term system | [official] |
+| `programs.json` | 16 undergraduate programmes (the 4 diploma-holder tracks included), credits, faculty, term system | [official]; every total cross-checked against the admission fee table |
 | `calendar/261-trimester.json`, `262-trimester.json`, `263-trimester.json` | Spring, Summer, Fall 2026 | [official]; the "Spring – 2026" header slips recorded as the term they belong to, with a note |
+| `calendar/261-bisemester.json` | Spring 2026, Law | [official]; two wrong printed weekdays noted |
 | `calendar/263-bisemester.json` | Fall 2026, Law | [official]; "Spring 2026" pre-registration and "22 Non" slips noted |
 | `calendar/253-bisemester.json` | Fall 2025, the last university-wide bi-semester term | [official]; its 7 Jan Spring start conflicts with the Spring calendar's 1 Jan (noted) |
 | `faculty.json` | 292 initials → names | [derived] from the routine legends; `dept` is the subject taught most, `courses` empty (see the file's note) |
