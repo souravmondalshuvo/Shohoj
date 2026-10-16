@@ -76,6 +76,7 @@ import {
   openAiTools,
   ProviderUnavailable,
   runAssistantTurn,
+  runClaudeTurn,
   runGeminiTurn,
   runOpenAiTurn,
 } from '../assistantProviders.js';
@@ -2458,9 +2459,10 @@ async function makeServiceAccountJson() {
 
   // Drives one /api/assistant request with Firestore + both model APIs mocked.
   // `anthropic` and `openai` are handlers returning a Response (or throwing).
-  async function assistantRequest({ anthropic, openai, body }) {
+  // `users`, when given, answers the users/{uid} read instead of Alice's doc.
+  async function assistantRequest({ anthropic, openai, body, users }) {
     const { token, jwk } = await makeFirebaseToken(ASSISTANT_CLAIMS);
-    const seen = { anthropic: 0, openai: 0, openaiBodies: [] };
+    const seen = { anthropic: 0, openai: 0, openaiBodies: [], users: 0 };
     const mockFetch = async (input, init = {}) => {
       const call = await readFetchCall(input, init);
       if (call.url === 'https://oauth2.googleapis.com/token') {
@@ -2471,6 +2473,8 @@ async function makeServiceAccountJson() {
         return json({});
       }
       if (/\/documents\/users\//.test(call.url)) {
+        seen.users++;
+        if (users) return users(seen.users, call);
         return json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } });
       }
       const host = new URL(call.url).hostname;
@@ -2574,6 +2578,54 @@ async function makeServiceAccountJson() {
     assertEq(result.call_id, 'call_1');
     assertEq(JSON.parse(result.output).current.cgpa, 3.5, 'Alice\'s numbers, not Bob\'s');
     assert(!seen.openaiBodies[1].includes('BOBSECRET'), 'the canary never appears');
+  });
+
+  // Three tools across two rounds all start from the saved semesters. Each
+  // used to be its own Firestore GET (#912).
+  await test('a turn reads the student snapshot once, however many tools need it', async () => {
+    const call = (call_id, name, args) =>
+      ({ type: 'function_call', call_id, name, arguments: JSON.stringify(args) });
+    const { res, seen } = await assistantRequest({
+      anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
+      openai: (n) => {
+        if (n === 1) {
+          return json(openAiResponse([
+            call('c1', 'get_cgpa_scenario', { target_cgpa: 3.8 }),
+            call('c2', 'get_degree_progress', {}),
+          ]));
+        }
+        if (n === 2) {
+          return json(openAiResponse([call('c3', 'check_prerequisite', { course_code: 'CSE370' })]));
+        }
+        return json(openAiSays('Done.'));
+      },
+    });
+    assertEq(res.status, 200);
+    assertEq(seen.openai, 3, 'two tool rounds, then the answer');
+    assertEq(seen.users, 1, 'one users/{uid} read for the whole turn');
+  });
+
+  await test('a failed snapshot read is retried by the next tool, not cached', async () => {
+    const { res, seen } = await assistantRequest({
+      anthropic: () => json({ error: 'overloaded' }, { status: 529 }),
+      users: (n) => n === 1
+        ? new Response('unavailable', { status: 503 })
+        : json({ fields: { data: { stringValue: ALICE_SNAPSHOT } } }),
+      openai: (n) => n <= 2
+        ? json(openAiResponse([{
+          type: 'function_call',
+          call_id: `c${n}`,
+          name: 'get_cgpa_scenario',
+          arguments: JSON.stringify({ target_cgpa: 3.8 }),
+        }]))
+        : json(openAiSays('Done.')),
+    });
+    assertEq(res.status, 200);
+    assertEq(seen.users, 2, 'the second tool read again');
+    const outputOf = (i) =>
+      JSON.parse(seen.openaiBodies[i]).input.filter(item => item.type === 'function_call_output').at(-1).output;
+    assert(outputOf(1).startsWith('Error:'), 'the first read failed as a tool error');
+    assertEq(JSON.parse(outputOf(2)).current.cgpa, 3.5, 'the retry answered from the record');
   });
 
   // The assistant runs on the project owner's own API key, so an off-topic
@@ -2968,6 +3020,114 @@ async function makeServiceAccountJson() {
     // the model calls, so its time belongs to exactly one of them.
     assert(timing.toolMs < timing.modelMs + timing.toolMs, 'buckets overlap');
   });
+
+  // One round, two tools (#912). They run together, and the results go back in
+  // the order the model ASKED — not the order they finished. The first call is
+  // made the slow one, so a loop that paired results by finishing order would
+  // swap them.
+  {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const probe = () => {
+      const p = { inFlight: 0, peak: 0, started: 0 };
+      p.ctx = {
+        loadUserSnapshot: async () => {
+          const delay = p.started++ === 0 ? 40 : 5;
+          p.inFlight++;
+          p.peak = Math.max(p.peak, p.inFlight);
+          await sleep(delay);
+          p.inFlight--;
+          return JSON.parse(ALICE_SNAPSHOT);
+        },
+      };
+      return p;
+    };
+    const askedFor = (outputs) => outputs.map(o => JSON.parse(o).course_code).join(',');
+
+    await test('Claude runs a round\'s tools together, answering in the order asked', async () => {
+      const p = probe();
+      const requests = [];
+      const anthropic = {
+        messages: {
+          create: async (body) => {
+            requests.push(body);
+            if (requests.length > 1) {
+              return assistantMessage({ content: [{ type: 'text', text: 'Both open.' }] });
+            }
+            return assistantMessage({
+              stop_reason: 'tool_use',
+              content: [
+                { type: 'tool_use', id: 't1', name: 'check_prerequisite', input: { course_code: 'CSE370' } },
+                { type: 'tool_use', id: 't2', name: 'check_prerequisite', input: { course_code: 'CSE470' } },
+              ],
+            });
+          },
+        },
+      };
+      const { timing } = await runClaudeTurn({
+        anthropic,
+        messages: [{ role: 'user', content: 'can I take CSE370 and CSE470?' }],
+        ctx: p.ctx,
+      });
+      assertEq(p.peak, 2, 'both tools were in flight at once');
+      const results = requests[1].messages.at(-1).content;
+      assertEq(results.map(r => r.tool_use_id).join(','), 't1,t2');
+      assertEq(askedFor(results.map(r => r.content)), 'CSE370,CSE470');
+      assertEq(timing.toolCalls, 2, 'every call is counted');
+    });
+
+    await test('OpenAI runs a round\'s tools together; one bad call does not sink the rest', async () => {
+      const p = probe();
+      const bodies = [];
+      await runOpenAiTurn({
+        apiKey: 'k',
+        messages: [{ role: 'user', content: 'can I take CSE370 and CSE470?' }],
+        ctx: p.ctx,
+        fetchImpl: async (url, init) => {
+          bodies.push(JSON.parse(init.body));
+          if (bodies.length > 1) return json(openAiSays('Both open.'));
+          return json(openAiResponse([
+            { type: 'function_call', call_id: 'c1', name: 'check_prerequisite',
+              arguments: JSON.stringify({ course_code: 'CSE370' }) },
+            { type: 'function_call', call_id: 'c2', name: 'check_prerequisite',
+              arguments: JSON.stringify({ course_code: 'CSE470' }) },
+            { type: 'function_call', call_id: 'c3', name: 'check_prerequisite', arguments: '{oops' },
+          ]));
+        },
+      });
+      assertEq(p.peak, 2, 'both readable tools were in flight at once');
+      const outputs = bodies[1].input.filter(i => i.type === 'function_call_output');
+      assertEq(outputs.map(o => o.call_id).join(','), 'c1,c2,c3');
+      assertEq(askedFor(outputs.slice(0, 2).map(o => o.output)), 'CSE370,CSE470');
+      assert(outputs[2].output.startsWith('Error:'), 'malformed arguments are that call\'s error');
+    });
+
+    await test('Gemini runs a round\'s tools together, answering in the order asked', async () => {
+      const p = probe();
+      const bodies = [];
+      await runGeminiTurn({
+        apiKey: 'k',
+        messages: [{ role: 'user', content: 'can I take CSE370 and CSE470?' }],
+        ctx: p.ctx,
+        fetchImpl: async (url, init) => {
+          bodies.push(JSON.parse(init.body));
+          if (bodies.length > 1) return json(geminiSays('Both open.'));
+          return json({
+            id: 'i1',
+            steps: [
+              { type: 'function_call', id: 'g1', name: 'check_prerequisite',
+                arguments: { course_code: 'CSE370' } },
+              { type: 'function_call', id: 'g2', name: 'check_prerequisite',
+                arguments: { course_code: 'CSE470' } },
+            ],
+          });
+        },
+      });
+      assertEq(p.peak, 2, 'both tools were in flight at once');
+      const results = bodies[1].input;
+      assertEq(results.map(r => r.call_id).join(','), 'g1,g2');
+      assertEq(askedFor(results.map(r => r.result[0].text)), 'CSE370,CSE470');
+    });
+  }
 
   await test('a provider that reports no timing does not break the turn', async () => {
     // Every stub provider in this file returns { text, usage } and nothing
