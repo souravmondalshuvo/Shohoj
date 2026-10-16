@@ -1,0 +1,2050 @@
+{
+ "source": "bubt-routine-faculty",
+ "note": "Every teacher the Fall 2026 annex routines name, with the full name each routine's legend gives for the initials (each initials maps to exactly one name across all 13 programmes; case is significant, as in ShS and DMFIa). dept is not published: it is the course subject this teacher teaches most often in the routines (an ENG teacher in a CSE section is ENG), so it is a subject, not a confirmed department. email is empty because the routines give none. courses is empty on purpose: BUBT's codes repeat across programmes with different meanings (CSE 209 is Operating Systems in CSE and Data Communication in CSE-DH), and half of them are four-digit (ENG 1101), which a course code here cannot hold yet.",
+ "records": [
+  {
+   "initials": "AAA",
+   "name": "Md. Abdullah Al Azad",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "AAG",
+   "name": "Ali Azgar",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AAM",
+   "name": "Md. Abdulla Al Mamun",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "AAMN",
+   "name": "Abdullah Al Mahmud Nafiz",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "ABH",
+   "name": "Dr. Md. Abdul Hye",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "AC",
+   "name": "Avishek Chanda",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "ADSK",
+   "name": "Adnan Sakib",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AFA",
+   "name": "Afroza Akter",
+   "email": "",
+   "dept": "BHC",
+   "courses": []
+  },
+  {
+   "initials": "AH",
+   "name": "Mohammad Asif ul Haq",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "AHJ",
+   "name": "Ahmed Jarif",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "AHS",
+   "name": "Md. Amirul Hasan Shanto",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AIA",
+   "name": "Abdullah Ibn Asheque",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "AJK",
+   "name": "Ashfia Jannat Keya",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AKHA",
+   "name": "Mst. Aklima Khatun Akhi",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AKMA",
+   "name": "A.K.M. Amanullah",
+   "email": "",
+   "dept": "MEC",
+   "courses": []
+  },
+  {
+   "initials": "AMDS",
+   "name": "Akib Mohammad Sunny",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "AMK",
+   "name": "Mst. Amina Khatun",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "ANAZ",
+   "name": "Anusha Aziz",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "ANSA",
+   "name": "Ankan Saha",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AQR",
+   "name": "Md. Atiqur Rahman",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "AR",
+   "name": "Md. Ashiqur Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "ARI",
+   "name": "Md. Ariful Islam",
+   "email": "",
+   "dept": "CHE",
+   "courses": []
+  },
+  {
+   "initials": "ARS",
+   "name": "Md. Atiqur Rahman",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "ASK",
+   "name": "Ahmed Shafkat",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "ASMS",
+   "name": "A. S. M. Shafi",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "ASR",
+   "name": "Ashifur Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "AST",
+   "name": "Afia Sharmin Tuli",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "ASUH",
+   "name": "Asma-Ul-Husna",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "ATA",
+   "name": "Atiya Anika",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "AUH",
+   "name": "Md. Ashif-Ul-Haque",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "AWR",
+   "name": "Md. Anwar Hossen",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "AZ",
+   "name": "Md. Asaduzzaman",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "BH",
+   "name": "Md. Billal Hossain",
+   "email": "",
+   "dept": "ACT",
+   "courses": []
+  },
+  {
+   "initials": "BJM",
+   "name": "Bijon Mallik",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "CR",
+   "name": "Chitra Roy",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "CRa",
+   "name": "Chitra Roy",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "DAK",
+   "name": "Dil Afrooz Khushee",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "DALM",
+   "name": "Prof. Dr. Ahmed Al Mansur",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "DKG",
+   "name": "Dipta Kumar Ghoshe",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "DMAHa",
+   "name": "Prof. Dr. Md. Aminul Haque",
+   "email": "",
+   "dept": "CHE",
+   "courses": []
+  },
+  {
+   "initials": "DMFIa",
+   "name": "Dr. Md. Farijul Islam",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "DMMH",
+   "name": "Dr. Md. Milan Hossain",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "DMRI",
+   "name": "Dr. Md. Rajibul Islam",
+   "email": "",
+   "dept": "DSE",
+   "courses": []
+  },
+  {
+   "initials": "DMSA",
+   "name": "Dr. Md. Shamsul Arefin",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "DSA",
+   "name": "Dr. Sharmina Afrin",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "DSAAA",
+   "name": "Prof. Dr. Sarkar Ali Akkas",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "DSAM",
+   "name": "Prof. Dr. Syed Abdul Mofiz",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "DSH",
+   "name": "Prof. Dr. Syed Sarfaraj Hamid",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "DWF",
+   "name": "Dr. Waziha Farha",
+   "email": "",
+   "dept": "CHE",
+   "courses": []
+  },
+  {
+   "initials": "ED",
+   "name": "Eshita Datta",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "EMH",
+   "name": "Md. Enzamamul Haque",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "FABH",
+   "name": "Fairuz Anjum Binte Habib",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  },
+  {
+   "initials": "FADA",
+   "name": "Fairooz Anika Dipinty",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "FAH",
+   "name": "Fahmida Ahmed",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "FAI",
+   "name": "Farhana Islam",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FAIS",
+   "name": "Fatema Islam",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FAM",
+   "name": "Farha Akhter Munmun",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "FAS",
+   "name": "Faruk Sarker",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "FB",
+   "name": "Farhana Bhuiya",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FDA",
+   "name": "Ms. Fahmida Akhter",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FEM",
+   "name": "Ms. Farhana Easmin Mitu",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FFR",
+   "name": "Fawzia Fairooz",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "FH",
+   "name": "Fardin Helal",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "FI",
+   "name": "Ms. Farhana Islam",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "FJA",
+   "name": "Fateha Jannat Ayrin",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "FK",
+   "name": "Fahima Khanam",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "FM",
+   "name": "Ms. Falguni Mozammel",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "FMO",
+   "name": "Fahim Morshed",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "FRZK",
+   "name": "Farzana Akter Kanta",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "FTN",
+   "name": "Fariha Taskin",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "FZAR",
+   "name": "Fatima Zahra Ahasan Raisa",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "GCMa",
+   "name": "Dr. Gauranga Chandra Mohanta",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "HA",
+   "name": "Humayra Ahmed",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "HHS",
+   "name": "Hasibul Hossain Shajeeb",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "HI",
+   "name": "Ms. Hasina Islam",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "HMF",
+   "name": "Humayra Ferdous",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "HMO",
+   "name": "Helal Morshed Omiyo",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "HNA",
+   "name": "Hasnain Ahmed",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "IAS",
+   "name": "Iffat Ara Sanzida",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "IBI",
+   "name": "Ishraq Bintul Islam",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "JAK",
+   "name": "Jakia Akhter",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "JFM",
+   "name": "Jannatul Ferdous Mirza",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "JFMM",
+   "name": "Jannatul Ferdous Meem",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "JFS",
+   "name": "Jannatul Ferdousy Supty",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "JI",
+   "name": "Md. Johirul Islam",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "JNTF",
+   "name": "Jannatul Ferdoush",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "JS",
+   "name": "Jakia Sultana",
+   "email": "",
+   "dept": "STA",
+   "courses": []
+  },
+  {
+   "initials": "JSE",
+   "name": "Jahanara Sulthana Eti",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "JSP",
+   "name": "Jerin Sultana Prova",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "JT",
+   "name": "Jahid Tanvir",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "JUI",
+   "name": "Junaid Ul Islam",
+   "email": "",
+   "dept": "MTH",
+   "courses": []
+  },
+  {
+   "initials": "KA",
+   "name": "Mohammad Khairul Alam",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "KAA",
+   "name": "Prof Dr. K Ahmed Alam",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "KBO",
+   "name": "Khalid Bin Omar",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "KD",
+   "name": "Keya Das",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "KH",
+   "name": "Dr. Mohammad Kamrul Hasan",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "KKD",
+   "name": "Kazal Kumar Das",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "KMR",
+   "name": "K. M. Rahmatullah Rahat",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "KNBF",
+   "name": "Dr. Kazi Naeema Binte Faruky",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "KRA",
+   "name": "Khaledur Rahman",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "KSI",
+   "name": "Dr. Kazi Shamema Islam",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "KZM",
+   "name": "Kamruzzaman Mahedi",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "LBM",
+   "name": "Laila Binta Mustafiz",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "LSH",
+   "name": "Md. Lifatuzzaman Shawon",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  },
+  {
+   "initials": "MABSa",
+   "name": "Md. Abdullah Bin Samad",
+   "email": "",
+   "dept": "CHE",
+   "courses": []
+  },
+  {
+   "initials": "MAFI",
+   "name": "Md. Ashraful Islam",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MAHS",
+   "name": "Maliha Ahmed Siddique",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "MAI",
+   "name": "Ariful Islam",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "MAJ",
+   "name": "Meher Afroj",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MANQ",
+   "name": "M. A. Nur Quraishi",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MARH",
+   "name": "Mishal Al Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MARK",
+   "name": "Mariya Aziz Rokiya",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "MASR",
+   "name": "Md. Asadur Rahman",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "MAU",
+   "name": "Dr. Md. Aslam Uddin",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "MBR",
+   "name": "Md. Mahbub-Or-Rashid",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MD",
+   "name": "Ms. Mushfeka Deeba",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "MDAK",
+   "name": "Md. Ashik Khan",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MDAR",
+   "name": "Md. Abdur Rakib",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "MDI",
+   "name": "Md. Masudul Islam",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MDIH01",
+   "name": "Md. Imam Hossain",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "MDJI",
+   "name": "Mohammad Jahidul Islam",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MDR",
+   "name": "Mohammad Mahmudur Rahman Khan",
+   "email": "",
+   "dept": "MEC",
+   "courses": []
+  },
+  {
+   "initials": "MDRH",
+   "name": "Md. Moshiur Rahman",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "MDRS",
+   "name": "Md. Rakib Shahariar",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MDSA",
+   "name": "Md. Sayem Ali",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "MDSHA",
+   "name": "Md. Shakil Ahmed",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MDSI",
+   "name": "Md. Sahriar Islam",
+   "email": "",
+   "dept": "CHE",
+   "courses": []
+  },
+  {
+   "initials": "MDSN",
+   "name": "Md. Salahuddin",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MDSS",
+   "name": "Md. Shadman Sakib",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MDTH",
+   "name": "Md. Tanzil Hawlader",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MDZH",
+   "name": "Md. Zahed Hossain",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MEHT",
+   "name": "Md. Esharul Haque Tutul",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "MFAR",
+   "name": "Mst. Farzana Akhter",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "MFB",
+   "name": "Md. Faishal Badsha",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "MFH",
+   "name": "Md. Farooq Hasan",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "MHA",
+   "name": "Mafruha Hossain",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "MHB",
+   "name": "Mahbuba Habib",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MHN",
+   "name": "Md. Mahmudul Hassan",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "MHSA",
+   "name": "Most. Halimatuj Sadia",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "MI",
+   "name": "Minhajul Islam Ove",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "MISH",
+   "name": "Md. Ismail Hossain",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MJ",
+   "name": "Maharin Afroj",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MJA",
+   "name": "Jumana Asrat",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "MJI",
+   "name": "Md. Jobayer Islam",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MJP",
+   "name": "Mahmuda Jahan Papia",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "MKAI",
+   "name": "Maria Khan Agrani",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "MKI",
+   "name": "Mohammad Khabirul Islam",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "MM",
+   "name": "Mostafa Mahmud",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MMH",
+   "name": "Md. Mamun Hossain",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MMO",
+   "name": "Mridul Mondal",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MMSH",
+   "name": "Md. Mosharraf Hosain",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "MMSS",
+   "name": "Muhammad Mahbub Sarwar Shafi",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MNAH",
+   "name": "Md. Nazmul Hossain",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MNM",
+   "name": "Munsi Nahid Md Rahi",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MNS",
+   "name": "Meria Nusrat Sarkar",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "MPU",
+   "name": "Md. Parvez Uddin",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  },
+  {
+   "initials": "MRAS",
+   "name": "Md. Rezwan Ahmed",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "MRB",
+   "name": "Maruf Billah",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MRG",
+   "name": "Mushfiqur Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MRHM",
+   "name": "Md. Rahim Mia",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "MRI",
+   "name": "Md. Rakibul Islam",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "MRK",
+   "name": "Md. Rejaul Karim",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "MRL",
+   "name": "Md. Mostafizur Rahman Limon Sarker",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "MRN",
+   "name": "Mijanur Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MRRS",
+   "name": "Md. Rezwanur Rahman Sarkar",
+   "email": "",
+   "dept": "SOC",
+   "courses": []
+  },
+  {
+   "initials": "MRS",
+   "name": "Md. Razib Sheikh",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "MSBN",
+   "name": "Md. Shakibuzzaman",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "MSD",
+   "name": "Mahmud Sazzad",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "MSF",
+   "name": "Mastura Sadaf",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MSHBa",
+   "name": "Md. Sadekin Habib Bappy",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "MSHK",
+   "name": "Mohammad Saeid Hassan Khan",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "MSN",
+   "name": "Masuma Aktar Nodi",
+   "email": "",
+   "dept": "ACT",
+   "courses": []
+  },
+  {
+   "initials": "MSRR",
+   "name": "Md. Saifur Rahman Ruman",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MSU",
+   "name": "Mohammad Saifuddin",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "MSZ",
+   "name": "Md. Shahiduzzaman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "MT",
+   "name": "Masuma Tabasum Munmun",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "MTK",
+   "name": "Thawhidul Kabir",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "MTM",
+   "name": "Md. Methun Al-Mamun",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  },
+  {
+   "initials": "MU",
+   "name": "Md. Moslah Uddin",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "MUH",
+   "name": "Mahede-Ul-Hassan",
+   "email": "",
+   "dept": "MTH",
+   "courses": []
+  },
+  {
+   "initials": "MWA",
+   "name": "Most. Wahida Asna",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "MYA",
+   "name": "Md.Yousuf Ali",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "MZH",
+   "name": "Dr. Md. Zakir Hosain",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "MZHN",
+   "name": "Md. Zamil Hossain",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "NAA",
+   "name": "Nasrin Akter",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NAFZ",
+   "name": "Nadia Afroze",
+   "email": "",
+   "dept": "BHC",
+   "courses": []
+  },
+  {
+   "initials": "NAT",
+   "name": "Nahida Akter Tanjila",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NAYM",
+   "name": "Naeem Ahmmed",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "NB",
+   "name": "Ms. Nargis Begum",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "ND",
+   "name": "Niloy Das",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "NHN",
+   "name": "Md. Nahid Hossain",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NKD",
+   "name": "Nourin Khandaker",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NMD",
+   "name": "Natik Mahmud",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "NMM",
+   "name": "Nasirul Mumenin",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NNC",
+   "name": "Nafisa Nur Chowdhury",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "NR",
+   "name": "Naimur Rahman",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "NSH",
+   "name": "Nowrose Sharmin",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "NUKK",
+   "name": "Nusrat Kaniz Khan",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "NUS",
+   "name": "Nusrat Sultana",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "OFA",
+   "name": "Omar Faruck Ansari",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "PRGC",
+   "name": "Progga Chanda",
+   "email": "",
+   "dept": "HUM",
+   "courses": []
+  },
+  {
+   "initials": "RAIS",
+   "name": "Md. Rakibul Islam",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "RAMA",
+   "name": "Rakib Mahmud",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "RBH",
+   "name": "Rajorshi Bhattacharya",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "RCS",
+   "name": "Dr. Ronobir Chandra Sarker",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "RH",
+   "name": "Md. Reza Hassan Khan",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "RKB",
+   "name": "Rajib Kumar Bhowmik",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "RLA",
+   "name": "Ruhul Amin",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "RMH",
+   "name": "Dr. Mohammad Raihanul Hasan",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "RMU",
+   "name": "Rubaiyat Mustari",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "RN",
+   "name": "Rasheda Naznin",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "RNR",
+   "name": "Ragib Noor",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "RRL",
+   "name": "Raihana Roshni Labonno",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "RRS",
+   "name": "Ragib Rowshon",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "RRSA",
+   "name": "Rubaiya Reza Sohana",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "RS",
+   "name": "Rama Sarkar",
+   "email": "",
+   "dept": "MAT",
+   "courses": []
+  },
+  {
+   "initials": "SAFA",
+   "name": "Sayefa Arafah",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SAFO",
+   "name": "Saimoon Al Fashi Oman",
+   "email": "",
+   "dept": "ICT",
+   "courses": []
+  },
+  {
+   "initials": "SAK",
+   "name": "Shahnag Akter",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "SAM",
+   "name": "Shamim Ahmed",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SANA",
+   "name": "Sanjana Afrin",
+   "email": "",
+   "dept": "PHY",
+   "courses": []
+  },
+  {
+   "initials": "SAS",
+   "name": "Sadah Anjum Shanto",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SBA",
+   "name": "Md. Sabbir Ahmed",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "SBH",
+   "name": "Md. Sayeem Bin Hafiz",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  },
+  {
+   "initials": "SBI",
+   "name": "Shuvo Biswas",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SBSH",
+   "name": "Sumaiya Binte Shahid",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SCK",
+   "name": "Sudipto Chaki",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SD",
+   "name": "Sourav Debnath",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "SDH",
+   "name": "Md. Saddam Hossain",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SDK",
+   "name": "Shadman Ahmed Khan",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "SDM",
+   "name": "Sadia Mehrin",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "SF",
+   "name": "Sabiha Firdaus",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SG",
+   "name": "Sudipto Ghosh",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SHA",
+   "name": "Sharmin Akther",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "SHAM",
+   "name": "Shabuj Mia",
+   "email": "",
+   "dept": "BAN",
+   "courses": []
+  },
+  {
+   "initials": "SHD",
+   "name": "Shrabani Das",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SHG",
+   "name": "Md. Sabbir Hasan Sohag",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "SHH",
+   "name": "Shanzida Hassan",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "SHI",
+   "name": "Md. Shahidul Islam",
+   "email": "",
+   "dept": "STA",
+   "courses": []
+  },
+  {
+   "initials": "SHN",
+   "name": "Sumaia Haque Nira",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "SHP",
+   "name": "Shahadet Hosen Polash",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "ShS",
+   "name": "Sharmin Sultana",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "SJC",
+   "name": "Shefayatuj Johara Chowdhury",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SJS",
+   "name": "Shawlin Jahan Shefa",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "SKD",
+   "name": "Sourav Kundu",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SLA",
+   "name": "Md. Solaiman Alam",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "SLS",
+   "name": "Shaila Sarmin",
+   "email": "",
+   "dept": "MGT",
+   "courses": []
+  },
+  {
+   "initials": "SMAA",
+   "name": "Sheikh Md. Ashraful Alam Rony",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "SMMB",
+   "name": "S. M. Mostasim Billah",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "SMN",
+   "name": "Sumon Sheikh",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "SMY",
+   "name": "Sumona Yeasmin",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SPS",
+   "name": "Sondip Poul Singh",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SR",
+   "name": "Md. Saifur Rahman",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SRA",
+   "name": "Sworna Akter",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SRB",
+   "name": "Sadia Rahman Badhan",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "SRT",
+   "name": "Susmita Roy Tumpa",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "SSB",
+   "name": "Shanjida Sharmin Borsha",
+   "email": "",
+   "dept": "SOC",
+   "courses": []
+  },
+  {
+   "initials": "SSD",
+   "name": "Sudipa Saha",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "SSN",
+   "name": "Shaila Shaznin",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SST",
+   "name": "Sadia Sultana Turna",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "SSUM",
+   "name": "Syed Shihab Ul Mulk",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "STK",
+   "name": "Mst. Setu Khatun",
+   "email": "",
+   "dept": "BNG",
+   "courses": []
+  },
+  {
+   "initials": "SU",
+   "name": "Sultan Mahmud",
+   "email": "",
+   "dept": "MKT",
+   "courses": []
+  },
+  {
+   "initials": "SUBA",
+   "name": "Subrina Akter",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "SUI",
+   "name": "Suhana Islam",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "SUM",
+   "name": "Sumit Alam Khan",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SUN",
+   "name": "Sunita Nasrin",
+   "email": "",
+   "dept": "BUS",
+   "courses": []
+  },
+  {
+   "initials": "SUSM",
+   "name": "Susmita Majumder",
+   "email": "",
+   "dept": "CE",
+   "courses": []
+  },
+  {
+   "initials": "SYZ",
+   "name": "Syem Aziz",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "SZR",
+   "name": "Md. Shirazur Rahman",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "TAAH",
+   "name": "Tasnin Ahmed",
+   "email": "",
+   "dept": "ENG",
+   "courses": []
+  },
+  {
+   "initials": "TAB",
+   "name": "T.M. Amir-Ul-Haque Bhuiyan",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "TAHA",
+   "name": "Tahmina Akter",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "TAHH",
+   "name": "Tahmid Hasan",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "TAK",
+   "name": "Tahmina Akhter",
+   "email": "",
+   "dept": "GOP",
+   "courses": []
+  },
+  {
+   "initials": "TAN",
+   "name": "Tanvir Ahmed",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "TASU",
+   "name": "Tanzima Akter Sumi",
+   "email": "",
+   "dept": "LAW",
+   "courses": []
+  },
+  {
+   "initials": "TEM",
+   "name": "Tanzina Tazreen Meem",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "texn5",
+   "name": "New Faculty5",
+   "email": "",
+   "dept": "TEX",
+   "courses": []
+  },
+  {
+   "initials": "TIZ",
+   "name": "Tareq Imam Zahid",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "TKA",
+   "name": "Taskia Akhtar",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "TMM",
+   "name": "Tasniah Mohiuddin",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "TP",
+   "name": "Tasfiunnoor Pinky",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "TS",
+   "name": "Tasnim Sultana",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "TSK",
+   "name": "Taksina Kabir",
+   "email": "",
+   "dept": "QUA",
+   "courses": []
+  },
+  {
+   "initials": "TTM",
+   "name": "Tasfia Tasmin Mishu",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "TUI",
+   "name": "Md. Tanim-Ul-Islam",
+   "email": "",
+   "dept": "ACC",
+   "courses": []
+  },
+  {
+   "initials": "UHR",
+   "name": "Dr. Umme Habiba Rahman",
+   "email": "",
+   "dept": "ECO",
+   "courses": []
+  },
+  {
+   "initials": "UM",
+   "name": "Umme Muslima",
+   "email": "",
+   "dept": "EEE",
+   "courses": []
+  },
+  {
+   "initials": "ZAD",
+   "name": "Zunaid Ahmed",
+   "email": "",
+   "dept": "GED",
+   "courses": []
+  },
+  {
+   "initials": "ZAK",
+   "name": "Zobaer Al Khalil Zihad",
+   "email": "",
+   "dept": "CSE",
+   "courses": []
+  },
+  {
+   "initials": "ZS",
+   "name": "Zinat Sultana",
+   "email": "",
+   "dept": "FIN",
+   "courses": []
+  }
+ ]
+}
