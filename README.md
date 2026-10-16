@@ -15,7 +15,7 @@
   <img src="https://github.com/souravmondalshuvo/Shohoj/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/Status-v0.6.0-2ECC71?style=flat-square" alt="Status" />
   <img src="https://img.shields.io/badge/Stack-TypeScript%20·%20React%20·%20Firebase%20·%20Cloudflare-3498DB?style=flat-square" alt="Stack" />
-  <img src="https://img.shields.io/badge/University-BRAC%20University-F39C12?style=flat-square" alt="University" />
+  <img src="https://img.shields.io/badge/Campuses-BRACU%20·%20NSU%20·%20DIU-F39C12?style=flat-square" alt="Campuses" />
   <img src="https://img.shields.io/badge/License-MIT-2ECC71?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Courses-857%20in%20Catalog-E67E22?style=flat-square" alt="Courses" />
 </p>
@@ -65,16 +65,18 @@ shipping versus in progress:
   fund one. It is signed-in only, bounded to degree questions, and hidden
   outright when the Worker reports no provider is configured (`GET /ready`),
   rather than offering a button that cannot answer.
-- **Multi-campus works on the shell, not on the shipping root.** The React
-  shell resolves a student's campus from their email and applies that campus's
-  grading scale, retake/repeat policy and feature set throughout — so an NSU
-  transcript is scored on NSU's rules, and tabs a campus has no data for do not
-  render. The vanilla app at the site root is still BRACU-only, which is one
-  more reason the cutover matters. See [Multi-University Vision](#multi-university-vision).
+- **Three campuses sign in: BRACU, NSU and DIU.** Both frontends resolve a
+  student's campus from their email and apply that campus's grading scale,
+  retake/repeat policy and feature set throughout — so an NSU transcript is
+  scored on NSU's rules, and tabs a campus has no data for do not render. The
+  vanilla app at the site root actually serves the newer campuses *more* than
+  the shell does: NSU's Routine, Free Rooms and Campus Map, and DIU's
+  calculator, are root-only for now, because the shell's versions of those
+  routes still read BRACU's data. See [Multi-University Vision](#multi-university-vision).
 - **Some features depend on external data feeds** (live seat status, free rooms,
   the campus map's room status) that are third-party and best-effort.
-- **No claim of a user base.** This is a portfolio-grade project built for
-  BRACU students; adoption numbers are not tracked or advertised.
+- **No claim of a user base.** This is a portfolio-grade project that started
+  with BRACU students; adoption numbers are not tracked or advertised.
 - **Two features shipped outside the phase roadmap this cycle.** Shohoj Tasks
   (an academic task-management layer — deadlines, priority, grade impact, a
   subscribable calendar feed) and a Minor Program Tracker are both live on
