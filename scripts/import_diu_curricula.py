@@ -20,10 +20,13 @@ unique within a department. CSE212 is Discrete Mathematics in CSE and an
 object-oriented programming lab in RME; MAT101 is five different courses in
 five programs. A course is a code *in a program* here.
 
+Two kinds of code: a subject and three digits (CSE-115 → CSE115), and the
+ISCED field codes fifteen programs use (0413-111: a four-digit field of study
+and a three-digit number), kept as DIU writes them, with one hyphen. Where a
+row carries both (ITM prints a "BNQF Course Code" beside its own), the
+subject code is the one kept: it is the one the program teaches under.
+
 What it leaves out, and says so in the file's note and in its report:
-  - programs whose codes are ISCED field codes (0413-111). Shohoj's course
-    code is letters then three digits, everywhere from the campus database to
-    the Worker and the Firestore rules, and widening it is its own change.
   - programs whose page lists no courses, or lists them without credits.
   - single rows that don't read cleanly (no title, credits that aren't a
     multiple of 0.5, a code listed twice with different credits).
@@ -51,9 +54,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIU = os.path.join(ROOT, 'data', 'campuses', 'diu')
 
 # The campus database's course code, after spaces and hyphens are dropped.
-COURSE_CODE = re.compile(r'^[A-Z]{2,4}\d{3}[A-Z]{0,2}$')
+COURSE_CODE = re.compile(r'^(?:[A-Z]{2,4}\d{3}[A-Z]{0,2}|\d{4}-\d{3}[A-Z]?)$')
 LETTER = re.compile(r'^([A-Z]{2,4})\s*[-–]?\s*(\d{3})([A-Z]{0,2})$')
-ISCED = re.compile(r'^\d{4}\s*[-–]\s*\d{3}[A-Z]?$')
+ISCED = re.compile(r'^(\d{4})\s*[-–]\s*(\d{3})([A-Z]?)$')
 NUMBER = re.compile(r'^\d{1,2}(\.\d{1,2})?$')
 # A title cell that is really another column: a prerequisite list, "NIL", a number.
 NOT_A_TITLE = re.compile(r'^(nil|none|n/?a|-+|\d+(\.\d+)?)$|^([A-Z]{2,4}\s*\d{3}\s*[,+/&]\s*)+[A-Z]{2,4}\s*\d{3}$', re.I)
@@ -148,7 +151,7 @@ def tables_of(html_text):
 # ── Rows → courses ──────────────────────────────────────────────────────────
 
 def code_of(cell):
-    """('letter', 'CSE115') | ('isced', None) | (None, None).
+    """('letter', 'CSE115') | ('isced', '0413-111') | (None, None).
 
     A cell can pair a course's new and old codes ("ENG 114/ ENG 101"); the
     first is the one the page lists the course under, and is the one kept.
@@ -158,8 +161,9 @@ def code_of(cell):
     m = LETTER.match(text)
     if m:
         return 'letter', m.group(1) + m.group(2) + m.group(3)
-    if ISCED.match(text):
-        return 'isced', None
+    m = ISCED.match(text)
+    if m:
+        return 'isced', f'{m.group(1)}-{m.group(2)}{m.group(3)}'
     return None, None
 
 
@@ -220,13 +224,16 @@ def read_rows(summary):
                 if h[0] is not None and (h[2] is not None or h[3] is not None):
                     head = carried = (*h, len(row))
                 continue
-            at, kind, code = coded[0]
-            if kind == 'isced':
-                rows.append({'kind': 'isced'})
-                continue
+            # A subject code over a field code when a row has both.
+            at, kind, code = next((c for c in coded if c[1] == 'letter'), coded[0])
+
+            # Columns line up from the row's first code cell, which sits under
+            # the header's first code column even when the code kept is a
+            # later one (ITM: "BNQF Course Code | Course Code | …").
+            anchor = coded[0][0]
 
             def cell(col):
-                i = at + (col - head[0])
+                i = anchor + (col - head[0])
                 return row[i] if 0 <= i < len(row) else None
 
             title = cell(head[1]) if head and head[1] is not None else None
@@ -242,7 +249,7 @@ def read_rows(summary):
                 # No header, or one whose columns don't line up with the rows
                 # (ESDM's header names the title column "Course Code").
                 credits = next((v for v in (number(c) for c in reversed(row[at + 1:])) if v is not None), None)
-            rows.append({'kind': 'letter', 'code': code, 'title': title, 'credits': credits})
+            rows.append({'kind': kind, 'code': code, 'title': title, 'credits': credits})
     return rows
 
 
@@ -254,7 +261,7 @@ def clean_title(title):
 def related_titles(a, b):
     """Two wordings of one title: equal, or one inside the other, once spacing and
     punctuation go ("Physics: Modern Physics, …" and "Physics : Modern Physics, …")."""
-    ka, kb = (re.sub(r'[^a-z0-9]', '', t.lower()) for t in (a, b))
+    ka, kb = (re.sub(r'[^a-z0-9]', '', t.lower().replace('&', ' and ')) for t in (a, b))
     return ka in kb or kb in ka
 
 
@@ -265,7 +272,6 @@ def courses_of(summary):
     for r in read_rows(summary):
         if r['kind'] == 'isced':
             report['isced'] += 1
-            continue
         report['rows'] += 1
         code, title, credits = r['code'], r['title'], r['credits']
         if not COURSE_CODE.match(code):
@@ -317,14 +323,16 @@ def main(src):
             record = json.load(open(record_path(src, p['id'])))
             courses, rep = courses_of((record.get('program') or {}).get('summary'))
             source = f'diu-curriculum-{code.lower()}'
-            if rep['isced'] > rep['rows']:
-                left_out.append((code, f"codes are ISCED field codes ({rep['isced']} rows like 0413-111)"))
-                continue
             if len(courses) < 15:
                 left_out.append((code, f'{len(courses)} courses read: the page lists too few, or lists them without credits'))
                 continue
-            if rep['dropped'] and len(rep['dropped']) > 0.1 * rep['rows']:
-                left_out.append((code, f"{len(rep['dropped'])} of {rep['rows']} rows do not read cleanly"))
+            # A row that does not read only costs the program when its course
+            # reads nowhere else on the page: EEE's outcome tables repeat every
+            # code without a title, under a plan that gives each one in full.
+            listed = {c['code'] for c in courses}
+            lost = {d.split(':')[0] for d in rep['dropped']} - listed
+            if len(lost) > 0.1 * max(len(listed), 1):
+                left_out.append((code, f"{len(lost)} of its courses do not read cleanly anywhere on the page"))
                 continue
             loaded.append((code, len(courses), rep))
             sources.append({
@@ -343,8 +351,11 @@ def main(src):
     note = (
         "Each program's courses as its page on daffodilvarsity.edu.bd lists them. Codes are only unique "
         'within a department at DIU (CSE212 is Discrete Mathematics in CSE and a lab in RME), so a course '
-        'is a code in a program. Codes are written without spaces or hyphens (CSE-115 and CSE 115 are '
-        'CSE115). Elective slots (CSE-***) are not courses and are left out. Programs not here, and why: '
+        'is a code in a program. Two shapes of code: a subject and three digits, written without spaces '
+        'or hyphens (CSE-115 and CSE 115 are CSE115), and the ISCED field codes most business and '
+        'engineering programs use, written with one hyphen (0413 - 111 is 0413-111); where a row gives '
+        'both, the subject code is kept. Elective slots (CSE-***) are not courses and are left out. '
+        'Programs not here, and why: '
         + '; '.join(f'{c}: {why}' for c, why in left_out)
         + '. Generated by scripts/import_diu_curricula.py; do not edit by hand.'
     )
