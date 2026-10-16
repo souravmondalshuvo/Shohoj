@@ -28,6 +28,8 @@ export const CAMPUS_DATA_DIR = path.join(ROOT, 'data', 'campuses');
 // CSE115L, CSE499A, BBA-level EMB601, and BRACU's two-letter lab suffix
 // (CSE490BL). Four-digit graduate codes (CE6207) are deliberately out of scope.
 export const COURSE_CODE = /^[A-Z]{2,4}\d{3}[A-Z]{0,2}$/;
+// An ISCED field code with a course number, written with one hyphen (DIU).
+export const ISCED_COURSE_CODE = /^\d{4}-\d{3}[A-Z]?$/;
 // Term codes are the campus's own: NSU prints a two-digit year and a term digit
 // (252 = Summer 2025); BRACU's CONNECT session ids use the full year (20263 =
 // Fall 2026). Either way the last digit is 1 Spring, 2 Summer, 3 Fall.
@@ -269,7 +271,11 @@ const programCoursesSchema = z
         z
           .object({
             program: z.string().regex(/^[A-Z]+(-[A-Z]+)?$/),
-            code: courseCode,
+            // A subject code, or an ISCED field code ("0413-111": field of
+            // study, then number) as fifteen DIU programs write theirs. Only
+            // here: a campus-wide courses.json keeps the subject shape the
+            // Worker and the Firestore rules check codes against.
+            code: z.union([courseCode, z.string().regex(ISCED_COURSE_CODE, 'not a course code')]),
             title: z.string().min(1),
             credits: credits.refine((n) => n > 0, 'a listed course carries credits'),
             source: sourceId,
