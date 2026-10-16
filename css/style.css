@@ -5852,6 +5852,86 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
   line-height: 1;
 }
 
+/* ─── Coffee modal: one pill + one panel per mobile wallet ─────────────────── */
+/* Each pill and panel carries its brand colour as --wallet (and --wallet-ink for
+   text sitting on that colour), so a wallet's look lives on its own markup. */
+.wallet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.wallet-pill {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.wallet-pill:hover { color: #fff; border-color: var(--wallet); }
+.wallet-pill[aria-selected="true"] {
+  background: var(--wallet);
+  border-color: var(--wallet);
+  color: var(--wallet-ink, #fff);
+}
+.wallet-pill:focus-visible { outline: 2px solid var(--wallet); outline-offset: 2px; }
+
+.wallet-hint { font-size: 12px; color: rgba(255, 255, 255, 0.45); margin-bottom: 12px; }
+.wallet-qr {
+  display: inline-block;
+  margin: 0 auto 14px;
+  padding: 8px;
+  border: 2px solid color-mix(in srgb, var(--wallet) 40%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--wallet) 8%, transparent);
+}
+.wallet-qr[hidden] { display: none; }
+.wallet-qr img { display: block; width: 220px; height: 220px; border-radius: 12px; }
+.wallet-number-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--wallet) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wallet) 10%, transparent);
+}
+.wallet-number {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  user-select: all;
+}
+.wallet-copy {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--wallet);
+  color: var(--wallet-ink, #fff);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wallet-copy:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.wallet-note { font-size: 12px; color: rgba(255, 255, 255, 0.35); margin-top: 14px; }
+.wallet-note span { color: var(--wallet); }
+
 .start-form-select {
   background: var(--input-bg);
   backdrop-filter: blur(8px);
