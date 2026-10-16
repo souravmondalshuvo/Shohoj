@@ -25,9 +25,10 @@ data/campuses/<campus>/
   places.json                  named places on campus, by floor
 ```
 
-Three campuses today: `nsu/` and `diu/` (researched from each university's own
-documents — see [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md)
-and [`docs/campuses/diu-research.md`](../../docs/campuses/diu-research.md)) and
+Four campuses today: `nsu/`, `diu/` and `bubt/` (researched from each university's
+own documents — see [`docs/campuses/nsu-research.md`](../../docs/campuses/nsu-research.md),
+[`docs/campuses/diu-research.md`](../../docs/campuses/diu-research.md) and
+[`docs/campuses/bubt-research.md`](../../docs/campuses/bubt-research.md)) and
 `bracu/` (first exported from the BRACU literals in Shohoj's own code — see
 [`docs/campuses/bracu-data.md`](../../docs/campuses/bracu-data.md)).
 
