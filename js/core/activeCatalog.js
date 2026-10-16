@@ -195,6 +195,31 @@ function expandDiuCatalog(program) {
 }
 
 /**
+ * A course code, written as the catalogue writes it, or null. Two shapes: a
+ * subject and three digits ("CSE 115", "cse-115" → "CSE115"), and the ISCED
+ * field codes most DIU programs use ("0413 101", "0413101" → "0413-101").
+ */
+export function normalizeCatalogCode(text) {
+  const t = String(text ?? '').trim().toUpperCase();
+  const field = t.match(/^(\d{4})\s*[-–]?\s*(\d{3})([A-Z]?)$/);
+  if (field) return `${field[1]}-${field[2]}${field[3]}`;
+  const subject = t.match(/^([A-Z]{2,4})\s*[-–]?\s*(\d{3})([A-Z]{0,2})$/);
+  return subject ? subject[1] + subject[2] + subject[3] : null;
+}
+
+/** The code a course row names: its "(CODE)" suffix, or the whole name when that is a code. */
+export function courseCodeIn(name) {
+  const raw = String(name ?? '').trim();
+  return normalizeCatalogCode(raw.match(/\(([^()]+)\)$/)?.[1]) ?? normalizeCatalogCode(raw);
+}
+
+/** The catalogue's entry for a course row, or null. */
+export function catalogEntryFor(name, catalog = getActiveCatalog()) {
+  const code = courseCodeIn(name);
+  return code ? catalog.courses[code] ?? null : null;
+}
+
+/**
  * Bring course rows in line with a catalogue that arrived after they were
  * written. A row whose name is a code the catalogue holds — bare ("CSE114") or
  * as the catalogue writes it ("… (CSE114)") — takes the catalogue's name and
@@ -206,9 +231,7 @@ export function reconcileCourseRows(semesters, catalog = getActiveCatalog()) {
   let changed = 0;
   for (const semester of semesters ?? []) {
     for (const course of semester.courses ?? []) {
-      const raw = String(course.name ?? '').trim();
-      const code = (raw.match(/\(([A-Z]{2,4}\d{3}[A-Z]{0,2})\)$/) || raw.toUpperCase().match(/^([A-Z]{2,4}\d{3}[A-Z]{0,2})$/))?.[1];
-      const listed = code ? catalog.courses[code] : undefined;
+      const listed = catalogEntryFor(course.name, catalog);
       if (!listed || (course.name === listed.full && course.credits === listed.credits)) continue;
       course.name = listed.full;
       course.credits = listed.credits;
