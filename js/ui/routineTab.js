@@ -6,7 +6,7 @@
 // highlighting + a source/age badge that's honest about freshness.
 
 import { fetchConnectFeed, clearConnectFeedCache } from '../core/connectFeedClient.js';
-import { indexByCourse, hasClassClash, hasExamClash, parseFeed } from '../core/connectFeed.js';
+import { indexByCourse, hasClassClash, hasExamClash, parseFeed, slotFaculties } from '../core/connectFeed.js';
 import { parseConnectSchedule, picksFromImport } from '../core/connectScheduleImport.js';
 import {
   archiveCacheKey,
@@ -1688,6 +1688,7 @@ function _collapsedCourseHTML(courseCode, name, section, mark) {
           <span class="routine-collapsed-pick">
             <span class="routine-collapsed-sec">Section ${escHtml(section.sectionName || '—')}</span>
             <span class="routine-collapsed-fac">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+            ${_collapsedLabFacultyHTML(section)}
             <span class="routine-collapsed-sched">${_formatSchedule(section)}</span>
             <span class="routine-collapsed-room" title="Room">${escHtml(_formatRooms(section))}</span>
             ${clashPill}
@@ -1777,7 +1778,7 @@ function _sectionRowHTML(courseCode, section, isPicked, mark, cand) {
   return `
     <button type="button" class="${classes}" data-action="${action}" ${data}>
       <span class="routine-section-name">Section ${escHtml(section.sectionName || '—')}</span>
-      <span class="routine-section-faculty" title="Faculty">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}</span>
+      <span class="routine-section-faculty" title="${escAttr(_sectionFacultyTitle(section))}">${escHtml(section.facultyInitials || 'TBA')}${_facultyBadgeHTML(section)}${_sectionLabFacultyHTML(section)}</span>
       <span class="routine-section-schedule">${_formatSchedule(section)}</span>
       <span class="routine-section-room" title="Room">${escHtml(section.roomName || '—')}</span>
       ${bare ? '' : `<span class="routine-section-seats routine-seats--${seatClass}" title="${escAttr(seatTitle)}">${escHtml(_seatText(section))}</span>
@@ -1800,6 +1801,42 @@ function _facultyBadgeHTML(section) {
     ? `Low sample (${r.count} review${r.count === 1 ? '' : 's'})`
     : `Faculty rating ${score} from ${r.count} review${r.count === 1 ? '' : 's'}`;
   return ` <span class="routine-faculty-badge routine-faculty-badge--${r.tier}" title="${escAttr(title)}">★ ${escHtml(score)}</span>`;
+}
+
+// Who teaches a section's lab, or null when it has none. Its own list — often
+// two people, not always the theory faculty — or "TAP, TBA" until assigned
+// (core/connectFeed.js slotFaculties), the same names the grid's lab block shows.
+function _labFaculties(section) {
+  const hasLab = (section.classSlots || []).some((slot) => slot.kind === 'lab');
+  return hasLab ? slotFaculties(section, { kind: 'lab' }) : null;
+}
+
+// The folded course row has width to spare, so each lab faculty gets a badge.
+function _collapsedLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  const names = lab
+    .map((f) => `${escHtml(f)}${f === 'TBA' ? '' : _facultyBadgeHTML({ facultyInitials: f })}`)
+    .join(', ');
+  return `<span class="routine-collapsed-labfac" title="Lab faculty"><span class="routine-lab-tag">Lab</span> ${names}</span>`;
+}
+
+// The section list's faculty column is 56px — a second, quieter line under the
+// theory faculty, names only; their ratings ride the cell's title.
+function _sectionLabFacultyHTML(section) {
+  const lab = _labFaculties(section);
+  if (!lab) return '';
+  return `<span class="routine-section-labfac"><span class="routine-lab-tag">Lab</span> ${escHtml(lab.join(', '))}</span>`;
+}
+
+function _sectionFacultyTitle(section) {
+  const named = (f) => {
+    const r = _knownRating(f);
+    return r ? `${f} ★${formatRatingScore(r.overall)}` : f;
+  };
+  const theory = `Faculty: ${named(section.facultyInitials || 'TBA')}`;
+  const lab = _labFaculties(section);
+  return lab ? `${theory} · Lab: ${lab.map(named).join(', ')}` : theory;
 }
 
 // Rooms for a picked section, de-duplicated in slot order — a section with a
