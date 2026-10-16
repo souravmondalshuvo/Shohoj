@@ -1825,16 +1825,30 @@ async function handleAssistant(request, env, origin, execCtx) {
 
   // Capability-style loaders: the uid is interpolated into the Firestore path
   // HERE, server-side. assistant.js never sees a uid at all.
+  const readUserSnapshot = async () => {
+    const saToken = await getServiceAccountAccessToken(env);
+    const fields = await firestoreGetFields(env, saToken, `users/${uid}`);
+    if (!fields || typeof fields.data !== 'string') return null;
+    try {
+      return JSON.parse(fields.data);
+    } catch {
+      return null;
+    }
+  };
+  // One read per turn (#912). Most tools start from the saved semesters, and a
+  // turn that asks for a CGPA scenario and degree progress — in one round or
+  // two — would otherwise fetch the same document twice. Scoped to this
+  // request, so it can never serve one student's record to another, and never
+  // outlives a turn. A null (nothing saved) is a real answer and is kept; a
+  // failed read is not, so a later tool in the turn tries again.
+  let snapshotLoad = null;
   const ctx = {
-    loadUserSnapshot: async () => {
-      const saToken = await getServiceAccountAccessToken(env);
-      const fields = await firestoreGetFields(env, saToken, `users/${uid}`);
-      if (!fields || typeof fields.data !== 'string') return null;
-      try {
-        return JSON.parse(fields.data);
-      } catch {
-        return null;
-      }
+    loadUserSnapshot: () => {
+      snapshotLoad ??= readUserSnapshot().catch((e) => {
+        snapshotLoad = null;
+        throw e;
+      });
+      return snapshotLoad;
     },
     loadSeatIndex: () => loadSeatIndexCached(),
     // Client-supplied, validated above, and about the caller's own schedule
