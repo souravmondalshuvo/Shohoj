@@ -83,20 +83,48 @@ feeds.
    it is free at Shohoj's scale (about 5 GB storage, 5M rows read and 100k rows
    written per day on the free plan at the time of writing). The database is
    created with location hint `apac`.
-2. **The repository is the seam.** A D1 implementation of `createAcademicRepo`
-   with the same interface is selected by configuration. Handlers, DTOs and the
-   `/api/v1` contract do not change, and the frontend does not learn anything
-   moved.
-3. **One test suite, two backends.** The existing repository and handler tests in
-   `worker/test/` run against both the Firestore and the D1 implementation until
-   the Firestore one is removed.
+2. **The repository is the seam, and it has to be widened first.** Today
+   `createAcademicRepo` is not the only code that touches these records:
+   - `/api/v1/me` reads and writes the `shohojUsers/{uid}` record directly in
+     `worker/apiV1.js`;
+   - the calendar feed (`worker/calendarFeed.js`, `worker/calendarFeedHandlers.js`)
+     resolves owners and rotates tokens through raw `getDoc`, `getDocSnapshot` and
+     the atomic `commitWrites`;
+   - `runReminderCron` in `worker/index.js` runs a Firestore collection-group
+     `runQuery` and parses Firestore document paths.
+
+   Before any D1 code is written, each of these moves behind a storage interface
+   (user record, feed tokens, a cross-user "due reminders" query) with the
+   Firestore implementation as its only backend. Once nothing outside that
+   interface touches academic Firestore paths, a D1 implementation is selected by
+   one configuration switch. Handlers, DTOs and the `/api/v1` contract do not
+   change, and the frontend does not learn anything moved.
+3. **One test suite, two backends.** The repository, handler, calendar-feed and
+   reminder-cron tests in `worker/test/` run against both the Firestore and the D1
+   implementation until the Firestore one is removed.
 4. **Migrations are versioned files** under `worker/migrations/`, applied in CI
    before the Worker deploys.
-5. **Backfill, then switch, with a way back.** A one-time Firestore → D1 copy is
-   verified by per-user record counts before the switch. For one release the
-   configuration can point back at Firestore, whose academic collections are left
-   in place read-only. They are deleted in a separate, later change.
-6. **Firebase stays where it is good.** Firebase Auth remains the identity
+5. **Backfill under a write freeze, verified by content.** The copy is only
+   consistent if nothing changes while it runs, so the switch happens inside a
+   short maintenance window: mutating `/api/v1` requests return `503` with
+   `Retry-After`, and the reminder cron pauses. Reads stay up. Inside the window:
+   1. Copy Firestore → D1.
+   2. Verify. Per-user counts are only the first check. Every record is compared
+      by id, and by a hash of its canonical form (same field set, normalised
+      timestamps, enum values, owner ids). Foreign keys are checked too: every
+      task's enrollment exists and has the same owner. The switch happens only if
+      every id and every hash match.
+   3. Switch the configuration to D1, then lift the freeze.
+6. **Rollback is the same procedure in reverse.** After the switch, Firestore's
+   academic collections stop receiving writes and go stale with the first edit,
+   so pointing back at them would silently drop students' changes. Dual writes
+   were considered and rejected: a write that lands in one store and fails in the
+   other is exactly the divergence they are meant to prevent. Rolling back means
+   freezing writes again, copying D1 → Firestore with the same copy-and-verify
+   tool, and only then switching back. The Firestore collections are kept for one
+   release as the target of that reverse copy, and are deleted in a separate,
+   later change.
+7. **Firebase stays where it is good.** Firebase Auth remains the identity
    provider. The `users/{uid}` blob that the client syncs directly, with its
    offline cache, stays on Firestore.
 
@@ -126,7 +154,12 @@ feeds.
   not expected to get faster and may be slightly slower than reads. Re-measure
   after the switch.
 - **A migration with real data.** The backfill touches every student's academic
-  records once and has to be verified, not assumed.
+  records once and has to be verified record by record, not assumed.
+- **A short write outage.** Students can read Tasks but not change them while the
+  copy runs, and again if a rollback is ever needed.
+- **Refactoring before migrating.** The user record, calendar feed and reminder
+  cron have to move behind the storage interface on Firestore first. That work
+  ships on its own, with no behaviour change, before D1 is introduced.
 
 ### Re-measurement
 
