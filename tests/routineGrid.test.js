@@ -213,6 +213,26 @@ test('A slot that falls outside override bounds is skipped', () => {
     eq(tuesdayBlocks.length, 1);
 });
 
+test('a lab block names the lab faculty, a theory block the theory faculty', () => {
+    const [lab] = parseFeed([{
+        sectionId: 2001, courseCode: 'CSE221', sectionName: '12', faculties: 'TAP',
+        roomName: '08H-22C',
+        sectionSchedule: {
+            classSchedules: [{ day: 'SUNDAY', startTime: '11:00:00', endTime: '12:20:00' }],
+        },
+        labSchedules: [{ day: 'SATURDAY', startTime: '14:00:00', endTime: '16:50:00' }],
+        labFaculties: 'TBA',
+        labRoomName: '09B-11L',
+    }]).sections;
+    const layout = computeGridLayout([lab]);
+    const sat = layout.blocks.find(b => b.day === 'SATURDAY');
+    const sun = layout.blocks.find(b => b.day === 'SUNDAY');
+    eq([sat.kind, sat.faculties, sat.facultyInitials], ['lab', ['TAP', 'TBA'], 'TAP, TBA']);
+    eq([sun.kind, sun.faculties, sun.facultyInitials], ['theory', ['TAP'], 'TAP']);
+    const assigned = computeGridLayout([{ ...lab, labFacultyInitials: 'THMD,ARFB' }]);
+    eq(assigned.blocks.find(b => b.day === 'SATURDAY').facultyInitials, 'THMD, ARFB');
+});
+
 // ---------------------------------------------------------------------------
 console.log(`\nresult: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
