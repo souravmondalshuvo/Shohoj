@@ -6225,6 +6225,17 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 
 .routine-section-name { font-weight: 700; }
 .routine-section-faculty { color: var(--text2); letter-spacing: 0.4px; font-weight: 600; }
+/* A section with a lab names its lab faculty on a second line of the 56px
+   faculty cell, quieter than the theory faculty above it. */
+.routine-section-labfac {
+  display: block; margin-top: 2px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.2px; color: var(--text3);
+  overflow-wrap: anywhere;
+}
+.routine-lab-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text3);
+}
 .routine-section-schedule { color: var(--text1); }
 .routine-section-room { color: var(--text3); font-size: 11px; }
 .routine-section-seats { font-weight: 700; padding: 2px 8px; border-radius: 999px; font-size: 11px; text-align: center; }
@@ -6347,6 +6358,7 @@ nav.lg-surface select.admin-campus-switcher:focus-visible,
 }
 .routine-collapsed-sec   { font-weight: 700; color: var(--text1); }
 .routine-collapsed-fac   { font-weight: 600; letter-spacing: 0.3px; }
+.routine-collapsed-labfac { font-weight: 600; letter-spacing: 0.3px; }
 .routine-collapsed-sched { color: var(--text2); }
 /* Room of the picked section — a quiet pill so it reads apart from the
    schedule text it follows. */
