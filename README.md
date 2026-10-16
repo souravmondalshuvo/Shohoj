@@ -264,6 +264,10 @@ A campus lost-and-found board at [`/lost-found/`](https://souravmondalshuvo.gith
 
 Shuttle routes and schedules at [`/bus/`](https://souravmondalshuvo.github.io/Shohoj/bus/), transcribed from the official BRACU transport brochure — available both as a shell route and as a standalone page.
 
+- **NSU** at [`/bus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=nsu) — routes and fares from NSU's only published schedule, which is for a past service period. The page says so first, in a warning's colours, links NSU's portal for today's answer, and highlights no "next pickup" — that would dress a year-old time up as a live one
+- **DIU** at [`/bus/?campus=diu`](https://souravmondalshuvo.github.io/Shohoj/bus/?campus=diu) — DIU's 20 routes, read from DIU's own transport feed. The page leads with the title DIU gives the schedule and the day Shohoj last read it, for the same reason
+- Each campus's Campus menu links its own page; the page has no session, so the campus travels in the URL
+
 ### 🍽️ Cafeteria Guide (New)
 
 A directory of on-campus food outlets on the shell, deliberately conservative about what it claims.
@@ -1173,6 +1177,9 @@ Additional notes on Repeat:
 ### Bus Routes
 
 - Transcribed from the official BRACU transport brochure at a point in time. Routes and timings change; the page reflects the brochure, not a live vehicle feed.
+- **NSU's page is a past schedule.** NSU has published nothing newer than the notice for its 25 Sep – 24 Dec 2025 service period, so that is what the page shows, labelled as such.
+- **DIU's page is as of the day it was read.** On 9 Oct 2026, a month into Fall, DIU's feed still served a schedule titled for the Summer 2026 exam period; the page shows that title rather than assuming it is current.
+- The shell's `/bus` route is BRACU's only. NSU and DIU students reach their pages from the site root's Campus menu.
 
 ### Next Registration
 
