@@ -244,11 +244,13 @@ Shohoj keeps its own.
 
 ### 🗺️ Campus Map (New)
 
-A procedural 3D campus tower at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/) that renders live room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab.
+A 3D model of the campus that renders room free/busy status straight from the class schedule — the same engine behind the Free Rooms tab. It is a **Campus Map** tab in the app's Campus menu, and still a standalone page at [`/campus/`](https://souravmondalshuvo.github.io/Shohoj/campus/).
 
-- **Live room status in three dimensions** — floors and rooms light by occupancy, so "where is there a free room right now" is a glance rather than a scan
-- **Presentation-only 3D** — the Three.js canvas (light rig, glass envelope, motion) is an enhancement over the accessible underlying room data, never the only way to read it
-- **Standalone page** — published on the public site through the consolidated multi-page build, ahead of the shell cutover
+- **BRACU's real building** — the model is BRACU's own building, loaded without its furniture, in neutral lighting. **Open any level**: the model is cut away above it, so you see that floor's own walls with the levels below still in place, and the camera glides to it
+- **NSU has its own map** at [`/campus/?campus=nsu`](https://souravmondalshuvo.github.io/Shohoj/campus/?campus=nsu) — a reconstruction, not a survey: footprints follow OpenStreetMap and facades were rebuilt from photographs, with the three basement levels (B1–B3). A room code says which building and floor a room is on, so occupancy lands on the right floor; where on that floor is not published
+- **Live room status in three dimensions** — rooms light by occupancy, so "where is there a free room right now" is a glance rather than a scan
+- **Linked from Lost & Found** — a room code on a post opens the Campus Map on that room
+- **Presentation-only 3D** — the Three.js canvas is an enhancement over the accessible underlying room data, never the only way to read it
 
 ### 🧳 Lost & Found (New)
 
@@ -579,7 +581,7 @@ Shohoj is built to feel like a real product, not a student project.
 | Shipping frontend | HTML, CSS, vanilla JavaScript (bundled by `build3.py`) | The production app people use today (`shohoj.html`)    |
 | Beta frontend | TypeScript, React 19, React Router, Vite            | The typed rewrite under `src/`, deployed to `/app/` (not yet the default root) |
 | Standalone pages | Vite multi-page build (`vite.pages.config.js`)     | `/campus/`, `/bus/`, `/lost-found/` — shipped on the public site ahead of the cutover |
-| 3D          | [Three.js](https://threejs.org/)                      | The procedural campus tower on `/campus/` (presentation layer only) |
+| 3D          | [Three.js](https://threejs.org/)                      | The Campus Map's building models — BRACU's and NSU's (presentation layer only) |
 | Validation  | [Zod](https://zod.dev/)                               | Runtime schema validation for imported/restored data   |
 | Auth & Sync | Firebase Auth + Firestore (Spark plan)                | Google Sign-In, cloud data sync, real-time updates     |
 | PDF Import  | [pdf.js](https://mozilla.github.io/pdf.js/)           | Reading BRACU transcript PDFs                           |
